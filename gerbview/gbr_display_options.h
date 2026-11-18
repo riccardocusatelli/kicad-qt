@@ -15,17 +15,20 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef GBR_DISPLAY_OPTIONS_H
 #define GBR_DISPLAY_OPTIONS_H
 
 using KIGFX::COLOR4D;
+
+enum class GBR_INACTIVE_LAYER_MODE
+{
+    NORMAL,
+    DIMMED,
+    HIDDEN
+};
 
 /**
  * @note Some of these parameters are used only for printing, some others only
@@ -42,7 +45,7 @@ public:
     bool    m_IsPrinting;               ///< true when printing a page, false when drawing on screen
     bool    m_ForceOpacityMode;         ///< Display layers in transparency (alpha channel) forced mode
     bool    m_XORMode;                  ///< Display layers in exclusive-or mode
-    bool    m_HighContrastMode;         ///< High contrast mode (dim un-highlighted objects)
+    GBR_INACTIVE_LAYER_MODE m_InactiveLayerMode; ///< How inactive layers are displayed
     bool    m_FlipGerberView;           ///< Display as a mirror image
     COLOR4D m_NegativeDrawColor;        ///< The color used to draw negative objects, usually the
                                         ///< background color, but not always, when negative objects
@@ -61,7 +64,7 @@ public:
         m_ForceOpacityMode = false;
         m_OpacityModeAlphaValue = 0.6;
         m_XORMode = false;
-        m_HighContrastMode = false;
+        m_InactiveLayerMode = GBR_INACTIVE_LAYER_MODE::NORMAL;
         m_FlipGerberView = false;
     }
 };

@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <algorithm>
@@ -24,6 +24,8 @@
 #include <optional>
 #include <utility>
 #include <vector>
+
+#include <wx/ffile.h>
 
 #include <mock_pgm_base.h>
 #include <richio.h>
@@ -426,7 +428,9 @@ BOOST_AUTO_TEST_CASE( ReadOnlyTable )
     fn.AppendDir( "libraries" );
     fn.SetName( "sym-lib-table" );
 
-    wxFileName tmpFn = wxFileName::CreateTempFileName( "kicad_test_ro_" );
+    KI_TEST::SCOPED_TEMP_DIR tempDir( "kicad_test_ro_table" );
+    wxFileName               tmpFn = tempDir.CreateChildFileStr( "sym-lib-table" );
+
     wxCopyFile( fn.GetFullPath(), tmpFn.GetFullPath() );
 
     // Verify a writable table is not read-only
@@ -526,6 +530,103 @@ BOOST_AUTO_TEST_CASE( RowsAddedToANewProjectTableAreEnumerated )
 }
 
 
+BOOST_AUTO_TEST_CASE( TableFileCreatedAfterLoadIsNotOverwritten )
+{
+    std::error_code       ec;
+    std::filesystem::path dir =
+            std::filesystem::temp_directory_path( ec ) / std::filesystem::path( "kicad_qa_stale_project_table" );
+
+    std::filesystem::remove_all( dir, ec );
+    std::filesystem::create_directories( dir, ec );
+
+    std::filesystem::path proPath = dir / "stale_table.kicad_pro";
+
+    {
+        std::ofstream proFile( proPath );
+        proFile << R"({ "meta": { "filename": "stale_table.kicad_pro", "version": 3 } })";
+    }
+
+    SETTINGS_MANAGER& settings = Pgm().GetSettingsManager();
+    BOOST_REQUIRE( settings.LoadProject( wxString( proPath.string() ) ) );
+
+    LIBRARY_MANAGER manager;
+
+    std::optional<LIBRARY_TABLE*> model = manager.Table( LIBRARY_TABLE_TYPE::SYMBOL, LIBRARY_TABLE_SCOPE::PROJECT );
+    BOOST_REQUIRE( model.has_value() );
+    BOOST_REQUIRE( model.value()->Rows().empty() );
+
+    std::filesystem::path source =
+            std::filesystem::path( KI_TEST::GetTestDataRootDir() ) / "libraries" / "sym-lib-table";
+    std::filesystem::path tablePath = dir / "sym-lib-table";
+
+    std::filesystem::copy_file( source, tablePath, ec );
+    BOOST_REQUIRE( !ec );
+
+    size_t fileRows = LIBRARY_TABLE( wxFileName( wxString( tablePath.string() ) ), LIBRARY_TABLE_SCOPE::PROJECT,
+                                     LIBRARY_TABLE_TYPE::SYMBOL )
+                              .Rows()
+                              .size();
+    BOOST_REQUIRE( fileRows > 0 );
+
+    // A save from the stale table must not replace the file that appeared after it was loaded
+    BOOST_CHECK( !model.value()->Save().has_value() );
+    BOOST_CHECK_EQUAL( std::filesystem::file_size( tablePath ), std::filesystem::file_size( source ) );
+
+    manager.ReloadChangedTables( LIBRARY_TABLE_TYPE::SYMBOL );
+
+    model = manager.Table( LIBRARY_TABLE_TYPE::SYMBOL, LIBRARY_TABLE_SCOPE::PROJECT );
+    BOOST_REQUIRE( model.has_value() );
+    BOOST_CHECK_EQUAL( model.value()->Rows().size(), fileRows );
+
+    // The table's own writes must not look like outside changes
+    LIBRARY_TABLE_ROW& row = model.value()->InsertRow();
+    row.SetNickname( wxS( "Added" ) );
+    row.SetURI( wxS( "${KIPRJMOD}/Added.kicad_sym" ) );
+    row.SetType( wxS( "KiCad" ) );
+
+    BOOST_CHECK( model.value()->Save().has_value() );
+    BOOST_CHECK( model.value()->Save().has_value() );
+    BOOST_CHECK( !model.value()->DiskChanged() );
+
+    settings.UnloadProject( &settings.Prj(), false );
+    std::filesystem::remove_all( dir, ec );
+}
+
+
+BOOST_AUTO_TEST_CASE( GlobalTableFileVanishedAfterLoadLeavesAnEmptyTable )
+{
+    const wxString tablePath = LIBRARY_MANAGER::DefaultGlobalTablePath( LIBRARY_TABLE_TYPE::SYMBOL );
+
+    wxFFile  in( tablePath, wxT( "rb" ) );
+    wxString contents;
+
+    BOOST_REQUIRE( in.IsOpened() && in.ReadAll( &contents ) );
+    in.Close();
+
+    struct RESTORE
+    {
+        wxString path;
+        wxString contents;
+
+        ~RESTORE()
+        {
+            wxFFile out( path, wxT( "wb" ) );
+            out.Write( contents );
+        }
+    } restore{ tablePath, contents };
+
+    LIBRARY_MANAGER manager;
+    manager.LoadGlobalTables();
+    BOOST_REQUIRE( manager.Table( LIBRARY_TABLE_TYPE::SYMBOL, LIBRARY_TABLE_SCOPE::GLOBAL ).has_value() );
+
+    BOOST_REQUIRE( wxRemoveFile( tablePath ) );
+    manager.ReloadChangedTables( LIBRARY_TABLE_TYPE::SYMBOL );
+
+    BOOST_CHECK_MESSAGE( manager.Table( LIBRARY_TABLE_TYPE::SYMBOL, LIBRARY_TABLE_SCOPE::GLOBAL ).has_value(),
+                         "A global table whose file vanished must stay available, the dialogs need one to edit" );
+}
+
+
 BOOST_AUTO_TEST_CASE( LibOverrideSettings )
 {
     // Test that LIB_OVERRIDE serialization in KICAD_SETTINGS works via the
@@ -565,6 +666,68 @@ BOOST_AUTO_TEST_CASE( LibOverrideSettings )
     BOOST_REQUIRE( settings->m_LibOverrides.count( tablePath ) == 1 );
     manager.SetLibOverride( tablePath, nickname1, false, false );
     BOOST_REQUIRE( settings->m_LibOverrides.count( tablePath ) == 0 );
+}
+
+
+/**
+ * Regression test for https://gitlab.com/kicad/code/kicad/-/issues/24626.
+ *
+ * When KiCad ships no stock design-block-lib-table, CreateGlobalTable must produce a valid
+ * empty table rather than a table with a dangling row pointing at the missing file.
+ */
+BOOST_AUTO_TEST_CASE( CreateGlobalTableEmptyWhenNoStockTable )
+{
+    wxFileName stockPath( LIBRARY_MANAGER::StockTablePath( LIBRARY_TABLE_TYPE::DESIGN_BLOCK ) );
+
+    if( stockPath.IsFileReadable() )
+    {
+        BOOST_TEST_MESSAGE( "Skipping: stock design-block-lib-table exists; test only applies when "
+                            "no stock table is installed" );
+        return;
+    }
+
+    const wxString tablePath =
+            LIBRARY_MANAGER::DefaultGlobalTablePath( LIBRARY_TABLE_TYPE::DESIGN_BLOCK );
+
+    // RAII guard: restore the global table file to its original state after the test.
+    struct FILE_RESTORE
+    {
+        wxString path;
+        bool     existed = false;
+        wxString contents;
+
+        explicit FILE_RESTORE( const wxString& aPath ) : path( aPath )
+        {
+            existed = wxFileName::FileExists( path );
+
+            if( existed )
+            {
+                wxFFile in( path, wxT( "rb" ) );
+                in.ReadAll( &contents );
+            }
+        }
+
+        ~FILE_RESTORE()
+        {
+            if( existed )
+            {
+                wxFFile out( path, wxT( "wb" ) );
+                out.Write( contents );
+            }
+            else if( wxFileName::FileExists( path ) )
+            {
+                wxRemoveFile( path );
+            }
+        }
+    } restore( tablePath );
+
+    BOOST_REQUIRE( LIBRARY_MANAGER::CreateGlobalTable( LIBRARY_TABLE_TYPE::DESIGN_BLOCK, true ) );
+
+    LIBRARY_TABLE reloaded( wxFileName( tablePath ), LIBRARY_TABLE_SCOPE::GLOBAL );
+
+    BOOST_REQUIRE( reloaded.IsOk() );
+    BOOST_CHECK_MESSAGE( reloaded.Rows().empty(),
+                         "CreateGlobalTable must not write a dangling row when the stock table is absent" );
 }
 
 
@@ -700,6 +863,50 @@ BOOST_AUTO_TEST_CASE( MigrateBuiltInLibraries_ChainedRowMigratedInPlace )
     auto migrated = table.Row( wxS( "KiCad" ) );
     BOOST_REQUIRE( migrated.has_value() );
     BOOST_CHECK_EQUAL( ( *migrated )->URI(), stockPath );
+}
+
+
+/**
+ * Regression test: quoted table values must round-trip through the writer's escaping.
+ *
+ * LIBRARY_TABLE::Format emits descriptions through OUTPUTFORMATTER::Quotes, which
+ * escapes backslash, quote, newline and carriage return. The grammar used to terminate
+ * a quoted string at the first quote with no escape handling, and the parser action
+ * stripped the quotes without unescaping, so a description containing a quote (or a
+ * newline) was written correctly but could never be read back.
+ */
+BOOST_AUTO_TEST_CASE( QuotedTextRoundTripsEscapes )
+{
+    LIBRARY_TABLE_PARSER parser;
+
+    const std::string escaped =
+            "(sym_lib_table (lib (name \"x\") (descr \"say \\\"hi\\\"\\\\line1\\nline2\\r\")))";
+
+    tl::expected<LIBRARY_TABLE_IR, LIBRARY_PARSE_ERROR> result = parser.ParseBuffer( escaped );
+    BOOST_REQUIRE( result.has_value() );
+    BOOST_REQUIRE_EQUAL( result->rows.size(), 1 );
+    BOOST_CHECK_EQUAL( result->rows[0].description, "say \"hi\"\\line1\nline2\r" );
+
+    // Round-trip: format the parsed value back out and parse it again.
+    LIBRARY_TABLE table( true, wxEmptyString, LIBRARY_TABLE_SCOPE::GLOBAL );
+    table.SetType( LIBRARY_TABLE_TYPE::SYMBOL );
+
+    LIBRARY_TABLE_ROW& row = table.InsertRow();
+    row.SetNickname( wxS( "x" ) );
+    row.SetType( wxS( "KiCad" ) );
+    row.SetURI( wxS( "${KIPRJMOD}/x.kicad_sym" ) );
+    row.SetDescription( wxS( "say \"hi\"\\line1\nline2\r" ) );
+
+    STRING_FORMATTER formatter;
+    table.Format( &formatter );
+
+    tl::expected<LIBRARY_TABLE_IR, LIBRARY_PARSE_ERROR> reparsed =
+            parser.ParseBuffer( formatter.GetString() );
+    BOOST_REQUIRE_MESSAGE( reparsed.has_value(),
+                           "a formatted table containing escaped quotes/newlines must re-parse" );
+
+    if( reparsed.has_value() && !reparsed->rows.empty() )
+        BOOST_CHECK_EQUAL( reparsed->rows[0].description, row.Description() );
 }
 
 

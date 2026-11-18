@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <libraries/legacy_symbol_library.h>
@@ -54,7 +50,8 @@ static bool sort_by_libid( const SCH_SYMBOL* ref, SCH_SYMBOL* cmp )
  * symbol are grouped, allowing later faster calculations (one library search by group
  * of symbols)
  *
- * @param aSymbols is a vector that will take the symbols.
+ * @param[in] aSchematic is the #SCHEMATIC to rescue.
+ * @param[out] aSymbols is a vector that will take the symbols.
  */
 static void getSymbols( SCHEMATIC* aSchematic, std::vector<SCH_SYMBOL*>& aSymbols )
 {
@@ -809,7 +806,8 @@ bool SYMBOL_LIB_TABLE_RESCUER::WriteRescueLibrary( wxWindow *aParent )
         IO_RELEASER<SCH_IO> pi( SCH_IO_MGR::FindPlugin( SCH_IO_MGR::SCH_KICAD ) );
 
         for( const std::unique_ptr<LIB_SYMBOL>& symbol : m_rescueLibSymbols )
-            pi->SaveSymbol( fn.GetFullPath(), new LIB_SYMBOL( *symbol.get() ), m_properties.get() );
+            pi->SaveSymbol( fn.GetFullPath(), std::make_unique<LIB_SYMBOL>( *symbol ),
+                            m_properties.get() );
 
         pi->SaveLibrary( fn.GetFullPath() );
     }

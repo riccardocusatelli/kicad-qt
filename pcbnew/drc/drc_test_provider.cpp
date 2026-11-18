@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "pcb_table.h"
@@ -235,8 +231,10 @@ int DRC_TEST_PROVIDER::forEachGeometryItem( const std::vector<KICAD_T>& aTypes, 
 
                 n++;
             }
-            else if( item->Type() == PCB_TABLE_T )
+            else if( BaseType( item->Type() ) == PCB_TABLE_T )
             {
+                // A drill chart is a table for clearance purposes, so a PCB_TABLE_T mask
+                // has to reach one or its artwork escapes DRC entirely
                 if( typeMask[ PCB_TABLE_T ] )
                 {
                     if( !aFunc( item ) )
@@ -337,6 +335,36 @@ int DRC_TEST_PROVIDER::forEachGeometryItem( const std::vector<KICAD_T>& aTypes, 
                     n++;
                 }
                 else if( typeMask[ PCB_SHAPE_T ] && dwg->Type() == PCB_SHAPE_T )
+                {
+                    if( !aFunc( dwg ) )
+                        return n;
+
+                    n++;
+                }
+                else if( BaseType( dwg->Type() ) == PCB_TABLE_T )
+                {
+                    // A drill chart is a table for clearance purposes, so a PCB_TABLE_T mask
+                    // has to reach one or its artwork escapes DRC entirely
+                    if( typeMask[ PCB_TABLE_T ] )
+                    {
+                        if( !aFunc( dwg ) )
+                            return n;
+
+                        n++;
+                    }
+
+                    if( typeMask[ PCB_TABLECELL_T ] )
+                    {
+                        for( PCB_TABLECELL* cell : static_cast<PCB_TABLE*>( dwg )->GetCells() )
+                        {
+                            if( !aFunc( cell ) )
+                                return n;
+
+                            n++;
+                        }
+                    }
+                }
+                else if( typeMask[ PCB_BARCODE_T ] && dwg->Type() == PCB_BARCODE_T )
                 {
                     if( !aFunc( dwg ) )
                         return n;

@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -142,8 +138,7 @@ FOOTPRINT* MICROWAVE_TOOL::createFootprint( MICROWAVE_FOOTPRINT_SHAPE aFootprint
         offsetY = -( gap_size + pad->GetSize( PADSTACK::ALL_LAYERS ).y ) / 2;
 
         pad = *( it + 1 );
-        pad->SetSize( PADSTACK::ALL_LAYERS,
-                      VECTOR2I( pad->GetSize( PADSTACK::ALL_LAYERS ).x, gap_size ) );
+        pad->SetSize( PADSTACK::ALL_LAYERS, VECTOR2I( pad->GetSize( PADSTACK::ALL_LAYERS ).x, gap_size ) );
         pad->SetY( pad->GetPosition().y + offsetY );
         break;
 
@@ -190,8 +185,7 @@ FOOTPRINT* MICROWAVE_TOOL::createFootprint( MICROWAVE_FOOTPRINT_SHAPE aFootprint
 }
 
 
-FOOTPRINT* MICROWAVE_TOOL::createBaseFootprint( const wxString& aValue,
-                                                int aTextSize, int aPadCount )
+FOOTPRINT* MICROWAVE_TOOL::createBaseFootprint( const wxString& aValue, int aTextSize, int aPadCount )
 {
     PCB_EDIT_FRAME& editFrame = *getEditFrame<PCB_EDIT_FRAME>();
 
@@ -214,6 +208,7 @@ FOOTPRINT* MICROWAVE_TOOL::createBaseFootprint( const wxString& aValue,
     while( aPadCount-- )
     {
         PAD* pad = new PAD( footprint );
+        pad->SetPadstackMode( PADSTACK::MODE::NORMAL );
 
         footprint->Add( pad, ADD_MODE::INSERT );
 

@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <bitmaps.h>
@@ -251,6 +251,24 @@ TOOL_ACTION GERBVIEW_ACTIONS::flipGerberView( TOOL_ACTION_ARGS()
         .Tooltip( _( "Show as mirror image" ) )
         .ToolbarState( TOOLBAR_STATE::TOGGLE )
         .Icon( BITMAPS::flip_board ) );
+
+TOOL_ACTION GERBVIEW_ACTIONS::showInactiveLayers( TOOL_ACTION_ARGS()
+        .Name( "gerbview.Control.showInactiveLayers" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Show Inactive Layers Normally" ) )
+        .Icon( BITMAPS::show_all_layers ) );
+
+TOOL_ACTION GERBVIEW_ACTIONS::dimInactiveLayers( TOOL_ACTION_ARGS()
+        .Name( "gerbview.Control.dimInactiveLayers" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Dim Inactive Layers" ) )
+        .Icon( BITMAPS::contrast_mode ) );
+
+TOOL_ACTION GERBVIEW_ACTIONS::hideInactiveLayers( TOOL_ACTION_ARGS()
+        .Name( "gerbview.Control.hideInactiveLayers" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Hide Inactive Layers" ) )
+        .Icon( BITMAPS::select_w_layer ) );
 
 
 // Drag and drop

@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -40,7 +36,7 @@ struct CONVERT_SETTINGS;
 #define ZONE_BORDER_HATCH_MAXDIST_MM 2.0        // Maximum for ZONE_SETTINGS::m_BorderHatchPitch
 
 
-#define ZONE_MANAGER_REPOUR 1005 //Reported if repour option is checked while clicking OK
+#define ZONE_MANAGER_REPOUR 1005 // Reported if repour option is checked while clicking OK
 
 /// How pads are covered by copper in zone
 enum class ZONE_CONNECTION
@@ -73,38 +69,39 @@ class PCB_BASE_FRAME;
 class BOARD;
 
 /**
- * Function InvokeNonCopperZonesEditor
- * invokes up a modal dialog window for non-copper zone editing.
+ * Invoke a modal dialog window for non-copper zone editing.
  *
- * @param aParent is the PCB_BASE_FRAME calling parent window for the modal dialog,
- *                and it gives access to the BOARD through PCB_BASE_FRAME::GetBoard().
- * @param aSettings points to the ZONE_SETTINGS to edit.
- * @return int - tells if user aborted, changed only one zone, or all of them.
+ * @param aParent is the #PCB_BASE_FRAME calling parent window for the modal dialog,
+ *                and it gives access to the #BOARD through PCB_BASE_FRAME::GetBoard().
+ * @param aSettings points to the #ZONE_SETTINGS to edit.
+ * @param aConvertSettings
+ * @return if user aborted, changed only one zone, or all of them.
  */
 int InvokeNonCopperZonesEditor( PCB_BASE_FRAME* aParent, ZONE_SETTINGS* aSettings,
                                 CONVERT_SETTINGS* aConvertSettings = nullptr );
 
 /**
- * Function InvokeCopperZonesEditor
- * invokes up a modal dialog window for copper zone editing.
+ * Invoke a modal dialog window for copper zone editing.
  *
- * @param aCaller is the PCB_BASE_FRAME calling parent window for the modal dialog,
- *                and it gives access to the BOARD through PCB_BASE_FRAME::GetBoard().
+ * @param aCaller is the #PCB_BASE_FRAME calling parent window for the modal dialog,
+ *                and it gives access to the #BOARD through PCB_BASE_FRAME::GetBoard().
  * @param aZone the zone being edited, or nullptr if a zone is being created.
- * @param aSettings points to the ZONE_SETTINGS to edit.
- * @return int - tells if user aborted, changed only one zone, or all of them.
+ * @param aSettings points to the #ZONE_SETTINGS to edit.
+ * @param aConvertSettings
+ * @return if user aborted, changed only one zone, or all of them.
  */
 int InvokeCopperZonesEditor( PCB_BASE_FRAME* aCaller, ZONE* aZone, ZONE_SETTINGS* aSettings,
                              CONVERT_SETTINGS* aConvertSettings = nullptr );
 
 /**
- * Function InvokeRuleAreaEditor
- * invokes up a modal dialog window for copper zone editing.
+ * Invoke a modal dialog window for copper zone editing.
  *
- * @param aCaller is the PCB_BASE_FRAME calling parent window for the modal dialog,
- *                and it gives access to the BOARD through PCB_BASE_FRAME::GetBoard().
- * @param aSettings points to the ZONE_SETTINGS to edit.
- * @return int - tells if user aborted, changed only one zone, or all of them.
+ * @param aCaller is the #PCB_BASE_FRAME calling parent window for the modal dialog,
+ *                and it gives access to the #BOARD through PCB_BASE_FRAME::GetBoard().
+ * @param aSettings points to the #ZONE_SETTINGS to edit.
+ * @param[in] aBoard is the #BOARD object with the rule area to edit.
+ * @param aConvertSettings
+ * @return if user aborted, changed only one zone, or all of them.
  */
 int InvokeRuleAreaEditor( PCB_BASE_FRAME* aCaller, ZONE_SETTINGS* aSettings,
                           BOARD* aBoard = nullptr, CONVERT_SETTINGS* aConvertSettings = nullptr );

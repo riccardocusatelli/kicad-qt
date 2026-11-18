@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <pgm_base.h>
@@ -38,6 +34,9 @@
 #include <core/ki_assert.h>
 #include <widgets/msgpanel_item.h>
 
+#include <api/api_enums.h>
+#include <api/api_utils.h>
+#include <api/schematic/schematic_types.pb.h>
 
 SCH_TABLE::SCH_TABLE( int aLineWidth ) :
         SCH_ITEM( nullptr, SCH_TABLE_T ),
@@ -77,6 +76,108 @@ SCH_TABLE::~SCH_TABLE()
     // We own our cells; delete them
     for( SCH_TABLECELL* cell : m_cells )
         delete cell;
+}
+
+
+void SCH_TABLE::Serialize( google::protobuf::Any& aContainer ) const
+{
+    using namespace kiapi::common;
+    using namespace kiapi::schematic::types;
+
+    SchematicTable table;
+
+    table.mutable_id()->set_value( m_Uuid.AsStdString() );
+    table.set_locked( IsLocked() ? types::LockedState::LS_LOCKED : types::LockedState::LS_UNLOCKED );
+
+    table.set_column_count( m_colCount );
+
+    for( int col = 0; col < m_colCount; ++col )
+        PackDistance( *table.add_column_widths(), GetColWidth( col ), schIUScale );
+
+    for( int row = 0; row < GetRowCount(); ++row )
+        PackDistance( *table.add_row_heights(), GetRowHeight( row ), schIUScale );
+
+    for( const SCH_TABLECELL* cell : m_cells )
+        cell->Serialize( *table.add_cells() );
+
+    table.set_external_border( m_strokeExternal ? TableStrokeMode::TSM_ENABLED : TableStrokeMode::TSM_DISABLED );
+    table.set_header_separator( m_StrokeHeaderSeparator ? TableStrokeMode::TSM_ENABLED
+                                                        : TableStrokeMode::TSM_DISABLED );
+
+    PackStroke( *table.mutable_border_stroke(), m_borderStroke, schIUScale );
+
+    table.set_row_separators( m_strokeRows ? TableStrokeMode::TSM_ENABLED : TableStrokeMode::TSM_DISABLED );
+    table.set_column_separators( m_strokeColumns ? TableStrokeMode::TSM_ENABLED : TableStrokeMode::TSM_DISABLED );
+
+    PackStroke( *table.mutable_separators_stroke(), m_separatorsStroke, schIUScale );
+
+    kiapi::common::PackCustomProperties( table.mutable_custom_properties(), *this );
+
+    if( !aContainer.PackFrom( table ) )
+        KI_FAIL_MSG( wxT( "Failed to pack SCH_TABLE" ) );
+}
+
+
+bool SCH_TABLE::Deserialize( const google::protobuf::Any& aContainer )
+{
+    using namespace kiapi::schematic::types;
+
+    SchematicTable table;
+
+    if( !aContainer.UnpackTo( &table ) )
+        return false;
+
+    kiapi::common::UnpackCustomProperties( table.custom_properties(), *this );
+
+    if( table.column_count() < 1 )
+        return false;
+
+    const_cast<KIID&>( m_Uuid ) = KIID( table.id().value() );
+    SetLocked( table.locked() == kiapi::common::types::LockedState::LS_LOCKED );
+
+    ClearCells();
+    m_colWidths.clear();
+    m_rowHeights.clear();
+
+    SetColCount( table.column_count() );
+
+    for( int i = 0; i < table.column_widths_size() && i < table.column_count(); ++i )
+        SetColWidth( i, kiapi::common::UnpackDistance( table.column_widths( i ), schIUScale ) );
+
+    for( const SchematicTableCell& protoCell : table.cells() )
+    {
+        SCH_TABLECELL* cell = new SCH_TABLECELL();
+
+        if( !cell->Deserialize( protoCell ) )
+        {
+            // Since cells are positional, we must add something to the table.  Probably better
+            // to add a new, empy cell than a partially deserialized who-knows-what.
+            delete cell;
+            cell = new SCH_TABLECELL();
+        }
+
+        AddCell( cell );
+    }
+
+    int rowCount = m_colCount > 0 ? static_cast<int>( m_cells.size() ) / m_colCount : 0;
+
+    for( int i = 0; i < table.row_heights_size() && i < rowCount; ++i )
+        SetRowHeight( i, kiapi::common::UnpackDistance( table.row_heights( i ), schIUScale ) );
+
+    m_strokeExternal = table.external_border() == TableStrokeMode::TSM_ENABLED;
+    m_StrokeHeaderSeparator = table.header_separator() == TableStrokeMode::TSM_ENABLED;
+
+    if( table.has_border_stroke() )
+        kiapi::common::UnpackStroke( m_borderStroke, table.border_stroke(), schIUScale );
+
+    m_strokeRows = table.row_separators() == TableStrokeMode::TSM_ENABLED;
+    m_strokeColumns = table.column_separators() == TableStrokeMode::TSM_ENABLED;
+
+    if( table.has_separators_stroke() )
+        kiapi::common::UnpackStroke( m_separatorsStroke, table.separators_stroke(), schIUScale );
+
+    Normalize();
+    return true;
 }
 
 
@@ -249,7 +350,49 @@ bool SCH_TABLE::operator<( const SCH_ITEM& aItem ) const
     if( GetPosition().y != other.GetPosition().y )
         return GetPosition().y < other.GetPosition().y;
 
-    return m_cells[0] < other.m_cells[0];
+    if( m_strokeExternal != other.m_strokeExternal )
+        return m_strokeExternal;
+
+    if( m_StrokeHeaderSeparator != other.m_StrokeHeaderSeparator )
+        return m_StrokeHeaderSeparator;
+
+    if( m_borderStroke != other.m_borderStroke )
+        return m_borderStroke < other.m_borderStroke;
+
+    if( m_strokeRows != other.m_strokeRows )
+        return m_strokeRows;
+
+    if( m_strokeColumns != other.m_strokeColumns )
+        return m_strokeColumns;
+
+    if( m_separatorsStroke != other.m_separatorsStroke )
+        return m_separatorsStroke < other.m_separatorsStroke;
+
+    if( GetColCount() != other.GetColCount() )
+        return GetColCount() < other.GetColCount();
+
+    for( int col = 0; col < GetColCount(); ++col )
+    {
+        if( GetColWidth( col ) != other.GetColWidth( col ) )
+            return GetColWidth( col ) < other.GetColWidth( col );
+    }
+
+    if( GetRowCount() != other.GetRowCount() )
+        return GetRowCount() < other.GetRowCount();
+
+    for( int row = 0; row < GetRowCount(); ++row )
+    {
+        if( GetRowHeight( row ) != other.GetRowHeight( row ) )
+            return GetRowHeight( row ) < other.GetRowHeight( row );
+    }
+
+    for( int ii = 0; ii < (int) m_cells.size(); ++ii )
+    {
+        if( m_cells[ii] != other.m_cells[ii] )
+            return m_cells[ii] < other.m_cells[ii];
+    }
+
+    return false;
 }
 
 
@@ -268,6 +411,9 @@ const BOX2I SCH_TABLE::GetBoundingBox() const
     BOX2I bbox = m_cells[0]->GetBoundingBox();
 
     bbox.Merge( m_cells[m_cells.size() - 1]->GetBoundingBox() );
+
+    if( m_strokeExternal )
+        bbox.Inflate( m_borderStroke.GetWidth() / 2 );
 
     return bbox;
 }
@@ -347,13 +493,15 @@ bool SCH_TABLE::HitTest( const SHAPE_LINE_CHAIN& aPoly, bool aContained ) const
 void SCH_TABLE::DrawBorders( const std::function<void( const VECTOR2I& aPt1, const VECTOR2I& aPt2,
                                                        const STROKE_PARAMS& aStroke )>& aCallback ) const
 {
+    if( m_cells.empty() )   // Shouldn't be possible....
+        return;
+
     EDA_ANGLE drawAngle = GetCell( 0, 0 )->GetTextAngle();
 
     std::vector<VECTOR2I> topLeft = GetCell( 0, 0 )->GetCornersInSequence( drawAngle );
     std::vector<VECTOR2I> bottomLeft = GetCell( GetRowCount() - 1, 0 )->GetCornersInSequence( drawAngle );
     std::vector<VECTOR2I> topRight = GetCell( 0, GetColCount() - 1 )->GetCornersInSequence( drawAngle );
-    std::vector<VECTOR2I> bottomRight =
-            GetCell( GetRowCount() - 1, GetColCount() - 1 )->GetCornersInSequence( drawAngle );
+    std::vector<VECTOR2I> botRight = GetCell( GetRowCount() - 1, GetColCount() - 1 )->GetCornersInSequence( drawAngle );
     STROKE_PARAMS stroke;
 
     for( int col = 0; col < GetColCount() - 1; ++col )
@@ -411,8 +559,8 @@ void SCH_TABLE::DrawBorders( const std::function<void( const VECTOR2I& aPt1, con
     if( StrokeExternal() && GetBorderStroke().GetWidth() >= 0 )
     {
         aCallback( topLeft[0], topRight[1], GetBorderStroke() );
-        aCallback( topRight[1], bottomRight[2], GetBorderStroke() );
-        aCallback( bottomRight[2], bottomLeft[3], GetBorderStroke() );
+        aCallback( topRight[1], botRight[2], GetBorderStroke() );
+        aCallback( botRight[2], bottomLeft[3], GetBorderStroke() );
         aCallback( bottomLeft[3], topLeft[0], GetBorderStroke() );
     }
 }
@@ -484,6 +632,24 @@ bool SCH_TABLE::operator==( const SCH_ITEM& aOther ) const
     if( m_cells.size() != other.m_cells.size() )
         return false;
 
+    if( m_strokeExternal != other.m_strokeExternal )
+        return false;
+
+    if( m_StrokeHeaderSeparator != other.m_StrokeHeaderSeparator )
+        return false;
+
+    if( m_borderStroke != other.m_borderStroke )
+        return false;
+
+    if( m_strokeRows != other.m_strokeRows )
+        return false;
+
+    if( m_strokeColumns != other.m_strokeColumns )
+        return false;
+
+    if( m_separatorsStroke != other.m_separatorsStroke )
+        return false;
+
     if( m_colWidths != other.m_colWidths )
         return false;
 
@@ -523,17 +689,6 @@ static struct SCH_TABLE_DESC
 {
     SCH_TABLE_DESC()
     {
-        ENUM_MAP<LINE_STYLE>& lineStyleEnum = ENUM_MAP<LINE_STYLE>::Instance();
-
-        if( lineStyleEnum.Choices().GetCount() == 0 )
-        {
-            lineStyleEnum.Map( LINE_STYLE::SOLID,      _HKI( "Solid" ) )
-                         .Map( LINE_STYLE::DASH,       _HKI( "Dashed" ) )
-                         .Map( LINE_STYLE::DOT,        _HKI( "Dotted" ) )
-                         .Map( LINE_STYLE::DASHDOT,    _HKI( "Dash-Dot" ) )
-                         .Map( LINE_STYLE::DASHDOTDOT, _HKI( "Dash-Dot-Dot" ) );
-        }
-
         PROPERTY_MANAGER& propMgr = PROPERTY_MANAGER::Instance();
         REGISTER_TYPE( SCH_TABLE );
 

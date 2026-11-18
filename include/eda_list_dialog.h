@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -36,7 +32,7 @@ class wxCheckBox;
  *  - a text control to display help or info about the selected item.
  *  - 2 buttons (OK and Cancel)
  */
-class EDA_LIST_DIALOG : public EDA_LIST_DIALOG_BASE
+class KICOMMON_API EDA_LIST_DIALOG : public EDA_LIST_DIALOG_BASE
 {
 public:
 
@@ -46,6 +42,7 @@ public:
      * @param aItemHeaders an optional array containing the column header names for the dialog.
      * @param aItemList A wxArrayString of the list of elements.
      * @param aPreselectText An item name if an item must be preselected.
+     * @param aSortList is a flag to determine if the list should be alphabetically sorted.
      */
     EDA_LIST_DIALOG( TOOLKIT_WINDOW_ARG aParent, const wxString& aTitle, const wxArrayString& aItemHeaders,
                      const std::vector<wxArrayString>& aItemList, const wxString& aPreselectText = wxEmptyString,

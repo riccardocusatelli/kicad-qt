@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef NGSPICE_H
@@ -30,6 +26,7 @@
 #include <sim/spice_simulator.h>
 #include <sim/sim_model.h>
 #include <sim/sim_value.h>
+#include <widgets/report_severity.h>
 
 #include <wx/dynlib.h>
 
@@ -61,59 +58,59 @@ public:
     NGSPICE();
     virtual ~NGSPICE();
 
-    ///< @copydoc SPICE_SIMULATOR::Init()
+    /// @copydoc SPICE_SIMULATOR::Init()
     void Init( const SPICE_SETTINGS* aSettings = nullptr ) override final;
 
-    ///< @copydoc SPICE_SIMULATOR::Attach()
+    /// @copydoc SPICE_SIMULATOR::Attach()
     bool Attach( const std::shared_ptr<SIMULATION_MODEL>& aModel, const wxString& aSimCommand,
                  unsigned aSimOptions, const wxString& aInputPath,
                  REPORTER& aReporter ) override final;
 
-    ///< Load a netlist for the simulation
+    /// Load a netlist for the simulation
     bool LoadNetlist( const std::string& aNetlist ) override final;
 
-    ///< @copydoc SPICE_SIMULATOR::Run()
+    /// @copydoc SPICE_SIMULATOR::Run()
     bool Run() override final;
 
-    ///< @copydoc SPICE_SIMULATOR::Stop()
+    /// @copydoc SPICE_SIMULATOR::Stop()
     bool Stop() override final;
 
-    ///< @copydoc SPICE_SIMULATOR::IsRunning()
+    /// @copydoc SPICE_SIMULATOR::IsRunning()
     bool IsRunning() override final;
 
-    ///< @copydoc SPICE_SIMULATOR::Command()
+    /// @copydoc SPICE_SIMULATOR::Command()
     bool Command( const std::string& aCmd ) override final;
 
-    ///< @copydoc SPICE_SIMULATOR::GetXAxis()
+    /// @copydoc SPICE_SIMULATOR::GetXAxis()
     wxString GetXAxis( SIM_TYPE aType ) const override final;
 
-    ///< @copydoc SPICE_SIMULATOR::CurrentPlotName()
+    /// @copydoc SPICE_SIMULATOR::CurrentPlotName()
     wxString CurrentPlotName() const override final;
 
-    ///< @copydoc SPICE_SIMULATOR::AllVectors()
+    /// @copydoc SPICE_SIMULATOR::AllVectors()
     std::vector<std::string> AllVectors() const override final;
 
-    ///< @copydoc SPICE_SIMULATOR::GetComplexVector()
+    /// @copydoc SPICE_SIMULATOR::GetComplexVector()
     std::vector<COMPLEX> GetComplexVector( const std::string& aName, int aMaxLen = -1 ) override final;
 
-    ///< @copydoc SPICE_SIMULATOR::GetRealVector()
+    /// @copydoc SPICE_SIMULATOR::GetRealVector()
     std::vector<double> GetRealVector( const std::string& aName, int aMaxLen = -1 ) override final;
 
-    ///< @copydoc SPICE_SIMULATOR::GetImaginaryVector()
+    /// @copydoc SPICE_SIMULATOR::GetImaginaryVector()
     std::vector<double> GetImaginaryVector( const std::string& aName, int aMaxLen = -1 ) override final;
 
-    ///< @copydoc SPICE_SIMULATOR::GetGainVector()
+    /// @copydoc SPICE_SIMULATOR::GetGainVector()
     std::vector<double> GetGainVector( const std::string& aName, int aMaxLen = -1 ) override final;
 
-    ///< @copydoc SPICE_SIMULATOR::GetPhaseVector()
+    /// @copydoc SPICE_SIMULATOR::GetPhaseVector()
     std::vector<double> GetPhaseVector( const std::string& aName, int aMaxLen = -1 ) override final;
 
     std::vector<std::string> GetSettingCommands() const override final;
 
-    ///< @copydoc SPICE_SIMULATOR::GetNetlist()
+    /// @copydoc SPICE_SIMULATOR::GetNetlist()
     virtual const std::string GetNetlist() const override final;
 
-    ///< @copydoc SIMULATOR::Clean()
+    /// @copydoc SIMULATOR::Clean()
     void Clean() override final;
 
 private:
@@ -135,7 +132,7 @@ private:
     typedef int          ( *ngSpice_LockRealloc )( void );
     typedef int          ( *ngSpice_UnlockRealloc )( void );
 
-    ///< Handle to DLL functions
+    /// Handle to DLL functions
     ngSpice_Init          m_ngSpice_Init;
     ngSpice_Circ          m_ngSpice_Circ;
     ngSpice_Command       m_ngSpice_Command;
@@ -170,18 +167,18 @@ private:
         NGSPICE* m_ngspice;
     };
 
-    ///< Execute commands from a file
+    /// Execute commands from a file
     bool loadSpinit( const std::string& aFileName );
 
     void updateNgspiceSettings();
 
-    ///< Check a few different locations for codemodel files and returns one if it exists.
+    /// Check a few different locations for codemodel files and returns one if it exists.
     std::string findCmPath() const;
 
-    ///< Send additional search path for codemodels to ngspice.
+    /// Send additional search path for codemodels to ngspice.
     bool setCodemodelsInputPath( const std::string& aPath );
 
-    ///< Load codemodel files from a directory.
+    /// Load codemodel files from a directory.
     bool loadCodemodels( const std::string& aPath );
 
     // Callback functions
@@ -200,6 +197,9 @@ private:
     // Restore original signal handlers
     void restoreSignalHandlers();
 
+    /// Start a run with no warning for unprefixed stderr lines to continue.
+    void resetStderrSeverity();
+
     // Signal handler for crashes
     static void signalHandler( int aSignal );
 
@@ -210,6 +210,9 @@ private:
 
 private:
     bool        m_error;            ///< Error flag indicating that ngspice needs to be reloaded.
+
+    /// Severity continuation lines inherit.  Guarded by m_reporterMutex.
+    SEVERITY m_lastStderrSeverity;
 
     static bool m_initialized;      ///< Ngspice should be initialized only once.
 

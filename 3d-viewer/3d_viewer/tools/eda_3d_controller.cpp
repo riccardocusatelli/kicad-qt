@@ -15,15 +15,12 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <3d_rendering/opengl/render_3d_opengl.h> // Must be included before any GL header
 
+#include <bitmaps.h>
 #include <tool/actions.h>
 #include <tool/tool_manager.h>
 #include <eda_3d_canvas.h>
@@ -147,10 +144,7 @@ int EDA_3D_CONTROLLER::Main( const TOOL_EVENT& aEvent )
             {
                 DIALOG_SHIM* dialog = static_cast<DIALOG_SHIM*>( parent );
 
-                if( dialog->IsQuasiModal() )
-                    dialog->EndQuasiModal( wxID_CANCEL );
-                else
-                    dialog->EndModal( wxID_CANCEL );
+                dialog->EndDialogShim( wxID_CANCEL );
             }
             else
             {
@@ -386,6 +380,15 @@ int EDA_3D_CONTROLLER::ToggleRaytracing( const TOOL_EVENT& aEvent )
 }
 
 
+int EDA_3D_CONTROLLER::ToggleShowMissingModels( const TOOL_EVENT& aEvent )
+{
+    m_boardAdapter->m_Cfg->m_Render.show_missing_models = !m_boardAdapter->m_Cfg->m_Render.show_missing_models;
+    m_canvas->ReloadRequest();
+    m_canvas->Request_refresh();
+    return 0;
+}
+
+
 int EDA_3D_CONTROLLER::ExportImage( const TOOL_EVENT& aEvent )
 {
     EDA_BASE_FRAME* frame = dynamic_cast<EDA_BASE_FRAME*>( m_toolMgr->GetToolHolder() );
@@ -408,7 +411,7 @@ int EDA_3D_CONTROLLER::ExportImage( const TOOL_EVENT& aEvent )
     DIALOG_EXPORT_3D_IMAGE  dlg( viewer, currentSize, cfg ? &cfg->m_ExportImage : nullptr );
 
     if( dlg.ShowModal() == wxID_OK )
-        viewer->ExportImage( fmt, dlg.GetSize() );
+        viewer->ExportImage( fmt, dlg.GetImageSize() );
 
     return 0;
 }
@@ -422,6 +425,7 @@ void EDA_3D_CONTROLLER::setTransitions()
     // Miscellaneous control
     Go( &EDA_3D_CONTROLLER::ReloadBoard,        EDA_3D_ACTIONS::reloadBoard.MakeEvent() );
     Go( &EDA_3D_CONTROLLER::ToggleRaytracing,   EDA_3D_ACTIONS::toggleRaytacing.MakeEvent() );
+    Go( &EDA_3D_CONTROLLER::ToggleShowMissingModels, EDA_3D_ACTIONS::toggleShowMissingModels.MakeEvent() );
     Go( &EDA_3D_CONTROLLER::ExportImage,        EDA_3D_ACTIONS::copyToClipboard.MakeEvent() );
     Go( &EDA_3D_CONTROLLER::ExportImage,        EDA_3D_ACTIONS::exportImage.MakeEvent() );
 
@@ -484,6 +488,5 @@ void EDA_3D_CONTROLLER::setTransitions()
     Go( &EDA_3D_CONTROLLER::ToggleVisibility,   EDA_3D_ACTIONS::showDNP.MakeEvent() );
     Go( &EDA_3D_CONTROLLER::ToggleLayersManager,EDA_3D_ACTIONS::showLayersManager.MakeEvent() );
     Go( &EDA_3D_CONTROLLER::ToggleVisibility, EDA_3D_ACTIONS::showNavigator.MakeEvent() );
+    Go( &EDA_3D_CONTROLLER::ToggleVisibility,   EDA_3D_ACTIONS::showBBoxes.MakeEvent() );
 }
-
-

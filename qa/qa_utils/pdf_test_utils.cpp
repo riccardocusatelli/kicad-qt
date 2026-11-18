@@ -14,19 +14,15 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <algorithm>
 
+#include <qa_utils/file_utils.h>
 #include <qa_utils/pdf_test_utils.h>
 #include <gal/color4d.h>
 
-#include <wx/filename.h>
 #include <wx/filefn.h>
 #include <wx/ffile.h>
 #include <wx/utils.h>
@@ -34,13 +30,6 @@
 #include <wx/imagpng.h>
 
 #include <zlib.h>
-
-wxString MakeTempPdfPath( const wxString& aPrefix )
-{
-    wxFileName fn = wxFileName::CreateTempFileName( aPrefix );
-    fn.SetExt( "pdf" );
-    return fn.GetFullPath();
-}
 
 SIMPLE_RENDER_SETTINGS::SIMPLE_RENDER_SETTINGS()
 {
@@ -96,7 +85,14 @@ static void append_decompressed_streams( std::string& aBuffer )
 
         if( dataLen > 0 )
         {
-            // Trailing CR/LF bytes may belong to the compressed checksum; zlib ignores any extra input.
+            // Trailing newline after the zlib payload is common in PDF writers; strip it so
+            // inflate does not see leftover input.
+            while( dataLen > 0
+                   && ( aBuffer[dataStart + dataLen - 1] == '\n' || aBuffer[dataStart + dataLen - 1] == '\r' ) )
+            {
+                --dataLen;
+            }
+
             const unsigned char* data = reinterpret_cast<const unsigned char*>( aBuffer.data() + dataStart );
             z_stream             zs{};
             zs.next_in = const_cast<Bytef*>( data );
@@ -115,8 +111,12 @@ static void append_decompressed_streams( std::string& aBuffer )
                     zs.avail_out = static_cast<uInt>( out.size() - zs.total_out );
                     ret = inflate( &zs, Z_FINISH );
 
-                    // More output space cannot repair incomplete input.
-                    if( ret != Z_BUF_ERROR || zs.avail_out != 0 )
+                    if( ret != Z_BUF_ERROR )
+                        break;
+
+                    // Z_BUF_ERROR also reports exhausted input, which a bigger output buffer
+                    // cannot cure. Doubling on that alone allocates until it throws
+                    if( zs.avail_out > 0 )
                         break;
 
                     out.resize( out.size() * 2 );
@@ -181,7 +181,8 @@ bool RasterizePdfCountDark( const wxString& aPdfPath, int aDpi, int aNearWhiteTh
 {
     aOutDarkPixels = 0;
 
-    wxString rasterBase = wxFileName::CreateTempFileName( wxT( "kicad_pdf_raster" ) );
+    KI_TEST::SCOPED_TEMP_DIR rasterDir( "kicad_pdf_raster" );
+    wxString rasterBase = rasterDir.ChildPathStr( "raster" );
     wxString cmd = wxString::Format( wxT( "pdftoppm -r %d -singlefile -png \"%s\" \"%s\"" ),
                                      aDpi, aPdfPath, rasterBase );
     int ret = wxExecute( cmd, wxEXEC_SYNC );
@@ -220,14 +221,5 @@ bool RasterizePdfCountDark( const wxString& aPdfPath, int aDpi, int aNearWhiteTh
 
     aOutDarkPixels = dark;
 
-    // cleanup the rasterized file
-    wxRemoveFile( pngPath );
     return true;
-}
-
-void MaybeRemoveFile( const wxString& aPath, const wxString& aEnvVar )
-{
-    wxString keepEnv;
-    if( !wxGetEnv( aEnvVar, &keepEnv ) || keepEnv.IsEmpty() )
-        wxRemoveFile( aPath );
 }

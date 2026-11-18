@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <iostream>
@@ -45,11 +41,11 @@
 #include "vrml2_switch.h"
 #include "vrml2_inline.h"
 #include "plugins/3dapi/ifsg_all.h"
+#include "../loadmodel.h"
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
 
 
-SCENEGRAPH* LoadVRML( const wxString& aFileName, bool useInline, bool applyUnitConversion );
 
 
 WRL2BASE::WRL2BASE() : WRL2NODE()
@@ -104,6 +100,13 @@ void WRL2BASE::SetApplyUnitConversion( bool apply )
 }
 
 
+void WRL2BASE::SetImportOptions( const S3D::MODEL_IMPORT_OPTIONS& aOptions, MODEL_IMPORT_STATUS* aStatus )
+{
+    m_options = aOptions;
+    m_status = aStatus;
+}
+
+
 bool WRL2BASE::GetEnableInline( void )
 {
     return  m_useInline;
@@ -154,10 +157,15 @@ SGNODE* WRL2BASE::GetInlineData( const std::string& aName )
     // This ensures that submodels referenced via Inline{} nodes in PCBnew-exported VRML
     // files (which have top-level scale and disabled unit conversion) are also loaded
     // without unit conversion.
-    SCENEGRAPH* sp = LoadVRML( fn.GetFullPath(), false, m_applyUnitConversion );
+    S3D::MODEL_IMPORT_OPTIONS inlineOptions = m_options;
+    inlineOptions.vrmlApplyLegacyUnitConversion = m_applyUnitConversion;
+    inlineOptions.vrmlEnableInline = m_useInline;
+
+    SCENEGRAPH* sp = LoadVRML( fn.GetFullPath(), inlineOptions, m_status );
 
     if( nullptr == sp )
     {
+        m_incompleteInline = true;
         m_inlineModels.emplace( aName, nullptr );
         return nullptr;
     }
@@ -902,6 +910,8 @@ bool WRL2BASE::readInline( WRLPROC& proc, WRL2NODE* aParent, WRL2NODE** aNode )
 
     if( !m_useInline )
     {
+        m_incompleteInline = true;
+
         if( !proc.DiscardNode() )
         {
             KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] failed to discard in line node %s." ),

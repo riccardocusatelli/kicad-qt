@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -50,6 +46,16 @@ namespace KIGFX
 {
     class VIEW;
 }
+
+
+/// The electrical type of a pad
+enum class PAD_SIM_ELECTRICAL_TYPE : int
+{
+    NONE = 0,
+    SOURCE,
+    SINK
+};
+
 
 class PAD : public BOARD_CONNECTED_ITEM
 {
@@ -106,12 +112,12 @@ public:
 
     bool HasHole() const override
     {
-        return GetDrillSizeX() > 0 && GetDrillSizeY() > 0;
+        return GetDrillSize().x > 0 && GetDrillSize().y > 0;
     }
 
     bool HasDrilledHole() const override
     {
-        return HasHole() && GetDrillSizeX() == GetDrillSizeY();
+        return HasHole() && GetDrillSize().x == GetDrillSize().y;
     }
 
     bool IsLocked() const override;
@@ -181,6 +187,9 @@ public:
      */
     bool IsFreePad() const;
 
+    void SetPadstackMode( PADSTACK::MODE aMode ) { m_padStack.SetMode( aMode ); }
+    PADSTACK::MODE GetPadstackMode() const { return m_padStack.Mode(); }
+
     /**
      * Set the new shape of this pad.
      */
@@ -200,13 +209,9 @@ public:
 
     PAD_SHAPE GetFrontShape() const { return m_padStack.Shape( F_Cu ); }
 
-    void SetPosition( const VECTOR2I& aPos ) override
-    {
-        m_pos = aPos;
-        SetDirty();
-    }
-
-    VECTOR2I GetPosition() const override { return m_pos; }
+    void     SetPosition( const VECTOR2I& aPos ) override;
+    VECTOR2I GetPosition() const override;
+    VECTOR2I GetLibraryPosition() const { return m_libPos; }
 
     /**
      * @return the shape of the anchor pad shape, for custom shaped pads.
@@ -237,6 +242,7 @@ public:
     /**
      * Set the shape of the anchor pad for custom shaped pads.
      *
+     * @param aLayer is the layer ID of the pad.
      * @param aShape is the shape of the anchor pad shape( currently, only #PAD_SHAPE::RECTANGLE or
      *               #PAD_SHAPE::CIRCLE.
      */
@@ -253,15 +259,28 @@ public:
      */
     bool IsOnCopperLayer() const override;
 
-    void SetY( int y )                          { m_pos.y = y; SetDirty(); }
-    void SetX( int x )                          { m_pos.x = x; SetDirty(); }
-
-    void SetSize( PCB_LAYER_ID aLayer, const VECTOR2I& aSize )
+    void SetY( int y )
     {
-        m_padStack.SetSize( aSize, aLayer );
-        SetDirty();
+        VECTOR2I p = GetPosition();
+        p.y = y;
+        SetPosition( p );
     }
-    const VECTOR2I& GetSize( PCB_LAYER_ID aLayer ) const { return m_padStack.Size( aLayer ); }
+
+    void SetX( int x )
+    {
+        VECTOR2I p = GetPosition();
+        p.x = x;
+        SetPosition( p );
+    }
+
+    void     SetSize( PCB_LAYER_ID aLayer, const VECTOR2I& aSize );
+    VECTOR2I GetSize( PCB_LAYER_ID aLayer ) const;
+
+    // Lib-frame setters used by the parser. These store the value as-is in the
+    // padstack without inverse-scaling against the parent FP transform.
+    void SetLibSize( PCB_LAYER_ID aLayer, const VECTOR2I& aSize );
+    void SetLibDrillSize( const VECTOR2I& aSize );
+    void SetLibOffset( PCB_LAYER_ID aLayer, const VECTOR2I& aOffset );
 
     bool HasExplicitDefinitionForLayer( PCB_LAYER_ID aLayer ) const
     {
@@ -273,37 +292,11 @@ public:
     // in the GUI when the padstack mode is set to anything other than NORMAL, but so that the code
     // compiles, these are set up to work with the front layer (in other words, assume the mode is
     // NORMAL, where F_Cu stores the whole padstack data)
-    void SetSizeX( const int aX )
-    {
-        if( aX > 0 )
-        {
-            int y = m_padStack.Size( PADSTACK::ALL_LAYERS ).y;
+    void SetSizeXProp( int aX );
+    int  GetSizeXProp() const;
 
-            if( GetShape( PADSTACK::ALL_LAYERS ) == PAD_SHAPE::CIRCLE )
-                y = aX;
-
-            m_padStack.SetSize( { aX, y }, PADSTACK::ALL_LAYERS );
-            SetDirty();
-        }
-    }
-
-    int GetSizeX() const { return m_padStack.Size( PADSTACK::ALL_LAYERS ).x; }
-
-    void SetSizeY( const int aY )
-    {
-        if( aY > 0 )
-        {
-            int x = m_padStack.Size( PADSTACK::ALL_LAYERS ).x;
-
-            if( GetShape( PADSTACK::ALL_LAYERS ) == PAD_SHAPE::CIRCLE )
-                x = aY;
-
-            m_padStack.SetSize( { x, aY }, PADSTACK::ALL_LAYERS );
-            SetDirty();
-        }
-    }
-
-    int GetSizeY() const { return m_padStack.Size( PADSTACK::ALL_LAYERS ).y; }
+    void SetSizeYProp( int aY );
+    int  GetSizeYProp() const;
 
     void SetDelta( PCB_LAYER_ID aLayer, const VECTOR2I& aSize )
     {
@@ -316,27 +309,22 @@ public:
         return m_padStack.TrapezoidDeltaSize( aLayer );
     }
 
-    void SetPrimaryDrillSize( const VECTOR2I& aSize );
-    const VECTOR2I& GetPrimaryDrillSize() const { return m_padStack.Drill().size; }
-    void SetPrimaryDrillSizeX( int aX );
-    int GetPrimaryDrillSizeX() const            { return m_padStack.Drill().size.x; }
-    void SetPrimaryDrillSizeY( int aY );
-    int GetPrimaryDrillSizeY() const            { return m_padStack.Drill().size.y; }
+    void     SetPrimaryDrillSize( const VECTOR2I& aSize );
+    VECTOR2I GetPrimaryDrillSize() const;
+    void     SetPrimaryDrillSizeX( int aX );
+    int      GetPrimaryDrillSizeX() const { return GetPrimaryDrillSize().x; }
+    void     SetPrimaryDrillSizeY( int aY );
+    int      GetPrimaryDrillSizeY() const { return GetPrimaryDrillSize().y; }
 
-    void SetDrillSize( const VECTOR2I& aSize )  { SetPrimaryDrillSize( aSize ); }
-    const VECTOR2I& GetDrillSize() const        { return GetPrimaryDrillSize(); }
-    void SetDrillSizeX( int aX );
-    int GetDrillSizeX() const                   { return GetPrimaryDrillSizeX(); }
-    void SetDrillSizeY( int aY );
-    int GetDrillSizeY() const                   { return GetPrimaryDrillSizeY(); }
+    void     SetDrillSize( const VECTOR2I& aSize ) { SetPrimaryDrillSize( aSize ); }
+    VECTOR2I GetDrillSize() const { return GetPrimaryDrillSize(); }
+    void     SetDrillSizeXProp( int aX );
+    int      GetDrillSizeXProp() const { return GetPrimaryDrillSizeX(); }
+    void     SetDrillSizeYProp( int aY );
+    int      GetDrillSizeYProp() const { return GetPrimaryDrillSizeY(); }
 
-    void SetOffset( PCB_LAYER_ID aLayer, const VECTOR2I& aOffset )
-    {
-        m_padStack.Offset( aLayer ) = aOffset;
-        SetDirty();
-    }
-
-    const VECTOR2I& GetOffset( PCB_LAYER_ID aLayer ) const { return m_padStack.Offset( aLayer ); }
+    void     SetOffset( PCB_LAYER_ID aLayer, const VECTOR2I& aOffset );
+    VECTOR2I GetOffset( PCB_LAYER_ID aLayer ) const;
 
     VECTOR2I GetCenter() const override           { return GetPosition(); }
 
@@ -391,6 +379,10 @@ public:
 
     void Flip( const VECTOR2I& VECTOR2I, FLIP_DIRECTION aFlipDirection ) override;
 
+    void Mirror( const VECTOR2I& aCentre, FLIP_DIRECTION aFlipDirection ) override;
+
+    void Mirror( const SEG& aAxis ) override;
+
     /**
      * Flip (mirror) the primitives left to right or top to bottom, around the anchor position
      * in custom pads.
@@ -427,18 +419,17 @@ public:
     /**
      * Return the rotation angle of the pad.
      */
-    EDA_ANGLE GetOrientation() const { return m_padStack.GetOrientation(); }
+    EDA_ANGLE GetOrientation() const;
     EDA_ANGLE GetFPRelativeOrientation() const;
+
+    void GetPrimitiveLibScale( double& aScaleX, double& aScaleY ) const;
 
     // For property system
     void SetOrientationDegrees( double aOrientation )
     {
         SetOrientation( EDA_ANGLE( aOrientation, DEGREES_T ) );
     }
-    double GetOrientationDegrees() const
-    {
-        return m_padStack.GetOrientation().AsDegrees();
-    }
+    double GetOrientationDegrees() const { return GetOrientation().AsDegrees(); }
 
     void SetPrimaryDrillShape( PAD_DRILL_SHAPE aShape );
     PAD_DRILL_SHAPE GetPrimaryDrillShape() const { return m_padStack.Drill().shape; }
@@ -509,6 +500,24 @@ public:
      * @return the diameter to knockout on this layer, or 0 if layer is not affected
      */
     int GetPostMachiningKnockout( PCB_LAYER_ID aLayer ) const;
+
+    /**
+     * @see PADSTACK::MachiningKnockout
+     *
+     * A result of zero is equivalent to IsBackdrilledOrPostMachined() returning false.
+     */
+    int GetBackdrillOrPostMachiningKnockout( PCB_LAYER_ID aLayer ) const;
+
+    /**
+     * Check whether backdrilling or post-machining left no copper at all on a layer.
+     *
+     * A narrower operation only hollows the barrel and leaves an annular ring, which still
+     * conducts and whose outer edge is unmoved, so this is stricter than
+     * IsBackdrilledOrPostMachined().
+     *
+     * @param aLayer the copper layer to check
+     */
+    bool HasCopperRemoved( PCB_LAYER_ID aLayer ) const;
 
     void SetPrimaryDrillFilled( const std::optional<bool>& aFilled );
     void SetPrimaryDrillFilledFlag( bool aFilled );
@@ -582,6 +591,9 @@ public:
         return ( m_padStack.LayerSet() & LSET::AllCuMask() ).none();
     }
 
+    void                    SetSimElectricalType( PAD_SIM_ELECTRICAL_TYPE aType ) { m_simElectricalType = aType; }
+    PAD_SIM_ELECTRICAL_TYPE GetSimElectricalType() const { return m_simElectricalType; }
+
     bool IsNPTHWithNoCopper() const;
 
     void SetPadToDieLength( int aLength )       { m_lengthPadToDie = aLength; }
@@ -632,18 +644,21 @@ public:
      */
     int GetOwnClearance( PCB_LAYER_ID aLayer, wxString* aSource = nullptr ) const override;
 
+    double GetCoverageArea( int aTextMargin ) const override;
+
     /**
      * Convert the pad shape to a closed polygon. Circles and arcs are approximated by segments.
      *
      * @param aBuffer a buffer to store the polygon.
+     * @param aLayer is the layer ID of the pad.
      * @param aClearance the clearance around the pad.
      * @param aMaxError maximum error from true when converting arcs.
      * @param aErrorLoc should the approximation error be placed outside or inside the polygon?
-     * @param ignoreLineWidth used for edge cuts where the line width is only for visualization.
+     * @param aIgnoreLineWidth used for edge cuts where the line width is only for visualization.
      */
     void TransformShapeToPolygon( SHAPE_POLY_SET& aBuffer, PCB_LAYER_ID aLayer, int aClearance,
                                   int aMaxError, ERROR_LOC aErrorLoc = ERROR_INSIDE,
-                                  bool ignoreLineWidth = false ) const override;
+                                  bool aIgnoreLineWidth = false ) const override;
 
     /**
      * Build the corner list of the polygonal drill shape in the board coordinate system.
@@ -670,10 +685,13 @@ public:
      * @param aFlash optional parameter allowing a caller to force the pad to be flashed (or not
      *               flashed) on the current layer (default is to honour the pad's setting and
      *               the current connections for the given layer).
+    * @param aUsage optional parameter specifying the query type.  This can, for instance, allow
+     *              backdrilling, countersinking, etc. to affect the shape used for resolving the
+     *              physical_clearance.
      */
-    virtual std::shared_ptr<SHAPE>
-    GetEffectiveShape( PCB_LAYER_ID aLayer,
-                       FLASHING flashPTHPads = FLASHING::DEFAULT ) const override;
+    std::shared_ptr<SHAPE> GetEffectiveShape( PCB_LAYER_ID aLayer = UNDEFINED_LAYER,
+                                              FLASHING aFlash = FLASHING::DEFAULT,
+                                              DRC_CONSTRAINT_T aUsage = NULL_CONSTRAINT ) const override;
 
     const std::shared_ptr<SHAPE_POLY_SET>& GetEffectivePolygon( PCB_LAYER_ID aLayer,
                                                                 ERROR_LOC aErrorLoc = ERROR_INSIDE ) const;
@@ -681,7 +699,8 @@ public:
     /**
      * Return a SHAPE_SEGMENT object representing the pad's hole.
      */
-    std::shared_ptr<SHAPE_SEGMENT> GetEffectiveHoleShape() const override;
+    std::shared_ptr<SHAPE_SEGMENT> GetEffectiveHoleShape( PCB_LAYER_ID aLayer = UNDEFINED_LAYER,
+                                                          DRC_CONSTRAINT_T aUsage = NULL_CONSTRAINT ) const override;
 
     /**
      * Return the radius of a minimum sized circle which fully encloses this pad.
@@ -786,12 +805,11 @@ public:
         m_padStack.ThermalGap() = aOverride;
     }
 
+    void SetRoundRectCornerRadius( PCB_LAYER_ID aLayer, double aRadius );
+
     /**
-     * Has meaning only for rounded rectangle pads.
-     *
      * @return The radius of the rounded corners for this pad.
      */
-    void SetRoundRectCornerRadius( PCB_LAYER_ID aLayer, double aRadius );
     int GetRoundRectCornerRadius( PCB_LAYER_ID aLayer ) const;
 
     VECTOR2I ShapePos( PCB_LAYER_ID aLayer ) const;
@@ -802,8 +820,12 @@ public:
      * Using SetPosition() directly would swap anchor (hole) positions, which leaves each pad's
      * copper shape displaced by its own offset after the swap.  This helper computes the new
      * anchor for each pad so the visible shape centers (ShapePos) are exchanged.
+     *
+     * The downside is that swapping copper shape positions is ill-defined when there is more
+     * than one (ie: for complex padstackes).  In that case we swap based on the active layer's
+     * copper shape, following the principle of least surprise.
      */
-    static void SwapShapePositions( PAD* aLhs, PAD* aRhs );
+    static void SwapShapePositions( PAD* aLhs, PAD* aRhs, PCB_LAYER_ID aActiveLayer );
 
     /**
      * Has meaning only for rounded rectangle pads.
@@ -845,6 +867,7 @@ public:
      *
      * Set the position of the chamfers for orientation 0.
      *
+     * @param aLayer is the layer ID of the PAD to chamfer.
      * @param aPositions a bit-set of #RECT_CHAMFER_POSITIONS.
      */
     void SetChamferPositions( PCB_LAYER_ID aLayer, int aPositions )
@@ -997,13 +1020,16 @@ public:
      */
     static int Compare( const PAD* aPadRef, const PAD* aPadCmp );
 
-    void Move( const VECTOR2I& aMoveVector ) override
-    {
-        m_pos += aMoveVector;
-        SetDirty();
+    void Move( const VECTOR2I& aMoveVector ) override {
+        SetPosition( GetPosition() + aMoveVector );
     }
 
     void Rotate( const VECTOR2I& aRotCentre, const EDA_ANGLE& aAngle ) override;
+
+    void OnFootprintRescaled( double aRatioX, double aRatioY, double aLinearFactor, const VECTOR2I& aAnchor,
+                              const EDA_ANGLE& aParentRotate ) override;
+
+    void OnFootprintTransformed() override;
 
     wxString GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool aFull ) const override;
 
@@ -1016,7 +1042,7 @@ public:
     wxString ShowPadShape( PCB_LAYER_ID aLayer ) const;
 
     /**
-     * An older version still used by place file writer and SWIG interface.
+     * An older version still used by place file writer
      */
     wxString ShowLegacyPadShape( PCB_LAYER_ID aLayer ) const;
 
@@ -1056,9 +1082,6 @@ public:
 
     void SetZoneLayerOverride( PCB_LAYER_ID aLayer, ZONE_LAYER_OVERRIDE aOverride );
 
-    void CheckPad( UNITS_PROVIDER* aUnitsProvider, bool aForPadProperties,
-                   const std::function<void( int aErrorCode, const wxString& aMsg )>& aErrorHandler ) const;
-
     BACKDRILL_MODE GetBackdrillMode() const { return m_padStack.GetBackdrillMode(); }
     void SetBackdrillMode( BACKDRILL_MODE aMode ) { m_padStack.SetBackdrillMode( aMode ); }
 
@@ -1089,6 +1112,12 @@ protected:
 private:
     const SHAPE_COMPOUND& buildEffectiveShape( PCB_LAYER_ID aLayer ) const;
 
+    // Scale a primitive's runtime geometry to the current footprint scale, in the pad frame.
+    void rebakePrimitiveToFootprint( PCB_SHAPE* aPrimitive ) const;
+
+    // Move the chamfered-rectangle corner flags across for a mirror in the given direction.
+    void mirrorChamferPositions( FLIP_DIRECTION aFlipDirection );
+
     struct PAD_DRAW_CACHE_DATA
     {
         // Must be set to true to force rebuild shapes to draw (after geometry change for instance)
@@ -1104,15 +1133,15 @@ private:
 
     PAD_DRAW_CACHE_DATA& getDrawCache() const;
 
-    void doCheckPad( PCB_LAYER_ID aLayer, UNITS_PROVIDER* aUnitsProvider, bool aForPadProperties,
-                     const std::function<void( int aErrorCode, const wxString& aMsg )>& aErrorHandler ) const;
+    std::shared_ptr<SHAPE_COMPOUND> getMaskShape( PCB_LAYER_ID aLayer, int aExpansion ) const;
 
 private:
     wxString          m_number;             // Pad name (pin number in schematic)
     wxString          m_pinFunction;        // Pin name in schematic
     wxString          m_pinType;            // Pin electrical type in schematic
 
-    VECTOR2I          m_pos;                // Pad Position on board
+    VECTOR2I          m_libPos;             // Pad position in parent footprint's library frame
+    EDA_ORIENTATION   m_libOrientation;     // Pad orientation in parent footprint's library frame
 
     PADSTACK          m_padStack;
 
@@ -1120,6 +1149,10 @@ private:
     mutable std::mutex m_dataMutex;
 
     mutable std::unique_ptr<PAD_DRAW_CACHE_DATA> m_drawCache;
+
+    // Mask apertures, keyed by expansion because that comes from settings, not geometry
+    mutable std::mutex                                                              m_maskShapeMutex;
+    mutable std::map<PCB_LAYER_ID, std::pair<int, std::shared_ptr<SHAPE_COMPOUND>>> m_maskShapes;
 
     mutable int       m_effectiveBoundingRadius;
 
@@ -1132,6 +1165,8 @@ private:
 
     int               m_lengthPadToDie;     // Length net from pad to die, inside the package
     int               m_delayPadToDie;      // Propagation delay from pad to die
+
+    PAD_SIM_ELECTRICAL_TYPE m_simElectricalType{ PAD_SIM_ELECTRICAL_TYPE::NONE };
 
     // Bools at the end for better memory layout
     mutable bool m_polyDirty[2];

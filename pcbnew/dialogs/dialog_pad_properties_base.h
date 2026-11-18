@@ -10,6 +10,7 @@
 #include <wx/artprov.h>
 #include <wx/xrc/xmlres.h>
 #include <wx/intl.h>
+class PCB_LAYER_BOX_SELECTOR;
 class TEXT_CTRL_EVAL;
 
 #include "dialog_shim.h"
@@ -29,15 +30,16 @@ class TEXT_CTRL_EVAL;
 #include <wx/checkbox.h>
 #include <wx/simplebook.h>
 #include <wx/combobox.h>
+#include <wx/bmpbuttn.h>
 #include <wx/bitmap.h>
 #include <wx/image.h>
 #include <wx/icon.h>
+#include <wx/button.h>
 #include <wx/statbmp.h>
 #include <wx/statbox.h>
 #include <wx/spinctrl.h>
 #include <wx/bmpcbox.h>
 #include <wx/notebook.h>
-#include <wx/button.h>
 #include <wx/dialog.h>
 
 ///////////////////////////////////////////////////////////////////////////
@@ -143,6 +145,7 @@ class DIALOG_PAD_PROPERTIES_BASE : public DIALOG_SHIM
 		wxStaticText* m_holeYLabel;
 		wxTextCtrl* m_holeYCtrl;
 		wxStaticText* m_holeYUnits;
+		wxBitmapButton* m_launchCalculatorBtn;
 		wxStaticLine* m_staticline71;
 		wxCheckBox* m_padToDieOpt;
 		wxStaticText* m_padToDieLabel;
@@ -173,6 +176,8 @@ class DIALOG_PAD_PROPERTIES_BASE : public DIALOG_SHIM
 		wxCheckBox* m_layerECO2;
 		wxStaticText* m_staticTextFabProperty;
 		wxChoice* m_choiceFabProperty;
+		wxStaticText* m_simElectricalTypeLabel;
+		wxChoice* m_simElectricalTypeCtrl;
 		wxPanel* m_connectionsPanel;
 		wxBoxSizer* m_legacyTeardropsWarning;
 		wxStaticBitmap* m_legacyTeardropsIcon;
@@ -256,12 +261,12 @@ class DIALOG_PAD_PROPERTIES_BASE : public DIALOG_SHIM
 		wxStaticText* m_bottomPostMachineSize2Units;
 		wxChoice* m_backDrillChoice;
 		wxStaticText* m_backDrillTopLayerLabel;
-		wxBitmapComboBox* m_backDrillTopLayer;
+		PCB_LAYER_BOX_SELECTOR* m_backDrillTopLayer;
 		wxStaticText* m_backDrillTopSizeLabel;
 		wxTextCtrl* m_backDrillTopSize;
 		wxStaticText* m_backDrillTopSizeUnits;
 		wxStaticText* m_backDrillBottomLayerLabel;
-		wxBitmapComboBox* m_backDrillBottomLayer;
+		PCB_LAYER_BOX_SELECTOR* m_backDrillBottomLayer;
 		wxStaticText* m_backDrillBottomSizeLabel;
 		wxTextCtrl* m_backDrillBottomSize;
 		wxStaticText* m_backDrillBottomSizeUnits;
@@ -303,9 +308,11 @@ class DIALOG_PAD_PROPERTIES_BASE : public DIALOG_SHIM
 		virtual void PadOrientEvent( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnOffsetCheckbox( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnDrillShapeSelected( wxCommandEvent& event ) { event.Skip(); }
+		virtual void OnHoleSizeCalculator( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnPadToDieCheckbox( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnPadToDieDelayCheckbox( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnSetCopperLayers( wxCommandEvent& event ) { event.Skip(); }
+		virtual void OnElectricalTypeChaged( wxCommandEvent& event ) { event.Skip(); }
 		virtual void onModify( wxCommandEvent& event ) { event.Skip(); }
 		virtual void onTeardropsUpdateUi( wxUpdateUIEvent& event ) { event.Skip(); }
 		virtual void onModify( wxSpinDoubleEvent& event ) { event.Skip(); }

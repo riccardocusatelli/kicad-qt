@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -28,10 +24,13 @@
 #include <panel_fp_properties_3d_model_base.h>
 #include <vector>
 
+#include "widgets/wx_grid.h"
+
 class DIALOG_SHIM;
 class PANEL_EMBEDDED_FILES;
 class PANEL_PREVIEW_3D_MODEL;
 class PCB_BASE_EDIT_FRAME;
+class wxBookCtrlEvent;
 
 enum class MODEL_VALIDATE_ERRORS
 {
@@ -55,6 +54,10 @@ public:
     bool TransferDataToWindow() override;
     bool TransferDataFromWindow() override;
 
+    bool Validate() override;
+    bool CommitPendingChanges();
+
+    void UpdateEmbeddedFiles();
     void ReloadModelsFromFootprint();
 
     std::vector<FP_3DMODEL>& GetModelList() { return m_shapes3D_list; }
@@ -70,9 +73,20 @@ private:
     void Cfg3DPath( wxCommandEvent& event ) override;
 
     void OnUpdateUI( wxUpdateUIEvent& event ) override;
+    void OnEnableExtrusion( wxCommandEvent& event ) override;
+    void OnExportExtrudedModel( wxCommandEvent& event ) override;
+    void onExtrusionControlChanged( wxCommandEvent& event );
+    void onExtrusionColorChanged( wxCommandEvent& event );
+    void onExtrusionMaterialChanged( wxCommandEvent& event );
 
+    void updateExtrusionControls();
+    void updateExtrusionPreview();
+    bool readExtrusionHeights( const wxString& aTitle, double& aHeight, double& aStandoff );
     void updateValidateStatus( int aRow );
     void cleanupFilename( wxString* aFilename );
+    bool pick3DModel( const wxString& aCurrentValue, FP_3DMODEL& aModel );
+    void set3DModelRow( int aRow, const FP_3DMODEL& aModel );
+    void updateConfiguredPathChoices();
 
     MODEL_VALIDATE_ERRORS validateModelExists( const wxString& aFilename );
 
@@ -82,18 +96,32 @@ private:
 
     virtual void onDialogActivateEvent( wxActivateEvent& aEvent );
     virtual void onShowEvent( wxShowEvent& aEvent );
+    void onSize( wxSizeEvent& aEvent );
+    void onSashPositionChanging( wxSplitterEvent& aEvent );
+
+    /**
+     * Split the page so the model list shows its rows, never fewer than three and never
+     * more than a third of the page, and the preview takes everything left over.
+     *
+     * Does nothing once the split has been set, so a sash the user dragged survives.
+     */
+    void setDefaultSashPosition();
+    void onNotebookPageChanged( wxBookCtrlEvent& aEvent );
 
     // Wrapper on creating and posting custom event
     void postCustomPanelShownEventWithPredicate( bool predicate );
 
 private:
-    DIALOG_SHIM*            m_parentDialog;
-    PCB_BASE_EDIT_FRAME*    m_frame;
-    FOOTPRINT*              m_footprint;
+    DIALOG_SHIM*              m_parentDialog;
+    PCB_BASE_EDIT_FRAME*      m_frame;
+    FOOTPRINT*                m_footprint;
 
-    std::vector<FP_3DMODEL> m_shapes3D_list;
-    PANEL_PREVIEW_3D_MODEL* m_previewPane;
-    PANEL_EMBEDDED_FILES*   m_filesPanel;
+    std::vector<FP_3DMODEL>   m_shapes3D_list;
+    bool                      m_userSetSashPosition = false;
+    PANEL_PREVIEW_3D_MODEL*   m_previewPane;
+    PANEL_EMBEDDED_FILES*     m_filesPanel;
 
-    bool                    m_inSelect;
+    bool                      m_inSelect;
+    bool                      m_userSetExtrusionColor;
+    std::vector<PCB_LAYER_ID> m_extrusionLayers;
 };

@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <hash_eda.h>
@@ -119,7 +115,7 @@ size_t hash_fp_item( const EDA_ITEM* aItem, int aFlags )
                 hash_combine( ret, pad->GetSize( aLayer ).x, pad->GetSize( aLayer ).y );
                 hash_combine( ret, pad->GetOffset( aLayer ).x, pad->GetOffset( aLayer ).y );
 
-                switch( pad->GetShape( PADSTACK::ALL_LAYERS ) )
+                switch( pad->GetShape( aLayer ) )
                 {
                 case PAD_SHAPE::CHAMFERED_RECT:
                     hash_combine( ret, pad->GetChamferPositions( aLayer ) );
@@ -155,7 +151,7 @@ size_t hash_fp_item( const EDA_ITEM* aItem, int aFlags )
 
         if( pad->GetAttribute() == PAD_ATTRIB::PTH || pad->GetAttribute() == PAD_ATTRIB::NPTH )
         {
-            hash_combine( ret, pad->GetDrillSizeX(), pad->GetDrillSizeY() );
+            hash_combine( ret, pad->GetDrillSize().x, pad->GetDrillSize().y );
             hash_combine( ret, pad->GetDrillShape() );
 
             pad->GetLayerSet().RunOnLayers(
@@ -169,7 +165,7 @@ size_t hash_fp_item( const EDA_ITEM* aItem, int aFlags )
 
         if( aFlags & HASH_POS )
         {
-            if( aFlags & REL_COORD )
+            if( aFlags & RELATIVE_TO_PARENT_COORDS )
                 hash_combine( ret, pad->GetFPRelativePosition().x, pad->GetFPRelativePosition().y );
             else
                 hash_combine( ret, pad->GetPosition().x, pad->GetPosition().y );
@@ -207,7 +203,7 @@ size_t hash_fp_item( const EDA_ITEM* aItem, int aFlags )
 
         if( aFlags & HASH_POS )
         {
-            VECTOR2I pos = ( aFlags & REL_COORD ) ? text->GetFPRelativePosition()
+            VECTOR2I pos = ( aFlags & RELATIVE_TO_PARENT_COORDS ) ? text->GetFPRelativePosition()
                                                   : text->GetPosition();
 
             hash_combine( ret, pos.x, pos.y );
@@ -227,8 +223,8 @@ size_t hash_fp_item( const EDA_ITEM* aItem, int aFlags )
         hash_combine( ret, barcode->GetWidth(), barcode->GetHeight() );
         hash_combine( ret, barcode->GetPosition().x, barcode->GetPosition().y );
         hash_combine( ret, barcode->GetMargin().x, barcode->GetMargin().y );
-        hash_combine( ret, barcode->Text().GetText().ToStdString() );
-        hash_combine( ret, barcode->Text().GetTextHeight() );
+        hash_combine( ret, barcode->GetText() );
+        hash_combine( ret, barcode->GetTextSize() );
         hash_combine( ret, barcode->GetKind() );
         hash_combine( ret, barcode->GetAngle().AsDegrees() );
         hash_combine( ret, barcode->GetErrorCorrection() );
@@ -247,6 +243,22 @@ size_t hash_fp_item( const EDA_ITEM* aItem, int aFlags )
         if( shape->GetShape() == SHAPE_T::ARC || shape->GetShape() == SHAPE_T::CIRCLE )
             hash_combine( ret, shape->GetRadius() );
 
+        if( shape->GetShape() == SHAPE_T::ELLIPSE || shape->GetShape() == SHAPE_T::ELLIPSE_ARC )
+        {
+            hash_combine( ret, shape->GetEllipseMajorRadius() );
+            hash_combine( ret, shape->GetEllipseMinorRadius() );
+            hash_combine( ret, shape->GetEllipseRotation().AsDegrees() );
+
+            if( shape->GetShape() == SHAPE_T::ELLIPSE_ARC )
+            {
+                hash_combine( ret, shape->GetEllipseStartAngle().AsDegrees() );
+                hash_combine( ret, shape->GetEllipseEndAngle().AsDegrees() );
+            }
+        }
+
+        if( shape->GetShape() == SHAPE_T::RECTANGLE )
+            hash_combine( ret, shape->GetCornerRadius() );
+
         if( aFlags & HASH_POS )
         {
             std::vector<VECTOR2I> points;
@@ -254,29 +266,39 @@ size_t hash_fp_item( const EDA_ITEM* aItem, int aFlags )
             points.push_back( shape->GetStart() );
             points.push_back( shape->GetEnd() );
 
-            if( shape->GetShape() == SHAPE_T::CIRCLE )
+            switch( shape->GetShape() )
+            {
+            case SHAPE_T::CIRCLE:
                 points.push_back( shape->GetCenter() );
+                break;
 
-            if( shape->GetShape() == SHAPE_T::ARC )
+            case SHAPE_T::ARC:
                 points.push_back( shape->GetArcMid() );
+                break;
+
+            case SHAPE_T::ELLIPSE:
+            case SHAPE_T::ELLIPSE_ARC:
+                points.push_back( shape->GetEllipseCenter() );
+                break;
+
+            case SHAPE_T::POLY:
+                for( auto it = shape->GetPolyShape().CIterateWithHoles(); it; it++ )
+                    points.push_back( *it );
+
+                break;
+
+            case SHAPE_T::BEZIER:
+                points.push_back( shape->GetBezierC1() );
+                points.push_back( shape->GetBezierC2() );
+                break;
+
+            default:
+                break;
+            }
 
             FOOTPRINT* parentFP = shape->GetParentFootprint();
 
-            if( shape->GetShape() == SHAPE_T::POLY )
-            {
-                const SHAPE_POLY_SET& poly = shape->GetPolyShape();
-
-                for( auto it = poly.CIterateWithHoles(); it; it++ )
-                    points.push_back( *it );
-            }
-
-            if( shape->GetShape() == SHAPE_T::BEZIER )
-            {
-                points.push_back( shape->GetBezierC1() );
-                points.push_back( shape->GetBezierC2() );
-            }
-
-            if( parentFP && ( aFlags & REL_COORD ) )
+            if( parentFP && ( aFlags & RELATIVE_TO_PARENT_COORDS ) )
             {
                 for( VECTOR2I& point : points )
                 {
@@ -285,7 +307,7 @@ size_t hash_fp_item( const EDA_ITEM* aItem, int aFlags )
                 }
             }
 
-            if( aFlags & REL_POS )
+            if( aFlags & RELATIVE_TO_SHAPE_POS )
             {
                 for( VECTOR2I& point : points )
                     point -= shape->GetPosition();
@@ -296,9 +318,7 @@ size_t hash_fp_item( const EDA_ITEM* aItem, int aFlags )
             if( points.size() > 1 )
             {
                 if( points[0].x > points[1].x || points[0].y > points[1].y )
-                {
                     std::swap( points[0], points[1] );
-                }
             }
 
             for( VECTOR2I& point : points )
@@ -336,7 +356,7 @@ size_t hash_fp_item( const EDA_ITEM* aItem, int aFlags )
 
             FOOTPRINT* parentFP = textbox->GetParentFootprint();
 
-            if( parentFP && ( aFlags & REL_COORD ) )
+            if( parentFP && ( aFlags & RELATIVE_TO_PARENT_COORDS ) )
             {
                 start -= parentFP->GetPosition();
                 end -= parentFP->GetPosition();

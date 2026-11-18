@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -30,7 +26,9 @@
 #include <mutex>
 #include <functional>
 #include <optional>
+#include <set>
 #include <string>
+#include <system_error>
 
 #include <wx/string.h>
 
@@ -41,6 +39,8 @@
 #include <tool/tool_manager.h>
 #include <pcb_io/pcb_io.h>
 #include <pcb_track_types.h>
+
+#include <pcbnew_utils/board_file_utils.h>
 
 class BOARD;
 class BOARD_ITEM;
@@ -74,44 +74,46 @@ public:
 
 
 /**
- * Footprint round-trip tests must save into a directory of their own.  Saving a footprint causes
- * the whole containing directory to be validated as a library, so writing directly into the shared
- * system temp directory makes the test fail whenever any unrelated .kicad_mod file happens to live
- * there.
+ * Several PCB importers (DipTrace, Eagle, PADS) write a .kicad_dru sidecar next to the board file
+ * they load. Tests load boards from the shared read-only data tree, so without cleanup each run
+ * leaves those sidecars behind in the source tree. Installed once as a Boost global fixture, this
+ * records every .kicad_dru already present under the pcbnew test data directory at module startup
+ * and removes any that appear during the run. Removing only newly written files keeps the many
+ * committed .kicad_dru DRC inputs intact.
  */
-class TEMPORARY_DIRECTORY
+class STALE_DRU_SIDECAR_FIXTURE
 {
 public:
-    /**
-     * Create a temporary directory with a given prefix and suffix. The directory will be
-     * created in the system temporary directory, and will not be pre-existing.
-     */
-    TEMPORARY_DIRECTORY( const std::string& aNamePrefix, const std::string aSuffix )
+    STALE_DRU_SIDECAR_FIXTURE() : m_preexisting( scan() ) {}
+
+    ~STALE_DRU_SIDECAR_FIXTURE()
     {
-        int i = 0;
+        std::error_code ec;
 
-        // Find a unique directory name
-        while( true )
+        for( const std::string& path : scan() )
         {
-            m_path = std::filesystem::temp_directory_path()
-                     / ( aNamePrefix + std::to_string( i ) + aSuffix );
-
-            if( !std::filesystem::exists( m_path ) )
-                break;
-
-            i++;
+            if( m_preexisting.count( path ) == 0 )
+                std::filesystem::remove( path, ec );
         }
-
-        wxASSERT( !std::filesystem::exists( m_path ) );
-        std::filesystem::create_directories( m_path );
     }
 
-    ~TEMPORARY_DIRECTORY() { std::filesystem::remove_all( m_path ); }
-
-    const std::filesystem::path& GetPath() const { return m_path; }
-
 private:
-    std::filesystem::path m_path;
+    static std::set<std::string> scan()
+    {
+        std::set<std::string> found;
+        std::error_code       ec;
+
+        for( auto it = std::filesystem::recursive_directory_iterator( GetPcbnewTestDataDir(), ec );
+             !ec && it != std::filesystem::recursive_directory_iterator(); it.increment( ec ) )
+        {
+            if( it->path().extension() == ".kicad_dru" )
+                found.insert( it->path().string() );
+        }
+
+        return found;
+    }
+
+    std::set<std::string> m_preexisting;
 };
 
 
@@ -149,8 +151,18 @@ public:
 
     CONSOLE_LOG(){};
 
+    void SetConsoleOutputEnabled( bool aEnabled ) { m_silenceConsoleOutput = !aEnabled; }
+
+    const wxString& GetLogContents() const
+    {
+        return m_logContents;
+    }
+
     void PrintProgress( const wxString& aMessage )
     {
+        if ( m_silenceConsoleOutput )
+            return;
+
         if( m_lastLineIsProgressBar )
             eraseLastLine();
 
@@ -166,18 +178,28 @@ public:
         if( m_lastLineIsProgressBar )
             eraseLastLine();
 
+        if( !m_silenceConsoleOutput )
+        {
         printf( "%s", (const char*) aMessage.c_str() );
         fflush( stdout );
+        }
 
+        m_logContents.append( aMessage );
         m_lastLineIsProgressBar = false;
     }
 
 
     void SetColor( COLOR color )
     {
-        std::map<COLOR, wxString> colorMap = { { RED, "\033[0;31m" },
+        if ( m_silenceConsoleOutput )
+            return;
+
+        std::map<COLOR, wxString> colorMap =
+        {
+            { RED, "\033[0;31m" },
                                                { GREEN, "\033[0;32m" },
-                                               { DEFAULT, "\033[0;37m" } };
+            { DEFAULT, "\033[0;37m" }
+        };
 
         printf( "%s", (const char*) colorMap[color].c_str() );
         fflush( stdout );
@@ -187,12 +209,17 @@ public:
 private:
     void eraseLastLine()
     {
+        if ( m_silenceConsoleOutput )
+            return;
+
         printf( "\r\033[K" );
         fflush( stdout );
     }
 
+    bool m_silenceConsoleOutput = true;
     bool       m_lastLineIsProgressBar = false;
     std::mutex m_lock;
+    wxString m_logContents;
 };
 
 

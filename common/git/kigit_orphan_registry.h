@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef KIGIT_ORPHAN_REGISTRY_H_
@@ -106,7 +102,6 @@ public:
         m_entries.emplace_back();
         ENTRY& entry = m_entries.back();
         entry.m_label = aLabel;
-        entry.m_created = std::chrono::steady_clock::now();
         entry.m_state = state;
 
         try
@@ -146,13 +141,6 @@ public:
     }
 
     /**
-     * Return the number of tracked orphan threads that have not yet
-     * finished executing.  Threads that JoinAll() detached after a timeout
-     * are no longer tracked and do not contribute to this count.
-     */
-    size_t TrackedCount() const;
-
-    /**
      * Join all registered orphan threads, giving them up to @a aTimeout to
      * finish cooperatively.  After the timeout the remaining threads are
      * detached so the caller can proceed with teardown; the shared per-entry
@@ -179,7 +167,6 @@ private:
     {
         std::thread                           m_thread;
         std::string                           m_label;
-        std::chrono::steady_clock::time_point m_created;
         std::shared_ptr<SHARED_STATE>         m_state;
     };
 
@@ -187,7 +174,7 @@ private:
     // with m_mutex held.
     void reapLocked();
 
-    mutable std::mutex           m_mutex;
+    std::mutex                   m_mutex;
     std::vector<ENTRY>           m_entries;
     bool                         m_shuttingDown = false;
 };

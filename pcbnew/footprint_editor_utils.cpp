@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <board_commit.h>
@@ -43,6 +39,7 @@
 #include <tools/pcb_actions.h>
 #include <tools/footprint_editor_control.h>
 #include <widgets/appearance_controls.h>
+#include <widgets/editor_tabs_panel.h>
 #include <widgets/lib_tree.h>
 #include <pcb_layer_box_selector.h>
 #include <pcb_dimension.h>
@@ -59,13 +56,50 @@ void FOOTPRINT_EDIT_FRAME::LoadFootprintFromLibrary( LIB_ID aFPID )
 {
     bool is_last_fp_from_brd = IsCurrentFPFromBoard();
 
+    if( aFPID.IsValid() )
+    {
+        const wxString key = aFPID.GetLibNickname().wx_str() + wxT( ':' ) + aFPID.GetLibItemName().wx_str();
+
+        // Reactivate rather than reload, which would discard in-tab edits.
+        if( int existing = m_tabsPanel->FindTab( key ); existing >= 0 )
+        {
+            m_tabsPanel->SelectTab( existing );
+
+            setFPWatcher( GetBoard()->GetFirstFootprint() );
+
+            m_treePane->GetLibTree()->ExpandLibId( aFPID );
+
+            m_centerItemOnIdle = aFPID;
+            Bind( wxEVT_IDLE, &FOOTPRINT_EDIT_FRAME::centerItemIdleHandler, this );
+
+            m_treePane->GetLibTree()->RefreshLibTree();        // update highlighting
+
+            return;
+        }
+    }
+
     FOOTPRINT* footprint = LoadFootprint( aFPID );
 
     if( !footprint )
         return;
 
-    if( !Clear_Pcb( true ) )
-        return;
+    // A board-sourced or new footprint occupies the frame-owned board with no backing tab.
+    // Switching to the library footprint's tab frees that board, so prompt to save those edits
+    // first, the same way the legacy single-board path did. A tab-owned board survives the
+    // switch untouched and needs no prompt.
+    if( !activeBoardOwnedByTab() && IsContentModified() )
+    {
+        if( !::HandleUnsavedChanges( this, _( "The current footprint has been modified.  Save changes?" ),
+                                     [&]() -> bool
+                                     {
+                                         return SaveFootprint( GetBoard()->Footprints().front() );
+                                     } ) )
+        {
+            // AddFootprintToBoard would have taken ownership; on cancel we still own the clone.
+            delete footprint;
+            return;
+        }
+    }
 
     GetCanvas()->GetViewControls()->SetCrossHairCursorPosition( VECTOR2D( 0, 0 ), false );
     AddFootprintToBoard( footprint );
@@ -105,10 +139,80 @@ void FOOTPRINT_EDIT_FRAME::LoadFootprintFromLibrary( LIB_ID aFPID )
 }
 
 
+bool FOOTPRINT_EDIT_FRAME::BeginNewFootprint( const wxString& aLibrary )
+{
+    // No tab strip or target library to key a tab on, so use the legacy single-board clear.
+    if( aLibrary.IsEmpty() )
+    {
+        if( !HandleUnsavedChanges( false ) )
+            return false;
+
+        Clear_Pcb();
+        return true;
+    }
+
+    // The new footprint opens in its own tab. Only a dirty tab-less frame board needs saving.
+    if( !activeBoardOwnedByTab() && IsContentModified() )
+    {
+        if( !::HandleUnsavedChanges( this, _( "The current footprint has been modified.  Save changes?" ),
+                                     [&]() -> bool
+                                     {
+                                         return SaveFootprint( GetBoard()->Footprints().front() );
+                                     } ) )
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+
 void FOOTPRINT_EDIT_FRAME::centerItemIdleHandler( wxIdleEvent& aEvent )
 {
     m_treePane->GetLibTree()->CenterLibId( m_centerItemOnIdle );
     Unbind( wxEVT_IDLE, &FOOTPRINT_EDIT_FRAME::centerItemIdleHandler, this );
+}
+
+
+void FOOTPRINT_EDIT_FRAME::OnTabCharHook( wxKeyEvent& aEvent )
+{
+    const bool isTab = aEvent.GetKeyCode() == WXK_TAB;
+    const bool ctrlOnly = aEvent.ControlDown() && !aEvent.AltDown() && !aEvent.MetaDown();
+
+    // Ctrl+W arrives as 'W' or the control char depending on platform, so accept both.
+    const int  keyCode = aEvent.GetKeyCode();
+    const bool isCtrlW = ctrlOnly && !aEvent.ShiftDown()
+                         && ( keyCode == 'W' || keyCode == ( 'W' - '@' ) );
+
+    if( isCtrlW && m_tabsPanel && m_tabsPanel->Model().Entries().size() >= 1 )
+    {
+        CloseActiveFootprintTab();
+        return;
+    }
+
+    if( !isTab || !ctrlOnly || !m_tabsPanel )
+    {
+        aEvent.Skip();
+        return;
+    }
+
+    // The appearance panel owns Ctrl+Tab for its layer-preset cycle while focused, so defer to it.
+    if( APPEARANCE_CONTROLS* appearance = GetAppearancePanel() )
+    {
+        for( wxWindow* focus = wxWindow::FindFocus(); focus; focus = focus->GetParent() )
+        {
+            if( focus == appearance )
+            {
+                aEvent.Skip();
+                return;
+            }
+        }
+    }
+
+    AdvanceFootprintTab( !aEvent.ShiftDown() );
+
+    // Do not Skip, so the GTK default Tab focus-traversal does not also run.
 }
 
 
@@ -121,8 +225,6 @@ public:
 
         m_nickname = aFootprint->GetFPID().GetLibNickname().wx_str();
         m_fpname = aFootprint->GetFPID().GetLibItemName().wx_str();
-        m_pad_count = aFootprint->GetPadCount( DO_NOT_INCLUDE_NPTH );
-        m_unique_pad_count = aFootprint->GetUniquePadCount( DO_NOT_INCLUDE_NPTH );
         m_keywords = aFootprint->GetKeywords();
         m_doc = aFootprint->GetLibDescription();
         m_loaded = true;
@@ -130,8 +232,7 @@ public:
 };
 
 
-void FOOTPRINT_EDIT_FRAME::UpdateLibraryTree( const wxDataViewItem& aTreeItem,
-                                              FOOTPRINT* aFootprint )
+void FOOTPRINT_EDIT_FRAME::UpdateLibraryTree( const wxDataViewItem& aTreeItem, FOOTPRINT* aFootprint )
 {
     KI_CHECK( aFootprint, /* void */ );
 
@@ -159,7 +260,8 @@ void FOOTPRINT_EDIT_FRAME::editFootprintProperties( FOOTPRINT* aFootprint )
     // Update library tree and title in case of a name change
     wxDataViewItem treeItem = m_adapter->FindItem( oldFPID );
     UpdateLibraryTree( treeItem, aFootprint );
-    UpdateTitle();
+
+    RenameFootprintTab( oldFPID, aFootprint->GetFPID() );
 
     UpdateMsgPanel();
     UpdateUserInterface();
@@ -179,7 +281,7 @@ void FOOTPRINT_EDIT_FRAME::OnEditItemRequest( BOARD_ITEM* aItem )
         break;
 
     case PCB_PAD_T:
-        ShowPadPropertiesDialog( static_cast<PAD*>( aItem ) );
+        ShowPadPropertiesDialog( static_cast<PAD&>( *aItem ) );
         break;
 
     case PCB_FOOTPRINT_T:
@@ -304,23 +406,21 @@ void FOOTPRINT_EDIT_FRAME::SetActiveLayer( PCB_LAYER_ID aLayer )
 
     m_toolManager->RunAction( PCB_ACTIONS::layerChanged );  // notify other tools
     GetCanvas()->SetFocus();                             // allow capture of hotkeys
-    GetCanvas()->SetHighContrastLayer( aLayer );
+    GetCanvas()->ChangeHighContrastLayer( aLayer );
     GetCanvas()->Refresh();
 }
 
 
 bool FOOTPRINT_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, int aCtl )
 {
-    if( !Clear_Pcb( true ) )
-        return false;                  // this command is aborted
-
     GetCanvas()->GetViewControls()->SetCrossHairCursorPosition( VECTOR2D( 0, 0 ), false );
-    ImportFootprint( aFileSet[ 0 ] );
+
+    if( !ImportFootprint( aFileSet[ 0 ] ) )
+        return false;
 
     if( GetBoard()->GetFirstFootprint() )
         GetBoard()->GetFirstFootprint()->ClearFlags();
 
-    GetScreen()->SetContentModified( false );
     Zoom_Automatique( false );
     GetCanvas()->Refresh();
 
@@ -374,6 +474,27 @@ void FOOTPRINT_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
             }
         }
 
+        break;
+
+    case MAIL_FP_EDIT_LIBID:
+    {
+        LIB_ID fpId;
+
+        if( fpId.Parse( wxString::FromUTF8( payload ) ) == -1 && fpId.IsValid() )
+        {
+            LoadFootprintFromLibrary( fpId );
+            Raise();
+        }
+
+        break;
+    }
+
+    case MAIL_LIB_SAVE_ALL:
+        mail.SetPayload( SaveModifiedLibraryTabs() ? "success" : "failed" );
+        break;
+
+    case MAIL_LIB_HAS_UNSAVED:
+        mail.SetPayload( HasModifiedFootprintTabs( true ) ? "yes" : "no" );
         break;
 
     case MAIL_RELOAD_LIB:

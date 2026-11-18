@@ -15,20 +15,16 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef PCB_TEXT_H
-#define PCB_TEXT_H
+#pragma once
 
 #include <memory>
 
-#include <eda_text.h>
 #include <board_item.h>
+#include <eda_text.h>
+#include <geometry/shape_poly_set.h>
 
 
 class LINE_READER;
@@ -69,7 +65,7 @@ public:
 
     void CopyFrom( const BOARD_ITEM* aOther ) override;
 
-    static inline bool ClassOf( const EDA_ITEM* aItem ) { return aItem && PCB_TEXT_T == aItem->Type(); }
+    static bool ClassOf( const EDA_ITEM* aItem ) { return aItem && PCB_TEXT_T == aItem->Type(); }
 
     bool IsType( const std::vector<KICAD_T>& aScanTypes ) const override
     {
@@ -91,30 +87,68 @@ public:
     void Serialize( kiapi::board::types::BoardText& aOutput ) const;
     bool Deserialize( const kiapi::board::types::BoardText& aInput );
 
-    void StyleFromSettings( const BOARD_DESIGN_SETTINGS& settings, bool aCheckSide ) override;
+    void StyleFromSettings( const BOARD_DESIGN_SETTINGS& aSettings, bool aCheckSide ) override;
 
     /**
      * Called when rotating the parent footprint.
      */
     void KeepUpright();
 
-    wxString GetShownText( bool aAllowExtraText, int aDepth = 0 ) const override;
+    wxString GetShownText( RESOLUTION_CONTEXT aContext, int aDepth = 0 ) const override;
 
     bool Matches( const EDA_SEARCH_DATA& aSearchData, void* aAuxData ) const override;
 
-    virtual VECTOR2I GetPosition() const override { return EDA_TEXT::GetTextPos(); }
+    VECTOR2I GetPosition() const override { return GetTextPos(); }
 
-    virtual void SetPosition( const VECTOR2I& aPos ) override { EDA_TEXT::SetTextPos( aPos ); }
+    void SetPosition( const VECTOR2I& aPos ) override { SetTextPos( aPos ); }
 
-    void Move( const VECTOR2I& aMoveVector ) override { EDA_TEXT::Offset( aMoveVector ); }
+    void Move( const VECTOR2I& aMoveVector ) override { Offset( aMoveVector ); }
+
+    VECTOR2I GetTextPos() const override;
+    void     Offset( const VECTOR2I& aOffset ) override;
+
+    // Lib-frame setters for the parser (board-frame setters bake the parent scale).
+    void SetLibTextPos( const VECTOR2I& aPos );
+    void SetLibTextSize( const VECTOR2I& aSize );
+    void SetLibTextThickness( int aWidth );
+
+    VECTOR2I GetTextSize() const override;
+    void     SetTextSize( VECTOR2I aNewSize, bool aEnforceMinTextSize = true ) override;
+
+    int  GetTextThickness() const override;
+    void SetTextThickness( int aWidth ) override;
+
+    EDA_ANGLE GetTextAngle() const override;
+    void      SetTextAngle( const EDA_ANGLE& aAngle ) override;
+
+    /**
+     * Text angle in the parent footprint's lib frame, or absolute when not
+     * in a footprint.
+     */
+    EDA_ANGLE GetLibTextAngle() const { return m_libTextAngle.GetAngle(); }
+
+    void SetLibTextAngle( const EDA_ANGLE& aAngle ) { m_libTextAngle = aAngle; }
 
     void Rotate( const VECTOR2I& aRotCentre, const EDA_ANGLE& aAngle ) override;
 
     void Mirror( const VECTOR2I& aCentre, FLIP_DIRECTION aFlipDirection ) override;
 
+    void Mirror( const SEG& aAxis ) override;
+
     void Flip( const VECTOR2I& aCentre, FLIP_DIRECTION aFlipDirection ) override;
 
+<<<<<<< b2e17e0a
     void GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList ) override;
+||||||| 1304b76aad
+    void GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList ) override;
+=======
+    void OnFootprintRescaled( double aRatioX, double aRatioY, double aLinearFactor, const VECTOR2I& aAnchor,
+                              const EDA_ANGLE& aParentRotate ) override;
+
+    void OnFootprintTransformed() override;
+
+    void GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList ) override;
+>>>>>>> ed8c16703e
 
     bool TextHitTest( const VECTOR2I& aPoint, int aAccuracy = 0 ) const override;
     bool TextHitTest( const BOX2I& aRect, bool aContains, int aAccuracy = 0 ) const override;
@@ -138,23 +172,28 @@ public:
     wxString GetClass() const override { return wxT( "PCB_TEXT" ); }
 
     /**
-     * Function TransformTextToPolySet
      * Convert the text to a polygonSet describing the actual character strokes (one per segment).
      * Circles and arcs are approximated by segments.
+     *
      * @param aBuffer SHAPE_POLY_SET to store the polygon corners
      * @param aClearance the clearance around the text
      * @param aMaxError the maximum error to allow when approximating curves
+     * @param aErrorLoc
      */
     void TransformTextToPolySet( SHAPE_POLY_SET& aBuffer, int aClearance, int aMaxError, ERROR_LOC aErrorLoc ) const;
+
+    double GetCoverageArea( int aTextMargin ) const override;
 
     void TransformShapeToPolygon( SHAPE_POLY_SET& aBuffer, PCB_LAYER_ID aLayer, int aClearance, int aMaxError,
                                   ERROR_LOC aErrorLoc, bool aIgnoreLineWidth = false ) const override;
 
     // @copydoc BOARD_ITEM::GetEffectiveShape
-    virtual std::shared_ptr<SHAPE> GetEffectiveShape( PCB_LAYER_ID aLayer = UNDEFINED_LAYER,
-                                                      FLASHING     aFlash = FLASHING::DEFAULT ) const override;
+    std::shared_ptr<SHAPE> GetEffectiveShape( PCB_LAYER_ID aLayer = UNDEFINED_LAYER,
+                                              FLASHING aFlash = FLASHING::DEFAULT,
+                                              DRC_CONSTRAINT_T aUsage = NULL_CONSTRAINT ) const override;
 
-    const SHAPE_POLY_SET& GetKnockoutCache( const KIFONT::FONT* aFont, const wxString& forResolvedText, int aMaxError ) const;
+    const SHAPE_POLY_SET& GetKnockoutCache( const KIFONT::FONT* aFont, const wxString& forResolvedText,
+                                            int aMaxError ) const;
 
     virtual wxString GetTextTypeDescription() const;
 
@@ -169,8 +208,7 @@ public:
      */
 
     /**
-     * @return the text rotation for drawings and plotting the footprint rotation is taken
-     *         in account.
+     * @return the text rotation for drawings and plotting the footprint rotation is taken in account.
      */
     EDA_ANGLE GetDrawRotation() const override;
 
@@ -178,10 +216,8 @@ public:
 
     std::vector<int> ViewGetLayers() const override;
 
-    ///< @copydoc VIEW_ITEM::ViewGetLOD
     double ViewGetLOD( int aLayer, const KIGFX::VIEW* aView ) const override;
 
-    // Virtual function
     const BOX2I GetBoundingBox() const override;
 
     EDA_ITEM* Clone() const override;
@@ -192,7 +228,7 @@ public:
     bool operator==( const BOARD_ITEM& aBoardItem ) const override;
 
 #if defined( DEBUG )
-    virtual void Show( int nestLevel, std::ostream& os ) const override { ShowDummy( os ); }
+    void Show( int nestLevel, std::ostream& os ) const override { ShowDummy( os ); }
 #endif
 
 protected:
@@ -202,7 +238,7 @@ protected:
      */
     void buildBoundingHull( SHAPE_POLY_SET* aBuffer, const SHAPE_POLY_SET& aRenderedText, int aClearance ) const;
 
-    virtual void swapData( BOARD_ITEM* aImage ) override;
+    void swapData( BOARD_ITEM* aImage ) override;
 
     int getKnockoutMargin() const;
 
@@ -210,6 +246,6 @@ protected:
 
 private:
     mutable std::unique_ptr<PCB_TEXT_KNOCKOUT_CACHE_DATA> m_knockout_cache;
-};
 
-#endif // #define PCB_TEXT_H
+    EDA_ORIENTATION m_libTextAngle; // Text angle in parent footprint's lib frame
+};

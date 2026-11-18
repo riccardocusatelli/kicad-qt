@@ -17,23 +17,20 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <advanced_config.h>
 #include <api/api_plugin_manager.h>
+#include <dialogs/dialog_symbol_fields_table.h>
 #include <sch_draw_panel.h>
 #include <sch_edit_frame.h>
+#include <variant_proxy_undo_item.h>
 #include <kiface_base.h>
 #include <bitmaps.h>
 #include <eeschema_id.h>
 #include <pgm_base.h>
 #include <pgm_gui.h>
-#include <python_scripting.h>
 #include <tool/action_menu.h>
 #include <tool/tool_manager.h>
 #include <settings/common_settings.h>
@@ -135,13 +132,23 @@ std::optional<TOOLBAR_CONFIGURATION> SCH_EDIT_TOOLBAR_SETTINGS::DefaultToolbarCo
               .AppendAction( SCH_ACTIONS::syncAllSheetsPins );
 
         config.AppendSeparator()
-              .AppendAction( SCH_ACTIONS::placeSchematicText )
-              .AppendAction( SCH_ACTIONS::drawTextBox )
+              .AppendGroup( TOOLBAR_GROUP_CONFIG( _( "Text objects" ) )
+                            .AddAction( SCH_ACTIONS::placeSchematicText )
+                            .AddAction( SCH_ACTIONS::drawTextBox ) )
               .AppendAction( SCH_ACTIONS::drawTable )
               .AppendAction( SCH_ACTIONS::drawRectangle )
-              .AppendAction( SCH_ACTIONS::drawCircle )
-              .AppendAction( SCH_ACTIONS::drawArc )
+              .AppendGroup( TOOLBAR_GROUP_CONFIG( _( "Circle" ) )
+                            .AddAction( SCH_ACTIONS::drawCircle )
+                            .AddAction( SCH_ACTIONS::drawEllipse ) )
+              .AppendGroup( TOOLBAR_GROUP_CONFIG( _( "Arc" ) )
+                            .AddAction( SCH_ACTIONS::drawArcCenter )
+                            .AddAction( SCH_ACTIONS::drawArcStartEndMid )
+                            .AddAction( SCH_ACTIONS::drawArcStartEndCenter )
+                            .AddAction( SCH_ACTIONS::drawArcTangent )
+                            .AddAction( SCH_ACTIONS::drawArcStartDirEnd )
+                            .AddAction( SCH_ACTIONS::drawEllipseArc ) )
               .AppendAction( SCH_ACTIONS::drawBezier )
+              .AppendAction( SCH_ACTIONS::drawPolygon )
               .AppendAction( SCH_ACTIONS::drawLines )
               .AppendAction( SCH_ACTIONS::placeImage )
               .AppendAction( ACTIONS::deleteTool );
@@ -219,6 +226,8 @@ std::optional<TOOLBAR_CONFIGURATION> SCH_EDIT_TOOLBAR_SETTINGS::DefaultToolbarCo
         // TODO (ISM): Move this to individual actions for each script
         config.AppendControl( ACTION_TOOLBAR_CONTROLS::ipcScripting );
 
+        config.AppendControl( ACTION_TOOLBAR_CONTROLS::overrideLocks );
+
         break;
     }
 
@@ -244,7 +253,7 @@ void SCH_EDIT_FRAME::configureToolbars()
 
                 m_currentVariantCtrl->SetToolTip( _( "Select the current variant to display and edit." ) );
                 aToolbar->Add( m_currentVariantCtrl );
-                UpdateVariantSelectionCtrl( Schematic().GetVariantNamesForUI() );
+                SyncVariantUI();
             };
 
     RegisterCustomToolbarControlFactory( SCH_ACTION_TOOLBAR_CONTROLS::currentVariant, variantSelectionCtrlFactory );
@@ -255,22 +264,14 @@ void SCH_EDIT_FRAME::configureToolbars()
     auto pluginControlFactory =
             [this]( ACTION_TOOLBAR* aToolbar )
             {
-                // Add scripting console and API plugins
-                bool scriptingAvailable = SCRIPTING::IsWxAvailable();
 
-#ifdef KICAD_IPC_API
                 bool haveApiPlugins = Pgm().GetCommonSettings()->m_Api.enable_server
                                         && !PgmGui().GetPluginManager().GetActionsForScope( PluginActionScope() ).empty();
-#else
-                bool haveApiPlugins = false;
-#endif
 
-                if( scriptingAvailable || haveApiPlugins )
+                if( haveApiPlugins )
                 {
                     aToolbar->AddScaledSeparator( aToolbar->GetParent() );
-
-                    if( haveApiPlugins )
-                        AddApiPluginTools( aToolbar );
+                    AddApiPluginTools( aToolbar );
                 }
             };
 
@@ -289,31 +290,30 @@ void SCH_EDIT_FRAME::ClearToolbarControl( int aId )
 }
 
 
-void SCH_EDIT_FRAME::UpdateVariantSelectionCtrl( const wxArrayString& aVariantNames )
+void SCH_EDIT_FRAME::SyncVariantUI()
 {
-    if( !m_currentVariantCtrl )
-        return;
+    if( m_currentVariantCtrl )
+    {
+        // Add all variant names, a separator, and "Add New Variant..." at the end
+        wxArrayString contents = Schematic().GetVariantNamesForUI();
+        contents.Add( wxS( "---" ) );
+        contents.Add( _( "Add New Design Variant..." ) );
 
-    // Fall back to the default if nothing is currently selected.
-    wxString currentSelection = GetDefaultVariantName();
-    int selectionIndex = m_currentVariantCtrl->GetSelection();
+        m_currentVariantCtrl->Set( contents );
+        selectCurrentVariant();
+    }
 
-    if( selectionIndex != wxNOT_FOUND )
-        currentSelection = m_currentVariantCtrl->GetString( selectionIndex );
+    if( m_symbolFieldsTableDialog )
+        m_symbolFieldsTableDialog->ReloadVariants();
+}
 
-    // Add all variant names, a separator, and "Add New Variant..." at the end
-    wxArrayString contents = aVariantNames;
-    contents.Add( wxS( "---" ) );
-    contents.Add( _( "Add New Design Variant..." ) );
 
-    m_currentVariantCtrl->Set( contents );
-
-    selectionIndex = m_currentVariantCtrl->FindString( currentSelection );
-
-    if( ( selectionIndex == wxNOT_FOUND ) && ( m_currentVariantCtrl->GetCount() != 0 ) )
-        selectionIndex = 0;
-
-    m_currentVariantCtrl->SetSelection( selectionIndex );
+void SCH_EDIT_FRAME::selectCurrentVariant()
+{
+    // Variant names are case sensitive, but the choice's own string lookup is not.  The schematic
+    // falls back to the default for a name it does not have.
+    int selection = m_currentVariantCtrl->FindString( Schematic().GetCurrentVariant(), true );
+    m_currentVariantCtrl->SetSelection( selection == wxNOT_FOUND ? 0 : selection );
 }
 
 
@@ -364,9 +364,7 @@ void SCH_EDIT_FRAME::onVariantSelected( wxCommandEvent& aEvent )
     if( selectedString != GetDefaultVariantName() )
         selectedVariant = selectedString;
 
-    Schematic().SetCurrentVariant( selectedVariant );
-    UpdateProperties();
-    HardRedraw();
+    SetCurrentVariant( selectedVariant );
 
     // Refresh message panel for current selection
     SCH_SELECTION_TOOL* selTool = m_toolManager->GetTool<SCH_SELECTION_TOOL>();
@@ -429,42 +427,25 @@ bool SCH_EDIT_FRAME::ShowAddVariantDialog( wxWindow* aParent )
     wxString variantName = nameCtrl->GetValue().Trim().Trim( false );
     wxString variantDesc = descCtrl->GetValue().Trim().Trim( false );
 
-    // Empty strings, reserved names, and duplicate variant names are not allowed.
-    if( variantName.IsEmpty() )
-    {
-        GetInfoBar()->ShowMessageFor( _( "Variant name cannot be empty." ), 10000, wxICON_ERROR );
+    if( !ValidateNewVariantName( variantName, wxEmptyString ) )
         return false;
-    }
-
-    // Check for reserved name (case-insensitive)
-    if( variantName.CmpNoCase( GetDefaultVariantName() ) == 0 )
-    {
-        GetInfoBar()->ShowMessageFor( wxString::Format( _( "'%s' is a reserved variant name." ),
-                                                         GetDefaultVariantName() ),
-                                      10000, wxICON_ERROR );
-        return false;
-    }
-
-    // Check for duplicate variant names (case-insensitive)
-    for( const wxString& existingName : Schematic().GetVariantNames() )
-    {
-        if( existingName.CmpNoCase( variantName ) == 0 )
-        {
-            GetInfoBar()->ShowMessageFor( wxString::Format( _( "Variant '%s' already exists." ),
-                                                            existingName ),
-                                          10000, wxICON_ERROR );
-            return false;
-        }
-    }
 
     // Add variant to the schematic
+
+    VARIANT_PROXY_UNDO_ITEM* undoItem = new VARIANT_PROXY_UNDO_ITEM( &Schematic() );
+
     Schematic().AddVariant( variantName );
 
     if( !variantDesc.IsEmpty() )
         Schematic().SetVariantDescription( variantName, variantDesc );
 
+    PICKED_ITEMS_LIST undoCmd;
+    undoCmd.PushItem( ITEM_PICKER( GetScreen(), undoItem, UNDO_REDO::VARIANTS ) );
+    undoCmd.SetDescription( _( "Add Variant" ) );
+    SaveCopyInUndoList( undoCmd, UNDO_REDO::VARIANTS, false /* append */ );
+
     // Update the variant selector and select the new variant
-    UpdateVariantSelectionCtrl( Schematic().GetVariantNamesForUI() );
+    SyncVariantUI();
     SetCurrentVariant( variantName );
     OnModify();
     return true;
@@ -473,29 +454,14 @@ bool SCH_EDIT_FRAME::ShowAddVariantDialog( wxWindow* aParent )
 
 void SCH_EDIT_FRAME::SetCurrentVariant( const wxString& aVariantName )
 {
-    if( !m_currentVariantCtrl )
-        return;
+    Schematic().SetCurrentVariant( aVariantName );
 
-    wxString name = aVariantName.IsEmpty() ? GetDefaultVariantName() : aVariantName;
+    if( m_currentVariantCtrl )
+        selectCurrentVariant();
 
-    int newSelection = m_currentVariantCtrl->FindString( name );
+    if( m_symbolFieldsTableDialog )
+        m_symbolFieldsTableDialog->FollowCurrentVariant();
 
-    if( newSelection == wxNOT_FOUND )
-        return;
-
-    int currentSelection = m_currentVariantCtrl->GetSelection();
-
-    wxString selectedString;
-
-    if( currentSelection != wxNOT_FOUND )
-        selectedString = m_currentVariantCtrl->GetString( currentSelection );
-
-    if( selectedString != name )
-    {
-        m_currentVariantCtrl->SetSelection( newSelection );
-        Schematic().SetCurrentVariant( aVariantName );
-
-        UpdateProperties();
-        HardRedraw();
-    }
+    UpdateProperties();
+    HardRedraw();
 }

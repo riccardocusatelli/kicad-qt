@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PREVIEW_ITEMS_MULTISTEP_GEOMETRY_MANAGER_H
@@ -67,7 +63,7 @@ public:
         bool accepted = acceptPoint( aPt );
 
         // advance or regress the manager
-        if( aLockIn )
+        if( aLockIn && ( accepted || rejectRegresses() ) )
             performStep( accepted );
 
         setGeometryChanged();
@@ -96,10 +92,14 @@ public:
 
     /**
      * Reset the manager to the initial state.
+     *
+     * Subclasses that hold construction state beyond the step counter must override this
+     * and clear that state too.
      */
-    void Reset()
+    virtual void Reset()
     {
         m_step = 0;
+        m_lastPoint = VECTOR2I();
         setGeometryChanged();
     }
 
@@ -141,13 +141,13 @@ public:
 
 protected:
 
-    ///< Mark the geometry as changed for clients to notice
+    /// Mark the geometry as changed for clients to notice
     void setGeometryChanged()
     {
         m_changed = true;
     }
 
-    ///< Get the current stage of the manager
+    /// Get the current stage of the manager
     int getStep() const
     {
         return m_step;
@@ -155,9 +155,15 @@ protected:
 
 private:
 
-    ///< Function that accepts a point for a stage, or rejects it
-    ///< to return to the previous stage
+    /// Function that accepts a point for a stage, or rejects it
+    /// to return to the previous stage
     virtual bool acceptPoint( const VECTOR2I& aPt ) = 0;
+
+    /**
+     * @return false if a rejected point should leave the manager on its current stage instead of
+     *         returning it to the previous one.
+     */
+    virtual bool rejectRegresses() const { return true; }
 
     /**
      * The highest step this manager has - used to recognize completion
@@ -165,7 +171,7 @@ private:
      */
     virtual int getMaxStep() const = 0;
 
-    ///< Moves the manager forward or backward through the stages
+    /// Moves the manager forward or backward through the stages
     void performStep( bool aForward )
     {
         m_step += aForward ? 1 : -1;
@@ -174,10 +180,10 @@ private:
         m_step = std::clamp( m_step, 0, getMaxStep() );
     }
 
-    ///< Has the geometry changed such that a client should redraw?
+    /// Has the geometry changed such that a client should redraw?
     bool m_changed = false;
 
-    ///< The last (raw) point added, which is usually the cursor position
+    /// The last (raw) point added, which is usually the cursor position
     VECTOR2I m_lastPoint;
 
     /**

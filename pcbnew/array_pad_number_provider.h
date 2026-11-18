@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PCBNEW_ARRAY_PAD_NAME_PROVIDER__H
@@ -36,7 +32,7 @@ class ARRAY_PAD_NUMBER_PROVIDER
 {
 public:
     /**
-     * @param aFootprint the footprint to gather existing numbers from (nullptr for no footprint)
+     * @param aExistingPadNumbers are the existing footprint pad  numbers from (nullptr for no footprint)
      * @param aArrayOpts the array options that provide the candidate numbers
      */
     ARRAY_PAD_NUMBER_PROVIDER( const std::set<wxString>& aExistingPadNumbers, const ARRAY_OPTIONS& aArrayOpts );

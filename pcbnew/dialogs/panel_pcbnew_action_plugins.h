@@ -14,14 +14,17 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <dialogs/panel_pcbnew_action_plugins_base.h>
 
+#include <memory>
+
 class PLUGINS_GRID_TRICKS;
 class DIALOG_HTML_REPORTER;
+class SYNC_REPORTER;
 
 
 class PANEL_PCBNEW_ACTION_PLUGINS : public PANEL_PCBNEW_ACTION_PLUGINS_BASE
@@ -66,12 +69,19 @@ public:
     void OnShowErrorsButtonClick( wxCommandEvent& event ) override;
 
 private:
+<<<<<<< b2e17e0a
 #ifdef KICAD_IPC_API
     void onPluginAvailabilityChanged();
 
     /// The id of the listener of the plugin availability
     int m_pluginAvailabilityListener = -1;
 #endif
+||||||| 1304b76aad
+#ifdef KICAD_IPC_API
+    void onPluginAvailabilityChanged( wxCommandEvent& aEvt );
+#endif
+=======
+>>>>>>> ed8c16703e
 
     enum GRID_COLUMNS
     {
@@ -84,9 +94,11 @@ private:
 
     wxBitmapBundle m_genericIcon;
     DIALOG_HTML_REPORTER* m_errorDialog;
+    std::shared_ptr<SYNC_REPORTER> m_reloadReporter;
     bool m_allowErrorDialog;
 
     void SwapRows( int aRowA, int aRowB );
     void SelectRow( int aRow );
+    void onPluginAvailabilityChanged( wxCommandEvent& aEvt );
 };
 

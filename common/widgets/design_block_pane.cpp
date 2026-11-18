@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -72,25 +68,26 @@ void DESIGN_BLOCK_PANE::RefreshLibs()
 }
 
 
-DESIGN_BLOCK* DESIGN_BLOCK_PANE::GetDesignBlock( const LIB_ID& aLibId, bool aUseCacheLib, bool aShowErrorMsg )
+DESIGN_BLOCK* DESIGN_BLOCK_PANE::GetDesignBlock( const LIB_ID& aLibId, bool aUseCacheLib, bool aShowErrorMsg,
+                                                 wxString* aErrorMsg )
 {
     DESIGN_BLOCK_LIBRARY_ADAPTER* prjLibs = m_frame->Prj().DesignBlockLibs();
 
     KI_CHECK_MSG( prjLibs, nullptr, wxS( "Invalid design block library table." ) );
 
-    DESIGN_BLOCK* designBlock = nullptr;
+    wxString      error;
+    DESIGN_BLOCK* designBlock = prjLibs->DesignBlockLoadWithOptionalNickname( aLibId, true, &error );
 
-    try
+    if( !designBlock )
     {
-        designBlock = prjLibs->DesignBlockLoadWithOptionalNickname( aLibId, true );
-    }
-    catch( const IO_ERROR& ioe )
-    {
+        if( aErrorMsg )
+            *aErrorMsg = error;
+
         if( aShowErrorMsg )
         {
             wxString msg = wxString::Format( _( "Error loading design block %s from library '%s'." ),
                                              aLibId.GetLibItemName().wx_str(), aLibId.GetLibNickname().wx_str() );
-            DisplayErrorMessage( m_frame, msg, ioe.What() );
+            DisplayErrorMessage( m_frame, msg, error );
         }
     }
 
@@ -239,7 +236,7 @@ bool DESIGN_BLOCK_PANE::AddDesignBlockLibrary( const wxString& aDialogTitle, con
         SelectLibId( libID );
     }
 
-    return true;
+    return success;
 }
 
 
@@ -268,7 +265,12 @@ bool DESIGN_BLOCK_PANE::DeleteDesignBlockLibrary( const wxString& aLibName, bool
 
     try
     {
-        m_frame->Prj().DesignBlockLibs()->DeleteLibrary( aLibName );
+        if( !m_frame->Prj().DesignBlockLibs()->DeleteLibrary( aLibName ) )
+        {
+            msg.Printf( _( "Design block library '%s' could not be deleted." ), aLibName.GetData() );
+            DisplayError( m_frame, msg );
+            return false;
+        }
     }
     catch( const IO_ERROR& ioe )
     {

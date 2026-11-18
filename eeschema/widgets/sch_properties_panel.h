@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -24,15 +24,17 @@
 #include <widgets/properties_panel.h>
 #include <toolkit/toolkit_types.h>
 #include <memory>
-#include <set>
 #include <string>
 
+class wxButton;
+class wxCommandEvent;
 class SELECTION;
 class SCHEMATIC;
 class SCH_BASE_FRAME;
 class SCH_COMMIT;
 class SCH_EDIT_FRAME;
 class SCH_SHEET;
+class SCH_SYMBOL;
 class PROPERTY_MANAGER;
 
 class SCH_PROPERTIES_PANEL : public PROPERTIES_PANEL
@@ -56,6 +58,19 @@ protected:
 
     bool valueChanging( const wxString& aName, const wxVariant& aValue ) override;
     void valueChanged( const wxString& aName, const wxVariant& aValue ) override;
+
+    bool isKeyEditable( const wxPGProperty* aPGProp ) const override;
+    bool isKeyNameInUse( const wxString& aName ) const override;
+    void onKeyRenamed( const wxString& aOldName, const wxString& aNewName ) override;
+
+    bool buildContextMenu( wxMenu& aMenu, wxPGProperty* aPGProp ) override;
+    void onNewItemLeftBlank( const wxString& aKey ) override;
+
+    void addBlankField();
+    void addBlankCustomProperty();
+    void removeField( const wxString& aName );
+    void removeCustomProperty( const wxString& aName );
+    void onContextMenu( wxCommandEvent& aEvent );
 
     bool handleSheetFilenameChange( SCH_EDIT_FRAME* aFrame, SCH_SHEET* aSheet,
                                     SCH_COMMIT& aChanges, const wxString& aNewFilename );
@@ -83,6 +98,15 @@ protected:
      */
     std::string symbolNetlist() const;
 
+    /**
+     * Open the symbol properties dialog on its Pin Map page for the single selected symbol
+     * (issue #2282).  Only enabled in the schematic editor.
+     */
+    void onEditPinMap();
+
+    /// @return the single selected SCH_SYMBOL with an effective associated footprint, else nullptr.
+    SCH_SYMBOL* getSinglePinMappedSymbol();
+
 private:
     /// Register the custom editors of the properties with the grid of the GUI toolkit
     /// (sch_properties_panel_wx.cpp).
@@ -102,6 +126,6 @@ protected:
     SCH_BASE_FRAME*     m_frame;
     PROPERTY_MANAGER&   m_propMgr;
 
-    static std::set<wxString> m_currentSymbolFieldNames;
-    static std::set<wxString> m_currentSheetFieldNames;
+    static bool               m_selContainsJunctions;
+    static bool               m_selContainsWiresOrBuses;
 };

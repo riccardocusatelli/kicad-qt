@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <widgets/std_bitmap_button.h>
@@ -41,11 +37,11 @@
 #include <layer_range.h>
 #include <board.h>
 #include <project/net_settings.h>
-#include <idf_parser.h>
 #include <scintilla_tricks.h>
 #include <wx/stc/stc.h>
 #include <dialogs/html_message_box.h>
-#include <dialogs/rule_editor_dialog_base.h> 
+#include <wx/scrolwin.h>
+#include <wx/toplevel.h>
 #include <tools/drc_tool.h>
 #include <pcbexpr_evaluator.h>
 #include <string_utils.h>
@@ -68,6 +64,7 @@
 #include "drc_re_permitted_layers_overlay_panel.h"
 
 #include <eda_units.h>
+#include <board_design_settings.h>
 #include "drc_re_numeric_input_constraint_data.h"
 #include "drc_re_bool_input_constraint_data.h"
 #include "drc_re_via_style_constraint_data.h"
@@ -101,12 +98,11 @@ static bool constraintNeedsTwoObjects( DRC_RULE_EDITOR_CONSTRAINT_NAME aConstrai
 
 PANEL_DRC_RULE_EDITOR::PANEL_DRC_RULE_EDITOR( wxWindow* aParent, BOARD* aBoard,
                                               DRC_RULE_EDITOR_CONSTRAINT_NAME              aConstraintType,
-                                              wxString*                                    aConstraintTitle,
                                               std::shared_ptr<DRC_RE_BASE_CONSTRAINT_DATA> aConstraintData ) :
         PANEL_DRC_RULE_EDITOR_BASE( aParent ),
         m_board( aBoard ),
-        m_constraintTitle( aConstraintTitle ),
         m_validationSucceeded( false ),
+        m_modified( false ),
         m_constraintData( aConstraintData ),
         m_helpWindow( nullptr )
 {
@@ -119,21 +115,17 @@ PANEL_DRC_RULE_EDITOR::PANEL_DRC_RULE_EDITOR( wxWindow* aParent, BOARD* aBoard,
     KI_LOG_TRACE( KI_TRACE_DRC_RULE_EDITOR, wxS( "[PANEL_DRC_RULE_EDITOR] adding constraint panel to sizer" ) );
     m_constraintContentSizer->Add( dynamic_cast<wxPanel*>( m_constraintPanel ), 0, wxEXPAND | wxTOP, 5 );
     m_layerList = m_board->GetEnabledLayers().UIOrder();
-    m_constraintHeaderTitle->SetLabelText( *aConstraintTitle + " Constraint" );
+    m_constraintHeaderTitle->Hide();
+    m_staticline3->Hide();
+
+    m_nameCtrl->SetToolTip( _( "Name of this rule, must be unique" ) );
+    m_commentCtrl->SetToolTip( _( "Optional comment stored with the rule" ) );
 
     m_layerListChoiceCtrl = new wxChoice( this, wxID_ANY );
+    m_layerListChoiceCtrl->SetToolTip( _( "Layers this rule applies to" ) );
     m_layerCategory = DRC_RULE_EDITOR_UTILS::GetLayerCategoryForConstraint( aConstraintType );
     populateLayerSelector( m_layerCategory );
     m_LayersComboBoxSizer->Add( m_layerListChoiceCtrl, 0, wxALL | wxEXPAND, 5 );
-    m_layerListChoiceCtrl->Bind( wxEVT_CHOICE,
-                                 [this]( wxCommandEvent& )
-                                 {
-                                     RULE_EDITOR_DIALOG_BASE* dlg = RULE_EDITOR_DIALOG_BASE::GetDialog( this );
-
-                                     if( dlg )
-                                         dlg->SetModified();
-                                 } );
-
     // Hide layer selector for constraints where it doesn't apply
     if( m_layerCategory == DRC_LAYER_CATEGORY::NO_LAYER_SELECTOR )
     {
@@ -143,12 +135,27 @@ PANEL_DRC_RULE_EDITOR::PANEL_DRC_RULE_EDITOR( wxWindow* aParent, BOARD* aBoard,
     }
 
     wxBoxSizer* buttonSizer = new wxBoxSizer( wxHORIZONTAL );
-    m_btnShowMatches = new wxButton( this, wxID_ANY, "Show Matches" );
+    m_matchReport =
+            new wxStaticText( this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxST_ELLIPSIZE_END );
+    m_btnShowMatches = new wxButton( this, wxID_ANY, _( "Show Matches" ) );
+    buttonSizer->Add( m_matchReport, 1, wxALIGN_CENTER_VERTICAL | wxLEFT | wxRIGHT, 5 );
     buttonSizer->Add( m_btnShowMatches, 0, wxALL, 5 );
 
-    bContentSizer->Add( buttonSizer, 0, wxALIGN_RIGHT | wxALL, 2 );
+    bContentSizer->Add( buttonSizer, 0, wxEXPAND | wxALL, 2 );
 
     m_btnShowMatches->Bind( wxEVT_BUTTON, &PANEL_DRC_RULE_EDITOR::onShowMatchesButtonClicked, this );
+
+    Bind( wxEVT_TEXT, &PANEL_DRC_RULE_EDITOR::onFieldChanged, this );
+    Bind( wxEVT_CHOICE, &PANEL_DRC_RULE_EDITOR::onFieldChanged, this );
+    Bind( wxEVT_COMBOBOX, &PANEL_DRC_RULE_EDITOR::onFieldChanged, this );
+    Bind( wxEVT_CHECKBOX, &PANEL_DRC_RULE_EDITOR::onFieldChanged, this );
+    Bind( wxEVT_CHECKLISTBOX, &PANEL_DRC_RULE_EDITOR::onFieldChanged, this );
+    Bind( wxEVT_RADIOBUTTON, &PANEL_DRC_RULE_EDITOR::onFieldChanged, this );
+    Bind( wxEVT_STC_CHANGE, &PANEL_DRC_RULE_EDITOR::onFieldChanged, this );
+
+    // Enter in any of the illustration's fields applies the rule. The fields carry
+    // wxTE_PROCESS_ENTER, so the event reaches this panel on its way up.
+    Bind( wxEVT_TEXT_ENTER, &PANEL_DRC_RULE_EDITOR::OnEnterKey, this );
 
     m_btnShowMatches->Enable( true );
 
@@ -181,15 +188,12 @@ PANEL_DRC_RULE_EDITOR::PANEL_DRC_RULE_EDITOR( wxWindow* aParent, BOARD* aBoard,
     m_conditionGroupPanel->SetChangeCallback(
             [this]()
             {
-                ResetShowMatchesButton();
+                m_modified = true;
+                clearMatchReport();
+                RelayoutHost();
 
-                RULE_EDITOR_DIALOG_BASE* dlg = RULE_EDITOR_DIALOG_BASE::GetDialog( this );
-
-                if( dlg )
-                {
-                    dlg->SetModified();
-                    dlg->RefreshContentScrollArea();
-                }
+                if( m_callBackFieldChanged )
+                    m_callBackFieldChanged();
             } );
 
     KI_LOG_TRACE( KI_TRACE_DRC_RULE_EDITOR, wxS( "[PANEL_DRC_RULE_EDITOR] inserting conditionGroupPanel" ) );
@@ -204,28 +208,17 @@ PANEL_DRC_RULE_EDITOR::PANEL_DRC_RULE_EDITOR( wxWindow* aParent, BOARD* aBoard,
         m_LayersComboBoxSizer->Show( false );
         m_staticText711->Hide();
         m_staticline111->Hide();
+
+        stretchConstraintColumn();
     }
-
-    m_commentCtrl->Bind( wxEVT_TEXT,
-                         [this]( wxCommandEvent& )
-                         {
-                             RULE_EDITOR_DIALOG_BASE* dlg = RULE_EDITOR_DIALOG_BASE::GetDialog( this );
-
-                             if( dlg )
-                                 dlg->SetModified();
-                         });
 
     // Hide the base class syntax check controls since we use inline validation
     m_checkSyntaxBtnCtrl->Hide();
     m_syntaxErrorReport->Hide();
 
     m_nameCtrl->Bind( wxEVT_TEXT,
-                      [this]( wxCommandEvent& )
+                      [this]( wxCommandEvent& aEvent )
                       {
-                          RULE_EDITOR_DIALOG_BASE* dlg = RULE_EDITOR_DIALOG_BASE::GetDialog( this );
-                          if( dlg )
-                              dlg->SetModified();
-
                           if( m_constraintType == CUSTOM_RULE )
                           {
                               auto* customPanel = dynamic_cast<DRC_RE_CUSTOM_RULE_PANEL*>( m_constraintPanel );
@@ -233,6 +226,8 @@ PANEL_DRC_RULE_EDITOR::PANEL_DRC_RULE_EDITOR( wxWindow* aParent, BOARD* aBoard,
                               if( customPanel )
                                   customPanel->UpdateRuleName( m_nameCtrl->GetValue() );
                           }
+
+                          aEvent.Skip();
                       } );
 
     // Regex patterns are compiled as function-local statics in onScintillaCharAdded()
@@ -243,7 +238,6 @@ PANEL_DRC_RULE_EDITOR::PANEL_DRC_RULE_EDITOR( wxWindow* aParent, BOARD* aBoard,
 PANEL_DRC_RULE_EDITOR::~PANEL_DRC_RULE_EDITOR()
 {
     m_board = nullptr;
-    m_constraintTitle = nullptr;
 
     m_btnShowMatches->Unbind( wxEVT_BUTTON, &PANEL_DRC_RULE_EDITOR::onShowMatchesButtonClicked, this );
 }
@@ -263,10 +257,32 @@ bool PANEL_DRC_RULE_EDITOR::TransferDataToWindow()
         m_conditionGroupPanel->ParseCondition( cond );
     }
 
-    if( m_constraintPanel )
-        return m_constraintPanel->TransferDataToWindow();
+    bool transferred = true;
 
-    return true;
+    if( m_constraintPanel )
+        transferred = m_constraintPanel->TransferDataToWindow();
+
+    m_modified = false;
+
+    return transferred;
+}
+
+
+void PANEL_DRC_RULE_EDITOR::onFieldChanged( wxEvent& aEvent )
+{
+    m_modified = true;
+    clearMatchReport();
+
+    if( m_callBackFieldChanged )
+        m_callBackFieldChanged();
+
+    aEvent.Skip();
+}
+
+
+wxString PANEL_DRC_RULE_EDITOR::GetCondition() const
+{
+    return m_conditionGroupPanel ? m_conditionGroupPanel->BuildCondition() : wxString();
 }
 
 
@@ -286,27 +302,12 @@ wxString PANEL_DRC_RULE_EDITOR::getSelectedLayerSource() const
     case LAYER_SEL_OUTER: return DRC_RULES_LEXER::TokenName( DRCRULE_T::T_outer );
     case LAYER_SEL_INNER: return DRC_RULES_LEXER::TokenName( DRCRULE_T::T_inner );
     case LAYER_SEL_TOP:
-        switch( m_constraintType )
-        {
-        case COURTYARD_CLEARANCE:          return wxS( "F.CrtYd" );
-        case SILK_TO_SOLDERMASK_CLEARANCE: return wxS( "F.SilkS" );
-        case VIAS_UNDER_SMD:
-        case ALLOWED_ORIENTATION:          return wxS( "F.Cu" );
-        default:                           return m_board ? m_board->GetLayerName( F_Cu ) : wxString();
-        }
-
     case LAYER_SEL_BOTTOM:
-        switch( m_constraintType )
-        {
-        case COURTYARD_CLEARANCE:          return wxS( "B.CrtYd" );
-        case SILK_TO_SOLDERMASK_CLEARANCE: return wxS( "B.SilkS" );
-        case VIAS_UNDER_SMD:
-        case ALLOWED_ORIENTATION:          return wxS( "B.Cu" );
-        default:                           return m_board ? m_board->GetLayerName( B_Cu ) : wxString();
-        }
+        return LSET::Name( DRC_RULE_EDITOR_UTILS::TopBottomLayerId( m_constraintType, layerValue == LAYER_SEL_TOP ) );
     default:
-        if( layerValue >= 0 && m_board )
-            return m_board->GetLayerName( static_cast<PCB_LAYER_ID>( layerValue ) );
+        if( layerValue >= 0 )
+            return LSET::Name( static_cast<PCB_LAYER_ID>( layerValue ) );
+
         return wxEmptyString;
     }
 }
@@ -463,7 +464,7 @@ wxString PANEL_DRC_RULE_EDITOR::GenerateRule( const RULE_GENERATION_CONTEXT& aCo
 }
 
 
-void PANEL_DRC_RULE_EDITOR::onSaveButtonClicked( wxCommandEvent& aEvent )
+bool PANEL_DRC_RULE_EDITOR::ValidateRule()
 {
     m_validationSucceeded = true;
     int errorCount = 0;
@@ -475,6 +476,14 @@ void PANEL_DRC_RULE_EDITOR::onSaveButtonClicked( wxCommandEvent& aEvent )
     {
         m_validationSucceeded = false;
     }
+
+    return m_validationSucceeded;
+}
+
+
+void PANEL_DRC_RULE_EDITOR::onSaveButtonClicked( wxCommandEvent& aEvent )
+{
+    ValidateRule();
 
     if( m_callBackSave )
     {
@@ -495,29 +504,6 @@ void PANEL_DRC_RULE_EDITOR::OnEnterKey( wxCommandEvent& aEvent )
 void PANEL_DRC_RULE_EDITOR::Save( wxCommandEvent& aEvent )
 {
     onSaveButtonClicked( aEvent );
-}
-
-
-void PANEL_DRC_RULE_EDITOR::onRemoveButtonClicked( wxCommandEvent& aEvent )
-{
-    if( m_callBackRemove && m_constraintData )
-        m_callBackRemove( m_constraintData->GetId() );
-}
-
-
-void PANEL_DRC_RULE_EDITOR::Cancel( wxCommandEvent& aEvent )
-{
-    if( m_constraintData && m_constraintData->IsNew() )
-        onRemoveButtonClicked( aEvent );
-    else
-        onCloseButtonClicked( aEvent );
-}
-
-
-void PANEL_DRC_RULE_EDITOR::onCloseButtonClicked( wxCommandEvent& aEvent )
-{
-    if( m_callBackClose && m_constraintData )
-        m_callBackClose( m_constraintData->GetId() );
 }
 
 
@@ -946,7 +932,7 @@ void PANEL_DRC_RULE_EDITOR::onCheckSyntax( wxCommandEvent& event )
     try
     {
         std::vector<std::shared_ptr<DRC_RULE>> dummyRules;
-        wxString ruleTemplate = L"(version 1)\n(rule default\n   (condition \"%s\")\n)";
+        wxString ruleTemplate = L"(version 2)\n(rule default\n   (condition \"%s\")\n)";
         wxString formattedRule = wxString::Format( ruleTemplate, condition );
         DRC_RULES_PARSER ruleParser( formattedRule, _( "DRC rule" ) );
         ruleParser.Parse( dummyRules, m_syntaxErrorReport );
@@ -1055,20 +1041,27 @@ void PANEL_DRC_RULE_EDITOR::onShowMatchesButtonClicked( wxCommandEvent& event )
         int matchCount = m_callBackShowMatches( m_constraintData->GetId() );
 
         if( matchCount < 0 )
-        {
-            m_btnShowMatches->SetLabel( _( "Show Matches (error)" ) );
-        }
+            m_matchReport->SetLabel( _( "The rule does not compile." ) );
+        else if( matchCount == 0 )
+            m_matchReport->SetLabel( _( "No board items match." ) );
         else
-        {
-            m_btnShowMatches->SetLabel( wxString::Format( _( "Show Matches (%d)" ), matchCount ) );
-        }
+            m_matchReport->SetLabel( wxString::Format(
+                    wxPLURAL( "%d board item matches.", "%d board items match.", matchCount ), matchCount ) );
+
+        m_matchReport->SetToolTip( m_matchReport->GetLabel() );
+        Layout();
     }
 }
 
 
-void PANEL_DRC_RULE_EDITOR::ResetShowMatchesButton()
+void PANEL_DRC_RULE_EDITOR::clearMatchReport()
 {
-    m_btnShowMatches->SetLabel( _( "Show Matches" ) );
+    if( m_matchReport->GetLabel().IsEmpty() )
+        return;
+
+    m_matchReport->SetLabel( wxEmptyString );
+    m_matchReport->SetToolTip( wxEmptyString );
+    Layout();
 }
 
 
@@ -1187,7 +1180,7 @@ wxString PANEL_DRC_RULE_EDITOR::buildLayerClause() const
 
     // Real layer ID
     PCB_LAYER_ID layerId = static_cast<PCB_LAYER_ID>( layerValue );
-    wxString clause = wxString::Format( wxS( "(layer \"%s\")" ), m_board->GetLayerName( layerId ) );
+    wxString clause = wxString::Format( wxS( "(layer \"%s\")" ), LSET::Name( layerId ) );
     KI_LOG_TRACE( KI_TRACE_DRC_RULE_EDITOR, wxS( "Layer clause: %s" ), clause );
     return clause;
 }
@@ -1211,11 +1204,14 @@ std::vector<PCB_LAYER_ID> PANEL_DRC_RULE_EDITOR::getSelectedLayers()
     {
         switch( layerValue )
         {
-        case LAYER_SEL_OUTER:  return { F_Cu, B_Cu };
-        case LAYER_SEL_INNER:  return { In1_Cu };
-        case LAYER_SEL_TOP:    return { F_Cu };
-        case LAYER_SEL_BOTTOM: return { B_Cu };
-        default:               return {};
+        case LAYER_SEL_OUTER: return { F_Cu, B_Cu };
+        case LAYER_SEL_INNER: return { In1_Cu };
+
+        case LAYER_SEL_TOP:
+        case LAYER_SEL_BOTTOM:
+            return { DRC_RULE_EDITOR_UTILS::TopBottomLayerId( m_constraintType, layerValue == LAYER_SEL_TOP ) };
+
+        default: return {};
         }
     }
 
@@ -1293,4 +1289,108 @@ void PANEL_DRC_RULE_EDITOR::setSelectedLayers( const std::vector<PCB_LAYER_ID>& 
     }
 
     m_layerListChoiceCtrl->SetSelection( 0 );
+}
+
+
+PANEL_DRC_RULE_EDITOR* PANEL_DRC_RULE_EDITOR::FindEditor( wxWindow* aChild )
+{
+    for( wxWindow* window = aChild; window; window = window->GetParent() )
+    {
+        if( PANEL_DRC_RULE_EDITOR* editor = dynamic_cast<PANEL_DRC_RULE_EDITOR*>( window ) )
+            return editor;
+    }
+
+    return nullptr;
+}
+
+
+void PANEL_DRC_RULE_EDITOR::SetOverrideNote( const wxString& aText )
+{
+    if( aText.IsEmpty() )
+    {
+        if( m_overrideNote )
+            m_overrideNote->Hide();
+
+        return;
+    }
+
+    if( !m_overrideNote )
+    {
+        m_overrideNote =
+                new wxStaticText( this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxST_ELLIPSIZE_END );
+        m_overrideNote->SetFont( KIUI::GetInfoFont( this ).Italic() );
+
+        // A long condition would otherwise widen this column at the expense of the one beside it,
+        // so the line shortens to the room it is given and keeps its text on hover.
+        m_overrideNote->SetMinSize( wxSize( 1, -1 ) );
+
+        // Above the constraint, so the value being displaced is read before the one replacing it
+        size_t at = m_constraintSizer->GetItemCount();
+
+        for( size_t i = 0; i < m_constraintSizer->GetItemCount(); ++i )
+        {
+            if( m_constraintSizer->GetItem( i )->GetSizer() == m_constraintContentSizer )
+            {
+                at = i;
+                break;
+            }
+        }
+
+        m_constraintSizer->Insert( at, m_overrideNote, 0, wxEXPAND | wxTOP | wxRIGHT | wxLEFT, 5 );
+    }
+
+    // Reached on every keystroke, so an unchanged note costs nothing.
+    if( m_overrideNote->IsShown() && m_overrideNote->GetLabel() == aText )
+        return;
+
+    m_overrideNote->SetLabel( aText );
+    m_overrideNote->SetToolTip( aText );
+    m_overrideNote->Show();
+    Layout();
+}
+
+
+void PANEL_DRC_RULE_EDITOR::stretchConstraintColumn()
+{
+    // A custom rule is written in the constraint column and the column beside it is hidden,
+    // so move the stretch across or the rule text stays at its smallest.
+    for( wxSizerItem* item : bContentSizer->GetChildren() )
+    {
+        wxSizer* columns = item->GetSizer();
+
+        if( !columns || !columns->GetItem( m_constraintSizer ) )
+            continue;
+
+        for( wxSizerItem* column : columns->GetChildren() )
+            column->SetProportion( column->GetSizer() == m_constraintSizer ? 1 : 0 );
+
+        return;
+    }
+
+    KI_FAIL_MSG( wxS( "Constraint column not found; the generated layout has changed." ) );
+}
+
+
+void PANEL_DRC_RULE_EDITOR::LayoutAncestors( wxWindow* aWindow )
+{
+    for( wxWindow* window = aWindow->GetParent(); window; window = window->GetParent() )
+    {
+        window->Layout();
+
+        if( wxScrolledWindow* scrolled = dynamic_cast<wxScrolledWindow*>( window ) )
+        {
+            scrolled->FitInside();
+
+            // Only the height scrolls. Pinning the virtual width to the client width keeps
+            // the editor's buttons out from under the scrollbar.
+            wxSize virtualSize = scrolled->GetVirtualSize();
+            virtualSize.x = scrolled->GetClientSize().x;
+            scrolled->SetVirtualSize( virtualSize );
+            scrolled->Layout();
+            break;
+        }
+
+        if( dynamic_cast<wxTopLevelWindow*>( window ) )
+            break;
+    }
 }

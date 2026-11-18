@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "eeschema_test_utils.h"
@@ -59,8 +55,11 @@ void KI_TEST::SCHEMATIC_TEST_FIXTURE::LoadSchematic( const wxFileName& aFn )
     wxFileName pro( fn );
     pro.SetExt( FILEEXT::ProjectFileExtension );
 
+    // The plugin retains loaded root sheets for one schematic lifetime.
+    m_pi.reset( SCH_IO_MGR::FindPlugin( SCH_IO_MGR::SCH_KICAD ) );
+
     // Schematic must be reset before a project is reloaded
-    m_schematic.release();
+    m_schematic.reset();
 
     m_manager.LoadProject( pro.GetFullPath() );
 
@@ -101,8 +100,6 @@ void KI_TEST::SCHEMATIC_TEST_FIXTURE::LoadSchematic( const wxFileName& aFn )
 
     if( m_schematic->RootScreen()->GetFileFormatVersionAtLoad() < 20230221 )
         screens.FixLegacyPowerSymbolMismatches();
-
-    sheets.AnnotatePowerSymbols();
 
     // NOTE: This is required for multi-unit symbols to be correct
     for( SCH_SHEET_PATH& sheet : sheets )
@@ -159,7 +156,7 @@ void TEST_NETLIST_EXPORTER_FIXTURE<Exporter>::WriteNetlist()
         wxRemoveFile( netlistPath );
 
     WX_STRING_REPORTER        reporter;
-    std::unique_ptr<Exporter> exporter = std::make_unique<Exporter>( m_schematic.get() );
+    std::unique_ptr<Exporter> exporter = std::make_unique<Exporter>( m_schematic.get(), nullptr );
 
     bool success = exporter->WriteNetlist( netlistPath, GetNetlistOptions(), reporter );
 

@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -102,5 +98,4 @@ KICOMMON_API int IndexFromAlphabetic( const wxString& aStr, const wxString& aAlp
  * @param aZeroBasedNonUnitCols If true, cols other than the right most use the 0'th entry
  *                              (e.g. Z -> AA, not BA, but 9 -> 10, not 00).
  */
-KICOMMON_API wxString AlphabeticFromIndex( size_t aN, const wxString& aAlphabet,
-                                           bool aZeroBasedNonUnitCols );
+KICOMMON_API wxString AlphabeticFromIndex( size_t aIndex, const wxString& aAlphabet, bool aZeroBasedNonUnitCols );

@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
@@ -28,6 +24,7 @@
 
 #include <board.h>
 #include <board_design_settings.h>
+#include <board_loader.h>
 #include <component_classes/component_class.h>
 #include <drc/drc_engine.h>
 #include <drc/drc_item.h>
@@ -35,13 +32,26 @@
 #include <footprint.h>
 #include <pcb_io/pcb_io_mgr.h>
 #include <project.h>
-#include <python/scripting/pcbnew_scripting_helpers.h>
 #include <settings/settings_manager.h>
 #include <wx/filename.h>
 
 
 struct DRC_ISSUE_24211_FIXTURE
 {
+    SETTINGS_MANAGER m_settingsManager;
+
+    PROJECT* loadProject()
+    {
+        wxFileName projectFile( wxString::FromUTF8( KI_TEST::GetPcbnewTestDataDir() )
+                                + "issue24211/issue24211.kicad_pro" );
+
+        m_settingsManager.LoadProject( projectFile.GetFullPath() );
+
+        PROJECT* project = m_settingsManager.GetProject( projectFile.GetFullPath() );
+        BOOST_REQUIRE_MESSAGE( project, "Could not load project" );
+        return project;
+    }
+
     wxString boardPath() const
     {
         return wxString::FromUTF8( KI_TEST::GetPcbnewTestDataDir() )
@@ -52,40 +62,45 @@ struct DRC_ISSUE_24211_FIXTURE
 
 // Regression test for https://gitlab.com/kicad/code/kicad/-/issues/24211
 //
-// The global ::LoadBoard() in pcbnew_scripting_helpers.cpp is the entry point for CLI and API
-// consumers (kicad-cli pcb drc and the api-server). It must produce a board with component class
-// assignments applied so that custom DRC rules using A.hasComponentClass(...) match the same
-// items they would in the interactive DRC dialog. Before the fix, dynamic class assignments
-// were only applied in the GUI load path. KI_TEST::LoadBoard masks this bug because it calls
-// SynchronizeComponentClasses itself; the test below deliberately drives the production helper.
+// BOARD_LOADER::Load is the entry point for CLI and API consumers (kicad-cli pcb drc and the
+// api-server). It must produce a board with component class assignments applied so that custom
+// DRC rules using A.hasComponentClass(...) match the same items they would in the interactive
+// DRC dialog. Before the fix, dynamic class assignments were only applied in the GUI load path.
 BOOST_FIXTURE_TEST_CASE( DRCIssue24211ComponentClassesAfterLoad, DRC_ISSUE_24211_FIXTURE )
 {
-    std::unique_ptr<BOARD> board( ::LoadBoard( boardPath(), PCB_IO_MGR::KICAD_SEXP ) );
+    PROJECT* project = loadProject();
+
+    std::unique_ptr<BOARD> board = BOARD_LOADER::Load( boardPath(), PCB_IO_MGR::KICAD_SEXP,
+                                                       project );
 
     BOOST_REQUIRE( board );
 
-    // The reproduction project assigns the "Inductor" class to reference L1. After ::LoadBoard,
-    // every footprint matched by an assignment rule must already report that class.
+    // The reproduction project assigns the "Inductor" class to reference L1. After
+    // BOARD_LOADER::Load with initialize_after_load=true (the CLI / API default), every footprint
+    // matched by an assignment rule must already report that class.
     FOOTPRINT* l1 = board->FindFootprintByReference( wxT( "L1" ) );
 
     BOOST_REQUIRE_MESSAGE( l1, "Reference L1 not present in test board" );
 
     const COMPONENT_CLASS* compClass = l1->GetComponentClass();
 
-    BOOST_REQUIRE_MESSAGE( compClass, "L1 has no component class after ::LoadBoard" );
+    BOOST_REQUIRE_MESSAGE( compClass, "L1 has no component class after BOARD_LOADER::Load" );
     BOOST_TEST_MESSAGE( "L1 class: " << compClass->GetName().ToStdString() );
     BOOST_CHECK( compClass->ContainsClassName( wxT( "Inductor" ) ) );
 }
 
 
-// Runs the custom-rule DRC against the issue24211 board through the same load path the CLI uses.
-// Without the fix, the second custom rule
+// Runs the custom-rule DRC against the issue24211 board through the same load path the CLI uses
+// (BOARD_LOADER::Load). Without the fix, the second custom rule
 // ("pcblint_inductor_sensitive_trace_keepout_no_track") never fires because no footprint has the
 // 'Inductor' component class assigned; only the first ("buck_feedback_away_from_switch_node")
 // reports violations. After the fix, both rules report violations, matching the interactive DRC.
 BOOST_FIXTURE_TEST_CASE( DRCIssue24211BothCustomRulesFire, DRC_ISSUE_24211_FIXTURE )
 {
-    std::unique_ptr<BOARD> board( ::LoadBoard( boardPath(), PCB_IO_MGR::KICAD_SEXP ) );
+    PROJECT* project = loadProject();
+
+    std::unique_ptr<BOARD> board = BOARD_LOADER::Load( boardPath(), PCB_IO_MGR::KICAD_SEXP,
+                                                       project );
 
     BOOST_REQUIRE( board );
 
@@ -121,5 +136,5 @@ BOOST_FIXTURE_TEST_CASE( DRCIssue24211BothCustomRulesFire, DRC_ISSUE_24211_FIXTU
 
     BOOST_CHECK_MESSAGE(
             firedRules.count( wxT( "pcblint_inductor_sensitive_trace_keepout_no_track" ) ),
-            "Component-class-based custom rule did not fire after ::LoadBoard" );
+            "Component-class-based custom rule did not fire after BOARD_LOADER::Load" );
 }

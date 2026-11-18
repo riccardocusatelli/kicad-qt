@@ -19,11 +19,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <pgm_base.h>
@@ -43,11 +39,18 @@
 #include <kiway.h>
 #include <kiplatform/ui.h>
 #include <wx/log.h>
+#include <wx/utils.h>
+
+#include <cmath>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
 
 #ifdef __WXMSW__
 #define USE_MOUSE_CAPTURE
+#endif
+
+#ifdef KICAD_GAL_PROFILE
+#include <trace_helpers.h>
 #endif
 
 using namespace KIGFX;
@@ -219,10 +222,23 @@ void WX_VIEW_CONTROLS::LoadSettings()
 
 void WX_VIEW_CONTROLS::onMotion( wxMouseEvent& aEvent )
 {
+    EDA_DRAW_PANEL_GAL::NoteInput();
+
+#ifdef KICAD_GAL_PROFILE
+    latencyProbeRepaintToMotion.Checkpoint("motion-event");
+    KI_LOG_TRACE( traceGalProfile, "%s", latencyProbeRepaintToMotion.to_string() );
+    latencyProbeZoomToRender.Reset();
+#endif
+
     ( *m_MotionEventCounter )++;
 
     // Because Weston sends a motion event to previous location after warping the pointer
     wxPoint mouseRel = m_parentPanel->ScreenToClient( KIPLATFORM::UI::GetMousePosition() );
+
+    // Enter and leave events can be dropped, so trust motion inside the canvas. onLeave() reuses
+    // this handler with its own leave event
+    if( !aEvent.Leaving() && m_parentPanel->GetClientRect().Contains( mouseRel ) )
+        m_parentPanel->SetCursorInCanvas( true );
 
     bool     isAutoPanning = false;
     int      x = mouseRel.x;
@@ -292,6 +308,7 @@ void WX_VIEW_CONTROLS::onMotion( wxMouseEvent& aEvent )
         else
             m_updateCursor = true;
 
+        repaintRetained();
         aEvent.Skip();
         return;
     }
@@ -338,6 +355,9 @@ void WX_VIEW_CONTROLS::onMotion( wxMouseEvent& aEvent )
                 VECTOR2D d = m_dragStartPoint - mousePos;
                 m_dragStartPoint = mousePos;
                 VECTOR2D delta = m_view->ToWorld( d, false );
+#ifdef KICAD_GAL_PROFILE
+                latencyProbeZoomToRender.Checkpoint("mouse-mb-pan");
+#endif
                 m_view->SetCenter( m_view->GetCenter() + delta );
                 aEvent.StopPropagation();
             }
@@ -413,14 +433,29 @@ void WX_VIEW_CONTROLS::onMotion( wxMouseEvent& aEvent )
     else
         m_updateCursor = true;
 
+    // EDA_DRAW_PANEL_GAL::OnEvent repaints after the tools see the motion. Painting here would draw
+    // the cursor ahead of what the tools draw for it.
     aEvent.Skip();
+}
+
+
+void WX_VIEW_CONTROLS::repaintRetained()
+{
+    if( m_view->GetGAL() && m_view->GetGAL()->HasRetainedScene() )
+        m_parentPanel->Refresh();
 }
 
 
 void WX_VIEW_CONTROLS::onWheel( wxMouseEvent& aEvent )
 {
+    EDA_DRAW_PANEL_GAL::NoteInput();
+
     const double wheelPanSpeed = 0.001;
     const int    axis = aEvent.GetWheelAxis();
+
+#ifdef KICAD_GAL_PROFILE
+    latencyProbeZoomToRender.Reset();
+#endif
 
     // Native horizontal wheel events (tilt wheels, side-button scroll combos, touchpads) pan the
     // view when "Pan left/right with horizontal movement" is enabled, otherwise they are ignored
@@ -429,11 +464,12 @@ void WX_VIEW_CONTROLS::onWheel( wxMouseEvent& aEvent )
         if( !m_settings.m_horizontalPan )
             return;
 
-        VECTOR2D scrollVec = m_view->ToWorld( m_view->GetScreenPixelSize(), false )
+        VECTOR2D scrollVec = m_view->ToWorld( m_view->GetGAL()->GetLayoutPixelSize(), false )
                              * ( (double) aEvent.GetWheelRotation() * wheelPanSpeed );
 
         m_view->SetCenter( m_view->GetCenter() + VECTOR2D( scrollVec.x, 0.0 ) );
         refreshMouse( true );
+        repaintRetained();
         return;
     }
 
@@ -468,11 +504,22 @@ void WX_VIEW_CONTROLS::onWheel( wxMouseEvent& aEvent )
         if( modifiers == m_settings.m_scrollModifierZoom && axis == wxMOUSE_WHEEL_VERTICAL )
         {
             const int    rotation = aEvent.GetWheelRotation() * ( m_settings.m_scrollReverseZoom ? -1 : 1 );
-            const double zoomScale = m_zoomController->GetScaleForRotation( rotation );
+
+            // macOS reports a scroll distance rather than notches, so its rotation is never compounded
+#ifdef __WXMAC__
+            const int wheelDelta = 0;
+#else
+            const int wheelDelta = aEvent.GetWheelDelta();
+#endif
+
+            const double zoomScale = m_zoomController->GetScaleForRotation( rotation, wheelDelta );
 
 
+#ifdef KICAD_GAL_PROFILE
+            KI_LOG_TRACE( traceGalProfile, "Zoom: %.5f",  m_view->GetScale() * zoomScale );
+            latencyProbeZoomToRender.Checkpoint("mouse-wheel-zoom");
+#endif
 
-            KI_TRACE( traceGalProfile, "Zoom: %.5f\n",  m_view->GetScale() * zoomScale );
             if( IsCursorWarpingEnabled() )
             {
                 CenterOnCursor();
@@ -484,16 +531,15 @@ void WX_VIEW_CONTROLS::onWheel( wxMouseEvent& aEvent )
                 m_view->SetScale( m_view->GetScale() * zoomScale, anchor );
             }
 
-            aEvent.Skip();
-
             // Refresh the zoom level and mouse position on message panel
             // (mouse position has not changed, only the zoom level has changed):
             refreshMouse( true );
+            repaintRetained();
         }
         else
         {
             // Scrolling
-            VECTOR2D scrollVec = m_view->ToWorld( m_view->GetScreenPixelSize(), false )
+            VECTOR2D scrollVec = m_view->ToWorld( m_view->GetGAL()->GetLayoutPixelSize(), false )
                                  * ( (double) aEvent.GetWheelRotation() * wheelPanSpeed );
             double scrollX = 0.0;
             double scrollY = 0.0;
@@ -512,6 +558,7 @@ void WX_VIEW_CONTROLS::onWheel( wxMouseEvent& aEvent )
 
             m_view->SetCenter( m_view->GetCenter() + delta );
             refreshMouse( true );
+            repaintRetained();
         }
 
         // Do not skip this event, otherwise wxWidgets will fire
@@ -532,6 +579,7 @@ void WX_VIEW_CONTROLS::onMagnify( wxMouseEvent& aEvent )
     VECTOR2D anchor = m_view->ToWorld( VECTOR2D( aEvent.GetX(), aEvent.GetY() ) );
     m_view->SetScale( m_view->GetScale() * ( aEvent.GetMagnification() + 1.0f ), anchor );
 
+    repaintRetained();
     aEvent.Skip();
 }
 
@@ -588,6 +636,8 @@ void WX_VIEW_CONTROLS::onButton( wxMouseEvent& aEvent )
 #if defined USE_MOUSE_CAPTURE
             if( !m_settings.m_cursorCaptured && m_parentPanel->HasCapture() )
                 m_parentPanel->ReleaseMouse();
+
+            syncCursorInCanvas();
 #endif
         }
 
@@ -600,6 +650,8 @@ void WX_VIEW_CONTROLS::onButton( wxMouseEvent& aEvent )
 
 void WX_VIEW_CONTROLS::onEnter( wxMouseEvent& aEvent )
 {
+    m_parentPanel->SetCursorInCanvas( true );
+
     // Avoid stealing focus from text controls
     // This is particularly important for users using On-Screen-Keyboards
     // They may move the mouse over the canvas to reach the keyboard
@@ -628,6 +680,16 @@ void WX_VIEW_CONTROLS::onEnter( wxMouseEvent& aEvent )
 
 void WX_VIEW_CONTROLS::onLeave( wxMouseEvent& aEvent )
 {
+    // MSW sends a leave event when the capture starts, but no enter event follows.
+    if( m_parentPanel->HasCapture() )
+        return;
+
+    // A leave inside the client area while the pointer is still ours is a crossing into the GAL child
+    bool crossingIntoChild = m_parentPanel->GetClientRect().Contains( aEvent.GetPosition() ) && isPointerOverCanvas();
+
+    if( !crossingIntoChild )
+        m_parentPanel->SetCursorInCanvas( false );
+
 #if !defined USE_MOUSE_CAPTURE
     onMotion( aEvent );
 #endif
@@ -642,6 +704,23 @@ void WX_VIEW_CONTROLS::onCaptureLost( wxMouseEvent& aEvent )
     // Note: One cannot call m_parentPanel->CaptureMouse() twice, this is not accepted
     // by wxWidgets (MSW specific) so we need this guard
     m_parentPanel->m_MouseCapturedLost = true;
+
+    syncCursorInCanvas();
+}
+
+
+void WX_VIEW_CONTROLS::syncCursorInCanvas()
+{
+    // Leave events are ignored while captured, so the capture holder keeps the cursor
+    m_parentPanel->SetCursorInCanvas( m_parentPanel->HasCapture() || isPointerOverCanvas() );
+}
+
+
+bool WX_VIEW_CONTROLS::isPointerOverCanvas() const
+{
+    wxWindow* under = wxFindWindowAtPoint( KIPLATFORM::UI::GetMousePosition() );
+
+    return under && ( under == m_parentPanel || m_parentPanel->IsDescendant( under ) );
 }
 
 
@@ -699,6 +778,7 @@ void WX_VIEW_CONTROLS::onTimer( wxTimerEvent& aEvent )
         m_view->SetCenter( m_view->GetCenter() + dir );
 
         refreshMouse( true );
+        repaintRetained();
 
         m_panTimer.Start();
     }
@@ -720,26 +800,39 @@ void WX_VIEW_CONTROLS::onZoomGesture( wxZoomGestureEvent& aEvent )
     }
 
     VECTOR2D evtPos( aEvent.GetPosition().x, aEvent.GetPosition().y );
-    VECTOR2D deltaWorld = m_view->ToWorld( evtPos - m_gestureLastPos, false );
-
-    m_view->SetCenter( m_view->GetCenter() - deltaWorld );
-
-    m_view->SetScale( m_view->GetScale() * aEvent.GetZoomFactor() / m_gestureLastZoomFactor,
-                      m_view->ToWorld( evtPos ) );
+    ApplyPanAndZoomGesture( evtPos - m_gestureLastPos,
+                           aEvent.GetZoomFactor() / m_gestureLastZoomFactor, evtPos );
 
     m_gestureLastZoomFactor = aEvent.GetZoomFactor();
     m_gestureLastPos = evtPos;
-
-    refreshMouse( true );
 }
 
 
 void WX_VIEW_CONTROLS::onPanGesture( wxPanGestureEvent& aEvent )
 {
+    // GTK reports a left button drag as a pan when the panel itself takes the mouse. That drag
+    // belongs to the tools.
+    if( wxGetMouseState().LeftIsDown() )
+    {
+        aEvent.Skip();
+        return;
+    }
+
     VECTOR2I screenDelta( aEvent.GetDelta().x, aEvent.GetDelta().y );
-    VECTOR2D deltaWorld = m_view->ToWorld( screenDelta, false );
+
+    ApplyPanAndZoomGesture( screenDelta, 1.0, VECTOR2D() );
+}
+
+
+void WX_VIEW_CONTROLS::ApplyPanAndZoomGesture( const VECTOR2D& aPanDelta, double aZoomFactor,
+                                               const VECTOR2D& aZoomAnchor )
+{
+    VECTOR2D deltaWorld = m_view->ToWorld( aPanDelta, false );
 
     m_view->SetCenter( m_view->GetCenter() - deltaWorld );
+
+    if( std::isfinite( aZoomFactor ) && aZoomFactor > 0.0 && aZoomFactor != 1.0 )
+        m_view->SetScale( m_view->GetScale() * aZoomFactor, m_view->ToWorld( aZoomAnchor ) );
 
     refreshMouse( true );
 }
@@ -799,7 +892,7 @@ void WX_VIEW_CONTROLS::onScroll( wxScrollWinEvent& aEvent )
             KI_CHECK_MSG( false, /* void */, wxT( "Unhandled event type" ) );
         }
 
-        VECTOR2D scroll = m_view->ToWorld( m_view->GetScreenPixelSize(), false ) * dist;
+        VECTOR2D scroll = m_view->ToWorld( m_view->GetGAL()->GetLayoutPixelSize(), false ) * dist;
 
         double scrollX = 0.0;
         double scrollY = 0.0;
@@ -842,6 +935,8 @@ void WX_VIEW_CONTROLS::CaptureCursor( bool aEnabled )
 
         // Mouse is released, calling CaptureMouse() is allowed now:
         m_parentPanel->m_MouseCapturedLost = true;
+
+        syncCursorInCanvas();
     }
 #endif
     VIEW_CONTROLS::CaptureCursor( aEnabled );
@@ -857,6 +952,8 @@ void WX_VIEW_CONTROLS::CancelDrag()
 #if defined USE_MOUSE_CAPTURE
         if( !m_settings.m_cursorCaptured && m_parentPanel->HasCapture() )
             m_parentPanel->ReleaseMouse();
+
+        syncCursorInCanvas();
 #endif
     }
 

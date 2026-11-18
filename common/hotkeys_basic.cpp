@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <kiface_base.h>
@@ -436,17 +432,18 @@ int WriteHotKeyConfig( const std::vector<TOOL_ACTION*>& aActions )
 
     // Overlay the current app's hotkey definitions onto the map
     for( const TOOL_ACTION* action : aActions )
-        hotkeys[ action->GetName() ] = std::pair<int, int>( action->GetHotKey(),
-                                                            action->GetHotKeyAlt() );
+        hotkeys[ action->GetName() ] = std::pair<int, int>( action->GetHotKey(), action->GetHotKeyAlt() );
 
     // Write entire hotkey set
     wxFFileOutputStream outStream( fn.GetFullPath() );
     wxTextOutputStream  txtStream( outStream, wxEOL_UNIX );
 
     for( const std::pair<const std::string, std::pair<int, int>>& entry : hotkeys )
+    {
         txtStream << entry.first
             << "\t" << KeyNameFromKeyCode( entry.second.first )
             << "\t" << KeyNameFromKeyCode( entry.second.second ) << endl;
+    }
 
     txtStream.Flush();
     outStream.Close();

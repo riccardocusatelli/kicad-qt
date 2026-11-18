@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef GERBVIEW_INSPECTION_TOOL_H
@@ -37,16 +37,16 @@ public:
     /// @copydoc TOOL_BASE::Reset()
     void Reset( RESET_REASON aReason ) override;
 
-    ///< Launch a tool to measure between points
+    /// Launch a tool to measure between points
     int MeasureTool( const TOOL_EVENT& aEvent );
 
-    ///< Show a list of the DCodes
+    /// Show a list of the DCodes
     int ShowDCodes( const TOOL_EVENT& aEvent );
 
-    ///< Show the source for the gerber file
+    /// Show the source for the gerber file
     int ShowSource( const TOOL_EVENT& aEvent );
 
-    ///< Set up handlers for various events.
+    /// Set up handlers for various events.
     void setTransitions() override;
 
 private:

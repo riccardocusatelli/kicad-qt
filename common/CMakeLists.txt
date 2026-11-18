@@ -22,6 +22,9 @@ include_directories(
 # Get the GAL Target
 add_subdirectory( gal )
 
+# Get the RHI (Rendering Hardware Interface) library
+add_subdirectory( rhi )
+
 # Get the netlist reader library
 add_subdirectory( netlist_reader )
 
@@ -103,28 +106,52 @@ set( KICOMMON_MODEL_SRCS
     gal/color4d.cpp
 
     # Git
-    git/git_add_to_index_handler.cpp
     git/git_branch_handler.cpp
     git/git_clone_handler.cpp
     git/git_commit_handler.cpp
     git/git_config_handler.cpp
     git/git_compare_handler.cpp
+    git/kigit_driver_registry.cpp
+    git/kigit_merge_blob_utils.cpp
     git/git_init_handler.cpp
     git/project_git_utils.cpp
     git/git_pull_handler.cpp
     git/git_push_handler.cpp
-    git/git_remove_from_index_handler.cpp
     git/git_remove_vcs_handler.cpp
-    git/git_resolve_conflict_handler.cpp
-    git/git_revert_handler.cpp
+    git/git_repo_mixin.cpp
     git/git_status_handler.cpp
     git/git_switch_branch_handler.cpp
-    git/git_sync_handler.cpp
+    git/git_transfer_busy.cpp
     git/kicad_git_common.cpp
     git/kicad_git_errors.cpp
+    git/kigit_author.cpp
+    git/text_diff.cpp
     git/git_backend.cpp
     git/kigit_orphan_registry.cpp
+    git/kigit_failure.cpp
+    git/kigit_ignore.cpp
+    git/kigit_known_hosts.cpp
+    git/kigit_ssh_keys.cpp
+    git/kigit_transport.cpp
     git/libgit_backend.cpp
+
+    # Diff/merge engine
+    diff_merge/auto_resolution.cpp
+    diff_merge/diff_tree_grouping.cpp
+    diff_merge/kicad_diff_types.cpp
+    diff_merge/diff_scene.cpp
+    diff_merge/diff_doc_kind.cpp
+    diff_merge/merge_dispatch.cpp
+    diff_merge/identity_reconciler.cpp
+    diff_merge/kicad_differ.cpp
+    diff_merge/kicad_merge_engine.cpp
+    diff_merge/merge_validation_pipeline.cpp
+    diff_merge/merge_validators.cpp
+    diff_merge/project_file_patch.cpp
+    diff_merge/property_value_converter.cpp
+
+    # Properties
+    properties/wx_any_utils.cpp
 
     # Jobs
     jobs/job.cpp
@@ -133,41 +160,62 @@ set( KICOMMON_MODEL_SRCS
     jobs/jobs_output.cpp
     jobs/jobs_output_archive.cpp
     jobs/jobs_output_folder.cpp
+    jobs/job_export_bom.cpp
     jobs/job_export_pcb_drill.cpp
     jobs/job_export_pcb_dxf.cpp
     jobs/job_export_pcb_gerber.cpp
     jobs/job_export_pcb_gerbers.cpp
     jobs/job_export_pcb_hpgl.cpp
     jobs/job_export_pcb_ipc2581.cpp
+    jobs/job_export_pcb_fab.cpp
     jobs/job_export_pcb_ipcd356.cpp
+    jobs/job_export_pcb_idf.cpp
     jobs/job_export_pcb_odb.cpp
     jobs/job_export_pcb_pdf.cpp
+    jobs/job_export_pcb_png.cpp
     jobs/job_export_pcb_stats.cpp
+    jobs/job_export_pcb_stackup.cpp
     jobs/job_export_pcb_plot.cpp
     jobs/job_export_pcb_pos.cpp
     jobs/job_export_pcb_ps.cpp
     jobs/job_export_pcb_svg.cpp
     jobs/job_export_pcb_gencad.cpp
+    jobs/job_export_pcb_specctra_dsn.cpp
     jobs/job_export_pcb_3d.cpp
-    jobs/job_export_sch_bom.cpp
     jobs/job_export_sch_netlist.cpp
     jobs/job_export_sch_plot.cpp
     jobs/job_export_sch_pythonbom.cpp
+    jobs/job_special_archive.cpp
     jobs/job_special_copyfiles.cpp
     jobs/job_special_execute.cpp
     jobs/job_unknown.cpp
     jobs/jobset.cpp
     jobs/job_fp_export_svg.cpp
     jobs/job_fp_upgrade.cpp
+    jobs/job_fp_downgrade.cpp
+    jobs/job_gerber_diff.cpp
+    jobs/job_gerber_export_png.cpp
+    jobs/job_gerber_info.cpp
+    jobs/job_import_utils.cpp
     jobs/job_pcb_import.cpp
+    jobs/job_sch_import.cpp
+    jobs/job_sch_link_footprints.cpp
     jobs/job_pcb_render.cpp
     jobs/job_pcb_drc.cpp
+    jobs/job_diff_base.cpp
+    jobs/job_pcb_diff.cpp
+    jobs/job_fp_diff.cpp
+    jobs/job_sch_diff.cpp
+    jobs/job_sym_diff.cpp
     jobs/job_rc.cpp
     jobs/job_sch_erc.cpp
     jobs/job_sym_export_svg.cpp
     jobs/job_sym_upgrade.cpp
+    jobs/job_sym_downgrade.cpp
     jobs/job_pcb_upgrade.cpp
+    jobs/job_pcb_downgrade.cpp
     jobs/job_sch_upgrade.cpp
+    jobs/job_sch_downgrade.cpp
 
     local_history.cpp
     history_lock.cpp
@@ -178,6 +226,9 @@ set( KICOMMON_MODEL_SRCS
     libraries/library_manager.cpp
     libraries/library_table.cpp
     libraries/library_table_parser.cpp
+
+    model_preview_manager.cpp
+    model_preview_manager_windows_classifier.cpp
 
     settings/app_settings.cpp
     settings/aui_settings.cpp
@@ -197,11 +248,15 @@ set( KICOMMON_MODEL_SRCS
     project/net_settings.cpp
     project/project_archiver.cpp
     project/project_file.cpp
+    project/project_file_downgrade.cpp
     project/project_local_settings.cpp
     project/tuning_profiles.cpp
 
+    template_fieldnames.cpp
+
     text_eval/text_eval_wrapper.cpp
     text_eval/text_eval_parser.cpp
+    text_eval/text_eval_environment.cpp
     text_eval/text_eval_vcs.cpp
 
     # This is basically a settings object, but for the toolbar
@@ -211,6 +266,8 @@ set( KICOMMON_MODEL_SRCS
     widgets/progress_reporter_base.cpp
     widgets/report_severity.cpp
 
+    database/access_fast_exit.cpp
+    database/database_autofill.cpp
     database/database_lib_settings.cpp
 
     design_block.cpp
@@ -228,8 +285,10 @@ set( KICOMMON_MODEL_SRCS
     build_version.cpp
     cli_progress_reporter.cpp
     common.cpp
+    text_var_dependency.cpp
     config_params.cpp
     dsnlexer.cpp
+    eda_cursor_broadcaster.cpp
     eda_pattern_match.cpp
     eda_units.cpp
     embedded_files.cpp
@@ -240,7 +299,9 @@ set( KICOMMON_MODEL_SRCS
     increment.cpp
     json_conversions.cpp
     json_schema_validator.cpp
+    jumper_group.cpp
     kiid.cpp
+    ki_error.cpp
     layer_id.cpp
     lib_id.cpp
     locale_io.cpp
@@ -253,6 +314,7 @@ set( KICOMMON_MODEL_SRCS
     oauth/oauth_session.cpp
     oauth/secure_token_store.cpp
     paths.cpp
+    pin_map.cpp
     project.cpp
     remote_provider_client.cpp
     remote_provider_metadata.cpp
@@ -279,18 +341,28 @@ set( KICOMMON_MODEL_SRCS
     io/io_base.cpp
     io/io_utils.cpp
 
-    api/serializable.cpp
-    api/api_utils.cpp
+    api/api_client.cpp
     api/api_enums.cpp
+    api/api_utils.cpp
+    api/serializable.cpp
 
     )
 
 # kicommon: the GUI part (dialogs, widgets, KIWAY, PGM_GUI), on top of kicommon_model.
 set( KICOMMON_SRCS
+    api/api_handler.cpp
+    api/api_plugin.cpp
+    api/api_plugin_manager.cpp
+    api/api_server.cpp
+    api/api_task_scheduler.cpp
+    api/cross_probe_client.cpp
+    api/python_manager.cpp
     kicad_gl/gl_utils.cpp
     kicad_gl/gl_context_mgr.cpp
     toolkit/process_wx.cpp
-    toolkit/single_instance_wx.cpp
+    dialogs/eda_list_dialog.cpp
+    dialogs/eda_list_dialog_base.cpp
+    dialogs/dialog_fields_table_base.cpp
     dialogs/dialog_rc_job.cpp
     dialogs/dialog_rc_job_base.cpp
     dialogs/dialog_restore_local_history.cpp
@@ -301,6 +373,8 @@ set( KICOMMON_SRCS
     grid_tricks.cpp
     widgets/aui_json_serializer.cpp
     widgets/bitmap_button.cpp
+    widgets/field_warning_icon.cpp
+    widgets/file_checklist_ctrl.cpp
     widgets/grid_combobox.cpp
     widgets/grid_icon_text_helpers.cpp
     widgets/grid_text_button_helpers.cpp
@@ -308,11 +382,15 @@ set( KICOMMON_SRCS
     widgets/html_window.cpp
     widgets/indicator_icon.cpp
     widgets/kistatusbar.cpp
+    widgets/kistatusbar_popup.cpp
     widgets/number_badge.cpp
     widgets/std_bitmap_button.cpp
     widgets/ui_common.cpp
     widgets/up_down_tree.cpp
+    widgets/wx_collapsible_pane.cpp
+    widgets/wx_dataviewctrl.cpp
     widgets/wx_grid.cpp
+    widgets/wx_data_view_hyperlink_renderer.cpp
     widgets/wx_html_report_panel.cpp
     widgets/wx_html_report_panel_base.cpp
     widgets/wx_html_report_box.cpp
@@ -351,6 +429,16 @@ set( KICOMMON_SRCS
     raster_image_wx.cpp
     )
 
+if( APPLE )
+    list( APPEND KICOMMON_SRCS rhi/rhi_metal_view.mm )
+    set_source_files_properties( rhi/rhi_metal_view.mm
+        PROPERTIES
+            LANGUAGE OBJCXX
+            COMPILE_FLAGS "-fobjc-arc"
+            SKIP_PRECOMPILE_HEADERS ON
+    )
+endif()
+
 if( UNIX AND NOT APPLE )
     list( APPEND KICOMMON_SRCS
         spacenav/libspnav_driver.cpp
@@ -360,18 +448,6 @@ endif()
 list( APPEND KICOMMON_SRCS
     navlib_safe_init.cpp
 )
-
-if( KICAD_IPC_API )
-    set( KICOMMON_SRCS
-        ${KICOMMON_SRCS}
-        api/api_handler.cpp
-        api/api_plugin.cpp
-        api/api_plugin_manager.cpp
-        api/api_server.cpp
-
-        ../scripting/python_manager.cpp
-    )
-endif()
 
 add_library( kicommon_model SHARED
     ${KICOMMON_MODEL_SRCS}
@@ -431,6 +507,7 @@ target_link_libraries( kicommon_model
     core
     kiapi
     kimath
+    kinng
     kiplatform_core
     nlohmann_json
     nlohmann_json_schema_validator
@@ -463,7 +540,23 @@ target_link_libraries( kicommon
 
     # needed because of python_scripting.cpp
     ${PYTHON_LIBRARIES}
+   	${FREETYPE_LIBRARIES}
+   	${HarfBuzz_LIBRARIES}
+	${Fontconfig_LIBRARIES}
     )
+
+if( APPLE )
+    target_link_libraries( kicommon
+        "-framework Metal"
+        "-framework QuartzCore"
+        "-framework AppKit"
+    )
+endif()
+
+if( WIN32 )
+    # access_fast_exit.cpp flushes the OLE clipboard
+    target_link_libraries( kicommon ole32 )
+endif()
 
 
 if( KICAD_USE_SENTRY )
@@ -471,12 +564,6 @@ if( KICAD_USE_SENTRY )
         sentry )
 
     set_property(SOURCE app_monitor.cpp APPEND PROPERTY COMPILE_DEFINITIONS KICAD_SENTRY_DSN="${KICAD_SENTRY_DSN}")
-endif()
-
-if( KICAD_IPC_API )
-    target_link_libraries( kicommon
-        kinng
-        )
 endif()
 
 include( ${KICAD_CMAKE_MODULE_PATH}/KiCadVersion.cmake )
@@ -555,12 +642,40 @@ set( COMMON_ABOUT_DLG_SRCS
     )
 
 set( COMMON_GIT_DLG_SRCS
-    dialogs/git/dialog_git_commit.cpp
     dialogs/git/dialog_git_switch.cpp
     dialogs/git/dialog_git_credentials.cpp
+    dialogs/git/git_credentials_prompt.cpp
     dialogs/git/dialog_git_credentials_base.cpp
     dialogs/git/dialog_git_repository.cpp
     dialogs/git/dialog_git_repository_base.cpp
+    dialogs/git/dialog_text_diff.cpp
+    dialogs/git/dialog_text_diff_base.cpp
+    dialogs/git/dialog_git_identity.cpp
+    dialogs/git/dialog_git_identity_base.cpp
+    dialogs/git/dialog_git_new_tag.cpp
+    dialogs/git/dialog_git_new_tag_base.cpp
+    dialogs/git/dialog_git_remote.cpp
+    dialogs/git/dialog_git_remote_base.cpp
+    dialogs/git/dialog_git_advanced_base.cpp
+    dialogs/git/git_advanced_dialog.cpp
+    dialogs/git/git_commit_pane.cpp
+    dialogs/git/git_commit_pane_base.cpp
+    dialogs/git/git_file_diff_area.cpp
+    dialogs/git/git_status_entries.cpp
+    dialogs/git/git_transfer.cpp
+    dialogs/git/git_ui_utils.cpp
+    dialogs/git/panel_git_branches.cpp
+    dialogs/git/panel_git_branches_base.cpp
+    dialogs/git/panel_git_history.cpp
+    dialogs/git/panel_git_history_base.cpp
+    dialogs/git/panel_git_remotes.cpp
+    dialogs/git/panel_git_remotes_base.cpp
+    dialogs/git/panel_git_repository.cpp
+    dialogs/git/panel_git_repository_base.cpp
+    dialogs/git/panel_git_stashes.cpp
+    dialogs/git/panel_git_stashes_base.cpp
+    dialogs/git/panel_git_tags.cpp
+    dialogs/git/panel_git_tags_base.cpp
     dialogs/git/panel_git_repos.cpp
     dialogs/git/panel_git_repos_base.cpp
 
@@ -574,6 +689,13 @@ set( COMMON_DLG_SRCS
     dialogs/dialog_autosave_recovery_base.cpp
     dialogs/dialog_book_reporter.cpp
     dialogs/dialog_book_reporter_base.cpp
+    dialogs/dialog_git_mr_review.cpp
+    dialogs/dialog_git_mr_review_base.cpp
+    dialogs/dialog_kicad_diff.cpp
+    dialogs/dialog_kicad_diff_base.cpp
+    dialogs/dialog_kicad_merge_3way.cpp
+    dialogs/dialog_kicad_merge_3way_base.cpp
+    dialogs/dialog_convert_image_to_outlines.cpp
     dialogs/dialog_color_picker.cpp
     dialogs/dialog_color_picker_base.cpp
     dialogs/dialog_configure_paths.cpp
@@ -582,6 +704,8 @@ set( COMMON_DLG_SRCS
     dialogs/dialog_design_block_properties_base.cpp
     dialogs/dialog_display_html_text_base.cpp
     dialogs/dialog_edit_library_tables.cpp
+    dialogs/dialog_fields_table.cpp
+    dialogs/fields_table_data_model.cpp
     dialogs/dialog_grid_settings.cpp
     dialogs/dialog_grid_settings_base.cpp
     dialogs/dialog_group_properties.cpp
@@ -589,6 +713,8 @@ set( COMMON_DLG_SRCS
     dialogs/dialog_hotkey_list.cpp
     dialogs/dialog_import_choose_project.cpp
     dialogs/dialog_import_choose_project_base.cpp
+    dialogs/dialog_import_gfx.cpp
+    dialogs/dialog_import_gfx_base.cpp
     dialogs/dialog_multi_unit_entry.cpp
     dialogs/dialog_page_settings_base.cpp
     dialogs/dialog_paste_special.cpp
@@ -596,18 +722,21 @@ set( COMMON_DLG_SRCS
     dialogs/dialog_plugin_options.cpp
     dialogs/dialog_plugin_options_base.cpp
     dialogs/dialog_text_entry_base.cpp
+    dialogs/dialog_downgrade_report.cpp
+    dialogs/dialog_downgrade_report_base.cpp
+    dialogs/dialog_export_older_version.cpp
+    dialogs/dialog_export_older_version_base.cpp
     dialogs/dialog_page_settings.cpp
     dialogs/dialog_print_generic.cpp
     dialogs/dialog_print_generic_base.cpp
     dialogs/dialog_text_entry.cpp
     dialogs/dialog_unit_entry.cpp
     dialogs/dialog_unit_entry_base.cpp
-    dialogs/eda_list_dialog.cpp
-    dialogs/eda_list_dialog_base.cpp
     dialogs/eda_reorderable_list_dialog.cpp
     dialogs/eda_reorderable_list_dialog_base.cpp
     dialogs/eda_view_switcher.cpp
     dialogs/eda_view_switcher_base.cpp
+    dialogs/fields_view_controls_grid_data_model.cpp
     dialogs/hotkey_cycle_popup.cpp
     dialogs/html_message_box.cpp
     dialogs/panel_color_settings_base.cpp
@@ -631,6 +760,8 @@ set( COMMON_DLG_SRCS
     dialogs/panel_maintenance_base.cpp
     dialogs/panel_mouse_settings.cpp
     dialogs/panel_mouse_settings_base.cpp
+    dialogs/panel_snapping.cpp
+    dialogs/panel_snapping_base.cpp
     dialogs/panel_spacemouse.cpp
     dialogs/panel_spacemouse_base.cpp
     dialogs/panel_packages_and_updates.cpp
@@ -647,8 +778,6 @@ set( COMMON_DLG_SRCS
     dialogs/panel_text_variables_base.cpp
     dialogs/panel_toolbar_customization.cpp
     dialogs/panel_toolbar_customization_base.cpp
-
-    dialogs/rule_editor_dialog_base.cpp
 
     libraries/lib_table_grid_data_model.cpp
     )
@@ -671,14 +800,18 @@ set( COMMON_WIDGET_SRCS
     widgets/filter_combobox.cpp
     widgets/font_choice.cpp
     widgets/footprint_choice.cpp
+    widgets/line_ending_bitmap.cpp
     widgets/footprint_diff_widget.cpp
     widgets/footprint_preview_widget.cpp
+    widgets/widget_diff_canvas.cpp
     widgets/footprint_select_widget.cpp
     widgets/grid_bitmap_toggle.cpp
     widgets/grid_button.cpp
     widgets/grid_checkbox.cpp
     widgets/grid_color_swatch_helpers.cpp
     widgets/wx_infobar.cpp
+    widgets/editor_tabs_panel.cpp
+    widgets/kicad_tab_art.cpp
     widgets/layer_box_selector.cpp
     widgets/layer_presentation.cpp
     widgets/lib_tree.cpp
@@ -704,9 +837,8 @@ set( COMMON_WIDGET_SRCS
     widgets/wx_aui_art_providers.cpp
     widgets/wx_aui_utils.cpp
     widgets/wx_busy_indicator.cpp
-    widgets/wx_collapsible_pane.cpp
     widgets/wx_combobox.cpp
-    widgets/wx_dataviewctrl.cpp
+    widgets/wx_debounced_action.cpp
     widgets/wx_ellipsized_static_text.cpp
     widgets/wx_listbox.cpp
     widgets/wx_panel.cpp
@@ -734,6 +866,8 @@ set( COMMON_PREVIEW_ITEMS_SRCS
     preview_items/angle_item.cpp
     preview_items/arc_assistant.cpp
     preview_items/arc_geom_manager.cpp
+    preview_items/ellipse_assistant.cpp
+    preview_items/ellipse_geom_manager.cpp
     preview_items/bezier_assistant.cpp
     preview_items/bezier_geom_manager.cpp
     preview_items/centreline_rect_item.cpp
@@ -751,16 +885,24 @@ set( COMMON_PREVIEW_ITEMS_SRCS
     )
 
 set( PLOTTERS_CONTROL_SRCS
+    plotters/drill_markers.cpp
     plotters/plotter.cpp
     plotters/DXF_plotter.cpp
     plotters/GERBER_plotter.cpp
     plotters/PDF_plotter.cpp
     plotters/pdf_stroke_font.cpp
     plotters/pdf_outline_font.cpp
+    plotters/pdf_unicode.cpp
+    plotters/PNG_plotter.cpp
     plotters/PS_plotter.cpp
     plotters/SVG_plotter.cpp
     plotters/common_plot_functions.cpp
     )
+
+
+if( MINGW )
+    set( extra_file ${CMAKE_SOURCE_DIR}/common/streamwrapper.cpp )
+endif( MINGW )
 
 set( COMMON_IO_SRCS
 
@@ -777,6 +919,7 @@ set( COMMON_IO_SRCS
 
     # Eagle
     io/eagle/eagle_parser.cpp
+    io/eagle/eagle_bin_parser.cpp
 
     # EasyEDA
     io/easyeda/easyeda_parser_base.cpp
@@ -785,19 +928,57 @@ set( COMMON_IO_SRCS
     # EasyEDA pro
     io/easyedapro/easyedapro_parser.cpp
     io/easyedapro/easyedapro_import_utils.cpp
+    io/easyedapro/easyedapro_v3_parser.cpp
+
+    # DipTrace
+    io/diptrace/diptrace_binary_reader.cpp
+
+    # Easy-PC / DesignSpark PCB
+    io/easypc/easypc_archive.cpp
+    io/easypc/easypc_classes_connectivity.cpp
+    io/easypc/easypc_classes_geometry.cpp
+    io/easypc/easypc_classes_library.cpp
+    io/easypc/easypc_classes_root.cpp
+    io/easypc/easypc_classes_styles.cpp
+    io/easypc/easypc_design_settings.cpp
+    io/easypc/easypc_document.cpp
+    io/easypc/easypc_file.cpp
+    io/easypc/easypc_text_metrics.cpp
+
+    # TARGET 3001!
+    io/target3001/target3001_fonts.cpp
+    io/target3001/target3001_parser.cpp
+
+    # P-CAD
+    io/pcad/s_expr_loader.cpp
+
+    # IDFv3
+    io/idf/idf_common.cpp
+    io/idf/idf_helpers.cpp
+    io/idf/idf_outlines.cpp
+    io/idf/idf_parser.cpp
+    io/idf/vrml_layer.cpp
+    ${extra_file}
+
 
     io/csv.cpp
     )
 
 set ( COMMON_TRANSLINE_CALCULATION_SRCS
     transline_calculations/transline_calculation_base.cpp
+    transline_calculations/dielectric_djordjevic_sarkar.cpp
     transline_calculations/microstrip.cpp
     transline_calculations/coupled_microstrip.cpp
     transline_calculations/stripline.cpp
     transline_calculations/coupled_stripline.cpp
+    transline_calculations/coax.cpp
+    transline_calculations/coplanar.cpp
+    transline_calculations/rectwaveguide.cpp
+    transline_calculations/twistedpair.cpp
     )
 
 set( COMMON_IMPORT_GFX_SRCS
+    import_gfx/bitmap_import_plugin.cpp
     import_gfx/graphics_import_mgr.cpp
     import_gfx/graphics_importer.cpp
     import_gfx/graphics_importer_buffer.cpp
@@ -818,18 +999,21 @@ set( COMMON_SRCS
 	${FONT_SRCS}
     ${COMMON_IMPORT_GFX_SRCS}
     ${COMMON_TRANSLINE_CALCULATION_SRCS}
+    track_width_calculations.cpp
+    pth_hole_size.cpp
     base_screen.cpp
     bin_mod.cpp
     bitmap_base.cpp
     bitmap_base_dc.cpp
+    bitmap_tracing.cpp
     board_printout.cpp
     clipboard.cpp
+    column_formatter.cpp
     commit.cpp
     draw_panel_gal.cpp
     gal_display_options_common.cpp
     gr_text.cpp
     eda_base_frame.cpp
-    eda_dde.cpp
     eda_draw_frame.cpp
     eda_group.cpp
     eda_item.cpp
@@ -841,6 +1025,7 @@ set( COMMON_SRCS
     filter_reader.cpp
     footprint_filter.cpp
     footprint_info.cpp
+    footprint_library_query.cpp
     gbr_metadata.cpp
     gr_basic.cpp
     gr_text_print.cpp
@@ -848,6 +1033,7 @@ set( COMMON_SRCS
     hotkey_store.cpp
     hotkeys_basic.cpp
     inspectable.cpp
+    item_realignment.cpp
     kiface_base.cpp
     kiface_gui.cpp
     kiway_player.cpp
@@ -867,9 +1053,12 @@ set( COMMON_SRCS
     refdes_utils.cpp
     reference_image.cpp
     render_settings.cpp
+    render_utils.cpp
     status_popup.cpp
+    symbol_library_query.cpp
+    line_ending.cpp
     stroke_params.cpp
-    template_fieldnames.cpp
+    table_io.cpp
     textentry_tricks.cpp
     undo_redo_container.cpp
     validators.cpp
@@ -881,6 +1070,11 @@ set( COMMON_SRCS
 set( COMMON_SRCS
     ${COMMON_SRCS}
 
+    diff_merge/diff_renderer_gal.cpp
+    diff_merge/diff_renderer_plotter.cpp
+    diff_merge/diff_job_output.cpp
+    diff_merge/lib_element_diff.cpp
+
     origin_viewitem.cpp
 
     tool/action_manager.cpp
@@ -888,12 +1082,14 @@ set( COMMON_SRCS
     tool/action_toolbar.cpp
     tool/action_toolbar_controls.cpp
     tool/actions.cpp
+    tool/arc_mode_session.cpp
+    tool/arc_tangent_seed.cpp
     tool/common_control.cpp
     tool/construction_manager.cpp
     tool/common_tools.cpp
     tool/conditional_menu.cpp
     tool/design_block_control.cpp
-    tool/edit_constraints.cpp
+    tool/edit_relations.cpp
     tool/edit_points.cpp
     tool/editor_conditions.cpp
     tool/embed_tool.cpp
@@ -935,7 +1131,14 @@ set( COMMON_SRCS
     properties/property_mgr.cpp
     properties/std_optional_variants.cpp
 
+    database/access_engine_mutex.cpp
+    database/database_backend.cpp
     database/database_connection.cpp
+    database/db_backend_support.cpp
+    database/db_worker_thread.cpp
+    database/odbc_backend.cpp
+    database/sqlite_backend.cpp
+    database/database_value.cpp
 
     http_lib/http_lib_connection.cpp
     http_lib/http_lib_settings.cpp
@@ -950,13 +1153,18 @@ if( UNIX AND NOT APPLE )
     )
 endif()
 
-    if( KICAD_IPC_API )
-    set( COMMON_SRCS
-        ${COMMON_SRCS}
-        api/api_handler_common.cpp
-        api/api_handler_editor.cpp
+if( WIN32 )
+    list( APPEND COMMON_SRCS
+        database/ace_backend.cpp
     )
 endif()
+
+list( APPEND COMMON_SRCS
+    api/api_handler_common.cpp
+    api/api_handler_editor.cpp
+    api/api_handler_libraries.cpp
+    api/api_task_gui_reporter.cpp
+)
 
 add_library( common STATIC
     ${COMMON_SRCS}
@@ -991,21 +1199,23 @@ add_dependencies( common compoundfilereader )  # used by altium_parser.cpp
 target_link_libraries( common
     libcontext
     kimath
+    kinng
     kiplatform
+    snap
     kicommon
     core
     fmt::fmt
     gal
     nanosvg
     dxflib_qcad
+    potrace
     tinyspline_lib
-    scripting
     nlohmann_json
-    pybind11::embed
     compoundfilereader
     Boost::headers
     # Database support needs these two
     nanodbc # for now; maybe hoist out of common
+    ${KICAD_SQLITE3_TARGET}
     Boost::locale
     ${wxWidgets_LIBRARIES}
     ${EXTRA_LIBS}
@@ -1020,10 +1230,9 @@ if( KICAD_USE_SENTRY )
         sentry )
 endif()
 
-if( KICAD_IPC_API )
-    target_link_libraries( common
-        kinng
-        )
+if( WIN32 )
+    # The Access backend talks ADO through COM and maps drive letters to UNC names
+    target_link_libraries( common ole32 oleaut32 mpr )
 endif()
 
 target_include_directories( common
@@ -1036,6 +1245,8 @@ target_include_directories( common
 
 # text markup support
 add_dependencies( common pegtl )
+
+target_compile_definitions( nanodbc PUBLIC NANODBC_THROW_NO_SOURCE_LOCATION )
 
 target_include_directories( common PUBLIC
     $<TARGET_PROPERTY:pegtl,INTERFACE_INCLUDE_DIRECTORIES>
@@ -1058,7 +1269,28 @@ set( PCB_COMMON_SRCS
     ${CMAKE_SOURCE_DIR}/pcbnew/board_design_settings.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/teardrop/teardrop_parameters.cpp     #needed by board_design_settings.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/router/pns_meander.cpp               #needed by board_design_settings.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/board_tables/generated_table_refresh.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/board_tables/generated_table_schema.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/board_tables/stackup_table_model.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/drill/drill_enumerator.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/exporters/fab_model/fab_pin.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/exporters/fab_model/fab_drill.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/exporters/fab_model/fab_sections.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/exporters/fab_model/fab_stackup.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/exporters/fab_model/fab_drill_model.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/exporters/fab_model/fab_layer_index.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/exporters/fab_model/fab_net_names.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/exporters/fab_model/fab_test_points.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/exporters/fab_model/fab_component_row.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/exporters/fab_model/fab_pad_geometry.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/drill/drill_symbol_profile.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/drill/drill_chart_model.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/drill/drill_chart_template.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/drill/drill_symbol_assigner.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/board.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/board_item_index.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/board_exchange_footprint.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/board_text_var_adapter.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/component_classes/component_class.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/component_classes/component_class_assignment_rule.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/component_classes/component_class_cache_proxy.cpp
@@ -1068,11 +1300,17 @@ set( PCB_COMMON_SRCS
     ${CMAKE_SOURCE_DIR}/pcbnew/pcb_dimension.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/pcb_shape.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/pcb_group.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/pcb_3d_body.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/constraints/constraint_builder.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/constraints/constraint_copy.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/constraints/pcb_constraint.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/pcb_marker.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/footprint.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/footprint_courtyard_index.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/footprint_utils.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/footprint_library_adapter.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/fix_board_shape.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/import_net_names.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/layer_utils.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/netinfo_item.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/netinfo_list.cpp
@@ -1083,8 +1321,13 @@ set( PCB_COMMON_SRCS
     ${CMAKE_SOURCE_DIR}/pcbnew/pcb_target.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/pcb_reference_image.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/pcb_field.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/pcb_drill_chart.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/pcb_stackup_table.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/pcb_generated_table.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/pcb_drill_map.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/pcb_table.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/pcb_tablecell.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/pcb_grid_item.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/pcb_text.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/pcb_textbox.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/project_pcb.cpp
@@ -1100,6 +1343,7 @@ set( PCB_COMMON_SRCS
     ${CMAKE_SOURCE_DIR}/pcbnew/connectivity/from_to_cache.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/convert_shape_list_to_polygon.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/drc/drc_engine.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/drc/drc_exclusion.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/drc/drc_cache_generator.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/drc/drc_item.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/drc/drc_rule.cpp
@@ -1140,6 +1384,8 @@ set( PCB_COMMON_SRCS
     ${CMAKE_SOURCE_DIR}/pcbnew/pcb_io/eagle/pcb_io_eagle.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/pcb_io/geda/pcb_io_geda.cpp
 
+    ${CMAKE_SOURCE_DIR}/pcbnew/tools/board_item_geometry.cpp
+    ${CMAKE_SOURCE_DIR}/pcbnew/tools/match_properties.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/tools/pcb_grid_helper.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/tools/pcb_actions.cpp
     ${CMAKE_SOURCE_DIR}/pcbnew/tools/pcb_editor_conditions.cpp

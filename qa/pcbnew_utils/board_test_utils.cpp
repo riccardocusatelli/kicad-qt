@@ -14,14 +14,12 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <pcbnew_utils/board_test_utils.h>
+
+#include <qa_utils/file_utils.h>
 
 #include <iostream>
 #include <filesystem>
@@ -41,7 +39,7 @@
 #include <zone.h>
 #include <zone_filler.h>
 #include <length_delay_calculation/length_delay_calculation.h>
-#include <drc/drc_cache_generator.h>
+#include <drc/drc_engine.h>
 #include <pcbnew_utils/board_file_utils.h>
 #include <settings/settings_manager.h>
 #include <tool/tool_manager.h>
@@ -107,19 +105,22 @@ void LoadBoard( SETTINGS_MANAGER& aSettingsManager, const wxString& aRelPath,
     if( projectFile.Exists() )
     {
         aSettingsManager.LoadProject( projectFile.GetFullPath() );
-        BOOST_TEST_MESSAGE( "Loading project file: " << projectFile.GetFullPath() );
+        BOOST_TEST_CHECKPOINT( "Loading project file: " << projectFile.GetFullPath() );
     }
     else if( legacyProject.Exists() )
     {
         aSettingsManager.LoadProject( legacyProject.GetFullPath() );
-        BOOST_TEST_MESSAGE( "Loading project file: " << projectFile.GetFullPath() );
+        BOOST_TEST_CHECKPOINT( "Loading project file: " << projectFile.GetFullPath() );
     }
     else
+    {
         BOOST_TEST_MESSAGE( "Could not load project: " << projectFile.GetFullPath() );
+    }
 
-    BOOST_TEST_MESSAGE( "Loading board file: " << boardPath );
+    BOOST_TEST_CHECKPOINT( "Loading board file: " << boardPath );
 
-    try {
+    try
+    {
         aBoard = ReadBoardFromFileOrStream( boardPath );
     }
     catch( const IO_ERROR& ioe )
@@ -189,19 +190,6 @@ void LoadBoard( SETTINGS_MANAGER& aSettingsManager, const wxString& aRelPath,
             BOOST_TEST_ERROR( "Exception in SynchronizeComponentClasses: " << e.what() );
             return;
         }
-
-        BOOST_TEST_CHECKPOINT( "Run DRC cache generator" );
-        try
-        {
-            DRC_CACHE_GENERATOR cacheGenerator;
-            cacheGenerator.SetDRCEngine( m_DRCEngine.get() );
-            cacheGenerator.Run();
-        }
-        catch( const std::exception& e )
-        {
-            BOOST_TEST_ERROR( "Exception in DRC cache generator: " << e.what() );
-            return;
-        }
     }
 }
 
@@ -242,9 +230,9 @@ void LoadAndTestBoardFile( const wxString aRelativePath, bool aRoundtrip,
 
     if( aRoundtrip )
     {
-        TEMPORARY_DIRECTORY tempLib( "kicad_qa_brd_roundtrip", "" );
+        SCOPED_TEMP_DIR tempDir( "kicad_qa_brd_roundtrip" );
 
-        const auto savePath = tempLib.GetPath() / ( aRelativePath.ToStdString() + ".kicad_pcb" );
+        const auto savePath = tempDir.Path() / ( aRelativePath.ToStdString() + ".kicad_pcb" );
         KI_TEST::DumpBoardToFile( *board1, savePath.string() );
 
         std::unique_ptr<BOARD> board2 = KI_TEST::ReadBoardFromFileOrStream( savePath.string() );
@@ -268,7 +256,7 @@ void LoadAndTestFootprintFile( const wxString& aLibRelativePath, const wxString&
                                          + aFpName.ToStdString() + ".kicad_mod";
 
     BOOST_TEST_MESSAGE( "Loading footprint to test: " << absFootprintPath );
-    std::unique_ptr<FOOTPRINT> fp1 = KI_TEST::ReadFootprintFromFileOrStream( absFootprintPath );
+    std::unique_ptr<FOOTPRINT> fp1 = KI_TEST::ReadFootprintFromFile( absFootprintPath, aFpName );
 
     // Should load - if it doesn't we're done for
     BOOST_REQUIRE( fp1 );
@@ -290,18 +278,18 @@ void LoadAndTestFootprintFile( const wxString& aLibRelativePath, const wxString&
          * written properly, we don't leave a library behind that will cause exceptions
          * when the cache is set up on future runs.
          */
-        TEMPORARY_DIRECTORY tempLib( "kicad_qa_fp_roundtrip", ".pretty" );
-        const wxString      fpFilename = fp1->GetFPID().GetLibItemName() + wxString( ".kicad_mod" );
+        wxString                    fileName = fp1->GetFPID().GetUniStringLibItemName() + ".kicad_mod";
+        SCOPED_TEMP_DIR             tempDir( "kicad_qa_fp_roundtrip" );
+        const std::filesystem::path libPath = tempDir.CreateChildDir( "fp_roundtrip.pretty" );
+        const std::filesystem::path savePath = libPath / fileName.ToStdString();
 
-        BOOST_TEST_MESSAGE( "Resaving footprint: " << fpFilename << " in " << tempLib.GetPath() );
+        BOOST_TEST_MESSAGE( "Resaving footprint: " << savePath.stem() << " in " << libPath );
 
-        KI_TEST::DumpFootprintToFile( *fp1, tempLib.GetPath().string() );
+        KI_TEST::DumpFootprintToFile( *fp1, savePath );
 
-        const auto fp2Path = tempLib.GetPath() / fpFilename.ToStdString();
+        BOOST_TEST_MESSAGE( "Re-reading footprint: " << savePath.stem() << " in " << libPath );
 
-        BOOST_TEST_MESSAGE( "Re-reading footprint: " << fpFilename << " in " << tempLib.GetPath() );
-
-        std::unique_ptr<FOOTPRINT> fp2 = KI_TEST::ReadFootprintFromFileOrStream( fp2Path.string() );
+        std::unique_ptr<FOOTPRINT> fp2 = KI_TEST::ReadFootprintFromFile( savePath, aFpName );
 
         // Should load again
         BOOST_REQUIRE( fp2 );
@@ -495,19 +483,19 @@ void CheckFpPad( const PAD* expected, const PAD* pad )
         BOOST_CHECK_EQUAL( expected->GetNumber(), pad->GetNumber() );
         CHECK_ENUM_CLASS_EQUAL( expected->GetAttribute(), pad->GetAttribute() );
         CHECK_ENUM_CLASS_EQUAL( expected->GetProperty(), pad->GetProperty() );
-        CHECK_ENUM_CLASS_EQUAL( expected->GetShape( PADSTACK::ALL_LAYERS ),
-                                pad->GetShape( PADSTACK::ALL_LAYERS ) );
+        CHECK_ENUM_CLASS_EQUAL( expected->GetShape( PADSTACK::TEMP_ALL_LAYERS ),
+                                pad->GetShape( PADSTACK::TEMP_ALL_LAYERS ) );
 
         BOOST_CHECK_EQUAL( expected->IsLocked(), pad->IsLocked() );
 
         BOOST_CHECK_EQUAL( expected->GetPosition(), pad->GetPosition() );
-        BOOST_CHECK_EQUAL( expected->GetSize( PADSTACK::ALL_LAYERS ),
-                           pad->GetSize( PADSTACK::ALL_LAYERS ) );
+        BOOST_CHECK_EQUAL( expected->GetSize( PADSTACK::TEMP_ALL_LAYERS ),
+                           pad->GetSize( PADSTACK::TEMP_ALL_LAYERS ) );
         BOOST_CHECK_EQUAL( expected->GetOrientation(), pad->GetOrientation() );
-        BOOST_CHECK_EQUAL( expected->GetDelta( PADSTACK::ALL_LAYERS ),
-                           pad->GetDelta( PADSTACK::ALL_LAYERS ) );
-        BOOST_CHECK_EQUAL( expected->GetOffset( PADSTACK::ALL_LAYERS ),
-                           pad->GetOffset( PADSTACK::ALL_LAYERS ) );
+        BOOST_CHECK_EQUAL( expected->GetDelta( PADSTACK::TEMP_ALL_LAYERS ),
+                           pad->GetDelta( PADSTACK::TEMP_ALL_LAYERS ) );
+        BOOST_CHECK_EQUAL( expected->GetOffset( PADSTACK::TEMP_ALL_LAYERS ),
+                           pad->GetOffset( PADSTACK::TEMP_ALL_LAYERS ) );
         BOOST_CHECK_EQUAL( expected->GetDrillSize(), pad->GetDrillSize() );
         CHECK_ENUM_CLASS_EQUAL( expected->GetDrillShape(), pad->GetDrillShape() );
 
@@ -531,31 +519,31 @@ void CheckFpPad( const PAD* expected, const PAD* pad )
                            pad->GetLocalThermalSpokeWidthOverride().value_or( 0 ) );
         BOOST_CHECK_EQUAL( expected->GetThermalSpokeAngle(), pad->GetThermalSpokeAngle() );
         BOOST_CHECK_EQUAL( expected->GetThermalGap(), pad->GetThermalGap() );
-        BOOST_CHECK_EQUAL( expected->GetRoundRectRadiusRatio( PADSTACK::ALL_LAYERS ),
-                           pad->GetRoundRectRadiusRatio( PADSTACK::ALL_LAYERS ) );
-        BOOST_CHECK_EQUAL( expected->GetChamferRectRatio( PADSTACK::ALL_LAYERS ),
-                           pad->GetChamferRectRatio( PADSTACK::ALL_LAYERS ) );
-        BOOST_CHECK_EQUAL( expected->GetChamferPositions( PADSTACK::ALL_LAYERS ),
-                           pad->GetChamferPositions( PADSTACK::ALL_LAYERS ) );
+        BOOST_CHECK_EQUAL( expected->GetRoundRectRadiusRatio( PADSTACK::TEMP_ALL_LAYERS ),
+                           pad->GetRoundRectRadiusRatio( PADSTACK::TEMP_ALL_LAYERS ) );
+        BOOST_CHECK_EQUAL( expected->GetChamferRectRatio( PADSTACK::TEMP_ALL_LAYERS ),
+                           pad->GetChamferRectRatio( PADSTACK::TEMP_ALL_LAYERS ) );
+        BOOST_CHECK_EQUAL( expected->GetChamferPositions( PADSTACK::TEMP_ALL_LAYERS ),
+                           pad->GetChamferPositions( PADSTACK::TEMP_ALL_LAYERS ) );
         BOOST_CHECK_EQUAL( expected->GetRemoveUnconnected(), pad->GetRemoveUnconnected() );
         BOOST_CHECK_EQUAL( expected->GetKeepTopBottom(), pad->GetKeepTopBottom() );
 
         // TODO: did we check everything for complex pad shapes?
-        CHECK_ENUM_CLASS_EQUAL( expected->GetAnchorPadShape( PADSTACK::ALL_LAYERS ),
-                                pad->GetAnchorPadShape( PADSTACK::ALL_LAYERS ) );
+        CHECK_ENUM_CLASS_EQUAL( expected->GetAnchorPadShape( PADSTACK::TEMP_ALL_LAYERS ),
+                                pad->GetAnchorPadShape( PADSTACK::TEMP_ALL_LAYERS ) );
         CHECK_ENUM_CLASS_EQUAL( expected->GetCustomShapeInZoneOpt(),
                                 pad->GetCustomShapeInZoneOpt() );
 
-        BOOST_CHECK_EQUAL( expected->GetPrimitives( PADSTACK::ALL_LAYERS ).size(),
-                           pad->GetPrimitives( PADSTACK::ALL_LAYERS ).size() );
+        BOOST_CHECK_EQUAL( expected->GetPrimitives( PADSTACK::TEMP_ALL_LAYERS ).size(),
+                           pad->GetPrimitives( PADSTACK::TEMP_ALL_LAYERS ).size() );
 
-        if( expected->GetPrimitives( PADSTACK::ALL_LAYERS ).size()
-            == pad->GetPrimitives( PADSTACK::ALL_LAYERS ).size() )
+        if( expected->GetPrimitives( PADSTACK::TEMP_ALL_LAYERS ).size()
+            == pad->GetPrimitives( PADSTACK::TEMP_ALL_LAYERS ).size() )
         {
-            for( size_t i = 0; i < expected->GetPrimitives( PADSTACK::ALL_LAYERS ).size(); ++i )
+            for( size_t i = 0; i < expected->GetPrimitives( PADSTACK::TEMP_ALL_LAYERS ).size(); ++i )
             {
-                CheckFpShape( expected->GetPrimitives( PADSTACK::ALL_LAYERS ).at( i ).get(),
-                              pad->GetPrimitives( PADSTACK::ALL_LAYERS ).at( i ).get() );
+                CheckFpShape( expected->GetPrimitives( PADSTACK::TEMP_ALL_LAYERS ).at( i ).get(),
+                              pad->GetPrimitives( PADSTACK::TEMP_ALL_LAYERS ).at( i ).get() );
             }
         }
     }
@@ -603,8 +591,14 @@ void CheckFpShape( const PCB_SHAPE* expected, const PCB_SHAPE* shape )
 
         BOOST_CHECK_EQUAL( expected->IsLocked(), shape->IsLocked() );
 
-        BOOST_CHECK_EQUAL( expected->GetStart(), shape->GetStart() );
-        BOOST_CHECK_EQUAL( expected->GetEnd(), shape->GetEnd() );
+        // Polygon start/end is a derived bounding-box cache rather than serialized geometry, and
+        // importers that build the outline directly leave it at the origin.  CheckShapePolySet
+        // below compares the authoritative polygon.
+        if( expected->GetShape() != SHAPE_T::POLY )
+        {
+            BOOST_CHECK_EQUAL( expected->GetStart(), shape->GetStart() );
+            BOOST_CHECK_EQUAL( expected->GetEnd(), shape->GetEnd() );
+        }
 
         if( expected->GetShape() == SHAPE_T::ARC )
         {
@@ -826,15 +820,11 @@ void CAPTURING_REPORTER::PrintAllMessages( const std::string& aContext ) const
 
 std::unique_ptr<BOARD> LoadBoardWithCapture( PCB_IO& aIoPlugin, const std::string& aFilePath, REPORTER* aReporter )
 {
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
-
-    if( aReporter )
-        aIoPlugin.SetReporter( aReporter );
+    aIoPlugin.SetReporter( aReporter );
 
     try
     {
-        aIoPlugin.LoadBoard( aFilePath, board.get(), nullptr, nullptr );
-        return board;
+        return aIoPlugin.LoadBoard( aFilePath );
     }
     catch( const IO_ERROR& e )
     {

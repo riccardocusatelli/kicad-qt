@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
@@ -31,6 +27,8 @@
 #include <drc/drc_engine.h>
 #include <connectivity/connectivity_data.h>
 #include <tracks_cleaner.h>
+#include <lset.h>
+#include <generators/pcb_via_stack.h>
 #include <cleanup_item.h>
 #include <drc/drc_engine.h>
 #include <drc/drc_item.h>
@@ -131,13 +129,12 @@ BOOST_DATA_TEST_CASE_F( TRACK_CLEANER_TEST_FIXTURE, FailedToCleanRegressionTests
 
         UNITS_PROVIDER unitsProvider( pcbIUScale, EDA_UNITS::INCH );
 
-        std::map<KIID, EDA_ITEM*> itemMap;
-        m_board->FillItemMap( itemMap );
+        BOARD_RC_ITEM_RESOLVER resolver( *m_board );
 
         for( const std::shared_ptr<CLEANUP_ITEM>& item : realRunItems )
         {
             BOOST_TEST_MESSAGE( item->ShowReport( &unitsProvider, RPT_SEVERITY_ERROR,
-                                                    itemMap ) );
+                                                    resolver ) );
         }
 
         BOOST_ERROR( wxString::Format( "Track cleaner regression: %s, failed",
@@ -225,12 +222,51 @@ BOOST_DATA_TEST_CASE_F( TRACK_CLEANER_TEST_FIXTURE, TrackCleanerRegressionTests,
     {
         UNITS_PROVIDER unitsProvider( pcbIUScale, EDA_UNITS::INCH );
 
-        std::map<KIID, EDA_ITEM*> itemMap;
-        m_board->FillItemMap( itemMap );
+        BOARD_RC_ITEM_RESOLVER resolver( *m_board );
 
         for( const DRC_ITEM& item : violations )
-            BOOST_TEST_MESSAGE( item.ShowReport( &unitsProvider, RPT_SEVERITY_ERROR, itemMap ) );
+            BOOST_TEST_MESSAGE( item.ShowReport( &unitsProvider, RPT_SEVERITY_ERROR, resolver ) );
 
         BOOST_ERROR( wxString::Format( "Track cleaner regression: %s, failed", relPath ) );
     }
+}
+
+
+// A stack dropped under a BGA before anything is routed to it connects only to itself, which is
+// what the dangling-via test looks for. The cleaner must not eat it.
+BOOST_FIXTURE_TEST_CASE( CleanupKeepsAnUnlandedMicroviaStack, TRACK_CLEANER_TEST_FIXTURE )
+{
+    m_board = std::make_unique<BOARD>();
+    m_board->SetCopperLayerCount( 4 );
+    m_board->SetEnabledLayers( LSET::AllCuMask( 4 ) | LSET::AllTechMask() );
+
+    PCB_VIA_STACK* stack = new PCB_VIA_STACK( m_board.get(), F_Cu );
+    stack->SetStartLayer( F_Cu );
+    stack->SetEndLayer( In2_Cu );
+    stack->SetViaSize( 300000 );
+    stack->SetViaDrill( 150000 );
+    stack->SetPosition( VECTOR2I( 10000000, 10000000 ) );
+    m_board->Add( stack );
+    stack->Regenerate( m_board.get(), nullptr );
+
+    const size_t hops = stack->GetBoardItems().size();
+    BOOST_REQUIRE_EQUAL( hops, 2u );
+
+    m_board->BuildConnectivity();
+
+    TOOL_MANAGER toolMgr;
+    toolMgr.SetEnvironment( m_board.get(), nullptr, nullptr, nullptr, nullptr );
+
+    KI_TEST::DUMMY_TOOL* dummyTool = new KI_TEST::DUMMY_TOOL();
+    toolMgr.RegisterTool( dummyTool );
+
+    BOARD_COMMIT                               commit( dummyTool );
+    TRACKS_CLEANER                             cleaner( m_board.get(), commit );
+    std::vector<std::shared_ptr<CLEANUP_ITEM>> items;
+
+    cleaner.CleanupBoard( false, &items, false, false, false, false, false, true );
+
+    BOOST_CHECK_MESSAGE( stack->GetBoardItems().size() == hops,
+                         "cleanup deleted hops of a stack nothing has been routed to yet" );
+    BOOST_CHECK_EQUAL( m_board->Tracks().size(), hops );
 }

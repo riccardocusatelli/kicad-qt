@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
@@ -71,6 +67,7 @@ BOOST_AUTO_TEST_CASE( RoundRectMaskMatchesInflatedOutline )
     auto footprint = std::make_unique<FOOTPRINT>( &board );
 
     auto pad = new PAD( footprint.get() );
+    pad->SetPadstackMode( PADSTACK::MODE::NORMAL );
     pad->SetAttribute( PAD_ATTRIB::SMD );
     pad->SetShape( PADSTACK::ALL_LAYERS, PAD_SHAPE::ROUNDRECT );
     pad->SetSize( PADSTACK::ALL_LAYERS, VECTOR2I( padW, padH ) );
@@ -86,8 +83,7 @@ BOOST_AUTO_TEST_CASE( RoundRectMaskMatchesInflatedOutline )
 
     // Replicate the fixed plot-path mutation: grow the pad to padPlotsSize and
     // grow the corner radius by mask_clearance.
-    pad->SetSize( PADSTACK::ALL_LAYERS,
-                  VECTOR2I( padW + 2 * maskClearance, padH + 2 * maskClearance ) );
+    pad->SetSize( PADSTACK::ALL_LAYERS, VECTOR2I( padW + 2 * maskClearance, padH + 2 * maskClearance ) );
     pad->SetRoundRectCornerRadius( PADSTACK::ALL_LAYERS, originalRadius + maskClearance );
 
     SHAPE_POLY_SET produced;
@@ -127,11 +123,11 @@ BOOST_AUTO_TEST_CASE( RoundRectGerberMaskApertureHasCorrectRadius )
     BOARD board;
     board.GetDesignSettings().m_SolderMaskExpansion = 0;
 
-    auto footprint = std::make_unique<FOOTPRINT>( &board );
-    footprint->SetPosition( VECTOR2I( pcbIUScale.mmToIU( 50.0 ),
-                                      pcbIUScale.mmToIU( 50.0 ) ) );
+    std::unique_ptr<FOOTPRINT> footprint = std::make_unique<FOOTPRINT>( &board );
+    footprint->SetPosition( VECTOR2I( pcbIUScale.mmToIU( 50.0 ), pcbIUScale.mmToIU( 50.0 ) ) );
 
-    auto pad = new PAD( footprint.get() );
+    PAD* pad = new PAD( footprint.get() );
+    pad->SetPadstackMode( PADSTACK::MODE::NORMAL );
     pad->SetAttribute( PAD_ATTRIB::SMD );
     pad->SetShape( PADSTACK::ALL_LAYERS, PAD_SHAPE::ROUNDRECT );
     pad->SetSize( PADSTACK::ALL_LAYERS, VECTOR2I( padW, padH ) );
@@ -215,8 +211,7 @@ BOOST_AUTO_TEST_CASE( RoundRectGerberMaskApertureHasCorrectRadius )
     const double expectedRadiusRatio = static_cast<double>( originalRadius + maskClearance )
                                        / static_cast<double>( padW + 2 * maskClearance );
     const double buggyRadiusRatio    = radiusRatio;
-    BOOST_TEST_MESSAGE( "Expected r/bbox " << expectedRadiusRatio
-                                           << " buggy " << buggyRadiusRatio );
+    BOOST_TEST_MESSAGE( "Expected r/bbox " << expectedRadiusRatio << " buggy " << buggyRadiusRatio );
 
     std::regex arcRe( R"(X(-?\d+)Y(-?\d+)I(-?\d+)J(-?\d+)D01\*)" );
     auto arcBegin = std::sregex_iterator( buffer.begin(), buffer.end(), arcRe );
@@ -232,11 +227,8 @@ BOOST_AUTO_TEST_CASE( RoundRectGerberMaskApertureHasCorrectRadius )
         double ratio = r / static_cast<double>( bboxExtent );
 
         BOOST_CHECK_MESSAGE( std::abs( ratio - expectedRadiusRatio ) < 1e-3,
-                             "Arc radius/bbox ratio " << ratio
-                                                      << " does not match expected "
-                                                      << expectedRadiusRatio
-                                                      << " (buggy value would be "
-                                                      << buggyRadiusRatio << ")" );
+                             "Arc radius/bbox ratio " << ratio << " does not match expected "  << expectedRadiusRatio
+                                                      << " (buggy value would be " << buggyRadiusRatio << ")" );
         arcCount++;
     }
 
@@ -285,6 +277,113 @@ BOOST_AUTO_TEST_CASE( PthPadKeepsMaskOpeningWhenCopperRemoved )
 
     BOOST_CHECK( pad->FlashLayer( F_Mask ) );
     BOOST_CHECK( pad->FlashLayer( B_Mask ) );
+}
+
+
+// The mask of a MODE::CUSTOM pad must cover the aggregate custom shape, not just its anchor.
+BOOST_AUTO_TEST_CASE( CustomPadstackCustomPadMaskCoversAggregate )
+{
+    const int maskClearance = pcbIUScale.mmToIU( 0.2 );
+
+    BOARD board;
+    board.GetDesignSettings().m_SolderMaskExpansion = 0;
+
+    auto footprint = std::make_unique<FOOTPRINT>( &board );
+    footprint->SetPosition( VECTOR2I( pcbIUScale.mmToIU( 50.0 ), pcbIUScale.mmToIU( 50.0 ) ) );
+
+    auto pad = new PAD( footprint.get() );
+    pad->SetAttribute( PAD_ATTRIB::SMD );
+    pad->Padstack().SetMode( PADSTACK::MODE::CUSTOM );
+    // Defined on F_Cu, as the pad editor does. The mask dummy-pad write uses F_Mask.
+    pad->SetShape( F_Cu, PAD_SHAPE::CUSTOM );
+    pad->SetAnchorPadShape( F_Cu, PAD_SHAPE::CIRCLE );
+    pad->SetSize( F_Cu, VECTOR2I( pcbIUScale.mmToIU( 1.0 ), pcbIUScale.mmToIU( 1.0 ) ) );
+    pad->SetLayerSet( LSET( { F_Cu, F_Mask } ) );
+
+    SHAPE_POLY_SET bigRect;
+    bigRect.NewOutline();
+    bigRect.Append( pcbIUScale.mmToIU( 0.5 ), pcbIUScale.mmToIU( 0.5 ) );
+    bigRect.Append( pcbIUScale.mmToIU( 4.5 ), pcbIUScale.mmToIU( 0.5 ) );
+    bigRect.Append( pcbIUScale.mmToIU( 4.5 ), pcbIUScale.mmToIU( 3.5 ) );
+    bigRect.Append( pcbIUScale.mmToIU( 0.5 ), pcbIUScale.mmToIU( 3.5 ) );
+    pad->AddPrimitivePoly( F_Cu, bigRect, 0, true );
+
+    pad->SetPosition( footprint->GetPosition() );
+    pad->SetLocalSolderMaskMargin( maskClearance );
+    footprint->Add( pad );
+    board.Add( footprint.release() );
+
+    SHAPE_POLY_SET expected;
+    pad->TransformShapeToPolygon( expected, F_Mask, maskClearance, pcbIUScale.mmToIU( 0.005 ), ERROR_INSIDE );
+
+    GERBER_PLOTTER         plotter;
+    SIMPLE_RENDER_SETTINGS renderSettings;
+    plotter.SetRenderSettings( &renderSettings );
+    plotter.UseX2format( true );
+    plotter.DisableApertMacros( true );
+
+    wxString gbrPath = wxFileName::CreateTempFileName( wxT( "kicad_gbr_custom_ps" ) );
+    BOOST_REQUIRE( !gbrPath.IsEmpty() );
+    BOOST_REQUIRE( plotter.OpenFile( gbrPath ) );
+
+    plotter.SetViewport( VECTOR2I( 0, 0 ), pcbIUScale.IU_PER_MILS / 10, 1.0, false );
+    BOOST_REQUIRE( plotter.StartPlot( wxT( "1" ) ) );
+
+    PCB_PLOT_PARAMS plotOpts;
+    plotOpts.SetFormat( PLOT_FORMAT::GERBER );
+    plotOpts.SetUseGerberX2format( true );
+    plotOpts.SetDisableGerberMacros( true );
+
+    PlotStandardLayer( &board, &plotter, LSET( { F_Mask } ), plotOpts );
+
+    BOOST_REQUIRE( plotter.EndPlot() );
+
+    wxFFile file( gbrPath, wxT( "rb" ) );
+    BOOST_REQUIRE( file.IsOpened() );
+    wxFileOffset len = file.Length();
+    BOOST_REQUIRE_GT( len, 0 );
+
+    std::string buffer;
+    buffer.resize( static_cast<size_t>( len ) );
+    BOOST_REQUIRE_EQUAL( file.Read( buffer.data(), len ), static_cast<size_t>( len ) );
+    file.Close();
+
+    if( wxFileExists( gbrPath ) )
+        wxRemoveFile( gbrPath );
+
+    std::regex coordRe( R"(X(-?\d+)Y(-?\d+)D0[12]\*)" );
+    auto       coordBegin = std::sregex_iterator( buffer.begin(), buffer.end(), coordRe );
+    auto       coordEnd = std::sregex_iterator();
+
+    long long minX = std::numeric_limits<long long>::max();
+    long long maxX = std::numeric_limits<long long>::min();
+    long long minY = std::numeric_limits<long long>::max();
+    long long maxY = std::numeric_limits<long long>::min();
+    int       coordCount = 0;
+
+    for( auto it = coordBegin; it != coordEnd; ++it )
+    {
+        long long x = std::stoll( ( *it )[1] );
+        long long y = std::stoll( ( *it )[2] );
+        minX = std::min( minX, x );
+        maxX = std::max( maxX, x );
+        minY = std::min( minY, y );
+        maxY = std::max( maxY, y );
+        coordCount++;
+    }
+
+    BOOST_REQUIRE_GE( coordCount, 4 );
+
+    const BOX2I     expectedBB = expected.BBox();
+    const long long plottedW = maxX - minX;
+    const long long plottedH = maxY - minY;
+
+    // Gerber device units are not internal units, so compare the scale-free aspect ratio.
+    // The anchor-only bug plots a circle, giving 1.0 against the aggregate's 1.23.
+    const double expectedAspect = static_cast<double>( expectedBB.GetWidth() ) / expectedBB.GetHeight();
+    const double plottedAspect = static_cast<double>( plottedW ) / plottedH;
+
+    BOOST_CHECK_CLOSE( plottedAspect, expectedAspect, 2.0 );
 }
 
 

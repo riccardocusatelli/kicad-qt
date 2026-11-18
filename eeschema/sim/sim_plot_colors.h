@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef __SIM_PLOT_COLORS__
@@ -55,14 +51,14 @@ public:
     };
 
     /**
-     * @return the wxColor selected in color list.
      * @param aColorId is the index in color list
+     * @return the wxColor selected in color list.
      */
     wxColour GetPlotColor( enum COLOR_SET aColorId );
 
     /**
+     * @param aTraceColors collection of traces in the plot panel
      * @return a new color from the palette
-     * @param a collection of traces in the plot panel
      */
     wxColour GenerateColor( std::map<wxString, wxColour> aTraceColors );
 
@@ -80,7 +76,7 @@ private:
     enum COLOR_SET getPlotColorCount() { return static_cast<enum COLOR_SET>( m_colorList.size() ); }
 
 private:
-    ///< The color list to draw traces, bg, fg, axis...
+    /// The color list to draw traces, bg, fg, axis...
     static std::vector<wxColour> m_colorList;
 
 };

@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef DIALOG_GIT_CREDENTIALS_H
@@ -30,8 +26,14 @@
 class DIALOG_GIT_CREDENTIALS : public DIALOG_GIT_CREDENTIALS_BASE
 {
 public:
-    DIALOG_GIT_CREDENTIALS( wxWindow* aParent, const wxString& aUrl, KIGIT_COMMON::GIT_CONN_TYPE aConnType,
-                            const wxString& aDefaultUsername, const wxString& aDefaultSSHKey );
+    /**
+     * @param aUrl Address being authenticated to. Any password it holds is not shown.
+     * @param aExplanation Why the last attempt failed. Hidden when empty.
+     * @param aConnType Transport of aUrl. GIT_CONN_LOCAL lets the user choose one.
+     */
+    DIALOG_GIT_CREDENTIALS( wxWindow* aParent, const wxString& aUrl, const wxString& aExplanation,
+                            KIGIT_COMMON::GIT_CONN_TYPE aConnType, const wxString& aDefaultUsername,
+                            const wxString& aDefaultSSHKey );
 
     wxString                    GetUsername() const;
     wxString                    GetPassword() const;
@@ -44,6 +46,12 @@ protected:
 
 private:
     void updateFieldsForConnType();
+
+    /// On macOS a disabled wxRadioBox reports its first entry, so the type is kept here.
+    KIGIT_COMMON::GIT_CONN_TYPE m_connType;
+
+    /// The user an SSH address names, which the server requires.
+    wxString m_urlUsername;
 };
 
 #endif // DIALOG_GIT_CREDENTIALS_H

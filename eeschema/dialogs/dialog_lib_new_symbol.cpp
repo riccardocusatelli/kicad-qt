@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "dialog_lib_new_symbol.h"
@@ -37,9 +33,10 @@ static wxString getDerivativeName( const wxString& aParentName )
 }
 
 
-DIALOG_LIB_NEW_SYMBOL::DIALOG_LIB_NEW_SYMBOL( EDA_DRAW_FRAME*      aParent,
-                                              const wxArrayString& aSymbolNames,
-                                              const wxString&      aInheritFromSymbolName,
+
+DIALOG_LIB_NEW_SYMBOL::DIALOG_LIB_NEW_SYMBOL( EDA_DRAW_FRAME* aParent, const wxArrayString& aSymbolNames,
+                                              const std::function<int( const wxString& aItem )>& aDisplayStyleCallback,
+                                              const wxString& aInheritFromSymbolName,
                                               std::function<bool( const wxString& newName )> aValidator ) :
         DIALOG_LIB_NEW_SYMBOL_BASE( dynamic_cast<wxWindow*>( aParent ) ),
         m_pinTextPosition( aParent, m_staticPinTextPositionLabel, m_textPinTextPosition,
@@ -48,15 +45,10 @@ DIALOG_LIB_NEW_SYMBOL::DIALOG_LIB_NEW_SYMBOL( EDA_DRAW_FRAME*      aParent,
         m_inheritFromSymbolName( aInheritFromSymbolName ),
         m_nameIsDefaulted( true )
 {
-    if( aSymbolNames.GetCount() )
-    {
-        wxArrayString unescapedNames;
+    m_comboInheritanceSelect->SetStringList( aSymbolNames );
+    m_comboInheritanceSelect->SetDisplayStyleCallback( aDisplayStyleCallback );
 
-        for( const wxString& name : aSymbolNames )
-            unescapedNames.Add( UnescapeString( name ) );
-
-        m_comboInheritanceSelect->SetStringList( unescapedNames );
-    }
+    m_hint->SetFont( KIUI::GetSmallInfoFont( this ).Italic() );
 
     m_textName->SetValidator( FIELD_VALIDATOR( FIELD_T::VALUE ) );
     m_textReference->SetValidator( FIELD_VALIDATOR( FIELD_T::REFERENCE ) );
@@ -109,8 +101,9 @@ bool DIALOG_LIB_NEW_SYMBOL::TransferDataToWindow()
     CallAfter(
             [&]()
             {
-                /* The combo box `m_comboInheritanceSelect` must first process an update event before the string can be read again.
-                 * The CallAfter() method ensures that the string is available when onParentSymbolSelect() reads it again.
+                /* The combo box `m_comboInheritanceSelect` must first process an update event before the
+                 * string can be read again.  The CallAfter() method ensures that the string is available
+                 * when onParentSymbolSelect() reads it again.
                  */
                 wxCommandEvent dummyEvent;
 
@@ -149,46 +142,31 @@ void DIALOG_LIB_NEW_SYMBOL::onParentSymbolSelect( wxCommandEvent& aEvent )
 
     if( m_textName->IsEmpty() || m_nameIsDefaulted )
     {
-        m_textName->SetValue( getDerivativeName( parent ) );
+        m_textName->SetValue( parent.IsEmpty() ? wxString( _( "Untitled" ) )
+                                               : getDerivativeName( parent ) );
         m_textName->SetInsertionPointEnd();
         m_nameIsDefaulted = true;
     }
 
-    syncControls( !parent.IsEmpty() );
+    syncControls();
 
     /* The banner changes the size of the dialog box, so it needs to be adjusted. */
     Fit();
 }
 
 
-void DIALOG_LIB_NEW_SYMBOL::syncControls( bool aIsDerivedPart )
+void DIALOG_LIB_NEW_SYMBOL::syncControls()
 {
-    m_staticTextDes->Enable( !aIsDerivedPart );
-    m_textReference->Enable( !aIsDerivedPart );
-    m_staticTextUnits->Enable( !aIsDerivedPart );
-    m_spinPartCount->Enable( !aIsDerivedPart );
-    m_checkUnitsInterchangeable->Enable( !aIsDerivedPart );
-    m_checkHasAlternateBodyStyle->Enable( !aIsDerivedPart );
-    m_checkIsPowerSymbol->Enable( !aIsDerivedPart );
-    m_excludeFromBomCheckBox->Enable( !aIsDerivedPart );
-    m_excludeFromBoardCheckBox->Enable( !aIsDerivedPart );
-    m_staticPinTextPositionLabel->Enable( !aIsDerivedPart );
-    m_textPinTextPosition->Enable( !aIsDerivedPart );
-    m_staticPinTextPositionUnits->Enable( !aIsDerivedPart );
+    bool isDerivedPart = !m_comboInheritanceSelect->GetValue().IsEmpty();
 
-    m_checkShowPinNumber->Enable( !aIsDerivedPart );
-    m_checkShowPinName->Enable( !aIsDerivedPart );
-    m_checkShowPinNameInside->Enable( !aIsDerivedPart );
+    m_staticTextDes->Enable( !isDerivedPart );
+    m_textReference->Enable( !isDerivedPart );
+    m_staticTextUnits->Enable( !isDerivedPart );
+    m_spinPartCount->Enable( !isDerivedPart );
+    m_checkUnitsInterchangeable->Enable( !isDerivedPart );
+    m_checkHasAlternateBodyStyle->Enable( !isDerivedPart );
+    m_checkIsPowerSymbol->Enable( !isDerivedPart );
 
-    m_checkKeepDatasheet->Enable( aIsDerivedPart );
-    m_checkKeepFootprint->Enable( aIsDerivedPart );
-    m_checkTransferUserFields->Enable( aIsDerivedPart );
-    m_checkKeepContentUserFields->Enable( aIsDerivedPart );
-}
-
-
-void DIALOG_LIB_NEW_SYMBOL::onPowerCheckBox( wxCommandEvent& aEvent )
-{
     if( m_checkIsPowerSymbol->IsChecked() )
     {
         m_excludeFromBomCheckBox->SetValue( true );
@@ -198,14 +176,33 @@ void DIALOG_LIB_NEW_SYMBOL::onPowerCheckBox( wxCommandEvent& aEvent )
     }
     else
     {
-        m_excludeFromBomCheckBox->Enable( true );
-        m_excludeFromBoardCheckBox->Enable( true );
+        m_excludeFromBomCheckBox->Enable( !isDerivedPart );
+        m_excludeFromBoardCheckBox->Enable( !isDerivedPart );
     }
+
+    m_staticPinTextPositionLabel->Enable( !isDerivedPart );
+    m_textPinTextPosition->Enable( !isDerivedPart );
+    m_staticPinTextPositionUnits->Enable( !isDerivedPart );
+
+    m_checkShowPinNumber->Enable( !isDerivedPart );
+    m_checkShowPinName->Enable( !isDerivedPart );
+    m_checkShowPinNameInside->Enable( !isDerivedPart );
+
+    m_checkKeepDatasheet->Enable( isDerivedPart );
+    m_checkKeepFootprint->Enable( isDerivedPart );
+
+    m_checkTransferUserFields->Enable( isDerivedPart );
+    m_checkKeepContentUserFields->Enable( isDerivedPart && m_checkTransferUserFields->IsChecked() );
+}
+
+
+void DIALOG_LIB_NEW_SYMBOL::onPowerCheckBox( wxCommandEvent& aEvent )
+{
+    syncControls();
 }
 
 
 void DIALOG_LIB_NEW_SYMBOL::onCheckTransferUserFields( wxCommandEvent& aEvent )
 {
-    bool checked = m_checkTransferUserFields->IsChecked();
-    m_checkKeepContentUserFields->Enable( checked );
+    syncControls();
 }

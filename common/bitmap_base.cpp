@@ -15,15 +15,13 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "bitmap_base.h"
 
+#include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <math/util.h>    // for KiROUND
 #include <plotters/plotter.h>
@@ -72,8 +70,27 @@ void BITMAP_BASE::updatePPI()
     // Todo: eventually we need to support dpi / scaling in both dimensions
     double dpiX = m_originalImage.GetResolutionX();
 
-    if( dpiX > 1 )
+    if( dpiX > 1.0 )
         m_ppi = KiROUND( dpiX );
+}
+
+
+int BITMAP_BASE::GetLegacyPPI() const
+{
+    if( !m_originalImage.IsOk() )
+        return m_ppi;
+
+    // Mirror the pre-fix path of the wxWidgets build, which read the pixels/cm of a PNG as an
+    // integer and so truncated "37.8" to 37 before the * 2.54 multiply.
+    double dpiX = m_originalImage.GetResolutionX();
+
+    if( m_originalImage.GetType() == RASTER_IMAGE::TYPE::PNG )
+        dpiX = std::floor( dpiX / 2.54 + 1e-6 ) * 2.54;
+
+    if( dpiX > 1 )
+        return KiROUND( dpiX );
+
+    return m_ppi;
 }
 
 
@@ -292,12 +309,178 @@ void BITMAP_BASE::Rotate( bool aRotateCCW )
 }
 
 
+void BITMAP_BASE::BeginPreviewImage( const RASTER_IMAGE& aImage )
+{
+    if( !m_image.IsOk() || !m_originalImage.IsOk() || !aImage.IsOk() )
+        return;
+
+    // Only the first call has the real image to save.
+    if( !m_previewSave )
+        m_previewSave = PREVIEW_SAVE{ m_image, m_originalImage, m_imageId, m_rotation, m_isMirroredX, m_isMirroredY };
+
+    // The renderers do not agree on which of the two they draw, so both have to change.
+    m_image = aImage;
+    m_originalImage = aImage;
+
+    // The caller hands over finished pixels, so a stored turn would be applied twice.
+    m_rotation = ANGLE_0;
+    m_isMirroredX = false;
+    m_isMirroredY = false;
+
+    // The encoded data is left alone, unlike a real change to the pixels: it still holds the
+    // picture, so anything that writes the document while a preview is up, such as an autosave,
+    // saves the image and not the stand-in.  A renderer caching by id does have to be told that
+    // what it draws has changed.
+    m_imageId = KIID();
+}
+
+
+void BITMAP_BASE::EndPreviewImage()
+{
+    if( !m_previewSave )
+        return;
+
+    m_image = m_previewSave->m_image;
+    m_originalImage = m_previewSave->m_originalImage;
+    m_imageId = m_previewSave->m_imageId;
+    m_rotation = m_previewSave->m_rotation;
+    m_isMirroredX = m_previewSave->m_isMirroredX;
+    m_isMirroredY = m_previewSave->m_isMirroredY;
+
+    m_previewSave.reset();
+}
+
+
 void BITMAP_BASE::ConvertToGreyscale()
 {
     if( m_image.IsOk() )
     {
         m_image = m_image.ConvertToGreyscale();
         m_originalImage = m_originalImage.ConvertToGreyscale();
+        m_imageData.Clear();
+        m_imageId = KIID();
+    }
+}
+
+
+/// Invert the colour of every pixel; the alpha channel is not modified.
+static RASTER_IMAGE invertImage( const RASTER_IMAGE& aImage )
+{
+    RASTER_IMAGE   image = aImage;
+    unsigned char* rgb = image.GetData();       // unshares the pixels
+    const int      count = image.GetWidth() * image.GetHeight() * 3;
+
+    for( int i = 0; i < count; ++i )
+        rgb[i] = 255 - rgb[i];
+
+    return image;
+}
+
+
+/**
+ * Convert @a aColour to transparent, proportionally to the 'distance' of each pixel from it
+ * (the GIMP "color to alpha" with the default thresholds 0 and 1).
+ */
+static RASTER_IMAGE colourToAlpha( const RASTER_IMAGE& aImage, const KIGFX::COLOR4D& aColour )
+{
+    constexpr float TRANSPARENCY_THRESHOLD = 0.0f;
+    constexpr float OPACITY_THRESHOLD = 1.0f;
+
+    RASTER_IMAGE image = aImage;
+    const int    w = image.GetWidth();
+    const int    h = image.GetHeight();
+
+    if( w == 0 || h == 0 )
+        return image;
+
+    if( !image.HasAlpha() )
+        image.InitAlpha();
+
+    unsigned char* rgb = image.GetData();
+    unsigned char* alpha = image.GetAlpha();
+
+    const float bgRgb[3] = { static_cast<float>( aColour.r ), static_cast<float>( aColour.g ),
+                             static_cast<float>( aColour.b ) };
+
+    constexpr float EPSILON = 0.00001f;
+    const float     transparencyThreshold = TRANSPARENCY_THRESHOLD + EPSILON;
+    const float     opacityThreshold = OPACITY_THRESHOLD - EPSILON;
+
+    for( int y = 0; y < h; ++y )
+    {
+        for( int x = 0; x < w; ++x )
+        {
+            const int pos = ( y * w + x ) * 3;
+            const int alphaPos = y * w + x;
+
+            const float srcRgb[3] = { rgb[pos] / 255.0f, rgb[pos + 1] / 255.0f, rgb[pos + 2] / 255.0f };
+            const float srcAlpha = alpha[alphaPos] / 255.0f;
+
+            float outAlpha = 0.0f;
+            float dist = 0.0f;
+
+            for( int i = 0; i < 3; ++i )
+            {
+                const float channelDist = std::fabs( srcRgb[i] - bgRgb[i] );
+                float       a = 0.0f;
+
+                if( channelDist < transparencyThreshold )
+                    a = 0.0f;
+                else if( channelDist > opacityThreshold )
+                    a = 1.0f;
+                else if( srcRgb[i] < bgRgb[i] )
+                    a = ( channelDist - transparencyThreshold )
+                        / ( std::min( opacityThreshold, bgRgb[i] ) - transparencyThreshold );
+                else
+                    a = ( channelDist - transparencyThreshold )
+                        / ( std::min( opacityThreshold, 1.0f - bgRgb[i] ) - transparencyThreshold );
+
+                if( a > outAlpha )
+                {
+                    outAlpha = a;
+                    dist = channelDist;
+                }
+            }
+
+            if( outAlpha > EPSILON )
+            {
+                const float ratio = transparencyThreshold / dist;
+                const float alphaInv = 1.0f / outAlpha;
+
+                for( int i = 0; i < 3; ++i )
+                {
+                    const float c = bgRgb[i] + ( srcRgb[i] - bgRgb[i] ) * ratio;
+                    const int   value = KiROUND( ( c + ( srcRgb[i] - c ) * alphaInv ) * 255.0f );
+                    rgb[pos + i] = std::clamp( value, 0, 255 );
+                }
+            }
+
+            alpha[alphaPos] = std::clamp( KiROUND( srcAlpha * outAlpha * 255.0f ), 0, 255 );
+        }
+    }
+
+    return image;
+}
+
+
+void BITMAP_BASE::InvertColors()
+{
+    if( m_image.IsOk() )
+    {
+        m_image = invertImage( m_image );
+        m_originalImage = invertImage( m_originalImage );
+        m_imageData.Clear();
+        m_imageId = KIID();
+    }
+}
+
+
+void BITMAP_BASE::ConvertColourToAlpha( const KIGFX::COLOR4D& aColour )
+{
+    if( m_image.IsOk() )
+    {
+        m_image = colourToAlpha( m_image, aColour );
+        m_originalImage = colourToAlpha( m_originalImage, aColour );
         m_imageData.Clear();
         m_imageId = KIID();
     }
@@ -315,7 +498,7 @@ void BITMAP_BASE::PlotImage( PLOTTER*       aPlotter, const VECTOR2I& aPos,
     // and plot a rectangle instead of.
     aPlotter->SetColor( aDefaultColor );
     aPlotter->SetCurrentLineWidth( aDefaultPensize );
-    aPlotter->PlotImage( m_image, aPos, GetScalingFactor() );
+    aPlotter->PlotImage( m_image, aPos, GetScalingFactor(), 1.0 );
 }
 
 

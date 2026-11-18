@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <regex>
@@ -714,12 +714,18 @@ PANEL_PCBNEW_COLOR_SETTINGS::PANEL_PCBNEW_COLOR_SETTINGS( wxWindow* aParent, BOA
     // These layers are not in GAL_LAYER_ID_START ... GAL_LAYER_ID_BITMASK_END
     m_validLayers.push_back( LAYER_LOCKED_ITEM_SHADOW );
     m_validLayers.push_back( LAYER_CONFLICTS_SHADOW );
+    m_validLayers.push_back( LAYER_CONSTRAINT_SHADOW );
+    m_validLayers.push_back( LAYER_CONSTRAINT_UNDER );
+    m_validLayers.push_back( LAYER_CONSTRAINT_WELL );
+    m_validLayers.push_back( LAYER_CONSTRAINT_OVER );
     m_validLayers.push_back( LAYER_BOARD_OUTLINE_AREA );
     m_validLayers.push_back( LAYER_PAGE_LIMITS );
     m_validLayers.push_back( LAYER_DRC_WARNING );
     m_validLayers.push_back( LAYER_DRC_EXCLUSION );
+    m_validLayers.push_back( LAYER_DRC_HIGHLIGHTED );
     m_validLayers.push_back( NETNAMES_LAYER_ID_START );
     m_validLayers.push_back( LAYER_PAD_NETNAMES );
+    m_validLayers.push_back( LAYER_SUBGRIDS );
 
     // NOTE: Main board layers are added by createSwatches()
 
@@ -811,7 +817,7 @@ void PANEL_PCBNEW_COLOR_SETTINGS::createPreviewItems()
 
     try
     {
-        pi.DoLoad( reader, m_preview->GetBoard(), nullptr, nullptr, 0 );
+        pi.DoLoad( reader, *m_preview->GetBoard(), false, nullptr, nullptr, 0 );
     }
     catch( const IO_ERROR& )
     {

@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <memory>
@@ -48,7 +44,9 @@ void SIMULATOR_FRAME_UI::parseTraceParams( SIM_PLOT_TAB* aPlotTab, TRACE* aTrace
                 cursor->SetCoordX( x );
 
                 aTrace->SetCursor( aCursorId, cursor );
-                aPlotTab->GetPlotWin()->AddLayer( cursor );
+
+                if( SIM_VIEW* view = aTrace->GetView() )
+                    view->AddLayer( cursor );
             };
 
     wxArrayString items = wxSplit( aParams, '|' );
@@ -324,7 +322,7 @@ bool SIMULATOR_FRAME_UI::loadLegacyWorkbook( const wxString& aPath )
             else
             {
                 wxString vectorName = vectorNameFromSignalName( plotTab, signalName, nullptr );
-                TRACE*   trace = plotTab->GetOrAddTrace( vectorName, (int) traceType );
+                TRACE*   trace = plotTab->GetOrAddTrace( vectorName, (int) traceType, plotTab->GetDefaultView() );
 
                 if( version >= 4 && trace )
                     parseTraceParams( plotTab, trace, signalName, param );

@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <jobs/job_export_pcb_drill.h>
@@ -70,7 +70,7 @@ JOB_EXPORT_PCB_DRILL::JOB_EXPORT_PCB_DRILL() :
         m_drillUnits( DRILL_UNITS::INCH ),
         m_zeroFormat( ZEROS_FORMAT::DECIMAL ),
         m_mapFormat( MAP_FORMAT::PDF ),
-        m_gerberPrecision( 5 ),
+        m_gerberPrecision( GBR_DEFAULT_PRECISION ),
         m_generateMap( false ),
         m_generateTenting( false ),
         m_generateReport( false )

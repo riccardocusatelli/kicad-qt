@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -32,6 +32,7 @@
 class wxFont;
 
 class wxBitmapBundle;
+class wxHyperlinkCtrl;
 class wxSize;
 class wxTextCtrl;
 class wxTextEntry;
@@ -40,6 +41,7 @@ class wxTextEntry;
 class wxWindow;
 class wxMenuItem;
 class wxMenu;
+class wxNotebook;
 
 
 namespace KIUI
@@ -60,7 +62,7 @@ KIQT_COMMON_API int GetStdMargin();
  */
 KIQT_COMMON_API wxSize GetTextSize( const wxString& aSingleLine, wxWindow* aWindow );
 
-KIQT_COMMON_API wxFont GetMonospacedUIFont();
+KIQT_COMMON_API wxFont GetMonospacedUIFont( int aRelativeSize = 0 );
 
 KIQT_COMMON_API wxFont GetControlFont( wxWindow* aWindow );
 KIQT_COMMON_API wxFont GetInfoFont( wxWindow* aWindow );
@@ -97,6 +99,15 @@ KIQT_COMMON_API void SelectReferenceNumber( wxTextEntry* aTextEntry );
 KIQT_COMMON_API wxString EllipsizeStatusText( wxWindow* aWindow, const wxString& aString );
 
 /**
+ * Break text into lines no wider than aWidth pixels in aWindow's font.
+ *
+ * Lines break at spaces, and between characters in a word too wide to fit, so text written without spaces
+ * keeps every character.  wxStaticText::Wrap() leaves such a word whole.  A path or URL too wide to fit is
+ * ellipsized in the middle instead, since breaking it would hide where it ends.
+ */
+KICOMMON_API wxString WrapText( wxWindow* aWindow, const wxString& aText, int aWidth );
+
+/**
  * Check if a input control has focus.
  *
  * @param aFocus Control that has focus, if null, wxWidgets will be queried
@@ -106,7 +117,7 @@ KIQT_COMMON_API bool IsInputControlFocused( wxWindow* aFocus = nullptr );
 /**
  * Check if a input control has focus.
  *
- * @param aFocus Control that test if editable
+ * @param aControl is the control to test if editable.
  * @return True if control is input and editable OR control is not a input. False if control is
  *         input and not editable.
  */
@@ -125,6 +136,14 @@ KIQT_COMMON_API void Disable( wxWindow* aWindow );
  * out of a grid, where Tab moves between the cells).
  */
 KIQT_COMMON_API void FocusNextWindow( wxWindow* aWindow );
+
+/**
+ * Keep a hyperlink in the system link colour across a light or dark switch.
+ *
+ * The generic control used on macOS fixes its colours when created.  Native controls elsewhere
+ * follow the theme already, so there this does nothing.
+ */
+KIQT_COMMON_API void FollowSystemLinkColour( wxHyperlinkCtrl* aLink );
 
 KIQT_COMMON_API extern const wxString s_FocusStealableInputName;
 
@@ -203,5 +222,7 @@ KIQT_COMMON_API wxMenuItem* AddMenuItem( wxMenu* aMenu, wxMenu* aSubMenu, int aI
                                          const wxString& aText, const wxString& aHelpText,
                                          const wxBitmapBundle& aImage );
 }
+
+KIQT_COMMON_API int FindNotebookPage( wxNotebook* aNotebook, wxWindow* aChildWindow );
 
 #endif // UI_COMMON_H

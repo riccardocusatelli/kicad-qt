@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -27,11 +23,14 @@
 #include <boost/test/unit_test.hpp>
 #include <mock_pgm_base.h>
 #include <qa_utils/wx_utils/wx_assert.h>
+#include <qa_utils/file_utils.h>
 #include <settings/settings_manager.h>
 #include <settings/kicad_settings.h>
 
+#include <wx/app.h>
 #include <wx/image.h>
 #include <wx/init.h>
+#include <wx/log.h>
 
 #include <locale_io.h>
 
@@ -44,13 +43,22 @@ bool init_unit_test()
     LOCALE_IO dummy;
 
     boost::unit_test::framework::master_test_suite().p_name.value = "Common library module tests";
+
+#if defined( __WXMSW__ ) || defined( __WXMAC__ )
+    wxApp::SetInstance( new wxApp );
+#endif
+
     bool ok = wxInitialize();
+
+    // wxLogGui flushes pending errors into a modal dialog whenever a nested event loop goes idle
+    if( ok )
+        delete wxLog::SetActiveTarget( new wxLogStderr );
 
     wxSetAssertHandler( &KI_TEST::wxAssertThrower );
 
     if( ok )
     {
-        Pgm().InitPgm( true, true, true );
+        Pgm().InitPgm( true, true );
         Pgm().GetSettingsManager().RegisterSettings( new KICAD_SETTINGS, false );
         Pgm().GetSettingsManager().Load();
         Pgm().GetSettingsManager().LoadProject( "" );
@@ -62,6 +70,8 @@ bool init_unit_test()
 
 int main( int argc, char* argv[] )
 {
+    KI_TEST::SCOPED_PROCESS_TEMP_DIR scopedTempDir( "kicad_qa_common" );
+
     int ret = boost::unit_test::unit_test_main( &init_unit_test, argc, argv );
 
     // This causes some glib warnings on GTK3 (http://trac.wxwidgets.org/ticket/18274)

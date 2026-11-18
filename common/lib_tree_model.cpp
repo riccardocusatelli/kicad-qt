@@ -16,8 +16,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <lib_tree_model.h>
@@ -65,7 +65,7 @@ void LIB_TREE_NODE::AssignIntrinsicRanks( const std::vector<wxString>& aShownCol
         std::sort( sort_buf.begin(), sort_buf.end(),
                 []( LIB_TREE_NODE* a, LIB_TREE_NODE* b ) -> bool
                 {
-                    return StrNumCmp( a->m_Name, b->m_Name, true ) > 0;
+                    return StrNumCmp( a->m_Name, b->m_Name, CMP_T::IGNORE_CASE ) > 0;
                 } );
 
         for( int i = 0; i < (int) sort_buf.size(); ++i )
@@ -87,8 +87,7 @@ void LIB_TREE_NODE::SortNodes( bool aUseScores )
 }
 
 
-bool LIB_TREE_NODE::Compare( LIB_TREE_NODE const& aNode1, LIB_TREE_NODE const& aNode2,
-                             bool aUseScores )
+bool LIB_TREE_NODE::Compare( LIB_TREE_NODE const& aNode1, LIB_TREE_NODE const& aNode2, bool aUseScores )
 {
     if( aNode1.m_Type != aNode2.m_Type )
         return aNode1.m_Type < aNode2.m_Type;
@@ -275,8 +274,7 @@ void LIB_TREE_NODE_ITEM::UpdateScore( const std::vector<std::unique_ptr<EDA_COMB
 }
 
 
-LIB_TREE_NODE_LIBRARY::LIB_TREE_NODE_LIBRARY( LIB_TREE_NODE* aParent, wxString const& aName,
-                                              wxString const& aDesc )
+LIB_TREE_NODE_LIBRARY::LIB_TREE_NODE_LIBRARY( LIB_TREE_NODE* aParent, wxString const& aName, wxString const& aDesc )
 {
     m_Type = TYPE::LIBRARY;
     m_Name = aName;

@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef GERBVIEW_SELECTION_TOOL_H
@@ -73,7 +73,7 @@ public:
     int UnselectItem( const TOOL_EVENT& aEvent );
     int UnselectItems( const TOOL_EVENT& aEvent );
 
-    ///< Sets up handlers for various events.
+    /// Sets up handlers for various events.
     void setTransitions() override;
 
 protected:
@@ -116,14 +116,14 @@ private:
     void unselect( EDA_ITEM* aItem ) override;
 
     /**
-     * Mark item as selected, but does not add it to the #ITEMS_PICKED_LIST.
+     * Mark item as selected, but does not add it to the #SELECTION.
      *
      * @param aItem is an item to be be marked.
      */
     void selectVisually( EDA_ITEM* aItem );
 
     /**
-     * Mark item as selected, but does not add it to the #ITEMS_PICKED_LIST.
+     * Mark item as selected, but does not add it to the #SELECTION.
      *
      * @param aItem is an item to be be marked.
      */

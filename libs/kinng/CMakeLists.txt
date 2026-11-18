@@ -12,8 +12,8 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 # General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License along
-# with this program.  If not, see <http://www.gnu.org/licenses/>.
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 set( KINNG_SRCS
     src/kinng.cpp
@@ -33,9 +33,9 @@ target_compile_definitions( kinng PRIVATE KICAD_NO_WX )
 target_include_directories( kinng PUBLIC
     ${PROJECT_BINARY_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${NNG_INCLUDE_DIR}
     )
 
 target_include_directories( kinng PRIVATE
     ${PROJECT_SOURCE_DIR}/include
-    ${NNG_INCLUDE_DIR}
     )

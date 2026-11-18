@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "panel_sync_sheet_pins.h"
@@ -65,8 +61,7 @@ PANEL_SYNC_SHEET_PINS::PANEL_SYNC_SHEET_PINS( wxWindow* aParent, SCH_SHEET* aShe
     m_btnUndo->SetBitmap( KiBitmapBundle( BITMAPS::left ) );
 
     m_labelSheetName->SetLabel( aSheet->GetFileName() );
-    m_labelSymName->SetLabel( aSheet->GetShownName( true ) );
-
+    m_labelSymName->SetLabel( aSheet->GetShownName( FOR_GUI ) );
 
     for( auto& [idx, view] : m_views )
     {
@@ -121,7 +116,7 @@ void PANEL_SYNC_SHEET_PINS::UpdateForms()
     std::sort( dedup_labels_ori.begin(), dedup_labels_ori.end(),
                []( const SCH_HIERLABEL* label1, const SCH_HIERLABEL* label2 )
                {
-                   return StrNumCmp( label1->GetText(), label2->GetText(), true ) < 0;
+                   return StrNumCmp( label1->GetText(), label2->GetText(), CMP_T::IGNORE_CASE ) < 0;
                } );
 
     auto check_matched = [&]( SCH_HIERLABEL* label )

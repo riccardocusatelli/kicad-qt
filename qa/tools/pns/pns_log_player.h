@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #ifndef __PNS_LOG_PLAYER_H
 #define __PNS_LOG_PLAYER_H
@@ -106,11 +102,11 @@ public:
 
     void SetTimeLimit( uint64_t microseconds ) { m_timeLimitUs = microseconds; }
 
-    bool CompareResults( PNS_LOG_FILE* aLog );
+    bool CompareResults( PNS_LOG_FILE* aLog, bool aSkipHeads = false );
     const PNS_LOG_FILE::COMMIT_STATE GetRouterUpdatedItems();
+    void CreateRouter();
 
 private:
-    void createRouter();
 
     std::shared_ptr<PNS_LOG_VIEW_TRACKER>       m_viewTracker;
     std::unique_ptr<PNS_LOG_PLAYER_KICAD_IFACE> m_iface; // needs to be deleted after m_router

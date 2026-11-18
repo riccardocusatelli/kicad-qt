@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef STRING_UTILS_H
@@ -51,6 +47,14 @@ KICOMMON_API wxString ConvertToNewOverbarNotation( const wxString& aOldStr );
 KICOMMON_API bool ConvertSmartQuotesAndDashes( wxString* aString );
 
 /**
+ * Split text into the units a reader sees as one character.
+ *
+ * A unit is a base with its combining marks and variation selectors, or a conjunct joined by a virama.  Breaking
+ * text only between units keeps every character of our translations intact.  Emoji sequences are not kept whole.
+ */
+KICOMMON_API std::vector<wxString> SplitGraphemeClusters( const wxString& aText );
+
+/**
  * Escape/Unescape routines to safely encode reserved-characters in various contexts.
  */
 enum ESCAPE_CONTEXT
@@ -64,7 +68,8 @@ enum ESCAPE_CONTEXT
     CTX_LINE,
     CTX_CSV,
     CTX_FILENAME,
-    CTX_NO_SPACE        // to replace spaces in names that do not accept spaces
+    CTX_NO_SPACE,        // to replace spaces in names that do not accept spaces
+    CTX_REGEX
 };
 
 /**
@@ -187,6 +192,13 @@ KICOMMON_API char* StrPurge( char* text );
  */
 KICOMMON_API wxString GetISO8601CurrentDateTime();
 
+
+enum class CMP_T
+{
+    CASE_SENSITIVE,
+    IGNORE_CASE
+};
+
 /**
  * Compare two strings with alphanumerical content.
  *
@@ -202,26 +214,19 @@ KICOMMON_API wxString GetISO8601CurrentDateTime();
  *         than \a aString2.
  */
 KICOMMON_API int StrNumCmp( const wxString& aString1, const wxString& aString2,
-                            bool aIgnoreCase = false );
-
-
-enum class CASE_SENSITIVITY
-{
-    SENSITIVE,
-    INSENSITIVE
-};
+                            CMP_T aCaseSensitivity = CMP_T::CASE_SENSITIVE );
 
 
 /**
  * Sort a container of wxString objects, in place, using the StrNumCmp() function.
  */
 template <typename T>
-inline void StrNumSort( T& aList, CASE_SENSITIVITY aCaseSensitivity )
+inline void StrNumSort( T& aList, CMP_T aCaseSensitivity )
 {
     std::sort( aList.begin(), aList.end(),
                [aCaseSensitivity]( const wxString& lhs, const wxString& rhs )
                {
-                   return StrNumCmp( lhs, rhs, aCaseSensitivity == CASE_SENSITIVITY::INSENSITIVE ) < 0;
+                   return StrNumCmp( lhs, rhs, aCaseSensitivity ) < 0;
                } );
 }
 
@@ -231,9 +236,8 @@ inline void StrNumSort( T& aList, CASE_SENSITIVITY aCaseSensitivity )
  *
  * @return true if pattern matched otherwise false.
  */
-KICOMMON_API bool WildCompareString( const wxString& pattern,
-                        const wxString& string_to_tst,
-                        bool            case_sensitive = true );
+KICOMMON_API bool WildCompareString( const wxString& pattern, const wxString& string_to_tst,
+                                     bool case_sensitive = true );
 
 /**
  * Compare strings like the strcmp function but handle numbers and modifiers within the
@@ -245,15 +249,22 @@ KICOMMON_API bool WildCompareString( const wxString& pattern,
 KICOMMON_API int ValueStringCompare( const wxString& strFWord, const wxString& strSWord );
 
 /**
+ *
+ * @param aStr
+ * @param aValueOut [out] optional parameter to accept the number if it is a duck.
+ * @return true if aStr can be parsed as a numeric value (including units and scalers, so
+ *         something like "4K7Ω" will return true).
+ */
+KICOMMON_API bool QuacksLikeADuck( const wxString& aStr, double* aValueOut );
+
+/**
  * Break a string into three parts: he alphabetic preamble, the numeric part, and any
  * alphabetic ending.
  *
  * For example C10A is split to C 10 A
  */
-KICOMMON_API int SplitString( const wxString& strToSplit,
-                 wxString* strBeginning,
-                 wxString* strDigits,
-                 wxString* strEnd );
+KICOMMON_API int SplitString( const wxString& strToSplit, wxString* strBeginning, wxString* strDigits,
+                              wxString* strEnd );
 
 /**
  * Gets the trailing int, if any, from a string.
@@ -445,6 +456,15 @@ KICOMMON_API std::string UIDouble2Str( double aValue );
 KICOMMON_API std::string FormatDouble2Str( double aValue );
 
 /**
+ * Format a value to aPrecision decimal digits and strip trailing zeros, keeping one digit
+ * after the decimal point and never trimming into the integer part. Rounded zero has no minus sign.
+ *
+ * This is the one formatter shared by exporters (ODB++, IPC-2581) that previously each carried
+ * their own copy of this trimming loop.
+ */
+KICOMMON_API wxString FormatTrimmedDecimal( double aValue, int aPrecision );
+
+/**
  * Convert a wxString to a UTF8 encoded C string for all wxWidgets build modes.
  *
  * wxstring is a wxString, not a wxT() or _().  The scope of the return value
@@ -512,10 +532,33 @@ KICOMMON_API std::vector<wxString> ExpandStackedPinNotation( const wxString& aPi
                                                             bool* aValid = nullptr );
 
 /**
- * Count the number of pins represented by stacked pin notation without allocating strings.
+ * Escape the characters that carry structural meaning inside stacked pin notation ('[', ']', ',',
+ * '-' and the escape character '\\' itself) so that a pin number containing one of them can be
+ * embedded literally inside a stacked notation string such as [1,foo\,bar,3].
  *
- * This is a fast alternative to ExpandStackedPinNotation().size() for cases where only
- * the count is needed.
+ * The result round-trips through ExpandStackedPinNotation(), which strips the escaping again.
+ *
+ * @param aPinNumber is the literal pin number to escape
+ * @return the escaped pin number, safe to place between the brackets of a stacked notation string
+ */
+KICOMMON_API wxString EscapeStackedPinItem( const wxString& aPinNumber );
+
+/**
+ * Split the inner part of a stacked notation string (the text between the brackets) into its
+ * individual items on unescaped commas, unescaping each item.  Range items such as "1-5" are kept
+ * intact (not expanded), which makes this suitable for building a human-readable representation of
+ * the notation.
+ *
+ * @param aInner is the bracket-stripped stacked notation content
+ * @return the individual, unescaped items in order
+ */
+KICOMMON_API std::vector<wxString> SplitStackedPinDisplayItems( const wxString& aInner );
+
+/**
+ * Count the number of pins represented by stacked pin notation.
+ *
+ * This is a lighter-weight alternative to ExpandStackedPinNotation().size() for cases where only
+ * the count is needed, as it does not materialize the individual numbers in an expanded range.
  *
  * @param aPinName is the pin name to count (may or may not use stacked notation)
  * @param aValid is optionally set to indicate whether the notation was valid
@@ -524,29 +567,15 @@ KICOMMON_API std::vector<wxString> ExpandStackedPinNotation( const wxString& aPi
 KICOMMON_API int CountStackedPinNotation( const wxString& aPinName, bool* aValid = nullptr );
 
 
+/** Recognize the reserved prefixes used for generated pin-net names. */
+KICOMMON_API bool IsAutoGeneratedNetName( const wxString& aNetName );
+
+
 KICOMMON_API wxString GetDefaultVariantName();
+KICOMMON_API wxString GetVariantFileToken( const wxString& aVariantName );
+KICOMMON_API wxString ExpandVariantOutputPath( const wxString& aPath, const wxString& aVariantName );
 
 KICOMMON_API int SortVariantNames( const wxString& aLhs, const wxString& aRhs );
-
-/**
- * A load message with its severity.
- */
-struct LOAD_MESSAGE
-{
-    wxString  message;
-    SEVERITY  severity;
-};
-
-/**
- * Parse library load error messages, extracting user-facing information while
- * stripping internal code locations.
- *
- * @param aErrorString is the raw error string from GetLibraryLoadErrors()
- * @param aSeverity is the severity to assign to all extracted messages
- * @return vector of LOAD_MESSAGE with cleaned error text
- */
-KICOMMON_API std::vector<LOAD_MESSAGE> ExtractLibraryLoadErrors( const wxString& aErrorString,
-                                                                  int aSeverity );
 
 /**
  * Ellipsize text (at the end) to be no more than 36 characters.

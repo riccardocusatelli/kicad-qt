@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef ZONE_FILLER_TOOL_H
@@ -36,6 +32,8 @@ class wxIdleEvent;
 class PROGRESS_REPORTER;
 class WX_PROGRESS_REPORTER;
 class ZONE_FILLER;
+class PCB_GENERATOR;
+class BOARD_COMMIT;
 
 #define ZONE_FILLER_TOOL_NAME "pcbnew.ZoneFiller"
 
@@ -52,7 +50,19 @@ public:
     void Reset( RESET_REASON aReason ) override;
 
     void CheckAllZones( wxWindow* aCaller, PROGRESS_REPORTER* aReporter = nullptr );
-    void FillAllZones( wxWindow* aCaller, PROGRESS_REPORTER* aReporter = nullptr, bool aHeadless = false );
+
+    /// @return true if the fill completed, false if it was cancelled or failed
+    bool FillAllZones( wxWindow* aCaller, PROGRESS_REPORTER* aReporter = nullptr, bool aHeadless = false );
+
+    /**
+     * Run the shared post-fill refresh once a fill commit has been pushed with connectivity
+     * updates skipped.
+     *
+     * Rebuilds connectivity and, unless \a aHeadless, repaints the ratsnest along with the
+     * remove-unconnected vias and pads that a plain canvas refresh would leave stale.  Callers
+     * with no frame attached (e.g. the headless IPC API handler) must pass true.
+     */
+    void PostFillRefresh( bool aHeadless = false );
 
     int ZoneFill( const TOOL_EVENT& aEvent );
     int ZoneFillAll( const TOOL_EVENT& aEvent );
@@ -71,14 +81,24 @@ public:
 
     static bool IsZoneFillAction( const TOOL_EVENT* aEvent );
 
+    /**
+     * Kicks all the generators as they may need to update after a zone fill update
+     */
+    std::vector<PCB_GENERATOR*> RegenerateDirtyGenerators( BOARD_COMMIT& aCommit );
+
 private:
-    ///< Refocus on an idle event (used after the Progress Reporter messes up the focus).
+    /// Refocus on an idle event (used after the Progress Reporter messes up the focus).
     void singleShotRefocus( wxIdleEvent& );
 
     void rebuildConnectivity( bool aHeadless = false );
     void refresh();
 
-    ///< Set up handlers for various events.
+    /**
+     * Triggers refill of zones near the given generators
+     */
+    void refillAroundGenerators( const std::vector<PCB_GENERATOR*>& aRegenerated );
+
+    /// Set up handlers for various events.
     void setTransitions() override;
 
 private:

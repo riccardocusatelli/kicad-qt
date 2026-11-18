@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef __CONNECTIVITY_DATA_H
@@ -92,47 +88,43 @@ public:
     ~CONNECTIVITY_DATA();
 
     CONNECTIVITY_DATA( std::shared_ptr<CONNECTIVITY_DATA> aGlobalConnectivity,
-                       const std::vector<BOARD_ITEM*>& aLocalItems, bool                               aSkipRatsnestUpdate = false );
+                       const std::vector<BOARD_ITEM*>&    aLocalItems,
+                       bool                               aSkipRatsnestUpdate = false );
 
     /**
-     * Function Build()
-     * Builds the connectivity database for the board aBoard.
+     * Build the connectivity database for the board aBoard.
      */
     bool Build( BOARD* aBoard, PROGRESS_REPORTER* aReporter = nullptr );
 
     /**
-     * Function Build()
-     * Builds the connectivity database for a set of items aItems.
+     * Build the connectivity database for a set of items aItems.
      */
     void Build( std::shared_ptr<CONNECTIVITY_DATA>& aGlobalConnectivity,
                 const std::vector<BOARD_ITEM*>& aLocalItems );
 
     /**
-     * Function Add()
-     * Adds an item to the connectivity data.
+     * Add an item to the connectivity data.
      * @param aItem is an item to be added.
      * @return True if operation succeeded.
      */
     bool Add( BOARD_ITEM* aItem );
 
     /**
-     * Function Remove()
-     * Removes an item from the connectivity data.
+     * Remove an item from the connectivity data.
      * @param aItem is an item to be updated.
      * @return True if operation succeeded.
      */
     bool Remove( BOARD_ITEM* aItem );
 
     /**
-     * Function Update()
-     * Updates the connectivity data for an item.
+     * Update the connectivity data for an item.
      * @param aItem is an item to be updated.
      * @return True if operation succeeded.
      */
     bool Update( BOARD_ITEM* aItem );
 
     /**
-     * Moves the connectivity list anchors.  N.B., this does not move the bounding
+     * Move the connectivity list anchors.  N.B., this does not move the bounding
      * boxes for the RTree, so the use of this function will invalidate the
      * connectivity data for uses other than the dynamic ratsnest
      *
@@ -141,27 +133,23 @@ public:
     void Move( const VECTOR2I& aDelta );
 
     /**
-     * Function Clear()
      * Erases the connectivity database.
      */
     void ClearRatsnest();
 
     /**
-     * Function GetNetCount()
-     * Returns the total number of nets in the connectivity database.
+     * Return the total number of nets in the connectivity database.
      */
     int GetNetCount() const;
 
     /**
-     * Function GetRatsnestForNet()
-     * Returns the ratsnest, expressed as a set of graph edges for a given net.
+     * Return the ratsnest, expressed as a set of graph edges for a given net.
      */
     RN_NET* GetRatsnestForNet( int aNet );
 
     /**
-     * Propagates the net codes from the source pads to the tracks/vias.
+     * Propagate the net codes from the source pads to the tracks/vias.
      * @param aCommit is used to save the undo state of items modified by this call
-     * @param aMode controls how conflicts between pads are resolved
      */
     void PropagateNets( BOARD_COMMIT* aCommit = nullptr );
 
@@ -173,8 +161,7 @@ public:
                                  bool aConnectivityAlreadyRebuilt = false );
 
     /**
-     * Function RecalculateRatsnest()
-     * Updates the ratsnest for the board.
+     * Update the ratsnest for the board.
      * @param aCommit is used to save the undo state of items modified by this call
      */
     void RecalculateRatsnest( BOARD_COMMIT* aCommit = nullptr );
@@ -183,7 +170,7 @@ public:
      * @param aVisibleOnly include only visbile edges in the count
      * @return the number of remaining edges in the ratsnest
      */
-    unsigned int GetUnconnectedCount( bool aVisibileOnly ) const;
+    unsigned int GetUnconnectedCount( bool aVisibleOnly ) const;
 
     bool IsConnectedOnLayer( const BOARD_CONNECTED_ITEM* aItem, int aLayer,
                              const std::initializer_list<KICAD_T>& aTypes = {} ) const;
@@ -209,9 +196,9 @@ public:
                                    std::vector<std::set<const BOARD_ITEM*>>* aIslands );
 
     /**
-     * Function GetConnectedItemsAtAnchor()
-     * Returns a list of items connected to a source item aItem at position aAnchor
+     * Return a list of items connected to a source item aItem at position aAnchor
      * with an optional maximum distance from the defined anchor.
+     *
      * @param aItem is the reference item to find other connected items.
      * @param aAnchor is the position to find connected items on.
      * @param aTypes allows one to filter by item types.
@@ -228,20 +215,18 @@ public:
                                     VECTOR2I* aPos = nullptr ) const;
 
     /**
-     * Function ClearLocalRatsnest()
-     * Erases the temporary, selection-based ratsnest (i.e. the ratsnest lines that pcbnew
+     * Erase the temporary, selection-based ratsnest (i.e. the ratsnest lines that pcbnew
      * displays when moving an item/set of items).
      */
     void ClearLocalRatsnest();
 
     /**
-     * Hides the temporary, selection-based ratsnest lines.
+     * Hide the temporary, selection-based ratsnest lines.
      */
     void HideLocalRatsnest();
 
     /**
-     * Function ComputeLocalRatsnest()
-     * Calculates the temporary (usually selection-based) ratsnest for the set of \a aItems.
+     * Calculate the temporary (usually selection-based) ratsnest for the set of \a aItems.
      */
     void ComputeLocalRatsnest( const std::vector<BOARD_ITEM*>& aItems,
                                const CONNECTIVITY_DATA* aDynamicData,
@@ -250,8 +235,7 @@ public:
     const std::vector<RN_DYNAMIC_LINE>& GetLocalRatsnest() const { return m_dynamicRatsnest; }
 
     /**
-     * Function GetConnectedItems()
-     * Returns a list of items connected to a source item aItem.
+     * Return a list of items connected to a source item aItem.
      * @param aItem is the reference item to find other connected items.
      * @param aTypes allows one to filter by item types.
      */
@@ -261,8 +245,7 @@ public:
                                                                 int aFlags = 0 ) const;
 
     /**
-     * Function GetNetItems()
-     * Returns the list of items that belong to a certain net.
+     * Return the list of items that belong to a certain net.
      * @param aNetCode is the net code.
      * @param aTypes allows one to filter by item types.
      */
@@ -288,21 +271,19 @@ public:
     /// @brief Refresh the map of netcodes to net names
     void RefreshNetcodeMap( BOARD* aBoard );
 
-#ifndef SWIG
     const std::vector<CN_EDGE> GetRatsnestForItems( const std::vector<BOARD_ITEM*>& aItems );
 
     const std::vector<CN_EDGE> GetRatsnestForPad( const PAD* aPad );
 
     const std::vector<CN_EDGE> GetRatsnestForComponent( FOOTPRINT* aComponent,
                                                         bool aSkipInternalConnections = false );
-#endif
 
     std::shared_ptr<FROM_TO_CACHE> GetFromToCache() { return m_fromToCache; }
 
 private:
 
     /**
-     * Updates the ratsnest for the board without locking the connectivity mutex.
+     * Update the ratsnest for the board without locking the connectivity mutex.
      * @param aCommit is used to save the undo state of items modified by this call
      */
     void internalRecalculateRatsnest( BOARD_COMMIT* aCommit = nullptr );

@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef DRC_RE_ROUTING_DIFF_PAIR_CONSTRAINT_DATA_H_
@@ -38,10 +34,10 @@ public:
     {
     }
 
-    explicit DRC_RE_ROUTING_DIFF_PAIR_CONSTRAINT_DATA( int aId, int aParentId, const wxString& aRuleName,
-                                                       double aOptWidth, double aWidthTolerance, double aOptGap,
-                                                       double aGapTolerance, double aMaxUncoupledLength ) :
-            DRC_RE_BASE_CONSTRAINT_DATA( aId, aParentId, aRuleName ),
+    explicit DRC_RE_ROUTING_DIFF_PAIR_CONSTRAINT_DATA( int aId, const wxString& aRuleName, double aOptWidth,
+                                                       double aWidthTolerance, double aOptGap, double aGapTolerance,
+                                                       double aMaxUncoupledLength ) :
+            DRC_RE_BASE_CONSTRAINT_DATA( aId, aRuleName ),
             m_optWidth( aOptWidth ),
             m_widthTolerance( aWidthTolerance ),
             m_optGap( aOptGap ),
@@ -57,14 +53,19 @@ public:
     std::vector<DRC_RE_FIELD_POSITION> GetFieldPositions() const override
     {
         // Positions measured from constraint_routing_diff_pair.png bitmap (~423x133)
-        // Format: { xStart, xEnd, yCenter, tabOrder }
+        // Format: { xStart, xEnd, yCenter }
         // TODO: measure actual positions from PNG
         return {
-            { 0, 55, 147, 1, wxS( "mm" ), LABEL_POSITION::RIGHT },                     // opt_width
-            { 105, 160, 147, 2, wxS( "mm" ), LABEL_POSITION::RIGHT, wxS( "\u00B1" ) }, // width_tolerance (±)
-            { 185, 240, 123, 3, wxS( "mm" ), LABEL_POSITION::RIGHT },                  // opt_gap
-            { 290, 345, 123, 4, wxS( "mm" ), LABEL_POSITION::RIGHT, wxS( "\u00B1" ) }, // gap_tolerance (±)
-            { 85, 140, 20, 5, wxS( "mm" ), LABEL_POSITION::RIGHT },                    // max_uncoupled
+            { 0, 55, 147, wxS( "mm" ), LABEL_POSITION::RIGHT,
+              _( "Optimum width of each track in the pair" ) }, // opt_width
+            { 105, 160, 147, wxS( "mm" ), LABEL_POSITION::RIGHT,
+              _( "Allowed deviation above or below the optimum width" ), wxS( "\u00B1" ) }, // width_tolerance (±)
+            { 185, 240, 123, wxS( "mm" ), LABEL_POSITION::RIGHT,
+              _( "Optimum gap between the two tracks of the pair" ) }, // opt_gap
+            { 290, 345, 123, wxS( "mm" ), LABEL_POSITION::RIGHT,
+              _( "Allowed deviation above or below the optimum gap" ), wxS( "\u00B1" ) }, // gap_tolerance (±)
+            { 85, 140, 20, wxS( "mm" ), LABEL_POSITION::RIGHT,
+              _( "Maximum length over which the pair may run uncoupled" ) }, // max_uncoupled
         };
     }
 

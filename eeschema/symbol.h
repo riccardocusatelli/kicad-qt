@@ -14,16 +14,13 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef SYMBOL_H
 #define SYMBOL_H
 
+#include <transform.h>
 #include <lib_id.h>
 #include <sch_item.h>
 #include <sch_field.h>
@@ -111,9 +108,9 @@ public:
 
     virtual const LIB_ID& GetLibId() const = 0;
     virtual wxString GetDescription() const = 0;
-    virtual wxString GetShownDescription( int aDepth = 0 ) const = 0;
+    virtual wxString GetShownDescription( RESOLUTION_CONTEXT aContext, int aDepth = 0 ) const = 0;
     virtual wxString GetKeyWords() const = 0;
-    virtual wxString GetShownKeyWords( int aDepth = 0 ) const = 0;
+    virtual wxString GetShownKeyWords( RESOLUTION_CONTEXT aContext, int aDepth = 0 ) const = 0;
 
     virtual bool IsGlobalPower() const = 0;
     virtual bool IsLocalPower() const = 0;
@@ -145,12 +142,15 @@ public:
     virtual const wxString GetRef( const SCH_SHEET_PATH* aSheet,
                                    bool aIncludeUnit = false ) const = 0;
 
-    virtual const wxString GetValue( bool aResolve, const SCH_SHEET_PATH* aPath,
-                                     bool aAllowExtraText, const wxString& aVaraintName = wxEmptyString ) const = 0;
+    virtual const wxString GetValue( const SCH_SHEET_PATH* aPath, RESOLUTION_CONTEXT aContext,
+                                     const wxString& aVaraintName = wxEmptyString ) const = 0;
 
     virtual void GetFields( std::vector<SCH_FIELD*>& aVector, bool aVisibleOnly ) const = 0;
 
-    virtual std::vector<SCH_PIN*> GetPins() const = 0;
+#define ALL_UNITS 0
+#define ALL_BODY_STYLES 0
+
+    virtual std::vector<SCH_PIN*> GetGraphicalPins( int aUnit, int aBodyStyle ) const = 0;
 
     /**
      * Set the offset in mils of the pin name text from the pin symbol.

@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef DRC_RE_OVERLAY_TYPES_H
@@ -53,33 +49,32 @@ struct DRC_RE_FIELD_POSITION
     int xStart;     ///< Left edge X coordinate where the field starts
     int xEnd;       ///< Right edge X coordinate where the field ends
     int yCenter;    ///< Vertical center Y coordinate of the field
-    int tabOrder;   ///< Tab navigation order (1-based, lower numbers receive focus first)
 
     wxString       labelText;      ///< Optional label text (empty for no label)
     LABEL_POSITION labelPosition;  ///< Position of label relative to field
+    wxString       tooltipText;    ///< Optional tooltip shown on the control
     wxString       prefixText;     ///< Optional text placed on the left
 
     DRC_RE_FIELD_POSITION() :
             xStart( 0 ),
             xEnd( 0 ),
             yCenter( 0 ),
-            tabOrder( 0 ),
             labelText(),
             labelPosition( LABEL_POSITION::NONE ),
+            tooltipText(),
             prefixText()
     {
     }
 
-    DRC_RE_FIELD_POSITION( int aXStart, int aXEnd, int aYCenter, int aTabOrder,
-                           const wxString& aLabelText = wxEmptyString,
+    DRC_RE_FIELD_POSITION( int aXStart, int aXEnd, int aYCenter, const wxString& aLabelText = wxEmptyString,
                            LABEL_POSITION  aLabelPos = LABEL_POSITION::NONE,
-                           const wxString& aPrefixText = wxEmptyString ) :
+                           const wxString& aTooltipText = wxEmptyString, const wxString& aPrefixText = wxEmptyString ) :
             xStart( aXStart ),
             xEnd( aXEnd ),
             yCenter( aYCenter ),
-            tabOrder( aTabOrder ),
             labelText( aLabelText ),
             labelPosition( aLabelPos ),
+            tooltipText( aTooltipText ),
             prefixText( aPrefixText )
     {
     }

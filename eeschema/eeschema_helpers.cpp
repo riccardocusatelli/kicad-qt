@@ -14,20 +14,22 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "eeschema_helpers.h"
 
+#include <algorithm>
+
 #include <connection_graph.h>
 #include <locale_io.h>
+#include <libraries/legacy_symbol_library.h>
+#include <libraries/symbol_library_adapter.h>
 #include <project/project_file.h>
 #include <schematic.h>
+#include <reporter.h>
 #include <sch_commit.h>
+#include <sch_file_versions.h>
 #include <sch_label.h>
 #include <sch_screen.h>
 #include <sch_sheet.h>
@@ -37,6 +39,7 @@
 #include <wildcards_and_files_ext.h>
 
 #include <wx/app.h>
+#include <reporter.h>
 
 
 std::function<SCHEMATIC*()> EESCHEMA_HELPERS::s_editorSchematic;
@@ -49,18 +52,19 @@ void EESCHEMA_HELPERS::SetEditorSchematic( std::function<SCHEMATIC*()> aGetter )
 
 
 SCHEMATIC* EESCHEMA_HELPERS::LoadSchematic( const wxString& aFileName, bool aSetActive,
-                                            bool aForceDefaultProject, PROJECT* aProject, bool aCalculateConnectivity )
+                                            bool aForceDefaultProject, PROJECT* aProject,
+                                            bool aCalculateConnectivity, REPORTER* aRootReporter )
 {
     if( aFileName.EndsWith( FILEEXT::KiCadSchematicFileExtension ) )
         return LoadSchematic( aFileName, SCH_IO_MGR::SCH_KICAD, aSetActive, aForceDefaultProject,
-                              aProject, aCalculateConnectivity );
+                              aProject, aCalculateConnectivity, aRootReporter );
     else if( aFileName.EndsWith( FILEEXT::LegacySchematicFileExtension ) )
         return LoadSchematic( aFileName, SCH_IO_MGR::SCH_LEGACY, aSetActive, aForceDefaultProject,
-                              aProject, aCalculateConnectivity );
+                              aProject, aCalculateConnectivity, aRootReporter );
 
     // as fall back for any other kind use the legacy format
     return LoadSchematic( aFileName, SCH_IO_MGR::SCH_LEGACY, aSetActive, aForceDefaultProject, aProject,
-                          aCalculateConnectivity );
+                          aCalculateConnectivity, aRootReporter );
 }
 
 
@@ -70,8 +74,8 @@ static const TOP_LEVEL_SHEET_INFO* findDeclaredTopLevelSheet(
 {
     for( const TOP_LEVEL_SHEET_INFO& info : aProjectSheets )
     {
-        wxFileName candidate( aProjectPath, info.filename );
-        candidate.MakeAbsolute();
+        wxFileName candidate( info.filename );
+        candidate.MakeAbsolute( aProjectPath );
 
         if( candidate.SameAs( aFile ) )
             return &info;
@@ -86,7 +90,7 @@ SCHEMATIC* EESCHEMA_HELPERS::LoadSchematic( const wxString& aFileName,
                                             bool aSetActive,
                                             bool aForceDefaultProject,
                                             PROJECT* aProject,
-                                            bool aCalculateConnectivity )
+                                            bool aCalculateConnectivity, REPORTER* aRootReporter )
 {
     wxFileName pro = aFileName;
     pro.SetExt( FILEEXT::ProjectFileExtension );
@@ -128,7 +132,7 @@ SCHEMATIC* EESCHEMA_HELPERS::LoadSchematic( const wxString& aFileName,
 
     IO_RELEASER<SCH_IO> pi( SCH_IO_MGR::FindPlugin( aFormat ) );
 
-    SCHEMATIC* schematic = new SCHEMATIC( project );
+    std::unique_ptr<SCHEMATIC> schematic = std::make_unique<SCHEMATIC>( project );
     schematic->CreateDefaultScreens();
 
     wxFileName schFile = aFileName;
@@ -142,6 +146,61 @@ SCHEMATIC* EESCHEMA_HELPERS::LoadSchematic( const wxString& aFileName,
         const TOP_LEVEL_SHEET_INFO* namedSheet = findDeclaredTopLevelSheet( projectSheets,
                                                                            projectDir, schFile );
         std::vector<SCH_SHEET*> loadedSheets;
+        const auto loadSheet = [&]( const wxString& aPath, bool aDeclaredRoot )
+        {
+            SCH_SHEET* sheet = pi->LoadSchematicFile( aPath, schematic.get() );
+
+            if( !sheet || !aRootReporter || aFormat != SCH_IO_MGR::SCH_KICAD
+                || sheet->GetScreen()->GetFileFormatVersionAtLoad() < 20221110 )
+                return sheet;
+
+            const SCH_SCREEN& screen = *sheet->GetScreen();
+            wxString error;
+
+            if( !screen.GetSheetInstances().empty() )
+            {
+                error = wxString::Format( _( "Schematic '%s' has a malformed root sheet instance path." ), aPath );
+            }
+            else if( !sheet->HasRootInstance() && !aDeclaredRoot )
+            {
+                bool parentPlacement = false;
+                bool rootPlacement = false;
+                const auto inspectPlacements = [&]( const auto& instances )
+                {
+                    for( const auto& instance : instances )
+                    {
+                        parentPlacement |= instance.m_Path.size() > 1;
+                        rootPlacement |= instance.m_Path.size() == 1
+                                         && instance.m_Path.front() == screen.GetUuid();
+                    }
+                };
+
+                for( SCH_ITEM* item : screen.Items() )
+                {
+                    if( item->Type() == SCH_SYMBOL_T )
+                        inspectPlacements( static_cast<SCH_SYMBOL*>( item )->GetInstances() );
+                    else if( item->Type() == SCH_SHEET_T )
+                        inspectPlacements( static_cast<SCH_SHEET*>( item )->GetInstances() );
+                }
+
+                if( parentPlacement && !rootPlacement )
+                    error = wxString::Format(
+                            _( "Schematic '%s' is a hierarchical subsheet; load its root schematic." ), aPath );
+            }
+
+            if( !error.IsEmpty() )
+            {
+                delete sheet;
+
+                for( SCH_SHEET* loaded : loadedSheets )
+                    delete loaded;
+
+                aRootReporter->Report( error, RPT_SEVERITY_ERROR );
+                THROW_IO_ERROR( error );
+            }
+
+            return sheet;
+        };
 
         // Load every declared top-level sheet so headless callers plot what the GUI does
         // A missing named file still fails to load rather than falling back to its siblings
@@ -149,13 +208,13 @@ SCHEMATIC* EESCHEMA_HELPERS::LoadSchematic( const wxString& aFileName,
         {
             for( const TOP_LEVEL_SHEET_INFO& info : projectSheets )
             {
-                wxFileName sheetFn( projectDir, info.filename );
-                sheetFn.MakeAbsolute();
+                wxFileName sheetFn( info.filename );
+                sheetFn.MakeAbsolute( projectDir );
 
                 if( !sheetFn.FileExists() )
                     continue;
 
-                SCH_SHEET* sheet = pi->LoadSchematicFile( sheetFn.GetFullPath(), schematic );
+                SCH_SHEET* sheet = loadSheet( sheetFn.GetFullPath(), true );
 
                 if( !sheet )
                     continue;
@@ -177,12 +236,22 @@ SCHEMATIC* EESCHEMA_HELPERS::LoadSchematic( const wxString& aFileName,
         }
         else
         {
-            SCH_SHEET* rootSheet = pi->LoadSchematicFile( schFile.GetFullPath(), schematic );
+            SCH_SHEET* rootSheet = loadSheet( schFile.GetFullPath(), namedSheet != nullptr );
 
             if( !rootSheet )
+            {
+                schematic->SetProject( nullptr );
                 return nullptr;
+            }
 
-            schematic->SetTopLevelSheets( { rootSheet } );
+            std::vector<SCH_SHEET*> topLevelSheets = schematic->GetTopLevelSheets();
+            bool rootIsTopLevel = std::find( topLevelSheets.begin(), topLevelSheets.end(),
+                                             rootSheet ) != topLevelSheets.end();
+            bool rootIsVirtualRoot = rootSheet == &schematic->Root()
+                                     || rootSheet->IsVirtualRootSheet();
+
+            if( !rootIsTopLevel && !rootIsVirtualRoot )
+                schematic->SetTopLevelSheets( { rootSheet } );
 
             // Make ${SHEETNAME} work on the root sheet until we properly support naming it
             if( rootSheet->GetName().IsEmpty() )
@@ -196,14 +265,57 @@ SCHEMATIC* EESCHEMA_HELPERS::LoadSchematic( const wxString& aFileName,
     }
     catch( ... )
     {
+        schematic->SetProject( nullptr );
         return nullptr;
     }
 
     SCH_SHEET_LIST sheetList = schematic->BuildSheetListSortedByPageNumbers();
     SCH_SCREENS    screens( schematic->Root() );
 
-    for( SCH_SCREEN* screen = screens.GetFirst(); screen; screen = screens.GetNext() )
-        screen->UpdateLocalLibSymbolLinks();
+    if( aFormat == SCH_IO_MGR::SCH_LEGACY )
+    {
+        LIBRARY_MANAGER libraries( project );
+        libraries.RegisterAdapter( LIBRARY_TABLE_TYPE::SYMBOL,
+                                    std::make_unique<SYMBOL_LIBRARY_ADAPTER>( libraries ) );
+        libraries.LoadGlobalTables( { LIBRARY_TABLE_TYPE::SYMBOL } );
+        libraries.LoadProjectTables( { LIBRARY_TABLE_TYPE::SYMBOL } );
+        auto* adapter = static_cast<SYMBOL_LIBRARY_ADAPTER*>(
+                libraries.Adapter( LIBRARY_TABLE_TYPE::SYMBOL ).value() );
+        LEGACY_SYMBOL_LIBS legacyLibs;
+        const wxString cache = LEGACY_SYMBOL_LIBS::CacheName( schFile.GetFullPath() );
+
+        if( !cache.IsEmpty() )
+        {
+            LEGACY_SYMBOL_LIB* library = legacyLibs.AddLibrary( cache );
+
+            if( !library )
+            {
+                schematic->SetProject( nullptr );
+                return nullptr;
+            }
+
+            library->SetCache();
+        }
+
+        for( SCH_SCREEN* screen = screens.GetFirst(); screen; screen = screens.GetNext() )
+        {
+            screen->UpdateSymbolLinks( nullptr, &legacyLibs, adapter );
+
+            for( SCH_ITEM* item : screen->Items().OfType( SCH_SYMBOL_T ) )
+            {
+                if( !static_cast<SCH_SYMBOL*>( item )->GetLibSymbolRef() )
+                {
+                    schematic->SetProject( nullptr );
+                    return nullptr;
+                }
+            }
+        }
+    }
+    else
+    {
+        for( SCH_SCREEN* screen = screens.GetFirst(); screen; screen = screens.GetNext() )
+            screen->UpdateLocalLibSymbolLinks();
+    }
 
     if( schematic->RootScreen()->GetFileFormatVersionAtLoad() < 20221002 )
         sheetList.UpdateSymbolInstanceData( schematic->RootScreen()->GetSymbolInstances());
@@ -229,22 +341,29 @@ SCHEMATIC* EESCHEMA_HELPERS::LoadSchematic( const wxString& aFileName,
     screens.PruneOrphanedSymbolInstances( projectName, sheetList );
     screens.PruneOrphanedSheetInstances( projectName, sheetList );
 
-    sheetList.AnnotatePowerSymbols();
-
     if( sheetList.AllSheetPageNumbersEmpty() )
         sheetList.SetInitialPageNumbers();
     else
         sheetList.RepairPageNumbers();
+
+    // A schematic written by an older version can lose the junctions that Eeschema implies from
+    // merged colinear wires, which shows up as connectivity errors.  The GUI editor repairs this on
+    // load; the headless/CLI loader must do the same before connectivity is calculated.  It is
+    // limited to pre-current files (the current version writes those junctions on save, so running
+    // it on a current file could silently connect an intentional crossing) and to callers that
+    // actually want connectivity.
+    if( aCalculateConnectivity
+        && schematic->RootScreen()->GetFileFormatVersionAtLoad() < SEXPR_SCHEMATIC_FILE_VERSION )
+        schematic->FixupJunctionsAfterImport();
 
     schematic->ConnectionGraph()->Reset();
 
     if( aCalculateConnectivity )
     {
         SCH_COMMIT dummyCommit;
-        schematic->RecalculateConnections( &dummyCommit, GLOBAL_CLEANUP );
+        schematic->CleanUpConnections( &dummyCommit, GLOBAL_CLEANUP );
+        dummyCommit.Push( _( "Schematic Cleanup" ), SKIP_UNDO | SKIP_CONNECTIVITY | DELETE_REMOVED_ITEMS );
     }
-
-    schematic->ResolveERCExclusionsPostUpdate();
 
     schematic->SetSheetNumberAndCount();
     schematic->RecomputeIntersheetRefs();
@@ -256,7 +375,9 @@ SCHEMATIC* EESCHEMA_HELPERS::LoadSchematic( const wxString& aFileName,
     }
 
     if( aCalculateConnectivity )
-        schematic->ConnectionGraph()->Recalculate( sheetList, true );
+        schematic->RebuildConnectivity();
 
-    return schematic;
+    schematic->ResolveERCExclusionsPostUpdate();
+
+    return schematic.release();
 }

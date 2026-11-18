@@ -16,8 +16,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -72,6 +72,26 @@ LIB_TREE_MODEL_ADAPTER::LIB_TREE_MODEL_ADAPTER( EDA_BASE_FRAME* aParent, const w
 
 LIB_TREE_MODEL_ADAPTER::~LIB_TREE_MODEL_ADAPTER()
 {}
+
+
+LIB_TREE_MODEL_ADAPTER::ResetTreeView::ResetTreeView( LIB_TREE_MODEL_ADAPTER& aAdapter ) :
+        m_adapter( aAdapter )
+{
+    // A queued GtkTreeView scroll holds a row reference into the nodes the caller is about to
+    // free, so drop it while those rows are still valid (#24433, #24757)
+    KIPLATFORM::UI::CancelPendingScroll( m_adapter.m_widget );
+
+    m_adapter.Freeze();
+    m_adapter.BeforeReset();
+}
+
+
+LIB_TREE_MODEL_ADAPTER::ResetTreeView::~ResetTreeView()
+{
+    // AfterReset rebuilds the view from GetParent(), which reports no parents while frozen
+    m_adapter.Thaw();
+    m_adapter.AfterReset();
+}
 
 
 TOOL_DISPATCHER* LIB_TREE_MODEL_ADAPTER::GetToolDispatcher() const
@@ -212,7 +232,12 @@ void LIB_TREE_MODEL_ADAPTER::scoreAndSortNodes( const wxString& aSearch )
     // the search box.
     constexpr int MAX_TERMS = 100;
 
-    wxStringTokenizer                                  tokenizer( aSearch, " \t\r\n", wxTOKEN_STRTOK );
+    wxString search( aSearch );
+
+    if( search.StartsWith( "::" ) )
+        search = search.Mid( 2 );
+
+    wxStringTokenizer                                  tokenizer( search, " \t\r\n", wxTOKEN_STRTOK );
     std::vector<std::unique_ptr<EDA_COMBINED_MATCHER>> termMatchers;
 
     while( tokenizer.HasMoreTokens() && termMatchers.size() < MAX_TERMS )
@@ -291,7 +316,20 @@ int LIB_TREE_MODEL_ADAPTER::GetItemCount() const
     int n = 0;
 
     for( const std::unique_ptr<LIB_TREE_NODE>& lib: m_tree.m_Children )
-        n += lib->m_Children.size();
+    {
+        if( m_filter )
+        {
+            for( const std::unique_ptr<LIB_TREE_NODE>& child : lib->m_Children )
+            {
+                if( (*m_filter)( *child ) )
+                    n++;
+            }
+        }
+        else
+        {
+            n += lib->m_Children.size();
+        }
+    }
 
     return n;
 }
@@ -349,6 +387,10 @@ const LIB_TREE_NODE* LIB_TREE_MODEL_ADAPTER::showResults()
                     if( n->m_Name.StartsWith( "-- " ) )
                         return -1; // Skip this node and its children
 
+                    // A row the filter hides has no native row to select
+                    if( n->m_Score <= 0 )
+                        return -1;
+
                     if( n->m_Type == LIB_TREE_NODE::TYPE::ITEM
                               && ( n->m_Children.empty() || !m_preselect_unit )
                               && m_preselect_lib_id == n->m_LibId )
@@ -387,6 +429,9 @@ const LIB_TREE_NODE* LIB_TREE_MODEL_ADAPTER::showResults()
         recursiveDescent( m_tree,
                 [&]( const LIB_TREE_NODE* n )
                 {
+                    if( n->m_Score <= 0 )
+                        return -1;
+
                     if( n->m_Type == LIB_TREE_NODE::TYPE::ITEM )
                     {
                         firstMatch = n;

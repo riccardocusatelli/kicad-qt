@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <bitmaps.h>
@@ -89,9 +85,10 @@ DISPLAY_FOOTPRINTS_FRAME::DISPLAY_FOOTPRINTS_FRAME( KIWAY* aKiway, TOOLKIT_WINDO
     SetScreen( new PCB_SCREEN( GetPageSizeIU() ) );
 
     // Create GAL canvas before loading settings
-    auto* gal_drawPanel = new PCB_DRAW_PANEL_GAL( this, -1, wxPoint( 0, 0 ), m_frameSize,
-                                                  GetGalDisplayOptions(),
-                                                  EDA_DRAW_PANEL_GAL::GAL_FALLBACK );
+    m_canvasType = loadCanvasTypeSetting();
+
+    PCB_DRAW_PANEL_GAL* gal_drawPanel = new PCB_DRAW_PANEL_GAL( this, -1, wxPoint( 0, 0 ), m_frameSize,
+                                                                GetGalDisplayOptions(), m_canvasType );
     SetCanvas( gal_drawPanel );
 
     // Don't show the default board solder mask expansion.  Only the footprint or pad expansion
@@ -141,9 +138,11 @@ DISPLAY_FOOTPRINTS_FRAME::DISPLAY_FOOTPRINTS_FRAME( KIWAY* aKiway, TOOLKIT_WINDO
     RestoreAuiLayout();
     FinishAUIInitialization();
 
-    auto& galOpts = GetGalDisplayOptions();
+    GAL_DISPLAY_OPTIONS_IMPL& galOpts = GetGalDisplayOptions();
     galOpts.m_axesEnabled = true;
 
+    // Call resolveCanvasType after loading settings:
+    resolveCanvasType();
     ActivateGalCanvas();
 
     setupUnits( config() );

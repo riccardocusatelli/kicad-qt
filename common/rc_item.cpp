@@ -14,14 +14,11 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
+#include <widgets/wx_data_view_hyperlink_renderer.h>
 #include <marker_base.h>
 #include <rc_item.h>
 #include <rc_json_schema.h>
@@ -74,8 +71,7 @@ void RC_ITEM::SetItems( const EDA_ITEM* aItem, const EDA_ITEM* bItem,
 }
 
 
-wxString RC_ITEM::getItemDescription( EDA_ITEM* aItem, int /*aIndex*/,
-                                      UNITS_PROVIDER* aUnitsProvider ) const
+wxString RC_ITEM::getItemDescription( EDA_ITEM* aItem, int /*aIndex*/, UNITS_PROVIDER* aUnitsProvider ) const
 {
     return aItem->GetItemDescription( aUnitsProvider, true );
 }
@@ -101,7 +97,7 @@ wxString RC_ITEM::getSeverityString( SEVERITY aSeverity )
 
 
 wxString RC_ITEM::ShowReport( UNITS_PROVIDER* aUnitsProvider, SEVERITY aSeverity,
-                              const std::map<KIID, EDA_ITEM*>& aItemMap ) const
+                              const RC_ITEM_RESOLVER& aResolver ) const
 {
     wxString severity = getSeverityString( aSeverity );
     bool     excluded = m_parent && m_parent->IsTreatedAsExcluded();
@@ -109,18 +105,11 @@ wxString RC_ITEM::ShowReport( UNITS_PROVIDER* aUnitsProvider, SEVERITY aSeverity
     if( excluded )
         severity += wxT( " (excluded)" );
 
-    EDA_ITEM* mainItem = nullptr;
-    EDA_ITEM* auxItem = nullptr;
+    EDA_ITEM* mainItem = aResolver.ResolveItemById( GetMainItemID() );
+    EDA_ITEM* auxItem = aResolver.ResolveItemById( GetAuxItemID() );
 
-    auto ii = aItemMap.find( GetMainItemID() );
-
-    if( ii != aItemMap.end() )
-        mainItem = ii->second;
-
-    ii = aItemMap.find( GetAuxItemID() );
-
-    if( ii != aItemMap.end() )
-        auxItem = ii->second;
+    wxString errorMessage = HYPERLINK_DV_RENDERER::StripMarkup( GetErrorMessage( false ) );
+    wxString ruleDesc = HYPERLINK_DV_RENDERER::StripMarkup( GetViolatingRuleDesc( false ) );
 
     // Note: some customers machine-process these.  So:
     // 1) don't translate
@@ -131,33 +120,21 @@ wxString RC_ITEM::ShowReport( UNITS_PROVIDER* aUnitsProvider, SEVERITY aSeverity
 
     if( mainItem && auxItem )
     {
-        msg.Printf( wxT( "[%s]: %s\n    %s; %s\n    %s: %s\n    %s: %s\n" ),
-                    GetSettingsKey(),
-                    GetErrorMessage( false ),
-                    GetViolatingRuleDesc( false ),
-                    severity,
-                    showCoord( aUnitsProvider, mainItem->GetPosition()),
+        msg.Printf( wxT( "[%s]: %s\n    %s; %s\n    %s: %s\n    %s: %s\n" ), GetSettingsKey(), errorMessage, ruleDesc,
+                    severity, showCoord( aUnitsProvider, mainItem->GetPosition() ),
                     getItemDescription( mainItem, 0, aUnitsProvider ),
-                    showCoord( aUnitsProvider, auxItem->GetPosition()),
+                    showCoord( aUnitsProvider, auxItem->GetPosition() ),
                     getItemDescription( auxItem, 1, aUnitsProvider ) );
     }
     else if( mainItem )
     {
-        msg.Printf( wxT( "[%s]: %s\n    %s; %s\n    %s: %s\n" ),
-                    GetSettingsKey(),
-                    GetErrorMessage( false ),
-                    GetViolatingRuleDesc( false ),
-                    severity,
-                    showCoord( aUnitsProvider, mainItem->GetPosition()),
+        msg.Printf( wxT( "[%s]: %s\n    %s; %s\n    %s: %s\n" ), GetSettingsKey(), errorMessage, ruleDesc, severity,
+                    showCoord( aUnitsProvider, mainItem->GetPosition() ),
                     getItemDescription( mainItem, 0, aUnitsProvider ) );
     }
     else
     {
-        msg.Printf( wxT( "[%s]: %s\n    %s; %s\n" ),
-                    GetSettingsKey(),
-                    GetErrorMessage( false ),
-                    GetViolatingRuleDesc( false ),
-                    severity );
+        msg.Printf( wxT( "[%s]: %s\n    %s; %s\n" ), GetSettingsKey(), errorMessage, ruleDesc, severity );
     }
 
     if( excluded && m_parent && !m_parent->GetComment().IsEmpty() )
@@ -167,11 +144,11 @@ wxString RC_ITEM::ShowReport( UNITS_PROVIDER* aUnitsProvider, SEVERITY aSeverity
 }
 
 
-void RC_ITEM::GetJsonViolation( RC_JSON::VIOLATION& aViolation, UNITS_PROVIDER* aUnitsProvider,
-                                SEVERITY aSeverity, const std::map<KIID, EDA_ITEM*>& aItemMap ) const
+void RC_ITEM::GetJsonViolation( RC_JSON::VIOLATION& aViolation, UNITS_PROVIDER* aUnitsProvider, SEVERITY aSeverity,
+                                const RC_ITEM_RESOLVER& aResolver ) const
 {
     aViolation.severity = getSeverityString( aSeverity );
-    aViolation.description = GetErrorMessage( false );
+    aViolation.description = HYPERLINK_DV_RENDERER::StripMarkup( GetErrorMessage( false ) );
     aViolation.type = GetSettingsKey();
 
     if( m_parent && m_parent->IsTreatedAsExcluded() )
@@ -184,18 +161,8 @@ void RC_ITEM::GetJsonViolation( RC_JSON::VIOLATION& aViolation, UNITS_PROVIDER* 
         aViolation.excluded = false;
     }
 
-    EDA_ITEM* mainItem = nullptr;
-    EDA_ITEM* auxItem = nullptr;
-
-    auto ii = aItemMap.find( GetMainItemID() );
-
-    if( ii != aItemMap.end() )
-        mainItem = ii->second;
-
-    ii = aItemMap.find( GetAuxItemID() );
-
-    if( ii != aItemMap.end() )
-        auxItem = ii->second;
+    EDA_ITEM* mainItem = aResolver.ResolveItemById( GetMainItemID() );
+    EDA_ITEM* auxItem = aResolver.ResolveItemById( GetAuxItemID() );
 
     if( mainItem )
     {

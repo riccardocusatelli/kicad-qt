@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
@@ -137,6 +133,19 @@ BOOST_AUTO_TEST_CASE( CrossHatchingIsBuiltWithoutRendering )
     HATCH_KNOCKOUT_SHAPE*  shape = addHatchedRect( *board, User_1, VECTOR2I( 0, 0 ), FILL_T::CROSS_HATCH );
 
     BOOST_CHECK_GT( shape->GetHatching().OutlineCount(), 0 );
+}
+
+
+BOOST_AUTO_TEST_CASE( BoardlessShapeHasNoKnockouts )
+{
+    HATCH_KNOCKOUT_SHAPE shape( nullptr, SHAPE_T::RECTANGLE );
+    shape.SetLayer( User_1 );
+    shape.SetStart( VECTOR2I( 0, 0 ) );
+    shape.SetEnd( VECTOR2I( pcbIUScale.mmToIU( 10 ), pcbIUScale.mmToIU( 10 ) ) );
+    shape.SetFillMode( FILL_T::HATCH );
+
+    BOOST_CHECK( shape.CallGetHatchingKnockouts().IsEmpty() );
+    BOOST_CHECK_NO_THROW( shape.UpdateHatching() );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

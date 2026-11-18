@@ -28,6 +28,7 @@
 #include <connection_graph.h>
 #include <netlist_exporters/netlist_exporter_kicad.h>
 #include <pgm_base.h>
+#include <io/io_base.h>
 #include <richio.h>
 #include <sch_io/sch_io.h>
 #include <sch_io/sch_io_mgr.h>
@@ -43,7 +44,7 @@
 
 static std::unique_ptr<SCHEMATIC> readSchematicFromFile( const std::string& aFilename )
 {
-    SCH_IO* pi = SCH_IO_MGR::FindPlugin( SCH_IO_MGR::SCH_KICAD );
+    IO_RELEASER<SCH_IO> pi( SCH_IO_MGR::FindPlugin( SCH_IO_MGR::SCH_KICAD ) );
     std::unique_ptr<SCHEMATIC> schematic = std::make_unique<SCHEMATIC>( nullptr );
 
     SETTINGS_MANAGER& manager = Pgm().GetSettingsManager();
@@ -68,7 +69,13 @@ static std::unique_ptr<SCHEMATIC> readSchematicFromFile( const std::string& aFil
     if( !rootSheet )
         return nullptr;
 
-    schematic->SetTopLevelSheets( { rootSheet } );
+    std::vector<SCH_SHEET*> topLevelSheets = schematic->GetTopLevelSheets();
+    bool rootIsTopLevel = std::find( topLevelSheets.begin(), topLevelSheets.end(), rootSheet )
+                          != topLevelSheets.end();
+    bool rootIsVirtualRoot = rootSheet == &schematic->Root() || rootSheet->IsVirtualRootSheet();
+
+    if( !rootIsTopLevel && !rootIsVirtualRoot )
+        schematic->SetTopLevelSheets( { rootSheet } );
 
     SCH_SCREENS screens( schematic->Root() );
 
@@ -89,8 +96,6 @@ static std::unique_ptr<SCHEMATIC> readSchematicFromFile( const std::string& aFil
     for( SCH_SCREEN* screen = screens.GetFirst(); screen; screen = screens.GetNext() )
         screen->MigrateSimModels();
 
-    sheets.AnnotatePowerSymbols();
-
     // NOTE: This is required for multi-unit symbols to be correct
     for( SCH_SHEET_PATH& sheet : sheets )
         sheet.UpdateAllScreenReferences();
@@ -107,11 +112,15 @@ static std::unique_ptr<SCHEMATIC> readSchematicFromFile( const std::string& aFil
 }
 
 
-bool GenerateSchematicNetlist( const wxString& aFilename, std::string& aNetlist )
+bool GenerateSchematicNetlist( const wxString& aFilename, std::string& aNetlist, KIWAY* aKiway )
 {
     std::unique_ptr<SCHEMATIC> schematic = readSchematicFromFile( aFilename.ToStdString() );
-    NETLIST_EXPORTER_KICAD exporter( schematic.get() );
-    STRING_FORMATTER formatter;
+
+    if( !schematic )
+        return false;
+
+    NETLIST_EXPORTER_KICAD exporter( schematic.get(), aKiway );
+    STRING_FORMATTER       formatter;
 
     exporter.Format( &formatter, GNL_ALL | GNL_OPT_KICAD );
     aNetlist = formatter.GetString();

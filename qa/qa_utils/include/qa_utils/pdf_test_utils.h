@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef QA_UTILS_PDF_TEST_UTILS_H
@@ -33,11 +29,6 @@
 #include <render_settings.h>
 #include <font/text_attributes.h>
 #include <font/stroke_font.h>
-
-/**
- * Make a temporary file path with .pdf extension using a given prefix.
- */
-wxString MakeTempPdfPath( const wxString& aPrefix );
 
 /**
  * Minimal concrete render settings suitable for plotters in tests.
@@ -108,10 +99,5 @@ inline bool PdfContains( const std::string& aBuffer, const char* aNeedle )
  */
 bool RasterizePdfCountDark( const wxString& aPdfPath, int aDpi, int aNearWhiteThresh,
                             long& aOutDarkPixels );
-
-/**
- * Remove a file unless the given environment variable is set (defaults to KICAD_KEEP_TEST_PDF).
- */
-void MaybeRemoveFile( const wxString& aPath, const wxString& aEnvVar = wxT( "KICAD_KEEP_TEST_PDF" ) );
 
 #endif // QA_UTILS_PDF_TEST_UTILS_H

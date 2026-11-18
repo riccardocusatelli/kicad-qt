@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -298,6 +294,7 @@ public:
     /**
      * Return a color that is mixed with the input by a factor.
      *
+     * @param aColor is the color to mix with this color.
      * @param aFactor Specifies how much of the original color to keep (valid values: 0.0 .. 1.0).
      * @return COLOR4D Mixed color.
      */
@@ -397,11 +394,12 @@ public:
      */
     static EDA_COLOR_T FindNearestLegacyColor( int aR, int aG, int aB );
 
-    // Color components: red, green, blue, alpha
-    double r; ///< Red component
-    double g; ///< Green component
-    double b; ///< Blue component
-    double a; ///< Alpha component
+    // Color components: red, green, blue, alpha.  Defaulted because the string constructors
+    // leave them untouched when the string is not a color.
+    double r = 0.0; ///< Red component
+    double g = 0.0; ///< Green component
+    double b = 0.0; ///< Blue component
+    double a = 1.0; ///< Alpha component
 
     // Optional text for evaluated colors
     std::shared_ptr<wxString> m_text;

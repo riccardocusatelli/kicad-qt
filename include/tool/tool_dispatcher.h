@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef TOOL_DISPATCHER_H
@@ -107,6 +103,19 @@ public:
      */
     static bool ShouldDropAutoRepeat( int aKeyCode, wxLongLong aNowMs, bool aKeyIsDown,
                                       int& aLastKey, wxLongLong& aLastTimeMs );
+
+    /**
+     * Pure decision on whether a cursor offset from a drag origin has crossed the drag threshold.
+     *
+     * Used both to detect an in-press drag and to tell a fast click-drag apart from a genuine
+     * double-click. A move beyond the threshold on either axis counts as a drag.
+     *
+     * @param aOffset  screen-space cursor movement from the drag origin.
+     * @param aDragMinX drag activation threshold on the X axis in screen pixels.
+     * @param aDragMinY drag activation threshold on the Y axis in screen pixels.
+     * @return true when the movement exceeds the threshold on either axis.
+     */
+    static bool IsPastDragThreshold( const VECTOR2D& aOffset, int aDragMinX, int aDragMinY );
 
 private:
     /// Handles mouse related events (click, motion, dragging).

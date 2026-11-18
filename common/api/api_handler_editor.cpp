@@ -14,18 +14,17 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <ranges>
-
 #include <api/api_handler_editor.h>
-#include <api/api_server.h>
+
+#include <api/api_enums.h>
 #include <api/api_utils.h>
 #include <eda_base_frame.h>
 #include <eda_item.h>
-#include <pgm_base.h>
+#include <title_block.h>
 #include <pgm_gui.h>
 #include <wx/wx.h>
 #include <core/ki_assert.h>
@@ -43,44 +42,22 @@ API_HANDLER_EDITOR::API_HANDLER_EDITOR( EDA_BASE_FRAME* aFrame ) :
     registerHandler<UpdateItems, UpdateItemsResponse>( &API_HANDLER_EDITOR::handleUpdateItems );
     registerHandler<DeleteItems, DeleteItemsResponse>( &API_HANDLER_EDITOR::handleDeleteItems );
     registerHandler<HitTest, HitTestResponse>( &API_HANDLER_EDITOR::handleHitTest );
-}
-
-
-static std::optional<ApiResponseStatus> rejectIfMultipleEditors( const std::string& aFuncName )
-{
-    // Handle legacy clients that don't know about the document field, when it's safe to do so
-    if( std::ranges::count_if( PgmGui().GetApiServer().Handlers(),
-                               []( const API_HANDLER* aHandler )
-                               {
-                                   return dynamic_cast<const API_HANDLER_EDITOR*>( aHandler );
-                               } )
-        > 1 )
-    {
-        ApiResponseStatus e;
-        e.set_status( ApiStatusCode::AS_BAD_REQUEST );
-        e.set_error_message( fmt::format(
-                "{} without a document specified is not allowed when multiple editors are open", aFuncName ) );
-        return e;
-    }
-
-    return std::nullopt;
+    registerHandler<GetDocumentModifiedState, GetDocumentModifiedStateResponse>(
+            &API_HANDLER_EDITOR::handleGetDocumentModifiedState );
+    registerHandler<GetTitleBlockInfo, types::TitleBlockInfo>( &API_HANDLER_EDITOR::handleGetTitleBlockInfo );
+    registerHandler<SetTitleBlockInfo, google::protobuf::Empty>( &API_HANDLER_EDITOR::handleSetTitleBlockInfo );
 }
 
 
 HANDLER_RESULT<BeginCommitResponse> API_HANDLER_EDITOR::handleBeginCommit(
         const HANDLER_CONTEXT<BeginCommit>& aCtx )
 {
-    // Handle legacy clients that don't know about the document field, when it's safe to do so
-    if( std::optional<ApiResponseStatus> r = rejectIfMultipleEditors( "BeginCommit" );
-        !aCtx.Request.has_header() && r.has_value() )
-    {
-        return tl::unexpected( *r );
-    }
-
-    // TODO Mark BeginCommit.header explicitly required in V12 and remove this optionality along with the above
+    // Before 11.0, commit requests had no header so we assume they are for the PCB editor
     if( aCtx.Request.has_header() )
     {
-        if( HANDLER_RESULT<std::optional<KIID>> valid = validateItemHeaderDocument( aCtx.Request.header() ); !valid )
+        HANDLER_RESULT<std::optional<KIID>> valid = validateItemHeaderDocument( aCtx.Request.header() );
+
+        if( !valid )
             return tl::unexpected( valid.error() );
     }
 
@@ -113,17 +90,12 @@ HANDLER_RESULT<BeginCommitResponse> API_HANDLER_EDITOR::handleBeginCommit(
 HANDLER_RESULT<EndCommitResponse> API_HANDLER_EDITOR::handleEndCommit(
         const HANDLER_CONTEXT<EndCommit>& aCtx )
 {
-    // Handle legacy clients that don't know about the document field, when it's safe to do so
-    if( std::optional<ApiResponseStatus> r = rejectIfMultipleEditors( "EndCommit" );
-        !aCtx.Request.has_header() && r.has_value() )
-    {
-        return tl::unexpected( *r );
-    }
-
-    // TODO Mark EndCommit.header explicitly required in V12 and remove this optionality along with the above
+    // Before 11.0, commit requests had no header so we assume they are for the PCB editor
     if( aCtx.Request.has_header() )
     {
-        if( HANDLER_RESULT<std::optional<KIID>> valid = validateItemHeaderDocument( aCtx.Request.header() ); !valid )
+        HANDLER_RESULT<std::optional<KIID>> valid = validateItemHeaderDocument( aCtx.Request.header() );
+
+        if( !valid )
             return tl::unexpected( valid.error() );
     }
 
@@ -209,14 +181,8 @@ void API_HANDLER_EDITOR::pushCurrentCommit( const std::string& aClientName,
 
 HANDLER_RESULT<bool> API_HANDLER_EDITOR::validateDocument( const DocumentSpecifier& aDocument )
 {
-    if( !validateDocumentInternal( aDocument ) )
-    {
-        ApiResponseStatus e;
-        e.set_status( ApiStatusCode::AS_BAD_REQUEST );
-        e.set_error_message( fmt::format( "the requested document {} is not open",
-                                          aDocument.board_filename() ) );
-        return tl::unexpected( e );
-    }
+    if( tl::expected<bool, ApiResponseStatus> validation = validateDocumentInternal( aDocument ); !validation )
+        return tl::unexpected( validation.error() );
 
     return true;
 }
@@ -238,16 +204,10 @@ HANDLER_RESULT<std::optional<KIID>> API_HANDLER_EDITOR::validateItemHeaderDocume
     if( !documentValidation )
         return tl::unexpected( documentValidation.error() );
 
-    if( !validateDocumentInternal( aHeader.document() ) )
-    {
-        ApiResponseStatus e;
-        e.set_status( ApiStatusCode::AS_BAD_REQUEST );
-        e.set_error_message( fmt::format( "the requested document {} is not open",
-                                          aHeader.document().board_filename() ) );
-        return tl::unexpected( e );
-    }
+    if( tl::expected<bool, ApiResponseStatus> result = validateDocumentInternal( aHeader.document() ); !result )
+        return tl::unexpected( result.error() );
 
-    if( aHeader.has_container() )
+    if( aHeader.has_container() && !aHeader.container().value().empty() )
     {
         return KIID( aHeader.container().value() );
     }
@@ -259,6 +219,9 @@ HANDLER_RESULT<std::optional<KIID>> API_HANDLER_EDITOR::validateItemHeaderDocume
 
 std::optional<ApiResponseStatus> API_HANDLER_EDITOR::checkForBusy()
 {
+    if( !m_frame )
+        return std::nullopt;
+
     if( !m_frame->CanAcceptApiCommands() )
     {
         ApiResponseStatus e;
@@ -274,20 +237,21 @@ std::optional<ApiResponseStatus> API_HANDLER_EDITOR::checkForBusy()
 HANDLER_RESULT<CreateItemsResponse> API_HANDLER_EDITOR::handleCreateItems(
         const HANDLER_CONTEXT<CreateItems>& aCtx )
 {
-    HANDLER_RESULT<std::optional<KIID>> document =
-            validateItemHeaderDocument( aCtx.Request.header() );
-
-    if( !document )
-        return tl::unexpected( document.error() );
-
     if( std::optional<ApiResponseStatus> busy = checkForBusy() )
         return tl::unexpected( *busy );
 
     CreateItemsResponse response;
 
+    // The dedicated CreateItems.container field (when set) overrides any container in the header
+    types::ItemHeader header;
+    header.CopyFrom( aCtx.Request.header() );
+
+    if( aCtx.Request.container().value().length() )
+        *header.mutable_container() = aCtx.Request.container();
+
     HANDLER_RESULT<ItemRequestStatus> result = handleCreateUpdateItemsInternal( true,
             aCtx.ClientName,
-            aCtx.Request.header(), aCtx.Request.items(),
+            header, aCtx.Request.items(),
             [&]( const ItemStatus& aStatus, const google::protobuf::Any& aItem )
             {
                 ItemCreationResult itemResult;
@@ -307,12 +271,6 @@ HANDLER_RESULT<CreateItemsResponse> API_HANDLER_EDITOR::handleCreateItems(
 HANDLER_RESULT<UpdateItemsResponse> API_HANDLER_EDITOR::handleUpdateItems(
         const HANDLER_CONTEXT<UpdateItems>& aCtx )
 {
-    HANDLER_RESULT<std::optional<KIID>> document =
-            validateItemHeaderDocument( aCtx.Request.header() );
-
-    if( !document )
-        return tl::unexpected( document.error() );
-
     if( std::optional<ApiResponseStatus> busy = checkForBusy() )
         return tl::unexpected( *busy );
 
@@ -413,10 +371,257 @@ HANDLER_RESULT<HitTestResponse> API_HANDLER_EDITOR::handleHitTest(
         return tl::unexpected( e );
     }
 
-    if( ( *item )->HitTest( UnpackVector2( aCtx.Request.position() ), aCtx.Request.tolerance() ) )
+    const EDA_IU_SCALE& scale = getIuScale();
+    VECTOR2I posIu = UnpackVector2( aCtx.Request.position(), scale );
+    int toleranceIu = scale.NmToIU( aCtx.Request.tolerance() );
+
+    if( ( *item )->HitTest( posIu, toleranceIu ) )
         response.set_result( HitTestResult::HTR_HIT );
     else
         response.set_result( HitTestResult::HTR_NO_HIT );
+
+    return response;
+}
+
+
+HANDLER_RESULT<GetDocumentModifiedStateResponse>
+API_HANDLER_EDITOR::handleGetDocumentModifiedState( const HANDLER_CONTEXT<GetDocumentModifiedState>& aCtx )
+{
+    if( HANDLER_RESULT<bool> documentValidation = validateDocument( aCtx.Request.document() ); !documentValidation )
+        return tl::unexpected( documentValidation.error() );
+
+    GetDocumentModifiedStateResponse response;
+
+    KI_CHECK( m_frame, response );
+    response.set_state( m_frame->IsContentModified() ? DocumentModifiedState::DMS_MODIFIED
+                                                     : DocumentModifiedState::DMS_UNMODIFIED );
+    return response;
+}
+
+
+std::vector<KICAD_T> API_HANDLER_EDITOR::parseRequestedItemTypes( const google::protobuf::RepeatedField<int>& aTypes )
+{
+    std::vector<KICAD_T> types;
+
+    for( int typeRaw : aTypes )
+    {
+        auto typeMessage = static_cast<types::KiCadObjectType>( typeRaw );
+
+        if( KICAD_T type = FromProtoEnum<KICAD_T>( typeMessage ); type != TYPE_NOT_INIT )
+            types.emplace_back( type );
+    }
+
+    return types;
+}
+
+
+HANDLER_RESULT<types::TitleBlockInfo>
+API_HANDLER_EDITOR::handleGetTitleBlockInfo( const HANDLER_CONTEXT<GetTitleBlockInfo>& aCtx )
+{
+    HANDLER_RESULT<bool> documentValidation = validateDocument( aCtx.Request.document() );
+
+    if( !documentValidation )
+        return tl::unexpected( documentValidation.error() );
+
+    std::optional<TITLE_BLOCK*> optBlock = getTitleBlock( aCtx.Request.document() );
+
+    if( !optBlock )
+    {
+        ApiResponseStatus e;
+        e.set_status( AS_BAD_REQUEST );
+        e.set_error_message( "this editor does not support a title block" );
+        return tl::unexpected( e );
+    }
+
+    TITLE_BLOCK& block = **optBlock;
+
+    types::TitleBlockInfo response;
+
+    response.set_title( block.GetTitle().ToUTF8() );
+    response.set_date( block.GetDate().ToUTF8() );
+    response.set_revision( block.GetRevision().ToUTF8() );
+    response.set_company( block.GetCompany().ToUTF8() );
+    response.set_comment1( block.GetComment( 0 ).ToUTF8() );
+    response.set_comment2( block.GetComment( 1 ).ToUTF8() );
+    response.set_comment3( block.GetComment( 2 ).ToUTF8() );
+    response.set_comment4( block.GetComment( 3 ).ToUTF8() );
+    response.set_comment5( block.GetComment( 4 ).ToUTF8() );
+    response.set_comment6( block.GetComment( 5 ).ToUTF8() );
+    response.set_comment7( block.GetComment( 6 ).ToUTF8() );
+    response.set_comment8( block.GetComment( 7 ).ToUTF8() );
+    response.set_comment9( block.GetComment( 8 ).ToUTF8() );
+
+    return response;
+}
+
+
+HANDLER_RESULT<google::protobuf::Empty>
+API_HANDLER_EDITOR::handleSetTitleBlockInfo( const HANDLER_CONTEXT<SetTitleBlockInfo>& aCtx )
+{
+    HANDLER_RESULT<bool> documentValidation = validateDocument( aCtx.Request.document() );
+
+    if( !documentValidation )
+        return tl::unexpected( documentValidation.error() );
+
+    if( !aCtx.Request.has_title_block() )
+    {
+        ApiResponseStatus e;
+        e.set_status( ApiStatusCode::AS_BAD_REQUEST );
+        e.set_error_message( "SetTitleBlockInfo requires title_block" );
+        return tl::unexpected( e );
+    }
+
+    std::optional<TITLE_BLOCK*> optBlock = getTitleBlock( aCtx.Request.document() );
+
+    if( !optBlock )
+    {
+        ApiResponseStatus e;
+        e.set_status( AS_BAD_REQUEST );
+        e.set_error_message( "this editor does not support a title block" );
+        return tl::unexpected( e );
+    }
+
+    TITLE_BLOCK& block = **optBlock;
+
+    const types::TitleBlockInfo& request = aCtx.Request.title_block();
+
+    block.SetTitle( wxString::FromUTF8( request.title() ) );
+    block.SetDate( wxString::FromUTF8( request.date() ) );
+    block.SetRevision( wxString::FromUTF8( request.revision() ) );
+    block.SetCompany( wxString::FromUTF8( request.company() ) );
+    block.SetComment( 0, wxString::FromUTF8( request.comment1() ) );
+    block.SetComment( 1, wxString::FromUTF8( request.comment2() ) );
+    block.SetComment( 2, wxString::FromUTF8( request.comment3() ) );
+    block.SetComment( 3, wxString::FromUTF8( request.comment4() ) );
+    block.SetComment( 4, wxString::FromUTF8( request.comment5() ) );
+    block.SetComment( 5, wxString::FromUTF8( request.comment6() ) );
+    block.SetComment( 6, wxString::FromUTF8( request.comment7() ) );
+    block.SetComment( 7, wxString::FromUTF8( request.comment8() ) );
+    block.SetComment( 8, wxString::FromUTF8( request.comment9() ) );
+
+    onModified();
+
+    return google::protobuf::Empty();
+}
+
+
+HANDLER_RESULT<types::PageSettings> API_HANDLER_EDITOR::handleGetPageSettings(
+        const HANDLER_CONTEXT<commands::GetPageSettings>& aCtx)
+{
+    HANDLER_RESULT<bool> documentValidation = validateDocument( aCtx.Request.document() );
+
+    if( !documentValidation )
+        return tl::unexpected( documentValidation.error() );
+
+    std::optional<PAGE_INFO> optPageInfo = getPageSettings( aCtx.Request.document() );
+
+    if( !optPageInfo )
+    {
+        ApiResponseStatus e;
+        e.set_status( AS_BAD_REQUEST );
+        e.set_error_message( "this editor does not support page settings" );
+        return tl::unexpected( e );
+    }
+
+    PAGE_INFO& pageInfo = *optPageInfo;
+
+    types::PageSettings response;
+    response.set_page_size( ToProtoEnum<PAGE_SIZE_TYPE, types::PageSize>( pageInfo.GetType() ) );
+
+    if( pageInfo.IsCustom() )
+        PackVector2( *response.mutable_user_page_size(), pageInfo.GetSizeIU( pcbIUScale.IU_PER_MILS ) );
+
+    response.set_orientation( pageInfo.IsPortrait() ? types::PageOrientation::PO_PORTRAIT
+                                                    : types::PageOrientation::PO_LANDSCAPE );
+    response.set_drawing_sheet( getDrawingSheetFileName().ToUTF8() );
+
+    return response;
+}
+
+
+HANDLER_RESULT<types::PageSettings> API_HANDLER_EDITOR::handleSetPageSettings(
+        const HANDLER_CONTEXT<commands::SetPageSettings>& aCtx )
+{
+    HANDLER_RESULT<bool> documentValidation = validateDocument( aCtx.Request.document() );
+
+    if( !documentValidation )
+        return tl::unexpected( documentValidation.error() );
+
+    if( !aCtx.Request.has_page_settings() )
+    {
+        ApiResponseStatus e;
+        e.set_status( ApiStatusCode::AS_BAD_REQUEST );
+        e.set_error_message( "SetPageSettings requires page_settings" );
+        return tl::unexpected( e );
+    }
+
+    std::optional<PAGE_INFO> optPageInfo = getPageSettings( aCtx.Request.document() );
+
+    if( !optPageInfo )
+    {
+        ApiResponseStatus e;
+        e.set_status( AS_BAD_REQUEST );
+        e.set_error_message( "this editor does not support page settings" );
+        return tl::unexpected( e );
+    }
+
+    const types::PageSettings& request = aCtx.Request.page_settings();
+
+    if( request.page_size() == types::PageSize::PS_UNKNOWN )
+    {
+        ApiResponseStatus e;
+        e.set_status( ApiStatusCode::AS_BAD_REQUEST );
+        e.set_error_message( "SetPageSettings requires page_size" );
+        return tl::unexpected( e );
+    }
+
+    PAGE_INFO pageInfo = *optPageInfo;
+    PAGE_SIZE_TYPE pageSizeType = FromProtoEnum<PAGE_SIZE_TYPE>( request.page_size() );
+
+    if( pageSizeType == PAGE_SIZE_TYPE::User )
+    {
+        if( !request.has_user_page_size() )
+        {
+            ApiResponseStatus e;
+            e.set_status( ApiStatusCode::AS_BAD_REQUEST );
+            e.set_error_message( "custom page size requires user_page_size" );
+            return tl::unexpected( e );
+        }
+
+        VECTOR2D sizeIu = UnpackVector2( request.user_page_size() );
+        PAGE_INFO::SetCustomWidthMils( pcbIUScale.IUToMils( sizeIu.x ) );
+        PAGE_INFO::SetCustomHeightMils( pcbIUScale.IUToMils( sizeIu.y ) );
+
+        pageInfo.SetType( PAGE_SIZE_TYPE::User );
+    }
+    else
+    {
+        bool portrait = ( request.orientation() == types::PageOrientation::PO_PORTRAIT );
+        pageInfo.SetType( pageSizeType, portrait );
+    }
+
+    if( !setPageSettings( aCtx.Request.document(), pageInfo ) )
+    {
+        ApiResponseStatus e;
+        e.set_status( AS_BAD_REQUEST );
+        e.set_error_message( "this editor does not support page settings" );
+        return tl::unexpected( e );
+    }
+
+    wxString drawingSheet( wxString::FromUTF8( request.drawing_sheet() ) );
+    setDrawingSheetFileName( drawingSheet );
+
+    onModified();
+
+    types::PageSettings response;
+    response.set_page_size( ToProtoEnum<PAGE_SIZE_TYPE, types::PageSize>( pageInfo.GetType() ) );
+
+    if( pageInfo.IsCustom() )
+        PackVector2( *response.mutable_user_page_size(), pageInfo.GetSizeIU( pcbIUScale.IU_PER_MILS ) );
+
+    response.set_orientation( pageInfo.IsPortrait() ? types::PageOrientation::PO_PORTRAIT
+                                                    : types::PageOrientation::PO_LANDSCAPE );
+    response.set_drawing_sheet( getDrawingSheetFileName().ToUTF8() );
 
     return response;
 }

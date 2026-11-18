@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -40,7 +40,7 @@ void OrientAndMirrorSymbolItems( LIB_SYMBOL* aLibSymbol, int aOrientation );
  * The modified pin orientation is the actual pin orientation/mirror
  * when the parent symbol is drawn.
  * @param aPin is the SCH_PIN to modify
- * @param aOrientation is the orientation+mirror value like returned by SCH_SYMBOL::GetOrientation()
+ * @param aOrientMirror is the orientation+mirror value like returned by SCH_SYMBOL::GetOrientation()
  */
 void RotateAndMirrorPin( SCH_PIN& aPin, int aOrientMirror );
 

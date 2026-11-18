@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <cstdio>
@@ -225,6 +225,8 @@ int FROM_TO_CACHE::cacheFromToPaths( const wxString& aFrom, const wxString& aTo 
 
 bool  FROM_TO_CACHE::IsOnFromToPath( BOARD_CONNECTED_ITEM* aItem, const wxString& aFrom, const wxString& aTo )
 {
+    std::lock_guard<std::recursive_mutex> lock( m_mutex );
+
     int nFromTosFound = 0;
 
     if( !m_board )
@@ -256,6 +258,8 @@ bool  FROM_TO_CACHE::IsOnFromToPath( BOARD_CONNECTED_ITEM* aItem, const wxString
 
 void FROM_TO_CACHE::Rebuild( BOARD* aBoard )
 {
+    std::lock_guard<std::recursive_mutex> lock( m_mutex );
+
     m_board = aBoard;
     buildEndpointList();
     m_ftPaths.clear();
@@ -264,6 +268,8 @@ void FROM_TO_CACHE::Rebuild( BOARD* aBoard )
 
 FROM_TO_CACHE::FT_PATH* FROM_TO_CACHE::QueryFromToPath( const std::set<BOARD_CONNECTED_ITEM*>& aItems )
 {
+    std::lock_guard<std::recursive_mutex> lock( m_mutex );
+
     for( FT_PATH& ftPath : m_ftPaths )
     {
         if ( ftPath.pathItems == aItems )

@@ -14,14 +14,16 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one at
- * http://www.gnu.org/licenses/
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <connectivity/conn_facade.h>
+#include <advanced_config.h>
 #include <qa_utils/wx_utils/unit_test_utils.h>
 #include <schematic_utils/schematic_file_util.h>
 
 #include <connection_graph.h>
+#include <scoped_set_reset.h>
 #include <schematic.h>
 #include <erc/erc_settings.h>
 #include <erc/erc.h>
@@ -30,6 +32,8 @@
 #include <locale_io.h>
 
 
+namespace
+{
 struct ERC_REGRESSION_TEST_FIXTURE
 {
     ERC_REGRESSION_TEST_FIXTURE()
@@ -38,53 +42,69 @@ struct ERC_REGRESSION_TEST_FIXTURE
     SETTINGS_MANAGER           m_settingsManager;
     std::unique_ptr<SCHEMATIC> m_schematic;
 };
+} // namespace
 
 
 BOOST_FIXTURE_TEST_CASE( ERCLabelNotConnected, ERC_REGRESSION_TEST_FIXTURE )
 {
     LOCALE_IO dummy;
+    auto& enabled = const_cast<ADVANCED_CFG&>( ADVANCED_CFG::GetCfg() ).m_ConnectivityEngine;
+    SCOPED_SET_RESET restore( enabled, enabled );
 
     // Check not-connected ERC errors
 
-    std::vector<std::pair<wxString, int>> tests =
+    std::vector<std::pair<wxString, int>> tests = { { "erc_pin_not_connected_basic", 2 },
+                                                    { "issue7203", 4 },
+                                                    { "issue11926", 2 },
+                                                    { "issue10430", 8 },
+                                                    { "erc_directive_label_not_connected", 1 },
+                                                    { "issue23346/issue23346", 1 },
+                                                    { "issue24449/BusHierLabels", 0 } };
+
+    for( bool useEngine : { false, true } )
     {
-        { "erc_pin_not_connected_basic",        2 },
-        { "issue7203",                          4 },
-        { "issue11926",                         2 },
-        { "issue10430",                         8 },
-        { "erc_directive_label_not_connected",  1 },
-        { "issue23346/issue23346",              1 }
-    };
+        enabled = useEngine;
 
-    for( const std::pair<wxString, int>& test : tests )
-    {
-        KI_TEST::LoadSchematic( m_settingsManager, test.first, m_schematic );
+        for( const std::pair<wxString, int>& test : tests )
+        {
+            BOOST_TEST_CONTEXT( test.first.ToStdString() << " engine=" << useEngine )
+            {
+                KI_TEST::LoadSchematic( m_settingsManager, test.first, m_schematic );
 
-        ERC_SETTINGS& settings = m_schematic->ErcSettings();
-        SHEETLIST_ERC_ITEMS_PROVIDER errors( m_schematic.get() );
+                ERC_SETTINGS& settings = m_schematic->ErcSettings();
+                SHEETLIST_ERC_ITEMS_PROVIDER errors( m_schematic.get() );
 
-        // Skip the "Modified symbol" warning
-        settings.m_ERCSeverities[ERCE_LIB_SYMBOL_ISSUES] = RPT_SEVERITY_IGNORE;
-        settings.m_ERCSeverities[ERCE_LIB_SYMBOL_MISMATCH] = RPT_SEVERITY_IGNORE;
+                // Skip the "Modified symbol" warning
+                settings.m_ERCSeverities[ERCE_LIB_SYMBOL_ISSUES] = RPT_SEVERITY_IGNORE;
+                settings.m_ERCSeverities[ERCE_LIB_SYMBOL_MISMATCH] = RPT_SEVERITY_IGNORE;
 
-        m_schematic->ConnectionGraph()->RunERC();
+                if( ADVANCED_CFG::GetCfg().m_ConnectivityEngine )
+                {
+                    m_schematic->RebuildConnectivity();
+                    m_schematic->Connectivity().PrepareTextChecks( *m_schematic );
+                }
 
-        ERC_TESTER tester( m_schematic.get() );
-        tester.TestMultUnitPinConflicts();
-        tester.TestMultiunitFootprints();
-        tester.TestNoConnectPins();
-        tester.TestPinToPin();
-        tester.TestSimilarLabels();
-        tester.TestTextVars( nullptr );
+                m_schematic->ConnectionGraph()->RunERC();
 
-        errors.SetSeverities( RPT_SEVERITY_ERROR | RPT_SEVERITY_WARNING );
+                ERC_TESTER tester( m_schematic.get() );
+                tester.TestMultUnitPinConflicts();
+                tester.TestMultiunitFootprints();
+                tester.TestNoConnectPins();
+                tester.TestPinToPin();
+                tester.TestSimilarLabels();
+                tester.TestTextVars( nullptr );
 
-        ERC_REPORT reportWriter( m_schematic.get(), EDA_UNITS::MM );
+                errors.SetSeverities( RPT_SEVERITY_ERROR | RPT_SEVERITY_WARNING );
 
-        BOOST_CHECK_MESSAGE( errors.GetCount() == test.second,
-                             "Expected " << test.second << " errors in " << test.first.ToStdString()
-                                         << " but got " << errors.GetCount() << "\n"
-                                         << reportWriter.GetTextReport() );
+                ERC_REPORT reportWriter( m_schematic.get(), EDA_UNITS::MM );
 
+                BOOST_CHECK_MESSAGE( errors.GetCount() == test.second,
+                                     "Expected " << test.second << " errors in " << test.first.ToStdString()
+                                                 << " but got " << errors.GetCount() << "\n"
+                                                 << reportWriter.GetTextReport() );
+
+
+            }
+        }
     }
 }

@@ -14,26 +14,26 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <boost/test/unit_test.hpp>
+#include <qa_utils/file_utils.h>
 
 #include <filesystem>
 #include <fstream>
 #include <functional>
 #include <memory>
 
+#include <wx/string.h>
+
 #include <cli/exit_codes.h>
 #include <jobs/job_export_pcb_pdf.h>
 #include <pcbnew_jobs_handler.h>
 #include <pcbnew_utils/board_file_utils.h>
 
-#include <wx/string.h>
+
+BOOST_AUTO_TEST_SUITE( PdfOutputPath )
 
 
 BOOST_AUTO_TEST_CASE( ExportPdfSingleDocumentOutputPath )
@@ -45,13 +45,9 @@ BOOST_AUTO_TEST_CASE( ExportPdfSingleDocumentOutputPath )
 
     BOOST_REQUIRE( std::filesystem::exists( boardPath ) );
 
-    const std::filesystem::path outputRoot =
-            std::filesystem::temp_directory_path() / "kicad_pdf_single_doc_test";
-    const std::filesystem::path outputPath =
-            outputRoot / "Assembly" / "Assembly_output.pdf";
+    KI_TEST::SCOPED_TEMP_DIR outputRoot( "kicad_pdf_single_doc_test" );
 
-    if( std::filesystem::exists( outputRoot ) )
-        std::filesystem::remove_all( outputRoot );
+    const std::filesystem::path outputPath = outputRoot.Path() / "Assembly" / "Assembly_output.pdf";
 
     auto pdfJob = std::make_unique<JOB_EXPORT_PCB_PDF>();
     pdfJob->m_filename = wxString::FromUTF8( boardPath.string().c_str() );
@@ -67,11 +63,8 @@ BOOST_AUTO_TEST_CASE( ExportPdfSingleDocumentOutputPath )
     BOOST_CHECK( std::filesystem::exists( outputPath ) );
     BOOST_CHECK( std::filesystem::is_regular_file( outputPath ) );
 
-    const std::filesystem::path nestedPdf =
-            outputPath / ( boardPath.stem().string() + ".pdf" );
+    const std::filesystem::path nestedPdf = outputPath / ( boardPath.stem().string() + ".pdf" );
     BOOST_CHECK( !std::filesystem::exists( nestedPdf ) );
-
-    std::filesystem::remove_all( outputRoot );
 }
 
 
@@ -84,12 +77,9 @@ BOOST_AUTO_TEST_CASE( ExportPdfSingleDocumentTrailingDisabledLayers )
             std::filesystem::path( KI_TEST::GetPcbnewTestDataDir() ) / "api_kitchen_sink.kicad_pcb";
     BOOST_REQUIRE( std::filesystem::exists( boardPath ) );
 
-    const std::filesystem::path outputRoot =
-            std::filesystem::temp_directory_path() / "kicad_pdf_trailing_disabled_test";
-    const std::filesystem::path outputPath = outputRoot / "out.pdf";
+    KI_TEST::SCOPED_TEMP_DIR outputRoot( "kicad_pdf_trailing_disabled_test" );
 
-    if( std::filesystem::exists( outputRoot ) )
-        std::filesystem::remove_all( outputRoot );
+    const std::filesystem::path outputPath = outputRoot.Path() / "out.pdf";
 
     auto pdfJob = std::make_unique<JOB_EXPORT_PCB_PDF>();
     pdfJob->m_filename = wxString::FromUTF8( boardPath.string().c_str() );
@@ -117,7 +107,7 @@ BOOST_AUTO_TEST_CASE( ExportPdfSingleDocumentTrailingDisabledLayers )
 
     BOOST_CHECK_EQUAL( pageCount, 2u ); // 3 before the fix
 
-    std::filesystem::remove_all( outputRoot );
+    in.close();
 }
 
 
@@ -129,11 +119,9 @@ static std::string plotOneLayerToPdf( const std::string& aBoardFile, PCB_LAYER_I
     const std::filesystem::path boardPath = std::filesystem::path( KI_TEST::GetPcbnewTestDataDir() ) / aBoardFile;
     BOOST_REQUIRE( std::filesystem::exists( boardPath ) );
 
-    const std::filesystem::path outputRoot = std::filesystem::temp_directory_path() / aTag;
-    const std::filesystem::path outputPath = outputRoot / "out.pdf";
+    KI_TEST::SCOPED_TEMP_DIR outputRoot( aTag );
 
-    if( std::filesystem::exists( outputRoot ) )
-        std::filesystem::remove_all( outputRoot );
+    const std::filesystem::path outputPath = outputRoot.Path() / "out.pdf";
 
     auto pdfJob = std::make_unique<JOB_EXPORT_PCB_PDF>();
     pdfJob->m_filename = wxString::FromUTF8( boardPath.string().c_str() );
@@ -149,10 +137,13 @@ static std::string plotOneLayerToPdf( const std::string& aBoardFile, PCB_LAYER_I
     BOOST_REQUIRE_EQUAL( handler.JobExportPdf( pdfJob.get() ), CLI::EXIT_CODES::OK );
     BOOST_REQUIRE( std::filesystem::exists( outputPath ) );
 
-    std::ifstream in( outputPath, std::ios::binary );
-    std::string   pdf( ( std::istreambuf_iterator<char>( in ) ), std::istreambuf_iterator<char>() );
+    std::string pdf;
 
-    std::filesystem::remove_all( outputRoot );
+    {
+        // Windows cannot remove a directory holding a file that is still open
+        std::ifstream in( outputPath, std::ios::binary );
+        pdf.assign( std::istreambuf_iterator<char>( in ), std::istreambuf_iterator<char>() );
+    }
 
     return pdf;
 }
@@ -226,3 +217,5 @@ BOOST_AUTO_TEST_CASE( ExportPdfInnerLayerPageSkipsSurfaceMountFootprints )
     BOOST_CHECK_MESSAGE( pdf.find( "/Title (REF**)" ) == std::string::npos,
                          "an unplated hole was bookmarked on an inner copper page" );
 }
+
+BOOST_AUTO_TEST_SUITE_END()

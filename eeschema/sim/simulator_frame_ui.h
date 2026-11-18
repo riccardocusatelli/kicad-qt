@@ -18,24 +18,25 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SIMULATOR_FRAME_UI_H
-#define SIMULATOR_FRAME_UI_H
+#pragma once
 
 
 #include <sim/simulator_frame_ui_base.h>
 #include <sim/sim_types.h>
 #include <sim/sim_plot_tab.h>
 #include <sim/sim_preferences.h>
+#include <sim/simulator_frame.h>
 
 #include <wx/event.h>
 #include <wx/timer.h>
+
+#include <map>
+#include <set>
+#include <wx/notebook.h>
+#include <wx/scrolwin.h>
 
 class SCH_EDIT_FRAME;
 class SCH_SYMBOL;
@@ -46,6 +47,10 @@ class EESCHEMA_SETTINGS;
 class SPICE_CIRCUIT_MODEL;
 
 class TUNER_SLIDER;
+class STD_BITMAP_BUTTON;
+class SIM_MODEL;
+class SIM_TREE_MODEL;
+class SIM_VIEW;
 
 
 /**
@@ -65,8 +70,6 @@ class TUNER_SLIDER;
  * V(OUT) / V(IN)) are stored in vectors of the format "user%d".
  *
  */
-
-
 class SIMULATOR_FRAME_UI : public SIMULATOR_FRAME_UI_BASE
 {
 public:
@@ -83,6 +86,13 @@ public:
     std::vector<wxString> SimPlotVectors() const;
 
     std::vector<wxString> Signals() const;
+
+    /// The schematic signals only, already split into their AC/SP forms
+    const std::vector<wxString>& NativeSignals() const { return m_signals; }
+
+    const std::vector<wxString>& Netnames() const { return m_netnames; }
+
+    std::vector<wxString> DeviceVoltages() const;
 
     const std::map<int, wxString>& UserDefinedSignals() { return m_userDefinedSignals; }
     void SetUserDefinedSignals( const std::map<int, wxString>& aSignals );
@@ -112,6 +122,8 @@ public:
 
     /**
      * Get/Set the number of significant digits and the range for formatting a cursor value.
+     *
+     * @param aCursorId is the cursor ID of the format to get.
      * @param aValueCol 0 indicates the X value column; 1 the Y value.
      */
     SPICE_VALUE_FORMAT GetCursorFormat( int aCursorId, int aValueCol ) const
@@ -141,22 +153,22 @@ public:
      * Safely update a field of the associated symbol without dereferencing
      * the symbol.
      *
+     * @param aSheetPath is the instance of the symbol to update
      * @param aSymbol id of the symbol needing updating
-     * @param aId id of the symbol field
+     * @param aRef is the name of the  symbol field
      * @param aValue new value of the symbol field
      */
     void UpdateTunerValue( const SCH_SHEET_PATH& aSheetPath, const KIID& aSymbol,
                            const wxString& aRef, const wxString& aValue );
 
-    /**
-     * Add a measurement to the measurements grid.
-     */
+    /// Add a measurement to the measurements tree.
     void AddMeasurement( const wxString& aCmd );
 
-    /**
-     * Delete a row from the measurements grid.
-     */
-    void DeleteMeasurement( int aRow );
+    /// Add the \a aFunctions measurements ("MIN", "RMS", ...) of \a aSignal that don't exist yet.
+    void AddMeasurements( const wxString& aSignal, const std::vector<wxString>& aFunctions );
+
+    /// Delete a measurement by its index in SIM_PLOT_TAB::Measurements().
+    void DeleteMeasurement( int aIndex );
 
     /**
      * Get/Set the format of a value in the measurements grid.
@@ -183,6 +195,9 @@ public:
 
     bool DarkModePlots() const { return m_darkMode; }
     void ToggleDarkModePlots();
+
+    /// Toggle the current S-parameter tab between Smith chart and amplitude/phase views.
+    void ToggleSmithChart();
 
     void ShowChangedLanguage();
 
@@ -279,8 +294,10 @@ private:
     /**
      * Get the simulator output vector name for a given signal name and type.
      */
-    wxString vectorNameFromSignalName( SIM_PLOT_TAB* aPlotTab, const wxString& aSignalName,
-                                       int* aTraceType );
+    wxString vectorNameFromSignalName( SIM_PLOT_TAB* aPlotTab, const wxString& aSignalName, int* aTraceType );
+
+    /// The inverse of vectorNameFromSignalName().
+    wxString signalNameFromVectorName( const wxString& aVectorName ) const;
 
     /**
      * Update a trace in a particular SIM_PLOT_TAB.  If the panel does not contain the given
@@ -289,9 +306,16 @@ private:
      * @param aVectorName is the SPICE vector name, such as "I(Net-C1-Pad1)".
      * @param aTraceType describes the type of plot.
      * @param aPlotTab is the tab that should receive the update.
+     * @param aDataX
+     * @param aClearData
+     * @param aView is the view the trace should be plotted on; if null, the trace's existing
+     *              view is kept (or the tab's default view is used, for a new trace).
      */
     void updateTrace( const wxString& aVectorName, int aTraceType, SIM_PLOT_TAB* aPlotTab,
-                      std::vector<double>* aDataX = nullptr, bool aClearData = false );
+                      std::vector<double>* aDataX = nullptr, bool aClearData = false, SIM_VIEW* aView = nullptr );
+
+    /// Reference impedance of the response port for an S-parameter vector, zero when unresolved.
+    double getSmithPortImpedance( const wxString& aVectorName );
 
     /**
      * A common toggler for the two main wxSplitterWindow s
@@ -307,20 +331,24 @@ private:
 
     /**
      * Rebuild the list of signals available from the netlist.
-     *
-     * Note: this is not the filtered list.  See rebuildSignalsGrid() for that.
      */
     void rebuildSignalsList();
 
-    /**
-     * Rebuild the filtered list of signals in the signals grid.
-     */
-    void rebuildSignalsGrid( wxString aFilter );
+    void rebuildSignalsTree( wxString aFilter );
 
-    /**
-     * Update the values in the signals grid.
-     */
-    void updateSignalsGrid();
+    void updateSignalsTree();
+
+    /// The selected signals, or only the clicked one if it isn't selected.
+    std::vector<wxString> getSelectedSignals( const wxDataViewItem& aClickedItem ) const;
+
+    /// Put the signal names on the clipboard, one per line.
+    void copySignalNames( const std::vector<wxString>& aSignals );
+
+    /// Plot \a aSignal on \a aView, or remove its trace if \a aView is null.
+    void setSignalView( const wxString& aSignal, SIM_VIEW* aView );
+
+    /// The view \a aSignal returns to when re-enabled: its last view, or the first.
+    SIM_VIEW* lastSignalView( SIM_PLOT_TAB* aPlotTab, const wxString& aSignal ) const;
 
     /**
      * Update the cursor values (in the grid) and graphics (in the plot window).
@@ -328,14 +356,17 @@ private:
     void updatePlotCursors();
 
     /**
-     * Updates m_signalsGrid cursor widget, column rendering and attributes
-     *
-     * @param t is the type of the enum that holds m_signalsGrid column indexing
-     * @param u a cursor "ID". Applies a 2 integer offset against the enum indexing
-     * @param r is a wxGrid widget's row
+     * Add or remove the Smith-only cursor columns, carrying their shown/hidden state across.
      */
-    template <typename T, typename U, typename R>
-    void signalsGridCursorUpdate( T t, U u, R r );
+    void updateSmithCursorColumns( bool aSmithMode );
+
+    void fillSmithCursorRow( int aRow, CURSOR* aCursor, TRACE* aTrace );
+
+    void setSmithCursorColumnLabels();
+
+    void rememberSmithCursorColumns();
+
+    void applySmithCursorColumns();
 
     /**
      * Apply user-defined signals to the SPICE session.
@@ -345,9 +376,58 @@ private:
     /**
      * Rebuild the measurements grid for the current plot.
      */
-    void rebuildMeasurementsGrid();
+    void rebuildMeasurementsTree( const std::map<wxString, wxString>* aKeepValues = nullptr );
 
-    void updateMeasurementsFromGrid();
+    /// Shown values by command.  Take them before changing Measurements(): the tree indexes into it.
+    std::map<wxString, wxString> shownMeasurementValues() const;
+
+    void updateMeasurements();
+
+    /// Refresh each measurement group's trace dot without notifying; true if any changed.
+    bool refreshMeasurementGroupIcons();
+
+    /// Cached plot indicator for \a aColor, filled when plotted.
+    wxBitmapBundle signalDot( const wxColour& aColor, bool aFilled );
+
+    void updateMeasurementValues();
+
+    std::vector<int> getSelectedMeasurements( const wxDataViewItem& aClickedItem ) const;
+
+    /// Map a tree signal to the name a MEAS command wants; false for phase traces.
+    bool measurementSignal( const wxString& aSignal, wxString& aResult ) const;
+
+    /// Push a measurement value into the tree.
+    void setMeasurementValue( int aIndex, const wxString& aValue );
+
+    /// Uniform row height; re-apply once realized, or wxGTK keeps an early measurement.
+    void applyTreeRowHeight();
+
+    /**
+     * Grow (but never shrink below \a aMinWidth) a grid column to fit its current contents.
+     *
+     * @param aGrid
+     * @param aCol
+     * @param aMinWidth
+     * @param aExtraPadding additional width to reserve beyond the content, e.g. for a combo
+     *                      box column's dropdown arrow so it doesn't crowd the text.
+     */
+    void autoSizeGridColumn( WX_GRID* aGrid, int aCol, int aMinWidth, int aExtraPadding = 0 );
+
+    /// The Signals grid's "Plot" column choices: "Disabled" plus one entry per current view.
+    wxArrayString getViewChoices( SIM_PLOT_TAB* aPlotTab ) const;
+
+    /// The Signals grid's "Plot" column label for a given view ("Disabled" if null).
+    wxString getViewLabel( SIM_PLOT_TAB* aPlotTab, SIM_VIEW* aView ) const;
+
+    /// The views a trace's Y-axis scale could be linked to: every view except its own (since
+    /// linking to its own view is equivalent to -- and represented by -- "Default").
+    std::vector<SIM_VIEW*> getYScaleTargetViews( SIM_PLOT_TAB* aPlotTab, SIM_VIEW* aOwnView ) const;
+
+    /// The Signals grid's "Y Scale" column choices: "Default" plus one entry per eligible view.
+    wxArrayString getYScaleChoices( SIM_PLOT_TAB* aPlotTab, SIM_VIEW* aOwnView ) const;
+
+    /// The Signals grid's "Y Scale" column label for a trace ("Default" if not explicitly linked).
+    wxString getYScaleLabel( SIM_PLOT_TAB* aPlotTab, TRACE* aTrace ) const;
 
     /**
      * Apply component values specified using tuner sliders to the current netlist.
@@ -387,9 +467,31 @@ private:
     void OnFilterText( wxCommandEvent& aEvent ) override;
     void OnFilterMouseMoved( wxMouseEvent& aEvent ) override;
 
-    void onSignalsGridCellChanged( wxGridEvent& aEvent ) override;
+    void onSignalsTreeActivated( wxDataViewEvent& aEvent ) override;
+    void onSignalsTreeContextMenu( wxDataViewEvent& aEvent ) override;
+    void onSignalsTreeMenuSelection( wxCommandEvent& aEvent );
+    void OnConsoleFilterChanged( wxCommandEvent& aEvent ) override;
     void onCursorsGridCellChanged( wxGridEvent& aEvent ) override;
-    void onMeasurementsGridCellChanged( wxGridEvent& aEvent ) override;
+    void onMeasurementsTreeContextMenu( wxDataViewEvent& aEvent ) override;
+    void onMeasurementsTreeActivated( wxDataViewEvent& aEvent ) override;
+    void onMeasurementsTreeMenuSelection( wxCommandEvent& aEvent );
+
+    /// Prompt for a new text for measurement \a aRow of the current tab.
+    void editMeasurement( int aRow );
+
+    void deleteMeasurements( std::vector<int> aRows );
+
+    enum class SIM_CONSOLE_FILTER
+    {
+        ALL,
+        WARNINGS,
+        ERRORS
+    };
+
+    bool consoleEntryMatchesFilter( SEVERITY aSeverity ) const;
+
+    /// Record a console line and append it to m_simConsole if it passes the filter.
+    void appendConsoleText( const wxString& aText, SEVERITY aSeverity = RPT_SEVERITY_UNDEFINED );
 
     void OnUpdateUI( wxUpdateUIEvent& event ) override;
 
@@ -404,19 +506,78 @@ public:
     int                          m_SuppressGridEvents;
 
 private:
-    SIMULATOR_FRAME*             m_simulatorFrame;
-    SCH_EDIT_FRAME*              m_schematicFrame;
+    SIMULATOR_FRAME* m_simulatorFrame;
+    SCH_EDIT_FRAME*  m_schematicFrame;
 
-    std::vector<wxString>        m_signals;
-    std::map<int, wxString>      m_userDefinedSignals;
-    std::list<TUNER_SLIDER*>     m_tuners;
+    std::vector<SIM_CONSOLE_ENTRY> m_consoleEntries;
+    SIM_CONSOLE_FILTER             m_consoleFilter = SIM_CONSOLE_FILTER::ALL;
+
+    STD_BITMAP_BUTTON* m_addViewButton = nullptr;
+    STD_BITMAP_BUTTON* m_removeViewButton = nullptr;
+
+    SIM_TREE_MODEL* m_signalsModel = nullptr;
+    SIM_TREE_MODEL* m_measurementsModel = nullptr;
+
+    std::vector<int> m_measurementsMenuRows;
+
+    std::vector<wxString> m_signalsMenuSignals;
+
+    /// Last view per signal, per tab; keyed by signalViewKey().
+    std::map<const SIM_TAB*, std::map<wxString, int>> m_lastSignalView;
+
+    /// User collapse choices, keyed by signalTreeGroupKey().
+    std::map<wxString, bool> m_signalGroupExpanded;
+
+    /// True while the signals tree shows a filtered (force-expanded) set.
+    bool m_signalsTreeFiltered = false;
+
+    struct SIGNAL_DOT
+    {
+        wxColour       colour;
+        bool           filled;
+        wxBitmapBundle bitmap;
+    };
+
+    static constexpr size_t SIGNAL_DOT_CACHE_LIMIT = 256;
+
+    std::vector<SIGNAL_DOT> m_signalDotCache;
+
+    std::vector<wxString>                 m_signals;
+    std::map<int, wxString>               m_userDefinedSignals;
+    std::list<TUNER_SLIDER*>              m_tuners;
     std::map<const TUNER_SLIDER*, double> m_tunerOverrides;
+
+    /// One notebook page per device class, created on demand and dropped when empty.
+    enum TUNER_GROUP
+    {
+        TUNERGRP_RESISTORS = 0,
+        TUNERGRP_CAPACITORS,
+        TUNERGRP_INDUCTORS,
+        TUNERGRP_SOURCES,
+        TUNERGRP_OTHER,
+
+        TUNERGRP_COUNT
+    };
+
+    static TUNER_GROUP tunerGroup( const SIM_MODEL& aModel );
+    static wxString    tunerGroupLabel( TUNER_GROUP aGroup );
+
+    /// The page for \a aGroup, created in tab order if missing.
+    wxScrolledWindow* getOrCreateTunerPage( TUNER_GROUP aGroup );
+
+    void pruneEmptyTunerPages();
+
+    wxNotebook*       m_tunerNotebook;
+    wxScrolledWindow* m_tunerPages[TUNERGRP_COUNT];
 
     struct MULTI_RUN_TRACE
     {
         int traceType = SPT_UNKNOWN;
         std::vector<double> xValues;
         std::vector<std::vector<double>> yValues;
+
+        // smith traces carry Re(gamma) in x, different every run, stored per run here
+        std::vector<std::vector<double>> xRuns;
     };
 
     struct MULTI_RUN_STEP
@@ -435,10 +596,42 @@ private:
         std::map<std::string, MULTI_RUN_TRACE> traces;
     };
 
-    MULTI_RUN_STATE             m_multiRunState;
+    MULTI_RUN_STATE m_multiRunState;
 
-    ///< SPICE expressions need quoted versions of the netnames since KiCad allows '-' and '/'
-    ///< in netnames.
+    void rebuildDeviceVoltages();
+
+    /// Evaluate component voltage \a aId into the current plot, once.  On demand: there can be hundreds.
+    void ensureDeviceVoltage( int aId );
+
+    /// As above, by vector name.  Does nothing for other vectors.
+    void ensureDeviceVoltage( const wxString& aVectorName );
+
+    /// Replace V(R1)-style component voltages with their node-voltage difference.
+    wxString expandDeviceVoltages( const wxString& aExpression ) const;
+
+    /// A signal or expression as ngspice can evaluate it: user-defined signals and component voltages map
+    /// to their vectors, also when parenthesised in an expression; other component voltages are expanded.
+    wxString spiceSignal( const wxString& aSignal );
+
+    /// Quote the schematic net names in a SPICE expression ('-' and '/' are legal in net names).
+    wxString quoteNetNames( const wxString& aExpression ) const;
+
+    /// Component voltages have their own vector namespace, see deviceVectorName().
+    std::map<wxString, int> m_deviceVoltageIds;
+
+    /// Every id handed out this session; ids are never reused.
+    std::map<wxString, int> m_deviceVoltageIdRegistry;
+    int                     m_nextDeviceVoltageId = 0;
+
+    std::map<int, wxString> m_deviceVoltageExprs;
+
+    std::map<wxString, int> m_deviceVoltageVectors;
+
+    /// Component voltages already evaluated, per ngspice plot (a "let" only lands in the current plot).
+    std::map<wxString, std::set<int>> m_appliedDeviceVoltages;
+
+    /// SPICE expressions need quoted versions of the netnames since KiCad allows '-' and '/'
+    /// in netnames.
     std::vector<wxString>        m_netnames;
 
     SPICE_VALUE_FORMAT           m_cursorFormats[3][2];
@@ -446,19 +639,23 @@ private:
     // Holds cursor formating for m_cursorsGrid, includes m_cursorFormats[3][2], TODO: merge.
     std::vector<std::vector<SPICE_VALUE_FORMAT>> m_cursorFormatsDyn;
 
+    wxString m_smithCursorColumns;
+    std::vector<int> m_smithCursorWidths;
+
     // Variables for temporary storage:
-    int                          m_splitterLeftRightSashPosition;
-    int                          m_splitterPlotAndConsoleSashPosition;
-    int                          m_splitterSignalsSashPosition;
-    int                          m_splitterCursorsSashPosition;
-    int                          m_splitterTuneValuesSashPosition;
-    bool                         m_darkMode;
-    unsigned int                 m_plotNumber;
-    wxTimer                      m_refreshTimer;
-    SIM_PREFERENCES              m_preferences;
+    int m_splitterLeftRightSashPosition;
+    int m_splitterPlotAndConsoleSashPosition;
+    int m_splitterSignalsSashPosition;
+    int m_splitterCursorsSashPosition;
+    int m_splitterCenterRightSashPosition;
+
+    /// For each splitter with a hidden panel: whether that panel was its first (left or top) window.
+    std::map<wxSplitterWindow*, bool> m_hiddenPanelFirst;
+    bool                              m_darkMode;
+    unsigned int                      m_plotNumber;
+    wxTimer                           m_refreshTimer;
+    SIM_PREFERENCES                   m_preferences;
 
     // Count all available cursors in m_signalsGrid
     int                          m_customCursorsCnt; // Defaults to 2 + 1
 };
-
-#endif // SIMULATOR_FRAME_UI_H

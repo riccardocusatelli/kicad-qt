@@ -14,31 +14,40 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <algorithm>
 #include <chrono>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <map>
+#include <random>
 #include <string_view>
-#include <unordered_set>
+#include <set>
 #include <utility>
+#include <vector>
 #include <bs_thread_pool.hpp>
 #include <wx/datetime.h>
+#include <wx/filename.h>
 #include <wx/log.h>
 #include <wx/tokenzr.h>
 
 #include <boost/algorithm/string.hpp>
+#include <json_common.h>
+#include <pin_map.h>
 
 #include <libraries/symbol_library_adapter.h>
 #include <database/database_connection.h>
 #include <database/database_lib_settings.h>
+#include <database/file_in_use_backoff.h>
 #include <fmt.h>
+#include <gestfich.h>
 #include <hash.h>
 #include <ki_exception.h>
 #include <lib_symbol.h>
-#include <scoped_set_reset.h>
 
 #include "sch_io_database.h"
 
@@ -74,7 +83,29 @@ void SCH_IO_DATABASE::EnumerateSymbolLib( wxArrayString&    aSymbolNameList,
     EnumerateSymbolLib( symbols, aLibraryPath, aProperties );
 
     for( LIB_SYMBOL* symbol : symbols )
+    {
         aSymbolNameList.Add( symbol->GetName() );
+        delete symbol;
+    }
+}
+
+
+void SCH_IO_DATABASE::CancelLoad()
+{
+    // Set under the wait mutex so a waiter between its check and its sleep cannot miss the wakeup
+    {
+        std::lock_guard lock( m_refreshMutex );
+        m_loadCancelled = true;
+    }
+
+    m_refreshCV.notify_all();
+}
+
+
+void SCH_IO_DATABASE::ResumeLoad() noexcept
+{
+    std::lock_guard lock( m_refreshMutex );
+    m_loadCancelled = false;
 }
 
 
@@ -84,13 +115,7 @@ void SCH_IO_DATABASE::EnumerateSymbolLib( std::vector<LIB_SYMBOL*>& aSymbolList,
 {
     KI_CHECK_RET( m_adapter, "Database plugin missing library manager adapter handle!" );
     ensureSettings( aLibraryPath );
-    ensureConnection();
-    cacheLib();
-
-    if( !m_conn )
-        THROW_IO_ERROR( m_lastError );
-
-    resolvePendingSources();
+    cacheLib( ensureConnection() );
 
     bool powerSymbolsOnly = ( aProperties && aProperties->contains( SYMBOL_LIBRARY_ADAPTER::PropPowerSymsOnly ) );
 
@@ -101,7 +126,7 @@ void SCH_IO_DATABASE::EnumerateSymbolLib( std::vector<LIB_SYMBOL*>& aSymbolList,
         LIB_SYMBOL* symbol = pair.second.get();
 
         if( !powerSymbolsOnly || symbol->IsPower() )
-            aSymbolList.emplace_back( symbol );
+            aSymbolList.emplace_back( symbol->Duplicate() );
     }
 }
 
@@ -120,13 +145,9 @@ LIB_SYMBOL* SCH_IO_DATABASE::LoadSymbol( const wxString&   aLibraryPath,
 {
     KI_CHECK_MSG( m_adapter, nullptr, "Database plugin missing library manager adapter handle!" );
     ensureSettings( aLibraryPath );
-    ensureConnection();
+    std::shared_ptr<DATABASE_CONNECTION> conn = ensureConnection();
 
-    if( !m_conn )
-        THROW_IO_ERROR( m_lastError );
-
-    cacheLib();
-    resolvePendingSources();
+    cacheLib( conn );
 
     std::string tableName;
     std::string symbolName( aAliasName.ToUTF8() );
@@ -184,8 +205,7 @@ LIB_SYMBOL* SCH_IO_DATABASE::LoadSymbol( const wxString&   aLibraryPath,
 
     for( const DATABASE_LIB_TABLE* table : tablesToTry )
     {
-        if( m_conn->SelectOne( table->table, std::make_pair( table->key_col, symbolName ),
-                               result ) )
+        if( conn->SelectOne( table->table, std::make_pair( table->key_col, symbolName ), result ) )
         {
             foundTable = table;
             KI_LOG_TRACE( traceDatabase, wxT( "LoadSymbol: SelectOne (%s, %s) found in %s" ),
@@ -201,9 +221,7 @@ LIB_SYMBOL* SCH_IO_DATABASE::LoadSymbol( const wxString&   aLibraryPath,
     if( !foundTable )
         return nullptr;
 
-    std::set<wxString> transientPendingLibs;
-
-    return loadSymbolFromRow( aAliasName, *foundTable, result, transientPendingLibs ).release();
+    return loadSymbolFromRow( aAliasName, *foundTable, result ).release();
 }
 
 
@@ -239,20 +257,6 @@ void SCH_IO_DATABASE::GetDefaultSymbolFields( std::vector<wxString>& aNames )
     std::lock_guard<std::mutex> lock( m_symbolLoadMutex );
 
     std::copy( m_defaultShownFields.begin(), m_defaultShownFields.end(), std::back_inserter( aNames ) );
-}
-
-
-bool SCH_IO_DATABASE::TestConnection( wxString* aErrorMsg )
-{
-    if( m_conn && m_conn->IsConnected() )
-        return true;
-
-    connect();
-
-    if( aErrorMsg && ( !m_conn || !m_conn->IsConnected() ) )
-        *aErrorMsg = m_lastError;
-
-    return m_conn && m_conn->IsConnected();
 }
 
 
@@ -300,30 +304,177 @@ size_t SCH_IO_DATABASE::computeSignature( const TABLE_RESULT_LIST& aTableResults
 }
 
 
+LIB_SYMBOL* SCH_IO_DATABASE::resolveSourceSymbol( const LIB_ID& aId )
+{
+    if( !m_adapter )
+        return nullptr;
+
+    if( !m_previewMode )
+        return m_adapter->LoadSymbol( aId );
+
+    std::optional<LIBRARY_TABLE_ROW*> row = m_adapter->GetRow( aId.GetLibNickname() );
+
+    // A database library would query its own tables, which the preview must not do
+    if( row && SCH_IO_MGR::EnumFromStr( ( *row )->Type() ) == SCH_IO_MGR::SCH_DATABASE )
+    {
+        reportIssue( PREVIEW_ISSUE::FIELD::SYMBOLS,
+                     wxString::Format( _( "Symbol '%s' is in a database library and is not previewed." ),
+                                       aId.Format().wx_str() ),
+                     RPT_SEVERITY_WARNING );
+        return nullptr;
+    }
+
+    // Not memoized; the pointer belongs to another library's cache, which a later load may rebuild
+    LIB_SYMBOL* symbol = m_adapter->LoadSymbol( aId );
+
+    if( !symbol )
+    {
+        reportIssue( PREVIEW_ISSUE::FIELD::SYMBOLS,
+                     wxString::Format( _( "Symbol '%s' was not found." ), aId.Format().wx_str() ),
+                     RPT_SEVERITY_WARNING );
+    }
+
+    return symbol;
+}
+
+
+/// The directory ${CWD} stands for, which is the settings file's unless the caller supplies one
+static wxString cwdDirFor( const DATABASE_LIB_SETTINGS& aSettings, const wxString& aBaseDir )
+{
+    return aBaseDir.IsEmpty() ? wxFileName( aSettings.GetFilename() ).GetPath() : aBaseDir;
+}
+
+
+SCH_IO_DATABASE::CONNECTION_RESULT SCH_IO_DATABASE::CreateConnection( const DATABASE_LIB_SETTINGS& aSettings,
+                                                                      bool aConnectNow, const wxString& aBaseDir )
+{
+    return connectionFor( DATABASE_BACKEND::Create( aSettings.m_Source, cwdDirFor( aSettings, aBaseDir ) ),
+                          aConnectNow );
+}
+
+
+SCH_IO_DATABASE::CONNECTION_RESULT SCH_IO_DATABASE::connectionFor( DB_BACKEND_RESULT&& aBackend, bool aConnectNow )
+{
+    if( !aBackend.backend )
+        return { nullptr, aBackend.failure, std::move( aBackend.error ) };
+
+    return { std::make_unique<DATABASE_CONNECTION>( std::move( aBackend.backend ), aConnectNow ), DB_FAILURE::UNKNOWN,
+             std::string() };
+}
+
+
+wxString SCH_IO_DATABASE::SymbolNameForRow( const DATABASE_LIB_TABLE& aTable, bool aGloballyUniqueKeys,
+                                            const DATABASE_CONNECTION::ROW& aRow, std::string* aRawKey )
+{
+    auto it = aRow.find( aTable.key_col );
+
+    if( it == aRow.end() )
+        return wxEmptyString;
+
+    std::string rawName = std::any_cast<std::string>( it->second );
+    UTF8        sanitizedName = LIB_ID::FixIllegalChars( rawName, false );
+    std::string prefix = ( aGloballyUniqueKeys || aTable.name.empty() ) ? "" : fmt::format( "{}/", aTable.name );
+
+    if( aRawKey )
+        *aRawKey = rawName;
+
+    return wxString::FromUTF8( fmt::format( "{}{}", prefix, sanitizedName.c_str() ) );
+}
+
+
+std::vector<std::unique_ptr<LIB_SYMBOL>>
+SCH_IO_DATABASE::BuildPreviewSymbols( SYMBOL_LIBRARY_ADAPTER* aLibs, const DATABASE_LIB_TABLE& aTable,
+                                      bool aGloballyUniqueKeys, const std::vector<DATABASE_CONNECTION::ROW>& aRows,
+                                      PREVIEW_ISSUES* aIssues )
+{
+    SCH_IO_DATABASE preview;
+    preview.m_adapter = aLibs;
+    preview.m_previewIssues = aIssues;
+    preview.m_previewMode = true;
+
+    std::vector<std::unique_ptr<LIB_SYMBOL>> symbols;
+    std::map<wxString, std::pair<size_t, std::string>> listed;
+
+    for( const DATABASE_CONNECTION::ROW& row : aRows )
+    {
+        std::string rawKey;
+        wxString    name = SymbolNameForRow( aTable, aGloballyUniqueKeys, row, &rawKey );
+
+        if( name.IsEmpty() )
+            continue;
+
+        try
+        {
+            std::unique_ptr<LIB_SYMBOL> symbol = preview.loadSymbolFromRow( name, aTable, row );
+
+            if( !symbol )
+                continue;
+
+            // The library keeps the last row listed under a name, so the preview does the same
+            if( auto it = listed.find( name ); it != listed.end() )
+            {
+                if( it->second.second == rawKey )
+                {
+                    preview.reportIssue( PREVIEW_ISSUE::FIELD::REPEATED_KEY,
+                                         wxString::Format( _( "Key '%s' appears in more than one row; only the last "
+                                                              "row is kept." ),
+                                                           wxString::FromUTF8( rawKey ) ),
+                                         RPT_SEVERITY_WARNING );
+                }
+                else
+                {
+                    preview.reportIssue( PREVIEW_ISSUE::FIELD::KEY,
+                                         wxString::Format( _( "Keys '%s' and '%s' are both listed as '%s'; only the "
+                                                              "last is kept." ),
+                                                           wxString::FromUTF8( it->second.second ),
+                                                           wxString::FromUTF8( rawKey ), name ),
+                                         RPT_SEVERITY_WARNING );
+                }
+
+                symbols[it->second.first] = std::move( symbol );
+                it->second.second = rawKey;
+                continue;
+            }
+
+            listed[name] = { symbols.size(), rawKey };
+            symbols.push_back( std::move( symbol ) );
+        }
+        catch( const IO_ERROR& e )
+        {
+            preview.reportIssue( PREVIEW_ISSUE::FIELD::KEY, e.What(), RPT_SEVERITY_ERROR );
+        }
+    }
+
+    return symbols;
+}
+
+
+void SCH_IO_DATABASE::reportIssue( PREVIEW_ISSUE::FIELD aField, const wxString& aMessage, SEVERITY aSeverity ) const
+{
+    if( m_previewIssues )
+        m_previewIssues->push_back( { aField, aMessage } );
+    else
+        Report( aMessage, aSeverity );
+}
+
+
 bool SCH_IO_DATABASE::materializeCache( const TABLE_RESULT_LIST& aTableResults,
         std::map<wxString, std::unique_ptr<LIB_SYMBOL>>& aSymbolCache,
-        std::map<wxString, std::pair<std::string, std::string>>& aSanitizedNameMap,
-        std::set<wxString>& aPendingSourceLibs )
+        std::map<wxString, std::pair<std::string, std::string>>& aSanitizedNameMap )
 {
     for( const auto& [table, results] : aTableResults )
     {
         for( const DATABASE_CONNECTION::ROW& result : results )
         {
-            if( !result.contains( table->key_col ) )
-                continue;
+            std::string rawName;
+            wxString    name = SymbolNameForRow( *table, m_settings->m_GloballyUniqueKeys, result, &rawName );
 
-            std::string rawName = std::any_cast<std::string>( result.at( table->key_col ) );
-            UTF8        sanitizedName = LIB_ID::FixIllegalChars( rawName, false );
-            std::string sanitizedKey = sanitizedName.c_str();
-            std::string prefix = ( m_settings->m_GloballyUniqueKeys || table->name.empty() )
-                                         ? ""
-                                         : fmt::format( "{}/", table->name );
-            std::string sanitizedDisplayName = fmt::format( "{}{}", prefix, sanitizedKey );
-            wxString    name( sanitizedDisplayName );
+            if( name.IsEmpty() )
+                continue;
 
             aSanitizedNameMap[name] = std::make_pair( table->name, rawName );
 
-            std::unique_ptr<LIB_SYMBOL> symbol = loadSymbolFromRow( name, *table, result, aPendingSourceLibs );
+            std::unique_ptr<LIB_SYMBOL> symbol = loadSymbolFromRow( name, *table, result );
 
             if( symbol )
                 aSymbolCache[symbol->GetName()] = std::move( symbol );
@@ -334,7 +485,7 @@ bool SCH_IO_DATABASE::materializeCache( const TABLE_RESULT_LIST& aTableResults,
 }
 
 
-void SCH_IO_DATABASE::cacheLib( bool aForce )
+void SCH_IO_DATABASE::cacheLib( const std::shared_ptr<DATABASE_CONNECTION>& aConn )
 {
     // Guard against re-entrant cacheLib() calls. A self-referential symbol row (issue #24249)
     // causes m_adapter->LoadSymbol to route back into SCH_IO_DATABASE::LoadSymbol, which would
@@ -344,47 +495,69 @@ void SCH_IO_DATABASE::cacheLib( bool aForce )
 
     long long currentTimestampSeconds = wxDateTime::Now().GetValue().GetValue() / 1000;
 
-    int expectedModifyHash = 0;
-
     // After the initial load, the background refresh thread handles all cache updates.
     {
         std::shared_lock lock( m_cacheMutex );
 
-        if( m_cachePopulated && !aForce )
+        if( m_cachePopulated )
             return;
-
-        expectedModifyHash = m_modifyHash;
     }
 
-    SCOPED_SET_RESET<bool> inCacheLib( m_inCacheLib, true );
+    m_inCacheLib = true;
+
+    struct CACHE_LIB_GUARD
+    {
+        bool* flag;
+        ~CACHE_LIB_GUARD() { *flag = false; }
+    } cacheLibGuard{ &m_inCacheLib };
 
     // Re-query the database (the connection layer caches results subject to its own max_age) and
     // compute a lightweight signature of the raw rows so we can skip the costly materialization
     // when nothing relevant has changed.
     TABLE_RESULT_LIST tableResults;
 
-    for( const DATABASE_LIB_TABLE& table : m_settings->m_Tables )
+    // A backend may open sessions for the load, so they are closed before the slow materialization
     {
-        std::vector<DATABASE_CONNECTION::ROW> results;
+        DATABASE_CONNECTION::LOAD_CYCLE cycle( *aConn,
+                                               [this]()
+                                               {
+                                                   return m_loadCancelled.load();
+                                               } );
 
-        if( !m_conn->SelectAll( table.table, table.key_col, results ) )
+        for( const DATABASE_LIB_TABLE& table : m_settings->m_Tables )
         {
-            if( !m_conn->GetLastError().empty() )
-                THROW_IO_ERRORF( _( "Error reading database table %s: %s" ), table.table, m_conn->GetLastError() );
+            // Nothing is published from a load that was cancelled
+            if( m_loadCancelled.load() )
+                THROW_IO_ERROR( _( "Database library load cancelled" ) );
 
-            continue;
+            std::vector<DATABASE_CONNECTION::ROW> results;
+            DATABASE_CONNECTION::QUERY_STATUS     status;
+
+            if( !aConn->SelectAll( table.table, table.key_col, results, &status ) )
+            {
+                // A read the cancel stopped says nothing about the table
+                if( m_loadCancelled.load() )
+                    THROW_IO_ERROR( _( "Database library load cancelled" ) );
+
+                if( !status.error.empty() )
+                    THROW_IO_ERRORF( _( "Error reading database table %s: %s" ), table.table, status.error );
+
+                continue;
+            }
+
+            tableResults.emplace_back( &table, std::move( results ) );
         }
-
-        tableResults.emplace_back( &table, std::move( results ) );
     }
+
+    if( m_loadCancelled.load() )
+        THROW_IO_ERROR( _( "Database library load cancelled" ) );
 
     size_t signature = computeSignature( tableResults );
 
     {
         std::unique_lock lock( m_cacheMutex );
 
-        // A forced rebuild must re-resolve source symbols even when the rows are unchanged
-        if( m_cachePopulated && signature == m_cacheSignature && !aForce )
+        if( m_cachePopulated && signature == m_cacheSignature )
         {
             m_cacheTimestamp = currentTimestampSeconds;
             return;
@@ -393,20 +566,14 @@ void SCH_IO_DATABASE::cacheLib( bool aForce )
 
     std::map<wxString, std::unique_ptr<LIB_SYMBOL>> newSymbolCache;
     std::map<wxString, std::pair<std::string, std::string>> newSanitizedNameMap;
-    std::set<wxString> newPendingSourceLibs;
 
-    materializeCache( tableResults, newSymbolCache, newSanitizedNameMap, newPendingSourceLibs );
+    materializeCache( tableResults, newSymbolCache, newSanitizedNameMap );
 
     {
         std::unique_lock lock( m_cacheMutex );
 
-        // A background refresh published newer rows while this build ran
-        if( m_modifyHash != expectedModifyHash )
-            return;
-
         m_nameToSymbolcache = std::move( newSymbolCache );
         m_sanitizedNameMap = std::move( newSanitizedNameMap );
-        m_pendingSourceLibs = std::move( newPendingSourceLibs );
 
         m_cacheTimestamp = currentTimestampSeconds;
         m_cacheSignature = signature;
@@ -419,49 +586,15 @@ void SCH_IO_DATABASE::cacheLib( bool aForce )
 }
 
 
-void SCH_IO_DATABASE::resolvePendingSources()
-{
-    if( m_inCacheLib )
-        return;
-
-    std::set<wxString> pending;
-
-    {
-        std::shared_lock lock( m_cacheMutex );
-
-        if( m_pendingSourceLibs.empty() )
-            return;
-
-        pending = m_pendingSourceLibs;
-    }
-
-    if( std::ranges::all_of( pending,
-                             [this]( const wxString& aLib )
-                             {
-                                 return m_adapter->IsLibraryLoadPending( aLib );
-                             } ) )
-    {
-        return;
-    }
-
-    KI_LOG_TRACE( traceDatabase, wxT( "Rebuilding cache now that a source library has loaded" ) );
-
-    // A failed rebuild leaves the previous cache in place for the background refresh to retry
-    try
-    {
-        cacheLib( true );
-    }
-    catch( const IO_ERROR& e )
-    {
-        KI_LOG_TRACE( traceDatabase, wxT( "Rebuilding cache failed: %s" ), e.What() );
-    }
-}
-
-
 void SCH_IO_DATABASE::startBackgroundRefresh()
 {
-    if( m_refreshRunning.exchange( true ) )
+    // The flag check and the thread install stay together so a stop cannot slip between them
+    std::lock_guard lock( m_refreshMutex );
+
+    if( m_stopping.load() || m_refreshRunning.load() )
         return;
+
+    m_refreshRunning = true;
 
     KI_LOG_TRACE( traceDatabase, wxT( "Starting background refresh thread" ) );
     m_refreshThread = std::thread( &SCH_IO_DATABASE::backgroundRefreshWorker, this );
@@ -470,11 +603,43 @@ void SCH_IO_DATABASE::startBackgroundRefresh()
 
 void SCH_IO_DATABASE::stopBackgroundRefresh()
 {
-    m_refreshRunning = false;
+    std::thread worker;
+
+    // Set under the wait mutex so a waiter between its check and its sleep cannot miss the wakeup
+    {
+        std::lock_guard lock( m_refreshMutex );
+
+        m_stopping = true;
+        m_refreshRunning = false;
+        worker = std::move( m_refreshThread );
+    }
+
     m_refreshCV.notify_all();
 
-    if( m_refreshThread.joinable() )
-        m_refreshThread.join();
+    if( worker.joinable() )
+        worker.join();
+}
+
+
+std::chrono::milliseconds SCH_IO_DATABASE::busyRetryWait( long long aMaxAgeSeconds, int aAttempt,
+                                                          std::minstd_rand& aRng )
+{
+    // A writer holds its lock for seconds, so waiting a whole max_age after one leaves the cache stale for longer
+    static constexpr long long FIRST_RETRY_MS = 3000;
+
+    const long long ceiling =
+            std::min( aMaxAgeSeconds * 1000, FIRST_RETRY_MS << std::clamp( aAttempt, 0, MAX_BUSY_ATTEMPT ) );
+
+    // Readers that failed on one lock must not all come back together and keep the writer out
+    std::uniform_int_distribution<long long> spread( ceiling / 2, ceiling );
+
+    return std::chrono::milliseconds( spread( aRng ) );
+}
+
+
+bool SCH_IO_DATABASE::connectionStopped() const
+{
+    return m_stopping.load() || m_loadCancelled.load();
 }
 
 
@@ -482,9 +647,13 @@ void SCH_IO_DATABASE::backgroundRefreshWorker()
 {
     BS::this_thread::set_os_thread_name( "dblib bg" );
 
+    std::minstd_rand jitter( std::random_device{}() );
+    int              busyRetries = 0;
+
     while( m_refreshRunning.load() )
     {
         long long maxAge = 0;
+        bool      busy = false;
 
         {
             std::unique_lock lock( m_cacheMutex );
@@ -496,31 +665,66 @@ void SCH_IO_DATABASE::backgroundRefreshWorker()
         if( maxAge <= 0 )
             maxAge = 1;
 
-        if( m_conn && m_cachePopulated.load() )
+        std::shared_ptr<DATABASE_CONNECTION> conn = currentConnection();
+        bool                                 dropped = m_cachePopulated.load() && ( !conn || !conn->IsConnected() );
+
+        // A failed read leaves the backend disconnected, and only a new connection can end that
+        if( dropped && m_refreshRunning.load() )
+        {
+            // A catalog a writer holds is retried on the busy backoff, like a locked read
+            busy = connect().failure == DB_FAILURE::FILE_IN_USE;
+            conn = currentConnection();
+        }
+
+        // The pass owns its connection, so a reconnect cannot free it and no lock is held across the reads
+        if( conn && conn->IsConnected() && m_cachePopulated.load() )
         {
             KI_LOG_TRACE( traceDatabase, wxT( "Initiating background refresh" ) );
 
             try
             {
-                std::vector<std::pair<const DATABASE_LIB_TABLE*, std::vector<DATABASE_CONNECTION::ROW>>> tableResults;
-                bool querySuccess = true;
+                TABLE_RESULT_LIST tableResults;
+                bool              querySuccess = true;
 
-                for( const DATABASE_LIB_TABLE& table : m_settings->m_Tables )
                 {
-                    m_conn->ClearCache( table.table );
+                    DATABASE_CONNECTION::LOAD_CYCLE cycle( *conn,
+                                                           [this]()
+                                                           {
+                                                               return !m_refreshRunning.load() || m_stopping.load();
+                                                           } );
 
-                    std::vector<DATABASE_CONNECTION::ROW> results;
-
-                    if( !m_conn->SelectAll( table.table, table.key_col, results ) )
+                    for( const DATABASE_LIB_TABLE& table : m_settings->m_Tables )
                     {
-                        KI_LOG_TRACE( traceDatabase, wxT( "Background refresh: SelectAll failed for table %s" ),
-                                    table.table );
-                        querySuccess = false;
-                        break;
-                    }
+                        // A close must not wait for the tables left in the pass
+                        if( !m_refreshRunning.load() )
+                        {
+                            querySuccess = false;
+                            break;
+                        }
 
-                    tableResults.emplace_back( &table, std::move( results ) );
+                        conn->ClearCache( table.table );
+
+                        std::vector<DATABASE_CONNECTION::ROW> results;
+                        DATABASE_CONNECTION::QUERY_STATUS     status;
+
+                        if( !conn->SelectAll( table.table, table.key_col, results, &status ) )
+                        {
+                            KI_LOG_TRACE( traceDatabase, wxT( "Background refresh: SelectAll failed for table %s" ),
+                                        table.table );
+                            querySuccess = false;
+
+                            // A lost connection goes to the reconnect at the top of the next pass instead
+                            busy = status.connected && status.failure == DB_FAILURE::FILE_IN_USE;
+                            break;
+                        }
+
+                        tableResults.emplace_back( &table, std::move( results ) );
+                    }
                 }
+
+                // A stop during the last table must not wait for a publish
+                if( !m_refreshRunning.load() )
+                    querySuccess = false;
 
                 if( querySuccess )
                 {
@@ -539,11 +743,10 @@ void SCH_IO_DATABASE::backgroundRefreshWorker()
 
                     if( dataChanged )
                     {
-                        std::map<wxString, std::unique_ptr<LIB_SYMBOL>> newSymbolCache;
+                        std::map<wxString, std::unique_ptr<LIB_SYMBOL>>         newSymbolCache;
                         std::map<wxString, std::pair<std::string, std::string>> newSanitizedNameMap;
-                        std::set<wxString> newPendingSourceLibs;
 
-                        materializeCache( tableResults, newSymbolCache, newSanitizedNameMap, newPendingSourceLibs );
+                        materializeCache( tableResults, newSymbolCache, newSanitizedNameMap );
 
                         KI_LOG_TRACE( traceDatabase, wxT( "Background refresh: new data" ) );
 
@@ -552,7 +755,6 @@ void SCH_IO_DATABASE::backgroundRefreshWorker()
 
                             m_nameToSymbolcache = std::move( newSymbolCache );
                             m_sanitizedNameMap = std::move( newSanitizedNameMap );
-                            m_pendingSourceLibs = std::move( newPendingSourceLibs );
 
                             m_cacheTimestamp = wxDateTime::Now().GetValue().GetValue() / 1000;
                             m_cacheSignature = signature;
@@ -576,9 +778,24 @@ void SCH_IO_DATABASE::backgroundRefreshWorker()
             }
         }
 
+        // A connection the foreground replaced must not stay open through the wait
+        conn.reset();
+
+        std::chrono::milliseconds wait = std::chrono::seconds( maxAge );
+
+        if( busy )
+        {
+            wait = busyRetryWait( maxAge, busyRetries, jitter );
+            busyRetries = std::min( busyRetries + 1, MAX_BUSY_ATTEMPT );
+        }
+        else
+        {
+            busyRetries = 0;
+        }
+
         {
             std::unique_lock lock( m_refreshMutex );
-            m_refreshCV.wait_for( lock, std::chrono::seconds( maxAge ),
+            m_refreshCV.wait_for( lock, wait,
                                   [this]()
                                   {
                                       return !m_refreshRunning.load();
@@ -590,33 +807,23 @@ void SCH_IO_DATABASE::backgroundRefreshWorker()
 
 void SCH_IO_DATABASE::ensureSettings( const wxString& aSettingsPath )
 {
-    auto tryLoad =
-            [&]()
-            {
-                if( !m_settings->LoadFromFile() )
-                {
-                    wxString msg = wxString::Format(
-                        _( "Could not load database library: settings file %s missing or invalid" ),
-                        aSettingsPath );
-
-                    THROW_IO_ERROR( msg );
-                }
-            };
-
     if( !m_settings && !aSettingsPath.IsEmpty() )
     {
         std::string path( aSettingsPath.ToUTF8() );
         m_settings = std::make_unique<DATABASE_LIB_SETTINGS>( path );
         m_settings->SetReadOnly( true );
 
-        tryLoad();
+        // A read that fails leaves these defaults to size the next attempt's wait
+        m_settings->Load();
+
+        loadSettingsBounded( m_settings->m_Source.timeout );
     }
-    else if( !m_conn && m_settings )
+    else if( !currentConnection() && m_settings && !m_cachePopulated )
     {
-        // If we have valid settings but no connection yet; reload settings in case user is editing
-        tryLoad();
+        // Reload in case the user is editing; the read is bounded because the share may be down
+        loadSettingsBounded( m_settings->m_Source.timeout );
     }
-    else if( m_conn && m_settings && !aSettingsPath.IsEmpty() )
+    else if( currentConnection() && m_settings && !aSettingsPath.IsEmpty() )
     {
         KI_ASSERT_MSG( aSettingsPath == m_settings->GetFilename(),
                       "Path changed for database library without re-initializing plugin!" );
@@ -628,81 +835,306 @@ void SCH_IO_DATABASE::ensureSettings( const wxString& aSettingsPath )
 }
 
 
-void SCH_IO_DATABASE::ensureConnection()
+namespace
 {
-    KI_CHECK_RET( m_settings, "Call ensureSettings before ensureConnection!" );
+// Owned jointly by the callers and the reader thread, which is all the thread touches
+struct SETTINGS_READ
+{
+    std::mutex              m;
+    std::condition_variable cv;
+    bool                    done = false;
+    bool                    ok = false;
+    std::string             bytes;
+};
 
-    connect();
 
-    if( !m_conn || !m_conn->IsConnected() )
+// Reached only from callers, so its static lifetime cannot race a detached reader
+struct SETTINGS_READ_REGISTRY
+{
+    std::mutex                                          m;
+    std::map<std::string, std::weak_ptr<SETTINGS_READ>> reads;
+};
+
+
+SETTINGS_READ_REGISTRY& settingsReadRegistry()
+{
+    static SETTINGS_READ_REGISTRY* instance = new SETTINGS_READ_REGISTRY;
+
+    return *instance;
+}
+
+
+// Runs detached, so it uses no wx state and never throws
+void readSettingsFile( const std::shared_ptr<SETTINGS_READ>& aRead, const std::filesystem::path& aPath )
+{
+    std::string bytes;
+    bool        ok = false;
+
+    try
     {
-        wxString msg = wxString::Format(
-                    _( "Could not load database library: could not connect to database %s (%s)" ),
-                    m_settings->m_Source.dsn, m_lastError );
+        std::ifstream     in( aPath, std::ios::binary );
+        std::vector<char> chunk( 1 << 16 );
 
-        THROW_IO_ERROR( msg );
+        while( in )
+        {
+            in.read( chunk.data(), chunk.size() );
+            bytes.append( chunk.data(), static_cast<size_t>( in.gcount() ) );
+        }
+
+        ok = in.eof() && !in.bad();
+    }
+    catch( ... )
+    {
+        bytes.clear();
+        ok = false;
+    }
+
+    std::lock_guard lock( aRead->m );
+    aRead->bytes = std::move( bytes );
+    aRead->ok = ok;
+    aRead->done = true;
+    aRead->cv.notify_all();
+}
+} // namespace
+
+
+void SCH_IO_DATABASE::loadSettingsBounded( int aTimeoutSeconds )
+{
+    const wxString path = m_settings->GetLoadPath();
+
+    if( m_loadCancelled.load() )
+        THROW_IO_ERRORF( _( "Database library settings file %s could not be reached" ), path );
+
+    std::shared_ptr<SETTINGS_READ> read;
+
+    {
+        SETTINGS_READ_REGISTRY& registry = settingsReadRegistry();
+        std::lock_guard         registryLock( registry.m );
+
+        for( auto it = registry.reads.begin(); it != registry.reads.end(); )
+        {
+            it = it->second.expired() ? registry.reads.erase( it ) : std::next( it );
+        }
+
+        // Normalised without touching the file system, since the share may be down
+        wxFileName file( path );
+        file.Normalize( wxPATH_NORM_DOTS | wxPATH_NORM_ABSOLUTE );
+
+        const std::filesystem::path nativePath = ToFsPath( file.GetFullPath() );
+
+        file.Normalize( wxPATH_NORM_CASE );
+
+        const std::string key( file.GetFullPath().ToUTF8() );
+
+        if( std::shared_ptr<SETTINGS_READ> pending = registry.reads[key].lock() )
+        {
+            std::lock_guard readLock( pending->m );
+
+            if( !pending->done )
+                read = pending;
+        }
+
+        if( !read )
+        {
+            read = std::make_shared<SETTINGS_READ>();
+            registry.reads[key] = read;
+
+            try
+            {
+                std::thread( readSettingsFile, read, nativePath ).detach();
+            }
+            catch( ... )
+            {
+                registry.reads.erase( key );
+                THROW_IO_ERRORF( _( "Database library settings file %s could not be reached" ), path );
+            }
+        }
+    }
+
+    const auto deadline =
+            std::chrono::steady_clock::now() + std::chrono::seconds( DatabaseFileWaitSeconds( aTimeoutSeconds ) );
+
+    std::unique_lock lock( read->m );
+
+    while( !read->done )
+    {
+        if( m_loadCancelled.load() || std::chrono::steady_clock::now() >= deadline )
+            THROW_IO_ERRORF( _( "Database library settings file %s could not be reached" ), path );
+
+        read->cv.wait_for( lock, std::chrono::milliseconds( 50 ) );
+    }
+
+    const bool        ok = read->ok;
+    const std::string bytes = read->bytes;
+
+    lock.unlock();
+
+    if( !ok || !m_settings->LoadFromBuffer( bytes ) )
+        THROW_IO_ERRORF( _( "Could not load database library: settings file %s missing or invalid" ), path );
+
+    m_settings->ResolvePassword();
+}
+
+
+std::shared_ptr<DATABASE_CONNECTION> SCH_IO_DATABASE::currentConnection()
+{
+    std::shared_lock lock( m_cacheMutex );
+    return m_conn;
+}
+
+
+std::shared_ptr<DATABASE_CONNECTION> SCH_IO_DATABASE::ensureConnection()
+{
+    KI_CHECK_MSG( m_settings, nullptr, "Call ensureSettings before ensureConnection!" );
+
+    CONNECT_STATUS status = connect();
+
+    std::shared_ptr<DATABASE_CONNECTION> conn = currentConnection();
+
+    if( !conn || !conn->IsConnected() )
+    {
+        // No backend exists for the source, so there is no database to name
+        if( status.failure == DB_FAILURE::INVALID_TYPE || status.failure == DB_FAILURE::NOT_SUPPORTED_ON_PLATFORM )
+            THROW_IO_ERRORF( _( "Could not load database library: %s" ), status.error );
+
+        const DATABASE_SOURCE source = m_settings->ExpandedSource();
+        const std::string     name = source.Describe();
+        const bool            configured = !source.dsn.empty() || !source.connection_string.empty();
+
+        // Nothing safe to name means the source was withheld, unless none is configured at all
+        const wxString shown = !name.empty() ? wxString::FromUTF8( name )
+                               : configured  ? _( "connection string" )
+                                             : _( "(not configured)" );
+
+        THROW_IO_ERRORF( _( "Could not load database library: could not connect to database %s (%s)" ), shown,
+                         status.error );
+    }
+
+    return conn;
+}
+
+
+SCH_IO_DATABASE::CONNECT_STATUS SCH_IO_DATABASE::connect()
+{
+    KI_CHECK_MSG( m_settings, CONNECT_STATUS(), "Call ensureSettings before connect()!" );
+
+    // Every load and symbol lookup comes through here, so a live connection returns before any other work
+    if( std::shared_ptr<DATABASE_CONNECTION> live = currentConnection(); live && live->IsConnected() )
+        return CONNECT_STATUS();
+
+    auto now = std::chrono::steady_clock::now;
+
+    const auto                start = now();
+    const auto                deadline = start + FIRST_CONNECT_BUDGET;
+    std::minstd_rand          jitter( std::random_device{}() );
+    bool                      firstOpen = false;
+    std::chrono::milliseconds lastAttempt( 0 );
+    CONNECT_STATUS            status;
+
+    for( int attempt = 0;; ++attempt )
+    {
+        {
+            // The refresh thread reconnects too, and two connections must not be built at once
+            std::lock_guard connectGuard( m_connectMutex );
+
+            std::shared_ptr<DATABASE_CONNECTION> existing = currentConnection();
+
+            if( existing && existing->IsConnected() )
+                return CONNECT_STATUS();
+
+            if( attempt == 0 )
+                firstOpen = !existing;
+
+            // The wait or the mutex may have run past the budget the last check allowed for
+            if( attempt > 0 && ( connectionStopped() || now() + lastAttempt > deadline ) )
+                return status;
+
+            const auto attemptStart = now();
+
+            status = connectOnce();
+            lastAttempt = std::chrono::duration_cast<std::chrono::milliseconds>( now() - attemptStart );
+        }
+
+        // A reconnect has the refresh backoff, so only a library that never opened waits here
+        if( !firstOpen || status.failure != DB_FAILURE::FILE_IN_USE || connectionStopped() )
+            return status;
+
+        // Another attempt must also end inside the budget, as the file was in use for as long as the last one took
+        const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>( deadline - now() ) - lastAttempt;
+
+        if( remaining <= std::chrono::milliseconds( 0 ) )
+            return status;
+
+        const std::chrono::milliseconds wait = std::min( FileInUseBackoff( attempt, jitter ), remaining );
+
+        {
+            std::unique_lock lock( m_refreshMutex );
+
+            m_refreshCV.wait_for( lock, wait,
+                                  [this]()
+                                  {
+                                      return connectionStopped();
+                                  } );
+        }
+
+        if( connectionStopped() )
+            return status;
     }
 }
 
 
-void SCH_IO_DATABASE::connect()
+SCH_IO_DATABASE::CONNECT_STATUS SCH_IO_DATABASE::connectOnce()
 {
-    KI_CHECK_RET( m_settings, "Call ensureSettings before connect()!" );
+    // The old connection stays in place until the new one is ready, as other threads may still be reading from it
+    CONNECTION_RESULT created = connectionFor(
+            DATABASE_BACKEND::Create( m_settings->m_Source, cwdDirFor( *m_settings, wxEmptyString ) ), true );
 
-    if( m_conn && !m_conn->IsConnected() )
-        m_conn.reset();
+    std::shared_ptr<DATABASE_CONNECTION> newConn = std::move( created.connection );
 
-    if( !m_conn )
+    if( !newConn )
+        return { created.failure, wxString::FromUTF8( created.error ) };
+
+    if( !newConn->IsConnected() )
+        return { newConn->GetLastFailure(), newConn->GetLastError() };
+
+    for( const DATABASE_LIB_TABLE& tableIter : m_settings->m_Tables )
     {
-        if( m_settings->m_Source.connection_string.empty() )
+        // Trusted even if unreported by the driver, to support generated columns (#16952)
+        std::set<std::string> requiredColumns{ tableIter.key_col, tableIter.footprints_col, tableIter.symbols_col };
+
+        for( const DATABASE_FIELD_MAPPING& field : tableIter.fields )
+            requiredColumns.insert( field.column );
+
+        if( !tableIter.pins_col.empty() )
+            requiredColumns.insert( tableIter.pins_col );
+
+        // Only used if confirmed present, so a misconfigured mapping can't break the table (#23532)
+        std::set<std::string> optionalColumns{
+            tableIter.properties.description,      tableIter.properties.footprint_filters,
+            tableIter.properties.keywords,         tableIter.properties.exclude_from_sim,
+            tableIter.properties.exclude_from_bom, tableIter.properties.exclude_from_board
+        };
+
+        if( newConn->CacheTableInfo( tableIter.table, requiredColumns, optionalColumns ) )
+            continue;
+
+        std::optional<DATABASE_CONNECTION::TABLE_FAILURE> failed = newConn->GetTableFailure( tableIter.table );
+
+        // A connection without a table that was only locked or out of reach would keep it missing until a reload
+        if( failed && ( failed->failure == DB_FAILURE::FILE_IN_USE || failed->failure == DB_FAILURE::UNREACHABLE ) )
         {
-            m_conn = std::make_unique<DATABASE_CONNECTION>( m_settings->m_Source.dsn,
-                                                            m_settings->m_Source.username,
-                                                            m_settings->m_Source.password,
-                                                            m_settings->m_Source.timeout );
+            return { failed->failure,
+                     wxString::Format( _( "Error reading database table %s: %s" ),
+                                       wxString::FromUTF8( tableIter.table ), wxString::FromUTF8( failed->error ) ) };
         }
-        else
-        {
-            std::string cs = m_settings->m_Source.connection_string;
-            std::string basePath( wxFileName( m_settings->GetFilename() ).GetPath().ToUTF8() );
-
-            // Database drivers that use files operate on absolute paths, so provide a mechanism
-            // for specifying on-disk databases that live next to the kicad_dbl file
-            boost::replace_all( cs, "${CWD}", basePath );
-
-            m_conn = std::make_unique<DATABASE_CONNECTION>( cs, m_settings->m_Source.timeout );
-        }
-
-        if( !m_conn->IsConnected() )
-        {
-            m_lastError = m_conn->GetLastError();
-            m_conn.reset();
-            return;
-        }
-
-        for( const DATABASE_LIB_TABLE& tableIter : m_settings->m_Tables )
-        {
-            // Trusted even if unreported by the driver, to support generated columns (#16952)
-            std::set<std::string> requiredColumns{ tableIter.key_col,
-                                                   tableIter.footprints_col,
-                                                   tableIter.symbols_col };
-
-            for( const DATABASE_FIELD_MAPPING& field : tableIter.fields )
-                requiredColumns.insert( field.column );
-
-            // Only used if confirmed present, so a misconfigured mapping can't break the table (#23532)
-            std::set<std::string> optionalColumns{ tableIter.properties.description,
-                                                   tableIter.properties.footprint_filters,
-                                                   tableIter.properties.keywords,
-                                                   tableIter.properties.exclude_from_sim,
-                                                   tableIter.properties.exclude_from_bom,
-                                                   tableIter.properties.exclude_from_board };
-
-            m_conn->CacheTableInfo( tableIter.table, requiredColumns, optionalColumns );
-        }
-
-        m_conn->SetCacheParams( m_settings->m_Cache.max_size, m_settings->m_Cache.max_age );
     }
+
+    newConn->SetCacheParams( m_settings->m_Cache.max_size, m_settings->m_Cache.max_age );
+
+    std::unique_lock connLock( m_cacheMutex );
+    m_conn = std::move( newConn );
+
+    return CONNECT_STATUS();
 }
 
 
@@ -757,102 +1189,220 @@ std::optional<bool> SCH_IO_DATABASE::boolFromAny( const std::any& aVal )
 
 std::unique_ptr<LIB_SYMBOL>  SCH_IO_DATABASE::loadSymbolFromRow( const wxString& aSymbolName,
                                                 const DATABASE_LIB_TABLE& aTable,
-                                                const DATABASE_CONNECTION::ROW& aRow,
-                                                std::set<wxString>& aPendingSourceLibs )
+                                                const DATABASE_CONNECTION::ROW& aRow )
 {
-    std::lock_guard lock( m_symbolLoadMutex );
     std::unique_ptr<LIB_SYMBOL> symbol = nullptr;
 
-    if( aRow.count( aTable.symbols_col ) )
+    if( aRow.contains( aTable.symbols_col ) )
     {
-        LIB_SYMBOL* originalSymbol = nullptr;
+        std::string symbols = std::any_cast<std::string>( aRow.at( aTable.symbols_col ) );
+        wxString    symbolsStr = wxString( symbols.c_str(), wxConvUTF8 );
+        wxStringTokenizer tokenizer( symbolsStr, ";\t\r\n", wxTOKEN_STRTOK );
 
-        // TODO: Support multiple options for symbol
-        std::string symbolIdStr = std::any_cast<std::string>( aRow.at( aTable.symbols_col ) );
-        LIB_ID symbolId;
-        symbolId.Parse( std::any_cast<std::string>( aRow.at( aTable.symbols_col ) ) );
+        std::vector<LIB_ID> symbolIds;
+
+        while( tokenizer.HasMoreTokens() )
+        {
+            wxString token = tokenizer.GetNextToken();
+            LIB_ID   id;
+            id.Parse( std::string( token.ToUTF8() ) );
+
+            if( id.IsValid() )
+            {
+                symbolIds.push_back( id );
+            }
+            else
+            {
+                reportIssue( PREVIEW_ISSUE::FIELD::SYMBOLS,
+                             wxString::Format( _( "'%s' is not a symbol; expected Library:Symbol." ), token ),
+                             RPT_SEVERITY_WARNING );
+            }
+        }
 
         // A row's Symbols column may resolve back into the same database library (issue #24249,
         // e.g. a mistyped library nickname). The adapter would route that lookup back into
         // SCH_IO_DATABASE::LoadSymbol and re-enter loadSymbolFromRow on the same row until the
         // stack overflows. Track in-flight LIB_IDs and skip the recursive load on re-entry.
-        struct CYCLE_GUARD
+        std::vector<LIB_SYMBOL*> sourceSymbols;
+        std::vector<wxString>    sourceSymbolNames;
+
+        for( const LIB_ID& symbolId : symbolIds )
         {
-            std::unordered_set<wxString>* set;
-            wxString                      key;
-            bool                          owns = false;
+            wxString symbolIdStr = symbolId.Format().wx_str();
 
-            ~CYCLE_GUARD()
+            if( !s_inProgressLoads.insert( symbolIdStr ).second )
             {
-                if( owns )
-                    set->erase( key );
-            }
-        } guard{ &s_inProgressLoads, {}, false };
-
-        bool cycle = false;
-        bool sourcePending = false;
-
-        if( symbolId.IsValid() )
-        {
-            guard.key = symbolId.Format().wx_str();
-            guard.owns = s_inProgressLoads.insert( guard.key ).second;
-            cycle = !guard.owns;
-
-            if( cycle )
-            {
-                KI_LOG_TRACE( traceDatabase,
-                            wxT( "loadSymbolFromRow: cycle detected resolving '%s' "
-                                 "(row '%s' in table '%s'); skipping recursive load" ),
+                KI_LOG_TRACE( traceDatabase, wxT( "loadSymbolFromRow: cycle detected resolving '%s' "
+                                                "(row '%s' in table '%s'); skipping recursive load" ),
                             symbolIdStr, aSymbolName, aTable.name );
+                continue;
+            }
+
+            struct CYCLE_GUARD
+            {
+                std::unordered_set<wxString>* set;
+                wxString                      key;
+                ~CYCLE_GUARD() { set->erase( key ); }
+            } guard{ &s_inProgressLoads, symbolIdStr };
+
+            LIB_SYMBOL* src = nullptr;
+
+            {
+                std::lock_guard lock( m_symbolLoadMutex );
+                src = resolveSourceSymbol( symbolId );
+            }
+
+            if( src )
+            {
+                sourceSymbols.push_back( src );
+                sourceSymbolNames.push_back( src->GetName() );
             }
             else
             {
-                // Sampled before the lookup so a load that finishes in between is still recorded
-                sourcePending = m_adapter->IsLibraryLoadPending( symbolId.GetLibNickname().wx_str() );
-                originalSymbol = m_adapter->LoadSymbol( symbolId );
+                KI_LOG_TRACE( traceDatabase, wxT( "loadSymbolFromRow: source symbol '%s' not found" ), symbolIdStr );
             }
         }
 
-        if( originalSymbol )
+        if( sourceSymbols.empty() )
         {
-            symbol.reset( originalSymbol->Duplicate() );
-            symbol->SetSourceLibId( symbolId );
+            // Actual symbol not found: return metadata only; error will be indicated in the
+            // symbol chooser
+            symbol.reset( new LIB_SYMBOL( aSymbolName ) );
         }
-        else if( cycle )
+        else if( sourceSymbols.size() == 1 )
         {
-            KI_LOG_TRACE( traceDatabase, wxT( "loadSymbolFromRow: source symbol '%s' is a "
-                                            "self-reference, will create empty symbol" ),
-                        symbolIdStr );
+            symbol.reset( sourceSymbols[0]->Duplicate() );
+            symbol->SetSourceLibId( symbolIds[0] );
+            symbol->SetName( aSymbolName );
         }
-        else if( !symbolId.IsValid() )
+        else
         {
-            KI_LOG_TRACE( traceDatabase, wxT( "loadSymbolFromRow: source symbol id '%s' is invalid, "
-                                            "will create empty symbol" ), symbolIdStr );
-        }
-        else if( !symbolIdStr.empty() )
-        {
-            if( sourcePending )
-                aPendingSourceLibs.insert( symbolId.GetLibNickname().wx_str() );
+            // If the database row specifies multiple symbols, put together a composite,
+            // but since source symbols may already have multiple body styles, we
+            // need to flatten out any common to all body styles items on source symbols.
+            // Since we don't support varying all properties, take those from the first one.
 
-            KI_LOG_TRACE( traceDatabase, wxT( "loadSymbolFromRow: source symbol '%s' not found, "
-                                            "will create empty symbol" ), symbolIdStr );
-        }
-    }
+            symbol.reset( new LIB_SYMBOL( aSymbolName ) );
+            symbol->SetSourceLibId( symbolIds[0] );
 
-    if( !symbol )
-    {
-        // Actual symbol not found: return metadata only; error will be indicated in the
-        // symbol chooser
-        symbol.reset( new LIB_SYMBOL( aSymbolName ) );
+            symbol->SetUnitCount( sourceSymbols[0]->GetUnitCount(), false );
+            symbol->SetPowerSymbolProp( sourceSymbols[0]->IsPower() );
+            symbol->SetShowPinNames( sourceSymbols[0]->GetShowPinNames() );
+            symbol->SetShowPinNumbers( sourceSymbols[0]->GetShowPinNumbers() );
+            symbol->SetPinNameOffset( sourceSymbols[0]->GetPinNameOffset() );
+
+            for( FIELD_T fieldId : MANDATORY_FIELDS )
+            {
+                if( SCH_FIELD* srcField = sourceSymbols[0]->GetField( fieldId ) )
+                {
+                    SCH_FIELD* dstField = symbol->GetField( fieldId );
+                    *dstField = *srcField;
+                    dstField->SetParent( symbol.get() );
+                }
+            }
+
+            std::vector<wxString> bodyStyleNames;
+            std::vector<int> sourceBodyStyleCounts;
+            std::vector<int> compositeBodyStyleBase;
+
+            int nextBodyStyle = 1;
+
+            for( size_t i = 0; i < sourceSymbols.size(); ++i )
+            {
+                int srcCount = std::max( 1, sourceSymbols[i]->GetBodyStyleCount() );
+                sourceBodyStyleCounts.push_back( srcCount );
+                compositeBodyStyleBase.push_back( nextBodyStyle );
+
+                if( srcCount == 1 )
+                {
+                    bodyStyleNames.push_back( sourceSymbolNames[i] );
+                }
+                else
+                {
+                    for( int style = 1; style <= srcCount; ++style )
+                    {
+                        wxString styleName = sourceSymbols[i]->GetBodyStyleDescription( style, false );
+                        bodyStyleNames.push_back( sourceSymbolNames[i] + wxT( " (" ) + styleName + wxT( ")" ) );
+                    }
+                }
+
+                nextBodyStyle += srcCount;
+            }
+
+            int totalBodyStyles = nextBodyStyle - 1;
+
+            symbol->SetHasDeMorganBodyStyles( false );
+            symbol->SetBodyStyleNames( bodyStyleNames );
+
+            std::set<wxString> mergedFieldNames;
+
+            for( size_t i = 0; i < sourceSymbols.size(); ++i )
+            {
+                std::unique_ptr<LIB_SYMBOL> srcSymbol = sourceSymbols[i]->Flatten();
+                int srcCount = sourceBodyStyleCounts[i];
+                int base = compositeBodyStyleBase[i];
+
+                for( SCH_ITEM& item : srcSymbol->GetDrawItems() )
+                {
+                    if( item.Type() == SCH_FIELD_T )
+                    {
+                        SCH_FIELD& field = static_cast<SCH_FIELD&>( item );
+
+                        if( field.IsMandatory() || !mergedFieldNames.insert( field.GetName() ).second )
+                            continue;
+
+                        int targetStyle;
+
+                        if( item.GetBodyStyle() == ALL_BODY_STYLES )
+                            targetStyle = base;
+                        else
+                            targetStyle = base + ( item.GetBodyStyle() - 1 );
+
+                        if( targetStyle > totalBodyStyles )
+                            continue;
+
+                        SCH_ITEM* newItem = item.Duplicate( IGNORE_PARENT_GROUP );
+                        newItem->SetParent( symbol.get() );
+                        newItem->SetBodyStyle( targetStyle );
+                        symbol->AddDrawItem( newItem, false );
+                    }
+                    else if( item.GetBodyStyle() == ALL_BODY_STYLES )
+                    {
+                        for( int bodyStyle = 0; bodyStyle < srcCount; ++bodyStyle )
+                        {
+                            SCH_ITEM* newItem = item.Duplicate( IGNORE_PARENT_GROUP );
+                            newItem->SetParent( symbol.get() );
+                            newItem->SetBodyStyle( base + bodyStyle );
+                            symbol->AddDrawItem( newItem, false );
+                        }
+                    }
+                    else
+                    {
+                        int targetStyle = base + ( item.GetBodyStyle() - 1 );
+
+                        if( targetStyle > totalBodyStyles )
+                            continue;
+
+                        SCH_ITEM* newItem = item.Duplicate( IGNORE_PARENT_GROUP );
+                        newItem->SetParent( symbol.get() );
+                        newItem->SetBodyStyle( targetStyle );
+                        symbol->AddDrawItem( newItem, false );
+                    }
+                }
+            }
+
+            symbol->GetDrawItems().sort();
+        }
     }
     else
     {
-        symbol->SetName( aSymbolName );
+        symbol.reset( new LIB_SYMBOL( aSymbolName ) );
     }
 
     LIB_ID libId = symbol->GetLibId();
-    libId.SetSubLibraryName( aTable.name );;
+    libId.SetSubLibraryName( aTable.name );
     symbol->SetLibId( libId );
+
     wxArrayString footprintsList;
 
     if( aRow.count( aTable.footprints_col ) )
@@ -870,8 +1420,62 @@ std::unique_ptr<LIB_SYMBOL>  SCH_IO_DATABASE::loadSymbolFromRow( const wxString&
     }
     else
     {
-        KI_LOG_TRACE( traceDatabase, wxT( "loadSymboFromRow: footprint field %s not found." ),
-                    aTable.footprints_col );
+        KI_LOG_TRACE( traceDatabase, wxT( "loadSymboFromRow: footprint field %s not found." ), aTable.footprints_col );
+    }
+
+    // Pin-to-pad maps (issue #2282): attach non-destructively.  The pins column carries either the
+    // spec-form named object { "pin_maps": [...], "associated_footprints": [...] } or the legacy
+    // flat MR !2540 array (read for one release, bound to the row's footprints).
+    if( !aTable.pins_col.empty() && aRow.count( aTable.pins_col ) )
+    {
+        try
+        {
+            std::string jsonStr = std::any_cast<std::string>( aRow.at( aTable.pins_col ) );
+
+            if( !jsonStr.empty() )
+            {
+                nlohmann::json json = nlohmann::json::parse( jsonStr );
+
+                if( json.is_object() && json.contains( "pin_maps" ) )
+                {
+                    symbol->SetPinMaps( ParsePinMapSet( json ) );
+                    symbol->SetAssociatedFootprints( ParseAssociatedFootprints( json ) );
+                }
+                else if( !footprintsList.IsEmpty() )
+                {
+                    std::unordered_map<wxString, std::vector<wxString>> assignments = ParseLegacyPinAssignments( json );
+
+                    if( !assignments.empty() )
+                    {
+                        const wxString mapName = wxS( "Database" );
+
+                        symbol->PinMaps().AddOrReplace( MakeLegacyPinMap( mapName, assignments ) );
+
+                        // Bind the one named map to every footprint the row offers, mirroring the
+                        // old behaviour where the assignment applied regardless of footprint.
+                        std::vector<ASSOCIATED_FOOTPRINT> associations;
+
+                        for( const wxString& footprint : footprintsList )
+                        {
+                            LIB_ID fpId;
+                            fpId.Parse( footprint );
+                            associations.push_back( { fpId, mapName } );
+                        }
+
+                        symbol->SetAssociatedFootprints( std::move( associations ) );
+                    }
+                }
+            }
+        }
+        catch( const std::exception& e )
+        {
+            // Surface a malformed pin-map payload to the user instead of silently dropping it; the
+            // symbol still loads without the map (issue #2282).
+            reportIssue( PREVIEW_ISSUE::FIELD::PIN_MAP,
+                         wxString::Format( _( "Error parsing pin map for database symbol '%s': %s" ), aSymbolName,
+                                           e.what() ),
+                         RPT_SEVERITY_ERROR );
+        }
     }
 
     if( !aTable.properties.description.empty() && aRow.count( aTable.properties.description ) )
@@ -970,8 +1574,7 @@ std::unique_ptr<LIB_SYMBOL>  SCH_IO_DATABASE::loadSymbolFromRow( const wxString&
     {
         if( !aRow.count( mapping.column ) )
         {
-            KI_LOG_TRACE( traceDatabase, wxT( "loadSymbolFromRow: field %s not found in result" ),
-                        mapping.column );
+            KI_LOG_TRACE( traceDatabase, wxT( "loadSymbolFromRow: field %s not found in result" ), mapping.column );
             continue;
         }
 
@@ -1002,6 +1605,7 @@ std::unique_ptr<LIB_SYMBOL>  SCH_IO_DATABASE::loadSymbolFromRow( const wxString&
                 field.SetVisible( mapping.visible_on_add );
                 field.SetNameShown( mapping.show_name );
             }
+
             continue;
         }
         else if( mapping.name_wx == c_datasheetFieldName )
@@ -1039,11 +1643,9 @@ std::unique_ptr<LIB_SYMBOL>  SCH_IO_DATABASE::loadSymbolFromRow( const wxString&
         // Assign a sort-order ordinal so the property editor and BOM see the fields in the
         // order declared in the .kicad_dbl file. Without this, all USER fields share the
         // same FIELD_T::USER id and fall through to value-based comparison in operator<.
-        // SetOrdinal forces m_id to FIELD_T::USER, so only apply it to non-mandatory fields
-        // - a DB mapping that lands on a mandatory field by name (e.g. Reference or
+        // NB: a DB mapping that lands on a mandatory field by name (e.g. Reference or
         // Description) must keep its FIELD_T identity for downstream lookups.
-        if( !field->IsMandatory() )
-            field->SetOrdinal( dbFieldOrdinal++ );
+        field->SetOrdinal( dbFieldOrdinal++, field->IsMandatory() ? field->GetId() : FIELD_T::USER );
 
         if( !mapping.inherit_properties || isNew )
         {

@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include <wx/control.h>
 #include <wx/dc.h>
@@ -57,7 +57,7 @@ bool PG_CELL_RENDERER::Render( wxDC &aDC, const wxRect &aRect, const wxPropertyG
             }
         }
 
-        if( aProperty->HasFlag( wxPG_PROP_READONLY ) && !( aFlags & Selected ) )
+        if( aProperty->HasFlag( PG_PROP_READONLY ) && !( aFlags & Selected ) )
         {
             wxColour disabledFg = aGrid->GetCellDisabledTextColour();
 

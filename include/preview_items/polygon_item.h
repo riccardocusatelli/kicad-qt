@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PREVIEW_POLYGON_ITEM__H_
@@ -48,13 +44,13 @@ class POLYGON_ITEM : public SIMPLE_OVERLAY_ITEM
 public:
     POLYGON_ITEM();
 
-    ///< Sets the color of the preview outline
+    /// Sets the color of the preview outline
     void SetLineColor( KIGFX::COLOR4D lineColor );
 
-    ///< Sets the color of the outline leader line
+    /// Sets the color of the outline leader line
     void SetLeaderColor( KIGFX::COLOR4D leaderColor );
 
-    ///< Gets the bounding box of the polygon
+    /// Gets the bounding box of the polygon
     virtual const BOX2I ViewBBox() const override;
 
     /**
@@ -69,19 +65,19 @@ public:
                     const SHAPE_LINE_CHAIN& aLoopPts );
 
 private:
-    ///< Draw rectangle and center line onto GAL
+    /// Draw rectangle and center line onto GAL
     void drawPreviewShape( KIGFX::VIEW* aView ) const override;
 
-    ///< complete polyline of locked in, leader and looping points
+    /// complete polyline of locked in, leader and looping points
     SHAPE_LINE_CHAIN m_lockedChain, m_leaderChain, m_loopChain;
 
-    ///< polygon fill
+    /// polygon fill
     SHAPE_POLY_SET m_polyfill;
 
-    ///< the preview outline color
+    /// the preview outline color
     KIGFX::COLOR4D m_lineColor;
 
-    ///< the preview leader line color
+    /// the preview leader line color
     KIGFX::COLOR4D m_leaderColor;
 
     static const double POLY_LINE_WIDTH;

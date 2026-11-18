@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -667,7 +667,7 @@ bool test::DRC_TEST_PROVIDER_DIFF_PAIR_COUPLING::Run()
 
             if( val.HasMax() && val.Max() >= 0 && totalUncoupled > val.Max() )
             {
-                std::shared_ptr<DRC_ITEM> drce = DRC_ITEM::Create( DRCE_DIFF_PAIR_UNCOUPLED_LENGTH_TOO_LONG );
+                std::shared_ptr<DRC_ITEM> drce = DRC_ITEM::Create( DRCE_DP_UNCOUPLED_LENGTH_TOO_LONG );
                 drce->SetErrorDetail( formatMsg( _( "(%s maximum uncoupled length %s; actual %s)" ),
                                                  key.uncoupledRuleName,
                                                  val.Max(),
@@ -729,7 +729,7 @@ bool test::DRC_TEST_PROVIDER_DIFF_PAIR_COUPLING::Run()
                     if( !dp.couplingFailMin && !dp.couplingFailMax )
                         continue;
 
-                    std::shared_ptr<DRC_ITEM> drcItem = DRC_ITEM::Create( DRCE_DIFF_PAIR_GAP_OUT_OF_RANGE );
+                    std::shared_ptr<DRC_ITEM> drcItem = DRC_ITEM::Create( DRCE_DP_GAP_OUT_OF_RANGE );
 
                     if( dp.couplingFailMin )
                     {

@@ -59,6 +59,7 @@ class DIALOG_TEXT_PROPERTIES_BASE : public DIALOG_SHIM
 		wxCheckBox* m_Visible;
 		wxStaticText* m_fontLabel;
 		FONT_CHOICE* m_fontCtrl;
+		BITMAP_BUTTON* m_separator0;
 		BITMAP_BUTTON* m_bold;
 		BITMAP_BUTTON* m_italic;
 		BITMAP_BUTTON* m_separator1;
@@ -100,12 +101,10 @@ class DIALOG_TEXT_PROPERTIES_BASE : public DIALOG_SHIM
 		virtual void OnSetFocusText( wxFocusEvent& event ) { event.Skip(); }
 		virtual void OnOkClick( wxCommandEvent& event ) { event.Skip(); }
 		virtual void onFontSelected( wxCommandEvent& event ) { event.Skip(); }
-		virtual void onBoldToggle( wxCommandEvent& event ) { event.Skip(); }
 		virtual void onAlignButton( wxCommandEvent& event ) { event.Skip(); }
 		virtual void onValignButton( wxCommandEvent& event ) { event.Skip(); }
 		virtual void onTextSize( wxCommandEvent& event ) { event.Skip(); }
 		virtual void onAutoTextThickness( wxCommandEvent& event ) { event.Skip(); }
-		virtual void onThickness( wxCommandEvent& event ) { event.Skip(); }
 
 
 	public:

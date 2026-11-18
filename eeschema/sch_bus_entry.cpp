@@ -15,13 +15,10 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <connectivity/conn_presentation.h>
 #include <sch_sheet_context.h>
 #include <bitmaps.h>
 #include <core/mirror.h>
@@ -36,8 +33,10 @@
 #include <settings/color_settings.h>
 #include <netclass.h>
 #include <trigo.h>
-#include <board_item.h>
 #include <connection_graph.h>
+#include <api/api_enums.h>
+#include <api/api_utils.h>
+#include <api/schematic/schematic_types.pb.h>
 #include "sch_painter.h"
 #include "plotters/plotter.h"
 #include <properties/property.h>
@@ -112,6 +111,67 @@ SCH_BUS_BUS_ENTRY::SCH_BUS_BUS_ENTRY( const VECTOR2I& pos, bool aFlipY ) :
     m_lastResolvedWidth = schIUScale.MilsToIU( DEFAULT_WIRE_WIDTH_MILS );
     m_lastResolvedLineStyle = LINE_STYLE::SOLID;
     m_lastResolvedColor = COLOR4D::UNSPECIFIED;
+}
+
+
+void SCH_BUS_ENTRY_BASE::Serialize( google::protobuf::Any& aContainer ) const
+{
+    using namespace kiapi::common;
+
+    kiapi::schematic::types::BusEntry entry;
+    types::StrokeAttributes* stroke = entry.mutable_stroke();
+
+    entry.mutable_id()->set_value( m_Uuid.AsStdString() );
+    PackVector2( *entry.mutable_position(), m_pos, schIUScale );
+    PackVector2( *entry.mutable_size(), m_size, schIUScale );
+    entry.set_locked( IsLocked() ? types::LockedState::LS_LOCKED : types::LockedState::LS_UNLOCKED );
+    entry.set_type( Type() == SCH_BUS_BUS_ENTRY_T ? kiapi::schematic::types::BET_BUS_TO_BUS
+                                                  : kiapi::schematic::types::BET_WIRE_TO_BUS );
+
+    PackDistance( *stroke->mutable_width(), m_stroke.GetWidth(), schIUScale );
+    stroke->set_style( ToProtoEnum<LINE_STYLE, types::StrokeLineStyle>( m_stroke.GetLineStyle() ) );
+
+    if( m_stroke.GetColor() != COLOR4D::UNSPECIFIED )
+        PackColor( *stroke->mutable_color(), m_stroke.GetColor() );
+
+    kiapi::common::PackCustomProperties( entry.mutable_custom_properties(), *this );
+
+    if( !aContainer.PackFrom( entry ) )
+        KI_FAIL_MSG( wxT( "Failed to pack SCH_BUS_ENTRY" ) );
+}
+
+
+bool SCH_BUS_ENTRY_BASE::Deserialize( const google::protobuf::Any& aContainer )
+{
+    using namespace kiapi::common;
+
+    kiapi::schematic::types::BusEntry entry;
+
+    if( !aContainer.UnpackTo( &entry ) )
+        return false;
+
+    if( ( Type() == SCH_BUS_WIRE_ENTRY_T && entry.type() != kiapi::schematic::types::BET_WIRE_TO_BUS )
+        || ( Type() == SCH_BUS_BUS_ENTRY_T && entry.type() != kiapi::schematic::types::BET_BUS_TO_BUS ) )
+    {
+        return false;
+    }
+
+    const_cast<KIID&>( m_Uuid ) = KIID( entry.id().value() );
+    m_pos = UnpackVector2( entry.position(), schIUScale );
+    m_size = UnpackVector2( entry.size(), schIUScale );
+    SetLocked( entry.locked() == types::LockedState::LS_LOCKED );
+    kiapi::common::UnpackCustomProperties( entry.custom_properties(), *this );
+
+    m_stroke.SetWidth( UnpackDistance( entry.stroke().width(), schIUScale ) );
+    m_stroke.SetLineStyle( FromProtoEnum<LINE_STYLE, types::StrokeLineStyle>( entry.stroke().style() ) );
+
+    if( entry.stroke().has_color() )
+        m_stroke.SetColor( UnpackColor( entry.stroke().color() ) );
+    else
+        m_stroke.SetColor( COLOR4D::UNSPECIFIED );
+
+    SetLayer( entry.type() == kiapi::schematic::types::BET_BUS_TO_BUS ? LAYER_BUS : LAYER_WIRE );
+    return true;
 }
 
 
@@ -515,19 +575,8 @@ void SCH_BUS_ENTRY_BASE::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext,
 
     aList.emplace_back( _( "Bus Entry Type" ), msg );
 
-    SCH_CONNECTION* conn = nullptr;
-
     if( !IsConnectivityDirty() && dynamic_cast<SCH_SHEET_CONTEXT*>( aContext ) )
-        conn = Connection();
-
-    if( conn )
-    {
-        conn->AppendInfoToMsgPanel( aList );
-
-        if( !conn->IsBus() )
-            aList.emplace_back( _( "Resolved Netclass" ),
-                                GetEffectiveNetClass()->GetHumanReadableName() );
-    }
+        SCH_CONNECTIVITY::AppendConnectionInfo( *this, aList );
 }
 
 
@@ -650,14 +699,14 @@ static struct SCH_BUS_ENTRY_DESC
                              .Map( WIRE_STYLE::DASHDOTDOT, _HKI( "Dash-Dot-Dot" ) );
         }
 
-        propMgr.AddProperty( new PROPERTY_ENUM<SCH_BUS_ENTRY_BASE, WIRE_STYLE>(
-                _HKI( "Wire Style" ), &SCH_BUS_ENTRY_BASE::SetWireStyle, &SCH_BUS_ENTRY_BASE::GetWireStyle ) );
+        propMgr.AddProperty( new PROPERTY_ENUM<SCH_BUS_ENTRY_BASE, WIRE_STYLE>( _HKI( "Wire Style" ),
+                        &SCH_BUS_ENTRY_BASE::SetWireStyle, &SCH_BUS_ENTRY_BASE::GetWireStyle ) );
 
         propMgr.AddProperty( new PROPERTY<SCH_BUS_ENTRY_BASE, int>( _HKI( "Line Width" ),
-                    &SCH_BUS_ENTRY_BASE::SetPenWidth, &SCH_BUS_ENTRY_BASE::GetPenWidth,
-                    PROPERTY_DISPLAY::PT_SIZE ) );
+                        &SCH_BUS_ENTRY_BASE::SetPenWidth, &SCH_BUS_ENTRY_BASE::GetPenWidth,
+                        PROPERTY_DISPLAY::PT_SIZE ) );
 
         propMgr.AddProperty( new PROPERTY<SCH_BUS_ENTRY_BASE, COLOR4D>( _HKI( "Color" ),
-                    &SCH_BUS_ENTRY_BASE::SetBusEntryColor, &SCH_BUS_ENTRY_BASE::GetBusEntryColor ) );
+                        &SCH_BUS_ENTRY_BASE::SetBusEntryColor, &SCH_BUS_ENTRY_BASE::GetBusEntryColor ) );
     }
 } _SCH_BUS_ENTRY_DESC;

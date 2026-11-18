@@ -27,7 +27,7 @@ _kicad_cli()
 
     case "$cmd_str" in
         "")
-            COMPREPLY=( $(compgen -W "fp jobset pcb sch sym version --help --version -h -v" -- "$cur") )
+            COMPREPLY=( $(compgen -W "fp gerber jobset pcb sch sym version --help --version -h -v" -- "$cur") )
             return 0
             ;;
         "fp")
@@ -44,6 +44,26 @@ _kicad_cli()
             ;;
         "fp upgrade")
             COMPREPLY=( $(compgen -W "--force --help --output -h -o" -- "$cur") )
+            return 0
+            ;;
+        "gerber")
+            COMPREPLY=( $(compgen -W "diff export info --help -h" -- "$cur") )
+            return 0
+            ;;
+        "gerber diff")
+            COMPREPLY=( $(compgen -W "--dpi --exit-code-only --format --help --no-antialias --output --strict --tolerance --transparent -h -o" -- "$cur") )
+            return 0
+            ;;
+        "gerber export")
+            COMPREPLY=( $(compgen -W "png --help -h" -- "$cur") )
+            return 0
+            ;;
+        "gerber export png")
+            COMPREPLY=( $(compgen -W "--dpi --height --help --no-antialias --output --strict --transparent --width -h -o" -- "$cur") )
+            return 0
+            ;;
+        "gerber info")
+            COMPREPLY=( $(compgen -W "--area --format --help --strict --units -h" -- "$cur") )
             return 0
             ;;
         "jobset")
@@ -63,19 +83,19 @@ _kicad_cli()
             return 0
             ;;
         "pcb export")
-            COMPREPLY=( $(compgen -W "3dpdf brep drill dxf gencad gerbers glb hpgl ipc2581 ipcd356 odb pdf ply pos ps stats step stl stpz svg u3d vrml xao --help -h" -- "$cur") )
+            COMPREPLY=( $(compgen -W "3dpdf brep drill dxf gencad gerbers glb hpgl ipc2581 ipcd356 odb pdf ply pos ps stackup stats step stl stpz svg u3d vrml xao --help -h" -- "$cur") )
             return 0
             ;;
         "pcb export 3dpdf")
-            COMPREPLY=( $(compgen -W "--board-only --component-filter --cut-vias-in-body --define-var --drill-origin --fill-all-vias --force --fuse-shapes --grid-origin --help --include-inner-copper --include-pads --include-silkscreen --include-soldermask --include-tracks --include-zones --min-distance --net-filter --no-board-body --no-components --no-dnp --no-unspecified --output --subst-models --user-origin -D -f -h -o" -- "$cur") )
+            COMPREPLY=( $(compgen -W "--board-only --component-filter --cut-vias-in-body --define-var --drill-origin --fill-all-vias --force --fuse-shapes --grid-origin --help --include-inner-copper --include-pads --include-silkscreen --include-soldermask --include-tracks --include-zones --min-distance --net-filter --no-board-body --no-components --no-dnp --no-extra-pad-thickness --no-unspecified --output --subst-models --user-origin -D -f -h -o" -- "$cur") )
             return 0
             ;;
         "pcb export brep")
-            COMPREPLY=( $(compgen -W "--board-only --component-filter --cut-vias-in-body --define-var --drill-origin --fill-all-vias --force --fuse-shapes --grid-origin --help --include-inner-copper --include-pads --include-silkscreen --include-soldermask --include-tracks --include-zones --min-distance --net-filter --no-board-body --no-components --no-dnp --no-unspecified --output --subst-models --user-origin -D -f -h -o" -- "$cur") )
+            COMPREPLY=( $(compgen -W "--board-only --component-filter --cut-vias-in-body --define-var --drill-origin --fill-all-vias --force --fuse-shapes --grid-origin --help --include-inner-copper --include-pads --include-silkscreen --include-soldermask --include-tracks --include-zones --min-distance --net-filter --no-board-body --no-components --no-dnp --no-extra-pad-thickness --no-unspecified --output --subst-models --user-origin -D -f -h -o" -- "$cur") )
             return 0
             ;;
         "pcb export drill")
-            COMPREPLY=( $(compgen -W "--drill-origin --excellon-min-header --excellon-mirror-y --excellon-oval-format --excellon-separate-th --excellon-units --excellon-zeros-format --format --generate-map --generate-tenting --gerber-precision --help --map-format --output -h -o -u" -- "$cur") )
+            COMPREPLY=( $(compgen -W "--drill-origin --excellon-min-header --excellon-mirror-y --excellon-oval-format --excellon-separate-th --excellon-units --excellon-zeros-format --format --generate-map --generate-report --generate-tenting --gerber-precision --help --map-format --output --report-path -h -o -u" -- "$cur") )
             return 0
             ;;
         "pcb export dxf")
@@ -91,7 +111,7 @@ _kicad_cli()
             return 0
             ;;
         "pcb export glb")
-            COMPREPLY=( $(compgen -W "--board-only --component-filter --cut-vias-in-body --define-var --drill-origin --fill-all-vias --force --fuse-shapes --grid-origin --help --include-inner-copper --include-pads --include-silkscreen --include-soldermask --include-tracks --include-zones --min-distance --net-filter --no-board-body --no-components --no-dnp --no-unspecified --output --subst-models --user-origin -D -f -h -o" -- "$cur") )
+            COMPREPLY=( $(compgen -W "--board-only --component-filter --cut-vias-in-body --define-var --drill-origin --fill-all-vias --force --fuse-shapes --grid-origin --help --include-inner-copper --include-pads --include-silkscreen --include-soldermask --include-tracks --include-zones --min-distance --net-filter --no-board-body --no-components --no-dnp --no-extra-pad-thickness --no-unspecified --output --subst-models --user-origin -D -f -h -o" -- "$cur") )
             return 0
             ;;
         "pcb export hpgl")
@@ -115,15 +135,19 @@ _kicad_cli()
             return 0
             ;;
         "pcb export ply")
-            COMPREPLY=( $(compgen -W "--board-only --component-filter --cut-vias-in-body --define-var --drill-origin --fill-all-vias --force --fuse-shapes --grid-origin --help --include-inner-copper --include-pads --include-silkscreen --include-soldermask --include-tracks --include-zones --min-distance --net-filter --no-board-body --no-components --no-dnp --no-unspecified --output --subst-models --user-origin -D -f -h -o" -- "$cur") )
+            COMPREPLY=( $(compgen -W "--board-only --component-filter --cut-vias-in-body --define-var --drill-origin --fill-all-vias --force --fuse-shapes --grid-origin --help --include-inner-copper --include-pads --include-silkscreen --include-soldermask --include-tracks --include-zones --min-distance --net-filter --no-board-body --no-components --no-dnp --no-extra-pad-thickness --no-unspecified --output --subst-models --user-origin -D -f -h -o" -- "$cur") )
             return 0
             ;;
         "pcb export pos")
-            COMPREPLY=( $(compgen -W "--bottom-negate-x --exclude-dnp --exclude-fp-th --format --gerber-board-edge --help --output --side --smd-only --units --use-drill-file-origin -h -o" -- "$cur") )
+            COMPREPLY=( $(compgen -W "--bottom-negate-x --exclude-dnp --exclude-fp-th --format --gerber-board-edge --help --output --side --smd-only --units --use-drill-file-origin --variant -h -o" -- "$cur") )
             return 0
             ;;
         "pcb export ps")
             COMPREPLY=( $(compgen -W "--black-and-white --cdnp --check-zones --cl --common-layers --crossout-DNP-footprints-on-fab-layers --define-var --drawing-sheet --drill-shape-opt --erd --ev --exclude-refdes --exclude-value --force-a4 --hdnp --help --hide-DNP-footprints-on-fab-layers --ibt --include-border-title --layers --mirror --mode-multi --mode-single --negative --output --scale --sdnp --sketch-DNP-footprints-on-fab-layers --sketch-pads-on-fab-layers --sp --subtract-soldermask --theme --track-width-correction --x-scale-factor --y-scale-factor -A -C -D -X -Y -h -l -m -n -o -t" -- "$cur") )
+            return 0
+            ;;
+        "pcb export stackup")
+            COMPREPLY=( $(compgen -W "--exclude-board-options --exclude-color --exclude-epsilon-r --exclude-finish --exclude-loss-tangent --exclude-material --exclude-thickness --format --help --output --units -h -o" -- "$cur") )
             return 0
             ;;
         "pcb export stats")
@@ -131,15 +155,15 @@ _kicad_cli()
             return 0
             ;;
         "pcb export step")
-            COMPREPLY=( $(compgen -W "--board-only --component-filter --cut-vias-in-body --define-var --drill-origin --fill-all-vias --force --fuse-shapes --grid-origin --help --include-inner-copper --include-pads --include-silkscreen --include-soldermask --include-tracks --include-zones --min-distance --net-filter --no-board-body --no-components --no-dnp --no-optimize-step --no-unspecified --output --subst-models --user-origin -D -f -h -o" -- "$cur") )
+            COMPREPLY=( $(compgen -W "--board-only --component-filter --cut-vias-in-body --define-var --drill-origin --fill-all-vias --force --fuse-shapes --grid-origin --help --include-inner-copper --include-pads --include-silkscreen --include-soldermask --include-tracks --include-zones --min-distance --net-filter --no-board-body --no-components --no-dnp --no-extra-pad-thickness --no-optimize-step --no-unspecified --output --subst-models --user-origin -D -f -h -o" -- "$cur") )
             return 0
             ;;
         "pcb export stl")
-            COMPREPLY=( $(compgen -W "--board-only --component-filter --cut-vias-in-body --define-var --drill-origin --fill-all-vias --force --fuse-shapes --grid-origin --help --include-inner-copper --include-pads --include-silkscreen --include-soldermask --include-tracks --include-zones --min-distance --net-filter --no-board-body --no-components --no-dnp --no-unspecified --output --subst-models --user-origin -D -f -h -o" -- "$cur") )
+            COMPREPLY=( $(compgen -W "--board-only --component-filter --cut-vias-in-body --define-var --drill-origin --fill-all-vias --force --fuse-shapes --grid-origin --help --include-inner-copper --include-pads --include-silkscreen --include-soldermask --include-tracks --include-zones --min-distance --net-filter --no-board-body --no-components --no-dnp --no-extra-pad-thickness --no-unspecified --output --subst-models --user-origin -D -f -h -o" -- "$cur") )
             return 0
             ;;
         "pcb export stpz")
-            COMPREPLY=( $(compgen -W "--board-only --component-filter --cut-vias-in-body --define-var --drill-origin --fill-all-vias --force --fuse-shapes --grid-origin --help --include-inner-copper --include-pads --include-silkscreen --include-soldermask --include-tracks --include-zones --min-distance --net-filter --no-board-body --no-components --no-dnp --no-optimize-step --no-unspecified --output --subst-models --user-origin -D -f -h -o" -- "$cur") )
+            COMPREPLY=( $(compgen -W "--board-only --component-filter --cut-vias-in-body --define-var --drill-origin --fill-all-vias --force --fuse-shapes --grid-origin --help --include-inner-copper --include-pads --include-silkscreen --include-soldermask --include-tracks --include-zones --min-distance --net-filter --no-board-body --no-components --no-dnp --no-extra-pad-thickness --no-optimize-step --no-unspecified --output --subst-models --user-origin -D -f -h -o" -- "$cur") )
             return 0
             ;;
         "pcb export svg")
@@ -147,7 +171,7 @@ _kicad_cli()
             return 0
             ;;
         "pcb export u3d")
-            COMPREPLY=( $(compgen -W "--board-only --component-filter --cut-vias-in-body --define-var --drill-origin --fill-all-vias --force --fuse-shapes --grid-origin --help --include-inner-copper --include-pads --include-silkscreen --include-soldermask --include-tracks --include-zones --min-distance --net-filter --no-board-body --no-components --no-dnp --no-unspecified --output --subst-models --user-origin -D -f -h -o" -- "$cur") )
+            COMPREPLY=( $(compgen -W "--board-only --component-filter --cut-vias-in-body --define-var --drill-origin --fill-all-vias --force --fuse-shapes --grid-origin --help --include-inner-copper --include-pads --include-silkscreen --include-soldermask --include-tracks --include-zones --min-distance --net-filter --no-board-body --no-components --no-dnp --no-extra-pad-thickness --no-unspecified --output --subst-models --user-origin -D -f -h -o" -- "$cur") )
             return 0
             ;;
         "pcb export vrml")
@@ -155,7 +179,7 @@ _kicad_cli()
             return 0
             ;;
         "pcb export xao")
-            COMPREPLY=( $(compgen -W "--board-only --component-filter --cut-vias-in-body --define-var --drill-origin --fill-all-vias --force --fuse-shapes --grid-origin --help --include-inner-copper --include-pads --include-silkscreen --include-soldermask --include-tracks --include-zones --min-distance --net-filter --no-board-body --no-components --no-dnp --no-unspecified --output --subst-models --user-origin -D -f -h -o" -- "$cur") )
+            COMPREPLY=( $(compgen -W "--board-only --component-filter --cut-vias-in-body --define-var --drill-origin --fill-all-vias --force --fuse-shapes --grid-origin --help --include-inner-copper --include-pads --include-silkscreen --include-soldermask --include-tracks --include-zones --min-distance --net-filter --no-board-body --no-components --no-dnp --no-extra-pad-thickness --no-unspecified --output --subst-models --user-origin -D -f -h -o" -- "$cur") )
             return 0
             ;;
         "pcb render")
@@ -179,27 +203,27 @@ _kicad_cli()
             return 0
             ;;
         "sch export bom")
-            COMPREPLY=( $(compgen -W "--exclude-dnp --field-delimiter --fields --filter --format-preset --group-by --help --include-excluded-from-bom --keep-line-breaks --keep-tabs --labels --output --preset --ref-delimiter --ref-range-delimiter --sort-asc --sort-field --string-delimiter -h -o" -- "$cur") )
+            COMPREPLY=( $(compgen -W "--exclude-dnp --field-delimiter --fields --filter --filter-scope --format-preset --group-by --help --include-byte-order-mark --include-excluded-from-bom --keep-line-breaks --keep-tabs --labels --output --preset --ref-delimiter --ref-range-delimiter --sort-asc --sort-field --string-delimiter --variant -h -o" -- "$cur") )
             return 0
             ;;
         "sch export dxf")
-            COMPREPLY=( $(compgen -W "--black-and-white --default-font --define-var --draw-hop-over --drawing-sheet --exclude-drawing-sheet --help --output --pages --theme -D -b -e -h -o -t" -- "$cur") )
+            COMPREPLY=( $(compgen -W "--black-and-white --default-font --define-var --draw-hop-over --drawing-sheet --exclude-drawing-sheet --help --output --pages --theme --variant -D -b -e -h -o -t" -- "$cur") )
             return 0
             ;;
         "sch export hpgl")
-            COMPREPLY=( $(compgen -W "--black-and-white --default-font --define-var --draw-hop-over --drawing-sheet --exclude-drawing-sheet --help --origin --output --pages --pen-size --theme -D -b -e -h -o -p -r -t" -- "$cur") )
+            COMPREPLY=( $(compgen -W "--black-and-white --default-font --define-var --draw-hop-over --drawing-sheet --exclude-drawing-sheet --help --origin --output --pages --pen-size --theme --variant -D -b -e -h -o -p -r -t" -- "$cur") )
             return 0
             ;;
         "sch export netlist")
-            COMPREPLY=( $(compgen -W "--format --help --output -h -o" -- "$cur") )
+            COMPREPLY=( $(compgen -W "--format --help --output --variant -h -o" -- "$cur") )
             return 0
             ;;
         "sch export pdf")
-            COMPREPLY=( $(compgen -W "--black-and-white --default-font --define-var --draw-hop-over --drawing-sheet --exclude-drawing-sheet --exclude-pdf-hierarchical-links --exclude-pdf-metadata --exclude-pdf-property-popups --help --no-background-color --output --pages --theme -D -b -e -h -n -o -t" -- "$cur") )
+            COMPREPLY=( $(compgen -W "--black-and-white --default-font --define-var --draw-hop-over --drawing-sheet --exclude-drawing-sheet --exclude-pdf-hierarchical-links --exclude-pdf-metadata --exclude-pdf-property-popups --help --no-background-color --output --pages --theme --variant -D -b -e -h -n -o -t" -- "$cur") )
             return 0
             ;;
         "sch export ps")
-            COMPREPLY=( $(compgen -W "--black-and-white --default-font --define-var --draw-hop-over --drawing-sheet --exclude-drawing-sheet --help --no-background-color --output --pages --theme -D -b -e -h -n -o -t" -- "$cur") )
+            COMPREPLY=( $(compgen -W "--black-and-white --default-font --define-var --draw-hop-over --drawing-sheet --exclude-drawing-sheet --help --no-background-color --output --pages --theme --variant -D -b -e -h -n -o -t" -- "$cur") )
             return 0
             ;;
         "sch export python-bom")
@@ -207,7 +231,7 @@ _kicad_cli()
             return 0
             ;;
         "sch export svg")
-            COMPREPLY=( $(compgen -W "--black-and-white --default-font --define-var --draw-hop-over --drawing-sheet --exclude-drawing-sheet --help --no-background-color --output --pages --theme -D -b -e -h -n -o -t" -- "$cur") )
+            COMPREPLY=( $(compgen -W "--black-and-white --default-font --define-var --draw-hop-over --drawing-sheet --exclude-drawing-sheet --help --no-background-color --output --pages --theme --variant -D -b -e -h -n -o -t" -- "$cur") )
             return 0
             ;;
         "sch upgrade")

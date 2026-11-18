@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <wx/dc.h>
@@ -146,9 +146,11 @@ wxPGProperty* PGPropertyFactory( const PROPERTY_BASE* aProperty, EDA_DRAW_FRAME*
 
     if( ret )
     {
+        const wxString& help = aProperty->HelpString();
+
         ret->SetLabel( wxGetTranslation( aProperty->Name() ) );
         ret->SetName( aProperty->Name() );
-        ret->SetHelpString( wxGetTranslation( aProperty->Name() ) );
+        ret->SetHelpString( wxGetTranslation( help.IsEmpty() ? aProperty->Name() : help ) );
         ret->SetClientData( const_cast<PROPERTY_BASE*>( aProperty ) );
     }
 
@@ -315,10 +317,10 @@ bool PGPROPERTY_SIZE::ValidateValue( wxVariant& aValue, wxPGValidationInfo& aVal
     {
         auto* data = static_cast<STD_OPTIONAL_INT_VARIANT_DATA*>( aValue.GetData() );
 
-        if( !data->Value().has_value() )
+        if( !data->OptValue().has_value() )
             return wxEmptyString;
 
-        wxVariant value( data->Value().value() );
+        wxVariant value( data->OptValue().value() );
         return wxUIntProperty::ValidateValue( value, aValidationInfo );
     }
 
@@ -387,10 +389,10 @@ bool PGPROPERTY_RATIO::ValidateValue( wxVariant& aValue, wxPGValidationInfo& aVa
     {
         auto* data = static_cast<STD_OPTIONAL_DOUBLE_VARIANT_DATA*>( aValue.GetData() );
 
-        if( !data->Value().has_value() )
+        if( !data->OptValue().has_value() )
             return wxEmptyString;
 
-        wxVariant value( data->Value().value() );
+        wxVariant value( data->OptValue().value() );
         return wxFloatProperty::ValidateValue( value, aValidationInfo );
     }
 
@@ -442,8 +444,7 @@ wxSize PGPROPERTY_COLORENUM::OnMeasureImage( int aItem ) const
 }
 
 
-void PGPROPERTY_COLORENUM::OnCustomPaint( wxDC& aDC, const wxRect& aRect,
-                                          wxPGPaintData& aPaintData )
+void PGPROPERTY_COLORENUM::OnCustomPaint( wxDC& aDC, const wxRect& aRect, wxPGPaintData& aPaintData )
 {
     int index = aPaintData.m_choiceItem;
 

@@ -23,7 +23,6 @@
  * Regression test for https://gitlab.com/kicad/code/kicad/-/issues/23933
  */
 
-#include <pcbnew_utils/board_file_utils.h>
 #include <pcbnew_utils/board_test_utils.h>
 #include <qa_utils/wx_utils/unit_test_utils.h>
 

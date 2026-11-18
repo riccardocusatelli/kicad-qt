@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -234,7 +230,7 @@ void GERBER_JOBFILE_WRITER::addJSONGeneralSpecs()
     msg = fn.GetName();
 
     // build the <rev> string. All non ASCII chars are in UTF8 form
-    wxString rev = ExpandTextVars( m_pcb->GetTitleBlock().GetRevision(), m_pcb->GetProject() );
+    wxString rev = ExpandTextVars( m_pcb->GetTitleBlock().GetRevision(), m_pcb->GetProject(), FOR_GUI );
 
     if( rev.IsEmpty() )
         rev = wxT( "rev?" );
@@ -448,7 +444,10 @@ void GERBER_JOBFILE_WRITER::addJSONDesignRules()
 
     // Search a smaller clearance in other net classes, if any.
     for( const auto& [name, netclass] : netSettings->GetNetclasses() )
-        minclearanceOuter = std::min( minclearanceOuter, netclass->GetClearance() );
+    {
+        if( netclass->HasClearance() )
+            minclearanceOuter = std::min( minclearanceOuter, netclass->GetClearance() );
+    }
 
     // job file knows different clearance types.
     // Kicad knows only one clearance for pads and tracks

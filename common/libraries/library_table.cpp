@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <boost/lexical_cast.hpp>
@@ -37,6 +37,7 @@
 
 #include <wx/buffer.h>
 #include <wx/ffile.h>
+#include <wx/file.h>
 
 
 const wxString LIBRARY_TABLE_ROW::TABLE_TYPE_NAME = wxT( "Table" );
@@ -69,17 +70,22 @@ LIBRARY_TABLE::LIBRARY_TABLE( const wxFileName &aPath, LIBRARY_TABLE_SCOPE aScop
     wxFileName fn( aPath );
     WX_FILENAME::ResolvePossibleSymlinks( fn );
     m_path = fn.GetAbsolutePath();
+    // Stamp before parsing so a change during the load is seen as a change
+    m_loadedStamp = diskStamp();
 
     if( !fn.FileExists() )
     {
         m_ok = false;
+        m_type = aExpectedType;
         m_errorDescription = wxString::Format( _( "The library table path '%s' does not exist" ),
                                                fn.GetFullPath() );
         return;
     }
 
-    if( fn.GetSize() <= 1 ) // test for an empty file, 1 byte allowed for BOM
+    if( fn.GetSize() < 1 )
     {
+        // blank files are treated as "new" and "ok" as we want to allow the user to start
+        // fleshing them out and save
         m_ok = true;
         m_type = aExpectedType;
         return;
@@ -106,10 +112,6 @@ LIBRARY_TABLE::LIBRARY_TABLE( const wxFileName &aPath, LIBRARY_TABLE_SCOPE aScop
 }
 
 
-/**
- * Note: @param aFromClipboard isn't actually used, but might keep people from calling this with a string
- *                             filepath, which isn't going to do what they expected.
- */
 LIBRARY_TABLE::LIBRARY_TABLE( bool aFromClipboard, const wxString &aBuffer, LIBRARY_TABLE_SCOPE aScope ) :
         m_path( wxEmptyString ),
         m_scope( aScope )
@@ -291,6 +293,36 @@ std::optional<const LIBRARY_TABLE_ROW*> LIBRARY_TABLE::Row( const wxString& aNic
 }
 
 
+wxString LIBRARY_TABLE::diskStamp() const
+{
+    if( !wxFileName::FileExists( m_path ) )
+        return wxS( "missing" );
+
+    wxFile file( m_path );
+
+    if( !file.IsOpened() )
+        return wxS( "missing" );
+
+    wxFileOffset length = file.Length();
+
+    if( length < 0 )
+        return wxS( "unreadable" );
+
+    std::string data( length, '\0' );
+
+    if( file.Read( data.data(), data.size() ) != length )
+        return wxS( "unreadable" );
+
+    return wxString::Format( wxS( "%zx" ), std::hash<std::string>{}( data ) );
+}
+
+
+bool LIBRARY_TABLE::DiskChanged() const
+{
+    return m_loadedStamp && *m_loadedStamp != diskStamp();
+}
+
+
 bool LIBRARY_TABLE::IsReadOnly() const
 {
     if( m_path.IsEmpty() )
@@ -302,12 +334,27 @@ bool LIBRARY_TABLE::IsReadOnly() const
 }
 
 
-LIBRARY_RESULT<void> LIBRARY_TABLE::Save()
+LIBRARY_RESULT<void> LIBRARY_TABLE::Save( bool aOverwriteChanged )
 {
     if( IsReadOnly() )
     {
         return tl::unexpected( LIBRARY_ERROR(
                 wxString::Format( _( "Library table '%s' is read-only" ), Path() ) ) );
+    }
+
+    if( !m_ok && wxFileName::FileExists( m_path ) )
+    {
+        return tl::unexpected( LIBRARY_ERROR( wxString::Format(
+                _( "Library table '%s' cannot be read, so it was not overwritten. Fix or remove the file by hand." ),
+                Path() ) ) );
+    }
+
+    if( !aOverwriteChanged && DiskChanged() )
+    {
+        return tl::unexpected( LIBRARY_ERROR( wxString::Format(
+                _( "Library table '%s' changed on disk after it was loaded, so it was not overwritten. Discard the "
+                   "changes and reopen this dialog to see the current file." ),
+                Path() ) ) );
     }
 
     KI_LOG_TRACE( traceLibraries, "Saving %s", Path() );
@@ -359,9 +406,10 @@ LIBRARY_RESULT<void> LIBRARY_TABLE::Save()
     catch( IO_ERROR& e )
     {
         KI_LOG_TRACE( traceLibraries, "Exception while saving: %s", e.What() );
-        return tl::unexpected( LIBRARY_ERROR( e.What() ) );
+        return tl::unexpected( LIBRARY_ERROR( e.Problem(), e.Where() ) );
     }
 
+    m_loadedStamp = diskStamp();
     return LIBRARY_RESULT<void>();
 }
 

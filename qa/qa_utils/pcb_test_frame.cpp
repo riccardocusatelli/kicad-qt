@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -86,8 +82,8 @@ void PCB_TEST_FRAME_BASE::SetBoard( std::shared_ptr<BOARD> b )
 
     m_galPanel->UpdateColors();
 
-    KI_TRACE( traceGalProfile, "%s\n", cntConnectivity.to_string() );
-    KI_TRACE( traceGalProfile, "%s\n", cntView.to_string() );
+    KI_LOG_TRACE( traceGalProfile, "%s", cntConnectivity.to_string() );
+    KI_LOG_TRACE( traceGalProfile, "%s", cntView.to_string() );
 
 #ifdef USE_TOOL_MANAGER
     SETTINGS_MANAGER& mgr = Pgm().GetSettingsManager();
@@ -126,11 +122,11 @@ void PCB_TEST_FRAME_BASE::SetBoard( std::shared_ptr<BOARD> b )
 BOARD* PCB_TEST_FRAME_BASE::LoadAndDisplayBoard( const std::string& filename )
 {
     IO_RELEASER<PCB_IO> pi( new PCB_IO_KICAD_SEXPR );
-    BOARD* brd = nullptr;
+    std::unique_ptr<BOARD> brd;
 
     try
     {
-        brd = pi->LoadBoard( wxString( filename.c_str() ), nullptr, nullptr );
+        brd = pi->LoadBoard( wxString( filename.c_str() ) );
     }
     catch( const IO_ERROR& ioe )
     {
@@ -140,7 +136,7 @@ BOARD* PCB_TEST_FRAME_BASE::LoadAndDisplayBoard( const std::string& filename )
 
     //SetBoard( brd );
 
-    return brd;
+    return brd.release();
 }
 
 void PCB_TEST_FRAME_BASE::SetSelectableItemTypes( const std::vector<KICAD_T> aTypes )

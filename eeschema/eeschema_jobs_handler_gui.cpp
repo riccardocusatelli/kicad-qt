@@ -25,7 +25,7 @@
 #include <dialogs/dialog_export_netlist.h>
 #include <dialogs/dialog_plot_schematic.h>
 #include <dialogs/dialog_symbol_fields_table.h>
-#include <jobs/job_export_sch_bom.h>
+#include <jobs/job_export_bom.h>
 #include <jobs/job_export_sch_netlist.h>
 #include <jobs/job_export_sch_plot.h>
 #include <jobs/job_sch_erc.h>
@@ -40,7 +40,7 @@ EESCHEMA_JOBS_HANDLER_GUI::EESCHEMA_JOBS_HANDLER_GUI( KIWAY* aKiway ) :
     RegisterConfig( "bom",
                     [this]( JOB* job, wxWindow* aParent ) -> bool
                     {
-                        JOB_EXPORT_SCH_BOM* bomJob = dynamic_cast<JOB_EXPORT_SCH_BOM*>( job );
+                        JOB_EXPORT_BOM* bomJob = dynamic_cast<JOB_EXPORT_BOM*>( job );
 
                         SCH_EDIT_FRAME* editFrame =
                                 schematicEditor();
@@ -48,6 +48,10 @@ EESCHEMA_JOBS_HANDLER_GUI::EESCHEMA_JOBS_HANDLER_GUI( KIWAY* aKiway ) :
                         KI_CHECK( bomJob && editFrame, false );
 
                         DIALOG_SYMBOL_FIELDS_TABLE dlg( editFrame, bomJob );
+
+                        if( dlg.WasAborted() )
+                            return false;
+
                         return dlg.ShowModal() == wxID_OK;
                     } );
     RegisterConfig( "pythonbom",
@@ -93,7 +97,22 @@ EESCHEMA_JOBS_HANDLER_GUI::EESCHEMA_JOBS_HANDLER_GUI( KIWAY* aKiway ) :
                     {
                         return true;
                     } );
+    RegisterConfig( "symdowngrade",
+                    []( JOB* job, wxWindow* aParent ) -> bool
+                    {
+                        return true;
+                    } );
     RegisterConfig( "symsvg",
+                    []( JOB* job, wxWindow* aParent ) -> bool
+                    {
+                        return true;
+                    } );
+    RegisterConfig( "sch_diff",
+                    []( JOB* job, wxWindow* aParent ) -> bool
+                    {
+                        return true;
+                    } );
+    RegisterConfig( "sym_diff",
                     []( JOB* job, wxWindow* aParent ) -> bool
                     {
                         return true;
@@ -109,6 +128,16 @@ EESCHEMA_JOBS_HANDLER_GUI::EESCHEMA_JOBS_HANDLER_GUI( KIWAY* aKiway ) :
                         return dlg.ShowModal() == wxID_OK;
                     } );
     RegisterConfig( "upgrade",
+                    []( JOB* job, wxWindow* aParent ) -> bool
+                    {
+                        return true;
+                    } );
+    RegisterConfig( "downgrade",
+                    []( JOB* job, wxWindow* aParent ) -> bool
+                    {
+                        return true;
+                    } );
+    RegisterConfig( "sch_import",
                     []( JOB* job, wxWindow* aParent ) -> bool
                     {
                         return true;

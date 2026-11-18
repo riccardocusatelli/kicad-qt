@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <google/protobuf/any.pb.h>
@@ -55,7 +51,8 @@
 
 PCB_TEXT::PCB_TEXT( BOARD_ITEM* parent, KICAD_T idtype ) :
         BOARD_ITEM( parent, idtype ),
-        EDA_TEXT( pcbIUScale )
+        EDA_TEXT( pcbIUScale ),
+        m_libTextAngle( ANGLE_0 )
 {
     SetMultilineAllowed( true );
 }
@@ -63,7 +60,8 @@ PCB_TEXT::PCB_TEXT( BOARD_ITEM* parent, KICAD_T idtype ) :
 
 PCB_TEXT::PCB_TEXT( FOOTPRINT* aParent, KICAD_T idtype ) :
         BOARD_ITEM( aParent, idtype ),
-        EDA_TEXT( pcbIUScale )
+        EDA_TEXT( pcbIUScale ),
+        m_libTextAngle( ANGLE_0 )
 {
     SetKeepUpright( true );
 
@@ -84,7 +82,8 @@ PCB_TEXT::PCB_TEXT( FOOTPRINT* aParent, KICAD_T idtype ) :
 
 PCB_TEXT::PCB_TEXT( const PCB_TEXT& aOther ) :
         BOARD_ITEM( aOther ),
-        EDA_TEXT( aOther )
+        EDA_TEXT( aOther ),
+        m_libTextAngle( aOther.m_libTextAngle )
 {
 }
 
@@ -97,6 +96,7 @@ PCB_TEXT& PCB_TEXT::operator=( const PCB_TEXT& aOther )
     BOARD_ITEM::operator=( aOther );
     EDA_TEXT::operator=( aOther );
     m_knockout_cache.reset();
+    m_libTextAngle = aOther.m_libTextAngle;
 
     return *this;
 }
@@ -123,7 +123,7 @@ void PCB_TEXT::Serialize( kiapi::board::types::BoardText& boardText ) const
     boardText.set_knockout( IsKnockout() );
     boardText.set_locked( IsLocked() ? types::LockedState::LS_LOCKED : types::LockedState::LS_UNLOCKED );
 
-    EDA_TEXT::Serialize( *boardText.mutable_text() );
+    EDA_TEXT::Serialize( *boardText.mutable_text(), pcbIUScale );
 
     // Some of the common Text message fields are not stored in EDA_TEXT
     types::Text* text = boardText.mutable_text();
@@ -135,6 +135,7 @@ void PCB_TEXT::Serialize( kiapi::board::types::BoardText& boardText ) const
     else if( const BOARD* board = GetBoard() )
         boardText.mutable_parent()->set_value( board->m_Uuid.AsStdString() );
 
+    kiapi::common::PackCustomProperties( boardText.mutable_custom_properties(), *this );
 }
 
 
@@ -142,7 +143,9 @@ void PCB_TEXT::Serialize( google::protobuf::Any& aContainer ) const
 {
     kiapi::board::types::BoardText boardText;
     Serialize( boardText );
-    aContainer.PackFrom( boardText );
+
+    if( !aContainer.PackFrom( boardText ) )
+        KI_FAIL_MSG( wxT( "Failed to pack PCB_TEXT" ) );
 }
 
 
@@ -150,17 +153,17 @@ bool PCB_TEXT::Deserialize( const kiapi::board::types::BoardText& boardText )
 {
     using namespace kiapi::common;
 
-
     SetLayer( FromProtoEnum<PCB_LAYER_ID, kiapi::board::types::BoardLayer>( boardText.layer() ) );
     SetUuidDirect( KIID( boardText.id().value() ) );
     SetIsKnockout( boardText.knockout() );
     SetLocked( boardText.locked() == types::LockedState::LS_LOCKED );
 
-    EDA_TEXT::Deserialize( boardText.text() );
+    EDA_TEXT::Deserialize( boardText.text(), pcbIUScale );
 
     const types::Text& text = boardText.text();
 
     SetPosition( UnpackVector2( text.position() ) );
+    kiapi::common::UnpackCustomProperties( boardText.custom_properties(), *this );
 
     return true;
 }
@@ -177,37 +180,37 @@ bool PCB_TEXT::Deserialize( const google::protobuf::Any& aContainer )
 }
 
 
-wxString PCB_TEXT::GetShownText( bool aAllowExtraText, int aDepth ) const
+wxString PCB_TEXT::GetShownText( RESOLUTION_CONTEXT aContext, int aDepth ) const
 {
     const FOOTPRINT* parentFootprint = GetParentFootprint();
     const BOARD*     board = GetBoard();
 
-    std::function<bool( wxString* )> resolver = [&]( wxString* token ) -> bool
+    std::function<bool( wxString* )> resolver =
+            [&]( wxString* token ) -> bool
+            {
+                if( token->IsSameAs( wxT( "LAYER" ) ) )
+                {
+                    *token = GetLayerName();
+                    return true;
+                }
+
+                if( parentFootprint && parentFootprint->ResolveTextVar( token, aDepth + 1 ) )
+                    return true;
+
+                // board can be null in some cases when saving a footprint in FP editor
+                if( board && board->ResolveTextVar( token, aDepth + 1 ) )
+                    return true;
+
+                return false;
+            };
+
+    wxString text = EDA_TEXT::GetShownText( aContext, aDepth );
+
+    if( HasTextVars() && aContext != RAW_VALUE )
     {
-        if( token->IsSameAs( wxT( "LAYER" ) ) )
-        {
-            *token = GetLayerName();
-            return true;
-        }
-
-        if( parentFootprint && parentFootprint->ResolveTextVar( token, aDepth + 1 ) )
-            return true;
-
-        // board can be null in some cases when saving a footprint in FP editor
-        if( board && board->ResolveTextVar( token, aDepth + 1 ) )
-            return true;
-
-        return false;
-    };
-
-    wxString text = EDA_TEXT::GetShownText( aAllowExtraText, aDepth );
-
-    if( HasTextVars() )
         text = ResolveTextVars( text, &resolver, aDepth );
-
-    // Convert escape markers back to literal ${} and @{} for final display
-    text.Replace( wxT( "<<<ESC_DOLLAR:" ), wxT( "${" ) );
-    text.Replace( wxT( "<<<ESC_AT:" ), wxT( "@{" ) );
+        FinalizeTextVarExpansion( text, aContext );
+    }
 
     return text;
 }
@@ -264,7 +267,7 @@ double PCB_TEXT::ViewGetLOD( int aLayer, const KIGFX::VIEW* aView ) const
     KIGFX::PCB_PAINTER&         painter = static_cast<KIGFX::PCB_PAINTER&>( *aView->GetPainter() );
     KIGFX::PCB_RENDER_SETTINGS& renderSettings = *painter.GetSettings();
 
-    if( !aView->IsLayerVisible( GetLayer() ) )
+    if( !aView->IsLayerVisibleCached( GetLayer() ) )
         return LOD_HIDE;
 
     if( aLayer == LAYER_LOCKED_ITEM_SHADOW )
@@ -282,13 +285,13 @@ double PCB_TEXT::ViewGetLOD( int aLayer, const KIGFX::VIEW* aView ) const
         // Handle Render tab switches
         if( GetText() == wxT( "${VALUE}" ) )
         {
-            if( !aView->IsLayerVisible( LAYER_FP_VALUES ) )
+            if( !aView->IsLayerVisibleCached( LAYER_FP_VALUES ) )
                 return LOD_HIDE;
         }
 
         if( GetText() == wxT( "${REFERENCE}" ) )
         {
-            if( !aView->IsLayerVisible( LAYER_FP_REFERENCES ) )
+            if( !aView->IsLayerVisibleCached( LAYER_FP_REFERENCES ) )
                 return LOD_HIDE;
         }
 
@@ -297,13 +300,13 @@ double PCB_TEXT::ViewGetLOD( int aLayer, const KIGFX::VIEW* aView ) const
         if( !IsFrontLayer( checkLayer ) && !IsBackLayer( checkLayer ) )
             checkLayer = parentFP->GetLayer();
 
-        if( IsFrontLayer( checkLayer ) && !aView->IsLayerVisible( LAYER_FOOTPRINTS_FR ) )
+        if( IsFrontLayer( checkLayer ) && !aView->IsLayerVisibleCached( LAYER_FOOTPRINTS_FR ) )
             return LOD_HIDE;
 
-        if( IsBackLayer( checkLayer ) && !aView->IsLayerVisible( LAYER_FOOTPRINTS_BK ) )
+        if( IsBackLayer( checkLayer ) && !aView->IsLayerVisibleCached( LAYER_FOOTPRINTS_BK ) )
             return LOD_HIDE;
 
-        if( !aView->IsLayerVisible( LAYER_FP_TEXT ) )
+        if( !aView->IsLayerVisibleCached( LAYER_FP_TEXT ) )
             return LOD_HIDE;
     }
 
@@ -370,14 +373,14 @@ int PCB_TEXT::getKnockoutMargin() const
 }
 
 
-void PCB_TEXT::StyleFromSettings( const BOARD_DESIGN_SETTINGS& settings, bool aCheckSide )
+void PCB_TEXT::StyleFromSettings( const BOARD_DESIGN_SETTINGS& aSettings, bool aCheckSide )
 {
-    SetTextSize( settings.GetTextSize( GetLayer() ) );
-    SetTextThickness( settings.GetTextThickness( GetLayer() ) );
-    SetItalic( settings.GetTextItalic( GetLayer() ) );
+    SetTextSize( aSettings.GetTextSize( GetLayer() ) );
+    SetTextThickness( aSettings.GetTextThickness( GetLayer() ) );
+    SetItalic( aSettings.GetTextItalic( GetLayer() ) );
 
     if( GetParentFootprint() )
-        SetKeepUpright( settings.GetTextUpright( GetLayer() ) );
+        SetKeepUpright( aSettings.GetTextUpright( GetLayer() ) );
 
     if( aCheckSide )
     {
@@ -460,6 +463,128 @@ bool PCB_TEXT::TextHitTest( const SHAPE_LINE_CHAIN& aPoly, bool aContained ) con
 }
 
 
+VECTOR2I PCB_TEXT::GetTextPos() const
+{
+    if( const FOOTPRINT* fp = GetParentFootprint() )
+        return fp->GetTransform().Apply( EDA_TEXT::GetTextPos() );
+
+    return EDA_TEXT::GetTextPos();
+}
+
+
+VECTOR2I PCB_TEXT::GetTextSize() const
+{
+    VECTOR2I libSize = EDA_TEXT::GetTextSize();
+
+    if( const FOOTPRINT* fp = GetParentFootprint() )
+    {
+        const TRANSFORM_TRS& xf = fp->GetTransform();
+        return { KiROUND( libSize.x * std::abs( xf.GetScaleX() ) ), KiROUND( libSize.y * std::abs( xf.GetScaleY() ) ) };
+    }
+
+    return libSize;
+}
+
+
+void PCB_TEXT::SetTextSize( VECTOR2I aNewSize, bool aEnforceMinTextSize )
+{
+    if( const FOOTPRINT* fp = GetParentFootprint() )
+    {
+        const TRANSFORM_TRS& xf = fp->GetTransform();
+        aNewSize = { KiROUND( aNewSize.x / std::abs( xf.GetScaleX() ) ),
+                     KiROUND( aNewSize.y / std::abs( xf.GetScaleY() ) ) };
+    }
+
+    EDA_TEXT::SetTextSize( aNewSize, aEnforceMinTextSize );
+}
+
+
+int PCB_TEXT::GetTextThickness() const
+{
+    int libThickness = EDA_TEXT::GetTextThickness();
+
+    if( const FOOTPRINT* fp = GetParentFootprint() )
+    {
+        const TRANSFORM_TRS& xf = fp->GetTransform();
+        const double         factor = ( std::abs( xf.GetScaleX() ) + std::abs( xf.GetScaleY() ) ) * 0.5;
+        return KiROUND( libThickness * factor );
+    }
+
+    return libThickness;
+}
+
+
+void PCB_TEXT::SetTextThickness( int aWidth )
+{
+    if( const FOOTPRINT* fp = GetParentFootprint() )
+    {
+        const TRANSFORM_TRS& xf = fp->GetTransform();
+        const double         factor = ( std::abs( xf.GetScaleX() ) + std::abs( xf.GetScaleY() ) ) * 0.5;
+        aWidth = KiROUND( aWidth / factor );
+    }
+
+    EDA_TEXT::SetTextThickness( aWidth );
+}
+
+
+void PCB_TEXT::Offset( const VECTOR2I& aOffset )
+{
+    if( const FOOTPRINT* fp = GetParentFootprint() )
+    {
+        VECTOR2I curBoardPos = fp->GetTransform().Apply( EDA_TEXT::GetTextPos() );
+        VECTOR2I newLibPos = fp->GetTransform().InverseApply( curBoardPos + aOffset );
+        VECTOR2I libDelta = newLibPos - EDA_TEXT::GetTextPos();
+        ClearRenderCache();
+        EDA_TEXT::Offset( libDelta );
+    }
+    else
+    {
+        EDA_TEXT::Offset( aOffset );
+    }
+}
+
+
+void PCB_TEXT::SetLibTextPos( const VECTOR2I& aPos )
+{
+    EDA_TEXT::Offset( aPos - EDA_TEXT::GetTextPos() );
+}
+
+
+void PCB_TEXT::SetLibTextSize( const VECTOR2I& aSize )
+{
+    EDA_TEXT::SetTextSize( aSize );
+}
+
+
+void PCB_TEXT::SetLibTextThickness( int aWidth )
+{
+    EDA_TEXT::SetTextThickness( aWidth );
+}
+
+
+EDA_ANGLE PCB_TEXT::GetTextAngle() const
+{
+    if( const FOOTPRINT* fp = GetParentFootprint() )
+    {
+        EDA_ANGLE angle = m_libTextAngle.GetAngle() + fp->GetOrientation();
+        return angle.Normalize();
+    }
+
+    return m_libTextAngle.GetAngle();
+}
+
+
+void PCB_TEXT::SetTextAngle( const EDA_ANGLE& aAngle )
+{
+    if( const FOOTPRINT* fp = GetParentFootprint() )
+        m_libTextAngle = aAngle - fp->GetOrientation();
+    else
+        m_libTextAngle = aAngle;
+
+    EDA_TEXT::SetTextAngle( aAngle );
+}
+
+
 void PCB_TEXT::Rotate( const VECTOR2I& aRotCentre, const EDA_ANGLE& aAngle )
 {
     VECTOR2I pt = GetTextPos();
@@ -474,39 +599,67 @@ void PCB_TEXT::Rotate( const VECTOR2I& aRotCentre, const EDA_ANGLE& aAngle )
 
 void PCB_TEXT::Mirror( const VECTOR2I& aCentre, FLIP_DIRECTION aFlipDirection )
 {
+    Mirror( MIRROR_AXIS( aCentre, aFlipDirection ) );
+}
+
+
+void PCB_TEXT::Mirror( const SEG& aAxis )
+{
     // the position and justification are mirrored, but not the text itself
 
-    if( aFlipDirection == FLIP_DIRECTION::TOP_BOTTOM )
-    {
-        if( GetTextAngle() == ANGLE_VERTICAL )
-            SetHorizJustify( (GR_TEXT_H_ALIGN_T) -GetHorizJustify() );
+    const VECTOR2I newPos = aAxis.ReflectPoint( GetTextPos() );
 
-        SetTextY( MIRRORVAL( GetTextPos().y, aCentre.y ) );
-    }
+    if( const FOOTPRINT* fp = GetParentFootprint() )
+        SetLibTextPos( fp->GetTransform().InverseApply( newPos ) );
     else
-    {
-        if( GetTextAngle() == ANGLE_HORIZONTAL )
-            SetHorizJustify( (GR_TEXT_H_ALIGN_T) -GetHorizJustify() );
+        SetTextPos( newPos );
 
-        SetTextX( MIRRORVAL( GetTextPos().x, aCentre.x ) );
+    const EDA_ANGLE axisAngle = -EDA_ANGLE( aAxis.B - aAxis.A );
+    EDA_ANGLE       newAngle = GetTextAngle().Reflect( axisAngle ).Normalized();
+
+    // If we're mirroring "left-right-ish", swap the justification and fix the text orientation.
+    if( newAngle > ANGLE_90 && newAngle <= ANGLE_270 )
+    {
+        newAngle -= ANGLE_180;
+        SetHorizJustify( (GR_TEXT_H_ALIGN_T) -GetHorizJustify() );
     }
+
+    SetTextAngle( newAngle );
+}
+
+
+void PCB_TEXT::OnFootprintRescaled( double /* aRatioX */, double /* aRatioY */, double /* aLinearFactor */,
+                                    const VECTOR2I& /* aAnchor */, const EDA_ANGLE& /* aParentRotate */ )
+{
+    OnFootprintTransformed();
+}
+
+
+void PCB_TEXT::OnFootprintTransformed()
+{
+    SetTextAngle( GetTextAngle() );
+    ClearRenderCache();
+    ClearBoundingBoxCache();
 }
 
 
 void PCB_TEXT::Flip( const VECTOR2I& aCentre, FLIP_DIRECTION aFlipDirection )
 {
-    if( aFlipDirection == FLIP_DIRECTION::LEFT_RIGHT )
-    {
-        SetTextX( MIRRORVAL( GetTextPos().x, aCentre.x ) );
-        SetTextAngle( -GetTextAngle() );
-    }
-    else
-    {
-        SetTextY( MIRRORVAL( GetTextPos().y, aCentre.y ) );
-        SetTextAngle( ANGLE_180 - GetTextAngle() );
-    }
+    // The position mirrors in the library or board frame depending on if this is in a FP.
+    const FOOTPRINT* fp = GetParentFootprint();
+    const VECTOR2I   libCentre = fp ? fp->GetTransform().InverseApply( aCentre ) : aCentre;
+    const EDA_ANGLE  axis = MIRROR_AXIS( aFlipDirection );
 
-    SetLayer( GetBoard()->FlipLayer( GetLayer() ) );
+    VECTOR2I libPos = EDA_TEXT::GetTextPos();
+    MIRROR( libPos, libCentre, aFlipDirection );
+    SetLibTextPos( libPos );
+
+    // A flip changes the side it is read from, so add a half turn on top of the reflection.
+    m_libTextAngle = m_libTextAngle.Reflect( axis ) + ANGLE_180;
+
+    EDA_TEXT::SetTextAngle( GetTextAngle() );
+
+    SetLayer( GetFlippedLayer( GetLayer() ) );
 
     if( IsSideSpecific() )
         SetMirrored( !IsMirrored() );
@@ -521,7 +674,13 @@ wxString PCB_TEXT::GetTextTypeDescription() const
 
 wxString PCB_TEXT::GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool aFull ) const
 {
+<<<<<<< b2e17e0a
     wxString content = aFull ? GetShownText( false ) : EllipsizeMenuText( GetText() );
+||||||| 1304b76aad
+    wxString content = aFull ? GetShownText( false ) : KIUI::EllipsizeMenuText( GetText() );
+=======
+    wxString content = aFull ? GetShownText( FOR_GUI ) : KIUI::EllipsizeMenuText( GetText() );
+>>>>>>> ed8c16703e
 
     if( FOOTPRINT* parentFP = GetParentFootprint() )
     {
@@ -547,13 +706,13 @@ EDA_ITEM* PCB_TEXT::Clone() const
 
 void PCB_TEXT::swapData( BOARD_ITEM* aImage )
 {
-    assert( aImage->Type() == PCB_TEXT_T );
+    KI_ASSERT( aImage->Type() == PCB_TEXT_T );
 
     std::swap( *( (PCB_TEXT*) this ), *( (PCB_TEXT*) aImage ) );
 }
 
 
-std::shared_ptr<SHAPE> PCB_TEXT::GetEffectiveShape( PCB_LAYER_ID aLayer, FLASHING aFlash ) const
+std::shared_ptr<SHAPE> PCB_TEXT::GetEffectiveShape( PCB_LAYER_ID aLayer, FLASHING, DRC_CONSTRAINT_T ) const
 {
     if( IsKnockout() )
     {
@@ -572,6 +731,7 @@ const SHAPE_POLY_SET& PCB_TEXT::GetKnockoutCache( const KIFONT::FONT* aFont, con
                                                   int aMaxError ) const
 {
     TEXT_ATTRIBUTES attrs = GetAttributes();
+    attrs.m_Size = GetTextSize();
     EDA_ANGLE       drawAngle = GetDrawRotation();
     VECTOR2I        drawPos = GetDrawPos();
 
@@ -637,9 +797,10 @@ void PCB_TEXT::TransformTextToPolySet( SHAPE_POLY_SET& aBuffer, int aClearance, 
     KIFONT::FONT*              font = GetDrawFont( nullptr );
     int                        penWidth = GetEffectiveTextPenWidth();
     TEXT_ATTRIBUTES            attrs = GetAttributes();
-    wxString                   shownText = GetShownText( true );
+    wxString                   shownText = GetShownText( FOR_CANVAS );
 
     attrs.m_Angle = GetDrawRotation();
+    attrs.m_Size = GetTextSize();
 
     // The polygonal shape of a text can have many basic shapes, so combining these shapes can
     // be very useful to create a final shape with a lot less vertices to speedup calculations.
@@ -691,6 +852,14 @@ void PCB_TEXT::TransformTextToPolySet( SHAPE_POLY_SET& aBuffer, int aClearance, 
 
         aBuffer.Append( textShape );
     }
+}
+
+
+double PCB_TEXT::GetCoverageArea( int aTextMargin ) const
+{
+    SHAPE_POLY_SET poly;
+    TransformTextToPolySet( poly, aTextMargin, ARC_LOW_DEF, ERROR_INSIDE );
+    return polygonArea( poly );
 }
 
 
@@ -747,21 +916,24 @@ static struct PCB_TEXT_DESC
 
         propMgr.Mask( TYPE_HASH( PCB_TEXT ), TYPE_HASH( EDA_TEXT ), _HKI( "Color" ) );
 
-        propMgr.AddProperty( new PROPERTY<PCB_TEXT, bool, BOARD_ITEM>( _HKI( "Knockout" ), &BOARD_ITEM::SetIsKnockout,
-                                                                       &BOARD_ITEM::IsKnockout ),
-                             _HKI( "Text Properties" ) );
+        propMgr.AddProperty( new PROPERTY<PCB_TEXT, bool, BOARD_ITEM>( _HKI( "Knockout" ),
+                    &BOARD_ITEM::SetIsKnockout, &BOARD_ITEM::IsKnockout ),
+                    _HKI( "Text Properties" ) )
+                .SetIsCopyable();
 
-        propMgr.AddProperty( new PROPERTY<PCB_TEXT, bool, EDA_TEXT>( _HKI( "Keep Upright" ), &PCB_TEXT::SetKeepUpright,
-                                                                     &PCB_TEXT::IsKeepUpright ),
-                             _HKI( "Text Properties" ) );
+        propMgr.AddProperty( new PROPERTY<PCB_TEXT, bool, EDA_TEXT>( _HKI( "Keep Upright" ),
+                    &PCB_TEXT::SetKeepUpright, &PCB_TEXT::IsKeepUpright ),
+                    _HKI( "Text Properties" ) )
+                .SetIsCopyable();
 
-        auto isFootprintText = []( INSPECTABLE* aItem ) -> bool
-        {
-            if( PCB_TEXT* text = dynamic_cast<PCB_TEXT*>( aItem ) )
-                return text->GetParentFootprint();
+        auto isFootprintText =
+                []( INSPECTABLE* aItem ) -> bool
+                {
+                    if( PCB_TEXT* text = dynamic_cast<PCB_TEXT*>( aItem ) )
+                        return text->GetParentFootprint();
 
-            return false;
-        };
+                    return false;
+                };
 
         propMgr.OverrideAvailability( TYPE_HASH( PCB_TEXT ), TYPE_HASH( EDA_TEXT ), _HKI( "Keep Upright" ),
                                       isFootprintText );

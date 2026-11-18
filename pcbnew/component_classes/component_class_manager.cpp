@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -38,17 +38,6 @@ COMPONENT_CLASS_MANAGER::COMPONENT_CLASS_MANAGER( BOARD* board ) :
 }
 
 
-/**
- * Computes and returns an effective component class for a (possibly empty) set of constituent
- * class names. This is called by the netlist updater to set static component classes on footprints.
- *
- * Where constituent or effective component classes already exist, they are re-used. This allows
- * efficient comparison of (effective) component classes by pointer in DRC checks.
- *
- * Preconditions: InitNetlistUpdate() must be called before invoking this method.
- * @param classNames The constitent component class names
- * @return A pointer to an effective COMPONENT_CLASS representing all constituent component classes
- */
 COMPONENT_CLASS* COMPONENT_CLASS_MANAGER::GetEffectiveStaticComponentClass(
         const std::unordered_set<wxString>& classNames )
 {
@@ -66,7 +55,6 @@ COMPONENT_CLASS* COMPONENT_CLASS_MANAGER::GetEffectiveStaticComponentClass(
 
     // Handle composite component classes
     const std::vector<wxString> sortedClassNames = sortClassNames( classNames );
-    wxString fullName = GetFullClassNameForConstituents( sortedClassNames );
 
     COMPONENT_CLASS* effectiveClass =
             getOrCreateEffectiveClass( sortedClassNames, COMPONENT_CLASS::USAGE::STATIC );
@@ -412,7 +400,6 @@ COMPONENT_CLASS_MANAGER::GetDynamicComponentClassesForFootprint( const FOOTPRINT
 
     // Handle composite component classes
     const std::vector<wxString> sortedClassNames = sortClassNames( classNames );
-    const wxString fullName = GetFullClassNameForConstituents( sortedClassNames );
 
     // No matching component classes
     if( classNames.empty() )

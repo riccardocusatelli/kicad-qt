@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef GIT_PROGRESS_H_
@@ -43,23 +39,25 @@ public:
         m_progressReporter = std::move( aProgressReporter );
     }
 
-    void ReportProgress( int aCurrent, int aTotal, const wxString& aMessage )
+    /// Returns false when the user pressed the reporter's cancel button.
+    bool ReportProgress( int aCurrent, int aTotal, const wxString& aMessage )
     {
         if( m_progressReporter )
         {
-            if( aCurrent == m_previousProgress || aTotal == 0 )
-            {
-                m_progressReporter->ReportIndeterminate( aMessage );
-            }
-            else
-            {
+            // A transfer reports a zero total until the server announces the object count.
+            // Pulse until then, or the gauge sits frozen.
+            m_progressReporter->SetIndeterminate( aTotal == 0 );
+
+            if( aTotal != 0 && aCurrent != m_previousProgress )
                 m_progressReporter->SetCurrentProgress( static_cast<double>( aCurrent ) / aTotal );
-                m_progressReporter->Report( aMessage );
-            }
+
+            m_progressReporter->Report( aMessage );
 
             m_previousProgress = aCurrent;
-            m_progressReporter->KeepRefreshing();
+            return m_progressReporter->KeepRefreshing();
         }
+
+        return true;
     }
 
     virtual void UpdateProgress( int aCurrent, int aTotal, const wxString& aMessage ) {};

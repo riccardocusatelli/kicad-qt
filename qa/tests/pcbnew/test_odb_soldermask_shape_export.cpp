@@ -21,13 +21,17 @@
 #include <fstream>
 #include <memory>
 
+#include <algorithm>
+#include <footprint.h>
+
 #include <qa_utils/wx_utils/unit_test_utils.h>
+#include <qa_utils/file_utils.h>
+#include <pcbnew_utils/board_file_utils.h>
 #include <boost/test/unit_test.hpp>
 
 #include <base_units.h>
 #include <board.h>
 #include <footprint.h>
-#include <kiid.h>
 #include <pcb_shape.h>
 #include <pcbnew/pcb_io/odbpp/pcb_io_odbpp.h>
 #include <settings/settings_manager.h>
@@ -102,71 +106,39 @@ static int countMaskSurfaceRecords( const fs::path& aRoot, bool& aFoundFile )
 BOOST_AUTO_TEST_CASE( OdbSolderMaskShapeExport )
 {
     SETTINGS_MANAGER       settingsManager;
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
+    std::unique_ptr<BOARD> board = KI_TEST::RequireBoardFromPcbnewQAData( "issue24690/soldermask_shape.kicad_pcb" );
 
-    const int side = pcbIUScale.mmToIU( 20 );
+    // The export can only drop the mask opening if the mask-flagged shape is on
+    // the board to begin with, so confirm the fixture still carries it.
+    BOOST_REQUIRE_EQUAL( board->Footprints().size(), 1u );
 
-    // Give the board a square Edge.Cuts outline so the export produces a valid board profile.  Edge
-    // cuts land in their own layer feature file, not the mask one we inspect, so they cannot mask a
-    // dropped shape.
-    auto addEdge = [&]( const VECTOR2I& aStart, const VECTOR2I& aEnd )
-    {
-        PCB_SHAPE* edge = new PCB_SHAPE( board.get(), SHAPE_T::SEGMENT );
-        edge->SetLayer( Edge_Cuts );
-        edge->SetStart( aStart );
-        edge->SetEnd( aEnd );
-        edge->SetWidth( pcbIUScale.mmToIU( 0.1 ) );
-        board->Add( edge );
-    };
+    const FOOTPRINT* fp = board->Footprints().front();
 
-    addEdge( { 0, 0 }, { side, 0 } );
-    addEdge( { side, 0 }, { side, side } );
-    addEdge( { side, side }, { 0, side } );
-    addEdge( { 0, side }, { 0, 0 } );
+    const auto onMask =
+            []( const BOARD_ITEM* aItem )
+            {
+                return aItem->Type() == PCB_SHAPE_T && aItem->IsOnLayer( F_Mask );
+            };
 
-    // The item under test: a filled polygon on the front copper layer of a footprint, flagged to
-    // open the solder mask over itself.  SetHasSolderMask() is what puts the shape on F_Mask via
-    // PCB_SHAPE::GetLayerSet(), the layer the export must honor.
-    FOOTPRINT* fp = new FOOTPRINT( board.get() );
-    fp->SetReference( wxT( "U1" ) );
-    fp->SetPosition( { pcbIUScale.mmToIU( 10 ), pcbIUScale.mmToIU( 10 ) } );
+    BOOST_REQUIRE( std::any_of( fp->GraphicalItems().begin(), fp->GraphicalItems().end(),
+                                onMask ) );
 
-    PCB_SHAPE* poly = new PCB_SHAPE( fp, SHAPE_T::POLY );
-    poly->SetLayer( F_Cu );
-    poly->SetFilled( true );
-    poly->SetPolyPoints( { { pcbIUScale.mmToIU( 5 ), pcbIUScale.mmToIU( 5 ) },
-                           { pcbIUScale.mmToIU( 15 ), pcbIUScale.mmToIU( 5 ) },
-                           { pcbIUScale.mmToIU( 15 ), pcbIUScale.mmToIU( 15 ) },
-                           { pcbIUScale.mmToIU( 5 ), pcbIUScale.mmToIU( 15 ) } } );
-    poly->SetHasSolderMask( true );
-
-    BOOST_REQUIRE_MESSAGE( poly->IsOnLayer( F_Mask ),
-                           "Test shape is not reported on F_Mask; SetHasSolderMask had no effect" );
-
-    fp->Add( poly );
-    board->Add( fp );
-
-    const fs::path outDir =
-            fs::temp_directory_path() / ( "kicad_qa_odb_soldermask_24690_" + KIID().AsString().ToStdString() );
-
-    BOOST_REQUIRE( fs::create_directory( outDir ) );
+    KI_TEST::SCOPED_TEMP_DIR outDir( wxT( "kicad_qa_odb_soldermask_24690" ) );
 
     PCB_IO_ODBPP                odbExporter;
     std::map<std::string, UTF8> props;
     props["units"] = "mm";
     props["sigfig"] = "6";
 
-    BOOST_REQUIRE_NO_THROW( odbExporter.SaveBoard( outDir.string(), board.get(), &props ) );
+    BOOST_REQUIRE_NO_THROW( odbExporter.SaveBoard( outDir.Path().string(), *board, &props ) );
 
-    BOOST_REQUIRE_MESSAGE( fs::exists( outDir ), "ODB++ export produced no output tree" );
+    BOOST_REQUIRE_MESSAGE( fs::exists( outDir.Path() ), "ODB++ export produced no output tree" );
 
     bool foundMask = false;
-    int  surfaceCount = countMaskSurfaceRecords( outDir, foundMask );
+    int  surfaceCount = countMaskSurfaceRecords( outDir.Path(), foundMask );
 
     BOOST_REQUIRE_MESSAGE( foundMask, "ODB++ export produced no solder-mask features file" );
 
     BOOST_CHECK_MESSAGE( surfaceCount > 0, "Mask-flagged shape was dropped from the ODB++ export "
                                            "(no surface features on the solder-mask layer)" );
-
-    fs::remove_all( outDir );
 }

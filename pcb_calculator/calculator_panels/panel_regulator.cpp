@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <wx/choicdlg.h>
@@ -29,8 +29,8 @@
 #include <class_regulator_data.h>
 #include <dialogs/dialog_regulator_form.h>
 #include <pcb_calculator_settings.h>
+#include <pcb_calculator_utils.h>
 
-extern double DoubleFromString( const wxString& TextValue );
 
 // extension of pcb_calculator data filename:
 static const wxString DataFileNameExt( wxT( "pcbcalc" ) );

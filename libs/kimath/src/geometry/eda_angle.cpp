@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <geometry/eda_angle.h>
@@ -39,7 +39,10 @@ EDA_ANGLE EDA_ANGLE::KeepUpright() const
 
 bool EDA_ANGLE::IsCardinal() const
 {
-    double test = m_value;
+    if( !std::isfinite( m_value ) )
+        return false;
+
+    double test = foldToTwoPeriods( m_value, 90.0 );
 
     while( test < 0.0 )
         test += 90.0;
@@ -54,7 +57,10 @@ bool EDA_ANGLE::IsCardinal() const
 bool EDA_ANGLE::IsCardinal90() const
 {
     // return true if angle is one of the two cardinal directions (90/270 degrees),
-    double test = std::abs( m_value );
+    if( !std::isfinite( m_value ) )
+        return false;
+
+    double test = foldToTwoPeriods( std::abs( m_value ), 180.0 );
 
     while( test >= 180.0 )
         test -= 180.0;

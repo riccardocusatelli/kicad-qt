@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -37,10 +33,9 @@ class SYMBOL_CHOOSER_FRAME : public SCH_BASE_FRAME
 {
 public:
     /**
-     * @param aKiway
+     * @param aKiway is the parent #KIWAY the symbol chooser.
      * @param aParent is the parent frame of the viewer.
-     * @param aFrameType must be either #FRAME_SCH_LIB_VIEWER or #FRAME_SCH_LIB_VIEWER_MODAL.
-     * @param aLibrary is the library to open when starting (default = NULL).
+     * @param aCancelled is the cancel status of the window.
      */
     SYMBOL_CHOOSER_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent, bool& aCancelled );
 
@@ -51,6 +46,7 @@ public:
      *
      * @param aSymbol an optional FPID string to initialize the viewer with and to
      *                return a selected footprint through.
+     * @param aParent is the parent window when shown modally.
      */
     bool ShowModal( wxString* aSymbol, wxWindow* aParent ) override;
 

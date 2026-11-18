@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -28,6 +24,7 @@
 
 
 #include <array>
+#include <concepts>
 #include <cstdint>
 #include <optional>
 #include <memory>
@@ -54,21 +51,46 @@ class BLOCK_BASE
 {
 public:
     BLOCK_BASE( uint8_t aBlockType, size_t aOffset ) :
-        m_blockType( aBlockType ),
-        m_offset( aOffset )
-    {}
+            m_blockType( aBlockType ),
+            m_offset( aOffset ),
+            m_Key( 0 ), // Key and next are set later, during parse
+            m_Next( 0 )
+    {
+    }
 
     virtual ~BLOCK_BASE() = default;
 
+    /**
+     * This is the actual type code as read from the file.
+     *
+     * Some BLOCKs have multiple valid type codes (e.g. segments).
+     */
     uint8_t GetBlockType() const { return m_blockType; }
     size_t  GetOffset() const { return m_offset; }
 
-    // If this block data has a key, return it, else 0
-    uint32_t GetKey() const;
+    // Unique object identifier for this block, or 0 if it has none.
+    uint32_t GetKey() const { return m_Key; }
+    // Object key of the next block in this block's primary linked-list, or 0.
+    uint32_t GetNext() const { return m_Next; }
+
+    void SetKey( uint32_t aKey ) { m_Key = aKey; }
+    void SetNext( uint32_t aNext ) { m_Next = aNext; }
 
 private:
-    uint8_t m_blockType;
-    size_t  m_offset;
+    uint8_t  m_blockType;
+    size_t   m_offset;
+    uint32_t m_Key;
+    uint32_t m_Next;
+};
+
+
+/**
+ * Concept that is statisfied by any struct that has a block tpye code
+ */
+template <typename T>
+concept HAS_BLOCK_TYPE_CODE = requires
+{
+    T::BLOCK_TYPE_CODE;
 };
 
 
@@ -76,9 +98,17 @@ template <typename T>
 class BLOCK : public BLOCK_BASE
 {
 public:
+    /// Deduce the type code from T::BLOCK_TYPE_CODE (single-code types only)
+    explicit BLOCK( size_t aOffset ) requires HAS_BLOCK_TYPE_CODE<T>
+        : BLOCK_BASE( T::BLOCK_TYPE_CODE, aOffset )
+    {
+    }
+
+    /// Explicit type code for multi-code types (e.g. segments 0x15/0x16/0x17)
     BLOCK( uint8_t aBlockType, size_t aOffset ) :
-        BLOCK_BASE( aBlockType, aOffset )
-    {}
+            BLOCK_BASE( aBlockType, aOffset )
+    {
+    }
 
     const T& GetData() const { return m_data; }
     T&       GetData() { return m_data; }
@@ -88,16 +118,10 @@ private:
 };
 
 
-enum BLOCK_TYPE
-{
-    x1B_NET = 0x1B,
-};
-
-
 /**
- * The format of an Allego file.
+ * The format of an Allegro file.
  *
- * Allgro formats seem to be versioned per the magic, with the lowest
+ * Allegro formats seem to be versioned per the magic, with the lowest
  * byte masked out (or at least there no known case of the lower
  * magic byte changing the format.
  *
@@ -109,7 +133,8 @@ enum class FMT_VER
     V_UNKNOWN,
     V_PRE_V16, // Allegro versions before 16.0 (unsupported binary format)
     V_160, // Allegro 16.0, 0x00130000
-    V_162, // Allegro 16.2  0x00130400
+    V_161, // Between 16.0 and 16.2, 0x00130200
+    V_162, // Allegro 16.2  0x00130400, 0x00130500
     V_164, // Allegro 16.4, 0x00130C00
     V_165, // Allegro 16.5, 0x00131000
     V_166, // Allegro 16.6, 0x00131500
@@ -127,16 +152,26 @@ constexpr bool operator>=( FMT_VER lhs, FMT_VER rhs )
 }
 
 
-template <typename T>
-struct COND_FIELD_BASE
+/**
+ * A constexpr predicate that decides whether a field exists for a given FMT_VER.
+ */
+template <typename P>
+concept FMT_VER_PREDICATE = requires( P p, FMT_VER v )
+{
+    { p( v ) }->std::convertible_to<bool>;
+};
+
+
+/**
+ * Version-conditional field. Wraps std::optional<T> with a compile-time
+ * predicate that determines whether the field exists for a given FMT_VER.
+ */
+template <FMT_VER_PREDICATE auto Pred, typename T>
+struct COND_FIELD
 {
     using value_type = T;
 
-    /**
-     * Define this function in the derived class to determine if the field
-     * exists in the given version of the file.
-     */
-    virtual bool exists( FMT_VER ver ) const = 0;
+    static constexpr bool exists( FMT_VER aVer ) { return Pred( aVer ); }
 
     // Access to the value (use std::optional-like semantics)
     T&       value() { return *m_Value; }
@@ -148,18 +183,19 @@ struct COND_FIELD_BASE
     T&       operator*() { return *m_Value; }
     const T& operator*() const { return *m_Value; }
 
-    T*       operator->() { return m_Value.operator->(); }
-    const T* operator->() const { return m_Value.operator->(); }
+    T*       operator->() { return &m_Value.value(); }
+    const T* operator->() const { return &*m_Value; }
 
-    // Assigmnent operator
-    COND_FIELD_BASE& operator=( const T& value )
+    // Assignment operator
+    COND_FIELD& operator=( const T& aValue )
     {
-        m_Value = value;
+        m_Value = aValue;
         return *this;
     }
-    COND_FIELD_BASE& operator=( T&& value )
+
+    COND_FIELD& operator=( T&& aValue )
     {
-        m_Value = std::move( value );
+        m_Value = std::move( aValue );
         return *this;
     }
 
@@ -168,42 +204,49 @@ private:
 };
 
 
-/**
- * This is a conditional field that only exists in versions of a file
- * of or above a certain version.
- */
-template <FMT_VER MinVersion, typename T>
-struct COND_GE : public COND_FIELD_BASE<T>
-{
-    constexpr bool exists( FMT_VER ver ) const override { return ver >= MinVersion; }
+// Predicate functors
 
-    using COND_FIELD_BASE<T>::operator=;
+template <FMT_VER Min>
+struct VER_GE
+{
+    constexpr bool operator()( FMT_VER v ) const { return v >= Min; }
+};
+
+template <FMT_VER Max>
+struct VER_LT
+{
+    constexpr bool operator()( FMT_VER v ) const { return v < Max; }
+};
+
+template <FMT_VER Min, FMT_VER Max>
+struct VER_GE_LT
+{
+    constexpr bool operator()( FMT_VER v ) const { return v >= Min && v < Max; }
 };
 
 
+// Useful aliases for common cases
+
+/// Exists for all versions greater than or equal to Min
+template <FMT_VER Min, typename T>
+using COND_GE = COND_FIELD<VER_GE<Min>{}, T>;
+
+/// Exists for all versions less than (and not equal to) Max
+template <FMT_VER Max, typename T>
+using COND_LT = COND_FIELD<VER_LT<Max>{}, T>;
+
+/// Exists for all versions greater than or equal to Min and less than Max
+template <FMT_VER Min, FMT_VER Max, typename T>
+using COND_GE_LT = COND_FIELD<VER_GE_LT<Min, Max>{}, T>;
+
 /**
- * This is a conditional field that only exists in versions of a file
- * less than a certain version.
+ * Satisfied by any COND_FIELD instantiation (COND_GE, COND_LT, COND_GE_LT, ...)
  */
-template <FMT_VER MaxVersion, typename T>
-struct COND_LT : public COND_FIELD_BASE<T>
+template <typename T>
+concept VERSIONED_COND_FIELD = requires( FMT_VER v )
 {
-    constexpr bool exists( FMT_VER ver ) const override { return ver < MaxVersion; }
-
-    using COND_FIELD_BASE<T>::operator=;
-};
-
-
-/**
- * This is a conditional field that only exists in versions of a file
- * less than a certain version and greater than or equal to a certain version.
- */
-template <FMT_VER GEVersion, FMT_VER LTVersion, typename T>
-struct COND_GE_LT : public COND_FIELD_BASE<T>
-{
-    constexpr bool exists( FMT_VER ver ) const override { return ver >= GEVersion && ver < LTVersion; }
-
-    using COND_FIELD_BASE<T>::operator=;
+    { T::exists( v ) }->std::convertible_to<bool>;
+    typename T::value_type;
 };
 
 
@@ -239,7 +282,11 @@ struct FILE_HEADER
      */
     struct LINKED_LIST
     {
+        // Chain terminator: a chain ends when a block's next key equals this value.
+        // It is normally not the key of any block.
         uint32_t m_Tail;
+
+        // Key of the first block in the chain, or 0 if the chain is empty.
         uint32_t m_Head;
     };
 
@@ -271,13 +318,9 @@ struct FILE_HEADER
     COND_GE<FMT_VER::V_180, uint32_t> m_StringCount_V18;
     COND_GE<FMT_VER::V_180, uint32_t> m_Unknown2g_V18;          // 0x00
 
-    // V180 has 6 additional linked lists in the header
-    // 5 of them are at the start
-    COND_GE<FMT_VER::V_180, LINKED_LIST> m_LL_V18_1;
-    COND_GE<FMT_VER::V_180, LINKED_LIST> m_LL_V18_2;
-    COND_GE<FMT_VER::V_180, LINKED_LIST> m_LL_V18_3;
-    COND_GE<FMT_VER::V_180, LINKED_LIST> m_LL_V18_4;
-    COND_GE<FMT_VER::V_180, LINKED_LIST> m_LL_V18_5;
+    // V18 inserts 9 words between the fields above and the linked lists. They are not
+    // list descriptors, and their meaning has not been determined.
+    COND_GE<FMT_VER::V_180, std::array<uint32_t, 9>> m_Unknown2h_V18;
 
     // Linked lists grouping top-level elements by type
     LINKED_LIST m_LL_0x04;              // Net assignments
@@ -298,27 +341,19 @@ struct FILE_HEADER
     LINKED_LIST m_LL_0x2C;              // Tables
     LINKED_LIST m_LL_0x0C_2;            // Secondary pin definitions
     LINKED_LIST m_LL_Unknown3;
+    LINKED_LIST m_LL_0x35;              // 0x35 file records.
+    LINKED_LIST m_LL_0x36;              // Definition tables
+    LINKED_LIST m_LL_Unknown4;
+    LINKED_LIST m_LL_Unknown5;
+    LINKED_LIST m_LL_0x0A_2;            // A second DRC element list
 
-    // For some reason the 0x35 extents are recorded in the header
-    COND_LT<FMT_VER::V_180, uint32_t> m_0x35_Start_preV18;
-    COND_LT<FMT_VER::V_180, uint32_t> m_0x35_End_preV18;
+    // Only V18 onwards has this one. It holds field objects, which earlier versions
+    // keep in m_LL_0x03_0x30 instead.
+    COND_GE<FMT_VER::V_180, LINKED_LIST> m_LL_0x03_2;
 
-    COND_GE<FMT_VER::V_180, LINKED_LIST> m_LL_Unknown5_V18;
-    LINKED_LIST m_LL_0x36;
-    COND_LT<FMT_VER::V_180, LINKED_LIST> m_LL_Unknown5_preV18;
-
-    LINKED_LIST m_LL_Unknown6;
-    LINKED_LIST m_LL_0x0A_2;
-
-    COND_LT<FMT_VER::V_180, uint32_t> m_Unknown3;
-
-    COND_GE<FMT_VER::V_180, LINKED_LIST> m_LL_V18_6;
-
-    COND_GE<FMT_VER::V_180, uint32_t> m_0x35_Start_V18;
+    uint32_t m_Unknown_LlTrailer;
 
     COND_GE<FMT_VER::V_181, std::array<uint32_t, 8>> m_Unknown_V181;
-
-    COND_GE<FMT_VER::V_180, uint32_t> m_0x35_End_V18;
 
     // Fixed length string field
     std::array<char, 60> m_AllegroVersion;
@@ -375,14 +410,6 @@ struct FILE_HEADER
             return m_0x27_End_V18.value();
 
         return m_0x27_End_preV18.value();
-    }
-
-    const LINKED_LIST& GetUnknown5() const
-    {
-        if( m_LL_Unknown5_V18.has_value() )
-            return m_LL_Unknown5_V18.value();
-
-        return m_LL_Unknown5_preV18.value();
     }
 };
 
@@ -531,6 +558,8 @@ struct LAYER_INFO
  */
 struct BLK_0x01_ARC
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x01;
+
     uint8_t  m_UnknownByte;
     uint8_t  m_SubType;     ///< Bit 6 (0x40) = clockwise direction
     uint32_t m_Key;
@@ -561,6 +590,8 @@ struct BLK_0x01_ARC
  */
 struct BLK_0x03_FIELD
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x03;
+
     struct SUB_0x6C
     {
         uint32_t              m_NumEntries;
@@ -604,10 +635,14 @@ enum FIELD_KEYS
     LOGICAL_PATH = 0x37,
     MIN_LINE_WIDTH = 0x55,
     NET_SCHEDULE = 0x77,          ///< Net class/schedule assignment
+    CLIP_N = 0x87,                ///< Next CLIP_n value
+    CLIP_DRAWING = 0x88,          ///< Items pasted from a clipboard, holds CLIP_<n> or FALSE
     MAX_LINE_WIDTH = 0x173,
     MIN_NECK_WIDTH = 0x5c,
     MAX_NECK_LENGTH = 0x1fb,
     PHYS_CONSTRAINT_SET = 0x1a0,  ///< Physical Constraint Set assignment
+    MODEL_3D_FILE = 0x345,        ///< 3D model file name, size, mtime and display colour
+    MODEL_3D_PLACEMENT = 0x346,   ///< 3D model units, XYZ offset and XYZ rotation
 };
 
 
@@ -618,6 +653,8 @@ enum FIELD_KEYS
  */
 struct BLK_0x04_NET_ASSIGNMENT
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x04;
+
     uint8_t  m_Type;
     uint16_t m_R;
     uint32_t m_Key;
@@ -636,6 +673,8 @@ struct BLK_0x04_NET_ASSIGNMENT
  */
 struct BLK_0x05_TRACK
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x05;
+
     LAYER_INFO m_Layer;
 
     uint32_t m_Key;
@@ -665,6 +704,8 @@ struct BLK_0x05_TRACK
  */
 struct BLK_0x06_COMPONENT
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x06;
+
     uint32_t m_Key;
 
     // Pointer to the next BLK_0x06_COMPONENT
@@ -694,6 +735,8 @@ struct BLK_0x06_COMPONENT
  */
 struct BLK_0x07_COMPONENT_INST
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x07;
+
     uint32_t m_Key;
 
     uint32_t m_Next;
@@ -721,6 +764,8 @@ struct BLK_0x07_COMPONENT_INST
  */
 struct BLK_0x08_PIN_NUMBER
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x08;
+
     uint8_t  m_Type;
     uint16_t m_R;
     uint32_t m_Key;
@@ -732,7 +777,7 @@ struct BLK_0x08_PIN_NUMBER
 
     COND_GE<FMT_VER::V_172, uint32_t> m_StrPtr;
 
-    ///< Pointer to 0x11 PIN_NAME object
+    /// Pointer to 0x11 PIN_NAME object
     uint32_t m_PinNamePtr;
 
     COND_GE<FMT_VER::V_172, uint32_t> m_Unknown1;
@@ -747,11 +792,13 @@ struct BLK_0x08_PIN_NUMBER
 
 
 /**
- * Intermediate link between copper fills and their parent shapes. Appears in fill-to-shape
- * resolution chains. Not directly imported.
+ * Found in net-assignment chains for ETCH shapes, pads, and vias on tested boards.
+ * Despite this struct's name, it does not link a calculated fill to its source BOUNDARY.
  */
 struct BLK_0x09_FILL_LINK
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x09;
+
     uint32_t m_Key;
 
     std::array<uint32_t, 4> m_UnknownArray;
@@ -773,6 +820,8 @@ struct BLK_0x09_FILL_LINK
  */
 struct BLK_0x0A_DRC
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x0A;
+
     uint8_t    m_T;
     LAYER_INFO m_Layer;
     uint32_t   m_Key;
@@ -795,6 +844,8 @@ struct BLK_0x0A_DRC
  */
 struct BLK_0x0C_PIN_DEF
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x0C;
+
     enum MARKER_SHAPE
     {
         // These are in the same order as the pad shapes, at least for the 'simple' shapes
@@ -855,6 +906,8 @@ struct BLK_0x0C_PIN_DEF
  */
 struct BLK_0x0D_PAD
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x0D;
+
     uint32_t m_Key;
     uint32_t m_NameStrId;
     uint32_t m_Next;
@@ -879,6 +932,8 @@ struct BLK_0x0D_PAD
  */
 struct BLK_0x0E_RECT
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x0E;
+
     uint8_t  m_T;
     LAYER_INFO m_Layer;
     uint32_t m_Key;
@@ -907,6 +962,8 @@ struct BLK_0x0E_RECT
  */
 struct BLK_0x0F_FUNCTION_SLOT
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x0F;
+
     uint32_t m_Key;
 
     uint32_t m_SlotName;
@@ -939,6 +996,8 @@ struct BLK_0x0F_FUNCTION_SLOT
  */
 struct BLK_0x10_FUNCTION_INST
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x10;
+
     uint32_t m_Key;
 
     COND_GE<FMT_VER::V_172, uint32_t> m_Unknown1;
@@ -961,14 +1020,16 @@ struct BLK_0x10_FUNCTION_INST
  */
 struct BLK_0x11_PIN_NAME
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x11;
+
     uint8_t  m_Type;
     uint16_t m_R;
     uint32_t m_Key;
-    ///< Pointer to pin name string
+    /// Pointer to pin name string
     uint32_t m_PinNameStrPtr;
-    ///< Pointer to next 0x11 PIN_NAME object or 0x0F SLOT
+    /// Pointer to next 0x11 PIN_NAME object or 0x0F SLOT
     uint32_t m_Next;
-    ///< Pointer to 0x08 PIN_NUMBER object
+    /// Pointer to 0x08 PIN_NUMBER object
     uint32_t m_PinNumberPtr;
     uint32_t m_Unknown1;
 
@@ -982,6 +1043,8 @@ struct BLK_0x11_PIN_NAME
  */
 struct BLK_0x12_XREF
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x12;
+
     uint8_t  m_Type;
     uint16_t m_R;
     uint32_t m_Key;
@@ -1002,6 +1065,8 @@ struct BLK_0x12_XREF
  */
 struct BLK_0x14_GRAPHIC
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x14;
+
     uint8_t    m_Type;
     LAYER_INFO m_Layer;
     uint32_t   m_Key;
@@ -1026,6 +1091,9 @@ struct BLK_0x14_GRAPHIC
  */
 struct BLK_0x15_16_17_SEGMENT
 {
+    // Segments can be one of 3 codes, so we don't have a BLOCK_TYPE_CODE constant
+    // for this struct.
+
     uint32_t m_Key;
     uint32_t m_Next;
     uint32_t m_Parent;
@@ -1042,12 +1110,29 @@ struct BLK_0x15_16_17_SEGMENT
 };
 
 /**
+ * Purpose not determined. A fixed block of 22 words in every version seen, with pointers
+ * into the net data, so it only needs to be stepped over.
+ */
+struct BLK_0x1A_UNKNOWN
+{
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x1A;
+
+    uint8_t  m_Type;
+    uint16_t m_T2;
+    uint32_t m_Key;
+
+    std::array<uint32_t, 20> m_UnknownArray;
+};
+
+/**
  * 0x1B objects are nets.
  *
  * They have names and pointers to various other objects.
  */
 struct BLK_0x1B_NET
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x1B;
+
     uint32_t m_Key;
     uint32_t m_Next;
     uint32_t m_NetName;
@@ -1060,7 +1145,7 @@ struct BLK_0x1B_NET
 
     uint32_t m_Assignment;
     uint32_t m_Ratline;
-    ///< Pointer to first 0x03 FIELD object or null
+    /// Pointer to first 0x03 FIELD object or null
     uint32_t m_FieldsPtr;
     uint32_t m_MatchGroupPtr; ///< Diff pair / match group pointer (0x26 or 0x2C)
     uint32_t m_ModelPtr;
@@ -1131,8 +1216,8 @@ struct PADSTACK_COMPONENT
     COND_GE<FMT_VER::V_172, int32_t> m_Z1;
 
     // This is the pad component offset
-    int32_t m_X3;
-    int32_t m_X4;
+    int32_t m_OffsetX;
+    int32_t m_OffsetY;
 
     /**
      * Seems to point to various things:
@@ -1156,6 +1241,8 @@ struct PADSTACK_COMPONENT
  */
 struct BLK_0x1C_PADSTACK
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x1C;
+
     struct HEADER_v16x
     {
         /**
@@ -1277,14 +1364,14 @@ struct BLK_0x1C_PADSTACK
      * The number of something. Drives the size of an array (with a multiplier).
      */
     uint8_t  m_N;
-    uint8_t  m_UnknownByte2;
+    uint8_t  m_StartLayer;
     uint32_t m_Key;
     uint32_t m_Next;
 
     // The name of the padstack
     uint32_t m_PadStr;
 
-    // The header fields arevery different between v16x and v17.x+
+    // The header fields are very different between v16x and v17.x+
     using HEADER = std::variant<HEADER_v16x, HEADER_v17x>;
     HEADER m_Header;
 
@@ -1298,14 +1385,10 @@ struct BLK_0x1C_PADSTACK
      * assembly variant, etc). The exact slot-to-layer mapping is version-dependent
      * and not fully contiguous.
      *
-     * V<165 (10 fixed)
-     *   Slot 0  = ~TSM (top solder mask)
-     *   Slot 5  = ~TPM (top paste mask)
-     *   Slot 7  = ~TFM (top film mask)
-     *
-     * V<172 (11 fixed):
-     *   Slot 0  = ??? (looks the same size as a solder mask)
+     * V<172 (10 fixed before 16.5, 11 after), the same layout in every 16.x file seen:
+     *   Slot 0  = ??? (present on every pad, NOSM_* pads included)
      *   Slot 1  = ~TSM (top solder mask)
+     *   Slot 5  = ~BSM (bottom solder mask)
      *   Slot 6  = ~TPM (top paste mask)
      *   Slot 8  = ~TFM (top film mask)
      *
@@ -1316,13 +1399,10 @@ struct BLK_0x1C_PADSTACK
     enum SLOTS
     {
         // V<172 verified slots
-        SOLDERMASK_TOP_V16X = 0,
-        PASTEMASK_TOP_V16X  = 5,
-        FILMMASK_TOP_V16X   = 7,
-
-        SOLDERMASK_TOP_V165 = 1,
-        PASTEMASK_TOP_V165  = 6,
-        FILMMASK_TOP_V165   = 8,
+        SOLDERMASK_TOP_V16X = 1,
+        SOLDERMASK_BOT_V16X = 5,
+        PASTEMASK_TOP_V16X  = 6,
+        FILMMASK_TOP_V16X   = 8,
 
         // V>=172 verified slots
         SOLDERMASK_TOP_V17X = 14,
@@ -1377,49 +1457,43 @@ struct BLK_0x1C_PADSTACK
     std::vector<uint32_t> m_UnknownArrN;
 
 
-    // Dispatch common properties to the header variant
+    // Dispatch common properties to the header variant.
+    // Each method uses a local Visitor struct so that adding a new HEADER alternative
+    // produces a compile error rather than a silent runtime fallback.
     uint32_t GetDrillSize() const
     {
-        if( std::holds_alternative<HEADER_v16x>( m_Header ) )
+        struct Visitor
         {
-            return std::get<HEADER_v16x>( m_Header ).m_DrillSize;
-        }
-        else if( std::holds_alternative<HEADER_v17x>( m_Header ) )
-        {
-            return std::get<HEADER_v17x>( m_Header ).m_DrillSize;
-        }
-        else
-        {
-            throw std::runtime_error( "Unknown header variant" );
-        }
+            uint32_t operator()( const HEADER_v16x& h ) const { return h.m_DrillSize; }
+            uint32_t operator()( const HEADER_v17x& h ) const { return h.m_DrillSize; }
+        };
+        return std::visit( Visitor{}, m_Header );
     }
 
     uint32_t GetLayerCount() const
     {
-        if( std::holds_alternative<HEADER_v16x>( m_Header ) )
+        struct Visitor
         {
-            return std::get<HEADER_v16x>( m_Header ).m_LayerCount;
-        }
-        else if( std::holds_alternative<HEADER_v17x>( m_Header ) )
-        {
-            return std::get<HEADER_v17x>( m_Header ).m_LayerCount;
-        }
-        else
-        {
-            throw std::runtime_error( "Unknown header variant" );
-        }
+            uint32_t operator()( const HEADER_v16x& h ) const { return h.m_LayerCount; }
+            uint32_t operator()( const HEADER_v17x& h ) const { return h.m_LayerCount; }
+        };
+        return std::visit( Visitor{}, m_Header );
     }
 
     bool IsPlated() const
     {
-        if( std::holds_alternative<HEADER_v17x>( m_Header ) )
+        struct Visitor
         {
-            return ( std::get<HEADER_v17x>( m_Header ).m_Flags & HEADER_v17x::PAD_FLAGS::FLAG_PLATED ) != 0;
-        }
-        else
-        {
-            return ( std::get<HEADER_v16x>( m_Header ).m_Flags & HEADER_v16x::PAD_FLAGS::FLAG_PLATED ) != 0;
-        }
+            bool operator()( const HEADER_v16x& h ) const
+            {
+                return ( h.m_Flags & HEADER_v16x::PAD_FLAGS::FLAG_PLATED ) != 0;
+            }
+            bool operator()( const HEADER_v17x& h ) const
+            {
+                return ( h.m_Flags & HEADER_v17x::PAD_FLAGS::FLAG_PLATED ) != 0;
+            }
+        };
+        return std::visit( Visitor{}, m_Header );
     }
 };
 
@@ -1429,6 +1503,8 @@ struct BLK_0x1C_PADSTACK
  */
 struct BLK_0x1D_CONSTRAINT_SET
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x1D;
+
     uint32_t m_Key;
     uint32_t m_Next;         ///< Linked list next pointer (used by LL_WALKER)
     uint32_t m_NameStrKey;   ///< String table key for constraint set name
@@ -1458,15 +1534,16 @@ struct BLK_0x1D_CONSTRAINT_SET
  */
 struct BLK_0x1E_SI_MODEL
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x1E;
+
     uint8_t  m_Type;
     uint16_t m_T2;
     uint32_t m_Key;
     uint32_t m_Next;         ///< Linked list next pointer (used by LL_WALKER)
 
-    // Versioning seems unsure here
-    // At least it is in Kinoma (V_164)
-    COND_GE<FMT_VER::V_164, uint16_t> m_Unknown2;
-    COND_GE<FMT_VER::V_164, uint16_t> m_Unknown3;
+    // Present in V_161, 16.2 (TWR-MCF51JG LAY-26493) and Kinoma (V_164); no 16.0 sample yet
+    COND_GE<FMT_VER::V_161, uint16_t> m_Unknown2;
+    COND_GE<FMT_VER::V_161, uint16_t> m_Unknown3;
 
     uint32_t m_StrPtr;
     uint32_t m_Size;
@@ -1482,6 +1559,8 @@ struct BLK_0x1E_SI_MODEL
  */
 struct BLK_0x1F_PADSTACK_DIM
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x1F;
+
     uint32_t m_Key;
     uint32_t m_Next;         ///< Linked list next pointer (used by LL_WALKER)
     uint32_t m_Unknown2;
@@ -1509,6 +1588,8 @@ struct BLK_0x1F_PADSTACK_DIM
  */
 struct BLK_0x20_UNKNOWN
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x20;
+
     uint8_t                 m_Type;
     uint16_t                m_R;
     uint32_t                m_Key;
@@ -1525,6 +1606,8 @@ struct BLK_0x20_UNKNOWN
  */
 struct BLK_0x21_BLOB
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x21;
+
     uint8_t  m_Type;
     uint16_t m_R;
     uint32_t m_Size;
@@ -1544,6 +1627,8 @@ struct BLK_0x21_BLOB
  */
 struct BLK_0x22_UNKNOWN
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x22;
+
     uint8_t  m_Type;
     uint16_t m_T2;
     uint32_t m_Key;
@@ -1559,6 +1644,8 @@ struct BLK_0x22_UNKNOWN
  */
 struct BLK_0x23_RATLINE
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x23;
+
     uint8_t    m_Type;
     LAYER_INFO m_Layer;
     uint32_t   m_Key;
@@ -1588,6 +1675,8 @@ struct BLK_0x23_RATLINE
  */
 struct BLK_0x24_RECT
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x24;
+
     uint8_t    m_Type;
     LAYER_INFO m_Layer;
     uint32_t   m_Key;
@@ -1609,11 +1698,15 @@ struct BLK_0x24_RECT
 
 
 /**
- * Match group indirection for differential pairs and match groups.
- * NET.m_MatchGroupPtr -> 0x26 -> m_GroupPtr -> 0x2C TABLE -> group name string (V172+).
+ * Indirection used for match groups and, on tested boards, calculated copper fills.
+ * For a NET match group: NET.m_MatchGroupPtr -> this block -> m_GroupPtr -> 0x2C TABLE.
+ * For a fill: ETCH shape.m_TablePtr -> this block -> m_GroupPtr -> the same 0x2C TABLE
+ * as its source BOUNDARY. The exact Cadence name for this record is not known.
  */
 struct BLK_0x26_MATCH_GROUP
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x26;
+
     uint8_t  m_Type;
     uint16_t m_R;
     uint32_t m_Key;
@@ -1638,6 +1731,8 @@ struct BLK_0x26_MATCH_GROUP
  */
 struct BLK_0x27_CSTRMGR_XREF
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x27;
+
     std::vector<uint32_t> m_Refs;
 };
 
@@ -1648,11 +1743,13 @@ struct BLK_0x27_CSTRMGR_XREF
  * m_LL_Shapes), computed copper fills (on net assignment chains), board outline, keepout
  * areas, place bounds, and custom pad shapes (shape symbol type 0x16).
  *
- * Zone net resolution follows m_Ptr7 (V172+) or m_Ptr7_16x (pre-V172) through a
- * 0x2C TABLE and 0x37 pointer array to reach the owning 0x1B NET.
+ * A BOUNDARY's m_TablePtr (V172+) or m_TablePtr_16x (pre-V172) leads through a
+ * 0x2C TABLE and 0x37 pointer array to its 0x1B NET record when one is present.
  */
 struct BLK_0x28_SHAPE
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x28;
+
     uint8_t    m_Type;
     LAYER_INFO m_Layer;
     uint32_t   m_Key;
@@ -1692,6 +1789,8 @@ struct BLK_0x28_SHAPE
  */
 struct BLK_0x29_PIN
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x29;
+
     uint8_t  m_Type;
     uint16_t m_T;
     uint32_t m_Key;
@@ -1725,9 +1824,12 @@ struct BLK_0x29_PIN
  */
 struct BLK_0x2A_LAYER_LIST
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x2A;
+
     struct NONREF_ENTRY
     {
         std::string m_Name;
+        uint32_t    m_Properties; ///< Same layer flags as REF_ENTRY, stored after the 32 byte name
     };
 
     struct REF_ENTRY
@@ -1749,12 +1851,15 @@ struct BLK_0x2A_LAYER_LIST
 
 
 /**
- * Footprint definition (template) shared by multiple placed instances. Contains the
- * library symbol path (m_SymLibPathPtr), bounding box, and a linked list of placed
- * instances starting at m_FirstInstPtr (0x2D blocks).
+ * Footprint definition (template) shared by multiple placed instances. Contains a
+ * chain of 0x03 FIELD blocks (m_FieldsPtr) holding the library symbol path and the
+ * 3D model assignment, a bounding box, and a linked list of placed instances
+ * starting at m_FirstInstPtr (0x2D blocks).
  */
 struct BLK_0x2B_FOOTPRINT_DEF
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x2B;
+
     uint32_t m_Key;
 
     uint32_t m_FpStrRef;
@@ -1768,7 +1873,10 @@ struct BLK_0x2B_FOOTPRINT_DEF
     uint32_t m_UnknownPtr3;
     uint32_t m_UnknownPtr4;
     uint32_t m_UnknownPtr5;
-    uint32_t m_SymLibPathPtr;
+
+    /// Pointer to first 0x03 FIELD object or null
+    uint32_t m_FieldsPtr;
+
     uint32_t m_UnknownPtr6;
     uint32_t m_UnknownPtr7;
     uint32_t m_UnknownPtr8;
@@ -1786,6 +1894,8 @@ struct BLK_0x2B_FOOTPRINT_DEF
  */
 struct BLK_0x2C_TABLE
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x2C;
+
     /**
      * The subtype of a table.
      *
@@ -1844,6 +1954,8 @@ struct BLK_0x2C_TABLE
  */
 struct BLK_0x2D_FOOTPRINT_INST
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x2D;
+
     uint8_t  m_UnknownByte1;
     uint8_t  m_Layer;         // 0 = top (F_Cu), 1 = bottom (B_Cu)
     uint8_t  m_UnknownByte2;
@@ -1893,6 +2005,8 @@ struct BLK_0x2D_FOOTPRINT_INST
  */
 struct BLK_0x2E_CONNECTION
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x2E;
+
     uint8_t  m_Type;
     uint16_t m_T2;
     uint32_t m_Key;
@@ -1913,6 +2027,8 @@ struct BLK_0x2E_CONNECTION
  */
 struct BLK_0x2F_UNKNOWN
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x2F;
+
     uint8_t  m_Type;
     uint16_t m_T2;
     uint32_t m_Key;
@@ -1929,6 +2045,8 @@ struct BLK_0x2F_UNKNOWN
  */
 struct BLK_0x30_STR_WRAPPER
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x30;
+
     enum class TEXT_REVERSAL
     {
         STRAIGHT = 0,
@@ -1981,6 +2099,9 @@ struct BLK_0x30_STR_WRAPPER
 
     COND_LT<FMT_VER::V_172, uint32_t> m_PtrGroup_16x;
 
+    /// Zero or key of a 0x3E block.
+    COND_GE<FMT_VER::V_181, uint32_t> m_Ptr0x3E_V181;
+
     uint32_t GetGroupPtr() const
     {
         return m_PtrGroup_17x.value_or( m_PtrGroup_16x.value_or( 0 ) );
@@ -1994,6 +2115,8 @@ struct BLK_0x30_STR_WRAPPER
  */
 struct BLK_0x31_SGRAPHIC
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x31;
+
     enum class STRING_LAYER : uint16_t
     {
         BOT_TEXT,
@@ -2030,6 +2153,8 @@ struct BLK_0x31_SGRAPHIC
  */
 struct BLK_0x32_PLACED_PAD
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x32;
+
     uint8_t    m_Type;
     LAYER_INFO m_Layer;
     uint32_t   m_Key;
@@ -2064,6 +2189,8 @@ struct BLK_0x32_PLACED_PAD
  */
 struct BLK_0x33_VIA
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x33;
+
     LAYER_INFO m_LayerInfo;
     uint32_t   m_Key;
     uint32_t   m_Next;
@@ -2096,6 +2223,8 @@ struct BLK_0x33_VIA
  */
 struct BLK_0x34_KEEPOUT
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x34;
+
     uint8_t    m_T;
     LAYER_INFO m_Layer;
     uint32_t   m_Key;
@@ -2113,14 +2242,36 @@ struct BLK_0x34_KEEPOUT
 
 /**
  * File path references to Allegro log and report files (terminator.log, eclrpt.txt).
- * Content is a 120-byte fixed buffer with null-terminated path strings. Not imported.
  */
 struct BLK_0x35_FILE_REF
 {
-    uint8_t  m_T2;
-    uint16_t m_T3;
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x35;
 
-    std::array<uint8_t, 120> m_Content;
+    uint8_t  m_T2;
+    uint16_t m_T3; // Always 0x01 so far
+
+    uint32_t m_Next;
+
+    uint32_t m_Unknown1; // 0x7fffffff usually
+
+    std::array<char, 20> m_LogFile; // Usually "terminator.log"
+
+    uint32_t m_Unknown2; // 0x01010101 usually
+
+    std::array<char, 20> m_UnusedFile;    // Always 0x00
+    std::array<char, 20> m_EclReportFile; // "eclrpt.txt"
+    std::array<char, 20> m_EclLogFile;    // "eclrep.log"
+
+    uint32_t m_Unknown3;
+
+    std::array<char, 8> m_Version; // Always '1.0'
+
+    uint32_t m_Unknown4;
+    uint32_t m_Unknown5;
+    uint32_t m_Unknown6;
+
+    /// Key of this record.
+    uint32_t m_Key;
 };
 
 
@@ -2131,6 +2282,8 @@ struct BLK_0x35_FILE_REF
  */
 struct BLK_0x36_DEF_TABLE
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x36;
+
     uint16_t m_Code;
     uint32_t m_Key;
     uint32_t m_Next;
@@ -2240,12 +2393,16 @@ struct BLK_0x36_DEF_TABLE
 
 
 /**
- * Fixed-capacity pointer array (100 entries). Used in zone net resolution where
- * m_Ptrs[0] points to the owning 0x1B NET block. m_Count indicates how many entries
- * are valid.
+ * Pointer array. Used in zone net resolution where m_Ptrs[0] points to the owning
+ * 0x1B NET block. m_Count indicates how many entries are valid, counted from the
+ * start.
+ *
+ * m_Capacity is usually 100, but a 25.1 board was seen with 4096 (TinyCircularTMR).
  */
 struct BLK_0x37_PTR_ARRAY
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x37;
+
     uint8_t  m_T;
     uint16_t m_T2;
     uint32_t m_Key;
@@ -2257,7 +2414,7 @@ struct BLK_0x37_PTR_ARRAY
 
     COND_GE<FMT_VER::V_174, uint32_t> m_Unknown3;
 
-    std::array<uint32_t, 100> m_Ptrs;
+    std::vector<uint32_t> m_Ptrs;
 };
 
 
@@ -2266,6 +2423,8 @@ struct BLK_0x37_PTR_ARRAY
  */
 struct BLK_0x38_FILM
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x38;
+
     uint32_t m_Key;
     uint32_t m_Next;
     uint32_t m_LayerList;
@@ -2286,6 +2445,8 @@ struct BLK_0x38_FILM
  */
 struct BLK_0x39_FILM_LAYER_LIST
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x39;
+
     uint32_t m_Key;
     uint32_t m_Parent;
     uint32_t m_Head;
@@ -2300,6 +2461,8 @@ struct BLK_0x39_FILM_LAYER_LIST
  */
 struct BLK_0x3A_FILM_LIST_NODE
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x3A;
+
     LAYER_INFO m_Layer;
     uint32_t   m_Key;
     uint32_t   m_Next;
@@ -2315,6 +2478,8 @@ struct BLK_0x3A_FILM_LIST_NODE
  */
 struct BLK_0x3B_PROPERTY
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x3B;
+
     uint8_t  m_T;
     uint16_t m_SubType;
     uint32_t m_Len;
@@ -2346,6 +2511,8 @@ struct BLK_0x3E
 
 struct BLK_0x3C_KEY_LIST
 {
+    static constexpr uint8_t BLOCK_TYPE_CODE = 0x3C;
+
     uint8_t  m_T;
     uint16_t m_T2;
     uint32_t m_Key;
@@ -2358,53 +2525,17 @@ struct BLK_0x3C_KEY_LIST
 
 
 /**
- * Raw board structure that we will build as we parse the file.
+ * Satisfied by any Allegro block data structs that can be used with BLOCK_REF
+ *
+ * Every BLK_0x* struct declares a BLOCK_TYPE_CODE trait, except those with multiple valid
+ * codes, which are special-cased
  */
-struct RAW_BOARD
+template <typename T>
+concept ALLEGRO_BLOCK_DATA = requires
 {
-public:
-    RAW_BOARD();
+    { T::BLOCK_TYPE_CODE }->std::convertible_to<uint8_t>;
+}
+|| std::is_same_v<T, BLK_0x15_16_17_SEGMENT>;
 
-    std::unique_ptr<FILE_HEADER> m_Header;
-
-    /**
-     * What version is this file? We will need this to correctly interpret some structures.
-     */
-    FMT_VER m_FmtVer;
-
-    /**
-     * The string map is a map of U32 ID to strings.
-     * It seems to always be located at byte 0x1200 in the file.
-     */
-    std::unordered_map<uint32_t, std::string> m_StringTable;
-
-    // All the objects in the file
-    std::vector<std::unique_ptr<BLOCK_BASE>> m_Objects;
-
-    // Map of keys to objects (for the objects we can get keys for)
-    std::unordered_map<uint32_t, BLOCK_BASE*> m_ObjectKeyMap;
-
-    // Lists of the objects by type
-    std::unordered_map<uint8_t, std::vector<BLOCK_BASE*>> m_ObjectLists;
-
-    static const size_t STRING_TABLE_OFFSET = 0x1200;
-
-    const BLOCK_BASE* GetObjectByKey( uint32_t aKey ) const
-    {
-        auto it = m_ObjectKeyMap.find( aKey );
-        if( it != m_ObjectKeyMap.end() )
-            return it->second;
-        return nullptr;
-    }
-
-    const std::string& GetString( uint32_t aId ) const
-    {
-        if( m_StringTable.count( aId ) )
-            return m_StringTable.at( aId );
-
-        static const std::string empty;
-        return empty;
-    }
-};
 
 } // namespace ALLEGRO

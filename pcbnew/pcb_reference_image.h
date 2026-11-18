@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -65,11 +61,11 @@ public:
     const BOX2I GetBoundingBox() const override;
 
     std::shared_ptr<SHAPE> GetEffectiveShape( PCB_LAYER_ID aLayer = UNDEFINED_LAYER,
-                                              FLASHING aFlash = FLASHING::DEFAULT ) const override;
+                                              FLASHING aFlash = FLASHING::DEFAULT,
+                                              DRC_CONSTRAINT_T aUsage = NULL_CONSTRAINT ) const override;
 
     //void Print( const RENDER_SETTINGS* aSettings, const VECTOR2I& aOffset ) override;
 
-    /// @copydoc VIEW_ITEM::ViewGetLayers()
     virtual std::vector<int> ViewGetLayers() const override;
 
     void Move( const VECTOR2I& aMoveVector ) override;
@@ -80,6 +76,7 @@ public:
     void Flip( const VECTOR2I& aCentre, FLIP_DIRECTION aFlipDirection ) override;
     void Rotate( const VECTOR2I& aCenter, const EDA_ANGLE& aAngle ) override;
     void Mirror( const VECTOR2I& aMirrorRef, FLIP_DIRECTION aFlipDirection ) override;
+    void Mirror( const SEG& aAxis ) override;
 
     wxString GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool aFull ) const override
     {
@@ -124,14 +121,18 @@ private:
     friend struct PCB_REFERENCE_IMAGE_DESC;
 
     // Property manager interfaces
-    int  GetWidth() const;
-    void SetWidth( int aWidth );
-    int  GetHeight() const;
-    void SetHeight( int aHeight );
-    int  GetTransformOriginOffsetX() const;
-    void SetTransformOriginOffsetX( int aX );
-    int  GetTransformOriginOffsetY() const;
-    void SetTransformOriginOffsetY( int aY );
+    int       GetWidth() const;
+    void      SetWidth( int aWidth );
+    int       GetHeight() const;
+    void      SetHeight( int aHeight );
+    int       GetTransformOriginOffsetX() const;
+    void      SetTransformOriginOffsetX( int aX );
+    int       GetTransformOriginOffsetY() const;
+    void      SetTransformOriginOffsetY( int aY );
+    EDA_ANGLE GetOrientation() const;
+    void      SetOrientation( const EDA_ANGLE& aAngle );
+    double    GetOpacity() const;
+    void      SetOpacity( double aOpacity );
 
     double GetImageScale() const;
     void   SetImageScale( double aScale );

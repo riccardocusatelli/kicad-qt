@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef SEARCH_HANDLERS_H
@@ -44,11 +40,17 @@ public:
             m_frame( aFrame )
     {}
 
+    void InvalidateResults()
+    {
+        m_resultsValid = false;
+        m_hitlist.clear();
+    }
+
     void ActivateItem( long aItemRow ) override;
 
     wxString GetResultCell( int aRow, int aCol ) override
     {
-        if( m_frame->IsClosing() )
+        if( !m_resultsValid || m_frame->IsClosing() )
             return wxEmptyString;
 
         if( aRow >= static_cast<int>( m_hitlist.size() ) )
@@ -72,6 +74,7 @@ protected:
 protected:
     SCH_EDIT_FRAME*             m_frame;
     std::vector<SCH_SEARCH_HIT> m_hitlist;
+    bool                       m_resultsValid = false;
 };
 
 class SYMBOL_SEARCH_HANDLER : public SCH_SEARCH_HANDLER

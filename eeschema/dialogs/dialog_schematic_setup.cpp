@@ -13,18 +13,22 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <confirm.h>
+#include <erc/erc_settings.h>
+#include <jobs/scratch_doc.h>
 #include <sch_edit_frame.h>
 #include <schematic.h>
+#include <schematic_settings.h>
 #include <kiface_base.h>
 #include <dialog_sch_import_settings.h>
 #include <dialogs/panel_setup_netclasses.h>
 #include <dialogs/panel_setup_severities.h>
 #include <dialogs/panel_setup_buses.h>
+#include "panel_setup_net_chains.h"
 #include <panel_eeschema_annotation_options.h>
 #include <panel_setup_formatting.h>
 #include <panel_setup_pinmap.h>
@@ -39,6 +43,8 @@
 #include <widgets/wx_infobar.h>
 #include <widgets/wx_progress_reporters.h>
 #include "dialog_schematic_setup.h"
+
+#include "panel_setup_symbol_parity.h"
 #include "panel_template_fieldnames.h"
 #include <core/ki_assert.h>
 
@@ -76,8 +82,8 @@ DIALOG_SCHEMATIC_SETUP::DIALOG_SCHEMATIC_SETUP( SCH_EDIT_FRAME* aFrame ) :
     m_treebook->AddLazySubPage(
             [this]( wxWindow* aParent ) -> wxWindow*
             {
-                SCHEMATIC_SETTINGS& settings = m_frame->Schematic().Settings();
-                return new PANEL_TEMPLATE_FIELDNAMES( aParent, &settings.m_TemplateFieldNames );
+                PROJECT_FILE& project = m_frame->Prj().GetProjectFile();
+                return new PANEL_TEMPLATE_FIELDNAMES( aParent, &project.m_TemplateFieldNames );
             }, _( "Field Name Templates" ) );
 
     m_bomPresetsPage = m_treebook->GetPageCount();
@@ -100,6 +106,13 @@ DIALOG_SCHEMATIC_SETUP::DIALOG_SCHEMATIC_SETUP( SCH_EDIT_FRAME* aFrame ) :
                                                    ercSettings.m_ERCSeverities, m_pinToPinError.get() );
             }, _( "Violation Severity" ) );
 
+    m_symbolParityPage = m_treebook->GetPageCount();
+    m_treebook->AddLazySubPage(
+            [this]( wxWindow* aParent ) -> wxWindow*
+            {
+                return new PANEL_SETUP_SYMBOL_PARITY( aParent, m_frame );
+            }, _( "Compare Symbol with Library" ) );
+
     m_pinMapPage = m_treebook->GetPageCount();
     m_treebook->AddLazySubPage(
             [this]( wxWindow* aParent ) -> wxWindow*
@@ -114,8 +127,7 @@ DIALOG_SCHEMATIC_SETUP::DIALOG_SCHEMATIC_SETUP( SCH_EDIT_FRAME* aFrame ) :
             [this]( wxWindow* aParent ) -> wxWindow*
             {
                 SCHEMATIC& schematic = m_frame->Schematic();
-                return new PANEL_SETUP_NETCLASSES( aParent, m_frame,
-                                                   m_frame->Prj().GetProjectFile().NetSettings(),
+                return new PANEL_SETUP_NETCLASSES( aParent, m_frame, m_frame->Prj().GetProjectFile().NetSettings(),
                                                    schematic.GetNetClassAssignmentCandidates(), true );
             }, _( "Net Classes" ) );
 
@@ -125,6 +137,13 @@ DIALOG_SCHEMATIC_SETUP::DIALOG_SCHEMATIC_SETUP( SCH_EDIT_FRAME* aFrame ) :
             {
                 return new PANEL_SETUP_BUSES( aParent, m_frame );
             }, _( "Bus Alias Definitions" ) );
+
+    m_netChainsPage = m_treebook->GetPageCount();
+    m_treebook->AddLazySubPage(
+            [this]( wxWindow* aParent ) -> wxWindow*
+            {
+                return new PANEL_SETUP_NET_CHAINS( aParent, m_frame );
+            }, _( "Net Chains" ) );
 
     m_textVarsPage = m_treebook->GetPageCount();
     m_treebook->AddLazySubPage(
@@ -175,58 +194,61 @@ void DIALOG_SCHEMATIC_SETUP::onPageChanged( wxBookCtrlEvent& aEvent )
 
 void DIALOG_SCHEMATIC_SETUP::onAuxiliaryAction( wxCommandEvent& event )
 {
+    SETTINGS_MANAGER*          mgr = m_frame->GetSettingsManager();
     DIALOG_SCH_IMPORT_SETTINGS importDlg( this, m_frame );
 
     if( importDlg.ShowModal() == wxID_CANCEL )
         return;
 
     wxFileName projectFn( importDlg.GetFilePath() );
-    bool       alreadyLoaded = false;
 
-    if( m_frame->GetSettingsManager()->GetProject( projectFn.GetFullPath() ) )
-    {
-        alreadyLoaded = true;
-    }
-    else if( !m_frame->GetSettingsManager()->LoadProject( projectFn.GetFullPath(), false ) )
-    {
-        wxString msg = wxString::Format( _( "Error importing settings from project:\n"
-                                            "Project file %s could not be loaded." ),
-                                         projectFn.GetFullPath() );
-        DisplayErrorMessage( this, msg );
+    SCRATCH_PROJECT scratch( *mgr, projectFn.GetFullPath(), /*aRequireProjectFile=*/true );
 
+    if( !scratch.IsValid() )
+    {
+        DisplayErrorMessage( this, wxString::Format( _( "Error importing settings from project:\n"
+                                                        "Project file %s could not be loaded." ),
+                                                     projectFn.GetFullPath() ) );
         return;
     }
 
-    PROJECT*      otherPrj = m_frame->GetSettingsManager()->GetProject( projectFn.GetFullPath() );
-    SCHEMATIC     otherSch( otherPrj );
+    PROJECT*      otherPrj = scratch.GetProject();
     PROJECT_FILE& file = otherPrj->GetProjectFile();
 
-    KI_ASSERT( file.m_SchematicSettings );
+    SCHEMATIC_SETTINGS schematicSettings( &file, "schematic" );
+    ERC_SETTINGS       ercSettings( &file, "erc" );
 
-    file.m_SchematicSettings->LoadFromFile();
+    schematicSettings.LoadFromFile();
+    ercSettings.LoadFromFile();
 
     if( importDlg.m_FormattingOpt->GetValue() )
     {
         static_cast<PANEL_SETUP_FORMATTING*>( m_treebook->ResolvePage( m_formattingPage ) )
-                ->ImportSettingsFrom( *file.m_SchematicSettings );
+                ->ImportSettingsFrom( schematicSettings );
     }
 
     if( importDlg.m_FieldNameTemplatesOpt->GetValue() )
     {
         static_cast<PANEL_TEMPLATE_FIELDNAMES*>( m_treebook->ResolvePage( m_fieldNameTemplatesPage ) )
-                ->ImportSettingsFrom( &otherSch.Settings().m_TemplateFieldNames );
+                ->ImportSettingsFrom( &file.m_TemplateFieldNames );
+    }
+
+    if( importDlg.m_SymbolParityOpt->GetValue() )
+    {
+        static_cast<PANEL_SETUP_SYMBOL_PARITY*>( m_treebook->ResolvePage( m_symbolParityPage ) )
+                ->ImportSettingsFrom( schematicSettings.m_SymbolParity );
     }
 
     if( importDlg.m_PinMapOpt->GetValue() )
     {
         static_cast<PANEL_SETUP_PINMAP*>( m_treebook->ResolvePage( m_pinMapPage ) )
-                ->ImportSettingsFrom( file.m_ErcSettings->m_PinMap );
+                ->ImportSettingsFrom( ercSettings.m_PinMap );
     }
 
     if( importDlg.m_SeveritiesOpt->GetValue() )
     {
         static_cast<PANEL_SETUP_SEVERITIES*>( m_treebook->ResolvePage( m_severitiesPage ) )
-                ->ImportSettingsFrom( file.m_ErcSettings->m_ERCSeverities );
+                ->ImportSettingsFrom( ercSettings.m_ERCSeverities );
     }
 
     if( importDlg.m_NetClassesOpt->GetValue() )
@@ -238,19 +260,19 @@ void DIALOG_SCHEMATIC_SETUP::onAuxiliaryAction( wxCommandEvent& event )
     if( importDlg.m_BomPresetsOpt->GetValue() )
     {
         static_cast<PANEL_BOM_PRESETS*>( m_treebook->ResolvePage( m_bomPresetsPage ) )
-                ->ImportBomPresetsFrom( *file.m_SchematicSettings );
+                ->ImportBomPresetsFrom( schematicSettings );
     }
 
     if( importDlg.m_BomFmtPresetsOpt->GetValue() )
     {
         static_cast<PANEL_BOM_PRESETS*>( m_treebook->ResolvePage( m_bomPresetsPage ) )
-                ->ImportBomFmtPresetsFrom( *file.m_SchematicSettings );
+                ->ImportBomFmtPresetsFrom( schematicSettings );
     }
 
     if( importDlg.m_annotationOpt->GetValue() )
     {
         static_cast<PANEL_EESCHEMA_ANNOTATION_OPTIONS*>( m_treebook->ResolvePage( m_annotationPage ) )
-                ->ImportSettingsFrom( *file.m_SchematicSettings );
+                ->ImportSettingsFrom( schematicSettings );
     }
 
     if( importDlg.m_BusAliasesOpt->GetValue() )
@@ -264,7 +286,4 @@ void DIALOG_SCHEMATIC_SETUP::onAuxiliaryAction( wxCommandEvent& event )
         static_cast<PANEL_TEXT_VARIABLES*>( m_treebook->ResolvePage( m_textVarsPage ) )
                 ->ImportSettingsFrom( otherPrj );
     }
-
-    if( !alreadyLoaded )
-        m_frame->GetSettingsManager()->UnloadProject( otherPrj, false );
 }

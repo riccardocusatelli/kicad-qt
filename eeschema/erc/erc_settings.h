@@ -15,12 +15,16 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
 
+#include <map>
+#include <set>
+
+#include <erc/erc_exclusion.h>
 #include <erc/erc_item.h>
 #include <pin_type.h>
 #include <settings/nested_settings.h>
@@ -91,8 +95,19 @@ enum ERCE_T
     ERCE_UNCONNECTED_WIRE_ENDPOINT,         ///< A label is connected to more than one wire.
     ERCE_STACKED_PIN_SYNTAX,                ///< Pin name resembles stacked pin notation.
     ERCE_FIELD_NAME_WHITESPACE,             ///< Field name has leading or trailing whitespace.
+    ERCE_PIN_MAP_BAD_PAD,                   ///< Pin map references a pad absent from the footprint.
+    ERCE_PIN_MAP_UNMAPPED_PIN,              ///< A connected pin resolves to no footprint pad.
+    ERCE_PIN_MAP_DUPLICATE_PAD,             ///< Two symbol pins map to one pad (not stacked/jumper).
+    ERCE_PIN_MAP_STALE_PIN,                 ///< Pin map references a pin number not on the symbol.
+    ERCE_EMPTY_LABEL_NAME,                  ///< Label has an empty or whitespace-only name.
+    ERCE_VARIANT_SYMBOL_INVALID,            ///< Variant symbol override LIB_ID cannot be resolved.
+    ERCE_VARIANT_SYMBOL_INCOMPATIBLE,       ///< Variant symbol override fails pin compatibility.
+    ERCE_WIRED_IMPLICIT_POWER,              ///< Wired hidden power input also joins its global net by name.
+    ERCE_EMPTY_POWER_VALUE,                 ///< Power symbol has no value, so it names no net.
+    ERCE_DUPLICATE_SHEET_SUFFIX,            ///< Two uses of one sheet file share a reference suffix.
+    ERCE_REF_SUFFIX_MISMATCH,               ///< Saved reference lacks the suffix of its reused sheet.
 
-    ERCE_LAST = ERCE_FIELD_NAME_WHITESPACE,
+    ERCE_LAST = ERCE_REF_SUFFIX_MISMATCH,
 
     ERCE_DUPLICATE_PIN_ERROR,
     ERCE_PIN_TO_PIN_WARNING, // pin connected to an other pin: warning level
@@ -208,11 +223,18 @@ public:
         return m_PinMinDrive[static_cast<int>( aFirstType )][static_cast<int>( aSecondType )];
     }
 
+private:
+    bool migrateSchema0to1();
+
+
 public:
 
     std::map<int, SEVERITY>      m_ERCSeverities;
-    std::set<wxString>           m_ErcExclusions;           // Serialized excluded ERC markers
-    std::map<wxString, wxString> m_ErcExclusionComments;    // Map from serialization to comment
+    std::set<ERC_EXCLUSION, ERC_EXCLUSION_COMPARE> m_ErcExclusions;
+
+    // Legacy pipe-delimited exclusions read from older settings files.  They are migrated into
+    // m_ErcExclusions by SCHEMATIC::ResolveERCExclusions() after schematic load.
+    std::set<std::pair<wxString, wxString>> m_ErcExclusionsLegacy;
 
     PIN_ERROR m_PinMap[ELECTRICAL_PINTYPES_TOTAL][ELECTRICAL_PINTYPES_TOTAL];
 
@@ -281,6 +303,7 @@ public:
     /**
      * Set the exclusion state of a marker while keeping the cached severity counts in sync.
      *
+     * @param aMarker is the marker to include or exclude.
      * @param aExcluded true to exclude the marker, false to restore it.
      * @param aComment optional exclusion comment.
      */

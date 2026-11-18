@@ -14,13 +14,11 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/gpl-3.0.html
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <plotters/pdf_outline_font.h>
+#include <plotters/pdf_unicode.h>
 #include <trace_helpers.h>
 #include <wx/log.h>
 #include <cstdlib>
@@ -45,22 +43,6 @@
 
 namespace
 {
-std::string formatUnicodeHex( uint32_t aCodepoint )
-{
-    if( aCodepoint <= 0xFFFF )
-        return fmt::format( "{:04X}", aCodepoint );
-
-    if( aCodepoint <= 0x10FFFF )
-    {
-        uint32_t value = aCodepoint - 0x10000;
-        uint16_t high = 0xD800 + ( value >> 10 );
-        uint16_t low = 0xDC00 + ( value & 0x3FF );
-        return fmt::format( "{:04X}{:04X}", high, low );
-    }
-
-    return std::string( "003F" );
-}
-
 std::u32string utf8ToU32( const std::string& aUtf8 )
 {
     std::u32string result;
@@ -339,7 +321,7 @@ std::string PDF_OUTLINE_FONT_SUBSET::BuildToUnicodeCMap() const
         fmt::format_to( std::back_inserter( buffer ), "<{:04X}> <", cid );
 
         for( uint32_t codepoint : unicode )
-            fmt::format_to( std::back_inserter( buffer ), "{}", formatUnicodeHex( codepoint ) );
+            fmt::format_to( std::back_inserter( buffer ), "{}", FormatPdfUtf16Hex( codepoint ) );
 
         fmt::format_to( std::back_inserter( buffer ), ">\n" );
     }

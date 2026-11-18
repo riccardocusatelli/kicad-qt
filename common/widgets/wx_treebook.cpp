@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <widgets/wx_treebook.h>
@@ -99,6 +95,13 @@ bool WX_TREEBOOK::AddLazySubPage( std::function<wxWindow*( wxWindow* aParent )> 
                                   const wxString& text, bool bSelect, int imageId )
 {
     return AddSubPage( new LAZY_PAGE( this, std::move( aLazyCtor ) ), text, bSelect, imageId );
+}
+
+
+bool WX_TREEBOOK::InsertLazySubPage( size_t aPos, std::function<wxWindow*( wxWindow* aParent )> aLazyCtor,
+                                     const wxString& text, bool bSelect, int imageId )
+{
+    return InsertSubPage( aPos, new LAZY_PAGE( this, std::move( aLazyCtor ) ), text, bSelect, imageId );
 }
 
 

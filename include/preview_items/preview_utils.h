@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PREVIEW_PREVIEW_UTILS__H_
@@ -46,7 +42,7 @@ struct TEXT_DIMS
 };
 
 /**
- * Default alpha of "de-emphasised" features (like previously locked-in lines.
+ * Default alpha of "de-emphasized" features (like previously locked-in lines.
  */
 double PreviewOverlayDeemphAlpha( bool aDeemph = true );
 
@@ -75,10 +71,11 @@ COLOR4D GetShadowColor( const COLOR4D& aColor );
  *
  * The GAL attribute context will be restored to its original state after this function is called.
  *
- * @param aGal the GAL to draw on.
+ * @param aView the GAL to draw on.
  * @param aCursorPos the position of the cursor to draw next to.
  * @param aTextQuadrant a vector pointing to the quadrant to draw the text in.
  * @param aStrings list of strings to draw, top to bottom.
+ * @param aDrawingDropShadows is the flag to indicate if drop shadows need to be drawn.
  */
 void DrawTextNextToCursor( KIGFX::VIEW* aView, const VECTOR2D& aCursorPos,
                            const VECTOR2D& aTextQuadrant, const wxArrayString& aStrings,

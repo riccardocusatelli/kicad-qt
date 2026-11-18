@@ -59,7 +59,7 @@ DIALOG_LIB_EDIT_PIN_TABLE_BASE::DIALOG_LIB_EDIT_PIN_TABLE_BASE( wxWindow* parent
 	bSummarySizer->Add( m_duplicate_pins, 0, wxRIGHT|wxLEFT|wxALIGN_CENTER_VERTICAL, 5 );
 
 
-	bLeftGridSizer->Add( bSummarySizer, 0, wxEXPAND|wxTOP|wxRIGHT|wxLEFT, 10 );
+	bLeftGridSizer->Add( bSummarySizer, 0, wxEXPAND|wxTOP|wxRIGHT, 5 );
 
 	wxBoxSizer* bGridMarginsSizer;
 	bGridMarginsSizer = new wxBoxSizer( wxVERTICAL );
@@ -118,7 +118,7 @@ DIALOG_LIB_EDIT_PIN_TABLE_BASE::DIALOG_LIB_EDIT_PIN_TABLE_BASE( wxWindow* parent
 	m_grid->SetDefaultCellAlignment( wxALIGN_LEFT, wxALIGN_CENTER );
 	m_grid->SetMinSize( wxSize( 690,200 ) );
 
-	bGridMarginsSizer->Add( m_grid, 1, wxEXPAND|wxLEFT|wxRIGHT|wxTOP, 10 );
+	bGridMarginsSizer->Add( m_grid, 1, wxEXPAND|wxTOP|wxRIGHT, 10 );
 
 
 	bLeftGridSizer->Add( bGridMarginsSizer, 1, wxEXPAND|wxLEFT, 5 );
@@ -261,7 +261,7 @@ DIALOG_LIB_EDIT_PIN_TABLE_BASE::DIALOG_LIB_EDIT_PIN_TABLE_BASE( wxWindow* parent
 	bRightPaneSizer->Add( sbSizer2, 0, wxEXPAND|wxTOP|wxRIGHT|wxLEFT, 5 );
 
 
-	bSizer6->Add( bRightPaneSizer, 0, wxEXPAND|wxTOP|wxRIGHT|wxLEFT, 5 );
+	bSizer6->Add( bRightPaneSizer, 0, wxEXPAND|wxTOP|wxRIGHT, 5 );
 
 
 	top_sizer->Add( bSizer6, 1, wxEXPAND, 5 );
@@ -273,13 +273,13 @@ DIALOG_LIB_EDIT_PIN_TABLE_BASE::DIALOG_LIB_EDIT_PIN_TABLE_BASE( wxWindow* parent
 	bSizer5 = new wxBoxSizer( wxHORIZONTAL );
 
 	m_addButton = new STD_BITMAP_BUTTON( this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, wxBU_AUTODRAW|0 );
-	bSizer5->Add( m_addButton, 0, wxRIGHT|wxLEFT, 5 );
+	bSizer5->Add( m_addButton, 0, wxRIGHT|wxLEFT, 2 );
 
 	m_deleteButton = new STD_BITMAP_BUTTON( this, wxID_ANY, wxNullBitmap, wxDefaultPosition, wxDefaultSize, wxBU_AUTODRAW|0 );
-	bSizer5->Add( m_deleteButton, 0, wxRIGHT|wxLEFT, 15 );
+	bSizer5->Add( m_deleteButton, 0, wxRIGHT|wxLEFT, 25 );
 
 
-	bBottomSizer->Add( bSizer5, 0, wxEXPAND|wxTOP|wxRIGHT, 5 );
+	bBottomSizer->Add( bSizer5, 0, wxEXPAND|wxTOP|wxRIGHT|wxLEFT, 5 );
 
 
 	bBottomSizer->Add( 30, 0, 1, wxEXPAND, 5 );
@@ -294,7 +294,7 @@ DIALOG_LIB_EDIT_PIN_TABLE_BASE::DIALOG_LIB_EDIT_PIN_TABLE_BASE( wxWindow* parent
 	bBottomSizer->Add( m_Buttons, 0, wxEXPAND|wxALL, 5 );
 
 
-	top_sizer->Add( bBottomSizer, 0, wxLEFT|wxEXPAND, 10 );
+	top_sizer->Add( bBottomSizer, 0, wxEXPAND, 10 );
 
 
 	this->SetSizer( top_sizer );
@@ -307,8 +307,8 @@ DIALOG_LIB_EDIT_PIN_TABLE_BASE::DIALOG_LIB_EDIT_PIN_TABLE_BASE( wxWindow* parent
 	this->Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( DIALOG_LIB_EDIT_PIN_TABLE_BASE::OnClose ) );
 	this->Connect( wxEVT_UPDATE_UI, wxUpdateUIEventHandler( DIALOG_LIB_EDIT_PIN_TABLE_BASE::OnUpdateUI ) );
 	m_grid->Connect( wxEVT_GRID_CELL_CHANGED, wxGridEventHandler( DIALOG_LIB_EDIT_PIN_TABLE_BASE::OnCellEdited ), NULL, this );
-	m_grid->Connect( wxEVT_GRID_CELL_LEFT_CLICK, wxGridEventHandler( DIALOG_LIB_EDIT_PIN_TABLE_BASE::OnCellSelected ), NULL, this );
 	m_grid->Connect( wxEVT_GRID_EDITOR_SHOWN, wxGridEventHandler( DIALOG_LIB_EDIT_PIN_TABLE_BASE::OnCellSelected ), NULL, this );
+	m_grid->Connect( wxEVT_GRID_SELECT_CELL, wxGridEventHandler( DIALOG_LIB_EDIT_PIN_TABLE_BASE::OnCellSelected ), NULL, this );
 	m_grid->Connect( wxEVT_SIZE, wxSizeEventHandler( DIALOG_LIB_EDIT_PIN_TABLE_BASE::OnSize ), NULL, this );
 	m_cbGroup->Connect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( DIALOG_LIB_EDIT_PIN_TABLE_BASE::OnRebuildRows ), NULL, this );
 	m_groupSelected->Connect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DIALOG_LIB_EDIT_PIN_TABLE_BASE::OnGroupSelected ), NULL, this );
@@ -334,8 +334,8 @@ DIALOG_LIB_EDIT_PIN_TABLE_BASE::~DIALOG_LIB_EDIT_PIN_TABLE_BASE()
 	this->Disconnect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( DIALOG_LIB_EDIT_PIN_TABLE_BASE::OnClose ) );
 	this->Disconnect( wxEVT_UPDATE_UI, wxUpdateUIEventHandler( DIALOG_LIB_EDIT_PIN_TABLE_BASE::OnUpdateUI ) );
 	m_grid->Disconnect( wxEVT_GRID_CELL_CHANGED, wxGridEventHandler( DIALOG_LIB_EDIT_PIN_TABLE_BASE::OnCellEdited ), NULL, this );
-	m_grid->Disconnect( wxEVT_GRID_CELL_LEFT_CLICK, wxGridEventHandler( DIALOG_LIB_EDIT_PIN_TABLE_BASE::OnCellSelected ), NULL, this );
 	m_grid->Disconnect( wxEVT_GRID_EDITOR_SHOWN, wxGridEventHandler( DIALOG_LIB_EDIT_PIN_TABLE_BASE::OnCellSelected ), NULL, this );
+	m_grid->Disconnect( wxEVT_GRID_SELECT_CELL, wxGridEventHandler( DIALOG_LIB_EDIT_PIN_TABLE_BASE::OnCellSelected ), NULL, this );
 	m_grid->Disconnect( wxEVT_SIZE, wxSizeEventHandler( DIALOG_LIB_EDIT_PIN_TABLE_BASE::OnSize ), NULL, this );
 	m_cbGroup->Disconnect( wxEVT_COMMAND_CHECKBOX_CLICKED, wxCommandEventHandler( DIALOG_LIB_EDIT_PIN_TABLE_BASE::OnRebuildRows ), NULL, this );
 	m_groupSelected->Disconnect( wxEVT_COMMAND_BUTTON_CLICKED, wxCommandEventHandler( DIALOG_LIB_EDIT_PIN_TABLE_BASE::OnGroupSelected ), NULL, this );

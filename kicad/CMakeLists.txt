@@ -21,6 +21,8 @@ include_directories(
 set( KICAD_SRCS
     dialogs/dialog_destination.cpp
     dialogs/dialog_destination_base.cpp
+    dialogs/dialog_archive_job_settings.cpp
+    dialogs/dialog_archive_job_settings_base.cpp
     dialogs/dialog_copyfiles_job_settings.cpp
     dialogs/dialog_copyfiles_job_settings_base.cpp
     dialogs/dialog_executecommand_job_settings.cpp
@@ -41,6 +43,8 @@ set( KICAD_SRCS
     kicad_manager_frame.cpp
     local_history_pane.cpp
     menubar.cpp
+    mergetool_frame.cpp
+    project_downgrade.cpp
     project_template.cpp
     project_tree_pane.cpp
     project_tree.cpp
@@ -56,9 +60,18 @@ set( KICAD_SRCS
 
 set( KICAD_CLI_SRCS
     cli/command.cpp
+    project_downgrade.cpp
+    cli/command_api_server.cpp
+    cli/command_export_bom.cpp
     cli/command_jobset_run.cpp
     cli/command_pcb_export_base.cpp
+    cli/command_pcb_diff.cpp
     cli/command_pcb_drc.cpp
+    cli/command_mergetool.cpp
+    cli/command_git_mergedriver.cpp
+    cli/command_fp_diff.cpp
+    cli/command_sym_diff.cpp
+    cli/command_sch_diff.cpp
     cli/command_pcb_render.cpp
     cli/command_pcb_export_3d.cpp
     cli/command_pcb_export_drill.cpp
@@ -66,27 +79,40 @@ set( KICAD_CLI_SRCS
     cli/command_pcb_export_gerber.cpp
     cli/command_pcb_export_gerbers.cpp
     cli/command_pcb_export_gencad.cpp
+    cli/command_pcb_export_specctra.cpp
     cli/command_pcb_export_hpgl.cpp
     cli/command_pcb_export_ipc2581.cpp
     cli/command_pcb_export_ipcd356.cpp
+    cli/command_pcb_export_idf.cpp
     cli/command_pcb_export_odb.cpp
     cli/command_pcb_export_pdf.cpp
+    cli/command_pcb_export_png.cpp
     cli/command_pcb_export_pos.cpp
     cli/command_pcb_export_ps.cpp
     cli/command_pcb_export_stats.cpp
+    cli/command_pcb_export_stackup.cpp
     cli/command_pcb_export_svg.cpp
     cli/command_pcb_upgrade.cpp
+    cli/command_pcb_downgrade.cpp
+    cli/command_project_downgrade.cpp
     cli/command_pcb_import.cpp
+    cli/command_sch_import.cpp
+    cli/command_import.cpp
     cli/command_fp_export_svg.cpp
     cli/command_fp_upgrade.cpp
+    cli/command_fp_downgrade.cpp
     cli/command_sch_upgrade.cpp
-    cli/command_sch_export_bom.cpp
+    cli/command_sch_downgrade.cpp
     cli/command_sch_export_pythonbom.cpp
     cli/command_sch_export_netlist.cpp
     cli/command_sch_export_plot.cpp
     cli/command_sch_erc.cpp
     cli/command_sym_export_svg.cpp
     cli/command_sym_upgrade.cpp
+    cli/command_sym_downgrade.cpp
+    cli/command_gerber_info.cpp
+    cli/command_gerber_convert_png.cpp
+    cli/command_gerber_diff.cpp
     cli/command_version.cpp
 
     jobs_runner.cpp
@@ -110,7 +136,7 @@ if( APPLE )
         MACOSX_PACKAGE_LOCATION Resources
         )
     set( MACOSX_BUNDLE_ICON_FILE kicad.icns )
-    set( MACOSX_BUNDLE_GUI_IDENTIFIER org.kicad.kicad )
+    set( MACOSX_BUNDLE_GUI_IDENTIFIER ${KICAD_BUNDLE_ID} )
     set( MACOSX_BUNDLE_NAME kicad )
 endif()
 
@@ -149,6 +175,7 @@ if( UNIX )
         COMMAND ${CMAKE_COMMAND} -E create_symlink "${CMAKE_BINARY_DIR}/eeschema/_eeschema.kiface" "${CMAKE_BINARY_DIR}/kicad/_eeschema.kiface"
         COMMAND ${CMAKE_COMMAND} -E create_symlink "${CMAKE_BINARY_DIR}/pcbnew/_pcbnew.kiface" "${CMAKE_BINARY_DIR}/kicad/_pcbnew.kiface"
         COMMAND ${CMAKE_COMMAND} -E create_symlink "${CMAKE_BINARY_DIR}/cvpcb/_cvpcb.kiface" "${CMAKE_BINARY_DIR}/kicad/_cvpcb.kiface"
+        COMMAND ${CMAKE_COMMAND} -E create_symlink "${CMAKE_BINARY_DIR}/gerbview/_gerbview.kiface" "${CMAKE_BINARY_DIR}/kicad/_gerbview.kiface"
         COMMENT "Making <build-dir>/kicad/<kiface.symlinks>"
         )
 endif()
@@ -237,24 +264,15 @@ if( APPLE )
 
     set( SPICE_HELPER "1" )
 
-    if( PYTHON_FRAMEWORK )
-        set( PYTHON_FRAMEWORK_HELPER "1" )
-    else()
-        set( PYTHON_FRAMEWORK_HELPER "0" )
-    endif()
-
-    set_target_properties( kicad PROPERTIES BUILD_RPATH ${PYTHON_FRAMEWORK} )
     set_target_properties( kicad PROPERTIES INSTALL_RPATH
-            "@executable_path/../Frameworks;@executable_path/../Frameworks/Python.framework" )
-    set_target_properties( kicad-cli PROPERTIES BUILD_RPATH ${PYTHON_FRAMEWORK} )
+            "@executable_path/../Frameworks" )
     set_target_properties( kicad-cli PROPERTIES INSTALL_RPATH
-            "@executable_path/../Frameworks;@executable_path/../Frameworks/Python.framework" )
+            "@executable_path/../Frameworks" )
 
     install( CODE "
         set( KICAD_CMAKE_MODULE_PATH \"${KICAD_CMAKE_MODULE_PATH}\" )
         set( OSX_BUNDLE_INSTALL_BIN_DIR \"${OSX_BUNDLE_INSTALL_BIN_DIR}\" )
         set( OSX_BUNDLE_INSTALL_LIB_DIR \"${OSX_BUNDLE_INSTALL_LIB_DIR}\" )
-        set( PYTHON_FRAMEWORK \"${PYTHON_FRAMEWORK}\" )
     " )
 
     install( CODE [[
@@ -265,11 +283,15 @@ if( APPLE )
             ""
             ""
             )
-
-        # Now install Python framework properly (GET_RUNTIME_DEPENDENCIES can't do this)
-        execute_process( COMMAND rm ${OSX_BUNDLE_INSTALL_LIB_DIR}/Python )
-        execute_process( COMMAND cp -RP ${PYTHON_FRAMEWORK} ${OSX_BUNDLE_INSTALL_LIB_DIR}/ )
     ]] )
+
+    if( KICAD_USE_SENTRY )
+        install( FILES $<TARGET_FILE:crashpad_handler>
+            DESTINATION ${OSX_BUNDLE_INSTALL_BIN_DIR}
+            PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+            COMPONENT binary
+            )
+    endif()
 
     # move all individual app bundles into main bundle
     install( CODE "
@@ -289,19 +311,17 @@ if( APPLE )
         endfunction( move_to_main_bundle )
 
         # move all app bundles
-        move_to_main_bundle( \"bitmap2component.app\" \"Image Converter.app\" )
         move_to_main_bundle( \"eeschema.app\" \"Schematic Editor.app\" )
         move_to_main_bundle( \"gerbview.app\" \"GerbView.app\" )
         move_to_main_bundle( \"pcb_calculator.app\" \"PCB Calculator.app\" )
         move_to_main_bundle( \"pcbnew.app\" \"PCB Editor.app\" )
         move_to_main_bundle( \"pl_editor.app\" \"Page Layout Editor.app\" )
 
-        cmake_policy( SET CMP0012 NEW )
-        if ( ${PYTHON_FRAMEWORK_HELPER} AND ${KICAD_APPLE_MAKE_RELOCATEABLE_BUNDLE} )
-            message( STATUS \"Making the finished bundle relocateable...\" )
-            include( ${KICAD_CMAKE_MODULE_PATH}/InstallSteps/RefixupMacOS.cmake )
-            refix_kicad_bundle( ${OSX_BUNDLE_INSTALL_DIR} )
-        endif( )
+        if( ${KICAD_USE_SENTRY} )
+            file( REMOVE_RECURSE ${OSX_BUNDLE_INSTALL_BIN_DIR}/crashpad_handler.dSYM )
+            file( REMOVE_RECURSE ${KICAD_BIN}/bin )
+            file( REMOVE_RECURSE ${KICAD_BIN}/lib )
+        endif()
 
         " COMPONENT Runtime
         )

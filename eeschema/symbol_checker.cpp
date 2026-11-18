@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <vector>
@@ -86,8 +82,7 @@ void CheckDuplicatePins( LIB_SYMBOL* aSymbol, std::vector<wxString>& aMessages, 
             continue;
 
         // Pins are not duplicated only if they are in different body styles
-        // (but GetBodyStyle() == 0 means common to all body styles)
-        if( prev.pin->GetBodyStyle() != 0 && next.pin->GetBodyStyle() != 0 )
+        if( prev.pin->GetBodyStyle() != ALL_BODY_STYLES && next.pin->GetBodyStyle() != ALL_BODY_STYLES )
         {
             if( prev.pin->GetBodyStyle() != next.pin->GetBodyStyle() )
                 continue;
@@ -117,7 +112,7 @@ void CheckDuplicatePins( LIB_SYMBOL* aSymbol, std::vector<wxString>& aMessages, 
 
         if( aSymbol->IsMultiBodyStyle() && next.pin->GetBodyStyle() )
         {
-            if( prev.pin->GetUnit() == 0 || next.pin->GetUnit() == 0 )
+            if( prev.pin->GetUnit() == ALL_UNITS || next.pin->GetUnit() == ALL_UNITS )
             {
                 msg.Printf( _( "<b>Duplicate pin %s</b> %s at location <b>(%s, %s)</b>"
                                " conflicts with pin %s%s at location <b>(%s, %s)</b>"
@@ -152,7 +147,7 @@ void CheckDuplicatePins( LIB_SYMBOL* aSymbol, std::vector<wxString>& aMessages, 
         }
         else
         {
-            if( prev.pin->GetUnit() == 0 || next.pin->GetUnit() == 0 )
+            if( prev.pin->GetUnit() == ALL_UNITS || next.pin->GetUnit() == ALL_UNITS )
             {
                 msg.Printf( _( "<b>Duplicate pin %s</b> %s at location <b>(%s, %s)</b>"
                                " conflicts with pin %s%s at location <b>(%s, %s)</b>." ),
@@ -261,27 +256,35 @@ void CheckLibSymbol( LIB_SYMBOL* aSymbol, std::vector<wxString>& aMessages,
             aMessages.push_back( msg );
         }
 
-        if( pinList.size() != 1 )
+        if( pinList.size() == 0 )
         {
-            msg.Printf( _( "<b>A Power Symbol should have only one pin</b><br><br>" ) );
+            msg.Printf( _( "<b>A Power Symbol should have exactly one pin</b><br><br>" ) );
             aMessages.push_back( msg );
         }
-
-        SCH_PIN* pin = pinList[0];
-
-        if( pin->GetType() != ELECTRICAL_PINTYPE::PT_POWER_IN
-                && pin->GetType() != ELECTRICAL_PINTYPE::PT_POWER_OUT )
+        else
         {
-            msg.Printf( _( "<b>Suspicious Power Symbol</b><br>"
-                           "Only an input or output power pin has meaning<br><br>" ) );
-            aMessages.push_back( msg );
-        }
+            if( pinList.size() > 1 )
+            {
+                msg.Printf( _( "<b>A Power Symbol should have only one pin</b><br><br>" ) );
+                aMessages.push_back( msg );
+            }
 
-        if( pin->GetType() == ELECTRICAL_PINTYPE::PT_POWER_IN && !pin->IsVisible() )
-        {
-            msg.Printf( _( "<b>Suspicious Power Symbol</b><br>"
-                           "Invisible input power pins are no longer required<br><br>" ) );
-            aMessages.push_back( msg );
+            SCH_PIN* pin = pinList[0];
+
+            if( pin->GetType() != ELECTRICAL_PINTYPE::PT_POWER_IN
+                    && pin->GetType() != ELECTRICAL_PINTYPE::PT_POWER_OUT )
+            {
+                msg.Printf( _( "<b>Suspicious Power Symbol</b><br>"
+                               "Only an input or output power pin has meaning<br><br>" ) );
+                aMessages.push_back( msg );
+            }
+
+            if( pin->GetType() == ELECTRICAL_PINTYPE::PT_POWER_IN && !pin->IsVisible() )
+            {
+                msg.Printf( _( "<b>Suspicious Power Symbol</b><br>"
+                               "Invisible input power pins are no longer required<br><br>" ) );
+                aMessages.push_back( msg );
+            }
         }
     }
 
@@ -462,6 +465,31 @@ void CheckLibSymbolGraphics( LIB_SYMBOL* aSymbol, std::vector<wxString>& aMessag
 
         case SHAPE_T::BEZIER:
             break;
+
+        case SHAPE_T::ELLIPSE:
+        case SHAPE_T::ELLIPSE_ARC:
+            if( shape->GetEllipseMajorRadius() <= 0 || shape->GetEllipseMinorRadius() <= 0 )
+            {
+                msg.Printf( _( "<b>Graphic ellipse has null or negative radii</b> at location "
+                               "<b>(%s, %s)</b>." ),
+                            aUnitsProvider->MessageTextFromValue( shape->GetPosition().x ),
+                            aUnitsProvider->MessageTextFromValue( -shape->GetPosition().y ) );
+                msg += wxT( "<br>" );
+                aMessages.push_back( msg );
+            }
+
+            if( shape->GetShape() == SHAPE_T::ELLIPSE_ARC
+                && shape->GetEllipseStartAngle() == shape->GetEllipseEndAngle() )
+            {
+                msg.Printf( _( "<b>Graphic elliptical arc has zero sweep</b> at location "
+                               "<b>(%s, %s)</b>." ),
+                            aUnitsProvider->MessageTextFromValue( shape->GetPosition().x ),
+                            aUnitsProvider->MessageTextFromValue( -shape->GetPosition().y ) );
+                msg += wxT( "<br>" );
+                aMessages.push_back( msg );
+            }
+            break;
+
 
         default:
             UNIMPLEMENTED_FOR( shape->SHAPE_T_asString() );

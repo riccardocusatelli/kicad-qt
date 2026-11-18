@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PCB_NETLIST_H
@@ -30,11 +26,14 @@
 #include <wx/arrstr.h>
 #include <json_common.h>
 #include <unordered_set>
+#include <set>
+#include <map>
 
 #include <kiid.h>
 #include <lib_id.h>
 #include <ctl_flags.h>
 #include <case_insensitive_map.h>
+#include <jumper_group.h>
 
 
 class REPORTER;
@@ -87,15 +86,26 @@ typedef std::vector< COMPONENT_NET > COMPONENT_NETS;
 
 struct NETLIST_GROUP
 {
+    /**
+     * @param aUuid is the group's uuid as the netlist declares it, either an instance path or a
+     *              bare uuid.  It fixes both #path and #uuid, which have to agree.
+     */
+    NETLIST_GROUP( const wxString& aName, const wxString& aUuid, const LIB_ID& aLibId,
+                   std::vector<KIID_PATH> aMembers );
+
     wxString name;
+
+    // The group's identity on the board
     KIID uuid;
+
     LIB_ID            libId;
+
+    // The path other items use to refer to this group (sheet path + group uuid)
+    KIID_PATH path;
 
     // Full instance paths of the member symbols (sheet path + symbol uuid)
     std::vector<KIID_PATH> members;
 };
-
-typedef boost::ptr_vector< NETLIST_GROUP > NETLIST_GROUPS;
 
 
 struct COMPONENT_VARIANT
@@ -211,8 +221,8 @@ public:
     bool GetDuplicatePadNumbersAreJumpers() const { return m_duplicatePadNumbersAreJumpers; }
     void SetDuplicatePadNumbersAreJumpers( bool aEnabled ) { m_duplicatePadNumbersAreJumpers = aEnabled; }
 
-    std::vector<std::set<wxString>>& JumperPadGroups() { return m_jumperPadGroups; }
-    const std::vector<std::set<wxString>>& JumperPadGroups() const { return m_jumperPadGroups; }
+    JUMPER_GROUP_SET&       JumperPadGroups() { return m_jumperPadGroups; }
+    const JUMPER_GROUP_SET& JumperPadGroups() const { return m_jumperPadGroups; }
 
     NETLIST_GROUP* GetGroup() const { return m_group; }
     void SetGroup( NETLIST_GROUP* aGroup ) { m_group = aGroup; }
@@ -258,12 +268,12 @@ private:
     /// The #LIB_ID of the footprint assigned to the component.
     LIB_ID                       m_fpid;
 
-    /// The alt LIB_ID of the footprint, when there are 2 different assigned footprints,
+    /// The alt #LIB_ID of the footprint, when there are 2 different assigned footprints,
     /// One from the netlist, the other from the .cmp file.
     /// this one is a copy of the netlist footprint assignment
     LIB_ID                       m_altFpid;
 
-    /// The #FOOTPRINT loaded for #m_FPID.
+    /// The #FOOTPRINT loaded for #m_fpid.
     std::unique_ptr<FOOTPRINT>   m_footprint;
 
     /// Component-specific properties found in the netlist.
@@ -276,7 +286,7 @@ private:
     std::unordered_set<wxString> m_componentClassNames;
 
     /// Jumper pad groups for this footprint
-    std::vector<std::set<wxString>> m_jumperPadGroups;
+    JUMPER_GROUP_SET m_jumperPadGroups;
 
     /// Flag that this footprint should automatically treat sets of two or more pads with the same
     /// number as jumpered pin groups
@@ -292,9 +302,6 @@ private:
 
     CASE_INSENSITIVE_MAP<COMPONENT_VARIANT> m_variants;
 };
-
-
-typedef boost::ptr_vector< COMPONENT > COMPONENTS;
 
 
 /**
@@ -318,7 +325,18 @@ public:
     /**
      * Remove all components from the netlist.
      */
-    void Clear() { m_components.clear(); }
+    void Clear()
+    {
+        m_components.clear();
+        m_groups.clear();
+        m_netSignals.clear();
+        m_netChainTerminals.clear();
+        m_netChainNetClasses.clear();
+        m_netChainColors.clear();
+        m_signalChainClasses.clear();
+        m_variantNames.clear();
+        m_variantDescriptions.clear();
+    }
 
     /**
      * @return the number of components in the netlist.
@@ -351,6 +369,84 @@ public:
      */
     void AddGroup( NETLIST_GROUP* aGroup );
 
+    void SetNetChainFor( const wxString& aNet, const wxString& aNetChain )
+    {
+        m_netSignals[aNet] = aNetChain;
+    }
+
+    void AddSignalTerminalPin( const wxString& aNetChain, const wxString& aRef, const wxString& aPin )
+    {
+        m_netChainTerminals[aNetChain].emplace_back( aRef, aPin );
+    }
+
+    const std::vector<std::pair<wxString, wxString>>& GetNetChainTerminals( const wxString& aNetChain ) const
+    {
+        static const std::vector<std::pair<wxString, wxString>> empty;
+        auto it = m_netChainTerminals.find( aNetChain );
+        return it != m_netChainTerminals.end() ? it->second : empty;
+    }
+
+    const std::map<wxString, std::vector<std::pair<wxString, wxString>>>& GetNetChainTerminalPins() const
+    {
+        return m_netChainTerminals;
+    }
+
+    wxString GetNetChainFor( const wxString& aNet ) const
+    {
+        auto it = m_netSignals.find( aNet );
+        return it != m_netSignals.end() ? it->second : wxString();
+    }
+
+    void SetSignalNetClass( const wxString& aNetChain, const wxString& aNetClass )
+    {
+        m_netChainNetClasses[aNetChain] = aNetClass;
+    }
+
+    wxString GetSignalNetClass( const wxString& aNetChain ) const
+    {
+        auto it = m_netChainNetClasses.find( aNetChain );
+        return it != m_netChainNetClasses.end() ? it->second : wxString();
+    }
+
+    const std::map<wxString, wxString>& GetNetChainNetClasses() const
+    {
+        return m_netChainNetClasses;
+    }
+
+    /// Stored as a \#RRGGBB or \#RRGGBBAA string; empty means "no override".
+    void SetSignalColor( const wxString& aNetChain, const wxString& aColor )
+    {
+        m_netChainColors[aNetChain] = aColor;
+    }
+
+    wxString GetSignalColor( const wxString& aNetChain ) const
+    {
+        auto it = m_netChainColors.find( aNetChain );
+        return it != m_netChainColors.end() ? it->second : wxString();
+    }
+
+    const std::map<wxString, wxString>& GetNetChainColors() const
+    {
+        return m_netChainColors;
+    }
+
+    /// Net chain class assignment carried through the netlist for downstream tools.
+    void SetSignalChainClass( const wxString& aNetChain, const wxString& aClass )
+    {
+        m_signalChainClasses[aNetChain] = aClass;
+    }
+
+    wxString GetSignalChainClass( const wxString& aNetChain ) const
+    {
+        auto it = m_signalChainClasses.find( aNetChain );
+        return it != m_signalChainClasses.end() ? it->second : wxString();
+    }
+
+    const std::map<wxString, wxString>& GetSignalChainClasses() const
+    {
+        return m_signalChainClasses;
+    }
+
     /**
      * @brief Return a #NETLIST_GROUP by \a aUuid.
      *
@@ -359,6 +455,24 @@ public:
      * @return a pointer to the #NETLIST_GROUP that matches \a aUuid if found.  Otherwise NULL.
      */
     NETLIST_GROUP* GetGroupByUuid( const KIID& aUuid );
+
+    /**
+     * @brief Return a #NETLIST_GROUP by \a aPath.
+     *
+     * @param aPath is the KIID_PATH [ sheetUUID, .., groupUUID ] the group was declared with.
+     *
+     * @return a pointer to the #NETLIST_GROUP that matches \a aPath if found.  Otherwise NULL.
+     */
+    NETLIST_GROUP* GetGroupByPath( const KIID_PATH& aPath );
+
+    /**
+     * @brief Return the #NETLIST_GROUP that lists \a aMemberPath among its members.
+     *
+     * @param aMemberPath is the KIID_PATH of a symbol or of a nested group.
+     *
+     * @return a pointer to the #NETLIST_GROUP holding \a aMemberPath if found. Otherwise NULL.
+     */
+    NETLIST_GROUP* GetParentGroup( const KIID_PATH& aMemberPath );
 
     /**
      * After groups and components are parsed, apply the group memberships to the
@@ -483,8 +597,13 @@ public:
     }
 
 private:
-    COMPONENTS m_components;          // Components found in the netlist.
-    NETLIST_GROUPS m_groups;          // Groups found in the netlist.
+    boost::ptr_vector<COMPONENT>     m_components;          // Components found in the netlist.
+    boost::ptr_vector<NETLIST_GROUP> m_groups;              // Groups found in the netlist.
+    std::map<wxString, wxString>     m_netSignals;
+    std::map<wxString, std::vector<std::pair<wxString, wxString>>> m_netChainTerminals;
+    std::map<wxString, wxString>     m_netChainNetClasses;
+    std::map<wxString, wxString>     m_netChainColors;
+    std::map<wxString, wxString>     m_signalChainClasses;
 
     std::vector<wxString>            m_variantNames;         // Variant names in order.
     std::map<wxString, wxString>     m_variantDescriptions;  // Variant descriptions.

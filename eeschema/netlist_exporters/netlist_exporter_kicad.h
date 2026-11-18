@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef NETLIST_EXPORTER_KICAD_H
@@ -37,8 +33,8 @@ class OUTPUTFORMATTER;
 class NETLIST_EXPORTER_KICAD : public NETLIST_EXPORTER_XML
 {
 public:
-    NETLIST_EXPORTER_KICAD( SCHEMATIC* aSchematic ) :
-            NETLIST_EXPORTER_XML( aSchematic )
+    NETLIST_EXPORTER_KICAD( SCHEMATIC* aSchematic, KIWAY* aKiway ) :
+            NETLIST_EXPORTER_XML( aSchematic, aKiway )
     {}
 
     /**
@@ -47,7 +43,7 @@ public:
      * Generate the KiCad netlist format supported by Pcbnew. It is basically the XML netlist
      * just formatted slightly different.
      */
-    bool WriteNetlist( const wxString& aOutFileName, unsigned aNetlistOptions,
+    bool writeNetlist( const wxString& aOutFileName, unsigned aNetlistOptions,
                        REPORTER& aReporter ) override;
 
     /**

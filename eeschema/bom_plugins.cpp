@@ -16,16 +16,14 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "bom_plugins.h"
 #include <config.h>
 #include <paths.h>
+#include <pgm_base.h>
+#include <settings/common_settings.h>
 #include <wx/ffile.h>
 #include <wx/log.h>
 #include <core/ki_log.h>
@@ -54,6 +52,8 @@ BOM_GENERATOR_HANDLER::BOM_GENERATOR_HANDLER( const wxString& aFile )
     m_name = m_file.GetName();
     wxString extension = m_file.GetExt().Lower();
 
+    wxString python = Pgm().GetCommonSettings()->m_Api.python_interpreter;
+
     // Important note:
     // On Windows the right command command to run a python script is:
     // python <script_path>/script.py
@@ -69,38 +69,18 @@ BOM_GENERATOR_HANDLER::BOM_GENERATOR_HANDLER( const wxString& aFile )
     else if( extension == wxS( "py" ) )
     {
         m_info = readHeader( wxS( "\"\"\"" ) );
+
 #ifdef __WINDOWS__
-        m_cmd = wxString::Format( "python \"%s/%s\" \"%%I\" \"%%O%s\"",
+        m_cmd = wxString::Format( "\"%s\" \"%s/%s\" \"%%I\" \"%%O%s\"",
+                                  python,
                                   m_file.GetPath(),
                                   m_file.GetFullName(),
                                   getOutputExtension( m_info ) );
 #else
-// For macOS, we want to use the Python we bundle along, rather than just PYTHON_EXECUTABLE.
-// For non-Windows, non-macOS, we can call out to PYTHON_EXECUTABLE.
-#ifdef __WXMAC__ // PATHS of the macOS bundle (not in the build without wxWidgets)
-        // python is at Contents/Frameworks/Python.framework/Versions/Current/bin/python3
+        wxString interpreter = wxString::FromUTF8Unchecked( python );
 
-        // Of course, for macOS, it's not quite that simple, since the relative path
-        // will depend on if we are in standalone mode or not.
-
-        // (If we're going to call out to python like this in other places, we probably want to
-        // think about pulling this into PATHS.)
-
-        wxFileName python( PATHS::GetOSXKicadDataDir(), wxEmptyString );
-        python.RemoveLastDir();
-        python.AppendDir( wxT( "Frameworks" ) );
-        python.AppendDir( wxT( "Python.framework" ) );
-        python.AppendDir( wxT( "Versions" ) );
-        python.AppendDir( wxT( "Current" ) );
-        python.AppendDir( wxT( "bin" ) );
-        python.SetFullName(wxT( "python3" ) );
-
-        wxString interpreter = python.GetFullPath();
-#else
-        wxString interpreter = wxString::FromUTF8Unchecked( PYTHON_EXECUTABLE );
-#endif
         if( interpreter.IsEmpty() )
-            interpreter = wxT( "python" ); // For macOS, should we log here? Error here?
+            interpreter = wxT( "python" );
 
         m_cmd = wxString::Format( "%s \"%s\" \"%%I\" \"%%O%s\"",
                                   interpreter,
@@ -111,8 +91,10 @@ BOM_GENERATOR_HANDLER::BOM_GENERATOR_HANDLER( const wxString& aFile )
 #ifdef __WINDOWS__
     else if( extension == wxS( "pyw" ) )
     {
+        python.Replace( "python.exe", "pythonw.exe" );
         m_info = readHeader( wxS( "\"\"\"" ) );
-        m_cmd = wxString::Format( wxS( "pythonw \"%s/%s\" \"%%I\" \"%%O%s\"" ),
+        m_cmd = wxString::Format( wxS( "\"%s\" \"%s/%s\" \"%%I\" \"%%O%s\"" ),
+                                  python,
                                   m_file.GetPath(),
                                   m_file.GetFullName(),
                                   getOutputExtension( m_info ) );

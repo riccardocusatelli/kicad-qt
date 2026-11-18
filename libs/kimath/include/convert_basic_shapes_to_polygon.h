@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef CONVERT_BASIC_SHAPES_TO_POLYGON_H
@@ -55,7 +51,7 @@ enum RECT_CHAMFER_POSITIONS : int
  * @param aRadius is the radius of the arc.
  * @param aStartAngleDeg is the starting point of the arc.
  * @param aArcAngleDeg is the angle of the arc.
- * @param aError is the internal units allowed for error approximation.
+ * @param aAccuracy is the internal units allowed for error approximation.
  * @param aErrorLoc determines if the approximation error be placed outside or inside the polygon.
  */
 int ConvertArcToPolyline( SHAPE_LINE_CHAIN& aPolyline, VECTOR2I aCenter, int aRadius,
@@ -71,6 +67,7 @@ int ConvertArcToPolyline( SHAPE_LINE_CHAIN& aPolyline, VECTOR2I aCenter, int aRa
  * @param aEnd is the end point of the arc.
  * @param aAccuracy is the internal units allowed for error approximation.
  * @param aErrorLoc determines if the approximation error be placed outside or inside the polygon.
+ * @param aRadialOffset
  */
 int ConvertArcToPolyline( SHAPE_LINE_CHAIN& aPolyline, const VECTOR2I& aStart,
                           const VECTOR2I& aMid, const VECTOR2I& aEnd, double aAccuracy,
@@ -134,9 +131,10 @@ void TransformOvalToPolygon( SHAPE_POLY_SET& aBuffer, const VECTOR2I& aStart, co
  * @param aBuffer is a buffer to store the polygon.
  * @param aPosition is the coordinate of the center of the rectangle.
  * @param aSize is the size of the rectangle.
- * @param aDeltaX is the delta for trapezoids in X direction
- * @param aDeltaY is the delta for trapezoids in Y direction
- * @param aInflate is the (positive) shape inflation or 0
+ * @param aRotation is the rotation angle of the trapezoid.
+ * @param aDeltaX is the delta for trapezoids in X direction.
+ * @param aDeltaY is the delta for trapezoids in Y direction.
+ * @param aInflate is the (positive) shape inflation or 0.
  * @param aError is the IU allowed for error in approximation.
  * @param aErrorLoc determines if the approximation error be placed outside or inside the polygon.
  */
@@ -177,9 +175,9 @@ void TransformRoundChamferedRectToPolygon( SHAPE_POLY_SET& aBuffer, const VECTOR
  * Convert arc to multiple straight segments.
  *
  * @param aBuffer is a buffer to store the polygon.
- * @param aCentre is the center of the arc or circle.
  * @param aStart is the start point of the arc or a point on the circle.
- * @param aArcAngle is the arc angle in 0.1 degrees. For a circle, aArcAngle = 3600.
+ * @param aMid is the mid point of the arc.
+ * @param aEnd is the end point of the arc.
  * @param aWidth is the width (thickness) of the line.
  * @param aError is the internal units allowed for error in approximation.
  * @param aErrorLoc determines if the approximation error be placed outside or inside the polygon.

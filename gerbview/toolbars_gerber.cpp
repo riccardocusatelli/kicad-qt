@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <wx/wupdlock.h>
@@ -75,8 +75,11 @@ std::optional<TOOLBAR_CONFIGURATION> GERBVIEW_TOOLBAR_SETTINGS::DefaultToolbarCo
         config.AppendSeparator()
               .AppendAction( GERBVIEW_ACTIONS::toggleForceOpacityMode )
               .AppendAction( GERBVIEW_ACTIONS::toggleXORMode )
-              .AppendAction( ACTIONS::highContrastMode )
-              .AppendAction( GERBVIEW_ACTIONS::flipGerberView );
+              .AppendAction( GERBVIEW_ACTIONS::flipGerberView )
+              .AppendGroup( TOOLBAR_GROUP_CONFIG( _( "Inactive Layer View Mode" ) )
+                            .AddAction( GERBVIEW_ACTIONS::showInactiveLayers )
+                            .AddAction( GERBVIEW_ACTIONS::dimInactiveLayers )
+                            .AddAction( GERBVIEW_ACTIONS::hideInactiveLayers ) );
 
         config.AppendSeparator()
               .AppendAction( GERBVIEW_ACTIONS::toggleLayerManager );
@@ -337,6 +340,9 @@ ACTION_TOOLBAR_CONTROL GERBVIEW_ACTION_TOOLBAR_CONTROLS::dcodeSelector( "control
 
 void GERBVIEW_FRAME::updateDCodeSelectBox()
 {
+    if( !m_DCodeSelector )
+        return;
+
     m_DCodeSelector->Clear();
 
     // Add an empty string to deselect net highlight

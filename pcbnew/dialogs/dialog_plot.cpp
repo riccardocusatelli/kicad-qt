@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "dialog_plot.h"
@@ -54,10 +50,13 @@
 #include <jobs/job_export_pcb_hpgl.h>
 #include <jobs/job_export_pcb_dxf.h>
 #include <jobs/job_export_pcb_pdf.h>
+#include <jobs/job_export_pcb_png.h>
 #include <jobs/job_export_pcb_ps.h>
 #include <jobs/job_export_pcb_svg.h>
 #include <plotters/plotters_pslike.h>
 #include <pcb_plotter.h>
+#include <settings/color_settings.h>
+#include <settings/settings_manager.h>
 
 
 LSEQ DIALOG_PLOT::s_lastAllLayersOrder;
@@ -151,11 +150,18 @@ DIALOG_PLOT::DIALOG_PLOT( PCB_EDIT_FRAME* aEditFrame, wxWindow* aParent, JOB_EXP
     {
         m_plotOpts = m_editFrame->GetPlotSettings();
         m_messagesPanel->SetFileName( Prj().GetProjectPath() + wxT( "report.txt" ) );
+        m_allCopperLayers->Hide();
+
+        // Only plot jobs carry these, the board plot settings do not store them
+        m_plotFootprintValues->Hide();
+        m_plotRefDes->Hide();
     }
 
     // DIALOG_SHIM needs a unique hash_key because classname will be the same for both job and
     // non-job versions.
     m_hash_key = TO_UTF8( GetTitle() );
+
+    populateColorThemeSelector();
 
     m_variantChoiceCtrl->Append( board->GetVariantNamesForUI() );
     m_variantChoiceCtrl->SetSelection( 0 );
@@ -282,6 +288,91 @@ DIALOG_PLOT::~DIALOG_PLOT()
 }
 
 
+void DIALOG_PLOT::populateColorThemeSelector()
+{
+    m_colorTheme->Clear();
+
+    for( COLOR_SETTINGS* settings : Pgm().GetSettingsManager().GetColorSettingsList() )
+        m_colorTheme->Append( settings->GetName(), static_cast<void*>( settings ) );
+}
+
+
+void DIALOG_PLOT::setColorThemeSelection( const wxString& aTheme )
+{
+    wxString target = aTheme;
+
+    if( target.IsEmpty() )
+    {
+        PCBNEW_SETTINGS* cfg = GetAppSettings<PCBNEW_SETTINGS>( "pcbnew" );
+        target = cfg ? cfg->m_ColorTheme : DEFAULT_THEME;
+    }
+
+    for( int ii = 0; ii < (int) m_colorTheme->GetCount(); ++ii )
+    {
+        COLOR_SETTINGS* settings = static_cast<COLOR_SETTINGS*>( m_colorTheme->GetClientData( ii ) );
+
+        if( settings && ( settings->GetFilename() == target || settings->GetName().Lower() == target.Lower() ) )
+        {
+            m_colorTheme->SetSelection( ii );
+            return;
+        }
+    }
+
+    if( m_colorTheme->GetCount() > 0 )
+        m_colorTheme->SetSelection( 0 );
+}
+
+
+COLOR_SETTINGS* DIALOG_PLOT::getEditorColorSettings() const
+{
+    PCBNEW_SETTINGS* cfg = GetAppSettings<PCBNEW_SETTINGS>( "pcbnew" );
+    return ::GetColorSettings( cfg ? cfg->m_ColorTheme : DEFAULT_THEME );
+}
+
+
+COLOR_SETTINGS* DIALOG_PLOT::getColorSettings() const
+{
+    int selection = m_colorTheme->GetSelection();
+
+    if( selection >= 0 && selection < (int) m_colorTheme->GetCount() )
+    {
+        if( COLOR_SETTINGS* settings = static_cast<COLOR_SETTINGS*>( m_colorTheme->GetClientData( selection ) ) )
+        {
+            return settings;
+        }
+    }
+
+    return getEditorColorSettings();
+}
+
+
+bool DIALOG_PLOT::formatUsesColorTheme()
+{
+    switch( getPlotFormat() )
+    {
+    case PLOT_FORMAT::SVG:
+    case PLOT_FORMAT::PDF:
+    case PLOT_FORMAT::PNG: return true;
+
+    default: return false;
+    }
+}
+
+
+void DIALOG_PLOT::updateColorThemeControl()
+{
+    bool enable = formatUsesColorTheme();
+
+    if( getPlotFormat() == PLOT_FORMAT::SVG )
+        enable = enable && m_SVGColorChoice->GetSelection() == 0;
+    else if( getPlotFormat() == PLOT_FORMAT::PDF )
+        enable = enable && m_PDFColorChoice->GetSelection() == 0;
+
+    m_colorThemeLabel->Enable( enable );
+    m_colorTheme->Enable( enable );
+}
+
+
 bool DIALOG_PLOT::TransferDataToWindow()
 {
     BOARD*      board = m_editFrame->GetBoard();
@@ -295,6 +386,9 @@ bool DIALOG_PLOT::TransferDataToWindow()
     // Select the current board variant in the variant choice
     if( m_job )
     {
+        m_plotFootprintValues->SetValue( m_plotOpts.GetPlotValue() );
+        m_plotRefDes->SetValue( m_plotOpts.GetPlotReference() );
+
         if( !m_job->m_variant.IsEmpty() )
         {
             int idx = m_variantChoiceCtrl->FindString( m_job->m_variant );
@@ -315,6 +409,8 @@ bool DIALOG_PLOT::TransferDataToWindow()
                 m_variantChoiceCtrl->SetSelection( idx );
         }
     }
+
+    setColorThemeSelection( m_job ? m_job->m_colorTheme : wxString() );
 
     if( !m_job && !projectFile.m_PcbLastPath[ LAST_PATH_PLOT ].IsEmpty() )
         m_plotOpts.SetOutputDirectory( projectFile.m_PcbLastPath[ LAST_PATH_PLOT ] );
@@ -348,6 +444,7 @@ bool DIALOG_PLOT::TransferDataToWindow()
     case PLOT_FORMAT::DXF:    m_plotFormatOpt->SetSelection( 3 ); break;
     case PLOT_FORMAT::HPGL:   /* no longer supported */           break;
     case PLOT_FORMAT::PDF:    m_plotFormatOpt->SetSelection( 4 ); break;
+    case PLOT_FORMAT::PNG:    m_plotFormatOpt->SetSelection( 5 ); break;
     }
 
     m_plotPSNegativeOpt->SetValue( m_plotOpts.GetNegative() );
@@ -360,6 +457,18 @@ bool DIALOG_PLOT::TransferDataToWindow()
 
         if( m_plotOpts.GetLayerSelection()[layer] )
             m_layerCheckListBox->Check( checkIndex );
+    }
+
+    if( m_job )
+    {
+        // A new Gerber job starts with every copper layer, as a fabrication set needs them all
+        bool newGerberJob = m_job->m_plotFormat == JOB_EXPORT_PCB_PLOT::PLOT_FORMAT::GERBER
+                            && m_job->m_plotLayerSequence.empty();
+
+        m_allCopperLayers->SetValue( m_job->m_plotAllCopperLayers || newGerberJob );
+
+        if( m_allCopperLayers->GetValue() )
+            checkAllCopperLayers();
     }
 
     arrangeAllLayersList( s_lastAllLayersOrder );
@@ -387,6 +496,10 @@ bool DIALOG_PLOT::TransferDataToWindow()
     // SVG precision and units for coordinates
     m_svgPrecsision->SetValue( m_plotOpts.GetSvgPrecision() );
     m_SVG_fitPageToBoard->SetValue( m_plotOpts.GetSvgFitPagetoBoard() );
+
+    // PNG options
+    m_pngDPI->SetValue( m_plotOpts.GetPngDPI() );
+    m_pngAntialias->SetValue( m_plotOpts.GetPngAntialias() );
 
     m_sketchPadsOnFabLayers->SetValue( m_plotOpts.GetSketchPadsOnFabLayers() );
     m_plotPadNumbers->SetValue( m_plotOpts.GetPlotPadNumbers() );
@@ -442,7 +555,7 @@ bool DIALOG_PLOT::TransferDataToWindow()
     m_backFPPropertyPopups->SetValue( m_plotOpts.m_PDFBackFPPropertyPopups );
     m_pdfMetadata->SetValue( m_plotOpts.m_PDFMetadata );
     m_pdfSingle->SetValue( m_plotOpts.m_PDFSingle );
-    m_pdfBackgroundColorSwatch->SetSwatchColor( m_plotOpts.m_PDFBackgroundColor, false );
+    m_pdfBackgroundColorSwatch->SetSwatchColor( m_plotOpts.m_backgroundColor, false );
     updatePdfColorOptions();
 
     // Initialize a few other parameters, which can also be modified
@@ -521,6 +634,7 @@ void DIALOG_PLOT::transferPlotParamsToJob()
                                                                              : JOB_EXPORT_PCB_DXF::DXF_UNITS::MM;
         dxfJob->m_plotGraphicItemsUsingContours = m_plotOpts.GetDXFPlotMode() == DXF_OUTLINE_MODE::SKETCH;
         dxfJob->m_polygonMode = m_plotOpts.GetDXFPlotPolygonMode();
+        dxfJob->m_useKiCadFont = m_plotOpts.GetTextMode() != PLOT_TEXT_MODE::NATIVE;
         dxfJob->m_genMode = m_plotOpts.GetDXFMultiLayeredExportOption() ? JOB_EXPORT_PCB_DXF::GEN_MODE::SINGLE
                                                                         : JOB_EXPORT_PCB_DXF::GEN_MODE::MULTI;
     }
@@ -545,7 +659,7 @@ void DIALOG_PLOT::transferPlotParamsToJob()
         pdfJob->m_pdfBackFPPropertyPopups = m_plotOpts.m_PDFBackFPPropertyPopups;
         pdfJob->m_pdfMetadata = m_plotOpts.m_PDFMetadata;
         pdfJob->m_pdfSingle = m_plotOpts.m_PDFSingle;
-        pdfJob->m_pdfBackgroundColor = m_plotOpts.m_PDFBackgroundColor.ToCSSString();
+        pdfJob->m_pdfBackgroundColor = m_plotOpts.m_backgroundColor.ToCSSString();
 
         // we need to embed this for the cli deprecation fix
         if( pdfJob->m_pdfSingle )
@@ -558,6 +672,13 @@ void DIALOG_PLOT::transferPlotParamsToJob()
         }
     }
 
+    if( m_job->m_plotFormat == JOB_EXPORT_PCB_PLOT::PLOT_FORMAT::PNG )
+    {
+        JOB_EXPORT_PCB_PNG* pngJob = static_cast<JOB_EXPORT_PCB_PNG*>( m_job );
+        pngJob->m_dpi = m_plotOpts.GetPngDPI();
+        pngJob->m_antialias = m_plotOpts.GetPngAntialias();
+    }
+
     m_job->m_subtractSolderMaskFromSilk = m_plotOpts.GetSubtractMaskFromSilk();
     m_job->m_useDrillOrigin = m_plotOpts.GetUseAuxOrigin();
     m_job->m_crossoutDNPFPsOnFabLayers = m_plotOpts.GetCrossoutDNPFPsOnFabLayers();
@@ -567,12 +688,21 @@ void DIALOG_PLOT::transferPlotParamsToJob()
 
     m_job->m_plotDrawingSheet = m_plotOpts.GetPlotFrameRef();
     m_job->m_plotPadNumbers = m_plotOpts.GetPlotPadNumbers();
+    m_job->m_plotFootprintValues = m_plotOpts.GetPlotValue();
+    m_job->m_plotRefDes = m_plotOpts.GetPlotReference();
 
     m_job->m_blackAndWhite = m_plotOpts.GetBlackAndWhite();
     m_job->m_mirror = m_plotOpts.GetMirror();
     m_job->m_negative = m_plotOpts.GetNegative();
     m_job->m_plotLayerSequence = m_plotOpts.GetLayerSelection().SeqStackupForPlotting();
+    m_job->m_plotAllCopperLayers = m_allCopperLayers->GetValue() && allCopperLayersChecked();
     m_job->m_plotOnAllLayersSequence = m_plotOpts.GetPlotOnAllLayersSequence();
+
+    // An empty theme follows the PCB editor at run time, so leave it that way until the user picks one.
+    if( formatUsesColorTheme() && ( !m_job->m_colorTheme.IsEmpty() || getColorSettings() != getEditorColorSettings() ) )
+    {
+        m_job->m_colorTheme = getColorSettings()->GetFilename();
+    }
 
     if( m_job->m_plotFormat == JOB_EXPORT_PCB_PLOT::PLOT_FORMAT::SVG ||
         m_job->m_plotFormat == JOB_EXPORT_PCB_PLOT::PLOT_FORMAT::PDF )
@@ -767,6 +897,60 @@ void DIALOG_PLOT::OnRightClickLayers( wxMouseEvent& event )
             } );
 
     PopupMenu( &menu );
+
+    recordControlChange( m_layerCheckListBox );
+    syncAllCopperLayers();
+}
+
+
+void DIALOG_PLOT::checkAllCopperLayers()
+{
+    for( unsigned i = 0; i < m_layerList.size(); i++ )
+    {
+        if( IsCopperLayer( m_layerList[i] ) )
+            m_layerCheckListBox->Check( i, true );
+    }
+}
+
+
+bool DIALOG_PLOT::allCopperLayersChecked() const
+{
+    for( unsigned i = 0; i < m_layerList.size(); i++ )
+    {
+        if( IsCopperLayer( m_layerList[i] ) && !m_layerCheckListBox->IsChecked( i ) )
+            return false;
+    }
+
+    return true;
+}
+
+
+void DIALOG_PLOT::syncAllCopperLayers()
+{
+    if( m_allCopperLayers->GetValue() && !allCopperLayersChecked() )
+    {
+        m_allCopperLayers->SetValue( false );
+        recordControlChange( m_allCopperLayers );
+    }
+}
+
+
+void DIALOG_PLOT::onLayerToggled( wxCommandEvent& event )
+{
+    syncAllCopperLayers();
+    event.Skip();
+}
+
+
+void DIALOG_PLOT::onAllCopperLayers( wxCommandEvent& event )
+{
+    if( m_allCopperLayers->GetValue() )
+    {
+        checkAllCopperLayers();
+        recordControlChange( m_layerCheckListBox );
+    }
+
+    event.Skip();
 }
 
 
@@ -883,7 +1067,8 @@ PLOT_FORMAT DIALOG_PLOT::getPlotFormat()
             PLOT_FORMAT::POST,
             PLOT_FORMAT::SVG,
             PLOT_FORMAT::DXF,
-            PLOT_FORMAT::PDF };
+            PLOT_FORMAT::PDF,
+            PLOT_FORMAT::PNG };
 
     return plotFmt[m_plotFormatOpt->GetSelection()];
 }
@@ -909,6 +1094,8 @@ void DIALOG_PLOT::SetPlotFormat( wxCommandEvent& event )
         m_PlotOptionsSizer->Hide( m_SizerSolderMaskAlert );
     }
 
+    wxSizer* shownFormatSizer = nullptr;
+
     switch( getPlotFormat() )
     {
     case PLOT_FORMAT::SVG:
@@ -924,20 +1111,7 @@ void DIALOG_PLOT::SetPlotFormat( wxCommandEvent& event )
         m_forcePSA4OutputOpt->Enable( false );
         m_forcePSA4OutputOpt->SetValue( false );
 
-        if( getPlotFormat() == PLOT_FORMAT::SVG )
-        {
-            m_PlotOptionsSizer->Show( m_svgOptionsSizer );
-            m_PlotOptionsSizer->Hide( m_PDFOptionsSizer );
-        }
-        else
-        {
-            m_PlotOptionsSizer->Hide( m_svgOptionsSizer );
-            m_PlotOptionsSizer->Show( m_PDFOptionsSizer );
-        }
-
-        m_PlotOptionsSizer->Hide( m_GerberOptionsSizer );
-        m_PlotOptionsSizer->Hide( m_PSOptionsSizer );
-        m_PlotOptionsSizer->Hide( m_SizerDXF_options );
+        shownFormatSizer = ( getPlotFormat() == PLOT_FORMAT::SVG ) ? m_svgOptionsSizer : m_PDFOptionsSizer;
         break;
 
     case PLOT_FORMAT::POST:
@@ -952,11 +1126,7 @@ void DIALOG_PLOT::SetPlotFormat( wxCommandEvent& event )
         m_plotPSNegativeOpt->Enable( true );
         m_forcePSA4OutputOpt->Enable( true );
 
-        m_PlotOptionsSizer->Hide( m_GerberOptionsSizer );
-        m_PlotOptionsSizer->Show( m_PSOptionsSizer );
-        m_PlotOptionsSizer->Hide( m_SizerDXF_options );
-        m_PlotOptionsSizer->Hide( m_svgOptionsSizer );
-        m_PlotOptionsSizer->Hide( m_PDFOptionsSizer );
+        shownFormatSizer = m_PSOptionsSizer;
         break;
 
     case PLOT_FORMAT::GERBER:
@@ -975,11 +1145,7 @@ void DIALOG_PLOT::SetPlotFormat( wxCommandEvent& event )
         m_forcePSA4OutputOpt->Enable( false );
         m_forcePSA4OutputOpt->SetValue( false );
 
-        m_PlotOptionsSizer->Show( m_GerberOptionsSizer );
-        m_PlotOptionsSizer->Hide( m_PSOptionsSizer );
-        m_PlotOptionsSizer->Hide( m_SizerDXF_options );
-        m_PlotOptionsSizer->Hide( m_svgOptionsSizer );
-        m_PlotOptionsSizer->Hide( m_PDFOptionsSizer );
+        shownFormatSizer = m_GerberOptionsSizer;
         break;
 
     case PLOT_FORMAT::DXF:
@@ -996,13 +1162,23 @@ void DIALOG_PLOT::SetPlotFormat( wxCommandEvent& event )
         m_forcePSA4OutputOpt->Enable( false );
         m_forcePSA4OutputOpt->SetValue( false );
 
-        m_PlotOptionsSizer->Hide( m_GerberOptionsSizer );
-        m_PlotOptionsSizer->Hide( m_PSOptionsSizer );
-        m_PlotOptionsSizer->Show( m_SizerDXF_options );
-        m_PlotOptionsSizer->Hide( m_svgOptionsSizer );
-        m_PlotOptionsSizer->Hide( m_PDFOptionsSizer );
-
+        shownFormatSizer = m_SizerDXF_options;
         OnChangeDXFPlotMode( event );
+        break;
+
+    case PLOT_FORMAT::PNG:
+        m_drillShapeOpt->Enable( true );
+        m_plotMirrorOpt->Enable( true );
+        m_useAuxOriginCheckBox->Enable( true );
+        m_scaleOpt->Enable( true );
+        m_fineAdjustXCtrl->Enable( false );
+        m_fineAdjustYCtrl->Enable( false );
+        m_trackWidthCorrection.Enable( false );
+        m_plotPSNegativeOpt->Enable( true );
+        m_forcePSA4OutputOpt->Enable( false );
+        m_forcePSA4OutputOpt->SetValue( false );
+
+        shownFormatSizer = m_pngOptionsSizer;
         break;
 
     default:
@@ -1010,6 +1186,14 @@ void DIALOG_PLOT::SetPlotFormat( wxCommandEvent& event )
     case PLOT_FORMAT::UNDEFINED:
         break;
     }
+
+    for( wxSizer* formatSizer : { m_GerberOptionsSizer, m_PSOptionsSizer, m_SizerDXF_options,
+                                  m_svgOptionsSizer, m_PDFOptionsSizer, m_pngOptionsSizer } )
+    {
+        m_PlotOptionsSizer->Show( formatSizer, formatSizer == shownFormatSizer );
+    }
+
+    updateColorThemeControl();
 
     Layout();
     m_MainSizer->SetSizeHints( this );
@@ -1066,6 +1250,8 @@ void DIALOG_PLOT::applyPlotSettings()
     tempOptions.SetPlotFrameRef( m_plotSheetRef->GetValue() );
     tempOptions.SetSketchPadsOnFabLayers( m_sketchPadsOnFabLayers->GetValue() );
     tempOptions.SetPlotPadNumbers( m_plotPadNumbers->GetValue() );
+    tempOptions.SetPlotValue( !m_job || m_plotFootprintValues->GetValue() );
+    tempOptions.SetPlotReference( !m_job || m_plotRefDes->GetValue() );
     tempOptions.SetHideDNPFPsOnFabLayers( m_plotDNP->GetValue()
                                             && m_hideDNP->GetValue() );
     tempOptions.SetSketchDNPFPsOnFabLayers( m_plotDNP->GetValue()
@@ -1085,10 +1271,14 @@ void DIALOG_PLOT::applyPlotSettings()
     tempOptions.SetDXFPlotUnits( sel == 0 ? DXF_UNITS::INCH : DXF_UNITS::MM );
 
     if( !m_DXF_plotTextStrokeFontOpt->IsEnabled() ) // Currently, only DXF supports this option
+    {
         tempOptions.SetTextMode( PLOT_TEXT_MODE::DEFAULT );
+    }
     else
-        tempOptions.SetTextMode( m_DXF_plotTextStrokeFontOpt->GetValue() ? PLOT_TEXT_MODE::DEFAULT :
-                                                                           PLOT_TEXT_MODE::NATIVE );
+    {
+        tempOptions.SetTextMode( m_DXF_plotTextStrokeFontOpt->GetValue() ? PLOT_TEXT_MODE::DEFAULT
+                                                                         : PLOT_TEXT_MODE::NATIVE );
+    }
 
     tempOptions.SetDXFMultiLayeredExportOption( m_DXF_exportAsMultiLayeredFile->GetValue() );
 
@@ -1103,7 +1293,12 @@ void DIALOG_PLOT::applyPlotSettings()
         tempOptions.m_PDFBackFPPropertyPopups = m_backFPPropertyPopups->GetValue();
         tempOptions.m_PDFMetadata = m_pdfMetadata->GetValue();
         tempOptions.m_PDFSingle = m_pdfSingle->GetValue();
-        tempOptions.m_PDFBackgroundColor = m_pdfBackgroundColorSwatch->GetSwatchColor();
+        tempOptions.m_backgroundColor = m_pdfBackgroundColorSwatch->GetSwatchColor();
+    }
+    else if( getPlotFormat() == PLOT_FORMAT::PNG )
+    {
+        // Match the CLI default; a dedicated UI control will be added with the next .fbp regen.
+        tempOptions.SetBlackAndWhite( false );
     }
     else
     {
@@ -1160,15 +1355,25 @@ void DIALOG_PLOT::applyPlotSettings()
 
     tempOptions.SetFormat( getPlotFormat() );
 
-    tempOptions.SetDisableGerberMacros( m_disableApertMacros->GetValue() );
-    tempOptions.SetUseGerberProtelExtensions( m_useGerberExtensions->GetValue() );
-    tempOptions.SetUseGerberX2format( m_useGerberX2Format->GetValue() );
-    tempOptions.SetIncludeGerberNetlistInfo( m_useGerberNetAttributes->GetValue() );
-    tempOptions.SetCreateGerberJobFile( m_generateGerberJobFile->GetValue() );
-
-    tempOptions.SetGerberPrecision( m_coordFormatCtrl->GetSelection() == 0 ? 5 : 6 );
-    tempOptions.SetSvgPrecision( m_svgPrecsision->GetValue() );
-    tempOptions.SetSvgFitPageToBoard( m_SVG_fitPageToBoard->GetValue() );
+    if( getPlotFormat() == PLOT_FORMAT::GERBER )
+    {
+        tempOptions.SetDisableGerberMacros( m_disableApertMacros->GetValue() );
+        tempOptions.SetUseGerberProtelExtensions( m_useGerberExtensions->GetValue() );
+        tempOptions.SetUseGerberX2format( m_useGerberX2Format->GetValue() );
+        tempOptions.SetIncludeGerberNetlistInfo( m_useGerberNetAttributes->GetValue() );
+        tempOptions.SetCreateGerberJobFile( m_generateGerberJobFile->GetValue() );
+        tempOptions.SetGerberPrecision( m_coordFormatCtrl->GetSelection() == 0 ? 5 : 6 );
+    }
+    else if( getPlotFormat() == PLOT_FORMAT::SVG )
+    {
+        tempOptions.SetSvgPrecision( m_svgPrecsision->GetValue() );
+        tempOptions.SetSvgFitPageToBoard( m_SVG_fitPageToBoard->GetValue() );
+    }
+    else if( getPlotFormat() == PLOT_FORMAT::PNG )
+    {
+        tempOptions.SetPngDPI( m_pngDPI->GetValue() );
+        tempOptions.SetPngAntialias( m_pngAntialias->GetValue() );
+    }
 
     LSET selectedLayers;
 
@@ -1177,9 +1382,6 @@ void DIALOG_PLOT::applyPlotSettings()
         if( m_layerCheckListBox->IsChecked( i ) )
             selectedLayers.set( m_layerList[i] );
     }
-
-    // Get a list of copper layers that aren't being used by inverting enabled layers.
-    LSET disabledCopperLayers = LSET::AllCuMask() & ~m_editFrame->GetBoard()->GetEnabledLayers();
 
     // Add selected layers from plot on all layers list in order set by user.
     wxArrayInt plotOnAllLayers;
@@ -1200,10 +1402,9 @@ void DIALOG_PLOT::applyPlotSettings()
 
     tempOptions.SetPlotOnAllLayersSequence( commonLayers );
 
-    // Enable all of the disabled copper layers.
-    // If someone enables more copper layers they will be selected by default.
-    selectedLayers = selectedLayers | disabledCopperLayers;
-    tempOptions.SetLayerSelection( selectedLayers );
+    tempOptions.SetLayerSelection( PCB_PLOTTER::DialogLayerSelection( selectedLayers,
+                                                                      m_editFrame->GetBoard()->GetEnabledLayers(),
+                                                                      m_job != nullptr ) );
 
     tempOptions.SetNegative( m_plotPSNegativeOpt->GetValue() );
     tempOptions.SetA4Output( m_forcePSA4OutputOpt->GetValue() );
@@ -1248,9 +1449,8 @@ void DIALOG_PLOT::Plot( wxCommandEvent& event )
 
         applyPlotSettings();
 
-        PCBNEW_SETTINGS* cfg = GetAppSettings<PCBNEW_SETTINGS>( "pcbnew" );
-
-        m_plotOpts.SetColorSettings( ::GetColorSettings( cfg ? cfg->m_ColorTheme : DEFAULT_THEME ) );
+        // The formats without a selector keep plotting with the editor theme.
+        m_plotOpts.SetColorSettings( formatUsesColorTheme() ? getColorSettings() : getEditorColorSettings() );
 
         m_plotOpts.SetSketchPadLineWidth( board->GetDesignSettings().GetLineThickness( F_Fab ) );
 
@@ -1351,7 +1551,11 @@ void DIALOG_PLOT::Plot( wxCommandEvent& event )
             }
         }
 
-        pcbPlotter.Plot( outputDir.GetPath(), layersToPlot, commonLayers, m_useGerberExtensions->GetValue() );
+        bool plotAllLayersToOneFile = m_plotOpts.m_PDFSingle || m_plotOpts.GetDXFMultiLayeredExportOption();
+        bool forceAllLayersToOnePage = false;
+
+        pcbPlotter.Plot( outputDir.GetPath(), layersToPlot, commonLayers, m_plotOpts.GetUseGerberProtelExtensions(),
+                         plotAllLayersToOneFile, forceAllLayersToOnePage );
 
         board->SetCurrentVariant( oldVariant );
     }
@@ -1382,10 +1586,11 @@ void DIALOG_PLOT::onRunDRC( wxCommandEvent& event )
 
 void DIALOG_PLOT::onOpenOutputDirectory( wxCommandEvent& event )
 {
-    std::function<bool( wxString* )> textResolver = [&]( wxString* token ) -> bool
-    {
-        return m_editFrame->GetBoard()->ResolveTextVar( token, 0 );
-    };
+    std::function<bool( wxString* )> textResolver =
+            [&]( wxString* token ) -> bool
+            {
+                return m_editFrame->GetBoard()->ResolveTextVar( token, 0 );
+            };
 
     wxString path = ResolveProjectPath( m_outputDirectoryName->GetValue(), &Prj(), &textResolver );
 
@@ -1452,6 +1657,14 @@ void DIALOG_PLOT::updatePdfColorOptions()
         m_pdfBackgroundColorSwatch->Enable();
         m_pdfBackgroundColorText->Enable();
     }
+
+    updateColorThemeControl();
+}
+
+
+void DIALOG_PLOT::onSVGColorChoice( wxCommandEvent& aEvent )
+{
+    updateColorThemeControl();
 }
 
 

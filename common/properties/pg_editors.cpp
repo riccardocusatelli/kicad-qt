@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <properties/color4d_variant.h>
@@ -24,6 +24,7 @@
 #include <properties/pg_properties.h>
 #include <properties/pg_value_text.h>
 #include <widgets/color_swatch.h>
+#include <widgets/ui_common.h>
 #include <widgets/unit_binder.h>
 #include <bitmaps.h>
 #include <frame_type.h>
@@ -143,6 +144,7 @@ wxPGWindowList PG_UNIT_EDITOR::CreateControls( wxPropertyGrid* aPropGrid, wxPGPr
     else if( dynamic_cast<PGPROPERTY_ANGLE*>( aProperty ) != nullptr )
     {
         m_unitBinder->SetCoordType( ORIGIN_TRANSFORMS::NOT_A_COORD );
+        m_unitBinder->SetDataType( EDA_DATA_TYPE::ANGLE );
         m_unitBinder->SetUnits( EDA_UNITS::DEGREES );
     }
     else if( dynamic_cast<PGPROPERTY_TIME*>( aProperty ) != nullptr )
@@ -160,6 +162,15 @@ void PG_UNIT_EDITOR::UpdateControl( wxPGProperty* aProperty, wxWindow* aCtrl ) c
 {
     double       angleScale;
     PG_UNIT_KIND kind = unitKind( aProperty, &angleScale );
+
+    // Shown as a mix, not blank. Set on the control since the binder would append units
+    if( aProperty->IsValueUnspecified() )
+    {
+        if( wxTextEntry* textEntry = dynamic_cast<wxTextEntry*>( aCtrl ) )
+            textEntry->ChangeValue( INDETERMINATE_STATE );
+
+        return;
+    }
 
     PGUnitBinderShowValue( *m_unitBinder, aProperty->GetValue(), kind, angleScale,
                            aProperty->IsValueUnspecified() );
@@ -339,8 +350,8 @@ void PG_RATIO_EDITOR::UpdateControl( wxPGProperty* aProperty, wxWindow* aCtrl ) 
         auto*    variantData = static_cast<STD_OPTIONAL_DOUBLE_VARIANT_DATA*>( var.GetData() );
         wxString strValue;
 
-        if( variantData->Value().has_value() )
-            strValue = wxString::Format( wxS( "%g" ), variantData->Value().value() );
+        if( variantData->OptValue().has_value() )
+            strValue = wxString::Format( wxS( "%g" ), variantData->OptValue().value() );
 
         textCtrl->ChangeValue( strValue );
     }
@@ -350,8 +361,7 @@ void PG_RATIO_EDITOR::UpdateControl( wxPGProperty* aProperty, wxWindow* aCtrl ) 
     }
     else if( !aProperty->IsValueUnspecified() )
     {
-        KI_FAIL_MSG( wxT( "PG_RATIO_EDITOR should only be used with scale-free numeric "
-                         "properties!" ) );
+        KI_FAIL_MSG( wxT( "PG_RATIO_EDITOR should only be used with scale-free numeric properties!" ) );
     }
 }
 
@@ -393,9 +403,8 @@ wxPGWindowList PG_FPID_EDITOR::CreateControls( wxPropertyGrid* aGrid, wxPGProper
     buttons->Add( KiBitmap( BITMAPS::small_library ) );
     buttons->Finalize( aGrid, aPos );
     wxSize textSize = buttons->GetPrimarySize();
-    wxWindow* textCtrl = aGrid->GenerateEditorTextCtrl( aPos, textSize,
-                                                       aProperty->GetValueAsString(), nullptr, 0,
-                                                       aProperty->GetMaxLength() );
+    wxWindow* textCtrl = aGrid->GenerateEditorTextCtrl( aPos, textSize, aProperty->GetValueAsString(),
+                                                        nullptr, 0, aProperty->GetMaxLength() );
     wxPGWindowList ret( textCtrl, buttons );
     return ret;
 }

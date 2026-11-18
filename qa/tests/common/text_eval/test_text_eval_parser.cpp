@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -294,6 +290,10 @@ BOOST_AUTO_TEST_CASE( StringFunctions )
         { "@{afterfirst(\"hello.world.txt\", \".\")}", "world.txt", false },
         { "@{afterlast(\"hello.world.txt\", \".\")}", "txt", false },
         { "@{beforefirst(${text}, \" \")}", "Hello", false },
+
+        { "@{replace(\"Hello World\", \"l\", \"L\")}", "HeLLo WorLd", false },
+        { "@{replace(\"Hello World\", \"llo\", \"y there\")}", "Hey there World", false },
+        { "@{replace(${text}, \"l\", \"L\")}", "HeLLo WorLd", false },
     };
 
     for( const auto& testCase : cases )
@@ -640,8 +640,12 @@ BOOST_AUTO_TEST_CASE( Performance )
     BOOST_CHECK( !evaluator.HasErrors() );
     BOOST_CHECK( !result.empty() );
 
-    // Should complete in reasonable time (less than 1 second)
+    // Sanitizer instrumentation changes execution cost, not the evaluation contract
+#if defined( KICAD_SANITIZE_THREADS ) || defined( KICAD_SANITIZE_ADDRESS )
+    BOOST_TEST_MESSAGE( "Instrumented large expression evaluation: " << duration.count() << " ms" );
+#else
     BOOST_CHECK_LT( duration.count(), 1000 );
+#endif
 }
 
 BOOST_AUTO_TEST_SUITE_END()

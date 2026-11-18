@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -38,6 +34,7 @@
 #include <iostream>
 #include <iomanip>
 #include <cstdint>
+#include <vector>
 
 /**
  * A small class to help profiling.
@@ -76,6 +73,7 @@ public:
      */
     void Start()
     {
+        m_started = true;
         m_running = true;
         m_starttime = CLOCK::now();
         m_lasttime = m_starttime;
@@ -100,7 +98,8 @@ public:
      * The unit is automatically chosen from ns, us, ms and s, depending on the
      * size of the current count.
      *
-     * @param the stream to print to.
+
+     * @param aStream the stream to print to.
      */
     void Show( std::ostream& aStream = std::cerr )
     {
@@ -163,6 +162,12 @@ public:
         if( !m_name.empty() )
             retv = m_name + ": ";
 
+        if( !m_started )
+        {
+            retv += "none";
+            return retv;
+        }
+
         std::stringstream time;
 
         if( cnt < 1e3 )
@@ -179,9 +184,12 @@ public:
         return retv;
     }
 
+    const std::string& GetName() const { return m_name; }
+
 private:
     std::string m_name;     // a string printed in message
     bool m_running;
+    bool m_started;
 
     using CLOCK = std::chrono::high_resolution_clock;
     using TIME_POINT = std::chrono::time_point<CLOCK>;
@@ -198,15 +206,17 @@ private:
  *
  * For example:
  *
+ * \code
  * DURATION duration; // select a duration type as needed
  * {
  *     SCOPED_PROF_TIMER<DURATION> timer( duration );
  *     timed_activity();
  * }
  * // duration is now the time timed activity took
+ * \endcode
  *
  * From C++17, with class template argument deduction, you should be able to
- * omit the <DURATION>.
+ * omit the \<DURATION\>.
  */
 template <typename DURATION>
 class SCOPED_PROF_TIMER : public PROF_TIMER
@@ -222,11 +232,15 @@ public:
         m_duration = m_counter.SinceStart<DURATION>();
     }
 
+    // No copying or it can lead to double or early updating of the duration.
+    SCOPED_PROF_TIMER( const SCOPED_PROF_TIMER& ) = delete;
+    SCOPED_PROF_TIMER& operator=( const SCOPED_PROF_TIMER& ) = delete;
+
 private:
-    ///< The counter to use to do the profiling
+    /// The counter to use to do the profiling
     PROF_TIMER m_counter;
 
-    ///< The duration to update at the end of the scope
+    /// The duration to update at the end of the scope
     DURATION& m_duration;
 };
 
@@ -286,6 +300,64 @@ public:
 private:
     std::string        m_name;
     std::atomic_ullong m_count;
+};
+
+class LATENCY_PROBE
+{
+    public:
+        using CLOCK = std::chrono::high_resolution_clock;
+        using TIME_POINT = std::chrono::time_point<CLOCK>;
+
+        struct CHECKPOINT
+        {
+            std::string name;
+            TIME_POINT timestamp;
+            bool isTimer = false;
+            double timerDelta = 0;
+        };
+
+        LATENCY_PROBE( const std::string& aName, int aStages = 8 ) :
+            m_name( aName )
+        {
+            m_checkpoints.reserve( aStages );
+        }
+
+        void Reset()
+        {
+            m_start = CLOCK::now();
+            m_checkpoints.clear();
+        }
+
+        void Checkpoint( const std::string& aName )
+        {
+            CHECKPOINT chk;
+            chk.name = aName;
+            chk.timestamp = CLOCK::now();
+            m_checkpoints.push_back( chk );
+        }
+
+        void AddTimer( PROF_TIMER& aTimer )
+        {
+            CHECKPOINT chk;
+            chk.name = aTimer.GetName();
+            chk.isTimer = true;
+            chk.timerDelta = aTimer.msecs();
+            m_checkpoints.push_back( chk );
+        }
+
+        std::string to_string();
+
+        double delta_ms( TIME_POINT a, TIME_POINT b )
+        {
+            using DUR_MS = std::chrono::duration<double, std::milli>;
+            return static_cast<DUR_MS>( a - b ).count();
+        }
+
+    private:
+
+        TIME_POINT m_start;
+        std::string m_name;
+        std::vector<CHECKPOINT> m_checkpoints;
 };
 
 #endif  // TPROFILE_H

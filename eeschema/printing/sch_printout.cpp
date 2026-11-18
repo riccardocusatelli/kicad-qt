@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "sch_printout.h"
@@ -218,8 +218,7 @@ bool SCH_PRINTOUT::PrintPage( SCH_SCREEN* aScreen, wxDC* aDC, bool aForPrinting 
 
     if( cfg && cfg->m_Printing.monochrome )
     {
-        for( int i = 0; i < LAYER_ID_COUNT; ++i )
-            dstSettings->SetLayerColor( i, COLOR4D::BLACK );
+        dstSettings->SetAllLayerColors( COLOR4D::BLACK );
 
         // In B&W mode, draw the background only in white, because any other color
         // will be replaced by a black background

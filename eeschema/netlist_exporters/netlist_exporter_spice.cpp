@@ -16,18 +16,13 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <sim/kibis/kibis.h>
 #include <netlist_exporter_spice.h>
 #include <sim/spice_circuit_model.h>
 #include <sim/sim_library_spice.h>
-#include <sim/sim_model_raw_spice.h>
 #include <common.h>
 #include <pgm_base.h>
 #include <env_paths.h>
@@ -38,9 +33,10 @@
 #include <sch_textbox.h>
 #include <string_utils.h>
 #include <algorithm>
+#include <set>
 #include <ki_exception.h>
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <paths.h>
 #include <wx/dir.h>
 #include <wx/log.h>
@@ -65,8 +61,8 @@ std::string NAME_GENERATOR::Generate( const std::string& aProposedName )
 }
 
 
-NETLIST_EXPORTER_SPICE::NETLIST_EXPORTER_SPICE( SCHEMATIC* aSchematic ) :
-    NETLIST_EXPORTER_BASE( aSchematic ),
+NETLIST_EXPORTER_SPICE::NETLIST_EXPORTER_SPICE( SCHEMATIC* aSchematic, KIWAY* aKiway ) :
+    NETLIST_EXPORTER_BASE( aSchematic, aKiway ),
     m_libMgr( &aSchematic->Project() )
 {
     std::vector<EMBEDDED_FILES*> embeddedFilesStack;
@@ -75,7 +71,7 @@ NETLIST_EXPORTER_SPICE::NETLIST_EXPORTER_SPICE( SCHEMATIC* aSchematic ) :
 }
 
 
-bool NETLIST_EXPORTER_SPICE::WriteNetlist( const wxString& aOutFileName, unsigned aNetlistOptions,
+bool NETLIST_EXPORTER_SPICE::writeNetlist( const wxString& aOutFileName, unsigned aNetlistOptions,
                                            REPORTER& aReporter )
 {
     try
@@ -136,6 +132,8 @@ void NETLIST_EXPORTER_SPICE::WriteTail( OUTPUTFORMATTER& aFormatter, unsigned aN
 bool NETLIST_EXPORTER_SPICE::ReadSchematicAndLibraries( unsigned aNetlistOptions,
                                                         REPORTER& aReporter )
 {
+    CONNECTIVITY_SCOPE connectivity( *this );
+
     std::set<std::string> refNames; // Set of reference names to check for duplication.
     int                   ncCounter = 1;
     wxString              variant = m_schematic->GetCurrentVariant();
@@ -144,6 +142,7 @@ bool NETLIST_EXPORTER_SPICE::ReadSchematicAndLibraries( unsigned aNetlistOptions
 
     m_nets.clear();
     m_items.clear();
+    m_multiunitModels.clear();
     m_modelNameGenerator.Clear();
     m_referencesAlreadyFound.Clear();
     m_libParts.clear();
@@ -187,19 +186,43 @@ bool NETLIST_EXPORTER_SPICE::ReadSchematicAndLibraries( unsigned aNetlistOptions
         wxRemoveFile( thisFile.GetFullPath() );
     }
 
-    for( SCH_SHEET_PATH& sheet : BuildSheetList( aNetlistOptions ) )
-    {
-        for( SCH_ITEM* item : sheet.LastScreen()->Items().OfType( SCH_SYMBOL_T ) )
-        {
-            SCH_SYMBOL* symbol = findNextSymbol( item, sheet );
+    SCH_SHEET_LIST      exportSheets = BuildSheetList( aNetlistOptions );
+    std::set<KIID_PATH> exportPaths;
 
-            if( !symbol || symbol->ResolveExcludedFromSim( &sheet, variant ) )
+    for( const SCH_SHEET_PATH& sheet : exportSheets )
+        exportPaths.insert( sheet.Path() );
+
+    // A unit outside the simulation must not claim its package, or the simulated units are dropped with it
+    const EXPORT_EXCLUSION excluded =
+            [&]( const SCH_SYMBOL* aSymbol, const SCH_SHEET_PATH& aSheet )
+            {
+                return !exportPaths.contains( aSheet.Path() ) || aSymbol->ResolveExcludedFromSim( &aSheet, variant );
+            };
+
+    for( SCH_SHEET_PATH& sheet : exportSheets )
+    {
+        std::vector<SCH_ITEM*> sheetItems;
+
+        for( SCH_ITEM* item : sheet.LastScreen()->Items().OfType( SCH_SYMBOL_T ) )
+            sheetItems.push_back( item );
+
+        std::ranges::sort( sheetItems,
+                           []( const SCH_ITEM* a, const SCH_ITEM* b )
+                           {
+                               return a->m_Uuid < b->m_Uuid;
+                           } );
+
+        for( SCH_ITEM* item : sheetItems )
+        {
+            SCH_SYMBOL* symbol = findNextSymbol( item, sheet, excluded );
+
+            if( !symbol )
                 continue;
 
             try
             {
                 SPICE_ITEM            spiceItem;
-                std::vector<PIN_INFO> pins = CreatePinList( symbol, sheet, true );
+                std::vector<PIN_INFO> pins = CreatePinList( symbol, sheet );
 
                 for( const SCH_FIELD& field : symbol->GetFields() )
                 {
@@ -208,7 +231,7 @@ bool NETLIST_EXPORTER_SPICE::ReadSchematicAndLibraries( unsigned aNetlistOptions
                     if( field.GetId() == FIELD_T::REFERENCE )
                         spiceItem.fields.back().SetText( symbol->GetRef( &sheet ) );
                     else
-                        spiceItem.fields.back().SetText( field.GetShownText( &sheet, false, 0, variant ) );
+                        spiceItem.fields.back().SetText( field.GetShownText( &sheet, FOR_NETNAME, variant ) );
 
                     // The simulator retains these resolved values after source symbols are deleted.
                     spiceItem.fields.back().SetParent( nullptr );
@@ -236,6 +259,8 @@ bool NETLIST_EXPORTER_SPICE::ReadSchematicAndLibraries( unsigned aNetlistOptions
 
 void NETLIST_EXPORTER_SPICE::ConvertToSpiceMarkup( wxString* aNetName )
 {
+    const bool literalSlash = UnescapeString( aNetName->AfterLast( '/' ) ).Contains( '/' );
+    *aNetName = UnescapeString( *aNetName );
     MARKUP::MARKUP_PARSER         markupParser( aNetName->ToStdString() );
     std::unique_ptr<MARKUP::NODE> root = markupParser.Parse();
 
@@ -280,15 +305,14 @@ void NETLIST_EXPORTER_SPICE::ConvertToSpiceMarkup( wxString* aNetName )
     aNetName->Replace( '~', '_' );
     aNetName->Replace( ' ', '_' );
 
-    // Make sure that SPICE zero should be zero anywhere, independent if it is local or not.
-    // Therefore any signal ending with '/0' is rewritten as '0' to be recognized by SPICE.
-    if( aNetName->EndsWith( wxS( "/0" ) ) && !aNetName->EndsWith( wxS( "//0" ) ) )
-        aNetName->assign( wxS( "0" ) );
+    // SPICE reserves ground names even when schematic power is local to a subsheet.
+    const wxString localName = aNetName->AfterLast( '/' );
 
-    // Make sure that local ground signals with leading slash ('/gnd') are rewritten as gloabal gnd to be recognized
-    // by SPICE as zero.
-    if( aNetName->IsSameAs( wxS( "/gnd" ), false /* caseSensitive=false */ ) )
-        aNetName->assign( aNetName->Mid( 1 ) );
+    if( !literalSlash && ( localName == wxS( "0" ) || localName.IsSameAs( wxS( "gnd" ), false ) )
+        && !aNetName->EndsWith( wxS( "//" ) + localName ) )
+    {
+        aNetName->assign( localName );
+    }
 
     // A net name on the root sheet with a label '/foo' is going to get titled "//foo".  This
     // will trip up ngspice as "//" opens a line comment.
@@ -338,9 +362,9 @@ void NETLIST_EXPORTER_SPICE::ReadDirectives( unsigned aNetlistOptions )
                 continue;
 
             if( item->Type() == SCH_TEXT_T )
-                text = static_cast<SCH_TEXT*>( item )->GetShownText( &sheet, false );
+                text = static_cast<SCH_TEXT*>( item )->GetShownText( &sheet, FOR_NETNAME );
             else if( item->Type() == SCH_TEXTBOX_T )
-                text = static_cast<SCH_TEXTBOX*>( item )->GetShownText( nullptr, &sheet, false );
+                text = static_cast<SCH_TEXTBOX*>( item )->GetShownText( nullptr, &sheet, FOR_NETNAME );
             else
                 continue;
 
@@ -438,7 +462,8 @@ void NETLIST_EXPORTER_SPICE::ReadDirectives( unsigned aNetlistOptions )
 
 
 wxString NETLIST_EXPORTER_SPICE::collectMergedSimPins( SCH_SYMBOL& aSymbol,
-                                                        const SCH_SHEET_PATH& aSheet )
+                                                        const SCH_SHEET_PATH& aSheet,
+                                                        const wxString& aVariantName )
 {
     // Only process multi-unit symbols
     if( !aSymbol.GetLibSymbolRef() || aSymbol.GetLibSymbolRef()->GetUnitCount() <= 1 )
@@ -472,7 +497,7 @@ wxString NETLIST_EXPORTER_SPICE::collectMergedSimPins( SCH_SYMBOL& aSymbol,
 
     // First, parse pins from the current symbol
     if( SCH_FIELD* pinsField = aSymbol.GetField( SIM_PINS_FIELD ) )
-        parsePins( pinsField->GetShownText( &aSheet, false ) );
+        parsePins( pinsField->GetShownText( &aSheet, FOR_NETNAME, aVariantName ) );
 
     // Then, find all other units with the same reference and collect their Sim.Pins
     for( const SCH_SHEET_PATH& sheet : m_schematic->Hierarchy() )
@@ -488,7 +513,7 @@ wxString NETLIST_EXPORTER_SPICE::collectMergedSimPins( SCH_SYMBOL& aSymbol,
                 continue;
 
             if( SCH_FIELD* pinsField = other->GetField( SIM_PINS_FIELD ) )
-                parsePins( pinsField->GetShownText( &sheet, false ) );
+                parsePins( pinsField->GetShownText( &sheet, FOR_NETNAME, aVariantName ) );
         }
     }
 
@@ -512,27 +537,172 @@ wxString NETLIST_EXPORTER_SPICE::collectMergedSimPins( SCH_SYMBOL& aSymbol,
 }
 
 
+std::vector<UNIT_PIN_MAP> NETLIST_EXPORTER_SPICE::collectUnitPinMaps( SCH_SYMBOL& aSymbol,
+                                                                     const SCH_SHEET_PATH& aSheet,
+                                                                     const wxString& aVariantName )
+{
+    std::vector<UNIT_PIN_MAP> unitMaps;
+
+    if( !aSymbol.GetLibSymbolRef() || aSymbol.GetLibSymbolRef()->GetUnitCount() <= 1 )
+        return unitMaps;
+
+    wxString      ref = aSymbol.GetRef( &aSheet );
+    std::set<int> seenUnits;
+
+    auto parseUnit =
+            [&]( SCH_SYMBOL& aUnit, const SCH_SHEET_PATH& aUnitSheet )
+            {
+                SCH_FIELD* pinsField = aUnit.GetField( SIM_PINS_FIELD );
+
+                if( !pinsField )
+                    return;
+
+                wxString pins = pinsField->GetShownText( &aUnitSheet, FOR_NETNAME, aVariantName );
+
+                // The same logical unit can be reached more than once through a reused hierarchical
+                // sheet; gather it only once so it does not synthesize duplicate instances.
+                if( !seenUnits.insert( aUnit.GetUnit() ).second )
+                    return;
+
+                UNIT_PIN_MAP map;
+                map.unit = aUnit.GetUnit();
+                map.pins = ParseSimPinsTokens( pins, ref );
+
+                if( !map.pins.empty() )
+                    unitMaps.push_back( std::move( map ) );
+            };
+
+    // The primary unit is processed first; the remaining units are matched case-insensitively
+    // across the whole hierarchy, mirroring findAllUnitsOfSymbol().
+    parseUnit( aSymbol, aSheet );
+
+    for( const SCH_SHEET_PATH& sheet : m_schematic->Hierarchy() )
+    {
+        for( SCH_ITEM* item : sheet.LastScreen()->Items().OfType( SCH_SYMBOL_T ) )
+        {
+            SCH_SYMBOL* other = static_cast<SCH_SYMBOL*>( item );
+
+            if( other == &aSymbol )
+                continue;
+
+            if( other->GetRef( &sheet ).CmpNoCase( ref ) != 0 )
+                continue;
+
+            parseUnit( *other, sheet );
+        }
+    }
+
+    // Order instances by unit number so the generated wrapper is deterministic regardless of
+    // where each unit happens to be placed on the schematic.
+    std::sort( unitMaps.begin(), unitMaps.end(),
+               []( const UNIT_PIN_MAP& lhs, const UNIT_PIN_MAP& rhs )
+               {
+                   return lhs.unit < rhs.unit;
+               } );
+
+    return unitMaps;
+}
+
+
+SIM_DECOMPOSITION NETLIST_EXPORTER_SPICE::getDecomposition( SCH_SYMBOL& aSymbol,
+                                                            const SCH_SHEET_PATH& aSheet,
+                                                            const wxString& aVariantName ) const
+{
+    auto read =
+            [&]( SCH_SYMBOL& aUnit, const SCH_SHEET_PATH& aUnitSheet ) -> wxString
+            {
+                if( SCH_FIELD* field = aUnit.GetField( SIM_DECOMPOSITION_FIELD ) )
+                    return field->GetShownText( &aUnitSheet, FOR_NETNAME, aVariantName );
+
+                return wxEmptyString;
+            };
+
+    // Decomposition is a component-level flag.  Prefer the primary unit, but fall back to any
+    // sibling so it is found regardless of which unit carries it.
+    wxString value = read( aSymbol, aSheet );
+
+    if( value.IsEmpty() && aSymbol.GetLibSymbolRef() && aSymbol.GetLibSymbolRef()->GetUnitCount() > 1 )
+    {
+        wxString ref = aSymbol.GetRef( &aSheet );
+
+        for( const SCH_SHEET_PATH& sheet : m_schematic->Hierarchy() )
+        {
+            for( SCH_ITEM* item : sheet.LastScreen()->Items().OfType( SCH_SYMBOL_T ) )
+            {
+                SCH_SYMBOL* other = static_cast<SCH_SYMBOL*>( item );
+
+                if( other == &aSymbol || other->GetRef( &sheet ).CmpNoCase( ref ) != 0 )
+                    continue;
+
+                value = read( *other, sheet );
+
+                if( !value.IsEmpty() )
+                    return SIM_DECOMPOSITION::Parse( value );
+            }
+        }
+    }
+
+    return SIM_DECOMPOSITION::Parse( value );
+}
+
+
 void NETLIST_EXPORTER_SPICE::readRefName( SCH_SHEET_PATH& aSheet, SCH_SYMBOL& aSymbol,
                                           SPICE_ITEM& aItem, std::set<std::string>& aRefNames )
 {
     aItem.refName = aSymbol.GetRef( &aSheet );
 
-    if( !aRefNames.insert( aItem.refName ).second )
-        KI_ASSERT( wxT( "Duplicate refdes encountered; what happened to ReadyToNetlist()?" ) );
+    [[maybe_unused]] bool inserted = aRefNames.insert( aItem.refName ).second;
+    KI_ASSERT_MSG( inserted, wxT( "Duplicate refdes encountered; what happened to ReadyToNetlist()?" ) );
 }
 
 
 void NETLIST_EXPORTER_SPICE::readModel( SCH_SHEET_PATH& aSheet, SCH_SYMBOL& aSymbol, SPICE_ITEM& aItem,
                                         const wxString& aVariantName, REPORTER& aReporter )
 {
-    // For multi-unit symbols, collect merged Sim.Pins from all units
-    wxString mergedSimPins = collectMergedSimPins( aSymbol, aSheet );
+    SIM_DECOMPOSITION decomposition = getDecomposition( aSymbol, aSheet, aVariantName );
+
+    bool multiUnit = aSymbol.GetLibSymbolRef() && aSymbol.GetLibSymbolRef()->GetUnitCount() > 1;
+    bool repeat = decomposition.mode == SIM_DECOMPOSITION::MODE::REPEAT_PER_UNIT && multiUnit;
+
+    // The whole-device default merges the per-unit Sim.Pins into one instance.  Repeat mode keeps
+    // the units distinct and synthesizes a wrapper, so it must not merge.
+    wxString mergedSimPins = repeat ? wxString()
+                                    : collectMergedSimPins( aSymbol, aSheet, aVariantName );
 
     const SIM_LIBRARY::MODEL& libModel = m_libMgr.CreateModel( &aSheet, aSymbol, true, 0, aVariantName,
                                                                aReporter, mergedSimPins );
 
     aItem.baseModelName = libModel.name;
     aItem.model = &libModel.model;
+
+    if( repeat )
+    {
+        // The wrapper instantiates the base as a subcircuit (inner X lines), so it only supports a
+        // named subcircuit base model.  Built-in/IBIS/unresolved models would yield invalid inner
+        // instances, so reject them with a clear error rather than emit a broken netlist.
+        if( libModel.model.GetType() != SIM_MODEL::TYPE::SUBCKT || libModel.name.empty() )
+        {
+            THROW_IO_ERRORF( _( "Symbol '%s' uses repeat-per-unit decomposition, which requires a named "
+                                "subcircuit model." ), aSymbol.GetRef( &aSheet ) );
+        }
+
+        std::vector<UNIT_PIN_MAP> unitMaps = collectUnitPinMaps( aSymbol, aSheet, aVariantName );
+
+        // The wrapper copies what it needs from libModel.model at construction; m_multiunitModels
+        // keeps it alive for as long as m_items references it via aItem.model.  Build it even for a
+        // single functional unit so that shared pins carried by other units are still wired (the
+        // constructor throws if no instances result).  It owns its content-derived name so
+        // identical components share one definition; do not run it through the per-item uniquifier.
+        auto wrapper = std::make_unique<SIM_MODEL_MULTIUNIT>( libModel.model, libModel.name, unitMaps,
+                                                              decomposition.sharedModelPins );
+
+        aItem.model         = wrapper.get();
+        aItem.baseModelName = wrapper->GetSignature();
+        aItem.modelName     = wrapper->GetSignature().ToStdString();
+
+        m_multiunitModels.push_back( std::move( wrapper ) );
+        return;
+    }
 
     std::string modelName = aItem.model->SpiceGenerator().ModelName( aItem );
 
@@ -544,39 +714,10 @@ void NETLIST_EXPORTER_SPICE::readModel( SCH_SHEET_PATH& aSheet, SCH_SYMBOL& aSym
     else
         aItem.modelName = modelName;
 
-    // FIXME: Don't have special cases for raw Spice models and KIBIS.
-    if( auto rawSpiceModel = dynamic_cast<const SIM_MODEL_RAW_SPICE*>( aItem.model ) )
-    {
-        int      libParamIndex = static_cast<int>( SIM_MODEL_RAW_SPICE::SPICE_PARAM::LIB );
-        wxString path = rawSpiceModel->GetParam( libParamIndex ).value;
-
-        if( !path.IsEmpty() )
-            m_rawIncludes.insert( path );
-    }
-    else if( auto ibisModel = dynamic_cast<const SIM_MODEL_IBIS*>( aItem.model ) )
-    {
-        wxFileName cacheFn;
-        cacheFn.AssignDir( PATHS::GetUserCachePath() );
-        cacheFn.AppendDir( wxT( "ibis" ) );
-        cacheFn.SetFullName( aSymbol.GetRef( &aSheet ) + wxT( ".cache" ) );
-
-        wxFile cacheFile( cacheFn.GetFullPath(), wxFile::write );
-
-        if( !cacheFile.IsOpened() )
-        {
-            wxLogError( _( "Could not open file '%s' to write IBIS model" ),
-                        cacheFn.GetFullPath() );
-        }
-
-        auto spiceGenerator = static_cast<const SPICE_GENERATOR_IBIS&>( ibisModel->SpiceGenerator() );
-
-        wxString    cacheFilepath = cacheFn.GetPath( wxPATH_GET_VOLUME | wxPATH_GET_SEPARATOR );
-        std::string modelData = spiceGenerator.IbisDevice( aItem, m_schematic,
-                                                           cacheFilepath, aReporter );
-
-        cacheFile.Write( wxString( modelData ) );
-        m_rawIncludes.insert( cacheFn.GetFullPath() );
-    }
+    // Each model type contributes its own external `.include` files (raw-Spice libraries, IBIS
+    // device caches, ...) so the exporter stays agnostic to the concrete model.
+    for( const wxString& include : aItem.model->GetSpiceIncludes( aItem, m_schematic, aReporter ) )
+        m_rawIncludes.insert( include );
 }
 
 
@@ -640,8 +781,7 @@ void NETLIST_EXPORTER_SPICE::getNodePattern( SPICE_ITEM&               aItem,
     }
     catch( const tao::pegtl::parse_error& e )
     {
-        THROW_IO_ERROR( wxString::Format( _( "Error in parsing model '%s', error: '%s'" ),
-                                          aItem.refName, e.what() ) );
+        THROW_IO_ERRORF( _( "Error in parsing model '%s', error: '%s'" ), aItem.refName, e.what() );
     }
 }
 void NETLIST_EXPORTER_SPICE::readNodePattern( SPICE_ITEM& aItem )
@@ -654,10 +794,8 @@ void NETLIST_EXPORTER_SPICE::readNodePattern( SPICE_ITEM& aItem )
 
     if( xspicePattern.size() != aItem.pinNetNames.size() )
     {
-        THROW_IO_ERROR( wxString::Format( _( "Error in parsing model '%s', wrong number of nodes "
-                                             "'?' in Sim.NodesFormat compared to connections" ),
-                                          aItem.refName ) );
-        return;
+        THROW_IO_ERRORF( _( "Error in parsing model '%s', wrong number of nodes '?' in Sim.NodesFormat compared "
+                            "to connections" ), aItem.refName );
     }
 
     auto itNetNames = aItem.pinNetNames.begin();
@@ -723,10 +861,20 @@ void NETLIST_EXPORTER_SPICE::writeIncludes( OUTPUTFORMATTER& aFormatter, unsigne
 
 void NETLIST_EXPORTER_SPICE::writeModels( OUTPUTFORMATTER& aFormatter )
 {
+    std::set<std::string> emittedWrappers;
+
     for( const SPICE_ITEM& item : m_items )
     {
         if( !item.model->IsEnabled() )
             continue;
+
+        // Identical multi-unit wrappers share one content-derived .subckt definition, but each is
+        // a distinct item, so emit any given wrapper exactly once.
+        if( dynamic_cast<const SIM_MODEL_MULTIUNIT*>( item.model )
+                && !emittedWrappers.insert( item.modelName ).second )
+        {
+            continue;
+        }
 
         aFormatter.Print( 0, "%s", item.model->SpiceGenerator().ModelLine( item ).c_str() );
     }
@@ -804,7 +952,7 @@ void NETLIST_EXPORTER_SPICE::WriteDirectives( const wxString& aSimCommand, unsig
 wxString NETLIST_EXPORTER_SPICE::GenerateItemPinNetName( const wxString& aNetName,
                                                          int& aNcCounter ) const
 {
-    wxString netName = UnescapeString( aNetName );
+    wxString netName = aNetName;
 
     ConvertToSpiceMarkup( &netName );
 
@@ -817,17 +965,14 @@ wxString NETLIST_EXPORTER_SPICE::GenerateItemPinNetName( const wxString& aNetNam
 
 SCH_SHEET_LIST NETLIST_EXPORTER_SPICE::BuildSheetList( unsigned aNetlistOptions ) const
 {
-    SCH_SHEET_LIST sheets;
-
-    if( aNetlistOptions & OPTION_CUR_SHEET_AS_ROOT )
-        sheets = SCH_SHEET_LIST( m_schematic->CurrentSheet().Last() );
-    else
-        sheets = m_schematic->Hierarchy();
+    SCH_SHEET_LIST sheets = m_exportSheets;
 
     std::erase_if( sheets,
                     [&]( const SCH_SHEET_PATH& sheet )
                     {
-                        return sheet.GetExcludedFromSim();
+                        return sheet.GetExcludedFromSim( m_schematic->GetCurrentVariant() )
+                               || ( ( aNetlistOptions & OPTION_CUR_SHEET_AS_ROOT )
+                                    && !sheet.IsContainedWithin( m_schematic->CurrentSheet() ) );
                     } );
 
     return sheets;

@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -35,13 +31,14 @@
 #include <string>
 #include <vector>
 
-#include "richio.h"
 #include "wrltypes.h"
+
+class VRML_LINE_READER;
 
 class WRLPROC
 {
 public:
-    WRLPROC( LINE_READER* aLineReader );
+    WRLPROC( VRML_LINE_READER* aLineReader );
     ~WRLPROC();
 
     bool eof( void );
@@ -105,7 +102,7 @@ public:
     bool getRawLine( void );
 
 private:
-    LINE_READER* m_file;
+    VRML_LINE_READER* m_file;
     std::string m_buf;          // string being parsed
     bool m_eof;
     unsigned int m_fileline;

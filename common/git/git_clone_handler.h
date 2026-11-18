@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef GIT_CLONE_HANDLER_H_
@@ -37,18 +33,12 @@ public:
 
     bool PerformClone();
 
-    void SetBranch( const wxString& aBranch ) { m_branch = aBranch; }
-    wxString GetBranch() const { return m_branch; }
-
     void SetClonePath( const wxString& aPath ) { m_clonePath = aPath; }
     wxString GetClonePath() const { return m_clonePath; }
 
     void SetRemote( const wxString& aRemote ) { GetCommon()->SetRemote( aRemote ); }
 
-    void UpdateProgress( int aCurrent, int aTotal, const wxString& aMessage ) override;
-
 private:
-    wxString m_branch;
     wxString m_clonePath;
 };
 

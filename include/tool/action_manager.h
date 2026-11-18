@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef ACTION_MANAGER_H_
@@ -29,6 +25,7 @@
 
 #include <list>
 #include <map>
+#include <optional>
 #include <string>
 #include <set>
 #include <vector>
@@ -68,15 +65,41 @@ struct ACTION_CONDITIONS
         return *this;
     }
 
+    /**
+     * Set a separate condition for direct command dispatch (hotkeys and navlib buttons). When set,
+     * it is used instead of enableCondition, allowing menu items to appear disabled while the
+     * action still fires for immediate-mode operations like rotate and mirror.
+     */
+    ACTION_CONDITIONS& HotkeyEnable( const SELECTION_CONDITION& aCondition )
+    {
+        hotkeyCondition = aCondition;
+        return *this;
+    }
+
     ACTION_CONDITIONS& Show( const SELECTION_CONDITION& aCondition )
     {
         showCondition = aCondition;
         return *this;
     }
 
+    /**
+     * Return the condition that direct command dispatch should use, falling back to
+     * enableCondition when no separate dispatch condition has been set.
+     */
+    const SELECTION_CONDITION& GetHotkeyCondition() const
+    {
+        if( hotkeyCondition )
+            return *hotkeyCondition;
+
+        return enableCondition;
+    }
+
     SELECTION_CONDITION checkCondition;     ///< Returns true if the UI control should be checked
     SELECTION_CONDITION enableCondition;    ///< Returns true if the UI control should be enabled
     SELECTION_CONDITION showCondition;      ///< Returns true if the UI control should be shown
+
+    /// Optional separate condition for hotkey dispatch (when empty, enableCondition is used)
+    std::optional<SELECTION_CONDITION> hotkeyCondition;
 };
 
 /**
@@ -164,9 +187,9 @@ public:
     /**
      * Return list of TOOL_ACTIONs.
      *
-     * #TOOL_ACTIONs add themselves to the list upon their creation.
+     * #TOOL_ACTION objects add themselves to the list upon their creation.
      *
-     * @return List of TOOL_ACTIONs.
+     * @return List of #TOOL_ACTION objects.
      */
     static std::list<TOOL_ACTION*>& GetActionList()
     {
@@ -198,25 +221,25 @@ private:
     void processHotKey( TOOL_ACTION* aAction, const std::map<std::string, int>& aLegacyMap,
                         const std::map<std::string, std::pair<int, int>>& aHotKeyMap );
 
-    ///< Tool manager needed to run actions
-    TOOL_MANAGER* m_toolMgr;
+private:
+    /// Tool manager needed to run actions
+    TOOL_MANAGER*                           m_toolMgr;
 
-    ///< Map for indexing actions by their names
-    std::map<std::string, TOOL_ACTION*> m_actionNameIndex;
+    /// Map for indexing actions by their names
+    std::map<std::string, TOOL_ACTION*>     m_actionNameIndex;
 
-    ///< Map for recording actions that have custom UI IDs
-    std::map<int, TOOL_ACTION*> m_customUIIdIndex;
+    /// Map for recording actions that have custom UI IDs
+    std::map<int, TOOL_ACTION*>             m_customUIIdIndex;
 
-    ///< Map for indexing actions by their hotkeys
-    typedef std::map<int, std::list<TOOL_ACTION*> > HOTKEY_LIST;
-    HOTKEY_LIST m_actionHotKeys;
+    /// Map for indexing actions by their hotkeys
+    std::map<int, std::list<TOOL_ACTION*> > m_actionHotKeys;
 
-    ///< Quick action<->hot key lookup
-    std::map<int, int> m_hotkeys;
+    /// Quick action<->hot key lookup
+    std::map<int, int>                      m_hotkeys;
 
     /// Map the command ID that wx uses for the action to the UI conditions for the
     /// menu/toolbar items
-    std::map<int, ACTION_CONDITIONS> m_uiConditions;
+    std::map<int, ACTION_CONDITIONS>        m_uiConditions;
 };
 
 #endif /* ACTION_MANAGER_H_ */

@@ -16,26 +16,25 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+
+#include "dialogs/panel_setup_netclasses.h"
 
 #include <algorithm>
 #include <limits>
+
 #include <wx/wupdlock.h>
+
 #include <pgm_base.h>
 #include <eda_draw_frame.h>
 #include <bitmaps.h>
 #include <netclass.h>
 #include <gal/painter.h>
 #include <grid_tricks.h>
-#include <dialogs/panel_setup_netclasses.h>
 #include <tool/tool_manager.h>
 #include <pcb_painter.h>
-#include <board_design_settings.h>
+#include <board_design_settings_defaults.h>
 #include <string_utils.h>
 #include <view/view.h>
 #include <widgets/grid_color_swatch_helpers.h>
@@ -729,7 +728,7 @@ void PANEL_SETUP_NETCLASSES::OnNetclassGridMouseEvent( wxMouseEvent& aEvent )
         switch( col )
         {
         case GRID_CLEARANCE:        tip = _( "Minimum copper clearance" );      break;
-        case GRID_TRACKSIZE:        tip = _( "Minimum track width" );           break;
+        case GRID_TRACKSIZE:        tip = _( "Optimum track width" );           break;
         case GRID_VIASIZE:          tip = _( "Via pad diameter" );              break;
         case GRID_VIADRILL:         tip = _( "Via plated hole diameter" );      break;
         case GRID_uVIASIZE:         tip = _( "Microvia pad diameter" );         break;

@@ -15,12 +15,13 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "pns_dragger.h"
 
+#include <core/kicad_algo.h>
 #include <core/typeinfo.h>
 #include <advanced_config.h>
 #include <base_units.h>
@@ -210,7 +211,7 @@ bool DRAGGER::startDragArc( const VECTOR2D& aP, ARC* aArc )
             VECTOR2I perp( -radial.y, radial.x );
             VECTOR2I toMid = mid - aEndpoint;
 
-            if( perp.x * toMid.x + perp.y * toMid.y > 0 )
+            if( perp.Dot( toMid ) > 0 )
                 perp = VECTOR2I( radial.y, -radial.x );
 
             double mag = std::hypot( (double) perp.x, (double) perp.y );
@@ -218,7 +219,8 @@ bool DRAGGER::startDragArc( const VECTOR2D& aP, ARC* aArc )
             if( mag <= 0 )
                 return VECTOR2I( stubLen, 0 );
 
-            return VECTOR2I( KiROUND( perp.x * stubLen / mag ), KiROUND( perp.y * stubLen / mag ) );
+            // A unit vector first, since a coordinate times the stub length does not fit an int
+            return VECTOR2I( KiROUND( perp.x / mag * stubLen ), KiROUND( perp.y / mag * stubLen ) );
         };
 
         if( isolatedStart )
@@ -366,6 +368,26 @@ void DRAGGER::SetMode( PNS::DRAG_MODE aMode )
 PNS::DRAG_MODE DRAGGER::Mode() const
 {
     return static_cast<PNS::DRAG_MODE>( m_mode );
+}
+
+
+bool DRAGGER::IsDragOrigin( const ITEM* aItem ) const
+{
+    if( !aItem )
+        return false;
+
+    if( m_mode != DM_VIA )
+    {
+        const LINKED_ITEM* li = dynamic_cast<const LINKED_ITEM*>( aItem );
+        return li && m_draggedLine.ContainsLink( li );
+    }
+
+    if( !m_initialVia.valid || !m_world || !aItem->OfKind( ITEM::VIA_T | ITEM::SEGMENT_T | ITEM::ARC_T ) )
+        return false;
+
+    const JOINT* jt = m_world->FindJoint( m_initialVia.pos, m_initialVia.layers.Start(), m_initialVia.net );
+
+    return jt && alg::contains( jt->LinkList(), aItem );
 }
 
 
@@ -580,12 +602,15 @@ void DRAGGER::optimizeAndUpdateDraggedLine( LINE& aDragged, const LINE& aOrig, c
     if( Settings().SmoothDraggedSegments() )
         effort |= OPTIMIZER::MERGE_COLINEAR;
 
+    if( Settings().GetRestrictAngles() )
+        effort |= OPTIMIZER::REQUIRE_OBTUSE_ANGLES;
+
     optimizer.SetEffortLevel( effort );
 
     VECTOR2I  anchor( aP );
 
     if( aDragged.CLine().Find( aP ) < 0 )
-        anchor = aDragged.CLine().NearestPoint( aP );
+        anchor = bestAnchorForPoint( aDragged.CLine(), aP );
 
     optimizer.SetPreserveVertex( anchor );
     aDragged.Line().Split( anchor );
@@ -613,6 +638,69 @@ void DRAGGER::optimizeAndUpdateDraggedLine( LINE& aDragged, const LINE& aOrig, c
     m_lastNode->Add( draggedPostOpt );
     m_draggedItems.Clear();
     m_draggedItems.Add( draggedPostOpt );
+}
+
+
+bool DRAGGER::pointHasBadCorner( const SHAPE_LINE_CHAIN& aLine, int aVertexIndex ) const
+{
+    if( aVertexIndex <= 0 || aVertexIndex >= aLine.PointCount() - 1 )
+        return false;
+
+    SEG segBefore( aLine.CPoint( aVertexIndex - 1 ), aLine.CPoint( aVertexIndex ) );
+    SEG segAfter( aLine.CPoint( aVertexIndex ), aLine.CPoint( aVertexIndex + 1 ) );
+
+    DIRECTION_45 dirBefore( segBefore );
+    DIRECTION_45 dirAfter( segAfter );
+
+    return dirBefore.Angle( dirAfter ) & ( DIRECTION_45::ANG_ACUTE
+                                           | DIRECTION_45::ANG_RIGHT
+                                           | DIRECTION_45::ANG_HALF_FULL );
+}
+
+
+VECTOR2I DRAGGER::bestAnchorForPoint( const SHAPE_LINE_CHAIN& aLine, const VECTOR2I& aP ) const
+{
+    VECTOR2I nearest = aLine.NearestPoint( aP );
+    int      vertIdx = aLine.Find( nearest );
+
+    if( vertIdx < 0 || !pointHasBadCorner( aLine, vertIdx ) )
+    {
+        PNS_DBG( Dbg(), Message, wxString::Format( "anchor: nearest pt used (vert=%d)", vertIdx ) );
+        return nearest;
+    }
+
+    for( int offset = 1; offset < aLine.PointCount(); offset++ )
+    {
+        int rightIdx = vertIdx + offset;
+        std::optional<VECTOR2I> candidate;
+
+        if( rightIdx < aLine.PointCount() && !pointHasBadCorner( aLine, rightIdx ) )
+            candidate = aLine.CPoint( rightIdx );
+
+        int leftIdx = vertIdx - offset;
+
+        if( leftIdx >= 0 && !pointHasBadCorner( aLine, leftIdx ) )
+        {
+            VECTOR2I leftPt = aLine.CPoint( leftIdx );
+
+            if( !candidate || ( leftPt - aP ).SquaredEuclideanNorm() < ( *candidate - aP ).SquaredEuclideanNorm() )
+            {
+                PNS_DBG( Dbg(), Message, wxString::Format( "anchor: good alt vertex idx %d", leftIdx ) );
+                PNS_DBG( Dbg(), AddPoint, leftPt, GREEN, 100000, wxT( "drag-anchor-alt" ) );
+                return leftPt;
+            }
+        }
+
+        if( candidate.has_value() )
+        {
+            PNS_DBG( Dbg(), Message, wxString::Format( "anchor: good alt vertex idx %d", rightIdx ) );
+            PNS_DBG( Dbg(), AddPoint, *candidate, GREEN, 100000, wxT( "drag-anchor-alt" ) );
+            return *candidate;
+        }
+    }
+
+    PNS_DBG( Dbg(), Message, wxString::Format( "anchor: nearest pt bad; no alternative (vert=%d)", vertIdx ) );
+    return nearest;
 }
 
 

@@ -14,17 +14,13 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MINOPTMAX_PROTO_H
-#define MINOPTMAX_PROTO_H
+#pragma once
 
 #include <limits>
+#include <algorithm>
 
 template<class T=int>
 class MINOPTMAX
@@ -33,6 +29,10 @@ public:
     T Min() const { return m_hasMin ? m_min : 0; };
     T Max() const { return m_hasMax ? m_max : std::numeric_limits<T>::max(); };
     T Opt() const { return m_hasOpt ? m_opt : Min(); };
+    T PinnedOpt() const { return std::max<T>( Min(), std::min<T>( Max(), Opt() ) ) ; }
+
+    /// Like PinnedOpt(), but preferring \a aDefault when there is no opt value.
+    T PinnedOpt( T aDefault ) const { return std::max<T>( Min(), std::min<T>( Max(), m_hasOpt ? m_opt : aDefault ) ); }
 
     bool HasMin() const { return m_hasMin; }
     bool HasMax() const { return m_hasMax; }
@@ -44,6 +44,16 @@ public:
 
     bool IsNull() const { return m_isNull; }
 
+    bool Matches( const T v ) const
+    {
+        if( m_hasMin && v < m_min )
+            return false;
+        if( m_hasMax && v > m_max )
+            return false;
+
+        return true;
+    }
+
 private:
     bool m_isNull = true;
     T    m_min{};
@@ -53,5 +63,3 @@ private:
     bool m_hasOpt = false;
     bool m_hasMax = false;
 };
-
-#endif

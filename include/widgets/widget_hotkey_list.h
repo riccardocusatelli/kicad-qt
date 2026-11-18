@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef __widget_hotkey_list__
@@ -45,7 +41,8 @@ public:
      * Create a #WIDGET_HOTKEY_LIST.
      *
      * @param aParent is the parent widget.
-     * @param aHotkeys is the #EDA_HOTKEY_CONFIG data: a hotkey store is constructed from this.
+     * @param aHotkeyStore is the #HOTKEY_STORE with the hot key information.
+     * @param readOnly makes the list read only if true.
      */
     WIDGET_HOTKEY_LIST( wxWindow* aParent, HOTKEY_STORE& aHotkeyStore, bool readOnly );
 
@@ -82,6 +79,8 @@ public:
      * Map a keypress event to the correct key code for use as a hotkey.
      */
     static long MapKeypressToKeycode( const wxKeyEvent& aEvent );
+
+    bool IsReservedHotkey( long aKey, wxString* aKeyName = nullptr ) const;
 
 protected:
     /**
@@ -123,8 +122,8 @@ protected:
      * g_CommonSectionTag means the key code must only be checked with the aSectionTag section
      * and g_CommonSectionTag section.
      *
+     * @param aAction is the tool action into which the key is proposed to be installed.
      * @param aKey is the key to check.
-     * @param aActionName is the name of the action into which the key is proposed to be installed.
      *
      * @return true if the user accepted the overwrite or no conflict existed.
      */

@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <qa_utils/stdstream_line_reader.h>
@@ -71,11 +67,7 @@ IFSTREAM_LINE_READER::IFSTREAM_LINE_READER( const wxFileName& aFileName )  :
         m_fStream( aFileName.GetFullPath().fn_str() )
 {
     if( !m_fStream.is_open() )
-    {
-        wxString msg = wxString::Format(
-            _( "Unable to open filename '%s' for reading" ), aFileName.GetFullPath().GetData() );
-        THROW_IO_ERROR( msg );
-    }
+        THROW_IO_ERRORF( _( "Unable to open filename '%s' for reading" ), aFileName.GetFullPath().GetData() );
 
     SetStream( m_fStream );
 

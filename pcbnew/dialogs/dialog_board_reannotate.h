@@ -16,14 +16,13 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
+
+#include <map>
+#include <set>
 
 #include <dialogs/dialog_board_reannotate_base.h>
 #include <layer_ids.h>
@@ -52,7 +51,8 @@ enum ACTION_CODE
     UPDATE_REFDES,
     EMPTY_REFDES,
     INVALID_REFDES,
-    EXCLUDE_REFDES
+    EXCLUDE_REFDES,
+    UNKNOWN_SUFFIX_REFDES
 };
 
 struct REFDES_CHANGE
@@ -62,6 +62,8 @@ struct REFDES_CHANGE
     wxString     OldRefDesString;   // What the old refdes preamble + number was
     bool         Front;             // True if on the front of the board
     ACTION_CODE  Action;            // Used to skip (if #, etc)
+    wxString     Suffix;            // Sheet suffix kept after the new number
+    KIID         Representative;    // Footprint whose new base this one takes
 };
 
 struct REFDES_INFO
@@ -74,6 +76,10 @@ struct REFDES_INFO
     int         roundedx, roundedy; // The coordinates after rounding.
     ACTION_CODE Action;             // Used to skip (if #, etc)
     LIB_ID      FPID;
+    wxString    Suffix;             // Sheet suffix of a copy on a reused sheet
+    KIID        Representative;     // Copy whose placement numbers the base this one shares
+    bool        Shared;             // One of the copies on reused sheets that share a base
+    bool        Held;               // Locked or explicitly excluded, so copies sharing its base keep theirs too
 };
 
 struct REFDES_PREFIX_INFO
@@ -178,4 +184,9 @@ private:
     std::vector<REFDES_INFO>        m_backFootprints;
     std::vector<REFDES_PREFIX_INFO> m_refDesPrefixInfos;
     std::vector<wxString>           m_excludeArray;
+
+    std::map<KIID, std::vector<wxString>> m_groupSuffixes;  // Suffixes of the copies each representative numbers
+    std::map<KIID, wxString>              m_newBases;
+    std::set<wxString>                    m_takenRefs;      // Kept and assigned references
+    std::set<wxString>                    m_suffixedRefs;   // The taken references that end in a sheet suffix
 };

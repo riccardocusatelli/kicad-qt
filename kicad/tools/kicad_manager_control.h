@@ -15,17 +15,14 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef KICAD_MANAGER_CONTROL_H
 #define KICAD_MANAGER_CONTROL_H
 
 #include <tool/tool_interactive.h>
+#include <dialogs/git/git_transfer.h>
 #include <mutex>
 
 
@@ -56,9 +53,11 @@ public:
 
     int ArchiveProject( const TOOL_EVENT& aEvent );
     int UnarchiveProject( const TOOL_EVENT& aEvent );
+    int ExportForOlderVersion( const TOOL_EVENT& aEvent );
     int ExploreProject( const TOOL_EVENT& aEvent );
     int RestoreLocalHistory( const TOOL_EVENT& aEvent );
     int ToggleLocalHistory( const TOOL_EVENT& aEvent );
+    int ToggleGitCommitPane( const TOOL_EVENT& aEvent );
 
     /**
      * @brief Imports a non kicad project from a sch/pcb dropped file.
@@ -75,7 +74,7 @@ public:
     int ShowDesignBlockLibTable( const TOOL_EVENT& aEvent );
     int ShowPluginManager( const TOOL_EVENT& aEvent );
 
-    ///< Set up handlers for various events.
+    /// Set up handlers for various events.
     void setTransitions() override;
 
     bool InShowPlayer() const { return m_inShowPlayer; }
@@ -88,6 +87,9 @@ private:
 private:
     KICAD_MANAGER_FRAME* m_frame;           ///< Pointer to the currently used edit/draw frame.
     bool                 m_inShowPlayer;    ///< Re-entrancy guard
+
+    /// Read the identity after cloning. Closing or resetting the tool suppresses its prompt.
+    KIGIT_QUERY m_identityQuery;
 };
 
 #endif

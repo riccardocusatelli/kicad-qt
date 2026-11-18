@@ -16,8 +16,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef INSPECTABLE_H
@@ -28,6 +28,7 @@
 #include <wx/variant.h>
 
 #include <optional>
+#include <vector>
 
 class PROPERTY_BASE;
 
@@ -39,6 +40,19 @@ class INSPECTABLE
 public:
     virtual ~INSPECTABLE()
     {
+    }
+
+    /**
+     * Return dynamically-computed properties specific to this object instance
+     * (e.g. custom fields, pin-map entries).  These are NOT registered in
+     * PROPERTY_MANAGER and do NOT appear in GetProperties(TYPE_ID).
+     *
+     * The returned PROPERTY_BASE* pointers are owned by the object and remain
+     * valid until the object is destroyed or its property set changes.
+     */
+    virtual std::vector<PROPERTY_BASE*> GetDynamicProperties() const
+    {
+        return {};
     }
 
     bool Set( PROPERTY_BASE* aProperty, wxAny& aValue, bool aNotify = true );

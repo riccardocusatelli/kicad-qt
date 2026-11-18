@@ -14,29 +14,35 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
  * Main file for the pcbnew tests to be compiled
  */
 #include <boost/test/unit_test.hpp>
-#include <kiplatform/app.h>
-#include <mock_pgm_base.h>
-#include <settings/settings_manager.h>
-#include <pcbnew_settings.h>
-#include <qa_utils/error_handlers.h>
 
 #include <wx/image.h>
 #include <wx/init.h>
 #include <wx/app.h>
 
+#include <qa_utils/error_handlers.h>
+#include <qa_utils/file_utils.h>
+#include <qa_utils/wx_utils/unit_test_utils.h>
+
+#include <kiplatform/app.h>
+#include <mock_pgm_base.h>
+#include <settings/settings_manager.h>
+
+#include <pcbnew_settings.h>
+#include <pcbnew_utils/board_test_utils.h>
+
+
+using KI_TEST::STALE_DRU_SIDECAR_FIXTURE;
+
 BOOST_TEST_GLOBAL_FIXTURE( KI_SIGNAL_HANDLER_FIXTURE );
 BOOST_TEST_GLOBAL_FIXTURE( KI_STACK_TRACE_FIXTURE );
+BOOST_TEST_GLOBAL_FIXTURE( STALE_DRU_SIDECAR_FIXTURE );
 
 bool init_unit_test()
 {
@@ -54,7 +60,7 @@ bool init_unit_test()
     {
         wxSetAssertHandler( &KI_TEST::wxAssertThrower );
 
-        Pgm().InitPgm( true, true, true );
+        Pgm().InitPgm( true, true );
         Pgm().GetSettingsManager().RegisterSettings( new PCBNEW_SETTINGS, false );
         Pgm().GetSettingsManager().Load();
 
@@ -68,6 +74,8 @@ bool init_unit_test()
 
 int main( int argc, char* argv[] )
 {
+    KI_TEST::SCOPED_PROCESS_TEMP_DIR scopedTempDir( "kicad_qa_pcbnew" );
+
     int ret = boost::unit_test::unit_test_main( &init_unit_test, argc, argv );
 
     // This causes some glib warnings on GTK3 (http://trac.wxwidgets.org/ticket/18274)

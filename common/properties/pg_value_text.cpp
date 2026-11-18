@@ -30,6 +30,7 @@
 
 #include <eda_draw_frame.h>
 #include <eda_units.h>
+#include <i18n_utility.h>
 #include <properties/color4d_variant.h>
 #include <properties/eda_angle_variant.h>
 #include <properties/std_optional_variants.h>
@@ -229,14 +230,18 @@ wxString PGDistanceToString( EDA_DRAW_FRAME* aFrame, const wxVariant& aVariant,
     {
         auto* variantData = static_cast<STD_OPTIONAL_INT_VARIANT_DATA*>( aVariant.GetData() );
 
-        if( !variantData->Value().has_value() )
+        if( !variantData->OptValue().has_value() )
             return wxEmptyString;
 
-        distanceIU = variantData->Value().value();
+        distanceIU = variantData->OptValue().value();
     }
     else if( aVariant.GetType() == VARIANT_TYPE_LONG )
     {
         distanceIU = aVariant.GetLong();
+    }
+    else if( aVariant.GetType() == VARIANT_TYPE_LONGLONG )
+    {
+        distanceIU = static_cast<long>( aVariant.GetLongLong().GetValue() );
     }
     else if( aVariant.GetType() == VARIANT_TYPE_ULONGLONG )
     {
@@ -287,10 +292,10 @@ wxString PGTimeToString( EDA_DRAW_FRAME* aFrame, const wxVariant& aVariant )
     {
         auto* variantData = static_cast<STD_OPTIONAL_INT_VARIANT_DATA*>( aVariant.GetData() );
 
-        if( !variantData->Value().has_value() )
+        if( !variantData->OptValue().has_value() )
             return wxEmptyString;
 
-        value = variantData->Value().value();
+        value = variantData->OptValue().value();
     }
     else if( aVariant.GetType() == VARIANT_TYPE_LONG )
     {
@@ -314,10 +319,10 @@ wxString PGRatioToString( const wxVariant& aVariant )
     {
         auto* variantData = static_cast<STD_OPTIONAL_DOUBLE_VARIANT_DATA*>( aVariant.GetData() );
 
-        if( !variantData->Value().has_value() )
+        if( !variantData->OptValue().has_value() )
             return wxEmptyString;
 
-        value = variantData->Value().value();
+        value = variantData->OptValue().value();
     }
     else if( aVariant.GetType() == VARIANT_TYPE_DOUBLE )
     {
@@ -339,8 +344,8 @@ wxString PGAngleToString( const wxVariant& aVariant, double aScale )
     {
         auto* variantData = static_cast<STD_OPTIONAL_DOUBLE_VARIANT_DATA*>( aVariant.GetData() );
 
-        if( variantData->Value().has_value() )
-            return wxString::Format( wxS( "%g°" ), variantData->Value().value() / aScale );
+        if( variantData->OptValue().has_value() )
+            return wxString::Format( wxS( "%g°" ), variantData->OptValue().value() / aScale );
         else
             return wxEmptyString;
     }
@@ -445,8 +450,8 @@ void PGUnitBinderShowValue( UNIT_BINDER& aBinder, const wxVariant& aValue, PG_UN
     {
         auto* variantData = static_cast<STD_OPTIONAL_INT_VARIANT_DATA*>( var.GetData() );
 
-        if( variantData->Value().has_value() )
-            aBinder.ChangeValue( variantData->Value().value() );
+        if( variantData->OptValue().has_value() )
+            aBinder.ChangeValue( variantData->OptValue().value() );
         else
             aBinder.ChangeValue( wxEmptyString );
     }
@@ -483,6 +488,10 @@ bool PGUnitBinderGetValue( UNIT_BINDER& aBinder, const wxString& aText, wxVarian
         return true;
     }
 
+    // A mixed value left as it was is not an edit
+    if( aText == INDETERMINATE_STATE )
+        return false;
+
     bool changed;
 
     if( aKind == PG_UNIT_KIND::ANGLE )
@@ -509,7 +518,7 @@ bool PGUnitBinderGetValue( UNIT_BINDER& aBinder, const wxString& aText, wxVarian
             if( changed )
             {
                 aVariant = scaledValue;
-                aBinder.SetValue( angle.AsDegrees() );
+                aBinder.SetDoubleValue( angle.AsDegrees() );
             }
         }
     }
@@ -531,7 +540,7 @@ bool PGUnitBinderGetValue( UNIT_BINDER& aBinder, const wxString& aText, wxVarian
 
         if( aBinder.IsNull() )
         {
-            changed = ( aVariant.IsNull() || variantData->Value().has_value() );
+            changed = ( aVariant.IsNull() || variantData->OptValue().has_value() );
 
             if( changed )
             {
@@ -541,8 +550,8 @@ bool PGUnitBinderGetValue( UNIT_BINDER& aBinder, const wxString& aText, wxVarian
         }
         else
         {
-            result = std::optional<int>( aBinder.GetValue() );
-            changed = ( aVariant.IsNull() || result != variantData->Value() );
+            result = std::optional<int>( aBinder.GetIntValue() );
+            changed = ( aVariant.IsNull() || result != variantData->OptValue() );
 
             if( changed )
             {
@@ -590,17 +599,17 @@ bool PGRatioFromText( const wxString& aText, wxVariant& aVariant, wxString& aNor
 
         if( textVal.empty() )
         {
-            changed = ( aVariant.IsNull() || variantData->Value().has_value() );
+            changed = ( aVariant.IsNull() || variantData->OptValue().has_value() );
 
             if( changed )
                 aVariant = wxVariant( std::optional<double>() );
         }
         else
         {
-            double dblValue;
+            double dblValue = 0.0;
             textVal.ToDouble( &dblValue );
             std::optional<double> result( dblValue );
-            changed = ( aVariant.IsNull() || result != variantData->Value() );
+            changed = ( aVariant.IsNull() || result != variantData->OptValue() );
 
             if( changed )
             {
@@ -611,7 +620,7 @@ bool PGRatioFromText( const wxString& aText, wxVariant& aVariant, wxString& aNor
     }
     else
     {
-        double result;
+        double result = 0.0;
         textVal.ToDouble( &result );
         changed = ( aVariant.IsNull() || result != aVariant.GetDouble() );
 

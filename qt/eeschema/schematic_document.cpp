@@ -163,7 +163,8 @@ public:
         if( aResult.dirtyConnectivity )
         {
             m_doc.recalculateConnections( &aCommit,
-                                          static_cast<SCH_CLEANUP_FLAGS>( aResult.connectivityCleanUp ) );
+                                          static_cast<SCH_CLEANUP_FLAGS>( aResult.connectivityCleanUp ),
+                                          true );
         }
     }
 
@@ -1112,7 +1113,7 @@ bool SCHEMATIC_DOCUMENT::beginPaste( const QString& aText, const VECTOR2I& aPosi
                                                  keepAnnotation );
             }
 
-            SCH_PASTE::PruneSymbolInstances( symbol, projectName );
+            SCH_PASTE::PruneSymbolInstances( symbol, *m_schematic );
 
             for( SCH_PIN* pin : symbol->GetPins() )
                 pin->SetConnectivityDirty();
@@ -1228,7 +1229,8 @@ void SCHEMATIC_DOCUMENT::recordChange( PICKED_ITEMS_LIST& aChange )
 }
 
 
-void SCHEMATIC_DOCUMENT::recalculateConnections( SCH_COMMIT* aCommit, SCH_CLEANUP_FLAGS aCleanUp )
+void SCHEMATIC_DOCUMENT::recalculateConnections( SCH_COMMIT* aCommit, SCH_CLEANUP_FLAGS aCleanUp,
+                                                 bool aCleanupDone )
 {
     KIGFX::SCH_VIEW* schView = view();
 
@@ -1239,7 +1241,7 @@ void SCHEMATIC_DOCUMENT::recalculateConnections( SCH_COMMIT* aCommit, SCH_CLEANU
             };
 
     m_schematic->RecalculateConnections( aCommit, aCleanUp, nullptr, schView, &changed,
-                                         m_undo->LastChange() );
+                                         m_undo->LastChange(), aCleanupDone );
 
     schView->UpdateConnectionChanges( currentScreen() );
 }

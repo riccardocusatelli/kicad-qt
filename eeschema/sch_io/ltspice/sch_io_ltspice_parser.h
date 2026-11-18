@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -94,8 +94,8 @@ public:
     /**
      * Create KiCad items based on LTspice data.
      *
+     * @param aAscfile the LTspice ASC file data.
      * @param aScreen the screen to add the items to.
-     * @param aLT_ASCs the LTspice ASC file data.
      * @param aUniqueAscNames the symbol names to import as subsheets instead of symbols.
      * @param aMapOfScreens the map of screens to assign screens to new subsheets.
      * @param aOriginOffset the offset to apply to the items (in KiCad units).

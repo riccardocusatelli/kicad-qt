@@ -14,16 +14,11 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
-#ifndef PANEL_SETUP_DEFAULT_CLEARANCES_H
-#define PANEL_SETUP_DEFAULT_CLEARANCES_H
+#pragma once
 
 #include <board.h>
 #include <widgets/unit_binder.h>
@@ -32,12 +27,31 @@
 #include <dialogs/panel_setup_mask_and_paste_base.h>
 
 class PCB_EDIT_FRAME;
-class BOARD;
 class BOARD_DESIGN_SETTINGS;
 
 
 class PANEL_SETUP_MASK_AND_PASTE : public PANEL_SETUP_MASK_AND_PASTE_BASE
 {
+public:
+    /**
+     * @param aSettings is where this page reads and writes its values. Board Setup passes a copy
+     *                  that reaches the board only when the dialog is accepted.
+     */
+    PANEL_SETUP_MASK_AND_PASTE( wxWindow* aParentWindow, PCB_EDIT_FRAME* aFrame, BOARD_DESIGN_SETTINGS& aSettings );
+    ~PANEL_SETUP_MASK_AND_PASTE( ) { };
+
+    bool TransferDataToWindow() override;
+    bool TransferDataFromWindow() override;
+
+    /// Copies every value this page edits, which is what the Solder Mask/Paste import group carries
+    static void CopySettings( const BOARD_DESIGN_SETTINGS& aFrom, BOARD_DESIGN_SETTINGS& aTo );
+
+    /**
+     * Reads the values a rule page sets back into their fields. This page only shows those, so
+     * it has to be told when the page that sets one has written it.
+     */
+    void RefreshDefaults();
+
 private:
     PCB_EDIT_FRAME*         m_Frame;
     BOARD_DESIGN_SETTINGS*  m_BrdSettings;
@@ -47,16 +61,16 @@ private:
     UNIT_BINDER             m_maskToCopperClearance;
     MARGIN_OFFSET_BINDER    m_pasteMargin;
 
-public:
-    PANEL_SETUP_MASK_AND_PASTE( wxWindow* aParentWindow, PCB_EDIT_FRAME* aFrame );
-    ~PANEL_SETUP_MASK_AND_PASTE( ) { };
+    /// The rule pages that also hold these values, where they do
+    wxString m_maskExpansionPage;
+    wxString m_maskMinWidthPage;
+    wxString m_pasteMarginPage;
 
-    bool TransferDataToWindow() override;
-    bool TransferDataFromWindow() override;
-
-    void ImportSettingsFrom( BOARD* aBoard );
+    /// The values as this page last read them, so an untouched field does not write back over
+    /// an edit made on the page that also holds it
+    int m_maskExpansionLoaded = 0;
+    int m_maskMinWidthLoaded = 0;
+    int m_pasteMarginLoaded = 0;
 };
-
-#endif //PANEL_SETUP_DEFAULT_CLEARANCES_H
 
 

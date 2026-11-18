@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -77,9 +73,9 @@ enum VIEW_VISIBILITY_FLAGS {
  * Its role is to:
  * - communicate geometry, appearance and visibility updates to the associated dynamic VIEW,
  * - provide a bounding box for redraw area calculation,
- * - (optional) draw the object using the #GAL API functions for #PAINTER-less implementations.
+ * - (optional) draw the object using the #GAL API functions for #KIGFX::PAINTER less implementations.
  *
- * VIEW_ITEM objects are never owned by a #VIEW. A single VIEW_ITEM can belong to any number of
+ * VIEW_ITEM objects are never owned by a #KIGFX::VIEW. A single VIEW_ITEM can belong to any number of
  * static VIEWs, but only one dynamic VIEW due to storage of only one VIEW reference.
  */
 class GAL_API VIEW_ITEM : public INSPECTABLE
@@ -116,7 +112,7 @@ public:
     /**
      * Draw the parts of the object belonging to layer aLayer.
      *
-     * An alternative way for drawing objects if there is no #PAINTER assigned for the view
+     * An alternative way for drawing objects if there is no #KIGFX::PAINTER assigned for the view
      * or if the PAINTER doesn't know how to paint this particular implementation of VIEW_ITEM.
      * The preferred way of drawing is to design an appropriate PAINTER object, the method
      * below is intended only for quick hacks and debugging purposes.

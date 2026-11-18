@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "zone_utils.h"
@@ -234,11 +230,24 @@ static std::vector<ZONE_OVERLAP_PAIR> findOverlappingPairs( BOARD* aBoard )
             if( !b->GetBoundingBox().Intersects( bboxA ) )
                 continue;
 
-            bool overlaps = a->Outline()->Collide( b->Outline() )
-                            || ( b->Outline()->TotalVertices() > 0
-                                 && a->Outline()->Contains( b->Outline()->CVertex( 0 ) ) )
-                            || ( a->Outline()->TotalVertices() > 0
-                                 && b->Outline()->Contains( a->Outline()->CVertex( 0 ) ) );
+            SHAPE_POLY_SET        aOutlineStorage;
+            const SHAPE_POLY_SET* aOutline = &aOutlineStorage;
+            SHAPE_POLY_SET        bOutlineStorage;
+            const SHAPE_POLY_SET* bOutline = &bOutlineStorage;
+
+            if( a->GetParentFootprint() )
+                aOutlineStorage = a->GetBoardOutline();
+            else
+                aOutline = a->Outline();
+
+            if( b->GetParentFootprint() )
+                bOutlineStorage = b->GetBoardOutline();
+            else
+                bOutline = b->Outline();
+
+            bool overlaps = aOutline->Collide( bOutline )
+                            || ( bOutline->TotalVertices() > 0 && aOutline->Contains( bOutline->CVertex( 0 ) ) )
+                            || ( aOutline->TotalVertices() > 0 && bOutline->Contains( aOutline->CVertex( 0 ) ) );
 
             if( overlaps )
                 pairs.push_back( { a, b, shared } );
@@ -249,11 +258,10 @@ static std::vector<ZONE_OVERLAP_PAIR> findOverlappingPairs( BOARD* aBoard )
 }
 
 
-static std::optional<ZONE_PRIORITY_EDGE> computeConstraint( const ZONE_OVERLAP_PAIR& aPair,
-                                                             BOARD* aBoard )
+static std::optional<ZONE_PRIORITY_EDGE> computeConstraint( const ZONE_OVERLAP_PAIR& aPair, BOARD* aBoard )
 {
-    SHAPE_POLY_SET polyA = aPair.zoneA->Outline()->CloneDropTriangulation();
-    SHAPE_POLY_SET polyB = aPair.zoneB->Outline()->CloneDropTriangulation();
+    SHAPE_POLY_SET polyA = aPair.zoneA->GetBoardOutline();
+    SHAPE_POLY_SET polyB = aPair.zoneB->GetBoardOutline();
     polyA.ClearArcs();
     polyB.ClearArcs();
 
@@ -268,38 +276,29 @@ static std::optional<ZONE_PRIORITY_EDGE> computeConstraint( const ZONE_OVERLAP_P
     int netCodeA = aPair.zoneA->GetNetCode();
     int netCodeB = aPair.zoneB->GetNetCode();
 
-    // Same-net zones can't be differentiated by item counting since every
-    // matching pad/via increments both counters equally.  Fall through to
-    // area-based comparison directly.
+    // Same-net overlapping zones are cooperative, not competitive. Priority
+    // between them is meaningless to the fill engine. Return no constraint
+    // here; AutoAssignZonePriorities() groups them to the same priority level.
     if( netCodeA == netCodeB )
-    {
-        double areaA = aPair.zoneA->Outline()->Area();
-        double areaB = aPair.zoneB->Outline()->Area();
-
-        if( areaA == areaB )
-            return std::nullopt;
-
-        ZONE* higher = ( areaA < areaB ) ? aPair.zoneA : aPair.zoneB;
-        ZONE* lower  = ( higher == aPair.zoneA ) ? aPair.zoneB : aPair.zoneA;
-        return ZONE_PRIORITY_EDGE{ higher, lower, 0, true };
-    }
+        return std::nullopt;
 
     int countA = 0;
     int countB = 0;
 
-    auto countIfInOverlap = [&]( const VECTOR2I& aPos, int aNetCode, PCB_LAYER_ID aLayer )
-    {
-        if( !aPair.sharedLayers.test( aLayer ) )
-            return;
+    auto countIfInOverlap =
+            [&]( const VECTOR2I& aPos, int aNetCode, PCB_LAYER_ID aLayer )
+            {
+                if( !aPair.sharedLayers.test( aLayer ) )
+                    return;
 
-        if( intersection.Contains( aPos ) )
-        {
-            if( aNetCode == netCodeA )
-                countA++;
-            else if( aNetCode == netCodeB )
-                countB++;
-        }
-    };
+                if( intersection.Contains( aPos ) )
+                {
+                    if( aNetCode == netCodeA )
+                        countA++;
+                    else if( aNetCode == netCodeB )
+                        countB++;
+                }
+            };
 
     for( FOOTPRINT* fp : aBoard->Footprints() )
     {
@@ -335,8 +334,10 @@ static std::optional<ZONE_PRIORITY_EDGE> computeConstraint( const ZONE_OVERLAP_P
 
     if( countA == 0 && countB == 0 )
     {
-        double areaA = aPair.zoneA->Outline()->Area();
-        double areaB = aPair.zoneB->Outline()->Area();
+        double areaA = aPair.zoneA->GetParentFootprint() ? aPair.zoneA->GetBoardOutline().Area()
+                                                         : aPair.zoneA->Outline()->Area();
+        double areaB = aPair.zoneB->GetParentFootprint() ? aPair.zoneB->GetBoardOutline().Area()
+                                                         : aPair.zoneB->Outline()->Area();
 
         if( areaA == areaB )
             return std::nullopt;
@@ -354,8 +355,10 @@ static std::optional<ZONE_PRIORITY_EDGE> computeConstraint( const ZONE_OVERLAP_P
 
     if( ratio < SIMILARITY_THRESHOLD )
     {
-        double areaA = aPair.zoneA->Outline()->Area();
-        double areaB = aPair.zoneB->Outline()->Area();
+        double areaA = aPair.zoneA->GetParentFootprint() ? aPair.zoneA->GetBoardOutline().Area()
+                                                         : aPair.zoneA->Outline()->Area();
+        double areaB = aPair.zoneB->GetParentFootprint() ? aPair.zoneB->GetBoardOutline().Area()
+                                                         : aPair.zoneB->Outline()->Area();
 
         if( areaA == areaB )
             return std::nullopt;
@@ -371,8 +374,7 @@ static std::optional<ZONE_PRIORITY_EDGE> computeConstraint( const ZONE_OVERLAP_P
 }
 
 
-static void assignPrioritiesFromGraph( const std::vector<ZONE_PRIORITY_EDGE>& aEdges,
-                                       std::vector<ZONE*>&                    aAllZones )
+static void assignPrioritiesFromGraph( const std::vector<ZONE_PRIORITY_EDGE>& aEdges, std::vector<ZONE*>& aAllZones )
 {
     std::unordered_map<ZONE*, std::vector<ZONE*>> adj;
     std::unordered_map<ZONE*, int>                inDegree;
@@ -478,6 +480,36 @@ static void assignPrioritiesFromGraph( const std::vector<ZONE_PRIORITY_EDGE>& aE
 }
 
 
+static ZONE* ufFind( std::unordered_map<ZONE*, ZONE*>& aParent, ZONE* aZone )
+{
+    ZONE*& parent = aParent[aZone];
+
+    if( parent != aZone )
+        parent = ufFind( aParent, parent );
+
+    return parent;
+}
+
+
+static void ufUnion( std::unordered_map<ZONE*, ZONE*>& aParent, std::unordered_map<ZONE*, int>& aRank,
+                     ZONE* aA, ZONE* aB )
+{
+    ZONE* rootA = ufFind( aParent, aA );
+    ZONE* rootB = ufFind( aParent, aB );
+
+    if( rootA == rootB )
+        return;
+
+    if( aRank[rootA] < aRank[rootB] )
+        std::swap( rootA, rootB );
+
+    aParent[rootB] = rootA;
+
+    if( aRank[rootA] == aRank[rootB] )
+        aRank[rootA]++;
+}
+
+
 bool AutoAssignZonePriorities( BOARD* aBoard, PROGRESS_REPORTER* aReporter )
 {
     std::vector<ZONE*> eligibleZones;
@@ -501,12 +533,32 @@ bool AutoAssignZonePriorities( BOARD* aBoard, PROGRESS_REPORTER* aReporter )
     if( pairs.empty() )
         return false;
 
-    thread_pool&                                                    tp = GetKiCadThreadPool();
-    std::vector<std::future<std::optional<ZONE_PRIORITY_EDGE>>>     futures;
+    // Build equivalence classes for same-net overlapping zones. These zones
+    // are cooperative and must share the same priority after assignment.
+    std::unordered_map<ZONE*, ZONE*> ufParent;
+    std::unordered_map<ZONE*, int>   ufRank;
+
+    for( ZONE* z : eligibleZones )
+    {
+        ufParent[z] = z;
+        ufRank[z] = 0;
+    }
+
+    for( const ZONE_OVERLAP_PAIR& pair : pairs )
+    {
+        if( pair.zoneA->GetNetCode() == pair.zoneB->GetNetCode() )
+            ufUnion( ufParent, ufRank, pair.zoneA, pair.zoneB );
+    }
+
+    thread_pool&                                                tp = GetKiCadThreadPool();
+    std::vector<std::future<std::optional<ZONE_PRIORITY_EDGE>>> futures;
     futures.reserve( pairs.size() );
 
     for( const ZONE_OVERLAP_PAIR& pair : pairs )
     {
+        if( pair.zoneA->GetNetCode() == pair.zoneB->GetNetCode() )
+            continue;
+
         futures.emplace_back( tp.submit_task(
                 [&pair, aBoard]()
                 {
@@ -524,10 +576,29 @@ bool AutoAssignZonePriorities( BOARD* aBoard, PROGRESS_REPORTER* aReporter )
             edges.push_back( result.value() );
     }
 
-    if( edges.empty() )
-        return false;
+    if( !edges.empty() )
+        assignPrioritiesFromGraph( edges, eligibleZones );
 
-    assignPrioritiesFromGraph( edges, eligibleZones );
+    // Equalize priorities within each same-net equivalence class. Each group
+    // gets the maximum priority of any member so ordering constraints from
+    // different-net edges propagate to the whole group.
+    std::unordered_map<ZONE*, unsigned> groupMax;
+
+    for( ZONE* z : eligibleZones )
+    {
+        ZONE*    root = ufFind( ufParent, z );
+        unsigned pri = z->GetAssignedPriority();
+        auto&    maxPri = groupMax[root];
+
+        if( pri > maxPri )
+            maxPri = pri;
+    }
+
+    for( ZONE* z : eligibleZones )
+    {
+        ZONE* root = ufFind( ufParent, z );
+        z->SetAssignedPriority( groupMax[root] );
+    }
 
     for( ZONE* z : eligibleZones )
     {

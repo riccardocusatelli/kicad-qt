@@ -110,6 +110,13 @@ HIDPI_GL_3D_CANVAS::HIDPI_GL_3D_CANVAS( const KIGFX::VC_SETTINGS& aVcSettings, C
     bindMouse( wxEVT_MOTION, &HIDPI_GL_3D_CANVAS::onMouseMove );
     bindMouse( wxEVT_MAGNIFY, &HIDPI_GL_3D_CANVAS::onMagnify );
 
+    Bind( wxEVT_LEAVE_WINDOW,
+          [this]( wxMouseEvent& aEvent )
+          {
+              onMouseLeave();
+              aEvent.Skip();
+          } );
+
     // The other input events go to the tools only.  Binding both EVT_CHAR and EVT_CHAR_HOOK
     // ensures that all key events, especially special key like arrow keys, are handled by the
     // GAL event dispatcher, and not sent to GUI without filtering, because they have a default

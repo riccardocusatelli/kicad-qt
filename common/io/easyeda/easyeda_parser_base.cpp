@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "easyeda_parser_base.h"
@@ -35,7 +31,7 @@ double EASYEDA_PARSER_BASE::Convert( const wxString& aValue )
     double value = 0;
 
     if( !aValue.ToCDouble( &value ) )
-        THROW_IO_ERROR( wxString::Format( _( "Failed to parse number from '%s'" ), aValue ) );
+        THROW_IO_ERRORF( _( "Failed to parse number from '%s'" ), aValue );
 
     return value;
 }

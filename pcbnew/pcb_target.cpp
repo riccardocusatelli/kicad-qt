@@ -17,17 +17,14 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "pcb_target.h"
 
 #include <bitmaps.h>
 #include <board.h>
 #include <board_design_settings.h>
+#include <board_design_settings_defaults.h>
 #include <base_units.h>
 #include <settings/color_settings.h>
 #include <settings/settings_manager.h>
@@ -102,7 +99,7 @@ void PCB_TARGET::Flip( const VECTOR2I& aCentre, FLIP_DIRECTION aFlipDirection )
     else
         m_pos.y = aCentre.y - ( m_pos.y - aCentre.y );
 
-    SetLayer( GetBoard()->FlipLayer( GetLayer() ) );
+    SetLayer( GetFlippedLayer( GetLayer() ) );
 }
 
 
@@ -118,7 +115,7 @@ const BOX2I PCB_TARGET::GetBoundingBox() const
 }
 
 
-std::shared_ptr<SHAPE> PCB_TARGET::GetEffectiveShape( PCB_LAYER_ID aLayer, FLASHING aFlash ) const
+std::shared_ptr<SHAPE> PCB_TARGET::GetEffectiveShape( PCB_LAYER_ID aLayer, FLASHING, DRC_CONSTRAINT_T ) const
 {
     return std::make_shared<SHAPE_CIRCLE>( m_pos, m_size / 2 );
 }
@@ -145,7 +142,7 @@ EDA_ITEM* PCB_TARGET::Clone() const
 
 void PCB_TARGET::swapData( BOARD_ITEM* aImage )
 {
-    assert( aImage->Type() == PCB_TARGET_T );
+    KI_ASSERT( aImage->Type() == PCB_TARGET_T );
 
     std::swap( *((PCB_TARGET*) this), *((PCB_TARGET*) aImage) );
 }
@@ -248,14 +245,16 @@ static struct PCB_TARGET_DESC
         REGISTER_TYPE( PCB_TARGET );
         propMgr.InheritsAfter( TYPE_HASH( PCB_TARGET ), TYPE_HASH( BOARD_ITEM ) );
         propMgr.AddProperty( new PROPERTY<PCB_TARGET, int>( _HKI( "Size" ),
-                    &PCB_TARGET::SetSize, &PCB_TARGET::GetSize, PROPERTY_DISPLAY::PT_SIZE ) );
+                    &PCB_TARGET::SetSize, &PCB_TARGET::GetSize, PROPERTY_DISPLAY::PT_SIZE ) )
+                .SetIsCopyable();
         propMgr.AddProperty( new PROPERTY<PCB_TARGET, int>( _HKI( "Width" ),
-                    &PCB_TARGET::SetWidth, &PCB_TARGET::GetWidth, PROPERTY_DISPLAY::PT_SIZE ) );
+                    &PCB_TARGET::SetWidth, &PCB_TARGET::GetWidth, PROPERTY_DISPLAY::PT_SIZE ) )
+                .SetIsCopyable();
 
-        auto shape = new PROPERTY<PCB_TARGET, int>( _HKI( "Shape" ),
-                &PCB_TARGET::SetShape, &PCB_TARGET::GetShape );
         // TODO change the integer to an enum?
         //shape->SetValues( { { 0, _HKI( "Cross" ) }, { 1, ( "Plus" ) } } );
-        propMgr.AddProperty( shape );
+        propMgr.AddProperty( new PROPERTY<PCB_TARGET, int>( _HKI( "Shape" ),
+                    &PCB_TARGET::SetShape, &PCB_TARGET::GetShape ) )
+                .SetIsCopyable();
     }
 } _PCB_TARGET_DESC;

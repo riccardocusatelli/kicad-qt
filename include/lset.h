@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef LSET_H
@@ -84,7 +84,19 @@ public:
      */
     bool ContainsAll( const LSET& aLayers ) const
     {
-        return aLayers.is_subset_of( *this );
+        if( size() == aLayers.size() )
+            return aLayers.is_subset_of( *this );
+
+        if( size() < aLayers.size() )
+        {
+            LSET expanded( *this );
+            expanded.resize( aLayers.size() );
+            return aLayers.is_subset_of( expanded );
+        }
+
+        LSET expanded( aLayers );
+        expanded.resize( size() );
+        return expanded.is_subset_of( *this );
     }
 
     /**
@@ -228,8 +240,8 @@ public:
      *
      * The #LSEQ element will be in the same sequence as aWishListSequence if they are present.
      *
-     * @param aWishListSequence establishes the order of the returned LSEQ, and the LSEQ will only
-     *        contain PCB_LAYER_IDs which are present in this set.
+     * @param aSequence establishes the order of the returned LSEQ, and the LSEQ will only
+     *                  contain #PCB_LAYER_ID enums which are present in this set.
      */
     LSEQ Seq( const LSEQ& aSequence ) const;
 
@@ -283,7 +295,6 @@ public:
      * BACK and FRONT copper layers, mask, paste, solder layers are swapped
      * internal layers are flipped only if the copper layers count is known.
      *
-     * @param aMask = the LSET to flip
      * @param aCopperLayersCount = the number of copper layers. if 0 (in fact if < 4 )
      *  internal layers will be not flipped because the layer count is not known
      */
@@ -309,7 +320,6 @@ public:
      */
     LSET& ClearUserDefinedLayers();
 
-#ifndef SWIG
     // Custom iterator to iterate over all set bits
     class KICOMMON_API all_set_layers_iterator : public BASE_SET::set_bits_iterator
     {
@@ -362,8 +372,6 @@ public:
     copper_layers_iterator copper_layers_end() const;
     non_copper_layers_iterator non_copper_layers_begin() const;
     non_copper_layers_iterator non_copper_layers_end() const;
-
-#endif
 
 };
 #endif // LSET_H

@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <functional>
@@ -96,7 +96,7 @@ void PL_DRAW_PANEL_GAL::DisplayDrawingSheet()
 
     // To show the formatted texts instead of raw texts in drawing sheet editor, we need
     // a dummy DS_DRAW_ITEM_LIST.
-    DS_DRAW_ITEM_LIST dummy( drawSheetIUScale );
+    DS_DRAW_ITEM_LIST dummy( drawSheetIUScale, FOR_CANVAS );
     dummy.SetPaperFormat( m_edaFrame->GetPageSettings().GetTypeAsString() );
     dummy.SetTitleBlock( &m_edaFrame->GetTitleBlock() );
     dummy.SetProject( &m_edaFrame->Prj() );

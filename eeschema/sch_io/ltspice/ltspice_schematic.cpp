@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -116,9 +116,14 @@ void LTSPICE_SCHEMATIC::Load( SCHEMATIC* aSchematic, SCH_SHEET* aRootSheet, cons
 
     // TODO: Custom paths go here (non-recursive)
 
-    // Default LTspice libs
-    GetAscAndAsyFilePaths( m_ltspiceDataDir.GetPathWithSep() + wxS( "sub" ), true, m_ascNamesMap, m_asyNamesMap );
-    GetAscAndAsyFilePaths( m_ltspiceDataDir.GetPathWithSep() + wxS( "sym" ), true, m_ascNamesMap, m_asyNamesMap );
+    // Default LTspice libs, which are absent when LTspice is not installed
+    for( const wxString libDir : { wxS( "sub" ), wxS( "sym" ) } )
+    {
+        wxString path = m_ltspiceDataDir.GetPathWithSep() + libDir;
+
+        if( wxDirExists( path ) )
+            GetAscAndAsyFilePaths( path, true, m_ascNamesMap, m_asyNamesMap );
+    }
 
     wxString              rootElementName = aLibraryFileName.GetName().Lower();
     std::vector<wxString> uniqueAscNameKeys;
@@ -293,7 +298,7 @@ void LTSPICE_SCHEMATIC::Load( SCHEMATIC* aSchematic, SCH_SHEET* aRootSheet, cons
                        const SCH_FIELD* fieldA = sheetA->GetField( SCH_IO_LTSPICE_PARSER::LT_INSTNAME_FIELD );
                        const SCH_FIELD* fieldB = sheetB->GetField( SCH_IO_LTSPICE_PARSER::LT_INSTNAME_FIELD );
                        int              cmp = StrNumCmp( fieldA ? fieldA->GetText() : wxString(),
-                                                         fieldB ? fieldB->GetText() : wxString(), true );
+                                                         fieldB ? fieldB->GetText() : wxString(), CMP_T::IGNORE_CASE );
 
                        if( cmp != 0 )
                            return cmp < 0;
@@ -333,7 +338,7 @@ void LTSPICE_SCHEMATIC::Load( SCHEMATIC* aSchematic, SCH_SHEET* aRootSheet, cons
         for( SCH_ITEM* item : screen->Items().OfType( SCH_SYMBOL_T ) )
         {
             SCH_SYMBOL* symbol = static_cast<SCH_SYMBOL*>( item );
-            wxString    ref = symbol->GetRef( &path );
+            wxString    ref = symbol->GetBaseRef( &path );
 
             symbol->SetRef( &path, ref + suffix );
         }
@@ -354,56 +359,58 @@ void LTSPICE_SCHEMATIC::GetAscAndAsyFilePaths( const wxDir& aDir, bool aRecursiv
 {
     wxString filename;
 
+    if( !aDir.IsOpened() )
+        return;
+
+    bool cont = aDir.GetFirst( &filename, wxEmptyString, wxDIR_FILES | wxDIR_HIDDEN );
+
+    while( cont )
     {
-        bool cont = aDir.GetFirst( &filename, wxEmptyString, wxDIR_FILES | wxDIR_HIDDEN );
+        wxFileName path( aDir.GetName(), filename );
 
-        while( cont )
-        {
-            wxFileName path( aDir.GetName(), filename );
-
-            auto logToMap = [&]( std::map<wxString, wxString>& aMapToLogTo, const wxString& aKey )
-            {
-                if( aMapToLogTo.count( aKey ) )
+        auto logToMap =
+                [&]( std::map<wxString, wxString>& aMapToLogTo, const wxString& aKey )
                 {
-                    if( m_reporter )
+                    if( aMapToLogTo.count( aKey ) )
                     {
-                        m_reporter->Report( wxString::Format( _( "File at '%s' was ignored. Using previously "
-                                                                 "found file at '%s' instead." ),
-                                                              path.GetFullPath(),
-                                                              aMapToLogTo.at( aKey ) ) );
+                        if( m_reporter )
+                        {
+                            m_reporter->Report( wxString::Format( _( "File at '%s' was ignored. Using previously "
+                                                                     "found file at '%s' instead." ),
+                                                                  path.GetFullPath(),
+                                                                  aMapToLogTo.at( aKey ) ), RPT_SEVERITY_WARNING );
+                        }
                     }
-                }
-                else
-                {
-                    aMapToLogTo.emplace( aKey, path.GetFullPath() );
-                }
-            };
+                    else
+                    {
+                        aMapToLogTo.emplace( aKey, path.GetFullPath() );
+                    }
+                };
 
-            // Add dir1/dir2/cmp, dir2/cmp, cmp
-            wxString extension = path.GetExt().Lower();
+        // Add dir1/dir2/cmp, dir2/cmp, cmp
+        wxString extension = path.GetExt().Lower();
 
-            for( size_t i = 0; i < aBaseDirs.size() + 1; i++ )
-            {
-                wxString alias;
+        for( size_t i = 0; i < aBaseDirs.size() + 1; i++ )
+        {
+            wxString alias;
 
-                for( size_t j = i; j < aBaseDirs.size(); j++ )
-                    alias << aBaseDirs[j].Lower() << '/';
+            for( size_t j = i; j < aBaseDirs.size(); j++ )
+                alias << aBaseDirs[j].Lower() << '/';
 
-                alias << path.GetName().Lower();
+            alias << path.GetName().Lower();
 
-                if( extension == wxS( "asc" ) )
-                    logToMap( aMapOfAscFiles, alias );
-                else if( extension == wxS( "asy" ) )
-                    logToMap( aMapOfAsyFiles, alias );
-            }
-
-            cont = aDir.GetNext( &filename );
+            if( extension == wxS( "asc" ) )
+                logToMap( aMapOfAscFiles, alias );
+            else if( extension == wxS( "asy" ) )
+                logToMap( aMapOfAsyFiles, alias );
         }
+
+        cont = aDir.GetNext( &filename );
     }
 
     if( aRecursive )
     {
-        bool cont = aDir.GetFirst( &filename, wxEmptyString, wxDIR_DIRS | wxDIR_HIDDEN );
+        cont = aDir.GetFirst( &filename, wxEmptyString, wxDIR_DIRS | wxDIR_HIDDEN );
 
         while( cont )
         {
@@ -482,46 +489,32 @@ bool LTSPICE_SCHEMATIC::IsAsySubsheet( const wxString& aAsyFile )
 }
 
 
-int LTSPICE_SCHEMATIC::integerCheck( const wxString& aToken, int aLineNumber,
-                                     const wxString& aFileName )
+int LTSPICE_SCHEMATIC::integerCheck( const wxString& aToken, int aLineNumber, const wxString& aFileName )
 {
     long result;
 
     if( !aToken.ToLong( &result ) )
-    {
-        THROW_IO_ERROR( wxString::Format( _( "Expecting integer at line %d in file %s" ),
-                                          aLineNumber,
-                                          aFileName ) );
-    }
+        THROW_IO_ERRORF( _( "Expecting integer at line %d in file %s" ), aLineNumber, aFileName );
 
     return (int) result;
 }
 
 
-VECTOR2I LTSPICE_SCHEMATIC::pointCheck( const wxString& aTokenX, const wxString& aTokenY,
-                                        int aLineNumber, const wxString& aFileName )
+VECTOR2I LTSPICE_SCHEMATIC::pointCheck( const wxString& aTokenX, const wxString& aTokenY, int aLineNumber,
+                                        const wxString& aFileName )
 {
     return VECTOR2I( integerCheck( aTokenX, aLineNumber, aFileName ),
                      integerCheck( aTokenY, aLineNumber, aFileName ) );
 }
 
 
-void LTSPICE_SCHEMATIC::tokensSizeRangeCheck( size_t aActualSize, int aExpectedMin,
-                                              int aExpectedMax, int aLineNumber,
-                                              const wxString& aFileName )
+void LTSPICE_SCHEMATIC::tokensSizeRangeCheck( size_t aActualSize, int aExpectedMin, int aExpectedMax,
+                                              int aLineNumber, const wxString& aFileName )
 {
     if( (int) aActualSize < aExpectedMin )
-    {
-        THROW_IO_ERROR( wxString::Format( _( "Expected data missing on line %d in file %s" ),
-                                          aLineNumber,
-                                          aFileName ) );
-    }
+        THROW_IO_ERRORF( _( "Expected data missing on line %d in file %s" ), aLineNumber, aFileName );
     else if( (int) aActualSize > aExpectedMax )
-    {
-        THROW_IO_ERROR( wxString::Format( _( "Extra data found on line %d in file %s" ),
-                                          aLineNumber,
-                                          aFileName ) );
-    }
+        THROW_IO_ERRORF( _( "Extra data found on line %d in file %s" ), aLineNumber, aFileName );
 }
 
 
@@ -1016,8 +1009,9 @@ LTSPICE_SCHEMATIC::ParseAscFiles( const std::map<wxString, wxString>& aAscFilesC
                 }
                 catch( IO_ERROR& e )
                 {
-                    if( m_reporter )
-                        m_reporter->Report( e.What(), RPT_SEVERITY_ERROR );
+                    // the box stands in for the part, so this is not an error, and once per symbol is enough
+                    if( m_reporter && m_missingSymbols.insert( symbolName.Lower() ).second )
+                        m_reporter->Report( e.What(), RPT_SEVERITY_WARNING );
 
                     // Use dummy symbol
                     LT_SYMBOL lt_symbol = MakeDummySymbol( symbolName );

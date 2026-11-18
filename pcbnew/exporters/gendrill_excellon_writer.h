@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -72,9 +68,9 @@ public:
      * @param aZerosFmt is the zero format DECIMAL_FORMAT, SUPPRESS_LEADING, SUPPRESS_TRAILING,
      *                  or KEEP_ZEROS.
      * @param aLeftDigits is the number of digits for integer part of coordinates
-     *                    if <= 0 (default), a suitable value will be used, depending on units.
+     *                    if \<= 0 (default), a suitable value will be used, depending on units.
      * @param aRightDigits is number of digits for mantissa part of coordinates
-     *                     if <= 0 (default), a suitable value will be used, depending on units.
+     *                     if \<= 0 (default), a suitable value will be used, depending on units.
      */
     void SetFormat( bool aMetric, ZEROS_FMT aZerosFmt = DECIMAL_FORMAT,
                     int aLeftDigits = 0, int aRightDigits = 0 );
@@ -115,8 +111,9 @@ private:
      * Create an Excellon drill file.
      *
      * @param aFile is an opened file to write to will be closed by CreateDrillFile.
-     * @param aLayerPair is the layer pair for the current holes.
+     * @param aSpan is the layer span for the current holes.
      * @param aHolesType is the holes type (PTH, NPTH, mixed).
+     * @param aTagBackdrillHit indicates if the drill file should include back drills.
      * @return the hole count.
      */
     int createDrillFile( FILE* aFile, const DRILL_SPAN& aSpan, TYPE_FILE aHolesType,
@@ -129,10 +126,10 @@ private:
      * The full header is something like:
      * M48
      * ;DRILL file {PCBNEW (2007-11-29-b)} date 17/1/2008-21:02:35
-     * ;FORMAT={ <precision> / absolute / <units> / <numbers format>}
-     * ; #@! TF.FileFunction,Plated,1,4,PTH
-     * ; #@! TF.CreationDate,2018-11-23T15:59:51+01:00
-     * ; #@! TF.GenerationSoftware,Kicad,Pcbnew,2017.04
+     * ;FORMAT={ \<precision\> / absolute / \<units\> / \<numbers format\>}
+     * ; \#\@\! TF.FileFunction,Plated,1,4,PTH
+     * ; \#\@\! TF.CreationDate,2018-11-23T15:59:51+01:00
+     * ; \#\@\! TF.GenerationSoftware,Kicad,Pcbnew,2017.04
      * FMAT,2
      * INCH,TZ
      *
@@ -158,7 +155,7 @@ private:
     wxFileName getBackdrillLayerPairFileName( const DRILL_SPAN& aSpan ) const;
     bool       writeBackdrillLayerPairFile( const wxString& aPlotDirectory,
                                             REPORTER* aReporter, const DRILL_SPAN& aSpan );
-    void       writeHoleComments( const HOLE_INFO& aHole, bool aTagBackdrillHit );
+    void       writeHoleComments( const DRILL_OPERATION& aHole, bool aTagBackdrillHit );
     void       writePostMachiningComment( PAD_DRILL_POST_MACHINING_MODE aMode, int aSizeIU,
                                           int aDepthIU, int aAngleDeciDegree,
                                           const wxString& aSideLabel );

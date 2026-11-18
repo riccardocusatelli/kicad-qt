@@ -13,11 +13,7 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, you may find one here:
-# http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-# or you may search the http://www.gnu.org website for the version 2 license,
-# or you may write to the Free Software Foundation, Inc.,
-# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 option(KICAD_BUILD_FUZZ_TESTS "Build fuzz tests" OFF)
 
@@ -29,7 +25,10 @@ if(KICAD_BUILD_FUZZ_TESTS)
             target_compile_definitions(${target_name} PRIVATE KICAD_FUZZING)
         elseif(MSVC)
             target_compile_options(${target_name} PRIVATE /fsanitize=fuzzer /fsanitize=address)
-            target_compile_definitions(${target_name} PRIVATE KICAD_FUZZING _DISABLE_VECTOR_ANNOTATION _DISABLE_STRING_ANNOTATION)
+            # The rest of KiCad is built without ASan, so the STL container annotations must be
+            # off here too or the /fsanitize=address objects trip detect_mismatch at link time.
+            # _DISABLE_STL_ANNOTATION is equivalent to disabling the various type annotations individually
+            target_compile_definitions(${target_name} PRIVATE KICAD_FUZZING _DISABLE_STL_ANNOTATION)
         endif()
     endfunction()
 
@@ -77,15 +76,12 @@ if(KICAD_BUILD_FUZZ_TESTS)
             dxflib_qcad
             tinyspline_lib
             nanosvg
-            idf3
             common
             qa_utils
             markdown_lib
-            scripting
             ${PCBNEW_IO_LIBRARIES}
             ${wxWidgets_LIBRARIES}
             ${GDI_PLUS_LIBRARIES}
-            ${PYTHON_LIBRARIES}
             Boost::headers
             ${PCBNEW_EXTRA_LIBS}    # -lrt must follow Boost
     )

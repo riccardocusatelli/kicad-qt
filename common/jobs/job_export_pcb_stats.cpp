@@ -13,15 +13,25 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "job_export_pcb_stats.h"
 
 #include <jobs/job_registry.h>
+#include <i18n_utility.h>
 #include <wildcards_and_files_ext.h>
 #include <wx/filename.h>
+
+NLOHMANN_JSON_SERIALIZE_ENUM( JOB_EXPORT_PCB_STATS::OUTPUT_FORMAT,
+                              {
+                                      { JOB_EXPORT_PCB_STATS::OUTPUT_FORMAT::REPORT, "report" },
+                                      { JOB_EXPORT_PCB_STATS::OUTPUT_FORMAT::JSON, "json" },
+                                      // Legacy jobsets stored numeric enum values.
+                                      { JOB_EXPORT_PCB_STATS::OUTPUT_FORMAT::REPORT, 0 },
+                                      { JOB_EXPORT_PCB_STATS::OUTPUT_FORMAT::JSON, 1 },
+                              } )
 
 NLOHMANN_JSON_SERIALIZE_ENUM( JOB_EXPORT_PCB_STATS::UNITS, {
                                                                    { JOB_EXPORT_PCB_STATS::UNITS::INCH, "in" },
@@ -77,4 +87,4 @@ void JOB_EXPORT_PCB_STATS::SetDefaultOutputPath( const wxString& aReferenceName 
 }
 
 
-REGISTER_JOB( pcb_export_stats, _( "PCB: Export Board Statistics" ), KIWAY_FACES::FACE_PCB, JOB_EXPORT_PCB_STATS );
+REGISTER_JOB( pcb_export_stats, _HKI( "PCB: Export Board Statistics" ), KIWAY_FACES::FACE_PCB, JOB_EXPORT_PCB_STATS );

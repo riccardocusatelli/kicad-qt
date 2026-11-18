@@ -14,10 +14,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
- 
+
 
 #ifndef FOOTPRINT_LIBRARY_ADAPTER_H
 #define FOOTPRINT_LIBRARY_ADAPTER_H
@@ -98,7 +98,7 @@ public:
     /**
      * Load a #FOOTPRINT having @a aName from the library given by @a aNickname.
      *
-     * @param aNickname is a locator for the "library", it is a "name" in #LIB_TABLE_ROW
+     * @param aNickname is a locator for the \"library\", it is a "name" in #LIBRARY_TABLE_ROW
      * @param aName is the name of the #FOOTPRINT to load.
      * @param aKeepUUID = true to keep initial items UUID, false to set new UUID
      *                   normally true if loaded in the footprint editor, false
@@ -182,8 +182,8 @@ public:
 protected:
     std::map<wxString, LIB_DATA>& globalLibs() override { return GlobalLibraries.Get(); }
     std::map<wxString, LIB_DATA>& globalLibs() const override { return GlobalLibraries.Get(); }
-    std::shared_mutex& globalLibsMutex() override { return GlobalLibraryMutex; }
-    std::shared_mutex& globalLibsMutex() const override { return GlobalLibraryMutex; }
+    std::shared_mutex& globalLibsMutex() override { return GlobalLibraryMutex.Get(); }
+    std::shared_mutex& globalLibsMutex() const override { return GlobalLibraryMutex.Get(); }
 
     void enumerateLibrary( LIB_DATA* aLib, const wxString& aUri ) override;
 
@@ -195,7 +195,9 @@ private:
     static PCB_IO* pcbplugin( const LIB_DATA* aRow );
 
     static LEAK_AT_EXIT<std::map<wxString, LIB_DATA>> GlobalLibraries;
-    static std::shared_mutex GlobalLibraryMutex;
+    // Leaked like GlobalLibraries so adapter destructors can still lock it to evict their entries
+    // even when they run during static teardown.
+    static LEAK_AT_EXIT<std::shared_mutex> GlobalLibraryMutex;
 
     /// Storage for preloaded footprints, indexed by library nickname.
     /// These are cloned during library enumeration so GetFootprints() returns instantly.

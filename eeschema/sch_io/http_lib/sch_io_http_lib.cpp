@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -30,7 +30,6 @@
 #include <fmt.h>
 #include <hash.h>
 #include <lib_symbol.h>
-#include <scoped_set_reset.h>
 
 #include <libraries/symbol_library_adapter.h>
 #include <http_lib/http_lib_connection.h>
@@ -79,7 +78,12 @@ SCH_IO_HTTP_LIB::SCH_IO_HTTP_LIB() :
 
 void SCH_IO_HTTP_LIB::stopBackgroundRefresh()
 {
-    m_refreshRunning = false;
+    // The wait predicate and shutdown need the same mutex to avoid a lost wakeup.
+    {
+        std::lock_guard lock( m_refreshMutex );
+        m_refreshRunning = false;
+    }
+
     m_refreshCV.notify_all();
 
     if( m_refreshThread.joinable() )
@@ -162,7 +166,12 @@ void SCH_IO_HTTP_LIB::backgroundRefreshWorker()
                     {
                         KI_LOG_TRACE( traceHTTPLib, wxT( "Background refresh: new data" ) );
 
-                        materializeCache( m_libraryPath, std::move( categoryData ), signature );
+                        materializeCache( m_libraryPath, categoryData );
+
+                        {
+                            std::unique_lock lock( m_cacheMutex );
+                            m_cacheSignature = signature;
+                        }
                     }
                     else
                     {
@@ -244,14 +253,12 @@ size_t SCH_IO_HTTP_LIB::computeSignature( const std::map<std::string, HTTP_LIB_C
 }
 
 
-bool SCH_IO_HTTP_LIB::materializeCache( const wxString& aLibraryPath,
-                                        std::map<std::string, HTTP_LIB_CATEGORY> aCategoryData, size_t aSignature,
-                                        std::optional<int> aExpectedModifyHash )
+void SCH_IO_HTTP_LIB::materializeCache( const wxString& aLibraryPath,
+                                        const std::map<std::string, HTTP_LIB_CATEGORY>& aCategoryData )
 {
     std::map<wxString, std::unique_ptr<LIB_SYMBOL>>         newSymbolCache;
     std::map<wxString, std::pair<std::string, std::string>> newPartIdMap;
     std::set<wxString>                                      newCustomFields;
-    std::set<wxString>                                      newPendingSourceLibs;
 
     for( const HTTP_LIB_CATEGORY& category : aCategoryData | std::views::values )
     {
@@ -260,83 +267,23 @@ bool SCH_IO_HTTP_LIB::materializeCache( const wxString& aLibraryPath,
             wxString symbolName( part.name );
             newPartIdMap[symbolName] = { part.id, category.id };
 
-            LIB_SYMBOL* symbol = loadSymbolFromPart( aLibraryPath, symbolName, category, part, newCustomFields,
-                                                     newPendingSourceLibs );
+            LIB_SYMBOL* symbol = loadSymbolFromPart( aLibraryPath, symbolName, category, part, newCustomFields );
 
             if( symbol )
                 newSymbolCache[symbolName] = std::unique_ptr<LIB_SYMBOL>( symbol );
         }
     }
 
-    std::unique_lock lock( m_cacheMutex );
-
-    if( aExpectedModifyHash && *aExpectedModifyHash != m_modifyHash )
-        return false;
-
-    m_symbolCache = std::move( newSymbolCache );
-    m_partIdMap = std::move( newPartIdMap );
-    m_customFields = std::move( newCustomFields );
-
-    if( newPendingSourceLibs.empty() )
-        m_pendingCategoryData.clear();
-    else
-        m_pendingCategoryData = std::move( aCategoryData );
-
-    m_pendingSourceLibs = std::move( newPendingSourceLibs );
-
-    m_cacheSignature = aSignature;
-    m_cachePopulated = true;
-    m_modifyHash++;
-    return true;
-}
-
-
-void SCH_IO_HTTP_LIB::resolvePendingSources()
-{
-    if( m_inCacheLib )
-        return;
-
-    std::set<wxString> pending;
-    int                modifyHash = 0;
-
     {
-        std::shared_lock lock( m_cacheMutex );
+        std::unique_lock lock( m_cacheMutex );
 
-        if( m_pendingSourceLibs.empty() )
-            return;
+        m_symbolCache = std::move( newSymbolCache );
+        m_partIdMap = std::move( newPartIdMap );
+        m_customFields = std::move( newCustomFields );
 
-        pending = m_pendingSourceLibs;
-        modifyHash = m_modifyHash;
+        m_cachePopulated = true;
+        m_modifyHash++;
     }
-
-    if( std::ranges::all_of( pending,
-                             [this]( const wxString& aLib )
-                             {
-                                 return m_adapter->IsLibraryLoadPending( aLib );
-                             } ) )
-    {
-        return;
-    }
-
-    std::map<std::string, HTTP_LIB_CATEGORY> categoryData;
-    size_t                                   signature = 0;
-
-    // The parts must come from the same published cache as the pending set
-    {
-        std::shared_lock lock( m_cacheMutex );
-
-        if( m_modifyHash != modifyHash )
-            return;
-
-        categoryData = m_pendingCategoryData;
-        signature = m_cacheSignature;
-    }
-
-    KI_LOG_TRACE( traceHTTPLib, wxT( "Rebuilding cache now that a source library has loaded" ) );
-
-    SCOPED_SET_RESET<bool> inCacheLib( m_inCacheLib, true );
-
-    materializeCache( m_libraryPath, std::move( categoryData ), signature, modifyHash );
 }
 
 
@@ -353,7 +300,13 @@ void SCH_IO_HTTP_LIB::cacheLib( const wxString& aLibraryPath )
             return;
     }
 
-    SCOPED_SET_RESET<bool> inCacheLib( m_inCacheLib, true );
+    m_inCacheLib = true;
+
+    struct CACHE_LIB_GUARD
+    {
+        bool* flag;
+        ~CACHE_LIB_GUARD() { *flag = false; }
+    } cacheLibGuard{ &m_inCacheLib };
 
     m_libraryPath = aLibraryPath;
 
@@ -388,7 +341,12 @@ void SCH_IO_HTTP_LIB::cacheLib( const wxString& aLibraryPath )
             return;
     }
 
-    materializeCache( aLibraryPath, std::move( categoryData ), signature );
+    materializeCache( aLibraryPath, categoryData );
+
+    {
+        std::unique_lock lock( m_cacheMutex );
+        m_cacheSignature = signature;
+    }
 
     if( !m_refreshRunning.load() )
         startBackgroundRefresh();
@@ -406,7 +364,6 @@ void SCH_IO_HTTP_LIB::EnumerateSymbolLib( wxArrayString& aSymbolNameList, const 
         THROW_IO_ERROR( m_lastError );
 
     cacheLib( aLibraryPath );
-    resolvePendingSources();
 
     bool powerSymbolsOnly = aProperties && aProperties->contains( SYMBOL_LIBRARY_ADAPTER::PropPowerSymsOnly );
 
@@ -431,7 +388,6 @@ void SCH_IO_HTTP_LIB::EnumerateSymbolLib( std::vector<LIB_SYMBOL*>& aSymbolList,
         THROW_IO_ERROR( m_lastError );
 
     cacheLib( aLibraryPath );
-    resolvePendingSources();
 
     bool powerSymbolsOnly = aProperties && aProperties->contains( SYMBOL_LIBRARY_ADAPTER::PropPowerSymsOnly );
 
@@ -464,7 +420,6 @@ LIB_SYMBOL* SCH_IO_HTTP_LIB::LoadSymbol( const wxString& aLibraryPath, const wxS
         THROW_IO_ERROR( m_lastError );
 
     cacheLib( aLibraryPath );
-    resolvePendingSources();
 
     {
         std::shared_lock lock( m_cacheMutex );
@@ -527,10 +482,8 @@ LIB_SYMBOL* SCH_IO_HTTP_LIB::LoadSymbol( const wxString& aLibraryPath, const wxS
     // This transient symbol is not placed in the shared cache; collect its custom fields into a
     // local set so the background materializer's m_customFields is never mutated off-thread.
     std::set<wxString> transientFields;
-    std::set<wxString> transientPendingLibs;
 
-    return loadSymbolFromPart( aLibraryPath, aAliasName, *foundCategory, result, transientFields,
-                               transientPendingLibs );
+    return loadSymbolFromPart( aLibraryPath, aAliasName, *foundCategory, result, transientFields );
 }
 
 
@@ -591,40 +544,31 @@ void SCH_IO_HTTP_LIB::ensureSettings( const wxString& aSettingsPath )
             [&]()
             {
                 if( !m_settings->LoadFromFile() )
-                {
-                    THROW_IO_ERROR( wxString::Format( _( "HTTP library settings file %s missing or invalid." ),
-                                                      aSettingsPath ) );
-                }
+                    THROW_IO_ERRORF( _( "HTTP library settings file %s missing or invalid." ), aSettingsPath );
 
                 if( m_settings->m_Source.api_version.empty() )
                 {
-                    THROW_IO_ERROR( wxString::Format( _( "HTTP library settings file %s is missing the API version "
-                                                         "number." ),
-                                                      aSettingsPath ) );
+                    THROW_IO_ERRORF( _( "HTTP library settings file %s is missing the API version number." ),
+                                     aSettingsPath );
                 }
 
                 if( m_settings->getSupportedAPIVersion() != m_settings->m_Source.api_version )
                 {
-                    THROW_IO_ERROR( wxString::Format( _( "HTTP library settings file %s uses API version %s, but "
-                                                         "KiCad requires version %s." ),
-                                                      aSettingsPath, m_settings->m_Source.api_version,
-                                                      m_settings->getSupportedAPIVersion() ) );
+                    THROW_IO_ERRORF( _( "HTTP library settings file %s uses API version %s, but KiCad requires "
+                                        "version %s." ),
+                                     aSettingsPath,
+                                     m_settings->m_Source.api_version,
+                                     m_settings->getSupportedAPIVersion() );
                 }
 
                 if( m_settings->m_Source.root_url.empty() )
-                {
-                    THROW_IO_ERROR( wxString::Format( _( "HTTP library settings file %s is missing the root URL." ),
-                                                      aSettingsPath ) );
-                }
+                    THROW_IO_ERRORF( _( "HTTP library settings file %s is missing the root URL." ), aSettingsPath );
 
                 // map lib source type
                 m_settings->m_Source.type = m_settings->get_HTTP_LIB_SOURCE_TYPE();
 
                 if( m_settings->m_Source.type == HTTP_LIB_SOURCE_TYPE::INVALID )
-                {
-                    THROW_IO_ERROR( wxString::Format( _( "HTTP library settings file %s has invalid library type." ),
-                                                      aSettingsPath ) );
-                }
+                    THROW_IO_ERRORF( _( "HTTP library settings file %s has invalid library type." ), aSettingsPath );
 
                 // make sure that the root url finishes with a forward slash
                 if( m_settings->m_Source.root_url.at( m_settings->m_Source.root_url.length() - 1 ) != '/' )
@@ -665,11 +609,7 @@ void SCH_IO_HTTP_LIB::ensureConnection()
     connect();
 
     if( !m_conn || !m_conn->IsValidEndpoint() )
-    {
-        THROW_IO_ERROR( wxString::Format( _( "Could not connect to %s. Errors: %s" ),
-                                          m_settings->m_Source.root_url,
-                                          m_lastError ) );
-    }
+        THROW_IO_ERRORF( _( "Could not connect to %s. Errors: %s" ), m_settings->m_Source.root_url, m_lastError );
 }
 
 
@@ -703,8 +643,7 @@ LIB_SYMBOL* SCH_IO_HTTP_LIB::loadSymbolFromPart( const wxString& aLibraryPath,
                                                  const wxString& aSymbolName,
                                                  const HTTP_LIB_CATEGORY& aCategory,
                                                  const HTTP_LIB_PART& aPart,
-                                                 std::set<wxString>& aCustomFields,
-                                                 std::set<wxString>& aPendingSourceLibs )
+                                                 std::set<wxString>& aCustomFields )
 {
     LIB_SYMBOL* symbol = nullptr;
     LIB_SYMBOL* originalSymbol = nullptr;
@@ -739,7 +678,6 @@ LIB_SYMBOL* SCH_IO_HTTP_LIB::loadSymbolFromPart( const wxString& aLibraryPath,
         } guard{ &m_inProgressLoads, {}, false };
 
         bool cycle = false;
-        bool sourcePending = false;
 
         if( symbolId.IsValid() )
         {
@@ -756,8 +694,6 @@ LIB_SYMBOL* SCH_IO_HTTP_LIB::loadSymbolFromPart( const wxString& aLibraryPath,
             }
             else
             {
-                // Sampled before the lookup so a load that finishes in between is still recorded
-                sourcePending = m_adapter->IsLibraryLoadPending( symbolId.GetLibNickname().wx_str() );
                 originalSymbol = m_adapter->LoadSymbol( symbolId );
             }
         }
@@ -789,9 +725,6 @@ LIB_SYMBOL* SCH_IO_HTTP_LIB::loadSymbolFromPart( const wxString& aLibraryPath,
         }
         else
         {
-            if( sourcePending )
-                aPendingSourceLibs.insert( symbolId.GetLibNickname().wx_str() );
-
             KI_LOG_TRACE( traceHTTPLib, wxT( "loadSymbolFromPart: source symbol '%s' not found, "
                                            "will create empty symbol" ), symbolIdStr );
         }
@@ -904,10 +837,34 @@ LIB_SYMBOL* SCH_IO_HTTP_LIB::loadSymbolFromPart( const wxString& aLibraryPath,
 
     symbol->SetFPFilters( fp_filters );
 
+    // Pin-to-pad maps (issue #2282): attach non-destructively.  Prefer the spec-form named maps +
+    // associations when the payload supplies them; otherwise fall back to the legacy flat form for
+    // one release, bound to the symbol's concrete Footprint field (fp_filters may carry globs).
+    if( !aPart.named_pin_maps.IsEmpty() || !aPart.associated_footprints.empty() )
+    {
+        symbol->SetPinMaps( aPart.named_pin_maps );
+        symbol->SetAssociatedFootprints( aPart.associated_footprints );
+    }
+    else
+    {
+        const wxString assignedFootprint = symbol->GetFootprintField().GetText();
+
+        if( !aPart.pin_map.empty() && !assignedFootprint.IsEmpty() )
+        {
+            const wxString mapName = wxS( "HTTP Library" );
+
+            symbol->PinMaps().AddOrReplace( MakeLegacyPinMap( mapName, aPart.pin_map ) );
+
+            LIB_ID fpId;
+            fpId.Parse( assignedFootprint );
+            symbol->SetAssociatedFootprints( { { fpId, mapName } } );
+        }
+    }
+
     return symbol;
 }
 
-void SCH_IO_HTTP_LIB::SaveSymbol( const wxString& aLibraryPath, const LIB_SYMBOL* aSymbol,
+void SCH_IO_HTTP_LIB::SaveSymbol( const wxString& aLibraryPath, std::unique_ptr<LIB_SYMBOL> aSymbol,
                                   const std::map<std::string, UTF8>* aProperties )
 {
     // TODO: Implement this sometime;

@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <kiface_base.h>
@@ -203,6 +199,12 @@ void PCB_BASE_EDIT_FRAME::SetBoard( BOARD* aBoard, PROGRESS_REPORTER* aReporter 
 }
 
 
+const TOOL_ACTION* PCB_BASE_EDIT_FRAME::drawArcAction( ARC_DRAW_MODE aMode ) const
+{
+    return &PCB_ACTIONS::DrawArcForMode( aMode );
+}
+
+
 void PCB_BASE_EDIT_FRAME::unitsChangeRefresh()
 {
     PCB_BASE_FRAME::unitsChangeRefresh();
@@ -242,6 +244,7 @@ COLOR_SETTINGS* PCB_BASE_EDIT_FRAME::GetColorSettings( bool aForceRefresh ) cons
 }
 
 
+<<<<<<< b2e17e0a
 wxString PCB_BASE_EDIT_FRAME::GetDesignRulesPath()
 {
     if( !GetBoard() )
@@ -254,6 +257,22 @@ wxString PCB_BASE_EDIT_FRAME::GetDesignRulesPath()
 
 
 void PCB_BASE_EDIT_FRAME::handleActivateEvent( bool aActive )
+||||||| 1304b76aad
+wxString PCB_BASE_EDIT_FRAME::GetDesignRulesPath()
+{
+    if( !GetBoard() )
+        return wxEmptyString;
+
+    wxFileName fn = GetBoard()->GetFileName();
+    fn.SetExt( FILEEXT::DesignRulesFileExtension );
+    return Prj().AbsolutePath( fn.GetFullName() );
+}
+
+
+void PCB_BASE_EDIT_FRAME::handleActivateEvent( wxActivateEvent& aEvent )
+=======
+void PCB_BASE_EDIT_FRAME::handleActivateEvent( wxActivateEvent& aEvent )
+>>>>>>> ed8c16703e
 {
     PCB_BASE_FRAME::handleActivateEvent( aActive );
 
@@ -270,10 +289,24 @@ void PCB_BASE_EDIT_FRAME::HandleSystemColorChange()
     if( m_appearancePanel )
         m_appearancePanel->OnDarkModeToggle();
 
+<<<<<<< b2e17e0a
     EDA_3D_VIEWER_FRAME* viewer = Get3DViewerFrame();
 
     if( viewer )
         viewer->OnDarkModeToggle();
+||||||| 1304b76aad
+    EDA_3D_VIEWER_FRAME* viewer = Get3DViewerFrame();
+
+    if( viewer )
+        viewer->OnDarkModeToggle();
+
+    aEvent.Skip();
+=======
+    if( EDA_3D_VIEWER_FRAME* our3DViewer = GetOur3DViewerFrame() )
+        our3DViewer->OnDarkModeToggle();
+
+    aEvent.Skip();
+>>>>>>> ed8c16703e
 }
 
 

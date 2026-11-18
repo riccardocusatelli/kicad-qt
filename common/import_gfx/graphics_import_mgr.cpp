@@ -16,16 +16,13 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "graphics_import_mgr.h"
 
 #include <eda_item.h>
+#include "bitmap_import_plugin.h"
 #include "dxf_import_plugin.h"
 #include "svg_import_plugin.h"
 
@@ -39,6 +36,7 @@ std::unique_ptr<GRAPHICS_IMPORT_PLUGIN> GRAPHICS_IMPORT_MGR::GetPlugin( GFX_FILE
     {
     case DXF: ret = std::make_unique<DXF_IMPORT_PLUGIN>();             break;
     case SVG: ret = std::make_unique<SVG_IMPORT_PLUGIN>();             break;
+    case BITMAP: ret = std::make_unique<BITMAP_IMPORT_PLUGIN>(); break;
     default:  throw std::runtime_error( "Unhandled graphics format" ); break;
     }
 

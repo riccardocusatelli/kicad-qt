@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef SCH_RULE_AREA_H
@@ -51,6 +47,9 @@ public:
     }
 
     virtual ~SCH_RULE_AREA();
+
+    void Serialize( google::protobuf::Any& aContainer ) const override;
+    bool Deserialize( const google::protobuf::Any& aContainer ) override;
 
     wxString GetClass() const override;
 
@@ -162,8 +161,27 @@ public:
     /// @return The resolved netclass (if any), and the SCH_ITEM providing the declaration.
     const std::vector<std::pair<wxString, SCH_ITEM*>> GetResolvedNetclasses( const SCH_SHEET_PATH* aSheetPath ) const;
 
+    /// Return true when the rule area exists only as a container for attached directive labels.
+    /// This requires at least one attached directive and no design effect of its own (no DNP and
+    /// no exclude-from flags set).
+    bool IsDirectiveLabelOnlyArea() const
+    {
+        return !m_directives.empty() && !m_DNP && !m_excludedFromSim && !m_excludedFromBOM
+               && !m_excludedFromBoard;
+    }
+
     /// Get the message panel info for the rule area.
     void GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList ) override;
+
+    /// Remove an item from this rule area's caches (called when the item is deleted).
+    void RemoveItem( SCH_ITEM* aItem );
+
+    /// Remove a directive label from this rule area's caches (called when the label is deleted).
+    void RemoveDirective( SCH_DIRECTIVE_LABEL* aLabel );
+
+    /// Break the const-contract for the test suite (only)
+    std::unordered_set<SCH_ITEM*>& _GetContainedItems() { return m_items; }
+    std::unordered_set<SCH_DIRECTIVE_LABEL*>& _GetContainedDirectives() { return m_directives; }
 
 protected:
     /// Add a directive label which applies to items within ths rule area.
@@ -180,13 +198,6 @@ protected:
     bool          m_excludedFromBOM;
     bool          m_excludedFromBoard;
     bool          m_DNP;                   ///< True if symbol is set to 'Do Not Populate'.
-
-public:
-    /// Remove an item from this rule area's caches (called when the item is deleted).
-    void RemoveItem( SCH_ITEM* aItem );
-
-    /// Remove a directive label from this rule area's caches (called when the label is deleted).
-    void RemoveDirective( SCH_DIRECTIVE_LABEL* aLabel );
 
     /// All #SCH_ITEM objects currently contained or intersecting the rule area.  No ownership.
     std::unordered_set<SCH_ITEM*>            m_items;

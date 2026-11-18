@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef SCH_VIEW_H_
@@ -30,6 +26,8 @@
 #include <wx/string.h>
 
 #include <memory>
+#include <set>
+#include <kiid.h>
 #include <vector>
 
 class EDA_ITEM;
@@ -39,6 +37,8 @@ class SCH_SCREEN;
 class LIB_SYMBOL;
 class SCH_PIN;
 class DS_PROXY_VIEW_ITEM;
+class SCHEMATIC_TEXT_VAR_ADAPTER;
+class TEXT_VAR_TRACKER;
 
 
 // Eeschema 100nm as the internal units
@@ -158,8 +158,18 @@ public:
      * has changed, the texts with variables (they may show net names).
      *
      * @param aScreen the screen shown, whose RTree is updated for the texts that change.
+     * @param aForce repaint every item.
+     * @param aRepaintItems the items the connectivity engine reports as changed, also repainted.
      */
-    void UpdateConnectionChanges( SCH_SCREEN* aScreen );
+    void UpdateConnectionChanges( SCH_SCREEN* aScreen, bool aForce = false,
+                                  const std::set<KIID>* aRepaintItems = nullptr );
+
+    /**
+     * Drop every cached reference into the currently-attached SCHEMATIC's
+     * TEXT_VAR_TRACKER: unregister the invalidate listener and unhook the
+     * drawing-sheet proxy.  Must run before the owning SCHEMATIC is freed.
+     */
+    void DetachTextVarTracker();
 
     void DisplaySheet( const SCH_SCREEN* aScreen );
     void DisplaySymbol( LIB_SYMBOL* aSymbol );
@@ -191,7 +201,7 @@ public:
      * @param aCached is true for a renderer that caches the items (OpenGL); a software
      *                renderer (Cairo) draws them each time.
      */
-    void SetDefaultLayerDeps( bool aCached );
+    void SetDefaultLayerDeps( bool aCached, bool aRetainedScene = false );
 
 private:
     SCH_VIEW_HOST* m_host;      // The editor using this view, can be null
@@ -204,6 +214,14 @@ private:
      * screen because save temporarily overwrites screen page numbers for serialization.
      */
     void syncDrawingSheetToCurrentSheet( const SCH_CURRENT_SHEET_INFO& aInfo );
+    void syncDrawingSheetToCurrentSheet( SCH_EDIT_FRAME* aFrame );
+
+    /// Reactive invalidation listener state. The tracker pointer is the
+    /// authoritative owner (schematics can be swapped between views on
+    /// re-open); remove through that pointer rather than re-resolving the
+    /// adapter through any current schematic reference.
+    std::size_t       m_textVarListenerHandle = 0;
+    TEXT_VAR_TRACKER* m_textVarListenerTracker = nullptr;
 };
 
 }; // namespace

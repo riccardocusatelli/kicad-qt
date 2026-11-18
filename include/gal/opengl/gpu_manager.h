@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef GPU_MANAGER_H_
@@ -57,8 +53,7 @@ public:
     /**
      * Make the GPU draw given range of vertices.
      *
-     * @param aOffset is the beginning of the range.
-     * @param aSize is the number of vertices to be drawn.
+     * @param aItem is the vertex item to draw.
      */
     virtual void DrawIndices( const VERTEX_ITEM* aItem ) = 0;
 
@@ -82,19 +77,19 @@ public:
 protected:
     GPU_MANAGER( VERTEX_CONTAINER* aContainer );
 
-    ///< Drawing status flag.
+    /// Drawing status flag.
     bool m_isDrawing;
 
-    ///< Container that stores vertices data.
+    /// Container that stores vertices data.
     VERTEX_CONTAINER* m_container;
 
-    ///< Shader handling
+    /// Shader handling
     SHADER* m_shader;
 
-    ///< Location of shader attributes (for glVertexAttribPointer)
+    /// Location of shader attributes (for glVertexAttribPointer)
     int m_shaderAttrib;
 
-    ///< true: enable Z test when drawing
+    /// true: enable Z test when drawing
     bool m_enableDepthTest;
 };
 
@@ -120,50 +115,50 @@ public:
     GPU_CACHED_MANAGER( VERTEX_CONTAINER* aContainer );
     ~GPU_CACHED_MANAGER();
 
-    ///< @copydoc GPU_MANAGER::BeginDrawing()
+    /// @copydoc GPU_MANAGER::BeginDrawing()
     virtual void BeginDrawing() override;
 
-    ///< @copydoc GPU_MANAGER::DrawIndices()
+    /// @copydoc GPU_MANAGER::DrawIndices()
     virtual void DrawIndices( const VERTEX_ITEM* aItem ) override;
 
-    ///< @copydoc GPU_MANAGER::EndDrawing()
+    /// @copydoc GPU_MANAGER::EndDrawing()
     virtual void EndDrawing() override;
 
-    ///< Map vertex buffer stored in GPU memory.
+    /// Map vertex buffer stored in GPU memory.
     void Map();
 
-    ///< Unmap vertex buffer.
+    /// Unmap vertex buffer.
     void Unmap();
 
 protected:
-    ///< Resizes the indices buffer to aNewSize if necessary
+    /// Resizes the indices buffer to aNewSize if necessary
     void resizeIndices( unsigned int aNewSize );
 
-    ///< Buffers initialization flag
+    /// Buffers initialization flag
     bool m_buffersInitialized;
 
-    ///< Pointer to the current indices buffer
+    /// Pointer to the current indices buffer
     boost::scoped_array<GLuint> m_indices;
 
-    ///< Current indices buffer size
+    /// Current indices buffer size
     unsigned int m_indicesCapacity;
 
-    ///< Ranges of visible vertex indices to render
+    /// Ranges of visible vertex indices to render
     std::vector<VRANGE> m_vranges;
 
-    ///< Number of huge VRANGEs (i.e. large zones) with separate draw calls
+    /// Number of huge VRANGEs (i.e. large zones) with separate draw calls
     int m_totalHuge;
 
-    ///< Number of regular VRANGEs (small items) pooled into single draw call
+    /// Number of regular VRANGEs (small items) pooled into single draw call
     int m_totalNormal;
 
-    ///< Current size of index buffer
+    /// Current size of index buffer
     unsigned int m_indexBufSize;
 
-    ///< Maximum size taken by the index buffer for all frames rendered so far
+    /// Maximum size taken by the index buffer for all frames rendered so far
     unsigned int m_indexBufMaxSize;
 
-    ///< Size of the current VRANGE
+    /// Size of the current VRANGE
     unsigned int m_curVrangeSize;
 };
 
@@ -173,13 +168,13 @@ class GPU_NONCACHED_MANAGER : public GPU_MANAGER
 public:
     GPU_NONCACHED_MANAGER( VERTEX_CONTAINER* aContainer );
 
-    ///< @copydoc GPU_MANAGER::BeginDrawing()
+    /// @copydoc GPU_MANAGER::BeginDrawing()
     virtual void BeginDrawing() override;
 
-    ///< @copydoc GPU_MANAGER::DrawIndices()
+    /// @copydoc GPU_MANAGER::DrawIndices()
     virtual void DrawIndices( const VERTEX_ITEM* aItem ) override;
 
-    ///< @copydoc GPU_MANAGER::EndDrawing()
+    /// @copydoc GPU_MANAGER::EndDrawing()
     virtual void EndDrawing() override;
 };
 

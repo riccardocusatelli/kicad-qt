@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <reporter.h>
@@ -104,6 +100,9 @@ bool GRAPHICS_CLEANER::isNullShape( PCB_SHAPE* aShape )
     case SHAPE_T::CIRCLE:
         return aShape->GetRadius() == 0;
 
+    case SHAPE_T::ELLIPSE:
+    case SHAPE_T::ELLIPSE_ARC: return aShape->GetEllipseMajorRadius() == 0 || aShape->GetEllipseMinorRadius() == 0;
+
     case SHAPE_T::POLY:
         return aShape->GetPointCount() == 0;
 
@@ -155,6 +154,16 @@ bool GRAPHICS_CLEANER::areEquivalent( PCB_SHAPE* aShape1, PCB_SHAPE* aShape2 )
                 && equivalent( aShape1->GetEnd(), aShape2->GetEnd(), m_epsilon )
                 && equivalent( aShape1->GetBezierC1(), aShape2->GetBezierC1(), m_epsilon )
                 && equivalent( aShape1->GetBezierC2(), aShape2->GetBezierC2(), m_epsilon );
+
+    case SHAPE_T::ELLIPSE:
+    case SHAPE_T::ELLIPSE_ARC:
+        return equivalent( aShape1->GetEllipseCenter(), aShape2->GetEllipseCenter(), m_epsilon )
+               && aShape1->GetEllipseMajorRadius() == aShape2->GetEllipseMajorRadius()
+               && aShape1->GetEllipseMinorRadius() == aShape2->GetEllipseMinorRadius()
+               && aShape1->GetEllipseRotation() == aShape2->GetEllipseRotation()
+               && ( aShape1->GetShape() != SHAPE_T::ELLIPSE_ARC
+                    || ( aShape1->GetEllipseStartAngle() == aShape2->GetEllipseStartAngle()
+                         && aShape1->GetEllipseEndAngle() == aShape2->GetEllipseEndAngle() ) );
 
     default:
         KI_FAIL_MSG( wxT( "GRAPHICS_CLEANER::areEquivalent unimplemented for " )

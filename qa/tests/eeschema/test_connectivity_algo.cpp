@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.en.html
- * or you may search the http://www.gnu.org website for the version 32 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -34,6 +30,8 @@
 #include <settings/settings_manager.h>
 #include <locale_io.h>
 
+namespace
+{
 struct CONNECTIVITY_TEST_FIXTURE
 {
     CONNECTIVITY_TEST_FIXTURE()
@@ -42,6 +40,7 @@ struct CONNECTIVITY_TEST_FIXTURE
     SETTINGS_MANAGER           m_settingsManager;
     std::unique_ptr<SCHEMATIC> m_schematic;
 };
+} // namespace
 
 BOOST_FIXTURE_TEST_CASE( CheckNetCounts, CONNECTIVITY_TEST_FIXTURE )
 {

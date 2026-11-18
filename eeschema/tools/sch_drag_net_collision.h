@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef KICAD_SCH_DRAG_NET_COLLISION_H
@@ -28,10 +24,8 @@
 #include <cstddef>
 #include <optional>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 #include <memory>
-#include <span>
 
 #include <gal/cursors.h>
 #include <math/vector2d.h>
@@ -50,7 +44,8 @@ class VIEW_OVERLAY;
 
 /**
  * Helper responsible for tracking the original net assignments of items involved in a drag
- * operation and providing visual feedback when the drag would create an unintended net merge.
+ * operation and providing approximate local merge and broken-contact warnings.
+ * Net assignments are frozen at startup; dragging never rebuilds the connectivity graph.
  */
 class SCH_DRAG_NET_COLLISION_MONITOR
 {
@@ -60,20 +55,11 @@ public:
 
     void Initialize( const SCH_SELECTION& aSelection );
 
-    struct PREVIEW_NET_ASSIGNMENT
-    {
-        const SCH_ITEM*  item;
-        std::optional<int> netCode;
-    };
-
-    bool Update( const std::vector<SCH_JUNCTION*>& aJunctions, const SCH_SELECTION& aSelection,
-                 std::span<const PREVIEW_NET_ASSIGNMENT> aPreviewAssignments = {} );
+    bool Update( const std::vector<SCH_JUNCTION*>& aJunctions, const SCH_SELECTION& aSelection );
 
     void Reset();
 
     KICURSOR AdjustCursor( KICURSOR aBaseCursor ) const;
-
-    std::optional<int> GetNetCode( const SCH_ITEM* aItem ) const;
 
 private:
     struct COLLISION_MARKER
@@ -98,9 +84,7 @@ private:
     };
 
     std::optional<COLLISION_MARKER> analyzeJunction( SCH_JUNCTION* aJunction,
-                                                     const SCH_SELECTION& aSelection,
-                                                     const std::unordered_map<const SCH_ITEM*, std::optional<int>>&
-                                                             aPreviewNetCodes ) const;
+                                                      const SCH_SELECTION& aSelection ) const;
 
     void recordItemNet( SCH_ITEM* aItem );
     void recordOriginalConnections( const SCH_SELECTION& aSelection );

@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef EDIT_TABLE_TOOL_BASE_H
@@ -74,6 +70,11 @@ protected:
             return selectedArea == ( colMax - colMin ) * ( rowMax - rowMin );
         };
 
+        auto structureEditable = [this]( const SELECTION& sel )
+        {
+            return selectionAllowsStructureEdits( sel );
+        };
+
         auto mergedCellsSelection = []( const SELECTION& sel )
         {
             for( EDA_ITEM* item : sel )
@@ -92,18 +93,20 @@ protected:
         // Add editing actions to the selection tool menu
         //
         selToolMenu.AddSeparator( 100 );
-        selToolMenu.AddItem( ACTIONS::addRowAbove,   cellSelection && SELECTION_CONDITIONS::Idle, 100 );
-        selToolMenu.AddItem( ACTIONS::addRowBelow,   cellSelection && SELECTION_CONDITIONS::Idle, 100 );
-        selToolMenu.AddItem( ACTIONS::addColBefore,  cellSelection && SELECTION_CONDITIONS::Idle, 100 );
-        selToolMenu.AddItem( ACTIONS::addColAfter,   cellSelection && SELECTION_CONDITIONS::Idle, 100 );
+        auto structureSelection = cellSelection && structureEditable;
+
+        selToolMenu.AddItem( ACTIONS::addRowAbove,   structureSelection && SELECTION_CONDITIONS::Idle, 100 );
+        selToolMenu.AddItem( ACTIONS::addRowBelow,   structureSelection && SELECTION_CONDITIONS::Idle, 100 );
+        selToolMenu.AddItem( ACTIONS::addColBefore,  structureSelection && SELECTION_CONDITIONS::Idle, 100 );
+        selToolMenu.AddItem( ACTIONS::addColAfter,   structureSelection && SELECTION_CONDITIONS::Idle, 100 );
 
         selToolMenu.AddSeparator( 100 );
-        selToolMenu.AddItem( ACTIONS::deleteRows,    cellSelection && SELECTION_CONDITIONS::Idle, 100 );
-        selToolMenu.AddItem( ACTIONS::deleteColumns, cellSelection && SELECTION_CONDITIONS::Idle, 100 );
+        selToolMenu.AddItem( ACTIONS::deleteRows,    structureSelection && SELECTION_CONDITIONS::Idle, 100 );
+        selToolMenu.AddItem( ACTIONS::deleteColumns, structureSelection && SELECTION_CONDITIONS::Idle, 100 );
 
         selToolMenu.AddSeparator( 100 );
-        selToolMenu.AddItem( ACTIONS::mergeCells,    cellSelection && cellBlockSelection, 100 );
-        selToolMenu.AddItem( ACTIONS::unmergeCells,  cellSelection && mergedCellsSelection, 100 );
+        selToolMenu.AddItem( ACTIONS::mergeCells,    structureSelection && cellBlockSelection, 100 );
+        selToolMenu.AddItem( ACTIONS::unmergeCells,  structureSelection && mergedCellsSelection, 100 );
 
         selToolMenu.AddSeparator( 100 );
         selToolMenu.AddItem( ACTIONS::editTable,     cellSelection && SELECTION_CONDITIONS::Idle, 100 );
@@ -116,6 +119,9 @@ protected:
 
     int doAddRowAbove( const TOOL_EVENT& aEvent )
     {
+        if( !selectionAllowsStructureEdits( getTableCellSelection() ) )
+            return 0;
+
         const SELECTION& selection = getTableCellSelection();
         T_TABLECELL*     topmost = nullptr;
 
@@ -165,6 +171,9 @@ protected:
 
     int doAddRowBelow( const TOOL_EVENT& aEvent )
     {
+        if( !selectionAllowsStructureEdits( getTableCellSelection() ) )
+            return 0;
+
         const SELECTION& selection = getTableCellSelection();
         T_TABLECELL*     bottommost = nullptr;
 
@@ -217,6 +226,9 @@ protected:
 
     int doAddColumnBefore( const TOOL_EVENT& aEvent )
     {
+        if( !selectionAllowsStructureEdits( getTableCellSelection() ) )
+            return 0;
+
         const SELECTION& selection = getTableCellSelection();
         T_TABLECELL*     leftmost = nullptr;
 
@@ -268,6 +280,9 @@ protected:
 
     int doAddColumnAfter( const TOOL_EVENT& aEvent )
     {
+        if( !selectionAllowsStructureEdits( getTableCellSelection() ) )
+            return 0;
+
         const SELECTION& selection = getTableCellSelection();
         T_TABLECELL*     rightmost = nullptr;
 
@@ -319,6 +334,9 @@ protected:
 
     int doDeleteRows( const TOOL_EVENT& aEvent )
     {
+        if( !selectionAllowsStructureEdits( getTableCellSelection() ) )
+            return 0;
+
         const SELECTION& selection = getTableCellSelection();
 
         if( selection.Empty() )
@@ -403,6 +421,9 @@ protected:
 
     int doDeleteColumns( const TOOL_EVENT& aEvent )
     {
+        if( !selectionAllowsStructureEdits( getTableCellSelection() ) )
+            return 0;
+
         const SELECTION& selection = getTableCellSelection();
 
         if( selection.Empty() )
@@ -481,6 +502,9 @@ protected:
 
     int doMergeCells( const TOOL_EVENT& aEvent )
     {
+        if( !selectionAllowsStructureEdits( getTableCellSelection() ) )
+            return 0;
+
         const SELECTION& sel = getTableCellSelection();
 
         if( sel.Empty() )
@@ -550,6 +574,9 @@ protected:
 
     int doUnmergeCells( const TOOL_EVENT& aEvent )
     {
+        if( !selectionAllowsStructureEdits( getTableCellSelection() ) )
+            return 0;
+
         const SELECTION& sel = getTableCellSelection();
 
         if( sel.Empty() )
@@ -660,6 +687,12 @@ public:
             if( !table )
             {
                 table = static_cast<T_TABLE*>( cell->GetParent() );
+
+                if( !canEditTableStructure( table ) )
+                {
+                    aErrorMsg = _( "Cannot paste into a table whose cells are generated" );
+                    return false;
+                }
             }
             else if( cell->GetParent() != table )
             {
@@ -696,7 +729,7 @@ public:
      */
     bool pasteCellsIntoSelection( const SELECTION& aSel, T_TABLE* aSourceTable, T_COMMIT& aCommit )
     {
-        if( !aSourceTable || aSel.Empty() )
+        if( !aSourceTable || aSel.Empty() || !selectionAllowsStructureEdits( aSel ) )
             return false;
 
         // Get target cell range
@@ -801,6 +834,28 @@ public:
         }
 
         targetTable->Normalize();
+        return true;
+    }
+
+    /**
+     * False for a table whose rows, columns and cell text something else owns, such as one
+     * generated from the board. Formatting its cells stays allowed.
+     */
+    virtual bool canEditTableStructure( const T_TABLE* aTable ) const { return true; }
+
+    /**
+     * True when no cell in \a aSel belongs to a table #canEditTableStructure refuses.
+     */
+    bool selectionAllowsStructureEdits( const SELECTION& aSel ) const
+    {
+        for( EDA_ITEM* item : aSel )
+        {
+            T_TABLECELL* cell = dynamic_cast<T_TABLECELL*>( item );
+
+            if( cell && !canEditTableStructure( static_cast<const T_TABLE*>( cell->GetParent() ) ) )
+                return false;
+        }
+
         return true;
     }
 

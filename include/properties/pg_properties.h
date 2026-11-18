@@ -16,8 +16,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PG_PROPERTIES_H
@@ -51,7 +51,16 @@ class REGEX_VALIDATOR;
 class EDA_DRAW_FRAME;
 
 
-///< Customized abstract wxPGProperty class to handle coordinate/size units
+/// The read-only property flag in the type each wxWidgets version takes without deprecation
+#if wxCHECK_VERSION( 3, 3, 1 )
+inline constexpr wxPGFlags PG_PROP_READONLY = wxPGFlags::ReadOnly;
+#elif wxCHECK_VERSION( 3, 3, 0 )
+inline constexpr wxPGPropertyFlags PG_PROP_READONLY = wxPGPropertyFlags::ReadOnly;
+#else
+inline constexpr wxPGPropertyFlags PG_PROP_READONLY = wxPG_PROP_READONLY;
+#endif
+
+/// Customized abstract wxPGProperty class to handle coordinate/size units
 class PGPROPERTY_DISTANCE
 {
 public:
@@ -180,7 +189,7 @@ public:
 };
 
 
-///< Customized wxPGProperty class to handle angles
+/// Customized wxPGProperty class to handle angles
 class PGPROPERTY_ANGLE : public wxFloatProperty
 {
 public:
@@ -213,16 +222,16 @@ public:
 
     wxValidator* DoGetValidator() const override;
 
-    ///< Do not perform PG validation; the UX is not what we want.
+    /// Do not perform PG validation; the UX is not what we want.
     bool ValidateValue( wxVariant&, wxPGValidationInfo& ) const override { return true; }
 
 protected:
-    ///< Scale factor to convert between raw and displayed value
+    /// Scale factor to convert between raw and displayed value
     double m_scale;
 };
 
 
-///< A wxEnumProperty that displays a color next to the enum value
+/// A wxEnumProperty that displays a color next to the enum value
 class PGPROPERTY_COLORENUM : public wxEnumProperty
 {
 public:

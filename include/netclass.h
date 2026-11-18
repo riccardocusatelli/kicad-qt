@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef CLASS_NETCLASS_H
@@ -31,7 +27,6 @@
 
 #include <gal/color4d.h>
 #include <kicommon.h>
-#include <macros_swig.h>
 #include <stroke_params.h>
 #include <api/serializable.h>
 
@@ -41,8 +36,6 @@ namespace kiapi::common::project
 {
     class NetClass;
 }
-
-DECL_SET_FOR_SWIG( STRINGSET, wxString )
 
 /**
  * A collection of nets and the parameters used to route or test these nets.
@@ -66,6 +59,19 @@ public:
     NETCLASS& operator=( const NETCLASS& ) = delete;
 
     bool operator==( const NETCLASS& other ) const;
+
+    /**
+     * Compare every persisted field (name, priority, sized fields, colors,
+     * line style, tuning profile) to detect in-place edits that the shallow
+     * operator== misses.  Used by NET_SETTINGS::operator== to spot user edits
+     * to the default netclass that mutate the existing shared_ptr rather than
+     * swapping it.
+     *
+     * Description is intentionally NOT compared because the JSON serializer
+     * does not persist it -- including it would mark every load-round-tripped
+     * instance unequal.
+     */
+    bool EqualsByPersistedFields( const NETCLASS& aOther ) const;
 
     wxString GetClass() const
     {
@@ -120,6 +126,9 @@ public:
     /// for export to external tools / netlists. WARNING: Do not use this to display a netclass
     /// name to a user. Use GetHumanReadableName instead.
     const wxString GetName() const;
+
+    /// @brief Compares a name with GetName() without constructing the aggregate name
+    bool NameEquals( const wxString& aName ) const;
 
     /// @brief Gets the consolidated name of this netclass (which may be an aggregate). This is
     /// intended for display to users (e.g. in infobars or messages). WARNING: Do not use this

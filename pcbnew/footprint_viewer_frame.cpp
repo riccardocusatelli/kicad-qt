@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <3d_viewer/eda_3d_viewer_frame.h>
@@ -211,9 +207,6 @@ FOOTPRINT_VIEWER_FRAME::FOOTPRINT_VIEWER_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* a
     ReCreateLibraryList();
     UpdateTitle();
 
-    // Call resolveCanvasType after loading settings:
-    resolveCanvasType();
-
     // If a footprint was previously loaded, reload it
     if( getCurNickname().size() && getCurFootprintName().size() )
     {
@@ -222,7 +215,7 @@ FOOTPRINT_VIEWER_FRAME::FOOTPRINT_VIEWER_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* a
         id.SetLibNickname( getCurNickname() );
         id.SetLibItemName( getCurFootprintName() );
 
-        FOOTPRINT* footprint = loadFootprint( id );
+        FOOTPRINT* footprint = LoadFootprint( id );
 
         if( footprint )
         {
@@ -246,6 +239,9 @@ FOOTPRINT_VIEWER_FRAME::FOOTPRINT_VIEWER_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* a
     // The canvas should not steal the focus from the list boxes
     GetCanvas()->SetCanFocus( false );
     GetCanvas()->GetGAL()->SetAxesEnabled( true );
+
+    // Call resolveCanvasType after loading settings:
+    resolveCanvasType();
     ActivateGalCanvas();
 
     // Restore last zoom and auto zoom option.  (If auto-zooming we'll adjust when we load the footprint.)
@@ -470,7 +466,7 @@ void FOOTPRINT_VIEWER_FRAME::ReCreateFootprintList()
             {
                 int matched = matcher.ScoreTerms( footprint->GetSearchTerms() );
 
-                if( filterTerm.IsNumber() && wxAtoi( filterTerm ) == (int)footprint->GetPadCount( DO_NOT_INCLUDE_NPTH ) )
+                if( filterTerm.IsNumber() && wxAtoi( filterTerm ) == (int)footprint->GetNumberedPadCount() )
                     matched++;
 
                 if( !matched )
@@ -677,10 +673,7 @@ void FOOTPRINT_VIEWER_FRAME::displayFootprint( FOOTPRINT* aFootprint )
 
         if( !net.GetPinFunction().IsEmpty() )
         {
-            NETINFO_ITEM* netinfo = new NETINFO_ITEM( GetBoard() );
-            netinfo->SetNetname( net.GetPinFunction() );
-            GetBoard()->Add( netinfo );
-            pad->SetNet( netinfo );
+            pad->SetNet( GetBoard()->FindOrAddNet( net.GetPinFunction() ) );
         }
     }
 

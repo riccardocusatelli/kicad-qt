@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef __PNS_TOPOLOGY_H
@@ -52,6 +52,7 @@ public:
     typedef std::set<const JOINT*> JOINT_SET;
 
     /**
+     * @param aNode
      * @param aIface if given, lets board connections the router does not model, such as zones,
      *               count when searching for unconnected items.
      */
@@ -94,9 +95,11 @@ public:
      *
      * @note When changing this, sync with BOARD::GetTrackLength()
      *
+     * @param aRouterIface is the router interface.
      * @param aStart is the item to assemble a path from.
      * @param aStartPad will be filled with the starting pad of the path, if found.
      * @param aEndPad will be filled with the ending pad of the path, if found.
+     *
      * @return an item set containing all the items in the path.
      */
     const ITEM_SET AssembleTuningPath( ROUTER_IFACE* aRouterIface, ITEM* aStart, SOLID** aStartPad = nullptr,
@@ -106,11 +109,10 @@ public:
 
     bool AssembleDiffPair( ITEM* aStart, DIFF_PAIR& aPair );
 
-    const CLUSTER AssembleCluster( ITEM* aStart, int aLayer, double aAreaExpansionLimit = 0.0, NET_HANDLE aExcludedNet = nullptr );
+    const CLUSTER AssembleCluster( ITEM* aStart, int aLayer, double aAreaExpansionLimit = 0.0,
+                                   NET_HANDLE aExcludedNet = nullptr, int aOverrideClearance = 0 );
 
 private:
-    const int DP_PARALLELITY_THRESHOLD = 5;
-
     struct PATH_RESULT
     {
         ITEM_SET    m_items;

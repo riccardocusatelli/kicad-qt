@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef  PCB_BASE_FRAME_H
@@ -95,7 +91,7 @@ public:
     /**
      * @return a reference to the child 3D viewer frame, when exists, or NULL
      */
-    EDA_3D_VIEWER_FRAME* Get3DViewerFrame();
+    EDA_3D_VIEWER_FRAME* GetOur3DViewerFrame();
 
     /**
      * Update the 3D view, if the viewer is opened by this frame.
@@ -105,6 +101,9 @@ public:
      * @param aTitle is the new title of the 3D frame, or nullptr to do not change the frame title
      */
     virtual void Update3DView( bool aMarkDirty, bool aRefresh, const wxString* aTitle = nullptr );
+
+    /// Refresh cached drill symbols in frames that render drill maps.
+    virtual void RefreshDrillSymbols( int aUpdateFlags ) {}
 
     /**
      * Attempt to load \a aFootprintId from the footprint library table.
@@ -159,8 +158,7 @@ public:
      */
     virtual COLOR_SETTINGS* GetColorSettings( bool aForceRefresh = false ) const override
     {
-        KI_FAIL_MSG( wxT( "Color settings requested for a PCB_BASE_FRAME that does not "
-                         "override!" ) );
+        KI_FAIL_MSG( wxT( "Color settings requested for a PCB_BASE_FRAME that does not override!" ) );
         return nullptr;
     }
 
@@ -206,7 +204,7 @@ public:
     }
 
     /**
-     * Set the #m_Pcb member in such as way as to ensure deleting any previous #BOARD.
+     * Set the #m_pcb member in such as way as to ensure deleting any previous #BOARD.
      */
     virtual void SetBoard( BOARD* aBoard, PROGRESS_REPORTER* aReporter = nullptr );
 
@@ -273,35 +271,28 @@ public:
      * Place \a aFootprint at the current cursor position (or provided one) and updates footprint coordinates
      * with the new position.
      *
+     * @param aFootprint is the footprint to place.
      * @param aRecreateRatsnest A bool true redraws the footprint ratsnest.
+     * @param aPosition is the coordinates to place the footprint.
      */
-    void PlaceFootprint( FOOTPRINT* aFootprint, bool aRecreateRatsnest = true, std::optional<VECTOR2I> aPosition = std::nullopt );
+    void PlaceFootprint( FOOTPRINT* aFootprint, bool aRecreateRatsnest = true,
+                         std::optional<VECTOR2I> aPosition = std::nullopt );
 
-    void ShowPadPropertiesDialog( PAD* aPad );
+    void ShowPadPropertiesDialog( PAD& aPad );
 
     /**
      * Open a dialog to select a footprint.
      *
-     * @param aPreslect if valid, the #LIB_ID to select (otherwise the global history is used).
+     * @param aPreselect if valid, the #LIB_ID to select (otherwise the global history is used).
      */
     FOOTPRINT* SelectFootprintFromLibrary( LIB_ID aPreselect = LIB_ID() );
 
     /**
      * Add the given footprint to the board.
      *
-     * @param aDC is the current Device Context, to draw the new footprint (can be NULL ).
+     * @param aFootprint is the new footprint to add to board (can be NULL ).
      */
     virtual void AddFootprintToBoard( FOOTPRINT* aFootprint );
-
-    /**
-     * Create the entire board ratsnest.
-     *
-     * This must be called after a board change (changes for pads, footprints or a read
-     * netlist ).
-     *
-     * @param aDisplayStatus  if true, display the computation results.
-     */
-    void Compile_Ratsnest( bool aDisplayStatus );
 
     /**
      * Create a new entry in undo list of commands.
@@ -425,17 +416,6 @@ protected:
     void handleIconizeEvent( bool aIconized ) override;
 
     virtual void doReCreateMenuBar() override;
-
-    /**
-     * Attempt to load \a aFootprintId from the footprint library table.
-     *
-     * @param aFootprintId is the #LIB_ID of component footprint to load.
-     * @return the #FOOTPRINT if found or NULL if \a aFootprintId not found in any of the
-     *         libraries in the table returned from #Prj().PcbFootprintLibs().
-     * @throw IO_ERROR if an I/O error occurs or a #PARSE_ERROR if a file parsing error
-     *                 occurs while reading footprint library files.
-     */
-    FOOTPRINT* loadFootprint( const LIB_ID& aFootprintId );
 
     virtual void unitsChangeRefresh() override;
 

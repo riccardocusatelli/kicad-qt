@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <macros.h>             // arrayDim definition
@@ -44,6 +40,8 @@
 #include "board_stackup_reporter.h"
 #include <bitmaps.h>
 #include "dialog_dielectric_list_manager.h"
+#include "magic_enum.hpp"
+
 #include <wx/textdlg.h>
 
 #include <locale_io.h>
@@ -74,9 +72,12 @@ static wxColor pasteColor( 200, 200, 200 );
 
 static void drawBitmap( wxBitmap& aBitmap, wxColor aColor );
 
+wxString PANEL_SETUP_BOARD_STACKUP::m_specFreqChoices[4] = { _( "Hz" ), _( "kHz" ), _( "MHz" ), _( "GHz" ) };
 
-PANEL_SETUP_BOARD_STACKUP::PANEL_SETUP_BOARD_STACKUP( wxWindow* aParentWindow,
-                                                      PCB_EDIT_FRAME* aFrame,
+wxString PANEL_SETUP_BOARD_STACKUP::m_dielecticModelChoices[2] = { _( "Constant" ), _( "Djordjevic-Sarkar" ) };
+
+
+PANEL_SETUP_BOARD_STACKUP::PANEL_SETUP_BOARD_STACKUP( wxWindow* aParentWindow, PCB_EDIT_FRAME* aFrame,
                                                       PANEL_SETUP_LAYERS* aPanelLayers,
                                                       PANEL_SETUP_BOARD_FINISH* aPanelFinish ):
         PANEL_SETUP_BOARD_STACKUP_BASE( aParentWindow ),
@@ -87,6 +88,10 @@ PANEL_SETUP_BOARD_STACKUP::PANEL_SETUP_BOARD_STACKUP( wxWindow* aParentWindow,
         m_frame( aFrame ),
         m_lastUnits( aFrame->GetUserUnits() )
 {
+    // Check we have entries for each dielectric model type
+    static_assert( sizeof( m_dielecticModelChoices ) / sizeof( wxString )
+                   == magic_enum::enum_count<DIELECTRIC_MODEL>() );
+
     m_panelLayers = aPanelLayers;
     m_panelFinish = aPanelFinish;
     m_brdSettings = &m_board->GetDesignSettings();
@@ -106,10 +111,18 @@ PANEL_SETUP_BOARD_STACKUP::PANEL_SETUP_BOARD_STACKUP( wxWindow* aParentWindow,
     m_numericFieldsSize = GetTextExtent( wxT( "X.XXXXXXX" ) );
     m_numericFieldsSize.y = -1;     // Use default for the vertical size
 
+    // Calculate a good size for the spec freq units drop-down
+    m_unitsFieldsSize = GetTextExtent( wxT( "XXXXXXX" ) );
+    m_unitsFieldsSize.y = -1;
+
     // Calculates a minimal size for wxTextCtrl to enter a dim with units
     // ("000.0000000 mils" + margins)
     m_numericTextCtrlSize = GetTextExtent( wxT( "XXX.XXXXXXX mils" ) );
     m_numericTextCtrlSize.y = -1;     // Use default for the vertical size
+
+    // Calculates a minimal size for dielectric model drop-down
+    m_modelFieldSize = GetTextExtent( wxT( "Djordjevic-SarkarXXXX" ) );
+    m_modelFieldSize.y = -1;
 
     // The grid column containing the lock checkbox is kept to a minimal
     // size. So we use a wxStaticBitmap: set the bitmap itself
@@ -726,6 +739,28 @@ void PANEL_SETUP_BOARD_STACKUP::synchronizeWithBoard( bool aFullSync )
             if( textCtrl )
                 textCtrl->ChangeValue( txt );
         }
+
+        if( item->HasSpecFreqValue() )
+        {
+            const double freq = item->GetSpecFreq( sub_item );
+            auto [scaledFreq, units] = normaliseFrequency( freq );
+
+            wxString    txt = UIDouble2Str( scaledFreq );
+            wxTextCtrl* textCtrl = dynamic_cast<wxTextCtrl*>( ui_row_item.m_SpecFreqCtrl );
+
+            if( textCtrl )
+                textCtrl->ChangeValue( txt );
+
+            wxChoice* unitsCtrl = dynamic_cast<wxChoice*>( ui_row_item.m_SpecFreqUnitsCtrl );
+
+            if( unitsCtrl )
+                unitsCtrl->SetSelection( static_cast<int>( units ) );
+
+            wxChoice* modelCtrl = dynamic_cast<wxChoice*>( ui_row_item.m_DielectricModelCtrl );
+
+            if( modelCtrl )
+                modelCtrl->SetSelection( static_cast<int>( item->GetDielectricModel( sub_item ) ) );
+        }
     }
 
     // Now enable/disable stackup items, according to the m_enabledLayers config
@@ -763,7 +798,7 @@ void PANEL_SETUP_BOARD_STACKUP::showOnlyActiveLayers()
         if( show_item )
         {
             // pre-increment (ie: before calling lazyBuildRowUI) to account for header row
-            pos += 9;
+            pos += 12;
         }
 
         if( show_item && !ui_row_item.m_Icon )
@@ -785,6 +820,9 @@ void PANEL_SETUP_BOARD_STACKUP::showOnlyActiveLayers()
             ui_row_item.m_ColorCtrl->Show( show_item );
             ui_row_item.m_EpsilonCtrl->Show( show_item );
             ui_row_item.m_LossTgCtrl->Show( show_item );
+            ui_row_item.m_SpecFreqCtrl->Show( show_item );
+            ui_row_item.m_SpecFreqUnitsCtrl->Show( show_item );
+            ui_row_item.m_DielectricModelCtrl->Show( show_item );
         }
     }
 }
@@ -798,8 +836,7 @@ wxControl* PANEL_SETUP_BOARD_STACKUP::addSpacer( int aPos )
 }
 
 
-void PANEL_SETUP_BOARD_STACKUP::lazyBuildRowUI( BOARD_STACKUP_ROW_UI_ITEM& ui_row_item,
-                                                int aPos )
+void PANEL_SETUP_BOARD_STACKUP::lazyBuildRowUI( BOARD_STACKUP_ROW_UI_ITEM& ui_row_item, int aPos )
 {
     BOARD_STACKUP_ITEM* item = ui_row_item.m_Item;
     int                 sublayerIdx = ui_row_item.m_SubItem;
@@ -829,8 +866,8 @@ void PANEL_SETUP_BOARD_STACKUP::lazyBuildRowUI( BOARD_STACKUP_ROW_UI_ITEM& ui_ro
         // only for the first (sublayerIdx = 0), and is common to all sublayers
         if( sublayerIdx == 0 )
         {
-            wxChoice* choice = new wxChoice( m_scGridWin, wxID_ANY, wxDefaultPosition,
-                                             wxDefaultSize, m_core_prepreg_choice );
+            wxChoice* choice = new wxChoice( m_scGridWin, wxID_ANY, wxDefaultPosition, wxDefaultSize,
+                                             m_core_prepreg_choice );
             choice->SetSelection( item->GetTypeName() == KEY_CORE ? 0 : 1 );
             m_fgGridSizer->Insert( aPos++, choice, 1, wxEXPAND|wxLEFT|wxRIGHT|wxALIGN_CENTER_VERTICAL, 2 );
 
@@ -877,9 +914,9 @@ void PANEL_SETUP_BOARD_STACKUP::lazyBuildRowUI( BOARD_STACKUP_ROW_UI_ITEM& ui_ro
         textCtrl->SetMinSize( m_numericTextCtrlSize );
        	bSizerMat->Add( textCtrl, 0, wxALIGN_CENTER_VERTICAL|wxLEFT, 5 );
 
-       	wxButton* m_buttonMat = new wxButton( m_scGridWin, ID_ITEM_MATERIAL+row, _( "..." ),
-                                              wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT );
-       	bSizerMat->Add( m_buttonMat, 0, wxALIGN_CENTER_VERTICAL, 2 );
+        wxButton* m_buttonMat = new wxButton( m_scGridWin, ID_ITEM_MATERIAL + row, wxS( "..." ), wxDefaultPosition,
+                                              wxDefaultSize, wxBU_EXACTFIT );
+        bSizerMat->Add( m_buttonMat, 0, wxALIGN_CENTER_VERTICAL, 2 );
 
         m_buttonMat->Connect( wxEVT_COMMAND_BUTTON_CLICKED,
                               wxCommandEventHandler( PANEL_SETUP_BOARD_STACKUP::onMaterialChange ),
@@ -909,12 +946,10 @@ void PANEL_SETUP_BOARD_STACKUP::lazyBuildRowUI( BOARD_STACKUP_ROW_UI_ITEM& ui_ro
 
         if( item->GetType() == BS_ITEM_TYPE_DIELECTRIC )
         {
-            wxCheckBox* cb_box = new wxCheckBox( m_scGridWin, ID_ITEM_THICKNESS_LOCKED+row,
-                                                 wxEmptyString );
+            wxCheckBox* cb_box = new wxCheckBox( m_scGridWin, ID_ITEM_THICKNESS_LOCKED + row, wxEmptyString );
             cb_box->SetValue( item->IsThicknessLocked( sublayerIdx ) );
 
-            m_fgGridSizer->Insert( aPos++, cb_box, 0,
-                                   wxALIGN_CENTER_VERTICAL | wxALIGN_CENTER_HORIZONTAL, 2 );
+            m_fgGridSizer->Insert( aPos++, cb_box, 0, wxALIGN_CENTER_VERTICAL | wxALIGN_CENTER_HORIZONTAL, 2 );
 
             ui_row_item.m_ThicknessLockCtrl = cb_box;
         }
@@ -972,8 +1007,8 @@ void PANEL_SETUP_BOARD_STACKUP::lazyBuildRowUI( BOARD_STACKUP_ROW_UI_ITEM& ui_ro
     if( item->HasEpsilonRValue() )
     {
         wxString txt = UIDouble2Str( item->GetEpsilonR( sublayerIdx ) );
-        wxTextCtrl* textCtrl = new wxTextCtrl( m_scGridWin, wxID_ANY, wxEmptyString,
-                                               wxDefaultPosition, m_numericFieldsSize );
+        wxTextCtrl* textCtrl = new wxTextCtrl( m_scGridWin, wxID_ANY, wxEmptyString, wxDefaultPosition,
+                                               m_numericFieldsSize );
         textCtrl->ChangeValue( txt );
         m_fgGridSizer->Insert( aPos++, textCtrl, 0, wxLEFT|wxRIGHT|wxALIGN_CENTER_VERTICAL, 2 );
         ui_row_item.m_EpsilonCtrl = textCtrl;
@@ -986,8 +1021,8 @@ void PANEL_SETUP_BOARD_STACKUP::lazyBuildRowUI( BOARD_STACKUP_ROW_UI_ITEM& ui_ro
     if( item->HasLossTangentValue() )
     {
         wxString txt = UIDouble2Str( item->GetLossTangent( sublayerIdx ) );;
-        wxTextCtrl* textCtrl = new wxTextCtrl( m_scGridWin, wxID_ANY, wxEmptyString,
-                                               wxDefaultPosition, m_numericFieldsSize );
+        wxTextCtrl* textCtrl = new wxTextCtrl( m_scGridWin, wxID_ANY, wxEmptyString, wxDefaultPosition,
+                                               m_numericFieldsSize );
         textCtrl->ChangeValue( txt );
         m_fgGridSizer->Insert( aPos++, textCtrl, 0, wxLEFT|wxRIGHT|wxALIGN_CENTER_VERTICAL, 2 );
         ui_row_item.m_LossTgCtrl = textCtrl;
@@ -995,6 +1030,38 @@ void PANEL_SETUP_BOARD_STACKUP::lazyBuildRowUI( BOARD_STACKUP_ROW_UI_ITEM& ui_ro
     else
     {
         ui_row_item.m_LossTgCtrl = addSpacer( aPos++ );
+    }
+
+    if( item->HasSpecFreqValue() )
+    {
+        const double freq = item->GetSpecFreq( sublayerIdx );
+        auto [scaledFreq, units] = normaliseFrequency( freq );
+
+        wxString txt = UIDouble2Str( scaledFreq );
+
+        wxTextCtrl* textCtrl = new wxTextCtrl( m_scGridWin, wxID_ANY, wxEmptyString, wxDefaultPosition,
+                                               m_numericFieldsSize );
+        textCtrl->ChangeValue( txt );
+        m_fgGridSizer->Insert( aPos++, textCtrl, 0, wxLEFT | wxRIGHT | wxALIGN_CENTER_VERTICAL, 2 );
+        ui_row_item.m_SpecFreqCtrl = textCtrl;
+
+        wxChoice* unitsCtrl = new wxChoice( m_scGridWin, wxID_ANY, wxDefaultPosition, m_unitsFieldsSize, 4,
+                                            m_specFreqChoices );
+        m_fgGridSizer->Insert( aPos++, unitsCtrl, 0, wxLEFT | wxRIGHT | wxALIGN_CENTER_VERTICAL, 2 );
+        ui_row_item.m_SpecFreqUnitsCtrl = unitsCtrl;
+        unitsCtrl->SetSelection( static_cast<int>( units ) );
+
+        wxChoice* modelCtrl = new wxChoice( m_scGridWin, wxID_ANY, wxDefaultPosition, m_modelFieldSize, 2,
+                                            m_dielecticModelChoices );
+        m_fgGridSizer->Insert( aPos++, modelCtrl, 0, wxLEFT | wxRIGHT | wxALIGN_CENTER_VERTICAL, 2 );
+        ui_row_item.m_DielectricModelCtrl = modelCtrl;
+        modelCtrl->SetSelection( static_cast<int>( item->GetDielectricModel( sublayerIdx ) ) );
+    }
+    else
+    {
+        ui_row_item.m_SpecFreqCtrl = addSpacer( aPos++ );
+        ui_row_item.m_SpecFreqUnitsCtrl = addSpacer( aPos++ );
+        ui_row_item.m_DielectricModelCtrl = addSpacer( aPos++ );
     }
 }
 
@@ -1019,16 +1086,19 @@ void PANEL_SETUP_BOARD_STACKUP::rebuildLayerStackPanel( bool aRelinkItems )
             ui_item.m_MaterialCtrl->SetSizer( nullptr );
 
         // Delete other widgets
-        delete ui_item.m_Icon;             // Color icon in first column (column 1)
-        delete ui_item.m_LayerName;        // string shown in column 2
-        delete ui_item.m_LayerTypeCtrl;    // control shown in column 3
-        delete ui_item.m_MaterialCtrl;     // control shown in column 4, with m_MaterialButt
-        delete ui_item.m_MaterialButt;     // control shown in column 4, with m_MaterialCtrl
-        delete ui_item.m_ThicknessCtrl;    // control shown in column 5
-        delete ui_item.m_ThicknessLockCtrl;// control shown in column 6
-        delete ui_item.m_ColorCtrl;        // control shown in column 7
-        delete ui_item.m_EpsilonCtrl;      // control shown in column 8
-        delete ui_item.m_LossTgCtrl;       // control shown in column 9
+        delete ui_item.m_Icon;                // Color icon in first column (column 1)
+        delete ui_item.m_LayerName;           // string shown in column 2
+        delete ui_item.m_LayerTypeCtrl;       // control shown in column 3
+        delete ui_item.m_MaterialCtrl;        // control shown in column 4, with m_MaterialButt
+        delete ui_item.m_MaterialButt;        // control shown in column 4, with m_MaterialCtrl
+        delete ui_item.m_ThicknessCtrl;       // control shown in column 5
+        delete ui_item.m_ThicknessLockCtrl;   // control shown in column 6
+        delete ui_item.m_ColorCtrl;           // control shown in column 7
+        delete ui_item.m_EpsilonCtrl;         // control shown in column 8
+        delete ui_item.m_LossTgCtrl;          // control shown in column 9
+        delete ui_item.m_SpecFreqCtrl;        // control shown in column 10
+        delete ui_item.m_SpecFreqUnitsCtrl;   // control shown in column 11
+        delete ui_item.m_DielectricModelCtrl; // control shown in column 12
     }
 
     m_rowUiItemsList.clear();
@@ -1038,8 +1108,8 @@ void PANEL_SETUP_BOARD_STACKUP::rebuildLayerStackPanel( bool aRelinkItems )
     // therefore we also have to add the "old" title items to the newly recreated m_fgGridSizer:
 	m_scGridWin->SetSizer( nullptr );   // This remove and delete the current m_fgGridSizer
 
-    m_fgGridSizer = new wxFlexGridSizer( 0, 9, 0, 2 );
-	m_fgGridSizer->SetFlexibleDirection( wxHORIZONTAL );
+    m_fgGridSizer = new wxFlexGridSizer( 0, 12, 0, 2 );
+    m_fgGridSizer->SetFlexibleDirection( wxHORIZONTAL );
 	m_fgGridSizer->SetNonFlexibleGrowMode( wxFLEX_GROWMODE_SPECIFIED );
 	m_fgGridSizer->SetHGap( 6 );
 	m_scGridWin->SetSizer( m_fgGridSizer );
@@ -1055,6 +1125,9 @@ void PANEL_SETUP_BOARD_STACKUP::rebuildLayerStackPanel( bool aRelinkItems )
 	m_fgGridSizer->Add( m_staticTextColor, 0, sizer_flags, 2 );
 	m_fgGridSizer->Add( m_staticTextEpsilonR, 0, sizer_flags, 2 );
 	m_fgGridSizer->Add( m_staticTextLossTg, 0, sizer_flags, 2 );
+    m_fgGridSizer->Add( m_staticTextSpecFreq, 0, sizer_flags, 2 );
+    m_fgGridSizer->Add( m_staticTextSpecFreqUnits, 0, sizer_flags, 2 );
+    m_fgGridSizer->Add( m_staticTextDielectricModel, 0, sizer_flags, 2 );
 
 
     // Now, rebuild the widget list from the new m_stackup items:
@@ -1070,8 +1143,7 @@ void PANEL_SETUP_BOARD_STACKUP::rebuildLayerStackPanel( bool aRelinkItems )
 }
 
 
-void PANEL_SETUP_BOARD_STACKUP::buildLayerStackPanel( bool aCreateInitialStackup,
-                                                      bool aRelinkStackup )
+void PANEL_SETUP_BOARD_STACKUP::buildLayerStackPanel( bool aCreateInitialStackup, bool aRelinkStackup )
 {
     // Build a full stackup for the dialog, with a active copper layer count
     // = current board layer count to calculate a reasonable default stackup:
@@ -1142,9 +1214,7 @@ bool PANEL_SETUP_BOARD_STACKUP::transferDataFromUIToStackup()
     {
         // Skip stackup items useless for the current board
         if( !ui_item.m_isEnabled )
-        {
             continue;
-        }
 
         BOARD_STACKUP_ITEM* item = ui_item.m_Item;
         int sub_item = ui_item.m_SubItem;
@@ -1168,8 +1238,7 @@ bool PANEL_SETUP_BOARD_STACKUP::transferDataFromUIToStackup()
             else
             {
                 success = false;
-                error_msg << _( "Incorrect value for Epsilon R (Epsilon R must be positive or "
-                                "null if not used)" );
+                error_msg << _( "Incorrect value for Epsilon R (Epsilon R must be positive or null if not used)" );
             }
         }
 
@@ -1179,9 +1248,13 @@ bool PANEL_SETUP_BOARD_STACKUP::transferDataFromUIToStackup()
             wxString    txt = textCtrl->GetValue();
 
             if( txt.ToDouble( &value ) && value >= 0.0 )
+            {
                 item->SetLossTangent( value, sub_item );
+            }
             else if( txt.ToCDouble( &value ) && value >= 0.0 )
+            {
                 item->SetLossTangent( value, sub_item );
+            }
             else
             {
                 success = false;
@@ -1189,8 +1262,49 @@ bool PANEL_SETUP_BOARD_STACKUP::transferDataFromUIToStackup()
                 if( !error_msg.IsEmpty() )
                     error_msg << wxT( "\n" );
 
-                error_msg << _( "Incorrect value for Loss tg (Loss tg must be positive or null "
-                                "if not used)" );
+                error_msg << _( "Incorrect value for Loss tg (Loss tg must be positive or null if not used)" );
+            }
+        }
+
+        if( item->HasSpecFreqValue() )
+        {
+            wxChoice* modelCtrl = static_cast<wxChoice*>( ui_item.m_DielectricModelCtrl );
+            int       modelIdx = modelCtrl->GetCurrentSelection();
+            item->SetDielectricModel( static_cast<DIELECTRIC_MODEL>( modelIdx ), sub_item );
+
+            wxTextCtrl* textCtrl = static_cast<wxTextCtrl*>( ui_item.m_SpecFreqCtrl );
+            wxString    txt = textCtrl->GetValue();
+
+            wxChoice* unitsCtrl = static_cast<wxChoice*>( ui_item.m_SpecFreqUnitsCtrl );
+            int       unitsIdx = unitsCtrl->GetCurrentSelection();
+
+            auto setFreqValue = [unitsIdx, item, sub_item]( const double freq )
+            {
+                switch( unitsIdx )
+                {
+                case 3:  item->SetSpecFreq( freq * 1e9, sub_item ); break;
+                case 2:  item->SetSpecFreq( freq * 1e6, sub_item ); break;
+                case 1:  item->SetSpecFreq( freq * 1e3, sub_item ); break;
+                default: item->SetSpecFreq( freq );                 break;
+                }
+            };
+
+            if( txt.ToDouble( &value ) && value >= 0.0 )
+            {
+                setFreqValue( value );
+            }
+            else if( txt.ToCDouble( &value ) && value >= 0.0 )
+            {
+                setFreqValue( value );
+            }
+            else
+            {
+                success = false;
+
+                if( !error_msg.IsEmpty() )
+                    error_msg << wxT( "\n" );
+
+                error_msg << _( "Incorrect value for specified frequency (must be positive or null if not used)" );
             }
         }
 
@@ -1325,7 +1439,12 @@ bool PANEL_SETUP_BOARD_STACKUP::TransferDataFromWindow()
     }
 
     if( modified )
+    {
+        // Backdrill stub length comes from layer distances, so a chart reporting stubs is
+        // stale the moment the stackup changes
+        m_frame->GetBoard()->BumpDrillModelGeneration();
         m_frame->OnModify();
+    }
 
     return true;
 }
@@ -1432,7 +1551,6 @@ void PANEL_SETUP_BOARD_STACKUP::onMaterialChange( wxCommandEvent& event )
             mat_list = &m_solderMaskMatList;
         else if( item->GetType() == BS_ITEM_TYPE_SILKSCREEN )
             mat_list = &m_silkscreenMatList;
-
         else
             continue;
 
@@ -1454,9 +1572,9 @@ void PANEL_SETUP_BOARD_STACKUP::onMaterialChange( wxCommandEvent& event )
         }
     }
 
-    int row  = event.GetId() - ID_ITEM_MATERIAL;
-    BOARD_STACKUP_ITEM* item = m_rowUiItemsList[row].m_Item;
-    int sub_item = m_rowUiItemsList[row].m_SubItem;
+    int                        row = event.GetId() - ID_ITEM_MATERIAL;
+    BOARD_STACKUP_ITEM*        item = m_rowUiItemsList[row].m_Item;
+    int                        sub_item = m_rowUiItemsList[row].m_SubItem;
     DIELECTRIC_SUBSTRATE_LIST* item_mat_list = nullptr;
 
     switch( item->GetType() )
@@ -1624,12 +1742,10 @@ void PANEL_SETUP_BOARD_STACKUP::updateIconColor( int aRow )
 }
 
 
-wxBitmapComboBox* PANEL_SETUP_BOARD_STACKUP::createColorBox( BOARD_STACKUP_ITEM* aStackupItem,
-                                                             int aRow )
+wxBitmapComboBox* PANEL_SETUP_BOARD_STACKUP::createColorBox( BOARD_STACKUP_ITEM* aStackupItem, int aRow )
 {
-    wxBitmapComboBox* combo = new wxBitmapComboBox( m_scGridWin, ID_ITEM_COLOR + aRow,
-                                                    wxEmptyString, wxDefaultPosition,
-                                                    wxDefaultSize, 0, nullptr, wxCB_READONLY );
+    wxBitmapComboBox* combo = new wxBitmapComboBox( m_scGridWin, ID_ITEM_COLOR + aRow, wxEmptyString,
+                                                    wxDefaultPosition, wxDefaultSize, 0, nullptr, wxCB_READONLY );
 
     // Fills the combo box with choice list + bitmaps
     BOARD_STACKUP_ITEM_TYPE itemType = aStackupItem ? aStackupItem->GetType()
@@ -1642,7 +1758,8 @@ wxBitmapComboBox* PANEL_SETUP_BOARD_STACKUP::createColorBox( BOARD_STACKUP_ITEM*
 
         // Defined colors have a name, the user color uses HTML notation ( i.e. #FF000080)
         if( IsCustomColorIdx( itemType, ii )
-                && aStackupItem && aStackupItem->GetColor().StartsWith( wxT( "#" ) ) )
+                && aStackupItem
+                && aStackupItem->GetColor().StartsWith( wxT( "#" ) ) )
         {
             label = aStackupItem->GetColor();
             curr_color = COLOR4D( label );
@@ -1715,3 +1832,16 @@ void drawBitmap( wxBitmap& aBitmap, wxColor aColor )
 }
 
 
+std::pair<double, PANEL_SETUP_BOARD_STACKUP::FREQ_UNITS> PANEL_SETUP_BOARD_STACKUP::normaliseFrequency( double aFreq )
+{
+    if( aFreq >= 1e9 )
+        return { aFreq / 1e9, FREQ_UNITS::GHZ };
+
+    if( aFreq >= 1e6 )
+        return { aFreq / 1e6, FREQ_UNITS::MHZ };
+
+    if( aFreq >= 1e3 )
+        return { aFreq / 1e3, FREQ_UNITS::KHZ };
+
+    return { aFreq, FREQ_UNITS::HZ };
+}

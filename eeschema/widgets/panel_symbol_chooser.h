@@ -15,16 +15,13 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #ifndef PANEL_SYMBOL_CHOOSER_H
 #define PANEL_SYMBOL_CHOOSER_H
 
 #include <template_fieldnames.h>
+#include <variant_symbol_utils.h>
 #include <widgets/lib_tree.h>
 #include <symbol_tree_model_adapter.h>
 #include <footprint_info.h>
@@ -33,9 +30,12 @@
 
 class wxPanel;
 class wxTimer;
+class wxChoice;
 class wxSplitterWindow;
+class wxStaticText;
 
 class SYMBOL_LIBRARY_FILTER;
+class LIB_SYMBOL;
 class SYMBOL_PREVIEW_WIDGET;
 class FOOTPRINT_PREVIEW_WIDGET;
 class FOOTPRINT_SELECT_WIDGET;
@@ -51,6 +51,9 @@ public:
      *
      * @param aFrame  the parent frame (usually a SCH_EDIT_FRAME or SYMBOL_CHOOSER_FRAME)
      * @param aParent the parent window (usually a DIALOG_SHIM or SYMBOL_CHOOSER_FRAME)
+     * @param aFilter
+     * @param aHistoryList
+     * @param aAlreadyPlaced
      * @param aAllowFieldEdits  if false, all functions that allow the user to edit fields (currently just
      *                          footprint selection) will not be available.
      * @param aShowFootprints   if false, all footprint preview and selection features are disabled. This
@@ -58,7 +61,7 @@ public:
      * @param aCancelled [out] value indicating the user has cancelled the loading symbols progress dialog
      *                   before we even get to showing the symbol chooser dialog.
      * @param aAcceptHandler a handler to be called on double-click of a footprint
-     * @param aEscapeHandler a handler to be called on <ESC>
+     * @param aEscapeHandler a handler to be called on \<ESC\>
      */
     PANEL_SYMBOL_CHOOSER( SCH_BASE_FRAME* aFrame, wxWindow* aParent,
                           const SYMBOL_LIBRARY_FILTER* aFilter,
@@ -85,9 +88,10 @@ public:
      * default is desired (usually 1).
      *
      * @param aUnit if not NULL, the selected unit is filled in here.
+     * @param aBodyStyle if not NULL the body style is filled here.
      * @return the #LIB_ID of the symbol that has been selected.
      */
-    LIB_ID GetSelectedLibId( int* aUnit = nullptr ) const;
+    LIB_ID GetSelectedLibId( int* aUnit = nullptr, int* aBodyStyle = nullptr ) const;
 
     int GetItemCount() const { return m_adapter->GetItemCount(); }
 
@@ -105,6 +109,8 @@ public:
 
     void ShutdownCanvases();
 
+    void SetCompatibilityCallback( SYMBOL_COMPAT_FUNC aFunc );
+
     wxObjectDataPtr<LIB_TREE_MODEL_ADAPTER> Adapter() const { return m_adapter; }
 
     void Regenerate();
@@ -120,6 +126,9 @@ protected:
 
     void onFootprintSelected( wxCommandEvent& aEvent );
     void onSymbolSelected( wxCommandEvent& aEvent );
+
+    void onSelectBodyStyle( wxCommandEvent& aEvent );
+    void updateBodyStyleChoice( LIB_SYMBOL* aSymbol );
 
     /**
      * Handle parent frame menu events to block tree preview
@@ -159,6 +168,8 @@ protected:
     static wxString           g_symbolSearchString;
     static wxString           g_powerSearchString;
 
+    LIB_ID                    m_curSymbolId;
+
     wxTimer*                  m_dbl_click_timer;
     wxTimer*                  m_open_libs_timer;
     SYMBOL_PREVIEW_WIDGET*    m_symbol_preview;
@@ -172,7 +183,7 @@ protected:
     LIB_TREE*                 m_tree;
     HTML_WINDOW*              m_details;
 
-    static SCH_BASE_FRAME*    m_frame;      // Must be static becuase used in a static function
+    SCH_BASE_FRAME*           m_frame;
     std::function<void()>     m_acceptHandler;
     std::function<void()>     m_escapeHandler;
 
@@ -180,8 +191,13 @@ protected:
     bool                      m_allow_field_edits;
     bool                      m_show_footprints;
     wxString                  m_fp_override;
+    wxStaticText*             m_bodyStyleLabel;
+    wxChoice*                 m_bodyStyleChoice;
+    int                       m_selectedBodyStyle;
 
     std::vector<std::pair<FIELD_T, wxString>>  m_field_edits;
+
+    SYMBOL_COMPAT_FUNC        m_compatCallback;
 };
 
 #endif /* PANEL_SYMBOL_CHOOSER_H */

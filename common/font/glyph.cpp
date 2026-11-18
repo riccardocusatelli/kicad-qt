@@ -14,12 +14,13 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <vector>
 #include <font/glyph.h>
+#include <font/glyph_types.h>
 #include <trigo.h>
 
 using namespace KIFONT;
@@ -134,7 +135,7 @@ void OUTLINE_GLYPH::Triangulate( std::function<void( const VECTOR2I& aPt1,
                                                      const VECTOR2I& aPt2,
                                                      const VECTOR2I& aPt3 )> aCallback ) const
 {
-    const_cast<OUTLINE_GLYPH*>( this )->CacheTriangulation( false );
+    const_cast<OUTLINE_GLYPH*>( this )->CacheTriangulation();
 
     for( unsigned int i = 0; i < TriangulatedPolyCount(); i++ )
     {
@@ -150,15 +151,13 @@ void OUTLINE_GLYPH::Triangulate( std::function<void( const VECTOR2I& aPt1,
 }
 
 
-void OUTLINE_GLYPH::CacheTriangulation( bool aPartition, bool aSimplify )
+void OUTLINE_GLYPH::CacheTriangulation( bool aSimplify, const TASK_SUBMITTER& aSubmitter, bool aBuildIndexes )
 {
     // Only call CacheTriangulation if it has never been done before.  Otherwise we'll hash
     // the triangulation to see if it has been edited, and glyphs are invariant after creation.
-    //
-    // Also forces "partition" to false as we never want to partition a glyph.
 
     if( TriangulatedPolyCount() == 0 )
-        SHAPE_POLY_SET::CacheTriangulation( false, aSimplify );
+        SHAPE_POLY_SET::CacheTriangulation( aSimplify, {}, aBuildIndexes );
 }
 
 
@@ -177,5 +176,5 @@ OUTLINE_GLYPH::GetTriangulationData() const
 void OUTLINE_GLYPH::CacheTriangulation(
         std::vector<std::unique_ptr<SHAPE_POLY_SET::TRIANGULATED_POLYGON>>& aHintData )
 {
-    cacheTriangulation( false, false, &aHintData );
+    cacheTriangulation( false, &aHintData );
 }

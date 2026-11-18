@@ -82,6 +82,8 @@ public:
 
     void SetVisible( bool aVisible ) override { setVisible( aVisible ); }
 
+    void SetIndeterminate( bool aIndeterminate ) override { m_indeterminate.store( aIndeterminate ); }
+
     ///< Gate expensive dialog work while always allowing the final tick.
     static bool shouldRefresh( int aProgress, int aMaxProgress, int aPhase, int aNumPhases,
                                THROTTLE& aThrottle )
@@ -98,6 +100,7 @@ private:
     // Rate-limit expensive dialog repaint and event draining.
     THROTTLE               m_updateThrottle;
     std::atomic_bool       m_lastUpdateResult;
+    std::atomic_bool       m_indeterminate;
 };
 
 

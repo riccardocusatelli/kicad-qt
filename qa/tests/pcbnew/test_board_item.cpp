@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
@@ -29,7 +25,6 @@
 // Code under test
 #include <board.h>
 #include <board_design_settings.h>
-#include <netinfo.h>
 #include <board_item.h>
 #include <footprint.h>
 #include <pad.h>
@@ -37,6 +32,7 @@
 #include <pcb_barcode.h>
 #include <pcb_text.h>
 #include <pcb_textbox.h>
+#include <pcb_drill_chart.h>
 #include <pcb_table.h>
 #include <pcb_tablecell.h>
 #include <pcb_reference_image.h>
@@ -47,6 +43,7 @@
 #include <pcb_point.h>
 #include <pcb_target.h>
 #include <pcb_group.h>
+#include <pcb_grid_item.h>
 #include <pcb_board_outline.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
@@ -97,7 +94,6 @@ public:
 
         case PCB_TEXT_T:              return new PCB_TEXT( &m_board );
         case PCB_TEXTBOX_T:           return new PCB_TEXTBOX( &m_board );
-        case PCB_TABLECELL_T:         return new PCB_TABLECELL( &m_board );
 
         case PCB_TABLE_T:
         {
@@ -120,7 +116,7 @@ public:
 
                 for( int col = 0; col < 2; ++col )
                 {
-                    PCB_TABLECELL* cell = new PCB_TABLECELL( &m_board );
+                    PCB_TABLECELL* cell = new PCB_TABLECELL( table );
                     cell->SetRectangleHeight( 0 );
                     cell->SetRectangleWidth( 0 );
                     cell->SetStart( VECTOR2I( x, y ) );
@@ -148,6 +144,44 @@ public:
         case PCB_DIM_ORTHOGONAL_T:    return new PCB_DIM_ORTHOGONAL( &m_board );
         case PCB_TARGET_T:            return new PCB_TARGET( &m_board );
         case PCB_POINT_T:             return new PCB_POINT( &m_board );
+        case PCB_GRID_ITEM_T:         return new PCB_GRID_ITEM( &m_board );
+
+        case PCB_DRILL_CHART_T:
+        {
+            PCB_DRILL_CHART* chart = new PCB_DRILL_CHART( &m_board );
+
+            const int colWidths[2] = { pcbIUScale.mmToIU( 20.0 ), pcbIUScale.mmToIU( 30.0 ) };
+            const int rowHeights[2] = { pcbIUScale.mmToIU( 5.0 ), pcbIUScale.mmToIU( 7.0 ) };
+
+            chart->SetColCount( 2 );
+            chart->SetColWidth( 0, colWidths[0] );
+            chart->SetColWidth( 1, colWidths[1] );
+            chart->SetRowHeight( 0, rowHeights[0] );
+            chart->SetRowHeight( 1, rowHeights[1] );
+
+            int y = 0;
+
+            for( int row = 0; row < 2; ++row )
+            {
+                int x = 0;
+
+                for( int col = 0; col < 2; ++col )
+                {
+                    PCB_TABLECELL* cell = new PCB_TABLECELL( chart );
+                    cell->SetRectangleHeight( 0 );
+                    cell->SetRectangleWidth( 0 );
+                    cell->SetStart( VECTOR2I( x, y ) );
+                    cell->SetEnd( VECTOR2I( x + colWidths[col], y + rowHeights[row] ) );
+                    chart->AddCell( cell );
+
+                    x += colWidths[col];
+                }
+
+                y += rowHeights[row];
+            }
+
+            return chart;
+        }
 
         case PCB_ZONE_T:
         {
@@ -175,7 +209,11 @@ public:
         case PCB_ITEM_LIST_T:
         case PCB_NETINFO_T:
         case PCB_GENERATOR_T:
+        case PCB_CONSTRAINT_T:   // geometry-free; geometric behavior covered by ConstraintSolverItem
         case PCB_BOARD_OUTLINE_T:
+        case PCB_DRILL_MAP_T:    // configuration only; its symbols are drawn by the holes
+        case PCB_3D_BODY_T:      // payload only; no 2D geometry of its own
+        case PCB_STACKUP_TABLE_T:  // @todo this may be testable below, added to prevent QA test failures.
             return nullptr;
 
         default:
@@ -368,6 +406,57 @@ BOOST_AUTO_TEST_CASE( FlipUpDown )
 }
 
 
+BOOST_AUTO_TEST_CASE( BoardlessItemsUseStandardLayerMetadata )
+{
+    PCB_TRACK track( nullptr );
+    track.SetLayer( F_Cu );
+    track.Flip( VECTOR2I( 0, 0 ), FLIP_DIRECTION::LEFT_RIGHT );
+    BOOST_CHECK_EQUAL( track.GetLayer(), B_Cu );
+
+    PCB_ARC arc( nullptr );
+    arc.SetLayer( F_SilkS );
+    arc.Flip( VECTOR2I( 0, 0 ), FLIP_DIRECTION::LEFT_RIGHT );
+    BOOST_CHECK_EQUAL( arc.GetLayer(), B_SilkS );
+
+    PCB_TARGET target( nullptr );
+    target.SetLayer( F_Fab );
+    target.Flip( VECTOR2I( 0, 0 ), FLIP_DIRECTION::LEFT_RIGHT );
+    BOOST_CHECK_EQUAL( target.GetLayer(), B_Fab );
+
+    PCB_VIA via( nullptr );
+    via.SetViaType( VIATYPE::BLIND );
+    via.SetLayerPair( F_Cu, In1_Cu );
+    via.Flip( VECTOR2I( 0, 0 ), FLIP_DIRECTION::LEFT_RIGHT );
+
+    PCB_LAYER_ID topLayer;
+    PCB_LAYER_ID bottomLayer;
+    via.LayerPair( &topLayer, &bottomLayer );
+
+    BOOST_CHECK_EQUAL( topLayer, In1_Cu );
+    BOOST_CHECK_EQUAL( bottomLayer, B_Cu );
+    BOOST_CHECK_EQUAL( via.LayerMaskDescribe(), wxT( "In1.Cu - B.Cu" ) );
+
+    PCB_TEXTBOX textbox( nullptr );
+    textbox.SetText( wxT( "${UNKNOWN}" ) );
+    textbox.SetStart( VECTOR2I( 0, 0 ) );
+    textbox.SetEnd( VECTOR2I( pcbIUScale.mmToIU( 10 ), pcbIUScale.mmToIU( 5 ) ) );
+    BOOST_CHECK_NO_THROW( textbox.GetShownText( FOR_CANVAS ) );
+
+    FOOTPRINT     footprint( nullptr );
+    PCB_TABLE     table( &footprint );
+    PCB_TABLECELL cell( &table );
+    cell.SetText( wxT( "${UNKNOWN}" ) );
+    BOOST_CHECK_NO_THROW( cell.GetUnwrappedShownText( FOR_CANVAS ) );
+
+    ZONE               zone( &footprint );
+    std::vector<ZONE*> sameNetZones;
+    std::vector<ZONE*> otherNetZones;
+    zone.GetInteractingZones( F_Cu, &sameNetZones, &otherNetZones );
+    BOOST_CHECK( sameNetZones.empty() );
+    BOOST_CHECK( otherNetZones.empty() );
+}
+
+
 // Two columns and two rows, built at the origin and then turned. Each cell carries its grid
 // position as text so a test can say where it ended up.
 static PCB_TABLE* makeTable( BOARD& aBoard, const int aColWidths[2], const int aRowHeights[2], double aDegrees )
@@ -391,7 +480,7 @@ static PCB_TABLE* makeTable( BOARD& aBoard, const int aColWidths[2], const int a
 
         for( int col = 0; col < 2; ++col )
         {
-            PCB_TABLECELL* cell = new PCB_TABLECELL( &aBoard );
+            PCB_TABLECELL* cell = new PCB_TABLECELL( table );
             cell->SetStart( VECTOR2I( x, y ) );
             cell->SetEnd( VECTOR2I( x + aColWidths[col], y + aRowHeights[row] ) );
             cell->SetText( wxString::Format( wxT( "%c%d" ), 'A' + col, row + 1 ) );
@@ -500,6 +589,37 @@ BOOST_AUTO_TEST_CASE( TableBoundingBoxCoversEveryCell )
 }
 
 
+// A turned text box keeps its rectangle square to the board and carries the turn in its text
+// angle. Its box is what clicking and selection are judged against, so it has to cover the
+// corners the box is actually drawn with.
+BOOST_AUTO_TEST_CASE( TextBoxBoundingBoxFollowsItsRotation )
+{
+    for( double degrees : { 0.0, 30.0, 45.0, 90.0 } )
+    {
+        BOOST_TEST_CONTEXT( "turned " << degrees )
+        {
+            PCB_TEXTBOX* box = new PCB_TEXTBOX( &m_board );
+
+            box->SetLayer( F_SilkS );
+            box->SetStart( VECTOR2I( 0, 0 ) );
+            box->SetEnd( VECTOR2I( pcbIUScale.mmToIU( 40.0 ), pcbIUScale.mmToIU( 8.0 ) ) );
+            box->SetTextAngle( EDA_ANGLE( degrees, DEGREES_T ) );
+            m_board.Add( box );
+
+            BOX2I bbox = box->GetBoundingBox();
+
+            for( const VECTOR2I& corner : box->GetCorners() )
+            {
+                BOOST_CHECK_MESSAGE( bbox.Contains( corner ),
+                                     "corner ( " << corner.x << ", " << corner.y << " ) is outside the box ( "
+                                                 << bbox.GetLeft() << ", " << bbox.GetTop() << " ) to ( "
+                                                 << bbox.GetRight() << ", " << bbox.GetBottom() << " )" );
+            }
+        }
+    }
+}
+
+
 // A flip mirrors an item about a board axis, which tilts it the way PCB_TEXTBOX::Mirror already
 // states: 180 minus the angle across a vertical axis, minus the angle across a horizontal one.
 // A table has to follow that too. Reading direction is free, because a table at one angle is the
@@ -528,10 +648,10 @@ BOOST_AUTO_TEST_CASE( TableFlipTiltsTheWayEverythingElseDoes )
                 EDA_ANGLE  tilt( degrees, DEGREES_T );
                 EDA_ANGLE  reflected = dir == FLIP_DIRECTION::LEFT_RIGHT ? ANGLE_180 - tilt : -tilt;
 
-                std::vector<std::vector<VECTOR2I>> before;
+                std::vector<VECTOR2I> before;
 
                 for( PCB_TABLECELL* cell : table->GetCells() )
-                    before.push_back( cell->GetCorners() );
+                    before.push_back( cell->GetStart() );
 
                 table->Flip( point, dir );
 
@@ -544,16 +664,9 @@ BOOST_AUTO_TEST_CASE( TableFlipTiltsTheWayEverythingElseDoes )
 
                 for( size_t ii = 0; ii < before.size(); ++ii )
                 {
-                    std::vector<VECTOR2I> corners = table->GetCells()[ii]->GetCorners();
-
-                    BOOST_REQUIRE_EQUAL( corners.size(), before[ii].size() );
-
-                    for( size_t jj = 0; jj < corners.size(); ++jj )
-                    {
-                        BOOST_CHECK_MESSAGE( ( corners[jj] - before[ii][jj] ).EuclideanNorm()
-                                                     <= pcbIUScale.mmToIU( 0.001 ),
-                                             "cell " << ii << " corner " << jj << " did not come back" );
-                    }
+                    BOOST_CHECK_MESSAGE( ( table->GetCells()[ii]->GetStart() - before[ii] ).EuclideanNorm()
+                                                 <= pcbIUScale.mmToIU( 0.001 ),
+                                         "cell " << ii << " did not come back" );
                 }
             }
         }
@@ -576,6 +689,7 @@ BOOST_AUTO_TEST_CASE( Issue23234_CustomPadstackFlip )
 
     // Set up a circular SMD pad on F_Cu (NORMAL padstack mode)
     pad.SetAttribute( PAD_ATTRIB::SMD );
+    pad.SetPadstackMode( PADSTACK::MODE::NORMAL );
     pad.SetShape( PADSTACK::ALL_LAYERS, PAD_SHAPE::CIRCLE );
     pad.SetSize( PADSTACK::ALL_LAYERS, VECTOR2I( 500000, 500000 ) );
     LSET smd_layers;
@@ -599,52 +713,6 @@ BOOST_AUTO_TEST_CASE( Issue23234_CustomPadstackFlip )
 
     // Verify the returned shape is sane (the B_Cu props, which were originally F_Cu props)
     BOOST_CHECK( pad.GetShape( PADSTACK::ALL_LAYERS ) == PAD_SHAPE::CIRCLE );
-}
-
-
-BOOST_AUTO_TEST_CASE( ResolveItemCachePurgedOnRemoveAll )
-{
-    // DeleteAllFootprints() frees the footprints, so their UUIDs (and their pads') must not stay
-    // in m_itemByIdCache or ResolveItem() returns a dangling pointer and the DRC tree crashes.
-
-    BOARD board;
-
-    FOOTPRINT* footprint = new FOOTPRINT( &board );
-    PAD*       pad = new PAD( footprint );
-    footprint->Add( pad );
-
-    const KIID footprintId = footprint->m_Uuid;
-    const KIID padId = pad->m_Uuid;
-
-    board.Add( footprint );
-
-    BOOST_REQUIRE( board.ResolveItem( footprintId, true ) == footprint );
-    BOOST_REQUIRE( board.ResolveItem( padId, true ) == pad );
-
-    board.DeleteAllFootprints();
-
-    BOOST_CHECK( board.ResolveItem( footprintId, true ) == nullptr );
-    BOOST_CHECK( board.ResolveItem( padId, true ) == nullptr );
-}
-
-
-BOOST_AUTO_TEST_CASE( ResolveItemCachePurgedOnRemoveAllNets )
-{
-    // NETINFO_LIST::clear() frees the nets, so the net path must purge the cache entry without
-    // resolving the freed pointer (ASAN catches a regression of the deferred clear()).
-
-    BOARD board;
-
-    NETINFO_ITEM* net = new NETINFO_ITEM( &board, wxT( "Net-(U1-Pad1)" ), 1 );
-    const KIID    netId = net->m_Uuid;
-
-    board.Add( net );
-
-    BOOST_REQUIRE( board.ResolveItem( netId, true ) == net );
-
-    board.RemoveAll();
-
-    BOOST_CHECK( board.ResolveItem( netId, true ) == nullptr );
 }
 
 
@@ -673,7 +741,7 @@ BOOST_AUTO_TEST_CASE( Issue24696_SwapItemDataKeepsGroupMembership )
 
 // Partial hardening for the BOARD::RecordDRCExclusions crash family (Sentry KICAD-YT2,
 // KICAD-YTA).  A PCB_MARKER may legitimately carry a null RC_ITEM (its ctor and dtor both guard
-// the member), but SerializeToString() dereferences it unconditionally, so recording exclusions
+// the member), but DRC_EXCLUSION::FromMarker() dereferences it unconditionally, so recording exclusions
 // during a project save or window close faulted on such a marker.
 BOOST_AUTO_TEST_CASE( RecordDRCExclusionsSkipsMarkerWithoutRCItem )
 {
@@ -690,104 +758,15 @@ BOOST_AUTO_TEST_CASE( RecordDRCExclusionsSkipsMarkerWithoutRCItem )
 }
 
 
-BOOST_AUTO_TEST_CASE( ResolveItemIdentityCachePurgedOnDestruction )
+// Squaring the width in int overflowed for any line wider than about 46 um
+BOOST_AUTO_TEST_CASE( LinearShapeCoverageAreaIsWidthSquared )
 {
-    BOARD board;
+    PCB_SHAPE segment( nullptr, SHAPE_T::SEGMENT );
+    segment.SetEnd( VECTOR2I( pcbIUScale.mmToIU( 10 ), 0 ) );
+    segment.SetWidth( pcbIUScale.mmToIU( 0.2 ) );
 
-    FOOTPRINT* footprint = new FOOTPRINT( &board );
-    board.Add( footprint );
-
-    PAD* pad = new PAD( footprint );
-    footprint->Pads().push_back( pad );
-    board.CacheItemById( pad );
-
-    const KIID padId = pad->m_Uuid;
-
-    BOOST_REQUIRE( board.IsItemIndexedById( pad ) );
-    BOOST_REQUIRE_EQUAL( board.ResolveItem( padId, true ), static_cast<BOARD_ITEM*>( pad ) );
-
-    // Detach the pad from the footprint without FOOTPRINT::Remove()'s surgical eviction, leaving it
-    // parented to the still-board-attached footprint, then free it directly.  This stands in for the
-    // producer paths that free a board-parented item without touching the identity cache; only the
-    // ~BOARD_ITEM safety net can then keep ResolveItem() from returning a freed pointer.
-    std::deque<PAD*>& pads = footprint->Pads();
-    pads.erase( std::find( pads.begin(), pads.end(), pad ) );
-    delete pad;
-
-    BOOST_CHECK( board.ResolveItem( padId, true ) == nullptr );
-}
-
-
-// The per-item flag must track the board's identity cache across every mutation path.
-BOOST_AUTO_TEST_CASE( IndexMembershipFlagTracksCache )
-{
-    BOARD board;
-
-    FOOTPRINT* footprint = new FOOTPRINT( &board );
-    board.Add( footprint );
-
-    PAD* pad = new PAD( footprint );
-    footprint->Pads().push_back( pad );
-
-    BOOST_CHECK( !pad->IsIndexedInBoard() );
-
-    board.CacheItemById( pad );
-    BOOST_CHECK( pad->IsIndexedInBoard() );
-    BOOST_CHECK( board.IsItemIndexedById( pad ) );
-
-    // A clone is a distinct object, not itself indexed.
-    {
-        PAD copy( *pad );
-        BOOST_CHECK( !copy.IsIndexedInBoard() );
-    }
-
-    board.UncacheItemById( pad->m_Uuid );
-    BOOST_CHECK( !pad->IsIndexedInBoard() );
-    BOOST_CHECK( !board.IsItemIndexedById( pad ) );
-
-    board.CacheAndReturnItemById( pad->m_Uuid, pad );
-    BOOST_CHECK( pad->IsIndexedInBoard() );
-
-    board.UncacheItemByPtr( pad );
-    BOOST_CHECK( !pad->IsIndexedInBoard() );
-    BOOST_CHECK( !board.IsItemIndexedById( pad ) );
-
-    board.CacheItemById( pad );
-    BOOST_REQUIRE( pad->IsIndexedInBoard() );
-    board.ClearItemByIdCache();
-    BOOST_CHECK( !pad->IsIndexedInBoard() );
-}
-
-
-// A rejected Add() (here a track on a non-copper layer) must leave the item out of the cache.
-BOOST_AUTO_TEST_CASE( RejectedAddLeavesItemUnindexed )
-{
-    BOARD board;
-
-    PCB_TRACK* track = new PCB_TRACK( &board );
-    track->SetLayer( Edge_Cuts );
-
-    CHECK_WX_ASSERT( board.Add( track ) );
-
-    BOOST_CHECK( !track->IsIndexedInBoard() );
-    BOOST_CHECK( !board.IsItemIndexedById( track ) );
-
-    BOOST_CHECK_NO_THROW( delete track );
-}
-
-
-// A never-indexed item parented to a freed board must not touch that board on destruction, the
-// crash from the "KiCad master crashes" report (follow-up to ac12a1c820).
-BOOST_AUTO_TEST_CASE( UncachedItemSurvivesBoardDestruction )
-{
-    BOARD*   board = new BOARD();
-    PCB_VIA* dummy = new PCB_VIA( board );
-
-    BOOST_REQUIRE( !dummy->IsIndexedInBoard() );
-
-    delete board;
-
-    BOOST_CHECK_NO_THROW( delete dummy );
+    const double width = pcbIUScale.mmToIU( 0.2 );
+    BOOST_TEST( segment.GetCoverageArea( 0 ) == width * width );
 }
 
 

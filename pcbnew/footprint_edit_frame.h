@@ -13,12 +13,16 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef FOOTPRINT_EDIT_FRAME_H
 #define FOOTPRINT_EDIT_FRAME_H
+
+#include <functional>
+#include <memory>
+#include <vector>
 
 #include <pcb_base_frame.h>
 #include <pcb_base_edit_frame.h>
@@ -33,6 +37,13 @@ class FOOTPRINT_TREE_PANE;
 class SYMBOL_LIBRARY_MANAGER;
 class FOOTPRINT_EDITOR_SETTINGS;
 class EDA_LIST_DIALOG;
+class EDITOR_TABS_PANEL;
+class FOOTPRINT_EDITOR_TAB_CONTEXT;
+class UNDO_REDO_CONTAINER;
+
+class API_HANDLER_FOOTPRINT;
+class API_HANDLER_COMMON;
+class API_HANDLER_LIBRARIES;
 
 namespace PCB { struct IFACE; }     // A KIFACE coded in pcbnew.cpp
 
@@ -48,7 +59,62 @@ public:
      */
     static const wxChar* GetFootprintEditorFrameName();
 
-    ///< @copydoc PCB_BASE_FRAME::GetModel()
+    /**
+     * Replace the tab context at @p aSlot with @p aNew, running @p aInstallSuccessor before the
+     * displaced context is destroyed.
+     *
+     * @p aInstallSuccessor repoints the canvas VIEW at the incoming board; the displaced context is
+     * passed in so callers can keep the old board protected during install.
+     *
+     * Exposed for unit testing of the reuse ordering.
+     *
+     * @return the raw pointer to the newly installed context.
+     */
+    static FOOTPRINT_EDITOR_TAB_CONTEXT* placeReusedTabContext(
+            std::vector<std::unique_ptr<FOOTPRINT_EDITOR_TAB_CONTEXT>>& aContexts, int aSlot,
+            std::unique_ptr<FOOTPRINT_EDITOR_TAB_CONTEXT> aNew,
+            const std::function<void( const FOOTPRINT_EDITOR_TAB_CONTEXT& )>& aInstallSuccessor );
+
+    /**
+     * Decide whether @p aFootprint opens in its own tab and, if so, detach it from the board it
+     * arrived parented to.
+     *
+     * Only a library footprint with a resolvable identity gets a tab; board-sourced loads and
+     * footprints with no nickname keep the legacy single-board behavior.  A footprint that does get
+     * a tab must not hold a parent across the switch, which frees the outgoing board.
+     *
+     * Exposed for unit testing of the hand-off.
+     *
+     * @return true if the caller should open a tab for @p aFootprint.
+     */
+    static bool prepareFootprintTabHandoff( FOOTPRINT* aFootprint, bool aHasTabs );
+
+    /**
+     * The infobar notice that applies to the footprint being edited.
+     */
+    enum class EDIT_NOTICE
+    {
+        NONE,           ///< Nothing to report, so any existing notice is dismissed
+        FROM_BOARD,     ///< Editing a footprint pulled off a board, so saving updates the board only
+        READ_ONLY_LIB   ///< Editing a footprint whose library cannot be written
+    };
+
+    /**
+     * Decide which infobar notice applies to @p aFootprint.
+     *
+     * @p aFootprint is null while the editor holds an empty board, which is the state between
+     * Clear_Pcb() and the next load.
+     *
+     * Exposed for unit testing of the notice selection.
+     *
+     * @param aFootprint is the footprint to edit the notice for.
+     * @param aIsFromBoard is true when the footprint is an instance pulled off a board.
+     * @param aIsLibWritable answers whether a named library can be written to.
+     */
+    static EDIT_NOTICE editNoticeFor( const FOOTPRINT* aFootprint, bool aIsFromBoard,
+                                      const std::function<bool( const wxString& )>& aIsLibWritable );
+
+    /// @copydoc PCB_BASE_FRAME::GetModel()
     BOARD_ITEM_CONTAINER* GetModel() const override;
     SELECTION&            GetCurrentSelection() override;
 
@@ -61,7 +127,17 @@ public:
 
     bool IsCurrentFPFromBoard() const override;
 
+<<<<<<< b2e17e0a
     bool CanCloseFPFromBoard( bool doClose ) override;
+||||||| 1304b76aad
+    bool CanCloseFPFromBoard( bool doClose );
+=======
+    /**
+     * Prompt to save each dirty tab that meets the requirements.  Returns false if the user
+     * cancels so the window close can be vetoed.
+     */
+    bool HandleUnsavedChanges( bool aFromBoardOnly );
+>>>>>>> ed8c16703e
 
     FOOTPRINT_EDITOR_SETTINGS* GetSettings();
 
@@ -106,7 +182,7 @@ public:
      */
     void UpdateUserInterface();
 
-    ///< @copydoc EDADRAW_FRAME::UpdateMsgPanel
+    /// @copydoc EDA_DRAW_FRAME::UpdateMsgPanel
     void UpdateMsgPanel() override;
 
     /**
@@ -116,13 +192,20 @@ public:
 
     /**
      * Re create the layer Box by clearing the old list, and building a new one from the new
-     * layers names and layer colors..
+     * layers names and layer colors.
      *
      * @param aForceResizeToolbar true to resize the parent toolbar or false if not needed
      *                            (mainly in parent toolbar creation or when the layers names
      *                            are not modified).
      */
     void ReCreateLayerBox( bool aForceResizeToolbar = true );
+
+    void configureToolbars() override;
+
+    PLUGIN_ACTION_SCOPE PluginActionScope() const override
+    {
+        return PLUGIN_ACTION_SCOPE::FOOTPRINT;
+    }
 
     // The Tool Framework initialization, for GAL mode
     void setupTools();
@@ -138,16 +221,60 @@ public:
     /**
      * Save a library to a new name and/or library type.
      *
-     * @see #PCB_IO::FootprintSave and #IO_BASE::LibraryCreate
+     * @see #PCB_IO::FootprintSave and #IO_BASE::CreateLibrary
      *
      * @note Saving as a new library type requires the plug-in to support saving libraries
      */
     bool SaveLibraryAs( const wxString& aLibraryPath );
 
-    ///< @copydoc PCB_BASE_EDIT_FRAME::OnEditItemRequest()
+    /// @copydoc PCB_BASE_EDIT_FRAME::OnEditItemRequest()
     void OnEditItemRequest( BOARD_ITEM* aItem ) override;
 
     void LoadFootprintFromLibrary( LIB_ID aFPID );
+
+    /**
+     * Prepare the editor for a new footprint, returning false if the user cancels.
+     *
+     * With a target library the new footprint opens in its own tab and the other tabs are left
+     * intact. Otherwise it falls back to the legacy single-board clear.
+     */
+    bool BeginNewFootprint( const wxString& aLibrary );
+
+    /**
+     * Close the open tab for aFPID, if any, without prompting and leaving the other tabs open. The
+     * panel selects a successor when the closed tab was active.
+     */
+    void CloseFootprintTab( const LIB_ID& aFPID );
+
+    /**
+     * Open a session-only tab over a fresh fp-holder board and make it the active tab.
+     *
+     * For footprints with no library identity yet, e.g. a wizard export or a file import: the tab
+     * reads as unnamed and is never de-duplicated against another tab; RenameFootprintTab() promotes
+     * it once a save-as names it.
+     */
+    FOOTPRINT_EDITOR_TAB_CONTEXT* CreateUnsavedFootprintTab();
+
+    /**
+     * Update the open tab for aOldId, if any, to the renamed footprint aNewId so its label and key
+     * track the rename.
+     */
+    void RenameFootprintTab( const LIB_ID& aOldId, const LIB_ID& aNewId );
+
+    /**
+     * Return true if any footprint editor tab has unsaved changes, or with aLibraryOnly any tab holding a
+     * library footprint.
+     */
+    bool HasModifiedFootprintTabs( bool aLibraryOnly = false ) const;
+
+    /// Save every tab with unsaved edits to a library footprint, then return to the tab that was
+    /// active. False when a save failed; the tabs after it are left unsaved.
+    bool SaveModifiedLibraryTabs();
+
+    /**
+     * Replace the clean open editor tab matching aFootprint, if any, with the saved footprint.
+     */
+    void RefreshLibraryFootprintTab( const FOOTPRINT& aFootprint );
 
     /**
      * Return the adapter object that provides the stored data.
@@ -165,7 +292,7 @@ public:
     bool SaveFootprintAs( FOOTPRINT* aFootprint );
     bool SaveFootprintToBoard( bool aAddNew );
     bool SaveFootprintInLibrary( FOOTPRINT* aFootprint, const wxString& aLibraryName );
-    bool RevertFootprint();
+    bool RevertFootprint( bool aSkipConfirmation = false );
 
     /**
      * Must be called after a footprint change in order to set the "modify" flag of the
@@ -177,11 +304,8 @@ public:
 
     /**
      * Delete all and reinitialize the current board.
-     *
-     * @param doAskAboutUnsavedChanges = true to prompt user for confirmation if existing board
-     *                                   contains unsaved changes, false to re-initialize silently
      */
-    bool Clear_Pcb( bool doAskAboutUnsavedChanges );
+    void Clear_Pcb();
 
     /// Return the LIB_ID of the part being edited.
     LIB_ID GetLoadedFPID() const;
@@ -231,12 +355,11 @@ public:
      */
     COLOR4D GetGridColor() override;
 
-    ///< @copydoc PCB_BASE_FRAME::SetActiveLayer()
+    /// @copydoc PCB_BASE_FRAME::SetActiveLayer()
     void SetActiveLayer( PCB_LAYER_ID aLayer ) override;
 
     void OnDisplayOptionsChanged() override;
 
-    ///< @copydoc EDA_DRAW_FRAME::UseGalCanvas()
     void ActivateGalCanvas() override;
 
     /**
@@ -293,7 +416,7 @@ public:
      */
     void UpdateLibraryTree( const wxDataViewItem& treeItem, FOOTPRINT* aFootprint );
 
-    ///< Reload displayed items and sets view.
+    /// Reload displayed items and sets view.
     void UpdateView();
 
     void UpdateTitle();
@@ -302,14 +425,32 @@ public:
 
     void KiwayMailIn( KIWAY_MAIL_EVENT& mail ) override;
 
+<<<<<<< b2e17e0a
+||||||| 1304b76aad
+    DECLARE_EVENT_TABLE()
+
+=======
+    /**
+     * Return the tabbed-document strip, or nullptr if the tabs UI is not mounted.
+     */
+    EDITOR_TABS_PANEL* GetTabsPanel() const { return m_tabsPanel; }
+
+    /**
+     * Advance the active tab forward or backward in MRU order.
+     */
+    void AdvanceFootprintTab( bool aForward );
+
+    /**
+     * Request closing the active tab, prompting to save if it is modified.
+     */
+    void CloseActiveFootprintTab();
+
+    DECLARE_EVENT_TABLE()
+
+>>>>>>> ed8c16703e
 protected:
     /// protected so only friend PCB::IFACE::CreateWindow() can act as sole factory.
     FOOTPRINT_EDIT_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent );
-
-    /**
-     * Determines the Canvas type to load (with prompt if required) and initializes m_canvasType
-     */
-    void resolveCanvasType() override;
 
     /**
      * Make sure the footprint info list is loaded (with a progress dialog) and then initialize
@@ -323,6 +464,11 @@ protected:
     void updateEnabledLayers();
 
     /**
+     * Update the infobar for the currently-active tab.
+     */
+    void updateInfoBar();
+
+    /**
      * @brief (Re)Create the menubar for the Footprint Editor frame
      */
     void doReCreateMenuBar() override;
@@ -334,7 +480,17 @@ protected:
 
     void setupUIConditions() override;
 
+    void onPluginAvailabilityChanged( wxCommandEvent& aEvt );
+
     void centerItemIdleHandler( wxIdleEvent& aEvent );
+
+    /**
+     * Cycle footprint tabs from the CHAR_HOOK stream, since GTK cannot register WXK_TAB as a menu
+     * accelerator.
+     *
+     * Yields to the appearance panel's preset cycle when that panel holds focus.
+     */
+    void OnTabCharHook( wxKeyEvent& aEvent );
 
 protected:
     FOOTPRINT_EDITOR_SETTINGS*  m_editorSettings;
@@ -342,12 +498,114 @@ protected:
 private:
     friend struct PCB::IFACE;
 
+<<<<<<< b2e17e0a
     /// The panes of the frame, around its canvas (footprint_edit_frame_wx.cpp and the Qt build).
     void setupLayout();
 
     /// The events of the frame that the toolkit gives to it (menu commands, keys, sizes...).
     void setupToolkitEvents();
 
+||||||| 1304b76aad
+=======
+    /**
+     * Find or create the tab for aLibId over its own fp-holder board and make it the active tab.
+     */
+    FOOTPRINT_EDITOR_TAB_CONTEXT* findOrCreateFootprintTab( const LIB_ID& aLibId, bool aAsPreview );
+
+    /**
+     * Find or create the instance tab for a placed board footprint and make it the active tab.
+     *
+     * Re-editing the same board footprint focuses the existing tab; otherwise a session-only instance
+     * tab is created over a fresh fp-holder board carrying @p aBoardFootprint cloned, and the
+     * editor-to-board UUID remap is recorded on the new tab for save-back. The clone is created here;
+     * the caller retains ownership of @p aBoardFootprint.
+     */
+    FOOTPRINT_EDITOR_TAB_CONTEXT* findOrCreateFootprintInstanceTab( FOOTPRINT* aBoardFootprint );
+
+    /**
+     * Replace the active board's footprint with aFootprint and re-point the file watcher at it.
+     *
+     * Takes ownership. Does no tab bookkeeping, so callers that need a tab for aFootprint must open
+     * it first.
+     */
+    void installFootprintOnActiveBoard( FOOTPRINT* aFootprint );
+
+    /**
+     * Make aCtx the active tab, borrowing its board without deleting the outgoing one.
+     */
+    void activateFootprintTab( FOOTPRINT_EDITOR_TAB_CONTEXT* aCtx );
+
+    /**
+     * Install aBoard as the active document non-destructively, wiring the tool environment and
+     * resetting the tools before the caller frees any outgoing context.
+     *
+     * aCtx is null for a frame-owned empty board. Never calls the base SetBoard or frees a board
+     * m_pcb references.
+     */
+    void installFootprintTabBoard( FOOTPRINT_EDITOR_TAB_CONTEXT* aCtx, BOARD* aBoard );
+
+    /// Fold a pad being edited back together, so its primitives are not left as loose copper.
+    void recombineEditedPad();
+
+    /**
+     * Snapshot the active tab's view/selection, fold the dirty state back into it, and clear
+     * m_activeTab.
+     *
+     * The board borrow stays until the next borrowBoardNonDestructive swaps it.
+     */
+    void detachActiveFootprintTab();
+
+    /**
+     * Swap the frame's borrowed board pointer to aBoard without deleting the previous board, which
+     * a tab context owns on a tab switch.
+     */
+    void borrowBoardNonDestructive( BOARD* aBoard );
+
+    /**
+     * Prompt to save if needed, then drop the tab context at aIdx. Returns false to veto.
+     */
+    bool promptAndCloseFootprintTab( int aIdx );
+
+    /**
+     * True if any non-active tab has unsaved edits.  Used to veto a session-end query early, since
+     * those tabs are invisible to IsContentModified (which sees only the active tab).
+     */
+    bool hasDirtyInactiveTabs() const;
+
+    /**
+     * Free the transient board items a detached context's lists own before it is destroyed, which
+     * the bare container destructor leaks.
+     */
+    void freeFootprintTabUndoRedo( FOOTPRINT_EDITOR_TAB_CONTEXT& aCtx );
+
+    /**
+     * Free both the transient board items and the command wrappers in the given lists.
+     *
+     * The frame's ClearUndoRedoList() frees only the wrappers, so use this to discard a tab's
+     * history.
+     */
+    void freeUndoRedoCommandsWithItems( UNDO_REDO_CONTAINER& aUndo, UNDO_REDO_CONTAINER& aRedo );
+
+    /**
+     * Re-query and re-render the tab labels from the active context's modified state.
+     */
+    void refreshFootprintTabState();
+
+    /**
+     * Install aReplacement as the active document non-destructively, then drop every tab context
+     * and free the boards they own.
+     *
+     * Installing the successor before freeing keeps tools off a freed board during a full clear.
+     * The frame owns aReplacement afterwards like the bootstrap board.
+     */
+    void detachTabsForFullClear( BOARD* aReplacement );
+
+    /**
+     * True when a tab context owns the frame's borrowed board, so the frame must not delete it.
+     */
+    bool activeBoardOwnedByTab() const;
+
+>>>>>>> ed8c16703e
     FOOTPRINT_TREE_PANE*        m_treePane;
     LIB_ID                      m_centerItemOnIdle;
 
@@ -358,6 +616,24 @@ private:
     std::unique_ptr<FOOTPRINT>  m_originalFootprintCopy;
     wxString                    m_footprintNameWhenLoaded;
     std::map<KIID, KIID>        m_boardFootprintUuids;
+
+    EDITOR_TABS_PANEL*          m_tabsPanel;
+    FOOTPRINT_EDITOR_TAB_CONTEXT* m_activeTab;
+    std::vector<std::unique_ptr<FOOTPRINT_EDITOR_TAB_CONTEXT>> m_tabContexts;
+
+    /// Set while a full clear tears the tab strip down so the panel's close-driven re-activation does
+    /// not re-borrow a tab-owned board about to be freed.
+    bool                        m_suppressTabActivation;
+
+    /// Board still owned by a displaced preview context while AddTab() synchronously installs its successor.
+    BOARD*                      m_protectedBorrowedBoard;
+
+    /// While true, promptAndCloseFootprintTab() skips the unsaved-changes dialog.
+    bool m_silentFootprintTabClose;
+
+    std::unique_ptr<API_HANDLER_FOOTPRINT> m_apiHandler;
+    std::unique_ptr<API_HANDLER_COMMON>    m_apiHandlerCommon;
+    std::unique_ptr<API_HANDLER_LIBRARIES> m_apiHandlerFpLibs;
 };
 
 #endif      // FOOTPRINT_EDIT_FRAME_H

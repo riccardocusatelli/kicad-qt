@@ -16,19 +16,17 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "exporter_step.h"
 #include <advanced_config.h>
 #include <board.h>
 #include <board_design_settings.h>
+#include <bezier_curves.h>
 #include <convert_basic_shapes_to_polygon.h>
 #include <footprint.h>
+#include <pcb_3d_body.h>
 #include <pcb_textbox.h>
 #include <pcb_table.h>
 #include <pcb_tablecell.h>
@@ -40,6 +38,7 @@
 #include <zone.h>
 #include <footprint_library_adapter.h>
 #include "step_pcb_model.h"
+#include <3d_rendering/3d_placeholder_utils.h>
 
 #include <pgm_base.h>
 #include <reporter.h>
@@ -52,7 +51,7 @@
 #include <new>                        // std::bad_alloc
 #include <Message.hxx>                // OpenCascade messenger
 #include <Message_PrinterOStream.hxx> // OpenCascade output messenger
-#include <Standard_Failure.hxx>       // In open cascade
+#include <occ_failure_message.h>
 
 #include <Standard_Version.hxx>
 
@@ -652,10 +651,67 @@ bool EXPORTER_STEP::buildFootprint3DShapes( FOOTPRINT* aFootprint, const VECTOR2
             m_reporter->Report( wxString::Format( _( "Could not add 3D model for %s.\n"
                                                      "OpenCASCADE error: %s\n" ),
                                                   aFootprint->GetReference(),
-                                                  e.GetMessageString() ),
+                                                  OccFailureMessage( e ) ),
                                 RPT_SEVERITY_WARNING );
         }
 
+    }
+
+    if( aFootprint->HasBody() && aFootprint->GetBody()->GetExtruded()->m_show )
+    {
+        const PCB_3D_BODY* bodyItem = aFootprint->GetBody();
+        const EXTRUDED_3D_BODY* body = bodyItem->GetExtruded();
+        SHAPE_POLY_SET          outline;
+
+        if( GetExtrusionOutline( aFootprint, outline ) && outline.OutlineCount() > 0 )
+        {
+            VECTOR2I fpPos = aFootprint->GetPosition();
+            ApplyExtrusionTransform( outline, body, fpPos );
+
+            bool   bottomSide = aFootprint->GetLayer() == B_Cu;
+            double standoff = pcbIUScale.IUTomm( body->m_standoff ) + body->m_offset.z;
+            double bodyThickness = pcbIUScale.IUTomm( body->m_height - body->m_standoff ) * body->m_scale.z;
+            double height = standoff + bodyThickness;
+
+            KIGFX::COLOR4D c = body->m_color;
+
+            if( c == KIGFX::COLOR4D::UNSPECIFIED )
+                c = EXTRUDED_3D_BODY::GetDefaultColor( body->m_material );
+
+            uint32_t colorKey = EXTRUDED_3D_BODY::PackColorKey( c );
+
+            try
+            {
+                if( m_pcbModel->AddExtrudedBody( outline, bottomSide, standoff, height, aOrigin, colorKey,
+                                                 body->m_material, aFootprint->GetReference() ) )
+                {
+                    hasdata = true;
+                }
+            }
+            catch( const Standard_Failure& e )
+            {
+                m_reporter->Report( wxString::Format( _( "Could not add extruded body for %s.\n"
+                                                         "OpenCASCADE error: %s\n" ),
+                                                      aFootprint->GetReference(), OccFailureMessage( e ) ),
+                                    RPT_SEVERITY_WARNING );
+            }
+
+            // Add metallic pin extrusions for through-hole pads
+            if( standoff > 0 )
+            {
+                try
+                {
+                    m_pcbModel->AddExtrudedPins( aFootprint, body, bottomSide, standoff, aOrigin );
+                }
+                catch( const Standard_Failure& e )
+                {
+                    m_reporter->Report( wxString::Format( _( "Could not add extruded pins for %s.\n"
+                                                             "OpenCASCADE error: %s\n" ),
+                                                          aFootprint->GetReference(), OccFailureMessage( e ) ),
+                                        RPT_SEVERITY_WARNING );
+                }
+            }
+        }
     }
 
     return hasdata;
@@ -667,7 +723,7 @@ bool EXPORTER_STEP::IsViaHoleOpen( const PCB_VIA& aVia, bool aFillAllVias )
     if( aFillAllVias )
         return false;
 
-    return aVia.GetFillingMode() != FILLING_MODE::FILLED && aVia.GetCappingMode() != CAPPING_MODE::CAPPED;
+    return aVia.ResolveFillingMode() != FILLING_MODE::FILLED && aVia.ResolveCappingMode() != CAPPING_MODE::CAPPED;
 }
 
 
@@ -986,15 +1042,27 @@ bool EXPORTER_STEP::buildGraphic3DShape( BOARD_ITEM* aItem, const VECTOR2D& aOri
             return true;
 
         LINE_STYLE lineStyle = graphic->GetLineStyle();
+        bool       hasEndings = graphic->GetStartEnding().GetStyle() != LINE_ENDING_STYLE::NONE
+                          || graphic->GetEndEnding().GetStyle() != LINE_ENDING_STYLE::NONE;
+        bool endingsAlreadyAdded = false;
 
         if( lineStyle == LINE_STYLE::SOLID )
         {
-            graphic->TransformShapeToPolySet( m_poly_shapes[pcblayer][graphic->GetNetname()], pcblayer, 0,
-                                              maxError, ERROR_INSIDE );
+            if( hasEndings )
+            {
+                graphic->TransformWithLineEndingsToPolygon( m_poly_shapes[pcblayer][graphic->GetNetname()], 0, maxError,
+                                                            ERROR_INSIDE );
+                endingsAlreadyAdded = true;
+            }
+            else
+            {
+                graphic->TransformShapeToPolySet( m_poly_shapes[pcblayer][graphic->GetNetname()], pcblayer, 0, maxError,
+                                                  ERROR_INSIDE );
+            }
         }
         else
         {
-            std::vector<SHAPE*>        shapes = graphic->MakeEffectiveShapesForStroking();
+            std::vector<SHAPE*>        shapes = graphic->MakeEffectiveShapesForStroking( graphic->GetWidth() );
             const PCB_PLOT_PARAMS&     plotParams = m_board->GetPlotOptions();
             KIGFX::PCB_RENDER_SETTINGS renderSettings;
 
@@ -1014,6 +1082,69 @@ bool EXPORTER_STEP::buildGraphic3DShape( BOARD_ITEM* aItem, const VECTOR2D& aOri
 
             for( SHAPE* shape : shapes )
                 delete shape;
+        }
+
+        // Add line ending shapes.
+        if( !endingsAlreadyAdded
+            && ( graphic->GetStartEnding().GetStyle() != LINE_ENDING_STYLE::NONE
+                 || graphic->GetEndEnding().GetStyle() != LINE_ENDING_STYLE::NONE ) )
+        {
+            EDA_ANGLE startTangent, endTangent;
+            graphic->GetEndingTangents( startTangent, endTangent, graphic->GetWidth() );
+
+            VECTOR2I startPt, endPt;
+
+            if( graphic->GetLineEndingEndpoints( startPt, endPt ) )
+            {
+                auto addEnding = [&]( const LINE_ENDING& aEnding, const VECTOR2I& aPoint, const EDA_ANGLE& aTangent )
+                {
+                    if( aEnding.GetStyle() == LINE_ENDING_STYLE::NONE )
+                        return;
+
+                    std::vector<VECTOR2I> polygon;
+                    aEnding.GetShapes( aPoint, aTangent, graphic->GetWidth(), polygon );
+
+                    if( !polygon.empty() )
+                    {
+                        if( aEnding.GetStyle() == LINE_ENDING_STYLE::ARROW_OPEN )
+                        {
+                            // Open V-shape: draw as thick line segments, not a filled polygon.
+                            int strokeW = aEnding.GetStrokeWidth() > 0 ? aEnding.GetStrokeWidth() : graphic->GetWidth();
+
+                            for( size_t ii = 0; ii + 1 < polygon.size(); ii++ )
+                            {
+                                TransformOvalToPolygon( m_poly_shapes[pcblayer][graphic->GetNetname()], polygon[ii],
+                                                        polygon[ii + 1], strokeW, maxError, ERROR_INSIDE );
+                            }
+                        }
+                        else
+                        {
+                            if( aEnding.GetStrokeWidth() > 0 )
+                            {
+                                for( size_t ii = 0; ii < polygon.size(); ii++ )
+                                {
+                                    size_t next = ( ii + 1 ) % polygon.size();
+
+                                    TransformOvalToPolygon( m_poly_shapes[pcblayer][graphic->GetNetname()], polygon[ii],
+                                                            polygon[next], aEnding.GetStrokeWidth(), maxError,
+                                                            ERROR_INSIDE );
+                                }
+                            }
+
+                            SHAPE_POLY_SET polySet;
+                            polySet.NewOutline();
+
+                            for( const VECTOR2I& pt : polygon )
+                                polySet.Append( pt );
+
+                            m_poly_shapes[pcblayer][graphic->GetNetname()].Append( polySet );
+                        }
+                    }
+                };
+
+                addEnding( graphic->GetStartEnding(), startPt, startTangent );
+                addEnding( graphic->GetEndEnding(), endPt, endTangent );
+            }
         }
 
         if( graphic->IsHatchedFill() )
@@ -1068,6 +1199,8 @@ bool EXPORTER_STEP::buildGraphic3DShape( BOARD_ITEM* aItem, const VECTOR2D& aOri
     }
 
     case PCB_TABLE_T:
+    case PCB_DRILL_CHART_T:
+    case PCB_STACKUP_TABLE_T:
     {
         PCB_TABLE* table = static_cast<PCB_TABLE*>( aItem );
 
@@ -1086,7 +1219,8 @@ bool EXPORTER_STEP::buildGraphic3DShape( BOARD_ITEM* aItem, const VECTOR2D& aOri
         break;
     }
 
-    default: KI_FAIL_MSG( "buildGraphic3DShape: unhandled item type" );
+    default:
+        UNIMPLEMENTED_FOR( aItem->GetClass() );
     }
 
     return true;
@@ -1288,6 +1422,10 @@ bool EXPORTER_STEP::Export()
         };
 
         ~SCOPED_PRINTER() { Message::DefaultMessenger()->RemovePrinter( m_handle ); }
+
+        // No copying or it can lead to double or early-removal of the printer.
+        SCOPED_PRINTER( const SCOPED_PRINTER& ) = delete;
+        SCOPED_PRINTER& operator=( const SCOPED_PRINTER& ) = delete;
     };
 
     Message::DefaultMessenger()->RemovePrinters( STANDARD_TYPE( Message_PrinterOStream ) );
@@ -1388,7 +1526,7 @@ bool EXPORTER_STEP::Export()
     }
     catch( const Standard_Failure& e )
     {
-        wxString errorMsg = e.GetMessageString();
+        wxString errorMsg = OccFailureMessage( e );
         m_reporter->Report( wxString::Format( _( "\nOpenCASCADE error: %s\n" ), errorMsg ),
                             RPT_SEVERITY_ERROR );
 

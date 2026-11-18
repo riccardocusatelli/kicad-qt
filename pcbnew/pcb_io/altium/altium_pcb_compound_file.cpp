@@ -13,7 +13,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <altium_pcb_compound_file.h>
@@ -183,7 +183,8 @@ bool ALTIUM_PCB_COMPOUND_FILE::CacheLibModels()
             if( !fileName.ToLong( &fileNumber ) )
                 return 0;
 
-            if( !m_reader->IsStream( stepEntry ) || fileNumber >= long( models.size() ) )
+            if( !m_reader->IsStream( stepEntry ) || fileNumber < 0
+                || static_cast<size_t>( fileNumber ) >= models.size() )
                 return 0;
 
             size_t            stepSize = static_cast<size_t>( stepEntry->size );

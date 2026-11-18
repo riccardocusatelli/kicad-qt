@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -207,11 +203,12 @@ BOOST_AUTO_TEST_CASE( BlindViaHoleKeepsLayerPairColours )
     board.SetCopperLayerCount( 4 );
 
     PCB_VIA* via = new PCB_VIA( &board );
+    via->SetPadstackMode( PADSTACK::MODE::NORMAL );
     via->SetViaType( VIATYPE::BLIND );
     via->SetLayerPair( F_Cu, In1_Cu );
     via->SetStart( { 0, 0 } );
     via->SetEnd( { 0, 0 } );
-    via->SetWidth( pcbIUScale.mmToIU( 0.8 ) );
+    via->SetWidth( PADSTACK::ALL_LAYERS, pcbIUScale.mmToIU( 0.8 ) );
     via->SetDrill( pcbIUScale.mmToIU( 0.4 ) );
     board.Add( via );
 
@@ -230,8 +227,8 @@ BOOST_AUTO_TEST_CASE( BlindViaHoleKeepsLayerPairColours )
 
 BOOST_AUTO_TEST_CASE( BackdrilledViaKeepsIndicatorColours )
 {
-    const KIGFX::COLOR4D startColor( 1.0, 0.0, 0.0, 1.0 );
-    const KIGFX::COLOR4D endColor( 0.0, 1.0, 0.0, 1.0 );
+    const KIGFX::COLOR4D topColor( 1.0, 0.0, 0.0, 1.0 );
+    const KIGFX::COLOR4D bottomColor( 0.0, 1.0, 0.0, 1.0 );
 
     KIGFX::GAL_DISPLAY_OPTIONS options;
     RECORDING_GAL              gal( options );
@@ -242,8 +239,8 @@ BOOST_AUTO_TEST_CASE( BackdrilledViaKeepsIndicatorColours )
     BOARD              board;
 
     KIGFX::PCB_RENDER_SETTINGS* settings = painter.GetSettings();
-    settings->SetLayerColor( F_Cu, startColor );
-    settings->SetLayerColor( In1_Cu, endColor );
+    settings->SetLayerColor( In1_Cu, topColor );
+    settings->SetLayerColor( In2_Cu, bottomColor );
     settings->SetLayerColor( LAYER_VIA_HOLEWALLS, KIGFX::COLOR4D( 1.0, 0.8, 0.0, 1.0 ) );
 
     view.SetGAL( &gal );
@@ -252,33 +249,37 @@ BOOST_AUTO_TEST_CASE( BackdrilledViaKeepsIndicatorColours )
     board.SetCopperLayerCount( 4 );
 
     PCB_VIA* via = new PCB_VIA( &board );
+    via->SetPadstackMode( PADSTACK::MODE::NORMAL );
     via->SetLayerPair( F_Cu, B_Cu );
     via->SetStart( { 0, 0 } );
     via->SetEnd( { 0, 0 } );
-    via->SetWidth( pcbIUScale.mmToIU( 0.8 ) );
+    via->SetWidth( PADSTACK::ALL_LAYERS, pcbIUScale.mmToIU( 0.8 ) );
     via->SetDrill( pcbIUScale.mmToIU( 0.4 ) );
     via->SetSecondaryDrillSize( std::optional<int>( pcbIUScale.mmToIU( 0.6 ) ) );
     via->SetSecondaryDrillStartLayer( F_Cu );
     via->SetSecondaryDrillEndLayer( In1_Cu );
+    via->SetTertiaryDrillSize( std::optional<int>( pcbIUScale.mmToIU( 0.6 ) ) );
+    via->SetTertiaryDrillStartLayer( B_Cu );
+    via->SetTertiaryDrillEndLayer( In2_Cu );
     board.Add( via );
 
     view.Add( via );
     view.UpdateItems();
 
-    BOOST_REQUIRE_MESSAGE( gal.HasGroupWith( startColor, endColor ),
+    BOOST_REQUIRE_MESSAGE( gal.HasGroupWith( topColor, bottomColor ),
                            "painter did not emit a two colour backdrill indicator to begin with" );
 
     view.UpdateAllLayersColor();
 
-    BOOST_CHECK_MESSAGE( gal.HasGroupWith( startColor, endColor ),
+    BOOST_CHECK_MESSAGE( gal.HasGroupWith( topColor, bottomColor ),
                          "recolouring flattened the backdrill indicator to a single colour" );
 }
 
 
 BOOST_AUTO_TEST_CASE( BackdrilledPadKeepsIndicatorColours )
 {
-    const KIGFX::COLOR4D startColor( 1.0, 0.0, 0.0, 1.0 );
-    const KIGFX::COLOR4D endColor( 0.0, 1.0, 0.0, 1.0 );
+    const KIGFX::COLOR4D topColor( 1.0, 0.0, 0.0, 1.0 );
+    const KIGFX::COLOR4D bottomColor( 0.0, 1.0, 0.0, 1.0 );
 
     KIGFX::GAL_DISPLAY_OPTIONS options;
     RECORDING_GAL              gal( options );
@@ -289,8 +290,8 @@ BOOST_AUTO_TEST_CASE( BackdrilledPadKeepsIndicatorColours )
     BOARD              board;
 
     KIGFX::PCB_RENDER_SETTINGS* settings = painter.GetSettings();
-    settings->SetLayerColor( F_Cu, startColor );
-    settings->SetLayerColor( In1_Cu, endColor );
+    settings->SetLayerColor( In1_Cu, topColor );
+    settings->SetLayerColor( In2_Cu, bottomColor );
     settings->SetLayerColor( LAYER_PAD_HOLEWALLS, KIGFX::COLOR4D( 1.0, 0.8, 0.0, 1.0 ) );
 
     view.SetGAL( &gal );
@@ -304,25 +305,25 @@ BOOST_AUTO_TEST_CASE( BackdrilledPadKeepsIndicatorColours )
     PAD* pad = new PAD( footprint );
     pad->SetAttribute( PAD_ATTRIB::PTH );
     pad->SetPosition( { 0, 0 } );
-    pad->SetSizeX( pcbIUScale.mmToIU( 1.6 ) );
-    pad->SetSizeY( pcbIUScale.mmToIU( 1.6 ) );
-    pad->SetDrillSizeX( pcbIUScale.mmToIU( 0.8 ) );
-    pad->SetDrillSizeY( pcbIUScale.mmToIU( 0.8 ) );
-    pad->SetSecondaryDrillSizeX( pcbIUScale.mmToIU( 1.2 ) );
-    pad->SetSecondaryDrillSizeY( pcbIUScale.mmToIU( 1.2 ) );
+    pad->SetSize( PADSTACK::ALL_LAYERS, VECTOR2I( pcbIUScale.mmToIU( 1.6 ), pcbIUScale.mmToIU( 1.6 ) ) );
+    pad->SetDrillSize( VECTOR2I( pcbIUScale.mmToIU( 0.8 ), pcbIUScale.mmToIU( 0.8 ) ) );
+    pad->SetSecondaryDrillSize( VECTOR2I( pcbIUScale.mmToIU( 1.2 ), pcbIUScale.mmToIU( 1.2 ) ) );
     pad->SetSecondaryDrillStartLayer( F_Cu );
     pad->SetSecondaryDrillEndLayer( In1_Cu );
+    pad->SetTertiaryDrillSize( VECTOR2I( pcbIUScale.mmToIU( 1.2 ), pcbIUScale.mmToIU( 1.2 ) ) );
+    pad->SetTertiaryDrillStartLayer( B_Cu );
+    pad->SetTertiaryDrillEndLayer( In2_Cu );
     footprint->Add( pad );
 
     view.Add( pad );
     view.UpdateItems();
 
-    BOOST_REQUIRE_MESSAGE( gal.HasGroupWith( startColor, endColor ),
+    BOOST_REQUIRE_MESSAGE( gal.HasGroupWith( topColor, bottomColor ),
                            "painter did not emit a two colour pad backdrill to begin with" );
 
     view.UpdateAllLayersColor();
 
-    BOOST_CHECK_MESSAGE( gal.HasGroupWith( startColor, endColor ),
+    BOOST_CHECK_MESSAGE( gal.HasGroupWith( topColor, bottomColor ),
                          "recolouring flattened the pad backdrill indicator to a single colour" );
 }
 

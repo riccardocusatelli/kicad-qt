@@ -14,11 +14,7 @@
 #  GNU General Public License for more details.
 #
 #  You should have received a copy of the GNU General Public License
-#  along with this program; if not, you may find one here:
-#  http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-#  or you may search the http://www.gnu.org website for the version 2 license,
-#  or you may write to the Free Software Foundation, Inc.,
-#  51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+#  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
 # In this directory, a number of different processes are managed:
@@ -40,7 +36,7 @@
 # and will need the following tools findable in your PATH:
 #
 # 1) inkscape - command line mode is used, must be on your PATH
-# 2) pngcrush - this program must be on your PATH
+# 2) zopflipng or pngcrush - one of these programs must be on your PATH
 #
 
 # lower case is used for local variables, uppercase for global variables
@@ -73,13 +69,22 @@ set( BMAPS_SMALL
     e_96
     e_192
     git_add
+    git_branches
     git_changed_ahead
+    git_changes
     git_conflict
     git_delete
+    git_fetch
     git_good_check
+    git_history
     git_modified
     git_out_of_date
-    icon_bitmap2component_16
+    git_pull
+    git_push
+    git_remotes
+    git_repository
+    git_stashes
+    git_tags
     icon_eeschema_16
     icon_gerbview_16
     icon_kicad_16
@@ -93,9 +98,7 @@ set( BMAPS_SMALL
     label_align_right
     label_align_top
     label_align_bottom
-    list_nets_16
     notifications
-    options_generic_16
     pinorient_right
     pinorient_left
     pinorient_up
@@ -134,6 +137,7 @@ set( BMAPS_SMALL
     small_trash
     small_up
     small_warning
+    spread_tracks
     text_horizontal
     text_vertical
     text_align_left
@@ -163,6 +167,11 @@ set( BMAPS_MID
     about
     add_aligned_dimension
     add_arc
+    add_arc_center
+    add_arc_start_end_mid
+    add_arc_start_end_center
+    add_arc_tangent
+    add_arc_start_dir_end
     add_barcode
     add_bezier
     add_board
@@ -175,9 +184,12 @@ set( BMAPS_MID
     add_corner
     add_dashed_line
     add_document
+    add_ellipse
+    add_ellipse_arc
     add_glabel
     add_graphical_segments
     add_graphical_polygon
+    add_grid_item
     add_hierarchical_label
     add_hierar_pin
     add_hierarchical_subsheet
@@ -199,6 +211,8 @@ set( BMAPS_MID
     add_textbox
     add_tracks
     add_via
+    add_via_stack
+    add_via_stitch
     add_zone_cutout
     add_zone
     align_elements_to_grid
@@ -231,6 +245,7 @@ set( BMAPS_MID
     bug
     bus_definition_tool
     cancel
+    calculator
     chamfer
     change_entry_orient
     checked_ok
@@ -272,7 +287,6 @@ set( BMAPS_MID
     edit_comp_ref
     edit_comp_value
     editor
-    edit_cmp_symb_links
     edit
     edge_to_copper_clearance
     enter_sheet
@@ -339,7 +353,6 @@ set( BMAPS_MID
     hole_to_hole_clearance
     hole_to_copper_clearance
     hv45mode
-    icon_bitmap2component_24
     icon_cvpcb_24
     icon_eeschema_24
     icon_footprint_browser
@@ -382,6 +395,7 @@ set( BMAPS_MID
     library_table
     lines_any
     lines90
+    link
     list_nets
     load_drill
     load_gerber
@@ -438,7 +452,12 @@ set( BMAPS_MID
     pad_sketch
     pad
     pad_enumerate
+    pad_npth
     pad_number
+    pad_paste_aperture
+    pad_smd
+    pad_table
+    pad_tht
     pads_mask_layers
     pads_remove
     path
@@ -611,7 +630,6 @@ set( BMAPS_24
 
 # 32 x 32 for icon sets
 set( BMAPS_32
-    icon_bitmap2component_32
     icon_eeschema_32
     icon_gerbview_32
     icon_kicad_32
@@ -635,7 +653,6 @@ set( BMAPS_BIG
     icon_libedit
     icon_modedit
     icon_pcbnew
-    icon_bitmap2component
     icon_pagelayout_editor
     icon_pcbcalculator
     icon_pcm
@@ -662,7 +679,6 @@ set( BMAPS_64
     icon_modedit
     icon_pcbnew
     icon_pagelayout_editor
-    icon_bitmap2component
     icon_pcbcalculator
     icon_pcm
     )
@@ -678,7 +694,6 @@ set( BMAPS_128
     icon_modedit
     icon_pcbnew
     icon_pagelayout_editor
-    icon_bitmap2component
     icon_pcbcalculator
     icon_pcm
     )
@@ -694,7 +709,6 @@ set( BMAPS_256
     icon_modedit
     icon_pcbnew
     icon_pagelayout_editor
-    icon_bitmap2component
     icon_pcbcalculator
     icon_pcm
     )
@@ -757,6 +771,30 @@ set( BMAPS_CONSTRAINTS
     solderpaste-expansion
     via-style
     vias-under-smd
+    microvia-stack-depth
+    hole-aspect-ratio
+    )
+
+set( BMAPS_CONSTRAINTS_GEOM
+    coincident
+    horizontal
+    vertical
+    parallel
+    perpendicular
+    collinear
+    symmetric
+    equal-length
+    equal-radius
+    point-on-line
+    midpoint
+    fixed-position
+    fixed-length
+    concentric
+    fixed-radius
+    angular-dimension
+    tangent
+    arc-angle
+    auto
     )
 
 # Images in this section are generated at whatever resolution is set in the source SVG file
@@ -777,7 +815,6 @@ set( BMAPS_OTHER
     creepage_clearance
     cpw
     cpw_back
-    light
     microstrip
     microstrip_zodd_zeven
     pads_npth
@@ -856,11 +893,12 @@ endfunction()
 
 
 # Function png2png
-# converts a basic PNG to one
+# Optimizes a PNG file, stripping metadata and reducing file size.
+# Uses zopflipng if available, otherwise falls back to pngcrush.
 function( png2png inputFile outFile )
 
     if( CREATE_LOG_FILES )
-        set( logfile "${TMP_DIR}/${bmn}.pngcrush.log" )
+        set( logfile "${TMP_DIR}/${bmn}.pngopt.log" )
     else()
         if( MSVC )
             set( logfile "nul" )
@@ -869,16 +907,22 @@ function( png2png inputFile outFile )
         endif()
     endif()
 
-    add_custom_command(
-        OUTPUT  ${outFile}
+    if( zopflipng_EXECUTABLE )
+        add_custom_command(
+            OUTPUT  ${outFile}
+            COMMAND ${zopflipng_EXECUTABLE} -m ${inputFile} ${outFile} > ${logfile}
+            DEPENDS ${inputFile}
+            COMMENT "Optimizing ${outFile}"
+            )
+    else()
+        add_custom_command(
+            OUTPUT  ${outFile}
+            COMMAND ${pngcrush_EXECUTABLE} -rem alla ${inputFile} ${outFile} > ${logfile}
+            DEPENDS ${inputFile}
+            COMMENT "Optimizing ${outFile}"
+            )
+    endif()
 
-        # pngcrush all icons without background to remove any extraneous text records.
-        COMMAND ${pngcrush_EXECUTABLE} -rem alla ${inputFile} ${outFile} > ${logfile}
-
-        DEPENDS ${inputFile}
-
-        COMMENT "Creating cleaned file ${outFile}"
-        )
 endfunction()
 
 
@@ -910,14 +954,19 @@ function( bitmap_dir pngWidth pngHeight bmapList )
         endif()
 
         foreach( bmn ${bmapList} )
+            # If the specific SVG file with the height tag exists, use it
+            # Else use the generic SVG file without the height tag and scale it
+            set( svgFile "${CMAKE_CURRENT_SOURCE_DIR}/sources/${theme}/${bmn}${heightTag}.svg" )
+            if ( NOT EXISTS ${svgFile} )
+                set( svgFile "${CMAKE_CURRENT_SOURCE_DIR}/sources/${theme}/${bmn}.svg" )
+            endif()
 
-            set( svgFile "${CMAKE_CURRENT_SOURCE_DIR}/sources/${theme}/${bmn}.svg" )
             set( pngFile "${bmn}${themeTag}${heightTag}.png" )
             set( pngPath "${pngDir}/${pngFile}" )
             set( tmpFile "${TMP_DIR}/${pngFile}" )
 
             if( NOT EXISTS ${svgFile} )
-                message( "Warning: Source SVG ${svgFile} does not exist!" )
+                message( "Warning: Source SVG ${svgFile} does not exist (for ${bmn} at ${pngHeight}px)!" )
                 continue()
             endif()
 
@@ -1002,6 +1051,13 @@ endfunction()
 
 include( FindUnixCommands )
 
+# Git's GNU tar on Windows treats "C:/..." as a remote host and needs a gzip that is not on PATH.
+# Prefer the System32 bsdtar unless a reproducible build needs the GNU archive flags below.
+
+if( MSVC AND NOT DEFINED ENV{SOURCE_DATE_EPOCH} AND EXISTS "C:\\Windows\\System32\\tar.exe" )
+    set( TAR "C:\\Windows\\System32\\tar.exe" )
+endif()
+
 if( TAR STREQUAL "TAR-NOTFOUND" )
     # CMake on Windows CI seems to struggle to find tar even though it's in PATH
     # Let's help it out as modern windows (Server 2019 and 10 provide tar)
@@ -1019,16 +1075,24 @@ if( NOT ALL_PNGS )
     file( GLOB_RECURSE ALL_PNGS ${CMAKE_CURRENT_SOURCE_DIR}/png/*.png )
 endif()
 
-if( MINGW )
-    # This seems like a huge hack, but I can't find a better way.  If anyone else does, please
-    # feel free to replace this with it...
-    file( TO_CMAKE_PATH "${BITMAP_ARCHIVE_PATH}" TAR_OUTPUT_FILE )
-    string( REGEX REPLACE "^([a-zA-Z]):/" "/\\1/" TAR_OUTPUT_FILE "${TAR_OUTPUT_FILE}" )
-else()
-    set( TAR_OUTPUT_FILE "${BITMAP_ARCHIVE_PATH}" )
+set( TAR_OUTPUT_FILE "${BITMAP_ARCHIVE_PATH}" )
+
+if( WIN32 )
+    # GNU tar reads a leading drive letter as a remote "host:path" spec and dies with
+    # "Cannot connect to C: resolve failed".  FindUnixCommands picks up an MSYS or
+    # Git-for-Windows GNU tar for MSVC builds just as readily as for MinGW ones, so probe
+    # the selected binary rather than the toolchain.  bsdtar handles drive paths natively
+    # and rejects --force-local, hence the gate.
+    execute_process( COMMAND ${TAR} --version
+                     OUTPUT_VARIABLE TAR_VERSION_STRING
+                     ERROR_QUIET )
+
+    if( TAR_VERSION_STRING MATCHES "GNU tar" )
+        set( TAR_LOCAL_FLAG --force-local )
+    endif()
 endif()
 
-set( TARFLAGS cfz )
+set( TARFLAGS -czf )
 if( DEFINED ENV{SOURCE_DATE_EPOCH} )
     set( TARFLAGS --sort=name --mtime=@$ENV{SOURCE_DATE_EPOCH} --clamp-mtime --owner=0 --group=0 --numeric-owner --pax-option=exthdr.name=%d/PaxHeaders/%f,delete=atime,delete=ctime -czf )
 endif()
@@ -1041,7 +1105,7 @@ add_custom_target( bitmap_archive_bundle ALL )
 # on every cmake build if there are no depends changes
 add_custom_command(
     OUTPUT ${BITMAP_ARCHIVE_PATH}
-    COMMAND ${TAR} ${TARFLAGS} "${TAR_OUTPUT_FILE}" .
+    COMMAND ${TAR} ${TAR_LOCAL_FLAG} ${TARFLAGS} "${TAR_OUTPUT_FILE}" .
     DEPENDS bitmap_archive_bundle ${ALL_PNGS}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/png
     COMMENT "Creating image archive ${TAR_OUTPUT_FILE}"
@@ -1057,6 +1121,10 @@ install( FILES ${BITMAP_ARCHIVE_PATH}
     )
 
 if( MAINTAIN_PNGS )
+
+    # Re-run CMake whenever the set of source SVGs changes.
+    file( GLOB_RECURSE _maintain_png_svgs CONFIGURE_DEPENDS
+          "${CMAKE_CURRENT_SOURCE_DIR}/sources/*.svg" )
 
     # Inkscape is required to convert SVG files to PNG files.
     set( Inkscape_FOUND FALSE )
@@ -1076,21 +1144,26 @@ if( MAINTAIN_PNGS )
         endif( NOT Inkscape_EXECUTABLE )
     endif( NOT Inkscape_FOUND )
 
-    # pngcrush is required to reduce the size of the converted PNG files.
-    set( pngcrush_FOUND FALSE )
+    # A PNG optimizer is required to reduce the size of the converted PNG files.
+    # Prefer zopflipng (better compression) but fall back to pngcrush.
+    find_program( zopflipng_EXECUTABLE zopflipng DOC "The zopflipng PNG optimization program." )
 
-    if( NOT pngcrush_FOUND )
-        find_program( pngcrush_EXECUTABLE pngcrush DOC "The PNG size reduction program." )
+    if( zopflipng_EXECUTABLE )
+        set( zopflipng_EXECUTABLE ${zopflipng_EXECUTABLE}
+             CACHE FILEPATH "Path and file name of the zopflipng program." )
+        message( STATUS "The zopflipng PNG optimization program found." )
+    else()
+        find_program( pngcrush_EXECUTABLE pngcrush DOC "The pngcrush PNG size reduction program." )
 
-        if( NOT pngcrush_EXECUTABLE )
-            message( FATAL_ERROR "Could not find the pngcrush PNG size reduction program." )
-        else( NOT pngcrush_EXECUTABLE )
-            set( pngcrush_FOUND TRUE )
+        if( pngcrush_EXECUTABLE )
             set( pngcrush_EXECUTABLE ${pngcrush_EXECUTABLE}
                  CACHE FILEPATH "Path and file name of the pngcrush program." )
             message( STATUS "The pngcrush PNG size reduction program found." )
-        endif( NOT pngcrush_EXECUTABLE )
-    endif( NOT pngcrush_FOUND )
+        else()
+            message( FATAL_ERROR "Could not find zopflipng or pngcrush. "
+                     "One of these PNG optimization programs is required." )
+        endif()
+    endif()
 
     # these 3 cmake commands for each desired bitmap size set, repeat as needed:
     bitmap_dir( 16 16 "${BMAPS_SMALL}" )
@@ -1128,6 +1201,14 @@ if( MAINTAIN_PNGS )
 
     # Constraint bitmaps with light/dark theme variants (DRC rule editor panels)
     bitmap_dir_constraints( -1 -1 "${BMAPS_CONSTRAINTS}" )
+
+    # Geometric-constraint badge icons shown in toolbars and context menus, so they need the
+    # standard theme-aware menu/toolbar sizes rather than the native SVG size.
+    bitmap_dir_constraints( 24 24 "${BMAPS_CONSTRAINTS_GEOM}" )  # "primary" size first
+    bitmap_dir_constraints( 16 16 "${BMAPS_CONSTRAINTS_GEOM}" )  # Small toolbar mode
+    bitmap_dir_constraints( 32 32 "${BMAPS_CONSTRAINTS_GEOM}" )  # Large toolbar mode
+    bitmap_dir_constraints( 48 48 "${BMAPS_CONSTRAINTS_GEOM}" )  # HiDPI normal size
+    bitmap_dir_constraints( 64 64 "${BMAPS_CONSTRAINTS_GEOM}" )  # HiDPI large size
 
     configure_file( ${BITMAP_INFO_TEMPLATE} ${BITMAP_INFO_FILE}  NEWLINE_STYLE UNIX )
 

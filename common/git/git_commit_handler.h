@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef GIT_COMMIT_HANDLER_H
@@ -35,9 +31,7 @@
 #include <wx/arrstr.h> // for MSVC to see std::vector<wxString> is exported from wx
 #include <wx/string.h>
 
-class LIBGIT_BACKEND;
-
-class APIEXPORT GIT_COMMIT_HANDLER : public KIGIT_COMMON
+class APIEXPORT GIT_COMMIT_HANDLER : public KIGIT_COMMON, public KIGIT_ERRORS
 {
 public:
     GIT_COMMIT_HANDLER( git_repository* aRepo );
@@ -51,13 +45,8 @@ public:
     CommitResult PerformAmend( const std::vector<wxString>& aFiles, const wxString& aMessage,
                                const wxString& aAuthorName, const wxString& aAuthorEmail );
 
-    wxString GetErrorString() const;
-
-private:
-    friend class LIBGIT_BACKEND;
-    void AddErrorString( const wxString& aErrorString );
-
-    wxString m_errorString;
+    UndoCommitResult PerformUndoLastCommit( const wxString& aExpectedBranch, const git_oid& aExpectedHead,
+                                            wxString& aMessage );
 };
 
 #endif // GIT_COMMIT_HANDLER_H

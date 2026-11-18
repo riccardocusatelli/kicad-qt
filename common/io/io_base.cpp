@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -121,7 +121,7 @@ bool IO_BASE::CanReadLibrary( const wxString& aFileName ) const
 }
 
 
-void IO_BASE::Report( const wxString& aText, SEVERITY aSeverity )
+void IO_BASE::Report( const wxString& aText, SEVERITY aSeverity ) const
 {
     if( !m_reporter )
         return;
@@ -136,7 +136,7 @@ void IO_BASE::AdvanceProgressPhase()
         return;
 
     if( !m_progressReporter->KeepRefreshing() )
-        THROW_IO_ERROR( _( "Loading file canceled by user." ) );
+        THROW_IO_CANCELLED();
 
     m_progressReporter->AdvancePhase();
 }
@@ -155,11 +155,13 @@ void IO_BASE::AddConfigurationDialogHandler( CONFIGURATION_DIALOG_HANDLER aHandl
 }
 
 
-void IO_BASE::ShowConfigurationDialog( wxWindow* aParent )
+std::optional<int> IO_BASE::ShowConfigurationDialog( wxWindow* aParent, const wxString& aLibraryPath )
 {
     for( const CONFIGURATION_DIALOG_HANDLER& handler : configurationDialogHandlers() )
     {
-        if( handler( this, aParent ) )
-            return;
+        if( std::optional<int> result = handler( this, aParent, aLibraryPath ) )
+            return result;
     }
+
+    return std::nullopt;
 }

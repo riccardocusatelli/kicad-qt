@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef _LIB_CACHE_RESCUE_H_
@@ -211,8 +207,8 @@ public:
     /**
      * Create RESCUE_CANDIDATE.
      *
-     * @param aRequestedName is the name the schematic asks for.
-     * @param aNewName is the name we want to change it to.
+     * @param aRequestedId is the library ID the schematic asks for.
+     * @param aNewId is the library ID we want to change it to.
      * @param aCacheCandidate is the part from the cache.
      * @param aLibCandidate is the part that would be loaded from the library.
      * @param aUnit is the unit of the rescued symbol.
@@ -275,7 +271,8 @@ public:
     /**
      * Display a dialog to allow the user to select rescues.
      *
-     * @param aAskShowAgain - whether the "Never Show Again" button should be visible
+     * @param aParent is the parent window of the dialog.
+     * @param aAskShowAgain indicate whether the "Never Show Again" button should be visible.
      */
     virtual void InvokeDialog( wxWindow* aParent, bool aAskShowAgain ) = 0;
 
@@ -300,7 +297,7 @@ public:
     std::vector<SCH_SYMBOL*>* GetSymbols() { return &m_symbols; }
 
     /**
-     * Return the #SCH_PROJECT object for access to the symbol libraries.
+     * Return the #PROJECT object for access to the symbol libraries.
      */
     PROJECT* GetPrj() { return m_prj; }
 

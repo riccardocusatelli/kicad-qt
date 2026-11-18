@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <pgm_base.h>
@@ -40,8 +36,6 @@ PANEL_EDIT_OPTIONS::PANEL_EDIT_OPTIONS( wxWindow* aParent, UNITS_PROVIDER* aUnit
         m_rotationAngle( aUnitsProvider, aEventSource, m_rotationAngleLabel, m_rotationAngleCtrl,
                          m_rotationAngleUnits )
 {
-    m_magneticPads->Show( m_isFootprintEditor );
-    m_magneticGraphics->Show( m_isFootprintEditor );
     m_sizerBoardEdit->Show( !m_isFootprintEditor );
 
     m_rotationAngle.SetUnits( EDA_UNITS::DEGREES );
@@ -72,6 +66,7 @@ PANEL_EDIT_OPTIONS::PANEL_EDIT_OPTIONS( wxWindow* aParent, UNITS_PROVIDER* aUnit
 #endif
 
     m_optionsBook->SetSelection( isFootprintEditor ? 0 : 1 );
+    Layout();
 }
 
 
@@ -116,10 +111,8 @@ void PANEL_EDIT_OPTIONS::loadPCBSettings( PCBNEW_SETTINGS* aCfg )
 
     m_allowFreePads->SetValue( aCfg->m_AllowFreePads );
     m_autoRefillZones->SetValue( aCfg->m_AutoRefillZones );
+    m_cbAreaAnchorPick->SetValue( aCfg->m_AreaAnchorPointSelection );
 
-    m_magneticPadChoice->SetSelection( static_cast<int>( aCfg->m_MagneticItems.pads ) );
-    m_magneticTrackChoice->SetSelection( static_cast<int>( aCfg->m_MagneticItems.tracks ) );
-    m_magneticGraphicsChoice->SetSelection( !aCfg->m_MagneticItems.graphics );
 
     /* Set display options */
     m_OptDisplayCurvedRatsnestLines->SetValue( aCfg->m_Display.m_DisplayRatsnestLinesCurved );
@@ -147,10 +140,12 @@ void PANEL_EDIT_OPTIONS::loadPCBSettings( PCBNEW_SETTINGS* aCfg )
 void PANEL_EDIT_OPTIONS::loadFPSettings( FOOTPRINT_EDITOR_SETTINGS* aCfg )
 {
     m_rotationAngle.SetAngleValue( aCfg->m_RotationAngle );
-    m_magneticPads->SetValue( aCfg->m_MagneticItems.pads == MAGNETIC_OPTIONS::CAPTURE_ALWAYS );
-    m_magneticGraphics->SetValue( aCfg->m_MagneticItems.graphics );
     m_cbConstrainHV45Mode->SetValue( aCfg->m_AngleSnapMode != LEADER_MODE::DIRECT );
     m_arcEditMode->SetSelection( arcEditModeToComboIndex( aCfg->m_ArcEditMode ) );
+
+    // Read from the board editor's settings, which both editors share
+    if( PCBNEW_SETTINGS* pcbCfg = GetAppSettings<PCBNEW_SETTINGS>( "pcbnew" ) )
+        m_cbAreaAnchorPick->SetValue( pcbCfg->m_AreaAnchorPointSelection );
 }
 
 
@@ -173,14 +168,14 @@ bool PANEL_EDIT_OPTIONS::TransferDataFromWindow()
         {
             cfg->m_RotationAngle = m_rotationAngle.GetAngleValue();
 
-            cfg->m_MagneticItems.pads = m_magneticPads->GetValue() ? MAGNETIC_OPTIONS::CAPTURE_ALWAYS
-                                                                   : MAGNETIC_OPTIONS::NO_EFFECT;
-            cfg->m_MagneticItems.graphics = m_magneticGraphics->GetValue();
-
             cfg->m_AngleSnapMode = m_cbConstrainHV45Mode->GetValue() ? LEADER_MODE::DEG45
                                                                     : LEADER_MODE::DIRECT;
             cfg->m_ArcEditMode = arcEditModeToEnum( m_arcEditMode->GetSelection() );
         }
+
+        // One setting for both editors, the way the flip direction works
+        if( PCBNEW_SETTINGS* pcbCfg = GetAppSettings<PCBNEW_SETTINGS>( "pcbnew" ) )
+            pcbCfg->m_AreaAnchorPointSelection = m_cbAreaAnchorPick->GetValue();
     }
     else
     {
@@ -201,10 +196,7 @@ bool PANEL_EDIT_OPTIONS::TransferDataFromWindow()
 
             cfg->m_AllowFreePads = m_allowFreePads->GetValue();
             cfg->m_AutoRefillZones = m_autoRefillZones->GetValue();
-
-            cfg->m_MagneticItems.pads = static_cast<MAGNETIC_OPTIONS>( m_magneticPadChoice->GetSelection() );
-            cfg->m_MagneticItems.tracks = static_cast<MAGNETIC_OPTIONS>( m_magneticTrackChoice->GetSelection() );
-            cfg->m_MagneticItems.graphics = !m_magneticGraphicsChoice->GetSelection();
+            cfg->m_AreaAnchorPointSelection = m_cbAreaAnchorPick->GetValue();
 
             cfg->m_ESCClearsNetHighlight = m_escClearsNetHighlight->GetValue();
             cfg->m_ShowPageLimits = m_showPageLimits->GetValue();
@@ -230,6 +222,12 @@ void PANEL_EDIT_OPTIONS::ResetPanel()
         cfg.Load();                     // Loading without a file will init to defaults
 
         loadFPSettings( &cfg );
+
+        // loadFPSettings() reads the shared option from the live board editor settings
+        PCBNEW_SETTINGS pcbCfg;
+        pcbCfg.Load();
+
+        m_cbAreaAnchorPick->SetValue( pcbCfg.m_AreaAnchorPointSelection );
     }
     else
     {

@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef __ACTIONS_H
@@ -61,6 +57,7 @@ public:
     static TOOL_ACTION saveAll;
     static TOOL_ACTION revert;
     static TOOL_ACTION pageSettings;
+    static TOOL_ACTION exportForOlderVersion;
     static TOOL_ACTION print;
     static TOOL_ACTION plot;
     static TOOL_ACTION quit;
@@ -264,11 +261,15 @@ public:
     static TOOL_ACTION updatePcbFromSchematic;
     static TOOL_ACTION updateSchematicFromPcb;
     static TOOL_ACTION showProperties;
+    static TOOL_ACTION showGitCommitPane;
     static TOOL_ACTION showDatasheet;
 
     // Internal
     static TOOL_ACTION updateMenu;
     static TOOL_ACTION activatePointEditor;
+    static TOOL_ACTION arcPosture;
+    static TOOL_ACTION cycleArcDrawMode;
+    static TOOL_ACTION deleteLastPoint;
     static TOOL_ACTION cycleArcEditMode;
     static TOOL_ACTION pointEditorArcKeepCenter;
     static TOOL_ACTION pointEditorArcKeepEndpoint;
@@ -292,13 +293,14 @@ public:
 
     // API
     static TOOL_ACTION pluginsReload;
+    static TOOL_ACTION pluginsShowFolder;
 
     // Embedding Files
     static TOOL_ACTION embeddedFiles;
     static TOOL_ACTION extractFile;
     static TOOL_ACTION removeFile;
 
-    ///< Cursor control event types
+    /// Cursor control event types
     enum CURSOR_EVENT_TYPE
     {
         CURSOR_NONE = 0,
@@ -315,7 +317,7 @@ public:
         CURSOR_RIGHT_CLICK
     };
 
-    ///< Remove event modifier flags
+    /// Remove event modifier flags
     enum class REMOVE_FLAGS
     {
         NORMAL = 0x00,
@@ -323,7 +325,7 @@ public:
         CUT    = 0x02
     };
 
-    ///< Increment event parameters
+    /// Increment event parameters
     struct INCREMENT
     {
         // Amount to increment
@@ -348,20 +350,20 @@ public:
 
     const static TOOL_EVENT ConnectivityChangedEvent;
 
-    ///< Selected item had a property changed (except movement)
+    /// Selected item had a property changed (except movement)
     const static TOOL_EVENT SelectedItemsModified;
 
-    ///< Selected items were moved, this can be very high frequency on the canvas, use with care
+    /// Selected items were moved, this can be very high frequency on the canvas, use with care
     const static TOOL_EVENT SelectedItemsMoved;
 
-    ///< Used to inform tools that the selection should temporarily be non-editable
+    /// Used to inform tools that the selection should temporarily be non-editable
     const static TOOL_EVENT InhibitSelectionEditing;
     const static TOOL_EVENT UninhibitSelectionEditing;
 
-    ///< Used to inform tool that it should display the disambiguation menu
+    /// Used to inform tool that it should display the disambiguation menu
     const static TOOL_EVENT DisambiguatePoint;
 
-    ///< Used for hotkey feedback
+    /// Used for hotkey feedback
     const static TOOL_EVENT GridChangedByKeyEvent;
     const static TOOL_EVENT ContrastModeChangedByKeyEvent;
 

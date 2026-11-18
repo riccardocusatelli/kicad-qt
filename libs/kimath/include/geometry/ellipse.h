@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef KICAD_ELLIPSE_H
@@ -22,18 +22,20 @@
 
 #include <math/vector2d.h>
 #include <geometry/eda_angle.h>
+#include <core/mirror.h>
 
-/**
- * This class was created to handle importing ellipses from other file formats that support them
- * natively.  The storage format and API may need to be refactored before this is used as part of a
- * potential future native KiCad ellipse.
- */
+/// Plain ellipse / elliptical-arc data. Used by SHAPE_ELLIPSE, by EDA_SHAPE's
+/// native ellipse storage, and by importers that need to round-trip ellipses.
 
 template <typename NumericType>
 class ELLIPSE
 {
 public:
-    ELLIPSE() = default;
+    ELLIPSE() :
+            MajorRadius( 0 ),
+            MinorRadius( 0 )
+    {
+    }
 
     /**
      * Constructs an ellipse or elliptical arc.  The ellipse sweeps from aStartAngle to aEndAngle
@@ -63,6 +65,38 @@ public:
      */
     ELLIPSE( const VECTOR2<NumericType>& aCenter, const VECTOR2<NumericType>& aMajor, double aRatio,
              EDA_ANGLE aStartAngle = ANGLE_0, EDA_ANGLE aEndAngle = FULL_CIRCLE );
+
+    /**
+     * Mirror the ellipse along a horizontal or vertical axis passing through aRef.
+     */
+    void Mirror( const VECTOR2<NumericType>& aRef, FLIP_DIRECTION aFlipDirection );
+
+    /**
+     * Get the subtended angle of the ellipse or elliptical arc at the center.
+     */
+    EDA_ANGLE GetSubtendedAngle() const;
+
+    /**
+     * Get the point on the ellipse at a given angle.  The angle is measured in the ellipse's
+     * local coordinate system, where the x-axis is the major axis and the y-axis is the minor axis.
+     */
+    VECTOR2<NumericType> GetPointAtAngle( EDA_ANGLE angle ) const;
+
+    /**
+     * Get the point on the ellipse at the start angle of the arc.
+     */
+    VECTOR2<NumericType> GetArcStartPoint() const { return GetPointAtAngle( StartAngle ); }
+
+    /**
+     * Get the point on the ellipse at the end angle of the arc.
+     */
+    VECTOR2<NumericType> GetArcEndPoint() const { return GetPointAtAngle( EndAngle ); }
+
+    /**
+     * Get the parametric angle of a point on the ellipse.  The angle is measured in the ellipse's
+     * local coordinate system, where the x-axis is the major axis and the y-axis is the minor axis.
+     */
+    EDA_ANGLE GetAngleAtPoint( const VECTOR2<NumericType>& aPt ) const;
 
     VECTOR2<NumericType> Center;
     NumericType MajorRadius;

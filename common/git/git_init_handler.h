@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef GIT_INIT_HANDLER_H
@@ -70,8 +66,28 @@ public:
      * @return True on success, false on error
      */
     bool SetupRemote( const RemoteConfig& aConfig );
-
-    void UpdateProgress( int aCurrent, int aTotal, const wxString& aMessage ) override;
 };
+
+
+/**
+ * Apply KiCad's standard repo conventions to a repository:
+ *   - seed .gitignore with KiCad-generated paths (new repositories only)
+ *   - seed .gitattributes with `merge=kicad-*` lines so the in-process
+ *     libgit2 drivers and external `git merge` both route design files.
+ *     A clone writes them to .git/info/attributes instead, which is never
+ *     committed, so the cloned work tree stays clean
+ *   - configure repo-local merge.kicad-*.driver / mergetool.kicad.cmd
+ *     pointing at the kicad-cli binary alongside the running process
+ *
+ * Each step is append-only: existing user content is preserved, never
+ * overwritten. Safe to call repeatedly. Used by both GIT_INIT_HANDLER
+ * (after init) and GIT_CLONE_HANDLER (after clone) so freshly-cloned
+ * repos get the same setup as freshly-init'd ones.
+ *
+ * @param aRepo is the open repository.
+ * @param aClone is true when aRepo was cloned from a remote.
+ */
+APIEXPORT void ApplyKicadGitConventions( git_repository* aRepo, bool aClone );
+
 
 #endif // GIT_INIT_HANDLER_H

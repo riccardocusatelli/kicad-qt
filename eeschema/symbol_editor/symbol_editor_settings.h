@@ -14,16 +14,16 @@
 * GNU General Public License for more details.
 *
 * You should have received a copy of the GNU General Public License
-* along with this program; if not, you may find one here:
-* http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-* or you may search the http://www.gnu.org website for the version 2 license,
-* or you may write to the Free Software Foundation, Inc.,
-* 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+* along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #pragma once
 
+#include <vector>
+
 #include <settings/app_settings.h>
+#include <settings/bom_settings.h>
+#include <settings/snap_settings.h>
 #include <project/sch_project_settings.h>
 
 
@@ -53,16 +53,19 @@ public:
         int pin_step;
     };
 
-    struct PANEL_LIB_FIELDS_TABLE
-    {
-        std::map<std::string, int> field_widths;
-        int                        sash_pos;
-        bool                       sidebar_collapsed;
-    };
-
     struct PIN_TABLE
     {
         bool crossprobe_on_selection;
+    };
+
+    /// One persisted open editor tab, restored on the next session.
+    struct OPEN_TAB
+    {
+        wxString lib;
+        wxString name;
+        int      unit = 1;
+        int      bodyStyle = 1;
+        bool     preview = false;
     };
 
     SYMBOL_EDITOR_SETTINGS();
@@ -82,7 +85,27 @@ public:
     bool m_ShowHiddenFields;
     bool m_ShowPinAltIcons;
 
-    ///< When true, dragging an outline edge will drag pins rooted on it
+    /**
+     * Set to true to synchronize pins at the same position when editing symbols with multiple
+     * units or multiple body styles.  Deleting or moving pins will affect all pins at the same
+     * location.
+     * When units are interchangeable, synchronizing editing of pins is usually the best way,
+     * because if units are interchangeable, it implies that all similar pins are at the same
+     * location.
+     * When units are not interchangeable, do not synchronize editing of pins, because each symbol
+     * is specific, and there are no (or few) similar pins between units.
+     *
+     * Setting this to false allows editing each pin per symbol or body style regardless other
+     * pins at the same location. This requires the user to open each symbol or body style to make
+     * changes to the other pins at the same location.
+     *
+     * To know if others pins must be coupled when editing a pin, use SynchronizePins() instead
+     * of m_syncPinEdit, because SynchronizePins() is more reliable (takes in account the fact
+     * units are interchangeable, there are more than one unit).
+     */
+    bool m_SyncPinEdit;
+
+    /// When true, dragging an outline edge will drag pins rooted on it
     bool m_dragPinsAlongWithEdges;
 
     int m_LibWidth;
@@ -93,11 +116,18 @@ public:
 
     ARC_EDIT_MODE m_ArcEditMode;
 
+    SNAP_INFERENCE_SETTINGS m_SnapInference;
+
     SCH_SELECTION_FILTER_OPTIONS m_SelectionFilter;
 
-    PANEL_LIB_FIELDS_TABLE m_LibFieldEditor;
+    FIELDS_TABLE_SETTINGS     m_LibFieldEditor;
+    FIELDS_TABLE_BOM_SETTINGS m_LibFieldEditorBom;
 
     PIN_TABLE m_PinTable;
+
+    std::vector<OPEN_TAB> m_OpenTabs;
+
+    wxString m_ActiveTabKey;
 
 protected:
 

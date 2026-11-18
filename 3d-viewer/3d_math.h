@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -32,6 +28,41 @@
 
 #include <plugins/3dapi/xv3d_types.h>
 #include "3d_fastmath.h"
+
+/**
+ * Build the model-to-footprint transform used by rendering and picking.
+ *
+ * Offsets are in millimetres, in the footprint's Y-up frame.  Scale is applied
+ * in the model's original axes, before rotation and translation.
+ *
+ * @param aOffset
+ * @param aRotation raw FP_3DMODEL::m_Rotation in degrees (the negation of the UI
+ *                  angles), applied about X, then Y, then Z before translation.
+ * @param aScale
+ */
+glm::mat4 CalcModelMatrix( const SFVEC3F& aOffset, const SFVEC3F& aRotation, const SFVEC3F& aScale );
+
+/**
+ * Recover the FP_3DMODEL angles that CalcModelMatrix() would turn into @a aRotation.
+ *
+ * @param aRotation an orthonormal rotation matrix.
+ * @return the raw FP_3DMODEL::m_Rotation degrees.
+ */
+SFVEC3F CalcModelRotation( const glm::mat3& aRotation );
+
+/**
+ * Interpolate between two model orientations along the shortest arc.
+ *
+ * Both angle triplets are raw FP_3DMODEL::m_Rotation degrees.  Interpolating the
+ * angles directly would tumble through gimbal lock, so the ends are converted to
+ * quaternions and the result is decomposed back.
+ *
+ * @param aStart
+ * @param aEnd
+ * @param aT the interpolation parameter, clamped to [0, 1].
+ */
+SFVEC3F InterpolateModelRotation( const SFVEC3F& aStart, const SFVEC3F& aEnd, float aT );
+
 
 /**
  * https://en.wikipedia.org/wiki/Spherical_coordinate_system

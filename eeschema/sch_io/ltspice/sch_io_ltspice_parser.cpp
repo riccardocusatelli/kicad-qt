@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -113,7 +113,7 @@ static wxString convertLtSpiceTextToNgspice( const wxString& aText )
 
                 wxString u = tok[i].Upper();
 
-                if( modifiers.IsEmpty() && !c_modifiers.contains( tok[i] ) )
+                if( modifiers.IsEmpty() && !c_modifiers.contains( u ) )
                     args.Add( tok[i] );
                 else
                     modifiers.Add( tok[i] );
@@ -271,7 +271,7 @@ void SCH_IO_LTSPICE_PARSER::CreateItems( LTSPICE_SCHEMATIC::LT_ASC& aAscfile, SC
             outDir.AppendDir( wxS( "ltspice_cmp" ) );
             outDir.Mkdir( wxS_DIR_DEFAULT, wxPATH_MKDIR_FULL );
 
-            for( wxString name :
+            for( const wxString name :
                  { wxS( "standard.dio" ), wxS( "standard.bjt" ), wxS( "standard.jft" ), wxS( "standard.mos" ) } )
             {
                 includeText << wxS( ".include ltspice_cmp/" ) << name << wxS( "\n" );
@@ -962,7 +962,7 @@ SCH_SHEET* SCH_IO_LTSPICE_PARSER::AddAscSymAsSubsheet( LTSPICE_SCHEMATIC::LT_ASC
 {
     SCH_SHEET* sch_sheet = new SCH_SHEET( aScreen->Schematic() );
 
-    sch_sheet->AddField( SCH_FIELD( sch_sheet, FIELD_T::USER, SCH_IO_LTSPICE_PARSER::LT_INSTNAME_FIELD ) );
+    sch_sheet->AddField( SCH_FIELD( sch_sheet, FIELD_T::SHEET_USER, SCH_IO_LTSPICE_PARSER::LT_INSTNAME_FIELD ) );
 
     SCH_FIELD* instNameField = sch_sheet->GetField( SCH_IO_LTSPICE_PARSER::LT_INSTNAME_FIELD );
     SCH_FIELD* sheetNameField = sch_sheet->GetField( FIELD_T::SHEET_NAME );
@@ -1404,10 +1404,14 @@ void SCH_IO_LTSPICE_PARSER::AddSymFields( const LTSPICE_SCHEMATIC::LT_SYMBOL& aL
 
         wxString simParams;
         wxString pwlArgs;
+        wxString upperValue = value.Upper();
 
-        if( value.Upper().StartsWith( wxS( "PWL " ), &pwlArgs ) && value.Upper().Contains( wxS( "FILE=" ) ) )
+        if( upperValue.StartsWith( wxS( "PWL " ) ) && upperValue.Contains( wxS( "FILE=" ) ) )
         {
             // TODO: support REPEAT statements
+
+            // Take the arguments from the original text so the data file path keeps its case
+            pwlArgs = value.Mid( 4 );
 
             if( !value2.IsEmpty() )
                 pwlArgs << wxS( " " ) << value2;

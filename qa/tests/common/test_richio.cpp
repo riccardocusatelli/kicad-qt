@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -110,6 +106,38 @@ BOOST_AUTO_TEST_CASE( PrettifyLongQuotedString )
             // just consume
         }
     } );
+}
+
+
+/**
+ * Indent writes two spaces per nesting level and nothing else.  Callers that want only the
+ * indentation, such as DSN::WIRE::Format re-indenting a closing paren, depend on the exact width.
+ */
+BOOST_AUTO_TEST_CASE( IndentWritesTwoSpacesPerLevel )
+{
+    for( int nestLevel : { 0, 1, 2, 7 } )
+    {
+        STRING_FORMATTER fmt;
+
+        const int written = fmt.Indent( nestLevel );
+
+        BOOST_CHECK_EQUAL( fmt.GetString(), std::string( 2 * nestLevel, ' ' ) );
+        BOOST_CHECK_EQUAL( written, 2 * nestLevel );
+    }
+}
+
+
+/**
+ * The nesting Print() overload prepends that same indentation to its formatted output.
+ */
+BOOST_AUTO_TEST_CASE( NestedPrintIndentsItsOutput )
+{
+    STRING_FORMATTER fmt;
+
+    const int written = fmt.Print( 3, "(net %d)", 42 );
+
+    BOOST_CHECK_EQUAL( fmt.GetString(), "      (net 42)" );
+    BOOST_CHECK_EQUAL( written, 14 );
 }
 
 

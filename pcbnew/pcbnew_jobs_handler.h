@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PCBNEW_JOBS_HANDLER_H
@@ -23,6 +23,7 @@
 
 #include <jobs/job_dispatcher.h>
 #include <pcb_plot_params.h>
+#include <diff_merge/diff_doc_kind.h>
 
 class KIWAY_SERVICES;
 class BOARD;
@@ -30,8 +31,26 @@ class DS_PROXY_VIEW_ITEM;
 class FOOTPRINT;
 class JOB_EXPORT_PCB_GERBER;
 class JOB_EXPORT_PCB_GERBERS;
+class JOB_EXPORT_PCB_PLOT;
+class JOB_EXPORT_PCB_FAB;
 class JOB_FP_EXPORT_SVG;
+<<<<<<< b2e17e0a
 class BOARD_COMMIT;
+||||||| 1304b76aad
+class TOOL_MANAGER;
+=======
+class TOOL_MANAGER;
+class REPORTER;
+class wxWindow;
+
+class WIDGET_DIFF_CANVAS;
+
+namespace KICAD_DIFF
+{
+class DIFF_CANVAS_CONTEXT;
+struct DOCUMENT_DIFF;
+} // namespace KICAD_DIFF
+>>>>>>> ed8c16703e
 
 /**
  * Run the Pcbnew jobs (exports, DRC, upgrades...).
@@ -45,26 +64,65 @@ public:
     PCBNEW_JOBS_HANDLER( KIWAY_SERVICES* aKiway );
     virtual ~PCBNEW_JOBS_HANDLER();
 
+    int JobExportBom( JOB* aJob );
     int JobExportStep( JOB* aJob );
     int JobExportRender( JOB* aJob );
     int JobExportSvg( JOB* aJob );
     int JobExportDxf( JOB* aJob );
     int JobExportPdf( JOB* aJob );
+    int JobExportPng( JOB* aJob );
     int JobExportPs( JOB* aJob );
     int JobExportGerber( JOB* aJob );
     int JobExportGerbers( JOB* aJob );
     int JobExportGencad( JOB* aJob );
+    int JobExportSpecctraDsn( JOB* aJob );
     int JobExportDrill( JOB* aJob );
     int JobExportPos( JOB* aJob );
     int JobExportFpUpgrade( JOB* aJob );
+    int JobFpDowngrade( JOB* aJob );
     int JobExportFpSvg( JOB* aJob );
     int JobExportDrc( JOB* aJob );
     int JobExportIpc2581( JOB* aJob );
     int JobExportOdb( JOB* aJob );
+    int JobExportIdf( JOB* aJob );
     int JobExportIpcD356( JOB* aJob );
     int JobExportStats( JOB* aJob );
+    int JobExportStackup( JOB* aJob );
     int JobUpgrade( JOB* aJob );
+    int JobDowngrade( JOB* aJob );
     int JobImport( JOB* aJob );
+    int JobDiff( JOB* aJob );
+    int JobFpDiff( JOB* aJob );
+
+    /// Non-job entry points (reached via the kiface KIFACE_MERGE_DOCUMENT /
+    /// KIFACE_OPEN_DIFF_DIALOG function exports, not the JOB system).
+    int RunMerge( KICAD_DIFF::DOC_KIND aKind, const wxString& aAncestor, const wxString& aOurs,
+                  const wxString& aTheirs, const wxString& aOutput, bool aInteractive,
+                  bool aSingleFile, REPORTER* aReporter );
+    int OpenDiffDialog( KICAD_DIFF::DOC_KIND aKind, const wxString& aFileA, const wxString& aFileB,
+                        const wxString& aLabelA, const wxString& aLabelB, wxWindow* aParent,
+                        REPORTER* aReporter );
+
+    /// Diff two boards for a window outside the kiface, drawing the first on aBefore and the
+    /// second on aAfter. The result keeps both loaded while the canvases show them.
+    KICAD_DIFF::DIFF_CANVAS_CONTEXT* AttachDiffCanvases( KICAD_DIFF::DOC_KIND aKind, const wxString& aFileA,
+                                                         const wxString& aFileB, WIDGET_DIFF_CANVAS* aBefore,
+                                                         WIDGET_DIFF_CANVAS* aAfter, KICAD_DIFF::DOCUMENT_DIFF& aDiff,
+                                                         REPORTER* aReporter );
+
+private:
+    int runPcbMerge( const wxString& aAncestor, const wxString& aOurs, const wxString& aTheirs,
+                     const wxString& aOutput, bool aInteractive );
+    int runFpLibMerge( const wxString& aAncestor, const wxString& aOurs, const wxString& aTheirs,
+                       const wxString& aOutput, bool aInteractive, bool aSingleFile );
+
+public:
+
+    /**
+     * Clear the cached CLI board so the next job reloads from the current project.
+     * Called when the API server switches documents.
+     */
+    void ClearCachedBoard();
 
 protected:
     /// The board open in the board editor, if any (GUI only).
@@ -85,7 +143,13 @@ protected:
 
 private:
     BOARD* getBoard( const wxString& aPath = wxEmptyString );
+    void refillFabZones( const JOB_EXPORT_PCB_FAB& aJob, BOARD* aBoard );
     LSEQ convertLayerArg( wxString& aLayerString, BOARD* aBoard ) const;
+
+    bool preparePlotLayers( JOB_EXPORT_PCB_PLOT* aJob, BOARD* aBoard, TOOL_MANAGER* aToolManager,
+                            LSEQ& aLayersToPlot );
+    wxString resolvePlotOutputPath( JOB_EXPORT_PCB_PLOT* aJob, BOARD* aBoard,
+                                   PLOT_FORMAT aFormat, bool aSingleOutput );
 
     void populateGerberPlotOptionsFromJob( PCB_PLOT_PARAMS&  aPlotOpts,
                                            JOB_EXPORT_PCB_GERBER* aJob );
@@ -97,7 +161,19 @@ private:
 
     DS_PROXY_VIEW_ITEM* getDrawingSheetProxyView( BOARD* aBrd );
 
+<<<<<<< b2e17e0a
     BOARD* m_cliBoard;
+||||||| 1304b76aad
+    TOOL_MANAGER* getToolManager( BOARD* aBrd );
+
+    BOARD* m_cliBoard;
+    std::unique_ptr<TOOL_MANAGER> m_toolManager;
+=======
+    TOOL_MANAGER* getToolManager( BOARD* aBrd );
+
+    std::unique_ptr<BOARD> m_cliBoard;
+    std::unique_ptr<TOOL_MANAGER> m_toolManager;
+>>>>>>> ed8c16703e
 };
 
 #endif

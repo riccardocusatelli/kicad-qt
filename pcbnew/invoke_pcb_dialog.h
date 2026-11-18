@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 // This header is an insolation layer between top most frames and any number of
@@ -40,11 +36,9 @@ class wxWindow;
 class KIWAY;
 
 /**
- * Function InvokePcbLibTableEditor
- * shows the modal DIALOG_FP_LIB_TABLE for purposes of editing the global and project
- * library tables.
+ * Show the modal #DIALOG_EDIT_LIBRARY_TABLES for purposes of editing the global and project library tables.
  *
+ * @param aKiway is the #KIWAY object of the caller.
  * @param aCaller is the wxWindow which is invoking the dialog.
- * @return true if either table changed.
  */
 void InvokePcbLibTableEditor( KIWAY* aKiway, wxWindow* aCaller );

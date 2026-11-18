@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -234,9 +230,9 @@ public:
     /**
      * Look in all existing matchers, return the earliest match of any of the existing.
      *
-     * @param aTerm                 term to look for.
-     * @param aMatchersTriggered    out: number of matcher that found the term.
-     * @param aPostion              out: where the term was found, or #EDA_PATTERN_NOT_FOUND.
+     * @param aTerm                   term to look for.
+     * @param[out] aMatchersTriggered number of matcher that found the term.
+     * @param[out] aPosition          where the term was found, or #EDA_PATTERN_NOT_FOUND.
      *
      * @return true if any matchers found the term
      */

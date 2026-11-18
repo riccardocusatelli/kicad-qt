@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <magic_enum.hpp>
@@ -76,16 +76,14 @@ void SCH_IO_KICAD_LEGACY_LIB_CACHE::Load()
 {
     if( !m_libFileName.FileExists() )
     {
-        THROW_IO_ERROR( wxString::Format( _( "Library file '%s' not found." ),
-                                          m_libFileName.GetFullPath() ) );
+        THROW_IO_ERRORF( _( "Library file '%s' not found." ), m_libFileName.GetFullPath() );
     }
 
     KI_CHECK_RET( m_libFileName.IsAbsolute(),
-                 wxString::Format( "Cannot use relative file paths in legacy plugin to "
-                                   "open library '%s'.", m_libFileName.GetFullPath() ) );
+                 wxString::Format( "Cannot use relative file paths in legacy plugin to open library '%s'.",
+                                   m_libFileName.GetFullPath() ) );
 
-    KI_LOG_TRACE( traceSchLegacyPlugin, "Loading legacy symbol file '%s'",
-                m_libFileName.GetFullPath() );
+    KI_LOG_TRACE( traceSchLegacyPlugin, "Loading legacy symbol file '%s'", m_libFileName.GetFullPath() );
 
     FILE_LINE_READER reader( m_libFileName.GetFullPath() );
 
@@ -186,10 +184,7 @@ void SCH_IO_KICAD_LEGACY_LIB_CACHE::loadDocs()
         return;
 
     if( !fn.IsFileReadable() )
-    {
-        THROW_IO_ERROR( wxString::Format( _( "Insufficient permissions to read library '%s'." ),
-                                          fn.GetFullPath() ) );
-    }
+        THROW_IO_ERRORF( _( "Insufficient permissions to read library '%s'." ), fn.GetFullPath() );
 
     FILE_LINE_READER reader( fn.GetFullPath() );
 
@@ -218,7 +213,7 @@ void SCH_IO_KICAD_LEGACY_LIB_CACHE::loadDocs()
 
         if( it == m_symbols.end() )
         {
-            wxLogWarning( "Symbol '%s' not found in library:\n\n"
+            KI_LOG_TRACE( traceSchLegacyPlugin, "Symbol '%s' not found in library:\n\n"
                           "'%s'\n\nat line %d offset %d",
                           aliasName,
                           fn.GetFullPath(),
@@ -673,7 +668,7 @@ void SCH_IO_KICAD_LEGACY_LIB_CACHE::loadField( std::unique_ptr<LIB_SYMBOL>& aSym
         // Fields in RAM must always have names, because we are trying to get
         // less dependent on field ids and more dependent on names.
         // Plus assumptions are made in the field editors.
-        field->SetName( GetCanonicalFieldName( field->GetId() ) );
+        field->SetName( GetDefaultFieldName( field->GetId(), UNTRANSLATED ) );
 
         // Ensure the VALUE field = the symbol name (can be not the case
         // with malformed libraries: edited by hand, or converted from other tools)
@@ -1564,7 +1559,7 @@ void SCH_IO_KICAD_LEGACY_LIB_CACHE::SaveSymbol( LIB_SYMBOL* aSymbol, OUTPUTFORMA
         aFormatter.Print( 0, "\n" );
     }
 
-    wxArrayString footprints = aSymbol->GetFPFilters();
+    const wxArrayString& footprints = aSymbol->GetRawFPFilters();
 
     // Write the footprint filter list
     if( footprints.GetCount() != 0 )
@@ -1725,11 +1720,11 @@ void SCH_IO_KICAD_LEGACY_LIB_CACHE::saveField( const SCH_FIELD* aField, int aLeg
                       aField->IsItalic() ? 'I' : 'N',
                       aField->IsBold() ? 'B' : 'N' );
 
-    // Translated names were stored in legacy files, so it's important not to save the
-    // default names as they weren't yet canonical.
+    // Translated names were stored in legacy files, so preserve the stored name instead of
+    // replacing it with the untranslated default name.
     if( !aField->IsMandatory()
             && !aField->GetName().IsEmpty()
-            && aField->GetName() != GetUserFieldName( aLegacyFieldIdx, !DO_TRANSLATE ) )
+            && aField->GetName() != GetUserFieldName( aLegacyFieldIdx, UNTRANSLATED ) )
     {
         aFormatter.Print( 0, " %s", EscapedUTF8( aField->GetName() ).c_str() );
     }
@@ -1817,7 +1812,7 @@ void SCH_IO_KICAD_LEGACY_LIB_CACHE::savePin( const SCH_PIN* aPin, OUTPUTFORMATTE
 void SCH_IO_KICAD_LEGACY_LIB_CACHE::savePolyLine( SCH_SHAPE* aPolyLine,
                                                   OUTPUTFORMATTER& aFormatter )
 {
-    KI_CHECK_RET( aPolyLine && aPolyLine->GetShape() == SHAPE_T::POLY, "Invalid POLY object." );
+    KI_CHECK_RET( aPolyLine && !aPolyLine->GetPolyShape().IsEmpty(), "Invalid POLY object." );
 
     aFormatter.Print( 0, "P %d %d %d %d",
                       (int) aPolyLine->GetPolyShape().Outline( 0 ).GetPointCount(),
@@ -1941,8 +1936,10 @@ void SCH_IO_KICAD_LEGACY_LIB_CACHE::DeleteSymbol( const wxString& aSymbolName )
     LIB_SYMBOL_MAP::iterator it = m_symbols.find( aSymbolName );
 
     if( it == m_symbols.end() )
-        THROW_IO_ERROR( wxString::Format( _( "library %s does not contain a symbol named %s" ),
-                                          m_libFileName.GetFullName(), aSymbolName ) );
+    {
+        THROW_IO_ERRORF( _( "library %s does not contain a symbol named %s" ),
+                         m_libFileName.GetFullName(), aSymbolName );
+    }
 
     LIB_SYMBOL* symbol = it->second;
 

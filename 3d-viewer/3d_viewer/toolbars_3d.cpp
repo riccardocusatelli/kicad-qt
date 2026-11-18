@@ -18,16 +18,9 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-
-#include <bitmaps.h>
-#include <dialogs/eda_view_switcher.h>
 #include <eda_3d_viewer_frame.h>
 #include <tool/action_toolbar.h>
 #include <tools/eda_3d_actions.h>
@@ -47,6 +40,7 @@ std::optional<TOOLBAR_CONFIGURATION> EDA_3D_VIEWER_TOOLBAR_SETTINGS::DefaultTool
     case TOOLBAR_LOC::RIGHT:
     case TOOLBAR_LOC::TOP_AUX:
         return std::nullopt;
+
     case TOOLBAR_LOC::TOP_MAIN:
         config.AppendAction( EDA_3D_ACTIONS::reloadBoard );
 
@@ -88,6 +82,7 @@ std::optional<TOOLBAR_CONFIGURATION> EDA_3D_VIEWER_TOOLBAR_SETTINGS::DefaultTool
 
         config.AppendSeparator()
               .AppendAction( EDA_3D_ACTIONS::showLayersManager );
+
         break;
     }
 

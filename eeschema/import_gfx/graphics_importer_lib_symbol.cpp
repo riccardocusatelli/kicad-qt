@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "graphics_importer_lib_symbol.h"
@@ -229,4 +225,44 @@ void GRAPHICS_IMPORTER_LIB_SYMBOL::AddSpline( const VECTOR2D& aStart,
     }
 
     addItem( std::move( spline ) );
+}
+
+
+void GRAPHICS_IMPORTER_LIB_SYMBOL::AddEllipse( const VECTOR2D& aCenter, double aMajorRadius, double aMinorRadius,
+                                               const EDA_ANGLE& aRotation, const IMPORTED_STROKE& aStroke, bool aFilled,
+                                               const COLOR4D& aFillColor )
+{
+    std::unique_ptr<SCH_SHAPE> ellipse = std::make_unique<SCH_SHAPE>( SHAPE_T::ELLIPSE, LAYER_DEVICE );
+    ellipse->SetParent( m_symbol );
+    ellipse->SetUnit( m_unit );
+    ellipse->SetStroke( MapStrokeParams( aStroke ) );
+    ellipse->SetFilled( aFilled );
+    ellipse->SetFillColor( aFillColor );
+
+    ellipse->SetEllipseCenter( MapCoordinate( aCenter ) );
+    ellipse->SetEllipseMajorRadius( KiROUND( aMajorRadius * ImportScalingFactor().x ) );
+    ellipse->SetEllipseMinorRadius( KiROUND( aMinorRadius * ImportScalingFactor().y ) );
+    ellipse->SetEllipseRotation( aRotation );
+
+    addItem( std::move( ellipse ) );
+}
+
+
+void GRAPHICS_IMPORTER_LIB_SYMBOL::AddEllipseArc( const VECTOR2D& aCenter, double aMajorRadius, double aMinorRadius,
+                                                  const EDA_ANGLE& aRotation, const EDA_ANGLE& aStartAngle,
+                                                  const EDA_ANGLE& aEndAngle, const IMPORTED_STROKE& aStroke )
+{
+    std::unique_ptr<SCH_SHAPE> arc = std::make_unique<SCH_SHAPE>( SHAPE_T::ELLIPSE_ARC, LAYER_DEVICE );
+    arc->SetParent( m_symbol );
+    arc->SetUnit( m_unit );
+    arc->SetStroke( MapStrokeParams( aStroke ) );
+
+    arc->SetEllipseCenter( MapCoordinate( aCenter ) );
+    arc->SetEllipseMajorRadius( KiROUND( aMajorRadius * ImportScalingFactor().x ) );
+    arc->SetEllipseMinorRadius( KiROUND( aMinorRadius * ImportScalingFactor().y ) );
+    arc->SetEllipseRotation( aRotation );
+    arc->SetEllipseStartAngle( aStartAngle );
+    arc->SetEllipseEndAngle( aEndAngle );
+
+    addItem( std::move( arc ) );
 }

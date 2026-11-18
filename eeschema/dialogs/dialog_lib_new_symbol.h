@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -35,6 +31,7 @@ class DIALOG_LIB_NEW_SYMBOL : public DIALOG_LIB_NEW_SYMBOL_BASE
 {
 public:
     DIALOG_LIB_NEW_SYMBOL( EDA_DRAW_FRAME* aParent, const wxArrayString& aSymbolNames,
+                           const std::function<int( const wxString& aItem )>& aDisplayStyleCallback,
                            const wxString& aInheritFromSymbolName,
                            std::function<bool( const wxString& newName )> aValidator );
 
@@ -105,17 +102,17 @@ public:
     void SetPinNameInside( bool show ) { m_checkShowPinNameInside->SetValue( show ); }
     bool GetPinNameInside() { return m_checkShowPinNameInside->GetValue(); }
 
-protected:
     bool TransferDataToWindow() override;
     bool TransferDataFromWindow() override;
 
-    virtual void onPowerCheckBox( wxCommandEvent& aEvent ) override;
-    virtual void onCheckTransferUserFields( wxCommandEvent& aEvent ) override;
+protected:
+    void onPowerCheckBox( wxCommandEvent& aEvent ) override;
+    void onCheckTransferUserFields( wxCommandEvent& aEvent ) override;
 
 private:
     void onParentSymbolSelect( wxCommandEvent& aEvent );
 
-    void syncControls( bool aIsDerivedPart );
+    void syncControls();
 
 private:
     UNIT_BINDER                                    m_pinTextPosition;

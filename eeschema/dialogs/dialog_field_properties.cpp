@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <widgets/bitmap_button.h>
@@ -330,7 +326,8 @@ void DIALOG_FIELD_PROPERTIES::init()
             || m_fieldId == FIELD_T::FOOTPRINT
             || m_fieldId == FIELD_T::DATASHEET
             || m_fieldId == FIELD_T::SHEET_NAME
-            || m_fieldId == FIELD_T::SHEET_FILENAME )
+            || m_fieldId == FIELD_T::SHEET_FILENAME
+            || m_fieldId == FIELD_T::SHEET_REF_SUFFIX )
     {
         m_TextCtrl->SetValidator( FIELD_VALIDATOR( m_fieldId, &m_text ) );
         SetInitialFocus( m_TextCtrl );
@@ -572,6 +569,22 @@ bool DIALOG_FIELD_PROPERTIES::TransferDataFromWindow()
     m_isNameVisible  = m_nameVisible->GetValue();
     m_allowAutoplace = m_cbAllowAutoPlace->GetValue();
 
+    const SCH_SYMBOL* symbol = dynamic_cast<const SCH_SYMBOL*>( m_field->GetParentSymbol() );
+
+    if( m_fieldId == FIELD_T::REFERENCE && symbol && symbol->Schematic() )
+    {
+        wxString base;
+        wxString msg = symbol->BaseRefFromUser( symbol->Schematic()->CurrentSheet(), m_text, base );
+
+        if( !msg.IsEmpty() )
+        {
+            DisplayError( this, msg );
+            return false;
+        }
+
+        m_text = base;
+    }
+
     return true;
 }
 
@@ -652,7 +665,7 @@ void DIALOG_FIELD_PROPERTIES::UpdateField( SCH_COMMIT* aCommit, SCH_FIELD* aFiel
         SCH_SYMBOL* symbol = static_cast<SCH_SYMBOL*>( parent );
 
         if( m_fieldId == FIELD_T::REFERENCE )
-            symbol->SetRef( aSheetPath, m_text );
+            symbol->SetUserRef( *aSheetPath, m_text );
         else
             symbol->SetFieldText( aField->GetName(), m_text, &sheetPath, variantName );
 

@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version 4.2.1-0-g80c4cb6)
+// C++ code generated with wxFormBuilder (version 4.2.1-0-g80c4cb6a-dirty)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO *NOT* EDIT THIS FILE!
@@ -50,6 +50,7 @@ class PANEL_EESCHEMA_DISPLAY_OPTIONS_BASE : public RESETTABLE_PANEL
 		wxStaticText* m_defaultFontLabel;
 		FONT_CHOICE* m_defaultFontCtrl;
 		wxCheckBox* m_checkShowHiddenPins;
+		wxCheckBox* m_checkShowRemappedPinNumbers;
 		wxCheckBox* m_checkShowHiddenFields;
 		wxCheckBox* m_checkShowDirectiveLabels;
 		wxCheckBox* m_checkShowERCErrors;
@@ -63,13 +64,13 @@ class PANEL_EESCHEMA_DISPLAY_OPTIONS_BASE : public RESETTABLE_PANEL
 		wxStaticText* m_selectionLabel;
 		wxStaticLine* m_staticline2;
 		wxCheckBox* m_checkSelDrawChildItems;
-                wxCheckBox* m_checkSelFillShapes;
-                wxStaticText* m_selWidthLabel;
-                wxSpinCtrlDouble* m_selWidthCtrl;
-                wxStaticText* m_collisionMarkerWidthLabel;
-                wxSpinCtrlDouble* m_collisionMarkerWidthCtrl;
-                wxStaticText* m_highlightColorNote;
-                wxStaticText* m_highlightWidthLabel;
+		wxCheckBox* m_checkSelFillShapes;
+		wxStaticText* m_selWidthLabel;
+		wxSpinCtrlDouble* m_selWidthCtrl;
+		wxStaticText* m_highlightColorNote;
+		wxStaticText* m_collisionMarkerWidthLabel;
+		wxSpinCtrlDouble* m_collisionMarkerWidthCtrl;
+		wxStaticText* m_highlightWidthLabel;
 		wxSpinCtrlDouble* m_highlightWidthCtrl;
 		wxCheckBox* m_highlightNetclassColors;
 		wxStaticText* m_colorHighlightLabel;

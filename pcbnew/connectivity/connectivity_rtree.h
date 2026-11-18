@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PCBNEW_CONNECTIVITY_RTREE_H_
@@ -28,7 +24,7 @@
 #include <math/box2.h>
 #include <router/pns_layerset.h>
 
-#include <geometry/rtree.h>
+#include <geometry/rtree/dynamic_rtree.h>
 
 
 /**
@@ -40,16 +36,19 @@ template< class T >
 class CN_RTREE
 {
 public:
+    using TREE = KIRTREE::DYNAMIC_RTREE<T, int, 3>;
 
-    CN_RTREE()
-    {
-        this->m_tree = new RTree<T, int, 3, double>();
-    }
+    /// Entry type accepted by BulkLoad().
+    using BULK_ENTRY = typename TREE::BULK_ENTRY;
 
-    ~CN_RTREE()
-    {
-        delete this->m_tree;
-    }
+    CN_RTREE() = default;
+    ~CN_RTREE() = default;
+
+    CN_RTREE( CN_RTREE&& aOther ) noexcept = default;
+    CN_RTREE& operator=( CN_RTREE&& aOther ) noexcept = default;
+
+    CN_RTREE( const CN_RTREE& ) = delete;
+    CN_RTREE& operator=( const CN_RTREE& ) = delete;
 
     /**
      * Function Insert()
@@ -62,7 +61,7 @@ public:
         const int mmin[3] = { aItem->StartLayer(), bbox.GetX(), bbox.GetY() };
         const int mmax[3] = { aItem->EndLayer(), bbox.GetRight(), bbox.GetBottom() };
 
-        m_tree->Insert( mmin, mmax, aItem );
+        m_tree.Insert( mmin, mmax, aItem );
     }
 
     /**
@@ -72,33 +71,34 @@ public:
      */
     void Remove( T aItem )
     {
+        const BOX2I& bbox = aItem->BBox();
 
-        // First, attempt to remove the item using its given BBox
-        const BOX2I&        bbox    = aItem->BBox();
+        const int mmin[3] = { aItem->StartLayer(), bbox.GetX(), bbox.GetY() };
+        const int mmax[3] = { aItem->EndLayer(), bbox.GetRight(), bbox.GetBottom() };
 
-        const int           mmin[3] = { aItem->StartLayer(), bbox.GetX(), bbox.GetY() };
-        const int           mmax[3] = { aItem->EndLayer(), bbox.GetRight(), bbox.GetBottom() };
-
-        // If we are not successful ( 1 == not found ), then we expand
-        // the search to the full tree
-        if( m_tree->Remove( mmin, mmax, aItem ) )
-        {
-            // N.B. We must search the whole tree for the pointer to remove
-            // because the item may have been moved before we have the chance to
-            // delete it from the tree
-            const int       mmin2[3] = { INT_MIN, INT_MIN, INT_MIN };
-            const int       mmax2[3] = { INT_MAX, INT_MAX, INT_MAX };
-            m_tree->Remove( mmin2, mmax2, aItem );
-        }
+        // DYNAMIC_RTREE::Remove tries the provided bbox first, then falls back
+        // to full-tree search if the item has moved since insertion.
+        m_tree.Remove( mmin, mmax, aItem );
     }
 
     /**
      * Function RemoveAll()
      * Removes all items from the RTree
      */
-    void RemoveAll( )
+    void RemoveAll()
     {
-        m_tree->RemoveAll();
+        m_tree.RemoveAll();
+    }
+
+    /**
+     * Function BulkLoad()
+     * Replaces the tree contents with aEntries, packed bottom-up.  Much cheaper than the
+     * same number of Insert() calls, which each pay for an R*-tree subtree choice and may
+     * cascade into forced reinsertion.
+     */
+    void BulkLoad( std::vector<BULK_ENTRY>& aEntries )
+    {
+        m_tree.BulkLoad( aEntries );
     }
 
     /**
@@ -109,18 +109,15 @@ public:
     template <class Visitor>
     void Query( const BOX2I& aBounds, int aStartLayer, int aEndLayer, Visitor& aVisitor ) const
     {
-        int start_layer = aStartLayer == B_Cu ? INT_MAX : aStartLayer;
-        int end_layer = aEndLayer == B_Cu ? INT_MAX : aEndLayer;
+        // The layer bounds are copper layer ordinals, the same as Insert() stores.
+        const int mmin[3] = { aStartLayer, aBounds.GetX(), aBounds.GetY() };
+        const int mmax[3] = { aEndLayer, aBounds.GetRight(), aBounds.GetBottom() };
 
-        const int   mmin[3] = { start_layer, aBounds.GetX(), aBounds.GetY() };
-        const int   mmax[3] = { end_layer, aBounds.GetRight(), aBounds.GetBottom() };
-
-        m_tree->Search( mmin, mmax, aVisitor );
+        m_tree.Search( mmin, mmax, aVisitor );
     }
 
 private:
-
-    RTree<T, int, 3, double>* m_tree;
+    TREE m_tree;
 };
 
 

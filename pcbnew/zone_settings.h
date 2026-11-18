@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -36,6 +32,7 @@
 #include <zones.h>
 #include <geometry/eda_angle.h>
 #include <teardrop/teardrop_types.h>
+#include <kiid.h>
 
 class PCB_BASE_FRAME;
 class wxDataViewListCtrl;
@@ -43,8 +40,17 @@ class wxDataViewListCtrl;
 
 enum class ZONE_FILL_MODE
 {
-    POLYGONS = 0,     // fill zone with polygons
-    HATCH_PATTERN = 1 // fill zone using a grid pattern
+    POLYGONS = 0,        // fill zone with polygons
+    HATCH_PATTERN = 1,   // fill zone using a grid pattern
+    COPPER_THIEVING = 2  // fill zone with non-functional copper stamps for plating uniformity
+};
+
+/// Shape stamped onto the grid for a copper-thieving fill.
+enum class THIEVING_PATTERN
+{
+    DOTS = 0,
+    SQUARES = 1,
+    HATCH = 2
 };
 
 struct ZONE_LAYER_PROPERTIES
@@ -52,6 +58,35 @@ struct ZONE_LAYER_PROPERTIES
     std::optional<VECTOR2I> hatching_offset;
 
     bool operator==( const ZONE_LAYER_PROPERTIES& aOther ) const;
+};
+
+
+/**
+ * Parameters that drive copper-thieving fill generation.
+ *
+ * Thieving zones are netless: fabricators plate the stamps along with real
+ * features to even out current density, but they participate in no electrical
+ * net.  Geometry is described in board internal units except for rotation.
+ */
+struct THIEVING_SETTINGS
+{
+    THIEVING_PATTERN pattern = THIEVING_PATTERN::DOTS;
+    int              element_size = 0; // diameter (dots) or side length (squares)
+    int              gap = 0;          // edge-to-edge spacing between adjacent stamps
+                                       // (or between crosshatch lines)
+    int              line_width = 0;   // line width for crosshatch only
+    bool             stagger = false;  // offset alternating rows by half the stride
+    EDA_ORIENTATION  orientation{ ANGLE_0 };
+
+    bool operator==( const THIEVING_SETTINGS& aOther ) const
+    {
+        return pattern == aOther.pattern
+                && element_size == aOther.element_size
+                && gap == aOther.gap
+                && line_width == aOther.line_width
+                && stagger == aOther.stagger
+                && orientation == aOther.orientation;
+    }
 };
 
 
@@ -81,8 +116,25 @@ enum class PLACEMENT_SOURCE_T
 };
 
 /**
- * ZONE_SETTINGS
- * handles zones parameters.
+ * Options for copying a placement rule area onto the others linked to it.  Every linked area stores the same
+ * options, so any of them can be the source of an update.
+ */
+struct REPEAT_LAYOUT_OPTIONS
+{
+    bool m_copyRouting = true;
+    bool m_connectedRoutingOnly = false;
+    bool m_copyPlacement = true;
+    bool m_copyOtherItems = true;
+    bool m_groupItems = false;
+    bool m_includeLockedItems = true;
+    KIID m_anchor = niluuid;       ///< This area's own anchor footprint, or niluuid for the area center
+
+    bool operator==( const REPEAT_LAYOUT_OPTIONS& aOther ) const = default;
+};
+
+/**
+ * Handle zones parameters.
+ *
  * Because a zone can be on copper or non copper layers, and can be also
  * a keepout area, some parameters are irrelevant depending on the type of zone
  */
@@ -111,6 +163,8 @@ public:
     double          m_HatchHoleMinArea;      // min size before holes are dropped (ratio)
     int             m_HatchBorderAlgorithm;  // 0 = use min zone thickness
 
+    THIEVING_SETTINGS m_ThievingSettings;    // valid when m_FillMode == COPPER_THIEVING
+
     int             m_Netcode;               // Net code selection for the current zone
 
     wxString        m_Name;                  // Unique name for the current zone (can be blank)
@@ -126,7 +180,8 @@ public:
 
     bool            m_Locked;
 
-    /* A zone outline can be a teardrop zone with different rules
+    /**
+     * A zone outline can be a teardrop zone with different rules
      * priority, smoothed corners, thermal relief...
      */
     TEARDROP_TYPE   m_TeardropType;
@@ -138,7 +193,7 @@ private:
     unsigned int    m_cornerRadius;          // Corner chamfer distance / fillet radius
     ZONE_CONNECTION m_padConnection;
 
-    /*
+    /**
      * Keepout zones and keepout flags.
      * Note that DRC rules can set keepouts on zones whether they're a keepout or not.
      */
@@ -173,7 +228,7 @@ public:
      * copies settings from a given zone into this object.
      * @param aSource: the given zone
      */
-    ZONE_SETTINGS& operator << ( const ZONE& aSource );
+    ZONE_SETTINGS& operator<<( const ZONE& aSource );
 
     /**
      * @return Default ZONE_SETTINGS
@@ -182,33 +237,22 @@ public:
 
     /**
      * A helper routine for the various zone dialogs (copper, non-copper, keepout).
+     *
      * @param aList the wxDataViewListCtrl to populate
      * @param aFrame the parent editor frame
+     * @param aLayers is the list of layers to set up
      */
     void SetupLayersList( wxDataViewListCtrl* aList, PCB_BASE_FRAME* aFrame, LSET aLayers );
 
     /**
-     * Function ExportSetting
-     * copy settings to a given zone
+     * Copy settings to a given zone.
+     *
      * @param aTarget: the given zone
      * @param aFullExport: if false: some parameters are NOT exported
      *   because they must not be  exported when export settings from a zone to others zones
      *   Currently: m_ZonePriority, m_Layers & m_LayersProperties, m_Name and m_Netcode
      */
     void ExportSetting( ZONE& aTarget, bool aFullExport = true ) const;
-
-    /**
-     * Function CopyFrom
-     * copy settings from a different ZONE_SETTINGS object
-     *
-     * @param aOther the other ZONE_SETTINGS
-     * @param aCopyFull if false: some parameters are not copied.
-     * This option is used specifically to copy zone settings from
-     * a zone to the default zone settings.
-     * There, the layer information is not needed, plus layer specific
-     * properties should not be overridden in the zone default settings.
-     */
-    void CopyFrom( const ZONE_SETTINGS& aOther, bool aCopyFull = true );
 
     void SetCornerSmoothingType( CORNER_SMOOTHING aType) { m_cornerSmoothingType = aType; }
     CORNER_SMOOTHING GetCornerSmoothingType() const { return m_cornerSmoothingType; }

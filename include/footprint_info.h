@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -43,7 +39,7 @@ class KIWAY;
 class wxTextFile;
 
 
-/*
+/**
  * Helper class to handle the list of footprints available in libraries. It stores
  * footprint names, doc and keywords.
  *
@@ -64,7 +60,7 @@ public:
 
     wxString GetName() const override { return m_fpname; }
 
-    int GetPinCount() override { return GetUniquePadCount(); }
+    int GetPinCount() const override { return GetNumberedPadCount(); }
 
     LIB_ID GetLIB_ID() const override
     {
@@ -83,18 +79,24 @@ public:
         return m_keywords;
     }
 
+    /**
+     * Returns the cache itself, not a copy.
+     * Lets ScoreTerms() cache normalization across calls.
+     */
     std::vector<SEARCH_TERM>& GetSearchTerms() override;
 
-    unsigned GetPadCount()
+    unsigned GetNumberedPadCount() const
     {
-        ensure_loaded();
-        return m_pad_count;
+        if( !m_loaded )
+            return 0;
+
+        return m_numbered_pad_count;
     }
 
-    unsigned GetUniquePadCount()
+    unsigned GetNumberedPadCount()
     {
         ensure_loaded();
-        return m_unique_pad_count;
+        return m_numbered_pad_count;
     }
 
     int GetOrderNum()
@@ -128,24 +130,29 @@ protected:
     /// lazily load stuff not filled in by constructor.  This may throw IO_ERRORS.
     virtual void load() { };
 
-    FOOTPRINT_LIST* m_owner; ///< provides access to FP_LIB_TABLE
+    /**
+     * Safe to build once and keep.  Name fields come from the constructor.  Keyword and description fields
+     * come from load(), one-shot behind m_loaded.  All source fields are final by the time this runs.
+     */
+    void cacheSearchTerms();
+
+    FOOTPRINT_LIST* m_owner;              ///< provides access to FP_LIB_TABLE
 
     bool            m_loaded;
 
-    wxString        m_nickname;         ///< library as known in FP_LIB_TABLE
-    wxString        m_fpname;           ///< Module name.
-    int             m_num;              ///< Order number in the display list.
-    unsigned        m_pad_count;        ///< Number of pads
-    unsigned        m_unique_pad_count; ///< Number of unique pads
-    wxString        m_doc;              ///< Footprint description.
-    wxString        m_keywords;         ///< Footprint keywords.
+    wxString        m_nickname;           ///< library as known in FP_LIB_TABLE
+    wxString        m_fpname;             ///< Module name.
+    int             m_num;                ///< Order number in the display list.
+    unsigned        m_numbered_pad_count; ///< Number of unique electrical pads (numeric or BGA-style numbers)
+    wxString        m_doc;                ///< Footprint description.
+    wxString        m_keywords;           ///< Footprint keywords.
 
     std::vector<SEARCH_TERM> m_searchTerms;
 };
 
 
 /**
- * Holds a list of #FOOTPRINT_INFO objects, along with a list of IO_ERRORs or
+ * A list of #FOOTPRINT_INFO objects, along with a list of #IO_ERROR objects or
  * PARSE_ERRORs that were thrown acquiring the FOOTPRINT_INFOs.
  *
  * This is a virtual class; its implementation lives in pcbnew/footprint_info_impl.cpp.
@@ -166,7 +173,7 @@ public:
     const std::vector<std::unique_ptr<FOOTPRINT_INFO>>& GetList() const { return m_list; }
 
     /**
-     * @return Clears the footprint info cache
+     * Clear the footprint info cache.
      */
     virtual void Clear() = 0;
 
@@ -238,4 +245,3 @@ protected:
     std::vector<std::unique_ptr<FOOTPRINT_INFO>> m_list;
     SYNC_QUEUE<std::unique_ptr<IO_ERROR>>        m_errors; ///< some can be PARSE_ERRORs also
 };
-

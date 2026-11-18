@@ -14,13 +14,17 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
 
 #include <settings/json_settings.h>
+#include <pin_map.h>
+#include <unordered_map>
+#include <vector>
+#include <wx/string.h>
 #include <ctime>
 
 
@@ -31,6 +35,14 @@ enum class HTTP_LIB_SOURCE_TYPE
 };
 
 
+/**
+ * Connection parameters for one HTTP library.
+ *
+ * HTTP_LIB_CONNECTION copies the whole struct, so every field has to be meaningful even on a
+ * source assembled in code rather than loaded from a .kicad_httplib.  type stays INVALID until
+ * SCH_IO_HTTP_LIB resolves it, and the timeouts mirror the PARAM defaults in HTTP_LIB_SETTINGS
+ * so an unloaded source does not cache with a zero interval.
+ */
 struct HTTP_LIB_SOURCE
 {
     HTTP_LIB_SOURCE_TYPE type = HTTP_LIB_SOURCE_TYPE::INVALID;
@@ -64,6 +76,13 @@ struct HTTP_LIB_PART
     using field_type = std::tuple<std::string, bool>;
 
     std::vector<std::pair<std::string, field_type>> fields;
+
+    /// Legacy flat MR !2540 pin assignment table (read for one release; issue #2282).
+    std::unordered_map<wxString, std::vector<wxString>> pin_map;
+
+    /// Spec-form named pin maps and their footprint associations (issue #2282).
+    PIN_MAP_SET                       named_pin_maps;
+    std::vector<ASSOCIATED_FOOTPRINT> associated_footprints;
 };
 
 

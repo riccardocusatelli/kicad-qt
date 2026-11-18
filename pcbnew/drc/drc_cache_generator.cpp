@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <common.h>
@@ -37,6 +33,10 @@
 bool DRC_CACHE_GENERATOR::Run()
 {
     m_board = m_drcEngine->GetBoard();
+
+    // Everything below appends to the board's DRC caches rather than replacing them, so they
+    // have to start out empty.
+    m_board->IncrementTimeStamp();
 
     int&           largestClearance = m_board->m_DRCMaxClearance;
     int&           largestPhysicalClearance = m_board->m_DRCMaxPhysicalClearance;
@@ -100,7 +100,8 @@ bool DRC_CACHE_GENERATOR::Run()
     auto cacheBBoxes =
             []( ZONE* zone, const LSET& copperLayers )
             {
-                zone->Outline()->BuildBBoxCaches();
+                if( !zone->GetParentFootprint() )
+                    zone->Outline()->BuildBBoxCaches();
 
                 for( PCB_LAYER_ID layer : copperLayers )
                 {
@@ -148,6 +149,14 @@ bool DRC_CACHE_GENERATOR::Run()
         }
     }
 
+    for( ZONE* zone : m_board->m_DRCCopperZones )
+    {
+        LSET zoneCopperLayers = zone->GetLayerSet() & boardCopperLayers;
+
+        for( PCB_LAYER_ID layer : zoneCopperLayers )
+            m_board->m_DRCCopperZonesByLayer[layer].push_back( zone );
+    }
+
     size_t              count = 0;
     std::atomic<size_t> done( 1 );
 
@@ -178,7 +187,8 @@ bool DRC_CACHE_GENERATOR::Run()
                 copperLayers.RunOnLayers(
                         [&]( PCB_LAYER_ID layer )
                         {
-                            m_board->m_CopperItemRTreeCache->Insert( item, layer, largestClearance );
+                            m_board->m_CopperItemRTreeCache->Insert( item, layer, CLEARANCE_CONSTRAINT,
+                                                                     largestClearance );
                         } );
 
                 done.fetch_add( 1 );
@@ -205,10 +215,12 @@ bool DRC_CACHE_GENERATOR::Run()
             {
                 std::unique_lock<std::shared_mutex> writeLock( m_board->m_CachesMutex );
 
-                if( !m_board->m_CopperItemRTreeCache )
-                    m_board->m_CopperItemRTreeCache = std::make_shared<DRC_RTREE>();
+                // Always start from an empty tree: the traversal below re-inserts every copper
+                // item, and a DRC_RTREE stops accepting inserts once it has been built. 
+                m_board->m_CopperItemRTreeCache = std::make_shared<DRC_RTREE>();
 
                 forEachGeometryItem( itemTypes, boardCopperLayers, addToCopperTree );
+                m_board->m_CopperItemRTreeCache->Build();
             } );
 
     std::future_status status = retn.wait_for( std::chrono::milliseconds( 250 ) );
@@ -252,8 +264,10 @@ bool DRC_CACHE_GENERATOR::Run()
                            [&]( PCB_LAYER_ID layer )
                            {
                                if( IsCopperLayer( layer ) )
-                                   rtree->Insert( aZone, layer );
+                                   rtree->Insert( aZone, layer, CLEARANCE_CONSTRAINT );
                            } );
+
+                   rtree->Build();
 
                    {
                        std::unique_lock<std::shared_mutex> writeLock( m_board->m_CachesMutex );
@@ -292,7 +306,7 @@ bool DRC_CACHE_GENERATOR::Run()
 
     for( ZONE* zone : m_board->Zones() )
     {
-        if( !zone->GetIsRuleArea() && !zone->IsTeardropArea() )
+        if( !zone->GetIsRuleArea() && !zone->IsTeardropArea() && !zone->IsCopperThieving() )
         {
             zone->GetLayerSet().RunOnLayers(
                     [&]( PCB_LAYER_ID layer )

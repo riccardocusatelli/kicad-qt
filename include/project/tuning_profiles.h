@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef KICAD_TUNING_PROFILES_H
@@ -153,10 +153,13 @@ struct TUNING_PROFILE
     wxString                                           m_ProfileName;
     PROFILE_TYPE                                       m_Type;
     double                                             m_TargetImpedance;
+    double                                             m_Frequency;
     bool                                               m_EnableTimeDomainTuning;
+    bool                                               m_ModelSolderMask;
     std::vector<DELAY_PROFILE_TRACK_PROPAGATION_ENTRY> m_TrackPropagationEntries;
     int                                                m_ViaPropagationDelay;
     std::vector<DELAY_PROFILE_VIA_OVERRIDE_ENTRY>      m_ViaOverrides;
+    int                                                m_NetChainBridgePropagationDelay;
 
     // This is not persisted - but is used for quick lookup for track statistics calculations
     std::map<PCB_LAYER_ID, DELAY_PROFILE_TRACK_PROPAGATION_ENTRY> m_TrackPropagationEntriesMap;
@@ -172,7 +175,13 @@ struct TUNING_PROFILE
         if( m_TargetImpedance != aOther.m_TargetImpedance )
             return false;
 
+        if( m_Frequency != aOther.m_Frequency )
+            return false;
+
         if( m_EnableTimeDomainTuning != aOther.m_EnableTimeDomainTuning )
+            return false;
+
+        if( m_ModelSolderMask != aOther.m_ModelSolderMask )
             return false;
 
         if( m_TrackPropagationEntries != aOther.m_TrackPropagationEntries )
@@ -182,6 +191,9 @@ struct TUNING_PROFILE
             return false;
 
         if( m_ViaOverrides != aOther.m_ViaOverrides )
+            return false;
+
+        if( m_NetChainBridgePropagationDelay != aOther.m_NetChainBridgePropagationDelay )
             return false;
 
         return true;
@@ -212,6 +224,9 @@ public:
     TUNING_PROFILE& GetTuningProfile( wxString aProfileName );
 
 private:
+    bool migrateSchema0to1() const;
+    bool migrateSchema1to2() const;
+
     std::vector<TUNING_PROFILE> m_tuningProfiles;
 
     TUNING_PROFILE m_nullDelayProfile;

@@ -14,8 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
@@ -48,11 +47,12 @@ BOOST_AUTO_TEST_CASE( NoDrillFlashesOnEdgeCuts )
     const int padDia = pcbIUScale.mmToIU( 1.4 );
     const int drill = pcbIUScale.mmToIU( 0.8 );
 
-    BOARD board;
-    auto  footprint = std::make_unique<FOOTPRINT>( &board );
+    BOARD                      board;
+    std::unique_ptr<FOOTPRINT> footprint = std::make_unique<FOOTPRINT>( &board );
     footprint->SetPosition( VECTOR2I( pcbIUScale.mmToIU( 50.0 ), pcbIUScale.mmToIU( 50.0 ) ) );
 
-    auto pad = new PAD( footprint.get() );
+    PAD* pad = new PAD( footprint.get() );
+    pad->SetPadstackMode( PADSTACK::MODE::NORMAL );
     pad->SetAttribute( PAD_ATTRIB::PTH );
     pad->SetShape( PADSTACK::ALL_LAYERS, PAD_SHAPE::CIRCLE );
     pad->SetSize( PADSTACK::ALL_LAYERS, VECTOR2I( padDia, padDia ) );
@@ -104,11 +104,12 @@ BOOST_AUTO_TEST_CASE( DrillMarksPlottedOnEdgeCutsSvg )
     const int padDia = pcbIUScale.mmToIU( 1.4 );
     const int drill = pcbIUScale.mmToIU( 0.8 );
 
-    BOARD board;
-    auto  footprint = std::make_unique<FOOTPRINT>( &board );
+    BOARD                      board;
+    std::unique_ptr<FOOTPRINT> footprint = std::make_unique<FOOTPRINT>( &board );
     footprint->SetPosition( VECTOR2I( pcbIUScale.mmToIU( 50.0 ), pcbIUScale.mmToIU( 50.0 ) ) );
 
-    auto pad = new PAD( footprint.get() );
+    PAD* pad = new PAD( footprint.get() );
+    pad->SetPadstackMode( PADSTACK::MODE::NORMAL );
     pad->SetAttribute( PAD_ATTRIB::PTH );
     pad->SetShape( PADSTACK::ALL_LAYERS, PAD_SHAPE::CIRCLE );
     pad->SetSize( PADSTACK::ALL_LAYERS, VECTOR2I( padDia, padDia ) );
@@ -162,6 +163,7 @@ BOOST_AUTO_TEST_CASE( NoDrillMarksOnGerberFromStoredOptions )
 
     // An NPTH mounting hole plots no copper of its own, so any flash in the file is the drill mark
     PAD* pad = new PAD( footprint.get() );
+    pad->SetPadstackMode( PADSTACK::MODE::NORMAL );
     pad->SetAttribute( PAD_ATTRIB::NPTH );
     pad->SetShape( PADSTACK::ALL_LAYERS, PAD_SHAPE::CIRCLE );
     pad->SetSize( PADSTACK::ALL_LAYERS, VECTOR2I( drill, drill ) );

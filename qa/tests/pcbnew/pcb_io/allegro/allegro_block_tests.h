@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -66,8 +62,6 @@ struct BLOCK_TEST_INFO
     bool m_Skip;
     /// Do we have an additional block-level test to run for this block?
     bool m_ExtraBlockTest;
-    /// Do we have an additional DB_OBJ-level test to run for this block?
-    bool m_ExtraDbObjTest;
     /// The the source of the block data (probably a filename)
     std::string m_DataSource;
 
@@ -104,18 +98,6 @@ struct BOARD_TEST_DEF
  * Note that these tests don't have context of the wider board, so they are necessarily
  * limited to quite "static" checks of the block content.
  */
-extern void RunAdditionalBlockTest( const std::string& aBoardName, size_t aBlockOffset,
-                                    const ALLEGRO::BLOCK_BASE& aBlock );
-
-/**
- * Look up and run any additional ad-hoc tests for a DB_OBJ (parsed and converted block)
- *
- * Since most "useful" functionality probably should come from the resolved and
- * invariant-assured DB_OBJ, these tests are probably more useful than binary-level
- * block tests.
- */
-extern void RunAdditionalObjectTest( const std::string& aBoardName, size_t aBlockOffset,
-                                     const ALLEGRO::DB_OBJ& aDbObj );
-
+void RunAdditionalBlockTest( const std::string& aBoardName, size_t aBlockOffset, const ALLEGRO::BLOCK_BASE& aBlock );
 
 } // namespace KI_TEST

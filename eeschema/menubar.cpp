@@ -17,17 +17,15 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <bitmaps.h>
 #include <file_history.h>
 #include <kiface_base.h>
+#include <pgm_base.h>
 #include <schematic.h>
+#include <settings/common_settings.h>
 #include <tool/action_manager.h>
 #include <tool/action_menu.h>
 #include <tool/tool_manager.h>
@@ -115,7 +113,21 @@ void SCH_EDIT_FRAME::doReCreateMenuBar()
     submenuExport->Add( SCH_ACTIONS::drawSheetOnClipboard,   ACTION_MENU::NORMAL, _( "Drawing to Clipboard" ) );
     submenuExport->Add( SCH_ACTIONS::exportNetlist,          ACTION_MENU::NORMAL, _( "Netlist..." ) );
     submenuExport->Add( SCH_ACTIONS::exportSymbolsToLibrary, ACTION_MENU::NORMAL, _( "Symbols..." ) );
+    submenuExport->Add( ACTIONS::exportForOlderVersion, ACTION_MENU::NORMAL, _( "For Older KiCad Version..." ) );
     fileMenu->Add( submenuExport );
+
+    fileMenu->AppendSeparator();
+    fileMenu->Add( SCH_ACTIONS::compareSchematicWithFile );
+
+    wxMenuItem*       historyItem = fileMenu->Add( SCH_ACTIONS::compareSchematicWithHistory );
+    ACTION_CONDITIONS historyCond;
+    historyCond.Enable(
+            []( const SELECTION& )
+            {
+                COMMON_SETTINGS* cs = Pgm().GetCommonSettings();
+                return cs && cs->AutosaveUsesLocalHistory();
+            } );
+    RegisterUIUpdateHandler( historyItem->GetId(), historyCond );
 
     fileMenu->AppendSeparator();
     fileMenu->Add( SCH_ACTIONS::schematicSetup );
@@ -178,6 +190,7 @@ void SCH_EDIT_FRAME::doReCreateMenuBar()
     showHidePanels->SetTitle( _( "Panels" ) );
 
     showHidePanels->Add( ACTIONS::showProperties,    ACTION_MENU::CHECK );
+    showHidePanels->Add( ACTIONS::showGitCommitPane, ACTION_MENU::CHECK );
     showHidePanels->Add( ACTIONS::showSearch,        ACTION_MENU::CHECK );
     showHidePanels->Add( SCH_ACTIONS::showHierarchy, ACTION_MENU::CHECK );
 
@@ -261,8 +274,11 @@ void SCH_EDIT_FRAME::doReCreateMenuBar()
     placeMenu->Add( SCH_ACTIONS::drawTable );
     placeMenu->Add( SCH_ACTIONS::drawRectangle );
     placeMenu->Add( SCH_ACTIONS::drawCircle );
+    placeMenu->Add( SCH_ACTIONS::drawEllipse );
+    placeMenu->Add( SCH_ACTIONS::drawEllipseArc );
     placeMenu->Add( SCH_ACTIONS::drawArc );
     placeMenu->Add( SCH_ACTIONS::drawBezier );
+    placeMenu->Add( SCH_ACTIONS::drawPolygon );
     placeMenu->Add( SCH_ACTIONS::drawLines );
     placeMenu->Add( SCH_ACTIONS::placeImage );
 
@@ -323,17 +339,30 @@ void SCH_EDIT_FRAME::doReCreateMenuBar()
     toolsMenu->Add( ACTIONS::updateSchematicFromPcb )->Enable( !Kiface().IsSingle() );
 
     toolsMenu->AppendSeparator();
+    toolsMenu->Add( SCH_ACTIONS::createNetChain );
+
+    toolsMenu->AppendSeparator();
     ACTION_MENU* submenuVariants = new ACTION_MENU( false, selTool );
     submenuVariants->SetTitle( _( "Variants" ) );
     submenuVariants->Add( SCH_ACTIONS::addVariant );
     submenuVariants->Add( SCH_ACTIONS::removeVariant );
     submenuVariants->Add( SCH_ACTIONS::editVariantDescription );
+    submenuVariants->Add( SCH_ACTIONS::renameVariant );
+    submenuVariants->Add( SCH_ACTIONS::copyVariant );
     toolsMenu->Add( submenuVariants );
 
-#ifdef KICAD_IPC_API
+    ACTION_MENU* submenuActionPlugins = new ACTION_MENU( false, selTool );
+    submenuActionPlugins->SetTitle( _( "External Plugins" ) );
+    submenuActionPlugins->SetIcon( BITMAPS::puzzle_piece );
+
+    if( Pgm().GetCommonSettings()->m_Api.enable_server && AddApiPluginMenuItems( submenuActionPlugins ) > 0 )
+        submenuActionPlugins->AppendSeparator();
+
+    submenuActionPlugins->Add( ACTIONS::pluginsReload );
+    submenuActionPlugins->Add( ACTIONS::pluginsShowFolder );
+
     toolsMenu->AppendSeparator();
-    toolsMenu->Add( ACTIONS::pluginsReload );
-#endif
+    toolsMenu->Add( submenuActionPlugins );
 
     //-- Preferences menu -----------------------------------------------
     //

@@ -17,16 +17,11 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <gal/hidpi_gl_canvas.h>
 
-#include <advanced_config.h>
 #include <dpi_scaling.h>
 #include <kicad_gl/gl_utils.h>
 
@@ -35,7 +30,9 @@
 static wxGLAttributes galGLAttribs()
 {
     wxGLAttributes attribs;
-    attribs.RGBA().DoubleBuffer().Depth( 8 ).EndList();
+    // Without minimum channel sizes EGL lists its smallest matching config first, which on
+    // Wayland is a dithered 16-bit one
+    attribs.RGBA().MinRGBA( 8, 8, 8, 0 ).DoubleBuffer().Depth( 8 ).EndList();
 
     return attribs;
 }
@@ -86,12 +83,17 @@ HIDPI_GL_CANVAS::HIDPI_GL_CANVAS( const KIGFX::VC_SETTINGS& aSettings, TOOLKIT_W
 
 #if defined _WIN32 || defined _WIN64
     Connect( wxEVT_ENTER_WINDOW, wxMouseEventHandler( HIDPI_GL_CANVAS::skipMouseEvent ) );
+    Connect( wxEVT_LEAVE_WINDOW, wxMouseEventHandler( HIDPI_GL_CANVAS::skipMouseEvent ) );
 #endif
 
     Bind( wxEVT_GESTURE_ZOOM, &HIDPI_GL_CANVAS::skipGestureEvent, this );
     Bind( wxEVT_GESTURE_PAN, &HIDPI_GL_CANVAS::skipGestureEvent, this );
 
     SetSize( aParent->GetClientSize() );
+#ifdef __WXMAC__
+    // wxDefaultPosition can place the GL child one pixel above and left of its parent.
+    SetPosition( wxPoint( 0, 0 ) );
+#endif
 }
 
 

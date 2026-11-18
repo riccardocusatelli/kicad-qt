@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -24,14 +24,13 @@
 #include <attenuators/attenuator_classes.h>
 #include <calculator_panels/panel_rf_attenuators.h>
 #include <pcb_calculator_settings.h>
+#include <pcb_calculator_utils.h>
 
 #include <bitmaps.h>
 #include <string_utils.h>
 #include <widgets/ui_common.h>
 #include <widgets/std_bitmap_button.h>
 #include <core/ki_assert.h>
-
-extern double DoubleFromString( const wxString& TextValue );
 
 
 PANEL_RF_ATTENUATORS::PANEL_RF_ATTENUATORS( wxWindow* parent, wxWindowID id, const wxPoint& pos,

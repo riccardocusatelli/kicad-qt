@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <cstdio>
@@ -53,6 +49,17 @@ static double iu2hyp( double iu )
 
 class HYPERLYNX_EXPORTER;
 
+/// The copper geometry of one padstack layer, as Hyperlynx describes it in a PADSTACK entry
+struct HYPERLYNX_PAD_SHAPE
+{
+    PAD_SHAPE m_shape;
+    int       m_sx;
+    int       m_sy;
+
+    bool operator==( const HYPERLYNX_PAD_SHAPE& aOther ) const = default;
+};
+
+
 class HYPERLYNX_PAD_STACK
 {
 public:
@@ -69,19 +76,13 @@ public:
 
     bool operator==( const HYPERLYNX_PAD_STACK& other ) const
     {
-        if( m_shape != other.m_shape )
-            return false;
-
         if( m_type != other.m_type )
             return false;
 
         if( IsThrough() && other.IsThrough() && m_drill != other.m_drill )
             return false;
 
-        if( m_sx != other.m_sx )
-            return false;
-
-        if( m_sy != other.m_sy )
+        if( m_shapes != other.m_shapes )
             return false;
 
         if( m_layers != other.m_layers )
@@ -114,11 +115,12 @@ private:
     BOARD*      m_board;
     int         m_id;
     int         m_drill;
-    PAD_SHAPE   m_shape;
-    int         m_sx, m_sy;
     double      m_angle;
     LSET        m_layers;
     PAD_ATTRIB  m_type;
+
+    /// Copper geometry per board copper layer this padstack is present on
+    std::map<PCB_LAYER_ID, HYPERLYNX_PAD_SHAPE> m_shapes;
 };
 
 
@@ -148,12 +150,12 @@ private:
         return m_padStacks.back();
     }
 
-    const std::string formatPadShape( const HYPERLYNX_PAD_STACK& aStack )
+    const std::string formatPadShape( const HYPERLYNX_PAD_SHAPE& aShape, double aAngle )
     {
         int  shapeId = 0;
         char buf[1024];
 
-        switch( aStack.m_shape )
+        switch( aShape.m_shape )
         {
         case PAD_SHAPE::CIRCLE:
         case PAD_SHAPE::OVAL:
@@ -185,9 +187,9 @@ private:
 
         snprintf( buf, sizeof( buf ), "%d, %.9f, %.9f, %.1f, M",
                   shapeId,
-                  iu2hyp( aStack.m_sx ),
-                  iu2hyp( aStack.m_sy ),
-                  aStack.m_angle );
+                  iu2hyp( aShape.m_sx ),
+                  iu2hyp( aShape.m_sy ),
+                  aAngle );
 
         return buf;
     }
@@ -216,10 +218,7 @@ private:
 
 HYPERLYNX_PAD_STACK::HYPERLYNX_PAD_STACK( BOARD* aBoard, const PAD* aPad )
 {
-    // TODO(JE) padstacks
     m_board = aBoard;
-    m_sx    = aPad->GetSize( PADSTACK::ALL_LAYERS ).x;
-    m_sy    = aPad->GetSize( PADSTACK::ALL_LAYERS ).y;
     m_angle = 180.0 - aPad->GetOrientation().AsDegrees();
 
     if( m_angle < 0.0 )
@@ -227,23 +226,38 @@ HYPERLYNX_PAD_STACK::HYPERLYNX_PAD_STACK( BOARD* aBoard, const PAD* aPad )
 
     m_layers = aPad->GetLayerSet();
     m_drill  = aPad->GetDrillSize().x;
-    m_shape  = aPad->GetShape( PADSTACK::ALL_LAYERS );
     m_type   = PAD_ATTRIB::PTH;
     m_id     = 0;
+
+    LSET copperLayers = m_layers & LSET::AllCuMask( aBoard->GetCopperLayerCount() );
+
+    for( PCB_LAYER_ID layer : copperLayers.Seq() )
+    {
+        PCB_LAYER_ID padLayer = aPad->Padstack().EffectiveLayerFor( layer );
+
+        m_shapes[layer] = { aPad->GetShape( padLayer ), aPad->GetSize( padLayer ).x,
+                            aPad->GetSize( padLayer ).y };
+    }
 }
 
 
 HYPERLYNX_PAD_STACK::HYPERLYNX_PAD_STACK( BOARD* aBoard, const PCB_VIA* aVia )
 {
     m_board  = aBoard;
-    // TODO(JE) padstacks
-    m_sx = m_sy = aVia->GetWidth( PADSTACK::ALL_LAYERS );
     m_angle  = 0;
     m_layers = aVia->GetLayerSet();
     m_drill  = aVia->GetDrillValue();
-    m_shape  = PAD_SHAPE::CIRCLE;
     m_type   = PAD_ATTRIB::PTH;
     m_id     = 0;
+
+    LSET copperLayers = m_layers & LSET::AllCuMask( aBoard->GetCopperLayerCount() );
+
+    for( PCB_LAYER_ID layer : copperLayers.Seq() )
+    {
+        int width = aVia->GetWidth( aVia->Padstack().EffectiveLayerFor( layer ) );
+
+        m_shapes[layer] = { PAD_SHAPE::CIRCLE, width, width };
+    }
 }
 
 
@@ -263,11 +277,23 @@ void HYPERLYNX_EXPORTER::writeSinglePadStack( HYPERLYNX_PAD_STACK& aStack )
     if( outLayers.none() )
         return;
 
-    m_out->Print( 0, "{PADSTACK=%d, %.9f\n", aStack.m_id, iu2hyp( aStack.m_drill ) );
+    const HYPERLYNX_PAD_SHAPE& firstShape = aStack.m_shapes.begin()->second;
 
-    if( outLayers == layerMask )
+    bool uniform = std::all_of( aStack.m_shapes.begin(), aStack.m_shapes.end(),
+                                [&]( const auto& aEntry )
+                                {
+                                    return aEntry.second == firstShape;
+                                } );
+
+    // The spec requires the drill parameter to be absent, not zero, on a padstack with no hole
+    if( aStack.m_drill > 0 )
+        m_out->Print( 0, "{PADSTACK=%d, %.9f\n", aStack.m_id, iu2hyp( aStack.m_drill ) );
+    else
+        m_out->Print( 0, "{PADSTACK=%d\n", aStack.m_id );
+
+    if( outLayers == layerMask && uniform )
     {
-        m_out->Print( 1, "(\"MDEF\", %s)\n", formatPadShape( aStack ).c_str() );
+        m_out->Print( 1, "(\"MDEF\", %s)\n", formatPadShape( firstShape, aStack.m_angle ).c_str() );
     }
     else
     {
@@ -275,7 +301,7 @@ void HYPERLYNX_EXPORTER::writeSinglePadStack( HYPERLYNX_PAD_STACK& aStack )
         {
             m_out->Print( 1, "(\"%s\", %s)\n",
                           (const char*) m_board->GetLayerName( l ).c_str(),
-                          formatPadShape( aStack ).c_str() );
+                          formatPadShape( aStack.m_shapes.at( l ), aStack.m_angle ).c_str() );
         }
     }
 
@@ -683,10 +709,77 @@ bool HYPERLYNX_EXPORTER::Run()
 }
 
 
+<<<<<<< b2e17e0a
 bool ExportBoardToHyperlynx( BOARD* aBoard, const wxFileName& aPath )
+||||||| 1304b76aad
+int BOARD_EDITOR_CONTROL::ExportHyperlynx( const TOOL_EVENT& aEvent )
+=======
+bool ExportBoardToHyperlynxFile( BOARD* aBoard, const wxString& aFullFilename )
 {
+    HYPERLYNX_EXPORTER exporter;
+    exporter.SetBoard( aBoard );
+    exporter.SetOutputFilename( wxFileName( aFullFilename ) );
+
+    return exporter.Run();
+}
+
+
+int BOARD_EDITOR_CONTROL::ExportHyperlynx( const TOOL_EVENT& aEvent )
+>>>>>>> ed8c16703e
+{
+<<<<<<< b2e17e0a
     HYPERLYNX_EXPORTER exporter;
     exporter.SetBoard( aBoard );
     exporter.SetOutputFilename( aPath );
     return exporter.Run();
+||||||| 1304b76aad
+    wxString    wildcard =  wxT( "*.hyp" );
+    BOARD*      board = m_frame->GetBoard();
+    wxFileName  fn = board->GetFileName();
+
+    fn.SetExt( wxT("hyp") );
+
+    wxFileDialog dlg( m_frame, _( "Export Hyperlynx Layout" ), fn.GetPath(), fn.GetFullName(),
+                      wildcard, wxFD_SAVE | wxFD_OVERWRITE_PROMPT );
+
+    KIPLATFORM::UI::AllowNetworkFileSystems( &dlg );
+
+    if( dlg.ShowModal() != wxID_OK )
+        return 0;
+
+    fn = dlg.GetPath();
+
+    // always enforce filename extension, user may not have entered it.
+    fn.SetExt( wxT( "hyp" ) );
+
+    HYPERLYNX_EXPORTER exporter;
+    exporter.SetBoard( board );
+    exporter.SetOutputFilename( fn );
+    exporter.Run();
+
+    return 0;
+=======
+    wxString    wildcard =  wxT( "*.hyp" );
+    BOARD*      board = m_frame->GetBoard();
+    wxFileName  fn = board->GetFileName();
+
+    fn.SetExt( wxT("hyp") );
+
+    wxFileDialog dlg( m_frame, _( "Export Hyperlynx Layout" ), fn.GetPath(), fn.GetFullName(),
+                      wildcard, wxFD_SAVE | wxFD_OVERWRITE_PROMPT );
+
+    KIPLATFORM::UI::AllowNetworkFileSystems( &dlg );
+
+    if( dlg.ShowModal() != wxID_OK )
+        return 0;
+
+    fn = dlg.GetPath();
+
+    // always enforce filename extension, user may not have entered it.
+    fn.SetExt( wxT( "hyp" ) );
+
+    ExportBoardToHyperlynxFile( board, fn.GetFullPath() );
+
+    return 0;
+>>>>>>> ed8c16703e
 }

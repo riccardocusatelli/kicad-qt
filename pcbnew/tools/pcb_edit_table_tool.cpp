@@ -14,18 +14,13 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <tool/tool_manager.h>
 #include <tools/pcb_selection_tool.h>
 #include <tools/pcb_actions.h>
 #include <collectors.h>
-#include <dialogs/dialog_table_properties.h>
 #include <tools/pcb_edit_table_tool.h>
 #include <wx/filedlg.h>
 #include <wx/msgdlg.h>
@@ -115,12 +110,9 @@ int PCB_EDIT_TABLE_TOOL::EditTable( const TOOL_EVENT& aEvent )
         }
     }
 
+    // The frame picks the dialog, since a generated table's cell text is not the user's to edit
     if( parentTable )
-    {
-        DIALOG_TABLE_PROPERTIES dlg( frame(), parentTable );
-
-        dlg.ShowQuasiModal(); // Scintilla's auto-complete requires quasiModal
-    }
+        frame()->OnEditItemRequest( parentTable );
 
     if( clearSelection )
         m_toolMgr->RunAction( ACTIONS::selectionClear );
@@ -214,7 +206,7 @@ int PCB_EDIT_TABLE_TOOL::ExportTableToCSV( const TOOL_EVENT& aEvent )
             PCB_TABLECELL* cell = parentTable->GetCell( row, col );
 
             // Get resolved text (with variables expanded)
-            wxString cellText = cell->GetShownText( false, 0 );
+            wxString cellText = cell->GetShownText( FOR_CANVAS, 0 );
 
             // Write escaped cell text
             outFile << escapeCSV( cellText ).ToStdString();

@@ -14,11 +14,14 @@
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 * General Public License for more details.
 *
-* You should have received a copy of the GNU General Public License along
-* with this program.  If not, see <http://www.gnu.org/licenses/>.
+* You should have received a copy of the GNU General Public License
+* along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <kiplatform/app.h>
+
+#include <pthread.h>
+#include <unistd.h>
 
 #include <wx/string.h>
 #include <wx/sysopt.h>
@@ -78,4 +81,24 @@ void KIPLATFORM::APP::ForceTimerMessagesToBeCreatedIfNecessary()
 
 void KIPLATFORM::APP::AddDynamicLibrarySearchPath( const wxString& aPath )
 {
+}
+
+
+bool KIPLATFORM::APP::SetCurrentThreadPriority( bool aRaise )
+{
+    sched_param param{};
+    int         policy = 0;
+
+    if( pthread_getschedparam( pthread_self(), &policy, &param ) != 0 )
+        return false;
+
+    param.sched_priority = aRaise ? sched_get_priority_max( policy ) : sched_get_priority_min( policy );
+
+    return pthread_setschedparam( pthread_self(), policy, &param ) == 0;
+}
+
+
+void KIPLATFORM::APP::TerminateWithCode( int aExitCode )
+{
+    _exit( aExitCode );
 }

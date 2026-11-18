@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef LIB_TREE_H
@@ -27,16 +23,14 @@
 
 #include <wx/panel.h>
 #include <wx/sizer.h>
-#include <wx/timer.h>
 #include <lib_tree_model_adapter.h>
 #include <widgets/html_window.h>
 #include <widgets/wx_dataviewctrl.h>
+#include <widgets/wx_debounced_action.h>
 
 class wxTextCtrl;
 class wxHtmlLinkEvent;
 class wxSearchCtrl;
-class wxTimer;
-class wxTimerEvent;
 class wxPopupWindow;
 class BITMAP_BUTTON;
 class STD_BITMAP_BUTTON;
@@ -49,7 +43,7 @@ class LIB_ID;
 class LIB_TREE : public wxPanel
 {
 public:
-    ///< Flags to select extra widgets and options
+    /// Flags to select extra widgets and options
     enum FLAGS
     {
         FLAGS_NONE  = 0x00,
@@ -66,7 +60,6 @@ public:
      * @param aParent parent window containing this tree widget.
      * @param aRecentSearchesKey a key into a global map storing recent searches (usually "power",
      *                           "symbols", or "footprints", but could be further differentiated).
-     * @param aLibTable table containing libraries and items to display.
      * @param aAdapter a LIB_TREE_MODEL_ADAPTER instance to use.
      * @param aFlags selection of sub-widgets to include and other options.
      * @param aDetails if not null, a custom HTML_WINDOW to hold symbol details. If null this
@@ -114,7 +107,7 @@ public:
 
     /**
      * Retrieve a list of pointers to selected tree nodes for trees that allow multi-selection.
-     * 
+     *
      * @param aSelection will be filled with a list of pointers of selected tree nodes.
      * @return the number of selected items.
      */
@@ -207,7 +200,7 @@ protected:
     void postPreselectEvent();
 
     /**
-     * Post #SYMBOL_SELECTED event to notify the selection handler that a part has been selected.
+     * Post EVT_LIBITEM_CHOSEN event to notify the selection handler that a part has been selected.
      */
     void postSelectEvent();
 
@@ -230,6 +223,9 @@ protected:
      */
     STATE getState() const;
 
+    /// True when aTreeId has a row the filter shows
+    bool isShown( const wxDataViewItem& aTreeId ) const;
+
     /**
      * Restore the symbol tree widget state from an object.
      */
@@ -249,14 +245,17 @@ protected:
     void onTreeCharHook( wxKeyEvent& aEvent );
 
     void onIdle( wxIdleEvent& aEvent );
-    void onHoverTimer( wxTimerEvent& aEvent );
 
     void onDetailsLink( wxHtmlLinkEvent& aEvent );
     void onPreselect( wxCommandEvent& aEvent );
     void onItemContextMenu( wxDataViewEvent& aEvent );
     void onHeaderContextMenu( wxDataViewEvent& aEvent );
 
-    void onDebounceTimer( wxTimerEvent& aEvent );
+    /// Regenerate the tree from the search text once typing pauses.
+    void onQueryDebounce();
+
+    /// Show the hovered item's preview once the mouse stops moving.
+    void onHoverPreview();
 
 protected:
     wxObjectDataPtr<LIB_TREE_MODEL_ADAPTER> m_adapter;
@@ -265,7 +264,6 @@ protected:
     BITMAP_BUTTON*     m_sort_ctrl;
     WX_DATAVIEWCTRL*   m_tree_ctrl;
     HTML_WINDOW*       m_details_ctrl;
-    wxTimer*           m_debounceTimer;
     bool               m_inTimerEvent;
 
     wxString           m_recentSearchesKey;
@@ -277,7 +275,13 @@ protected:
     wxPoint            m_hoverPos;
     wxDataViewItem     m_hoverItem;
     wxRect             m_hoverItemRect;
-    wxTimer            m_hoverTimer;
+
+    /// Debounces the query typed in the search control.
+    WX_DEBOUNCED_ACTION m_queryDebounce;
+
+    /// Debounces the item preview shown on hover.
+    WX_DEBOUNCED_ACTION m_hoverDebounce;
+
     wxDataViewItem     m_previewItem;
     wxRect             m_previewItemRect;
     wxPopupWindow*     m_previewWindow;

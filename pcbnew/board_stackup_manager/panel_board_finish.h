@@ -15,18 +15,15 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef PANEL_SETUP_BOARD_FINISH_H
-#define PANEL_SETUP_BOARD_FINISH_H
+#pragma once
 
-
+#include <optional>
+#include <vector>
 #include <board.h>
+#include <widgets/via_cross_section_geometry.h>
 #include <board_stackup_manager/panel_board_finish_base.h>
 
 class PAGED_DIALOG;
@@ -41,18 +38,35 @@ public:
 
     void ImportSettingsFrom( BOARD* aBoard );
 
+    void SetStackup( const BOARD_STACKUP& aStackup, int aCopperLayerCount );
+
     // Called by wxWidgets: transfer current settings stored in m_stackup to the board
     bool TransferDataFromWindow() override;
 
     bool TransferDataFromWindow( BOARD_STACKUP& aStackup );
 
 private:
+    /// A via protection checkbox, the board setting it edits and the preview flag it drives
+    struct VIA_PROTECTION_CONTROL
+    {
+        wxCheckBox* PANEL_SETUP_BOARD_FINISH_BASE::* m_CheckBox;
+        bool BOARD_DESIGN_SETTINGS::* m_Setting;
+        std::optional<bool> VIA_CROSS_SECTION_GEOMETRY::STATE::* m_State;
+    };
+
+    static const std::vector<VIA_PROTECTION_CONTROL>& viaProtectionControls();
+
     void synchronizeWithBoard();
+
+    /// Grey out the features that cannot be built with the ones selected
+    void enableViaProtection();
+    void updateViaPreview();
+    void onViaProtectionChanged( wxCommandEvent& aEvent );
 
 private:
     PCB_EDIT_FRAME*         m_frame;
     BOARD*                  m_board;
     BOARD_DESIGN_SETTINGS*  m_brdSettings;
+    BOARD_STACKUP           m_stackup;
+    int                     m_copperLayerCount;
 };
-
-#endif      // #ifndef PANEL_SETUP_BOARD_FINISH_H

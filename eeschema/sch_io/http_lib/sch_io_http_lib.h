@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -37,8 +37,6 @@
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
-#include <optional>
-#include <set>
 #include <shared_mutex>
 #include <thread>
 #include <unordered_set>
@@ -57,6 +55,8 @@ class SCH_IO_HTTP_LIB : public SCH_IO
 public:
     SCH_IO_HTTP_LIB();
     ~SCH_IO_HTTP_LIB() override { stopBackgroundRefresh(); }
+
+    void StopBackgroundRefresh() override { stopBackgroundRefresh(); }
 
     const IO_BASE::IO_FILE_DESC GetLibraryDesc() const override
     {
@@ -111,7 +111,7 @@ public:
         m_sourcePatcher = std::move( aOverride );
     }
 
-    void SaveSymbol( const wxString& aLibraryPath, const LIB_SYMBOL* aSymbol,
+    void SaveSymbol( const wxString& aLibraryPath, std::unique_ptr<LIB_SYMBOL> aSymbol,
                      const std::map<std::string, UTF8>* aProperties = nullptr ) override;
 
     const wxString& GetError() const override { return m_lastError; }
@@ -123,34 +123,16 @@ private:
 
     void connect();
 
-    /**
-     * Build the symbol for one part from its source symbol.
-     *
-     * @param aPendingSourceLibs receives the nickname of a source library that has not finished
-     *                           loading, when that is why the source symbol was not found.
-     */
     LIB_SYMBOL* loadSymbolFromPart( const wxString& aLibraryPath, const wxString& aSymbolName,
                                     const HTTP_LIB_CATEGORY& aCategory, const HTTP_LIB_PART& aPart,
-                                    std::set<wxString>& aCustomFields, std::set<wxString>& aPendingSourceLibs );
+                                    std::set<wxString>& aCustomFields );
 
     void cacheLib( const wxString& aLibraryPath );
 
-    /**
-     * Rebuild the cache from the last fetched parts once a source library that was still loading
-     * when the cache was built has finished, so its parts stop being empty symbols.
-     */
-    void resolvePendingSources();
-
     size_t computeSignature( const std::map<std::string, HTTP_LIB_CATEGORY>& aCategoryData ) const;
 
-    /**
-     * @param aSignature is the signature of \a aCategoryData, recorded with the published cache.
-     * @param aExpectedModifyHash when set, the result is only published if no other build has
-     *                            published since the caller read this modify hash.
-     * @return true if the new cache was published.
-     */
-    bool materializeCache( const wxString& aLibraryPath, std::map<std::string, HTTP_LIB_CATEGORY> aCategoryData,
-                           size_t aSignature, std::optional<int> aExpectedModifyHash = std::nullopt );
+    void materializeCache( const wxString& aLibraryPath,
+                           const std::map<std::string, HTTP_LIB_CATEGORY>& aCategoryData );
 
     void startBackgroundRefresh();
     void stopBackgroundRefresh();
@@ -189,13 +171,7 @@ private:
     size_t m_cacheSignature = 0;
     int m_modifyHash = 0;
 
-    /// Source libraries that were still loading when the cache was built
-    std::set<wxString> m_pendingSourceLibs;
-
-    /// The parts the cache was built from, kept only while m_pendingSourceLibs is not empty
-    std::map<std::string, HTTP_LIB_CATEGORY> m_pendingCategoryData;
-
-    /// Protects m_symbolCache, m_partIdMap, m_customFields, and the pending source state.
+    /// Protects m_symbolCache, m_partIdMap, and m_customFields.
     std::shared_mutex m_cacheMutex;
 
     /// Serializes loadSymbolFromPart calls

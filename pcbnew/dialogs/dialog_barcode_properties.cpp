@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <core/type_helpers.h>
@@ -62,6 +58,10 @@ DIALOG_BARCODE_PROPERTIES::DIALOG_BARCODE_PROPERTIES( PCB_BASE_FRAME* aParent, P
     m_currentBarcode = aBarcode; // aBarcode can not be NULL (no FOOTPRINT editor?)
 
     m_board = m_parent->GetBoard();
+
+    // Configure display origin transforms
+    m_posX.SetCoordType( ORIGIN_TRANSFORMS::ABS_X_COORD );
+    m_posY.SetCoordType( ORIGIN_TRANSFORMS::ABS_Y_COORD );
 
     // Use the board as parent so text variables like ${PART_NUMBER} can be resolved
     // in the preview. The dummy barcode is not actually added to the board.
@@ -195,7 +195,7 @@ bool DIALOG_BARCODE_PROPERTIES::TransferDataToWindow()
     m_orientation.ChangeAngleValue( m_dummyBarcode->GetAngle() );
 
     // Show text option
-    m_cbShowText->SetValue( m_dummyBarcode->Text().IsVisible() );
+    m_cbShowText->SetValue( m_dummyBarcode->GetShowText() );
 
     m_cbKnockout->SetValue( m_dummyBarcode->IsKnockout() );
     m_knockoutMarginX.ChangeValue( m_dummyBarcode->GetMargin().x );
@@ -252,7 +252,7 @@ bool DIALOG_BARCODE_PROPERTIES::TransferDataFromWindow()
 
     m_parent->GetCanvas()->Refresh();
 
-    commit.Push( _( "Modify barcode" ) );
+    commit.Push( _( "Modify Barcode" ) );
 
     return true;
 }
@@ -287,7 +287,7 @@ bool DIALOG_BARCODE_PROPERTIES::transferDataToBarcode( PCB_BARCODE* aBarcode )
     aBarcode->SetMargin( VECTOR2I( m_knockoutMarginX.GetIntValue(), m_knockoutMarginY.GetIntValue() ) );
 
     // Show text
-    aBarcode->Text().SetVisible( m_cbShowText->GetValue() );
+    aBarcode->SetShowText( m_cbShowText->GetValue() );
 
     // Barcode kind
     switch( m_barcode->GetSelection() )

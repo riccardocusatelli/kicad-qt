@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <tool/tool_manager.h>
@@ -126,12 +122,16 @@ bool SYMBOL_EDITOR_MOVE_TOOL::doMoveSelection( const TOOL_EVENT& aEvent, SCH_COM
 
     // Be sure that there is at least one item that we can move. If there's no selection try
     // looking for the stuff under mouse cursor (i.e. Kicad old-style hover selection).
-    SCH_SELECTION& selection = m_frame->IsSymbolAlias()
-                                            ? m_selectionTool->RequestSelection( { SCH_FIELD_T } )
-                                            : m_selectionTool->RequestSelection();
-    bool          unselect = selection.IsHover();
+    SCH_SELECTION& selection = m_frame->IsSymbolAlias() ? m_selectionTool->RequestSelection( { SCH_FIELD_T } )
+                                                        : m_selectionTool->RequestSelection();
+    bool           unselect = selection.IsHover();
 
-    if( !m_frame->IsSymbolEditable() || selection.Empty() )
+    if( selection.Empty() )
+        return false;
+
+    // We can get here with (only) fields selected in an alias symbol, so we
+    // don't check graphical editability.
+    if( !m_frame->IsSymbolEditable() )
         return false;
 
     if( m_moveInProgress )
@@ -141,7 +141,7 @@ bool SYMBOL_EDITOR_MOVE_TOOL::doMoveSelection( const TOOL_EVENT& aEvent, SCH_COM
         return true;
     }
 
-    m_frame->PushTool( aEvent );
+    SCOPED_TOOL_PUSHER raii( m_frame, aEvent );
 
     Activate();
     // Must be done after Activate() so that it gets set into the correct context
@@ -201,7 +201,7 @@ bool SYMBOL_EDITOR_MOVE_TOOL::doMoveSelection( const TOOL_EVENT& aEvent, SCH_COM
 
                             got_unit[cur_pin->GetUnit()] = true;
 
-                            for( SCH_PIN* pin : symbol->GetPins() )
+                            for( SCH_PIN* pin : symbol->GetGraphicalPins( ALL_UNITS, ALL_BODY_STYLES ) )
                             {
                                 if( !got_unit[pin->GetUnit()]
                                         && pin->GetPosition() == cur_pin->GetPosition()
@@ -331,8 +331,8 @@ bool SYMBOL_EDITOR_MOVE_TOOL::doMoveSelection( const TOOL_EVENT& aEvent, SCH_COM
             }
             else
             {
-                m_cursor = grid.BestSnapAnchor( controls->GetCursorPosition( false ), snapLayer,
-                                                selection );
+                m_cursor = grid.ResolveSnap( controls->GetCursorPosition( false ), snapLayer, selection, prevPos )
+                                .position;
             }
 
             if( axisLock == AXIS_LOCK::HORIZONTAL )
@@ -396,7 +396,9 @@ bool SYMBOL_EDITOR_MOVE_TOOL::doMoveSelection( const TOOL_EVENT& aEvent, SCH_COM
         //
         else if( evt->IsMouseUp( BUT_LEFT )
                 || evt->IsClick( BUT_LEFT )
-                || evt->IsDblClick( BUT_LEFT ) )
+                || evt->IsAction( &ACTIONS::cursorClick )
+                || evt->IsDblClick( BUT_LEFT )
+                || evt->IsAction( &ACTIONS::cursorDblClick ) )
         {
             if( selection.GetSize() == 1 && selection.Front()->Type() == SCH_PIN_T )
             {
@@ -421,8 +423,7 @@ bool SYMBOL_EDITOR_MOVE_TOOL::doMoveSelection( const TOOL_EVENT& aEvent, SCH_COM
                 catch( const boost::bad_pointer& e )
                 {
                     restore_state = true;
-                    KI_FAIL_MSG( wxString::Format( wxT( "Boost pointer exception occurred: %s" ),
-                                                  e.what() ) );
+                    KI_FAIL_MSG( wxString::Format( wxT( "Boost pointer exception occurred: %s" ), e.what() ) );
                 }
             }
 
@@ -434,6 +435,10 @@ bool SYMBOL_EDITOR_MOVE_TOOL::doMoveSelection( const TOOL_EVENT& aEvent, SCH_COM
         }
 
     } while( ( evt = Wait() ) );  // Assignment intentional; not equality test
+
+    // A shutdown abandons the move rather than committing it
+    if( !evt )
+        restore_state = true;
 
     controls->ForceCursorPosition( false );
     controls->ShowCursor( false );
@@ -448,7 +453,6 @@ bool SYMBOL_EDITOR_MOVE_TOOL::doMoveSelection( const TOOL_EVENT& aEvent, SCH_COM
         m_toolMgr->RunAction( ACTIONS::selectionClear );
 
     m_moveInProgress = false;
-    m_frame->PopTool( aEvent );
 
     return !restore_state;
 }

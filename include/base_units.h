@@ -15,16 +15,14 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
 #ifndef _BASE_UNITS_H_
 #define _BASE_UNITS_H_
+
+#include <cstdint>
 
 /*  Note about internal units and max size for boards and items
 
@@ -78,12 +76,14 @@ struct EDA_IU_SCALE
     const double IU_PER_PS{ 1e6 };        ///< Internal time units are attoseconds
     const double IU_PER_PS_PER_MM{ 1e6 }; ///< Internal delay units are attoseconds/mm
     const double MM_PER_IU;
+    const double MILS_PER_IU;
 
 
     constexpr EDA_IU_SCALE( double aIUPerMM ) :
             IU_PER_MM( aIUPerMM ),
             IU_PER_MILS( aIUPerMM * 0.0254 ),
-            MM_PER_IU( 1 / IU_PER_MM )
+            MM_PER_IU( 1 / IU_PER_MM ),
+            MILS_PER_IU( 1 / IU_PER_MILS )
     {
     }
 
@@ -106,6 +106,22 @@ struct EDA_IU_SCALE
 
         return static_cast<int>( mils < 0 ? mils - 0.5 : mils + 0.5 );
     }
+
+    constexpr inline int64_t IUToNm( int iu ) const
+    {
+        return static_cast<int64_t>( iu ) * static_cast<int64_t>( 1000000.0 / IU_PER_MM );
+    }
+
+    constexpr inline int NmToIU( int64_t nm ) const
+    {
+        double iu = static_cast<double>( nm ) * IU_PER_MM / 1000000.0;
+        return static_cast<int>( iu < 0 ? iu - 0.5 : iu + 0.5 );
+    }
+
+    constexpr inline double NmToIUD( int64_t nm ) const
+    {
+        return static_cast<double>( nm ) * IU_PER_MM / 1000000.0;
+    }
 };
 
 constexpr EDA_IU_SCALE gerbIUScale = EDA_IU_SCALE( GERB_IU_PER_MM );
@@ -118,15 +134,13 @@ constexpr EDA_IU_SCALE unityScale = EDA_IU_SCALE( 1 );
 constexpr double ARC_LOW_DEF_MM = 0.02;
 constexpr double ARC_HIGH_DEF_MM = 0.005;
 
-#ifndef SWIG
 // The max error is the distance between the middle of a segment, and the circle
 // for circle/arc to segment approximation.
 // Warning: too small values can create very long calculation time in zone filling
 // 0.05 to 0.005 mm are reasonable values
 
-// Allowed error to approximate an arg by segments, in Pcbnew IU
+// Allowed error to approximate an arc by segments, in Pcbnew IU
 constexpr int ARC_LOW_DEF = pcbIUScale.mmToIU( ARC_LOW_DEF_MM );
 constexpr int ARC_HIGH_DEF = pcbIUScale.mmToIU( ARC_HIGH_DEF_MM );
-#endif
 
 #endif   // _BASE_UNITS_H_

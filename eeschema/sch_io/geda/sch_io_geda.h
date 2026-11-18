@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  * This file contains file format knowledge derived from the gEDA and
  * Lepton EDA projects:
@@ -318,7 +318,7 @@ private:
     /// Loaded symbols for this import session, keyed by basename.
     std::map<wxString, std::unique_ptr<LIB_SYMBOL>> m_libSymbols;
 
-    /// Sequential counter for auto-generated #PWR references.
+    /// Sequential counter for auto-generated \#PWR references.
     int m_powerCounter;
 
     /// Net endpoint positions in raw gEDA coordinates for junction detection.

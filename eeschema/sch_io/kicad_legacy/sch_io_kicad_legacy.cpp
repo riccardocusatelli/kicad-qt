@@ -16,8 +16,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <algorithm>
@@ -116,7 +116,7 @@ void SCH_IO_KICAD_LEGACY::checkpoint()
                                                             / std::max( 1U, m_lineCount ) );
 
             if( !m_progressReporter->KeepRefreshing() )
-                THROW_IO_ERROR( _( "Open canceled by user." ) );
+                THROW_IO_CANCELLED();
 
             m_lastProgressLine = curLine;
         }
@@ -232,7 +232,7 @@ void SCH_IO_KICAD_LEGACY::loadHierarchy( SCH_SHEET* aSheet )
             aSheet->GetScreen()->SetFileName( fileName.GetFullPath() );
 
             if( aSheet == m_rootSheet )
-                const_cast<KIID&>( aSheet->m_Uuid ) = aSheet->GetScreen()->GetUuid();
+                aSheet->SyncUuidToScreen();
 
             try
             {
@@ -286,7 +286,7 @@ void SCH_IO_KICAD_LEGACY::loadFile( const wxString& aFileName, SCH_SCREEN* aScre
         m_progressReporter->Report( wxString::Format( _( "Loading %s..." ), aFileName ) );
 
         if( !m_progressReporter->KeepRefreshing() )
-            THROW_IO_ERROR( _( "Open canceled by user." ) );
+            THROW_IO_CANCELLED();
 
         m_lineReader = &reader;
         m_lineCount = 0;
@@ -354,7 +354,13 @@ void SCH_IO_KICAD_LEGACY::LoadContent( LINE_READER& aReader, SCH_SCREEN* aScreen
         else if( strCompare( "Text", line ) )
             aScreen->Append( loadText( aReader ) );
         else if( strCompare( "BusAlias", line ) )
-            aScreen->AddBusAlias( loadBusAlias( aReader, aScreen ) );
+        {
+            auto alias = loadBusAlias( aReader, aScreen );
+            const SCHEMATIC* schematic = aScreen->Schematic();
+
+            if( m_appending || !schematic || !schematic->HasProjectBusAliases() )
+                aScreen->AddBusAlias( std::move( alias ) );
+        }
         else if( strCompare( "Kmarq", line ) )
             continue; // Ignore legacy (until 2009) ERC marker entry
         else if( strCompare( "$EndSCHEMATC", line ) )
@@ -1088,8 +1094,9 @@ SCH_TEXT* SCH_IO_KICAD_LEGACY::loadText( LINE_READER& aReader )
             penWidth = parseInt( aReader, line, &line );
     }
 
+    // Legacy bold is a non-zero pen width; store auto thickness and let the Bold flag drive it.
     text->SetBoldFlag( penWidth != 0 );
-    text->SetTextThickness( penWidth != 0 ? GetPenSizeForBold( size ) : 0 );
+    text->SetTextThickness( 0 );
 
     // Read the text string for the text.
     char* tmp = aReader.ReadLine();
@@ -1386,9 +1393,9 @@ SCH_SYMBOL* SCH_IO_KICAD_LEGACY::loadSymbol( LINE_READER& aReader )
             if( name.IsEmpty() )
             {
                 if( field->IsMandatory() )
-                    name = GetCanonicalFieldName( field->GetId() );
+                    name = GetDefaultFieldName( field->GetId(), UNTRANSLATED );
                 else
-                    name = GetUserFieldName( legacy_field_id, !DO_TRANSLATE );
+                    name = GetUserFieldName( legacy_field_id, UNTRANSLATED );
             }
 
             field->SetName( name );
@@ -2162,12 +2169,12 @@ LIB_SYMBOL* SCH_IO_KICAD_LEGACY::LoadSymbol( const wxString& aLibraryPath,
 }
 
 
-void SCH_IO_KICAD_LEGACY::SaveSymbol( const wxString& aLibraryPath, const LIB_SYMBOL* aSymbol,
+void SCH_IO_KICAD_LEGACY::SaveSymbol( const wxString& aLibraryPath, std::unique_ptr<LIB_SYMBOL> aSymbol,
                                       const std::map<std::string, UTF8>* aProperties )
 {
     cacheLib( aLibraryPath, aProperties );
 
-    m_cache->AddSymbol( aSymbol );
+    m_cache->AddSymbol( std::move( aSymbol ) );
 
     if( !isBuffering( aProperties ) )
         m_cache->Save( writeDocFile( aProperties ) );
@@ -2190,10 +2197,7 @@ void SCH_IO_KICAD_LEGACY::CreateLibrary( const wxString& aLibraryPath,
                                          const std::map<std::string, UTF8>* aProperties )
 {
     if( wxFileExists( aLibraryPath ) )
-    {
-        THROW_IO_ERROR( wxString::Format( _( "Symbol library '%s' already exists." ),
-                                          aLibraryPath.GetData() ) );
-    }
+        THROW_IO_ERRORF( _( "Symbol library '%s' already exists." ), aLibraryPath.GetData() );
 
     delete m_cache;
     m_cache = new SCH_IO_KICAD_LEGACY_LIB_CACHE( aLibraryPath );
@@ -2214,10 +2218,7 @@ bool SCH_IO_KICAD_LEGACY::DeleteLibrary( const wxString& aLibraryPath,
     // Some of the more elaborate wxRemoveFile() crap puts up its own wxLog dialog
     // we don't want that.  we want bare metal portability with no UI here.
     if( wxRemove( aLibraryPath ) )
-    {
-        THROW_IO_ERROR( wxString::Format( _( "Symbol library '%s' cannot be deleted." ),
-                                          aLibraryPath.GetData() ) );
-    }
+        THROW_IO_ERRORF( _( "Symbol library '%s' cannot be deleted." ), aLibraryPath.GetData() );
 
     if( m_cache && m_cache->IsFile( aLibraryPath ) )
     {

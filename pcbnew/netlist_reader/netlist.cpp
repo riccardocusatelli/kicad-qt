@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <functional>
@@ -29,25 +25,22 @@ using namespace std::placeholders;
 
 #include <confirm.h>
 #include <drc/drc_engine.h>
+#include <kiway.h>
 #include <netlist_reader/pcb_netlist.h>
 #include <netlist_reader/netlist_reader.h>
+#include <netlist_reader/pcb_netlist_utils.h>
 #include <reporter.h>
-#include <lib_id.h>
-#include <footprint_library_adapter.h>
 #include <board.h>
 #include <component_classes/component_class_manager.h>
 #include <footprint.h>
 #include <pad.h>
 #include <pcb_track.h>
 #include <spread_footprints.h>
-#include <ratsnest/ratsnest_data.h>
-#include <pcb_io/pcb_io_mgr.h>
 #include "board_netlist_updater.h"
 #include <tool/tool_manager.h>
 #include <tools/drc_tool.h>
 #include <tools/pcb_actions.h>
 #include <project/project_file.h>  // LAST_PATH_TYPE
-#include <project_pcb.h>
 
 
 bool PCB_EDIT_FRAME::ReadNetlistFromFile( const wxString &aFilename, NETLIST& aNetlist,
@@ -69,7 +62,7 @@ bool PCB_EDIT_FRAME::ReadNetlistFromFile( const wxString &aFilename, NETLIST& aN
 
         SetLastPath( LAST_PATH_NETLIST, aFilename );
         netlistReader->LoadNetlist();
-        LoadFootprints( aNetlist, aReporter );
+        LoadNetlistFootprints( GetBoard(), aNetlist, aReporter );
     }
     catch( const IO_ERROR& ioe )
     {
@@ -84,7 +77,7 @@ bool PCB_EDIT_FRAME::ReadNetlistFromFile( const wxString &aFilename, NETLIST& aN
 }
 
 
-void PCB_EDIT_FRAME::OnNetlistChanged( BOARD_NETLIST_UPDATER& aUpdater, bool* aRunDragCommand )
+void PCB_EDIT_FRAME::OnNetlistChanged( BOARD_NETLIST_UPDATER& aUpdater, bool* aDidRunDragCommand )
 {
     BOARD* board = GetBoard();
 
@@ -102,7 +95,7 @@ void PCB_EDIT_FRAME::OnNetlistChanged( BOARD_NETLIST_UPDATER& aUpdater, bool* aR
 
     try
     {
-        drcTool->GetDRCEngine()->InitEngine( GetDesignRulesPath() );
+        drcTool->GetDRCEngine()->InitEngine( board->GetDesignRulesPath() );
     }
     catch( PARSE_ERROR& )
     {
@@ -152,139 +145,13 @@ void PCB_EDIT_FRAME::OnNetlistChanged( BOARD_NETLIST_UPDATER& aUpdater, bool* aR
         std::copy( newFootprints.begin(), newFootprints.end(), std::back_inserter( items ) );
         GetToolManager()->RunAction<EDA_ITEMS*>( ACTIONS::selectItems, &items );
 
-        *aRunDragCommand = true;
+        *aDidRunDragCommand = true;
     }
 
-    Compile_Ratsnest( true );
+    board->CompileRatsnest();
+    SetMsgPanel( board );
 
     UpdateVariantSelectionCtrl();
 
     GetCanvas()->Refresh();
-}
-
-
-void PCB_EDIT_FRAME::LoadFootprints( NETLIST& aNetlist, REPORTER& aReporter )
-{
-    wxString   msg;
-    LIB_ID     lastFPID;
-    COMPONENT* component;
-    FOOTPRINT* footprint = nullptr;
-    FOOTPRINT* fpOnBoard = nullptr;
-
-    if( aNetlist.IsEmpty() || PROJECT_PCB::FootprintLibAdapter( &Prj() )->Rows().empty() )
-        return;
-
-    aNetlist.SortByFPID();
-
-    for( unsigned ii = 0; ii < aNetlist.GetCount(); ii++ )
-    {
-        component = aNetlist.GetComponent( ii );
-
-        // The FPID is ok as long as there is a footprint portion coming from eeschema.
-        if( !component->GetFPID().GetLibItemName().size() )
-        {
-            msg.Printf( _( "No footprint defined for symbol %s." ),
-                        component->GetReference() );
-            aReporter.Report( msg, RPT_SEVERITY_ERROR );
-
-            continue;
-        }
-
-        // Check if component footprint is already on BOARD and only load the footprint from
-        // the library if it's needed.  Nickname can be blank.
-        if( aNetlist.IsFindByTimeStamp() )
-        {
-            for( const KIID& uuid : component->GetKIIDs() )
-            {
-                KIID_PATH path = component->GetPath();
-                path.push_back( uuid );
-
-                if( ( fpOnBoard = m_pcb->FindFootprintByPath( path ) ) != nullptr )
-                    break;
-            }
-        }
-        else
-            fpOnBoard = m_pcb->FindFootprintByReference( component->GetReference() );
-
-        // When the schematic-side FPID has no library nickname (legacy format), match
-        // only by item name so we don't flag a mismatch against a fully qualified board FPID.
-        bool footprintMisMatch = false;
-
-        if( fpOnBoard )
-        {
-            if( component->GetFPID().IsLegacy() )
-            {
-                footprintMisMatch =
-                        fpOnBoard->GetFPID().GetLibItemName() != component->GetFPID().GetLibItemName();
-            }
-            else
-            {
-                footprintMisMatch = fpOnBoard->GetFPID() != component->GetFPID();
-            }
-        }
-
-        if( footprintMisMatch && !aNetlist.GetReplaceFootprints() )
-        {
-            msg.Printf( _( "Footprint of %s changed: board footprint '%s', netlist footprint '%s'." ),
-                        component->GetReference(),
-                        fpOnBoard->GetFPID().Format().wx_str(),
-                        component->GetFPID().Format().wx_str() );
-            aReporter.Report( msg, RPT_SEVERITY_WARNING );
-
-            continue;
-        }
-
-        if( !aNetlist.GetReplaceFootprints() )
-            footprintMisMatch = false;
-
-        if( fpOnBoard && !footprintMisMatch )   // nothing else to do here
-            continue;
-
-        if( component->GetFPID() != lastFPID )
-        {
-            footprint = nullptr;
-
-            // The LIB_ID is ok as long as there is a footprint portion coming the library if
-            // it's needed.  Nickname can be blank.
-            if( !component->GetFPID().GetLibItemName().size() )
-            {
-                msg.Printf( _( "%s footprint ID '%s' is not valid." ),
-                            component->GetReference(),
-                            component->GetFPID().Format().wx_str() );
-                aReporter.Report( msg, RPT_SEVERITY_ERROR );
-
-                continue;
-            }
-
-            // loadFootprint() can find a footprint with an empty nickname in fpid.
-            footprint = PCB_BASE_FRAME::loadFootprint( component->GetFPID() );
-
-            if( footprint )
-            {
-                lastFPID = component->GetFPID();
-            }
-            else
-            {
-                msg.Printf( _( "%s footprint '%s' not found in any libraries in the footprint "
-                               "library table." ),
-                            component->GetReference(),
-                            component->GetFPID().GetLibItemName().wx_str() );
-                aReporter.Report( msg, RPT_SEVERITY_ERROR );
-
-                continue;
-            }
-        }
-        else
-        {
-            // Footprint already loaded from a library, duplicate it (faster)
-            if( !footprint )
-                continue;            // Footprint does not exist in any library.
-
-            footprint = new FOOTPRINT( *footprint );
-            footprint->ResetUuidDirect();
-        }
-
-        if( footprint )
-            component->SetFootprint( footprint );
-    }
 }

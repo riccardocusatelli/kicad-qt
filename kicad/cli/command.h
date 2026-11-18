@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef CLI_COMMAND_H
@@ -95,7 +95,7 @@ protected:
     /**
      * Set up the list of variants to output arguement.
      */
-    void addVariantsArg();
+    void addVariantsArg( bool aRequireOutputToken = true );
 
     /**
      * The internal handler that should be overloaded to implement command specific
@@ -133,11 +133,6 @@ protected:
     bool                     m_hasDefineArg;
 
     /**
-     * Whether or not the output arg is expecting a directory
-     */
-    bool                     m_outputArgExpectsDir;
-
-    /**
      * Value of the common input arg if configured
      */
     wxString                 m_argInput;
@@ -161,6 +156,7 @@ protected:
      * Whether or not the input argument for variant names was added for parsing.
      */
     bool                     m_hasVariantArg;
+    bool                     m_variantsRequireOutputToken;
 
     /**
      * The list of variant names to output.

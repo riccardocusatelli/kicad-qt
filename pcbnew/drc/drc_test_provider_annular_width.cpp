@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <common.h>
@@ -137,18 +133,18 @@ bool DRC_TEST_PROVIDER_ANNULAR_WIDTH::Run()
 
                 if( pad->GetOffset( aLayer ) == VECTOR2I( 0, 0 ) )
                 {
-                    int xDist = KiROUND( ( pad->GetSizeX() - pad->GetDrillSizeX() ) / 2.0 );
-                    int yDist = KiROUND( ( pad->GetSizeY() - pad->GetDrillSizeY() ) / 2.0 );
+                    int xDist = KiROUND( ( pad->GetSize( aLayer ).x - pad->GetDrillSize().x ) / 2.0 );
+                    int yDist = KiROUND( ( pad->GetSize( aLayer ).y - pad->GetDrillSize().y ) / 2.0 );
 
                     if( yDist < xDist )
                     {
-                        *ptA = pad->GetPosition() - VECTOR2I( 0, pad->GetDrillSizeY() / 2 );
-                        *ptB = pad->GetPosition() - VECTOR2I( 0, pad->GetSizeY() / 2 );
+                        *ptA = pad->GetPosition() - VECTOR2I( 0, pad->GetDrillSize().y / 2 );
+                        *ptB = pad->GetPosition() - VECTOR2I( 0, pad->GetSize( aLayer ).y / 2 );
                     }
                     else
                     {
-                        *ptA = pad->GetPosition() - VECTOR2I( pad->GetDrillSizeX() / 2, 0 );
-                        *ptB = pad->GetPosition() - VECTOR2I( pad->GetSizeX() / 2, 0 );
+                        *ptA = pad->GetPosition() - VECTOR2I( pad->GetDrillSize().x / 2, 0 );
+                        *ptB = pad->GetPosition() - VECTOR2I( pad->GetSize( aLayer ).x / 2, 0 );
                     }
 
                     RotatePoint( *ptA, pad->GetPosition(), pad->GetOrientation() );
@@ -173,45 +169,48 @@ bool DRC_TEST_PROVIDER_ANNULAR_WIDTH::Run()
                     }
                 }
 
+                BOX2I                   padBBox = pad->GetBoundingBox( aLayer );
                 std::vector<const PAD*> overlappingSameNumPads;
 
                 for( const PAD* p : sameNumPads )
                 {
-                    if( p->IsOnLayer( aLayer )
-                            && pad->GetBoundingBox().Intersects( p->GetBoundingBox() ) )
-                    {
+                    if( p->IsOnLayer( aLayer ) && padBBox.Intersects( p->GetBoundingBox( aLayer) ) )
                         overlappingSameNumPads.push_back( p );
-                    }
                 }
 
-                // Same-number pads only add copper. Skip the slow path unless one
-                // fully covers this pad (combined outline is then bigger than this
-                // pad alone) or one's drill cuts into this pad (drill-to-drill copper
-                // becomes the real limit).
+                // Same-number pads only add copper. Skip the slow path unless one fully covers this pad
+                // (combined outline is then bigger than this pad alone) or one's drill cuts into this pad
+                // (drill-to-drill copper becomes the real limit).
                 bool overlapHasConstrainingHole = false;
                 bool overlapCoversThisPad = false;
 
                 for( const PAD* p : overlappingSameNumPads )
                 {
-                    if( p->GetBoundingBox().Contains( pad->GetBoundingBox() ) )
+                    if( p->GetBoundingBox( aLayer ).Contains( padBBox ) )
                         overlapCoversThisPad = true;
 
-                    if( p->HasHole() && pad->GetBoundingBox().Intersects( p->GetEffectiveHoleShape()->BBox() ) )
+                    if( p->HasHole() )
                     {
-                        overlapHasConstrainingHole = true;
+                        BOX2I holeBBox = p->GetEffectiveHoleShape( aLayer, ANNULAR_WIDTH_CONSTRAINT )->BBox();
+
+                        if( padBBox.Intersects( holeBBox ) )
+                            overlapHasConstrainingHole = true;
                     }
 
                     if( overlapCoversThisPad && overlapHasConstrainingHole )
                         break;
                 }
 
-                if( handled && !overlappingSameNumPads.empty() && !overlapHasConstrainingHole && !overlapCoversThisPad
-                    && constraint.Value().HasMin() && !constraint.Value().HasMax() )
+                if( handled
+                        && !overlappingSameNumPads.empty()
+                        && !overlapHasConstrainingHole
+                        && !overlapCoversThisPad
+                        && constraint.Value().HasMin()
+                        && !constraint.Value().HasMax() )
                 {
-                    // Circle: same annular width all around, so the fast value is exact
-                    // whenever any direction is uncovered. Non-circle has a narrow side
-                    // an SMD can rescue by itself, so trust the fast value here only
-                    // when it already passes.
+                    // Circle: same annular width all around, so the fast value is exact whenever any direction
+                    // is uncovered. Non-circle has a narrow side an SMD can rescue by itself, so trust the fast
+                    // value here only when it already passes.
                     if( pad->GetShape( aLayer ) == PAD_SHAPE::CIRCLE )
                     {
                         return;
@@ -228,8 +227,9 @@ bool DRC_TEST_PROVIDER_ANNULAR_WIDTH::Run()
                 if( !handled || !overlappingSameNumPads.empty() )
                 {
                     // Slow (but general purpose) method.
-                    SHAPE_POLY_SET padOutline;
-                    std::shared_ptr<SHAPE_SEGMENT> slot = pad->GetEffectiveHoleShape();
+                    SHAPE_POLY_SET                 padOutline;
+                    std::shared_ptr<SHAPE_SEGMENT> slot = pad->GetEffectiveHoleShape( aLayer,
+                                                                                      ANNULAR_WIDTH_CONSTRAINT );
 
                     pad->TransformShapeToPolygon( padOutline, aLayer, 0, pad->GetMaxError(), ERROR_INSIDE );
 
@@ -378,6 +378,9 @@ bool DRC_TEST_PROVIDER_ANNULAR_WIDTH::Run()
                     via->Padstack().ForEachUniqueLayer(
                             [&]( PCB_LAYER_ID aLayer )
                             {
+                                if( via->IsGhostLayer( aLayer ) )
+                                    return;
+
                                 auto constraint = m_drcEngine->EvalRules( ANNULAR_WIDTH_CONSTRAINT, item,
                                                                           nullptr, aLayer );
 

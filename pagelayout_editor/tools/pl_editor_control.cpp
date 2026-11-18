@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <kiway.h>
@@ -33,7 +29,7 @@
 
 #include <pl_editor_frame.h>
 #include <pl_editor_id.h>
-#include <properties_frame.h>
+#include "widgets/pl_properties_panel.h"
 #include <tools/pl_actions.h>
 #include <tools/pl_editor_control.h>
 #include <tools/pl_selection_tool.h>
@@ -150,7 +146,7 @@ int PL_EDITOR_CONTROL::UpdateMessagePanel( const TOOL_EVENT& aEvent )
     PL_SELECTION&      selection = selTool->GetSelection();
 
     // The Properties frame will be updated. Avoid flicker during update:
-    wxWindowUpdateLocker updateLock( m_frame->GetPropertiesFrame() );
+    wxWindowUpdateLocker updateLock( m_frame->GetPropertiesPanel() );
 
     if( selection.GetSize() == 1 )
     {
@@ -162,17 +158,13 @@ int PL_EDITOR_CONTROL::UpdateMessagePanel( const TOOL_EVENT& aEvent )
 
         item->GetMsgPanelInfo( m_frame->GetMsgPanelContext(), msgItems );
         m_frame->SetMsgPanel( msgItems );
-
-        DS_DATA_ITEM* dataItem = static_cast<DS_DRAW_ITEM_BASE*>( item )->GetPeer();
-        m_frame->GetPropertiesFrame()->CopyPrmsFromItemToPanel( dataItem );
     }
     else
     {
         m_frame->UpdateMsgPanelInfo();
-        m_frame->GetPropertiesFrame()->CopyPrmsFromItemToPanel( nullptr );
     }
 
-    m_frame->GetPropertiesFrame()->CopyPrmsFromGeneralToPanel();
+    m_frame->GetPropertiesPanel()->UpdateData();
 
     return 0;
 }
@@ -206,4 +198,5 @@ void PL_EDITOR_CONTROL::setTransitions()
     Go( &PL_EDITOR_CONTROL::UpdateMessagePanel,    EVENTS::UnselectedEvent );
     Go( &PL_EDITOR_CONTROL::UpdateMessagePanel,    EVENTS::ClearedEvent );
     Go( &PL_EDITOR_CONTROL::UpdateMessagePanel,    EVENTS::SelectedItemsModified );
+    Go( &PL_EDITOR_CONTROL::UpdateMessagePanel,    ACTIONS::updateUnits.MakeEvent() );
 }

@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PCB_DESIGN_BLOCK_PREVIEW_WIDGET_H
@@ -42,7 +42,8 @@ public:
     /**
      * Construct a schematic design block preview widget.
      *
-     * @param aParent - parent window
+     * @param aParent is the widget parent window.
+     * @param aFrame is the main window of the widget.
      */
     PCB_DESIGN_BLOCK_PREVIEW_WIDGET( wxWindow* aParent, PCB_EDIT_FRAME* aFrame );
 

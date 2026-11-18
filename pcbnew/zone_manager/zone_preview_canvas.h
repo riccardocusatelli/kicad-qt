@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -39,9 +35,7 @@ class ZONE_PREVIEW_CANVAS : public PCB_DRAW_PANEL_GAL
 {
 public:
     ZONE_PREVIEW_CANVAS( BOARD* aPcb, std::unique_ptr<ZONE> aZone, PCB_LAYER_ID aLayer, wxWindow* aParentWindow,
-                         KIGFX::GAL_DISPLAY_OPTIONS& aOptions, wxWindowID aWindowId = 0,
-                         const wxPoint& aPosition = wxDefaultPosition, const wxSize& aSize = wxDefaultSize,
-                         GAL_TYPE aGalType = GAL_TYPE_OPENGL );
+                         KIGFX::GAL_DISPLAY_OPTIONS& aOptions, GAL_TYPE aGalType );
     ~ZONE_PREVIEW_CANVAS() override = default;
 
     const wxSize GetPageSizeIU() const;

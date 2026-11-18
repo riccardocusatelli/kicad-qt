@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <sch_junction.h>
@@ -79,7 +79,7 @@ bool DIALOG_JUNCTION_PROPS::TransferDataToWindow()
     }
     else
     {
-        m_colorSwatch->SetSwatchColor( COLOR4D::UNSPECIFIED, false );
+        m_colorSwatch->SetIndeterminate();
     }
 
     return true;
@@ -106,7 +106,8 @@ bool DIALOG_JUNCTION_PROPS::TransferDataFromWindow()
         if( !m_diameter.IsIndeterminate() )
             junction->SetDiameter( m_diameter.GetValue() );
 
-        junction->SetColor( m_colorSwatch->GetSwatchColor() );
+        if( !m_colorSwatch->IsIndeterminate() )
+            junction->SetColor( m_colorSwatch->GetSwatchColor() );
 
         m_frame->GetCanvas()->GetView()->Update( junction );
     }

@@ -13,7 +13,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <geometry/vertex_set.h>
@@ -106,6 +106,36 @@ uint32_t VERTEX_SET::zOrder( const double aX, const double aY ) const
 double VERTEX_SET::area( const VERTEX* p, const VERTEX* q, const VERTEX* r ) const
 {
     return ( q->y - p->y ) * ( r->x - q->x ) - ( q->x - p->x ) * ( r->y - q->y );
+}
+
+
+void VERTEX_SET::buildReflexIndex( VERTEX* aStart )
+{
+    m_reflexIndex.clear();
+
+    VERTEX* p = aStart;
+
+    do
+    {
+        // Collinear vertices count as reflex, matching the blocker test in isEar()
+        p->m_inReflexIndex = area( p->prev, p, p->next ) >= 0;
+
+        if( p->m_inReflexIndex )
+        {
+            p->updateOrder();
+            m_reflexIndex.push_back( { p->z, p->x, p->y, p } );
+        }
+
+        p = p->next;
+    } while( p != aStart );
+
+    std::sort( m_reflexIndex.begin(), m_reflexIndex.end(),
+               []( const REFLEX_ENTRY& aLhs, const REFLEX_ENTRY& aRhs )
+               {
+                   return aLhs.z < aRhs.z;
+               } );
+
+    m_reflexIndexValid = true;
 }
 
 
@@ -231,7 +261,6 @@ VERTEX* VERTEX_SET::insertVertex( int aIndex, const VECTOR2I& pt, VERTEX* last, 
 
 VERTEX* VERTEX::split( VERTEX* b )
 {
-    parent->m_vertices.emplace_back( i, x, y, parent, m_userData );
     VERTEX* a2 = parent->insertVertex( i, VECTOR2I( x, y ), nullptr, m_userData );
     parent->m_vertices.emplace_back( b->i, b->x, b->y, parent, m_userData );
     VERTEX* b2 = &parent->m_vertices.back();
@@ -281,6 +310,19 @@ bool VERTEX::isEar( bool aMatchUserData ) const
     if( parent->area( a, b, c ) >= 0 )
         return false;
 
+    auto blocksEar =
+            [&]( VERTEX* p )
+            {
+                return ( !aMatchUserData || p->GetUserData() == m_userData )
+                       && p != a && p != c
+                       && p->inTriangle( *a, *b, *c )
+                       && parent->area( p->prev, p, p->next ) >= 0;
+            };
+
+    // Earcut revisits a rejected vertex on every lap of the ring, usually for the same blocker
+    if( m_earBlocker && m_earBlocker->next && blocksEar( m_earBlocker ) )
+        return false;
+
     // triangle bbox
     const double minTX = std::min( a->x, std::min( b->x, c->x ) );
     const double minTY = std::min( a->y, std::min( b->y, c->y ) );
@@ -291,16 +333,47 @@ bool VERTEX::isEar( bool aMatchUserData ) const
     const uint32_t minZ = parent->zOrder( minTX, minTY );
     const uint32_t maxZ = parent->zOrder( maxTX, maxTY );
 
+    if( !aMatchUserData && parent->m_reflexIndexValid )
+    {
+        const std::vector<VERTEX_SET::REFLEX_ENTRY>& index = parent->m_reflexIndex;
+
+        auto it = std::lower_bound( index.begin(), index.end(), minZ,
+                                    []( const VERTEX_SET::REFLEX_ENTRY& aEntry, uint32_t aZ )
+                                    {
+                                        return aEntry.z < aZ;
+                                    } );
+
+        for( ; it != index.end() && it->z <= maxZ; ++it )
+        {
+            // Same test as inTriangle(), on the copy held in the index to skip the dereference
+            if( ( c->x - it->x ) * ( a->y - it->y ) - ( a->x - it->x ) * ( c->y - it->y ) < 0
+                || ( a->x - it->x ) * ( b->y - it->y ) - ( b->x - it->x ) * ( a->y - it->y ) < 0
+                || ( b->x - it->x ) * ( c->y - it->y ) - ( c->x - it->x ) * ( b->y - it->y ) < 0 )
+            {
+                continue;
+            }
+
+            // Entries of clipped ears stay behind with a null link
+            if( it->v->next && blocksEar( it->v ) )
+            {
+                m_earBlocker = it->v;
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     // first look for points inside the triangle in increasing z-order
     VERTEX* p = nextZ;
 
     while( p && p->z <= maxZ )
     {
-        if( ( !aMatchUserData || p->GetUserData() == m_userData )
-                && p != a && p != c
-                && p->inTriangle( *a, *b, *c )
-                && parent->area( p->prev, p, p->next ) >= 0 )
+        if( blocksEar( p ) )
+        {
+            m_earBlocker = p;
             return false;
+        }
 
         p = p->nextZ;
     }
@@ -310,11 +383,11 @@ bool VERTEX::isEar( bool aMatchUserData ) const
 
     while( p && p->z >= minZ )
     {
-        if( ( !aMatchUserData || p->GetUserData() == m_userData )
-                && p != a && p != c
-                && p->inTriangle( *a, *b, *c )
-                && parent->area( p->prev, p, p->next ) >= 0 )
+        if( blocksEar( p ) )
+        {
+            m_earBlocker = p;
             return false;
+        }
 
         p = p->prevZ;
     }

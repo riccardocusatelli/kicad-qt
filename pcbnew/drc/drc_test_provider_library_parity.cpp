@@ -14,13 +14,10 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <cmath>
 #include <layer_range.h>
 #include <layer_utils.h>
 #include <macros.h>
@@ -215,6 +212,20 @@ bool primitiveNeedsUpdate( const std::shared_ptr<PCB_SHAPE>& a,
         TEST_PT( a->GetBezierC2(), b->GetBezierC2(), "" );
         break;
 
+    case SHAPE_T::ELLIPSE:
+    case SHAPE_T::ELLIPSE_ARC:
+        TEST_PT( a->GetEllipseCenter(), b->GetEllipseCenter(), "" );
+        TEST( a->GetEllipseMajorRadius(), b->GetEllipseMajorRadius(), "" );
+        TEST( a->GetEllipseMinorRadius(), b->GetEllipseMinorRadius(), "" );
+        TEST( a->GetEllipseRotation(), b->GetEllipseRotation(), "" );
+
+        if( a->GetShape() == SHAPE_T::ELLIPSE_ARC )
+        {
+            TEST( a->GetEllipseStartAngle(), b->GetEllipseStartAngle(), "" );
+            TEST( a->GetEllipseEndAngle(), b->GetEllipseEndAngle(), "" );
+        }
+        break;
+
     case SHAPE_T::POLY:
     {
         TEST( a->GetPolyShape().TotalVertices(), b->GetPolyShape().TotalVertices(), "" );
@@ -317,6 +328,60 @@ bool padHasOverrides( const PAD* a, const PAD* b, REPORTER& aReporter )
 }
 
 
+// A half turn leaves a pad as it was only when the pad is symmetric about its own centre, a circle ignores any turn,
+// so a flip that lands on the other of the two angles has not changed such a pad
+bool padOrientationDiffers( const PAD* a, const PAD* bLib )
+{
+    double delta = std::fmod( std::abs( a->GetFPRelativeOrientation().Normalize().AsDegrees()
+                                        - bLib->GetFPRelativeOrientation().Normalize().AsDegrees() ),
+                              360.0 );
+
+    if( delta > 180.0 )
+        delta = 360.0 - delta;
+
+    if( delta <= EPSILON_D )
+        return false;
+
+    if( a->Padstack().Mode() != bLib->Padstack().Mode()
+        || a->Padstack().Drill().shape != bLib->Padstack().Drill().shape )
+    {
+        return true;
+    }
+
+    // a slot turns with the pad even when the copper does not
+    auto roundDrill =
+            []( const PAD* aPad )
+            {
+                return aPad->GetDrillShape() == PAD_DRILL_SHAPE::CIRCLE
+                       || aPad->GetDrillSize().x == aPad->GetDrillSize().y;
+            };
+
+    bool circular = roundDrill( a ) && roundDrill( bLib );
+    bool halfTurnSymmetric = true;
+
+    for( PCB_LAYER_ID layer : a->Padstack().UniqueLayers() )
+    {
+        PAD_SHAPE shape = a->GetShape( layer );
+
+        if( shape != bLib->GetShape( layer ) )
+            return true;
+
+        circular &= shape == PAD_SHAPE::CIRCLE;
+        halfTurnSymmetric &= shape == PAD_SHAPE::CIRCLE || shape == PAD_SHAPE::RECTANGLE
+                             || shape == PAD_SHAPE::OVAL || shape == PAD_SHAPE::ROUNDRECT;
+
+        // an off-centre shape or a skewed one moves when the pad turns
+        if( a->GetOffset( layer ) != VECTOR2I( 0, 0 ) || bLib->GetOffset( layer ) != VECTOR2I( 0, 0 )
+            || a->GetDelta( layer ) != VECTOR2I( 0, 0 ) || bLib->GetDelta( layer ) != VECTOR2I( 0, 0 ) )
+        {
+            return true;
+        }
+    }
+
+    return !circular && !( halfTurnSymmetric && std::abs( delta - 180.0 ) <= EPSILON_D );
+}
+
+
 bool padNeedsUpdate( const PAD* a, const PAD* bLib, REPORTER* aReporter )
 {
     bool      diff = false;
@@ -362,9 +427,15 @@ bool padNeedsUpdate( const PAD* a, const PAD* bLib, REPORTER* aReporter )
           wxString::Format( _( "%s fabrication property differs." ), PAD_DESC( a ) ) );
 
     // The pad orientation, for historical reasons is the pad rotation + parent rotation.
-    TEST_D( a->GetFPRelativeOrientation().Normalize().AsDegrees(),
-            bLib->GetFPRelativeOrientation().Normalize().AsDegrees(),
-            wxString::Format( _( "%s orientation differs." ), PAD_DESC( a ) ) );
+    if( padOrientationDiffers( a, bLib ) )
+    {
+        diff = true;
+
+        if( aReporter )
+            aReporter->Report( wxString::Format( _( "%s orientation differs." ), PAD_DESC( a ) ) );
+        else
+            return true;
+    }
 
     std::vector<PCB_LAYER_ID> layers = a->Padstack().UniqueLayers();
     const BOARD* board = a->GetBoard();
@@ -527,8 +598,8 @@ bool shapeNeedsUpdate( const PCB_SHAPE& curr_shape, const PCB_SHAPE& ref_shape )
     {
     case SHAPE_T::RECTANGLE:
     {
-        BOX2I aRect( curr_shape.GetStart(), curr_shape.GetEnd() - curr_shape.GetStart() );
-        BOX2I bRect( ref_shape.GetStart(), ref_shape.GetEnd() - ref_shape.GetStart() );
+        BOX2I aRect( curr_shape.GetLibraryStart(), curr_shape.GetLibraryEnd() - curr_shape.GetLibraryStart() );
+        BOX2I bRect( ref_shape.GetLibraryStart(), ref_shape.GetLibraryEnd() - ref_shape.GetLibraryStart() );
 
         aRect.Normalize();
         bRect.Normalize();
@@ -540,36 +611,53 @@ bool shapeNeedsUpdate( const PCB_SHAPE& curr_shape, const PCB_SHAPE& ref_shape )
 
     case SHAPE_T::SEGMENT:
     case SHAPE_T::CIRCLE:
-        TEST_PT( curr_shape.GetStart(), ref_shape.GetStart(), "" );
-        TEST_PT( curr_shape.GetEnd(), ref_shape.GetEnd(), "" );
+        TEST_PT( curr_shape.GetLibraryStart(), ref_shape.GetLibraryStart(), "" );
+        TEST_PT( curr_shape.GetLibraryEnd(), ref_shape.GetLibraryEnd(), "" );
         break;
 
     case SHAPE_T::ARC:
-        TEST_PT( curr_shape.GetStart(), ref_shape.GetStart(), "" );
-        TEST_PT( curr_shape.GetEnd(), ref_shape.GetEnd(), "" );
+        TEST_PT( curr_shape.GetLibraryStart(), ref_shape.GetLibraryStart(), "" );
+        TEST_PT( curr_shape.GetLibraryEnd(), ref_shape.GetLibraryEnd(), "" );
 
-        // Arc center is calculated and so may have round-off errors when parents are
-        // differentially rotated.
-        if( ( curr_shape.GetArcMid() - ref_shape.GetArcMid() ).EuclideanNorm() > pcbIUScale.mmToIU( 0.0005 ) )
+        if( ( curr_shape.GetLibraryArcMid() - ref_shape.GetLibraryArcMid() ).EuclideanNorm()
+            > pcbIUScale.mmToIU( 0.0005 ) )
             return true;
 
         break;
 
     case SHAPE_T::BEZIER:
-        TEST_PT( curr_shape.GetStart(), ref_shape.GetStart(), "" );
-        TEST_PT( curr_shape.GetEnd(), ref_shape.GetEnd(), "" );
-        TEST_PT( curr_shape.GetBezierC1(), ref_shape.GetBezierC1(), "" );
-        TEST_PT( curr_shape.GetBezierC2(), ref_shape.GetBezierC2(), "" );
+        TEST_PT( curr_shape.GetLibraryStart(), ref_shape.GetLibraryStart(), "" );
+        TEST_PT( curr_shape.GetLibraryEnd(), ref_shape.GetLibraryEnd(), "" );
+        TEST_PT( curr_shape.GetLibraryBezierC1(), ref_shape.GetLibraryBezierC1(), "" );
+        TEST_PT( curr_shape.GetLibraryBezierC2(), ref_shape.GetLibraryBezierC2(), "" );
+        break;
+
+    case SHAPE_T::ELLIPSE:
+    case SHAPE_T::ELLIPSE_ARC:
+        TEST_PT( curr_shape.GetEllipseCenter(), ref_shape.GetEllipseCenter(), "" );
+        TEST( curr_shape.GetEllipseMajorRadius(), ref_shape.GetEllipseMajorRadius(), "" );
+        TEST( curr_shape.GetEllipseMinorRadius(), ref_shape.GetEllipseMinorRadius(), "" );
+        TEST( curr_shape.GetEllipseRotation(), ref_shape.GetEllipseRotation(), "" );
+
+        if( curr_shape.GetShape() == SHAPE_T::ELLIPSE_ARC )
+        {
+            TEST( curr_shape.GetEllipseStartAngle(), ref_shape.GetEllipseStartAngle(), "" );
+            TEST( curr_shape.GetEllipseEndAngle(), ref_shape.GetEllipseEndAngle(), "" );
+        }
         break;
 
     case SHAPE_T::POLY:
     {
-        TEST( curr_shape.GetPolyShape().TotalVertices(), ref_shape.GetPolyShape().TotalVertices(), "" );
+        SHAPE_POLY_SET aLib = curr_shape.GetLibraryPolyShape();
+        SHAPE_POLY_SET bLib = ref_shape.GetLibraryPolyShape();
 
-        for( int poly = 0; poly < static_cast<int>( curr_shape.GetPolyShape().CPolygons().size() ); poly++ )
+        TEST( aLib.TotalVertices(), bLib.TotalVertices(), "" );
+
+        for( int poly = 0; poly < static_cast<int>( aLib.CPolygons().size() ); poly++ )
         {
-            const SHAPE_POLY_SET::POLYGON curr_polygon = curr_shape.GetPolyShape().CPolygon( poly );
-            const SHAPE_POLY_SET::POLYGON ref_polygon  = ref_shape.GetPolyShape().CPolygon( poly );
+            const SHAPE_POLY_SET::POLYGON curr_polygon = aLib.CPolygon( poly );
+            const SHAPE_POLY_SET::POLYGON ref_polygon = bLib.CPolygon( poly );
+
             if( curr_polygon.size() == 0 || ref_polygon.size() == 0
                 || !curr_polygon[0].CompareGeometry( ref_polygon[0], true, EPSILON ) )
             {
@@ -625,9 +713,8 @@ bool zoneNeedsUpdate( const ZONE* a, const ZONE* b, REPORTER* aReporter )
     // Kind of annoying footprint pads use both in1_cu and have an stackup mode setting
     bool innerLayerExpansionAllowed = b->GetLayerSet().Contains( In1_Cu );
 
-    if( !boardLayersMatchWithInnerLayerExpansion( a->GetLayerSet(), 
-                                                 getBoardNormalizedLayerSet( b, a->GetBoard() ),
-                                                 innerLayerExpansionAllowed ) )
+    if( !boardLayersMatchWithInnerLayerExpansion( a->GetLayerSet(), getBoardNormalizedLayerSet( b, a->GetBoard() ),
+                                                  innerLayerExpansionAllowed ) )
     {
         diff = true;
 
@@ -676,15 +763,18 @@ bool zoneNeedsUpdate( const ZONE* a, const ZONE* b, REPORTER* aReporter )
     // This is just a display property
     // TEST( a->GetHatchBorderAlgorithm(), b->GetHatchBorderAlgorithm() );
 
-    TEST( a->Outline()->TotalVertices(), b->Outline()->TotalVertices(),
+    SHAPE_POLY_SET aLibOutline = a->GetLibraryOutline();
+    SHAPE_POLY_SET bLibOutline = b->GetLibraryOutline();
+
+    TEST( aLibOutline.TotalVertices(), bLibOutline.TotalVertices(),
           wxString::Format( _( "%s outline corner count differs." ), ITEM_DESC( a ) ) );
 
-    bool cornersDiffer = a->Outline()->OutlineCount() != b->Outline()->OutlineCount();
+    bool cornersDiffer = aLibOutline.OutlineCount() != bLibOutline.OutlineCount();
 
-    for( int poly = 0; !cornersDiffer && poly < a->Outline()->OutlineCount(); poly++ )
+    for( int poly = 0; !cornersDiffer && poly < aLibOutline.OutlineCount(); poly++ )
     {
-        const SHAPE_POLY_SET::POLYGON& aPolygon = a->Outline()->CPolygon( poly );
-        const SHAPE_POLY_SET::POLYGON& bPolygon = b->Outline()->CPolygon( poly );
+        const SHAPE_POLY_SET::POLYGON& aPolygon = aLibOutline.CPolygon( poly );
+        const SHAPE_POLY_SET::POLYGON& bPolygon = bLibOutline.CPolygon( poly );
 
         if( aPolygon.size() != bPolygon.size() )
         {
@@ -785,24 +875,20 @@ bool FOOTPRINT::FootprintNeedsUpdate( const FOOTPRINT* aLibFP, int aCompareFlags
     KI_ASSERT( aLibFP );
     bool diff = false;
 
-    // To avoid issues when comparing the footprint on board and the footprint in library
-    // use the footprint from lib flipped, rotated and at same position as this.
-    // And using the footprint from lib with same changes as this minimize the issues
-    // due to rounding and shape modifications
-
     std::unique_ptr<FOOTPRINT> temp( static_cast<FOOTPRINT*>( aLibFP->Clone() ) );
 
-    temp->SetParent( GetBoard() );  // Needed to know the copper layer count;
+    temp->SetParent( GetBoard() );
+
 
     if( !( aCompareFlags & COMPARE_FLAGS::INSTANCE_TO_INSTANCE ) )
     {
         if( IsFlipped() != temp->IsFlipped() )
             temp->Flip( { 0, 0 }, FLIP_DIRECTION::TOP_BOTTOM );
 
-        // Set position first before rotating to minimize rounding errors.
-        if( GetPosition() != temp->GetPosition() )
-            temp->SetPosition( GetPosition() );
-
+        // Set rotation before trying to compare footprints, especially when rotation
+        // is not multiple of 90 deg (some shapes like rectangles can be converted to polygons).
+        // Moreover, NormalizeForCompare needs correct orientation to normalize some shapes
+        // like rectangles
         if( GetOrientation() != temp->GetOrientation() )
             temp->SetOrientation( GetOrientation() );
     }
@@ -842,6 +928,10 @@ bool FOOTPRINT::FootprintNeedsUpdate( const FOOTPRINT* aLibFP, int aCompareFlags
         TEST_ATTR( GetAttributes(), aLibFP->GetAttributes(), FP_EXCLUDE_FROM_BOM,
                    wxString::Format( _( "'%s' settings differ." ),
                                      _( "Exclude from bill of materials" ) ) );
+
+        TEST_ATTR( GetAttributes(), aLibFP->GetAttributes(), FP_EXCLUDE_FROM_SIM,
+                   wxString::Format( _( "'%s' settings differ." ),
+                                     _( "Exclude from simulation" ) ) );
 
         TEST_ATTR( GetAttributes(), aLibFP->GetAttributes(), FP_DNP,
                    wxString::Format( _( "'%s' settings differ." ),
@@ -935,6 +1025,9 @@ bool FOOTPRINT::FootprintNeedsUpdate( const FOOTPRINT* aLibFP, int aCompareFlags
     FOOTPRINT dummy( *this );
     dummy.SetParentGroup( nullptr );
     dummy.SetParent( nullptr );
+
+    if( BOARD* board = GetBoard() )
+        board->UncacheItemSubtreeById( dummy );
 
     for( BOARD_ITEM* item : dummy.GraphicalItems() )
         item->NormalizeForCompare();

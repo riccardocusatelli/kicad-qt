@@ -39,7 +39,6 @@ add_library( kiqt SHARED
     toolkit/event_blocker_qt.cpp
     toolkit/choice_qt.cpp
     toolkit/process_qt.cpp
-    toolkit/single_instance_qt.cpp
     toolkit/qt_keys.cpp
     widgets/bitmap_button.cpp
     widgets/bitmap_toggle.cpp

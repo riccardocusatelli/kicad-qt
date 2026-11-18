@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "pads_parser.h"
@@ -32,9 +28,28 @@
 #include <cstdlib>
 #include <limits>
 #include <wx/log.h>
+#include <trace_helpers.h>
 
 namespace PADS_IO
 {
+
+bool IsThermalReliefPadRow( const PAD_STACK_LAYER& aLayer )
+{
+    return aLayer.shape == "RT" || aLayer.shape == "ST";
+}
+
+
+bool IsAntiPadRow( const PAD_STACK_LAYER& aLayer )
+{
+    return aLayer.shape == "RA" || aLayer.shape == "SA";
+}
+
+
+bool IsCopperPadRow( const PAD_STACK_LAYER& aLayer )
+{
+    return !IsThermalReliefPadRow( aLayer ) && !IsAntiPadRow( aLayer );
+}
+
 
 /**
  * Expand a shortcut format string like "PRE{n1-n2}" into individual names.
@@ -83,7 +98,7 @@ static std::vector<std::string> expandShortcutPattern( const std::string& aPatte
 
     if( std::abs( end - start ) > MAX_EXPANSION )
     {
-        wxLogWarning( wxT( "PADS Import: shortcut range {%d-%d} exceeds limit, skipped" ),
+        KI_LOG_TRACE( tracePadsIo, wxT( "PADS Import: shortcut range {%d-%d} exceeds limit, skipped" ),
                       start, end );
         result.push_back( aPattern );
         return result;
@@ -95,6 +110,16 @@ static std::vector<std::string> expandShortcutPattern( const std::string& aPatte
     }
 
     return result;
+}
+
+
+static std::string normalizeNetName( const std::string& aNetName )
+{
+    // PADS uses numeric sentinels in optional owner/signame fields for unassigned nets.
+    if( aNetName == "-1" || aNetName == "0" )
+        return {};
+
+    return aNetName;
 }
 
 
@@ -459,46 +484,57 @@ void PARSER::parseSectionPCB( std::ifstream& aStream )
         else if( token == "MINCLEAR" )
         {
             iss >> m_design_rules.min_clearance;
+            m_design_rules.MarkSpecified( DESIGN_RULE_FIELD::MIN_CLEARANCE );
         }
         else if( token == "DEFAULTCLEAR" )
         {
             iss >> m_design_rules.default_clearance;
+            m_design_rules.MarkSpecified( DESIGN_RULE_FIELD::DEFAULT_CLEARANCE );
         }
         else if( token == "MINTRACKWID" )
         {
             iss >> m_design_rules.min_track_width;
+            m_design_rules.MarkSpecified( DESIGN_RULE_FIELD::MIN_TRACK_WIDTH );
         }
         else if( token == "DEFAULTTRACKWID" )
         {
             iss >> m_design_rules.default_track_width;
+            m_design_rules.MarkSpecified( DESIGN_RULE_FIELD::DEFAULT_TRACK_WIDTH );
         }
         else if( token == "MINVIASIZE" )
         {
             iss >> m_design_rules.min_via_size;
+            m_design_rules.MarkSpecified( DESIGN_RULE_FIELD::MIN_VIA_SIZE );
         }
         else if( token == "DEFAULTVIASIZE" )
         {
             iss >> m_design_rules.default_via_size;
+            m_design_rules.MarkSpecified( DESIGN_RULE_FIELD::DEFAULT_VIA_SIZE );
         }
         else if( token == "MINVIADRILL" )
         {
             iss >> m_design_rules.min_via_drill;
+            m_design_rules.MarkSpecified( DESIGN_RULE_FIELD::MIN_VIA_DRILL );
         }
         else if( token == "DEFAULTVIADRILL" )
         {
             iss >> m_design_rules.default_via_drill;
+            m_design_rules.MarkSpecified( DESIGN_RULE_FIELD::DEFAULT_VIA_DRILL );
         }
         else if( token == "HOLEHOLE" )
         {
             iss >> m_design_rules.hole_to_hole;
+            m_design_rules.MarkSpecified( DESIGN_RULE_FIELD::HOLE_TO_HOLE );
         }
         else if( token == "SILKCLEAR" )
         {
             iss >> m_design_rules.silk_clearance;
+            m_design_rules.MarkSpecified( DESIGN_RULE_FIELD::SILK_CLEARANCE );
         }
         else if( token == "MASKCLEAR" )
         {
             iss >> m_design_rules.mask_clearance;
+            m_design_rules.MarkSpecified( DESIGN_RULE_FIELD::MASK_CLEARANCE );
         }
     }
 }
@@ -1140,6 +1176,12 @@ void PARSER::parseSectionVIA( std::ifstream& aStream )
                 def.has_mask_back = true;
         }
 
+        if( def.drill_start > 0 && def.drill_end > 0 )
+        {
+            min_layer = std::min( def.drill_start, def.drill_end );
+            max_layer = std::max( def.drill_start, def.drill_end );
+        }
+
         // Determine layer span and via type
         if( min_layer <= max_layer )
         {
@@ -1227,7 +1269,7 @@ void PARSER::parseSectionPOUR( std::ifstream& aStream )
 
             POUR pour;
             pour.name = name;
-            pour.net_name = signame;
+            pour.net_name = normalizeNetName( signame );
             pour.layer = level;
             pour.priority = priority;
             pour.width = width;
@@ -1261,16 +1303,29 @@ void PARSER::parseSectionPOUR( std::ifstream& aStream )
             // Handle different piece types
             if( poly_type == "CIRCLE" || poly_type == "CIRCUT" )
             {
-                // Circle piece: one line with center and radius info
-                // Format: xloc yloc radius
-                if( !readLine( aStream, line ) )
-                    break;
+                // Circle piece: `corners` lines (always 2 in practice), each a diametrically
+                // opposite endpoint -- not a single "xloc yloc radius" line.
+                std::vector<std::pair<double, double>> endpoints;
 
-                std::stringstream iss3( line );
-                double cx = 0.0, cy = 0.0, radius = 0.0;
-
-                if( iss3 >> cx >> cy >> radius )
+                for( int j = 0; j < corners; ++j )
                 {
+                    if( !readLine( aStream, line ) )
+                        break;
+
+                    std::stringstream iss3( line );
+                    double px = 0.0, py = 0.0;
+
+                    if( iss3 >> px >> py )
+                        endpoints.emplace_back( px, py );
+                }
+
+                if( endpoints.size() == 2 )
+                {
+                    double cx = ( endpoints[0].first + endpoints[1].first ) / 2.0;
+                    double cy = ( endpoints[0].second + endpoints[1].second ) / 2.0;
+                    double radius = std::hypot( endpoints[1].first - endpoints[0].first,
+                                                endpoints[1].second - endpoints[0].second ) / 2.0;
+
                     // Create arc representing full circle
                     ARC arc{};
                     arc.cx = x + cx;
@@ -2748,26 +2803,49 @@ void PARSER::parseSectionLINES( std::ifstream& aStream )
              break;
         }
 
-        // Header format: name type xloc yloc pieces flags [text [signame]]
+        // Header format: name type xloc yloc pieces flags [text] [signame]
+        // While the docs claim `... pieces flags [text [signame]]`, and the `*REMARK*` lines our
+        // sample files claim `... pieces text signame`, the files themselves clearly contain many
+        // instances of `pieces flags signame`.
         std::istringstream iss( line );
         std::string name, type;
         double xloc = 0.0, yloc = 0.0;
         int pieces = 0, flags = 0, textCount = 0;
+        std::string seventhToken, eighthToken;
         std::string signame;
 
-        iss >> name >> type >> xloc >> yloc >> pieces >> flags;
+        iss >> name >> type >> xloc >> yloc >> pieces >> flags >> seventhToken >> eighthToken;
 
-        // Try to read optional text count and signal name (for COPPER type).
-        // Standard format: pieces flags textcount signame
-        // EasyEDA format:  pieces flags signame (no text count)
-        if( iss >> textCount )
+        if( !eighthToken.empty() )
         {
-            iss >> signame;
+            // If we have the full eight tokens, the last two must be text-count and signame.
+
+            signame = eighthToken;
+
+            std::istringstream tiss( seventhToken );
+            tiss >> textCount;
         }
-        else
+        else if( !seventhToken.empty() )
         {
-            iss.clear();
-            iss >> signame;
+            // Here's where it gets dicey: with seven tokens we don't know whether the last
+            // is a text-count or a signame.  We can't compare with known signal names, as
+            // they're all later in the file.  The best we can do is assume that anything that
+            // is all digits is a text-count, and that any signame will contain at least one
+            // symbol or letter.
+
+            if( std::all_of( seventhToken.begin(), seventhToken.end(),
+                             [](unsigned char c)
+                             {
+                                 return std::isdigit( c );
+                             } ) )
+            {
+                std::istringstream tiss( seventhToken );
+                tiss >> textCount;
+            }
+            else
+            {
+                signame = seventhToken;
+            }
         }
 
         // Check for optional .REUSE. line after header
@@ -3350,7 +3428,7 @@ void PARSER::parseSectionLINES( std::ifstream& aStream )
                 copper.name = name;
                 copper.layer = level;
                 copper.width = width;
-                copper.net_name = signame;
+                copper.net_name = normalizeNetName( signame );
 
                 copper.filled = ( shape_type == "COPCLS" || shape_type == "COPCIR" );
                 copper.is_cutout = ( shape_type == "COPCUT" || shape_type == "COPCCO" ||
@@ -4641,6 +4719,15 @@ void PARSER::parseSectionMISC( std::ifstream& aStream )
 
                     if( isDefaultRuleSet )
                     {
+                        if( m_design_rules.default_clearance != std::numeric_limits<double>::max() )
+                        {
+                            m_design_rules.MarkSpecified( DESIGN_RULE_FIELD::DEFAULT_CLEARANCE );
+                            m_design_rules.MarkSpecified( DESIGN_RULE_FIELD::MIN_CLEARANCE );
+                        }
+
+                        if( m_design_rules.copper_edge_clearance != std::numeric_limits<double>::max() )
+                            m_design_rules.MarkSpecified( DESIGN_RULE_FIELD::COPPER_EDGE_CLEARANCE );
+
                         if( m_design_rules.default_clearance
                             == std::numeric_limits<double>::max() )
                         {
@@ -4761,14 +4848,17 @@ void PARSER::parseSectionMISC( std::ifstream& aStream )
                     if( token == "MIN_TRACK_WIDTH" )
                     {
                         m_design_rules.min_track_width = val;
+                        m_design_rules.MarkSpecified( DESIGN_RULE_FIELD::MIN_TRACK_WIDTH );
                     }
                     else if( token == "REC_TRACK_WIDTH" )
                     {
                         m_design_rules.default_track_width = val;
+                        m_design_rules.MarkSpecified( DESIGN_RULE_FIELD::DEFAULT_TRACK_WIDTH );
                     }
                     else if( token == "DRILL_TO_DRILL" )
                     {
                         m_design_rules.hole_to_hole = val;
+                        m_design_rules.MarkSpecified( DESIGN_RULE_FIELD::HOLE_TO_HOLE );
                     }
                     else if( token == "OUTLINE_TO_TRACK" || token == "OUTLINE_TO_VIA"
                              || token == "OUTLINE_TO_PAD" || token == "OUTLINE_TO_COPPER"

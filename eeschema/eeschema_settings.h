@@ -14,11 +14,7 @@
 * GNU General Public License for more details.
 *
 * You should have received a copy of the GNU General Public License
-* along with this program; if not, you may find one here:
-* http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-* or you may search the http://www.gnu.org website for the version 2 license,
-* or you may write to the Free Software Foundation, Inc.,
-* 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+* along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #pragma once
@@ -27,6 +23,7 @@
 
 #include <remote_provider_settings.h>
 #include <settings/app_settings.h>
+#include <settings/snap_settings.h>
 #include <sim/sim_preferences.h>
 #include <wx/gdicmn.h>
 
@@ -63,6 +60,7 @@ public:
         wxString default_font;
         bool show_hidden_pins;
         bool show_hidden_fields;
+        bool show_remapped_pin_numbers;
         bool show_directive_labels;
         bool mark_sim_exclusions;
         bool show_erc_warnings;
@@ -98,6 +96,7 @@ public:
         int  properties_panel_width;
         float properties_splitter;
         bool show_properties;
+        bool    show_git_commit_pane;
         bool design_blocks_show;
         int  design_blocks_panel_docked_width;
         int  design_blocks_panel_float_width;
@@ -157,7 +156,6 @@ public:
         COLOR4D             default_sheet_border_color;
         COLOR4D             default_sheet_background_color;
         POWER_SYMBOLS       new_power_symbols;
-        wxString            field_names;
         int                 line_mode;
         ARC_EDIT_MODE       arc_edit_mode;
         int                 repeat_label_increment;
@@ -167,6 +165,7 @@ public:
         wxString            intersheets_ref_prefix;
         wxString            intersheets_ref_suffix;
         bool                auto_start_wires;
+        bool                auto_place_sheet_pins;
 
         // Pulldown index for user default junction dot size (e.g. none = 0, smallest = 1, small = 2, etc)
         int                 junction_size_choice;
@@ -186,6 +185,7 @@ public:
         int  highlight_thickness;
         bool draw_selected_children;
         bool fill_shapes;
+        bool select_pin_selects_symbol;
         bool highlight_netclass_colors;
         int    highlight_netclass_colors_thickness;
         double highlight_netclass_colors_alpha;
@@ -224,16 +224,6 @@ public:
     {
         wxString selected_plugin;
         std::vector<BOM_PLUGIN_SETTINGS> plugins;
-    };
-
-    struct PANEL_SYMBOL_FIELDS_TABLE
-    {
-        std::map<std::string, int> field_widths;
-        wxString                   export_filename;
-        int                        selection_mode;
-        int                        sash_pos;
-        bool                       sidebar_collapsed;
-        int                        variant_sash_pos;
     };
 
     struct PANEL_LIB_VIEW
@@ -276,12 +266,14 @@ public:
     {
         struct VIEW
         {
-            int  plot_panel_width;
+            int  side_panel_width;
             int  plot_panel_height;
-            int  signal_panel_height;
+            int  signals_tuners_height;
             int  cursors_panel_height;
-            int  measurements_panel_height;
+            int  center_panel_width;
             bool white_background;
+
+            wxString smith_cursor_columns;
         };
 
         VIEW            view;
@@ -314,6 +306,7 @@ protected:
 
 private:
     bool migrateBomSettings();
+    bool migrateFieldNameTemplates();
 
     nlohmann::json bomSettingsToJson() const;
 
@@ -331,12 +324,13 @@ public:
     INPUT                     m_Input;
     AUTOPLACE_FIELDS          m_AutoplaceFields;
     SELECTION                 m_Selection;
+    SNAP_INFERENCE_SETTINGS   m_SnapInference;
 
     PAGE_SETTINGS             m_PageSettings;
     PANEL_ANNOTATE            m_AnnotatePanel;
     PANEL_BOM                 m_BomPanel;
 
-    PANEL_SYMBOL_FIELDS_TABLE m_FieldEditorPanel;
+    FIELDS_TABLE_SETTINGS     m_FieldEditorPanel;
     PANEL_LIB_VIEW            m_LibViewPanel;
     PANEL_NETLIST             m_NetlistPanel;
     PANEL_SYM_CHOOSER         m_SymChooserPanel;
@@ -348,6 +342,9 @@ public:
     SIMULATOR                 m_Simulator;
 
     bool                      m_RescueNeverShow;
+
+    /// Database columns the user mapped to each library role, most recent first, used to autofill
+    std::map<std::string, std::vector<std::string>> m_DatabaseColumnChoices;
 
     wxString                  m_lastSymbolLibDir;
 };

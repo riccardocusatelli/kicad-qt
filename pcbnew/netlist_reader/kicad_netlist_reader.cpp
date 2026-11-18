@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <wx/log.h>
@@ -163,6 +159,20 @@ void KICAD_NETLIST_PARSER::Parse()
 
                 if( token == T_net )        // A net section if found. Read it
                     parseNet();
+            }
+
+            break;
+
+        case T_net_chains:
+            while( ( token = NextTok() ) != T_EOF )
+            {
+                if( token == T_RIGHT )
+                    break;
+                else if( token == T_LEFT )
+                    token = NextTok();
+
+                if( token == T_net_chain )
+                    parseNetChain();
             }
 
             break;
@@ -351,7 +361,7 @@ void KICAD_NETLIST_PARSER::parseComponent()
     std::unordered_set<wxString>              componentClasses;
 
     bool duplicatePinsAreJumpers = false;
-    std::vector<std::set<wxString>> jumperPinGroups;
+    JUMPER_GROUP_SET jumperPinGroups;
 
     std::vector<COMPONENT::UNIT_INFO> parsedUnits;
     std::vector<COMPONENT_VARIANT>    parsedVariants;
@@ -628,9 +638,10 @@ void KICAD_NETLIST_PARSER::parseComponent()
 
         case T_jumper_pin_groups:
         {
-            std::set<wxString>* currentGroup = nullptr;
+            std::set<wxString> currentNames;
+            bool               inGroup = false;
 
-            for( token = NextTok(); currentGroup || token != T_RIGHT; token = NextTok() )
+            for( token = NextTok(); inGroup || token != T_RIGHT; token = NextTok() )
             {
                 if( token == T_LEFT )
                     token = NextTok();
@@ -638,7 +649,7 @@ void KICAD_NETLIST_PARSER::parseComponent()
                 switch( token )
                 {
                 case T_group:
-                    currentGroup = &jumperPinGroups.emplace_back();
+                    inGroup = true;
                     break;
 
                 case T_pin:
@@ -646,13 +657,17 @@ void KICAD_NETLIST_PARSER::parseComponent()
                     NeedSYMBOLorNUMBER();
                     wxString padName = From_UTF8( CurText() );
                     NeedRIGHT();
-                    KI_CHECK2( currentGroup, continue );
-                    currentGroup->insert( padName );
+                    KI_CHECK2( inGroup, continue );
+                    currentNames.insert( padName );
                     break;
                 }
 
                 case T_RIGHT:
-                    currentGroup = nullptr;
+                    if( std::optional<JUMPER_GROUP> group = JUMPER_GROUP::Make( std::move( currentNames ) ) )
+                        jumperPinGroups.Add( std::move( *group ) );
+
+                    currentNames.clear();
+                    inGroup = false;
                     break;
 
                 default:
@@ -829,11 +844,8 @@ void KICAD_NETLIST_PARSER::parseComponent()
 
     if( !footprint.IsEmpty() && fpid.Parse( footprint, true ) >= 0 )
     {
-        wxString error;
-        error.Printf( _( "Invalid footprint ID in\nfile: '%s'\nline: %d\noffset: %d" ),
-                      CurSource(), CurLineNumber(), CurOffset() );
-
-        THROW_IO_ERROR( error );
+        THROW_IO_ERRORF( _( "Invalid footprint ID in\nfile: '%s'\nline: %d\noffset: %d" ),
+                         CurSource(), CurLineNumber(), CurOffset() );
     }
 
     COMPONENT* component = new COMPONENT( fpid, ref, value, path, uuids );
@@ -844,8 +856,7 @@ void KICAD_NETLIST_PARSER::parseComponent()
     component->SetHumanReadablePath( humanSheetPath );
     component->SetComponentClassNames( componentClasses );
     component->SetDuplicatePadNumbersAreJumpers( duplicatePinsAreJumpers );
-    std::ranges::copy( jumperPinGroups, std::inserter( component->JumperPadGroups(),
-                                                       component->JumperPadGroups().end() ) );
+    component->JumperPadGroups() = std::move( jumperPinGroups );
     component->SetUnitInfo( parsedUnits );
 
     for( const COMPONENT_VARIANT& variant : parsedVariants )
@@ -868,7 +879,7 @@ void KICAD_NETLIST_PARSER::parseGroup()
      */
 
     wxString   name;
-    KIID       uuid;
+    wxString               uuid;
     wxString               libId; // Design block library link
     std::vector<KIID_PATH> members;
 
@@ -891,15 +902,7 @@ void KICAD_NETLIST_PARSER::parseGroup()
         case T_uuid:
         {
             NeedSYMBOLorNUMBER();
-            wxString uuidStr = From_UTF8( CurText() );
-
-            // An instance path collapses to a deterministic uuid so re-reading the same
-            // netlist finds the same board group.
-            if( uuidStr.StartsWith( wxT( "/" ) ) )
-                uuid = KIID::FromName( std::string( KIID_PATH( uuidStr ).AsString().ToUTF8() ) );
-            else
-                uuid = uuidStr;
-
+            uuid = From_UTF8( CurText() );
             NeedRIGHT();
             break;
         }
@@ -957,15 +960,11 @@ void KICAD_NETLIST_PARSER::parseGroup()
 
     if( !libId.IsEmpty() && groupLibId.Parse( libId, true ) >= 0 )
     {
-        wxString error;
-        error.Printf( _( "Invalid lib_id ID in\nfile: '%s'\nline: %d\noffset: %d" ), CurSource(), CurLineNumber(),
-                      CurOffset() );
-
-        THROW_IO_ERROR( error );
+        THROW_IO_ERRORF( _( "Invalid lib_id ID in\nfile: '%s'\nline: %d\noffset: %d" ),
+                         CurSource(), CurLineNumber(), CurOffset() );
     }
 
-    NETLIST_GROUP* group = new NETLIST_GROUP{ std::move( name ), std::move( uuid ), std::move( groupLibId ),
-                                              std::move( members ) };
+    NETLIST_GROUP* group = new NETLIST_GROUP( name, uuid, groupLibId, std::move( members ) );
     m_netlist->AddGroup( group );
 }
 
@@ -1005,6 +1004,139 @@ void KICAD_NETLIST_PARSER::parseVariant()
 
     if( !name.IsEmpty() )
         m_netlist->AddVariant( name, description );
+}
+
+
+void KICAD_NETLIST_PARSER::parseNetChain()
+{
+    wxString                                   name;
+    wxString                                   netClass;
+    wxString                                   chainClass;
+    wxString                                   colorStr;
+    std::vector<wxString>                      members;
+    std::vector<std::pair<wxString, wxString>> terminals;
+
+    while( ( token = NextTok() ) != T_EOF )
+    {
+        if( token == T_RIGHT )
+            break;
+        else if( token == T_LEFT )
+            token = NextTok();
+
+        switch( token )
+        {
+        case T_name:
+            NeedSYMBOLorNUMBER();
+            name = From_UTF8( CurText() );
+            NeedRIGHT();
+            break;
+
+        case T_net_class:
+            NeedSYMBOLorNUMBER();
+            netClass = From_UTF8( CurText() );
+            NeedRIGHT();
+            break;
+
+        case T_net_chain_class:
+            NeedSYMBOLorNUMBER();
+            chainClass = From_UTF8( CurText() );
+            NeedRIGHT();
+            break;
+
+        case T_color:
+            NeedSYMBOLorNUMBER();
+            colorStr = From_UTF8( CurText() );
+            NeedRIGHT();
+            break;
+
+        case T_members:
+            while( ( token = NextTok() ) != T_RIGHT )
+            {
+                if( token == T_LEFT )
+                    token = NextTok();
+
+                if( token == T_member )
+                {
+                    while( ( token = NextTok() ) != T_RIGHT )
+                    {
+                        if( token == T_LEFT )
+                            token = NextTok();
+
+                        if( token == T_net )
+                        {
+                            NeedSYMBOLorNUMBER();
+                            members.emplace_back( From_UTF8( CurText() ) );
+                            NeedRIGHT();
+                        }
+                        else
+                            skipCurrent();
+                    }
+                }
+                else
+                    skipCurrent();
+            }
+            break;
+
+        case T_terminal_pins:
+            while( ( token = NextTok() ) != T_RIGHT )
+            {
+                if( token == T_LEFT )
+                    token = NextTok();
+
+                if( token == T_terminal_pin )
+                {
+                    wxString ref;
+                    wxString pin;
+
+                    while( ( token = NextTok() ) != T_RIGHT )
+                    {
+                        if( token == T_LEFT )
+                            token = NextTok();
+
+                        if( token == T_ref )
+                        {
+                            NeedSYMBOLorNUMBER();
+                            ref = From_UTF8( CurText() );
+                            NeedRIGHT();
+                        }
+                        else if( token == T_pin )
+                        {
+                            NeedSYMBOLorNUMBER();
+                            pin = From_UTF8( CurText() );
+                            NeedRIGHT();
+                        }
+                        else
+                            skipCurrent();
+                    }
+
+                    if( !ref.IsEmpty() && !pin.IsEmpty() )
+                        terminals.emplace_back( ref, pin );
+                }
+                else
+                    skipCurrent();
+            }
+            break;
+
+        default:
+            skipCurrent();
+            break;
+        }
+    }
+
+    for( const wxString& netName : members )
+        m_netlist->SetNetChainFor( netName, name );
+
+    for( const auto& term : terminals )
+        m_netlist->AddSignalTerminalPin( name, term.first, term.second );
+
+    if( !netClass.IsEmpty() )
+        m_netlist->SetSignalNetClass( name, netClass );
+
+    if( !colorStr.IsEmpty() )
+        m_netlist->SetSignalColor( name, colorStr );
+
+    if( !chainClass.IsEmpty() )
+        m_netlist->SetSignalChainClass( name, chainClass );
 }
 
 

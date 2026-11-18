@@ -13,11 +13,7 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, you may find one here:
-# http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-# or you may search the http://www.gnu.org website for the version 2 license,
-# or you may write to the Free Software Foundation, Inc.,
-# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 find_package( wxWidgets 3.0.0 COMPONENTS gl aui adv html core net base xml stc REQUIRED )
 
@@ -40,25 +36,44 @@ set( QA_COMMON_SRCS
     test_backup_settings.cpp
     test_base_set.cpp
     test_bitmap_base.cpp
+    test_bitmap_tracing.cpp
     test_clipboard.cpp
     test_collector.cpp
     test_color4d.cpp
     test_commit.cpp
+    test_compatibility_report.cpp
     test_coroutine.cpp
+    test_filter_kruskal.cpp
+    test_database_lib_settings.cpp
+    test_database_value.cpp
     test_design_block_io.cpp
+    test_design_block_library_adapter.cpp
+    test_desktop_app_id.cpp
+    test_dialog_kicad_merge_3way.cpp
     test_dialog_shim.cpp
     test_eda_shape.cpp
     test_eda_text.cpp
-    test_edit_constraints.cpp
+    test_editor_tabs_panel.cpp
+    test_edit_relations.cpp
+    test_embedded_si_literals.cpp
+    test_observable.cpp
+    test_union_find.cpp
+    test_unit_binder.cpp
     test_wx_dataviewctrl.cpp
+    test_wx_grid.cpp
     test_embedded_file_compress.cpp
     test_env_paths.cpp
     test_expand_text_vars.cpp
+    test_text_var_dependency.cpp
+    test_drawing_sheet_reactive.cpp
     test_file_history.cpp
     test_filename_resolver.cpp
+    test_hashtables.cpp
     test_hotkey_store.cpp
     test_increment.cpp
     test_inplace_function.cpp
+    test_io_error.cpp
+    test_item_realignment.cpp
     test_json_schema_validator.cpp
     test_ki_any.cpp
     test_library_tables.cpp
@@ -68,13 +83,16 @@ set( QA_COMMON_SRCS
     test_markup_parser.cpp
     test_kicad_string.cpp
     test_kicad_stroke_font.cpp
-    test_outline_font.cpp
     test_dxf_plotter.cpp
     test_gerber_plotter.cpp
     test_pdf_circle_plot.cpp
     test_pdf_unicode_plot.cpp
+    test_png_plotter.cpp
+    test_render_utils.cpp
     test_kiid.cpp
+    test_kiway.cpp
     test_layer_ids.cpp
+    test_line_ending.cpp
     test_lib_id.cpp
     test_lib_tree_model_adapter.cpp
     test_layer_range.cpp
@@ -83,18 +101,35 @@ set( QA_COMMON_SRCS
     test_notifications_manager.cpp
     test_project_archiver.cpp
     test_property.cpp
+    test_svg_plotter.cpp
     test_property_holder.cpp
     test_reporting.cpp
+    test_rhi_compute.cpp
+    test_rhi_deferred_release.cpp
     test_rc_tree_model.cpp
     test_refdes_utils.cpp
     test_reset_print_to_file.cpp
+    test_scoped_temp_path.cpp
+    test_wx_data_view_hyperlink_renderer.cpp
     test_grid_helper.cpp
+    test_priority_thread_pool_task.cpp
+    test_snapping_options.cpp
+    test_string_any_map.cpp
     test_string_utils.cpp
+    test_base64.cpp
+    test_target3001_arc.cpp
+    test_target3001_fonts.cpp
     test_richio.cpp
     test_template_fieldnames.cpp
     test_text_attributes.cpp
     test_tool_dispatcher.cpp
+    test_tool_prime.cpp
     git/test_libgit_backend.cpp
+    git/test_git_clone_handler.cpp
+    git/test_git_compare_handler.cpp
+    git/test_kigit_ignore.cpp
+    git/test_text_diff.cpp
+    git/test_kigit_failure.cpp
     text_eval/test_text_eval_parser.cpp
     text_eval/test_text_eval_parser_core.cpp
     text_eval/test_text_eval_parser_datetime.cpp
@@ -103,16 +138,35 @@ set( QA_COMMON_SRCS
     text_eval/test_text_eval_numeric_compat.cpp
     text_eval/test_text_eval_render.cpp
     test_title_block.cpp
+    test_track_width_calculations.cpp
+    test_pth_hole_size.cpp
     test_types.cpp
     test_utf8.cpp
     test_wildcards_and_files_ext.cpp
+    test_wx_any_utils.cpp
     test_wx_filename.cpp
 
+    libeval/test_libeval_string_literal.cpp
     libeval/test_numeric_evaluator.cpp
+
+    transline_calculations/test_coax.cpp
+    transline_calculations/test_coplanar.cpp
+    transline_calculations/test_dielectric_selector.cpp
+    transline_calculations/test_djordjevic_sarkar.cpp
+    transline_calculations/test_djordjevic_sarkar_integration.cpp
+    transline_calculations/test_coupled_microstrip.cpp
+    transline_calculations/test_coupled_stripline.cpp
+    transline_calculations/test_coupled_stripline_offset.cpp
+    transline_calculations/test_microstrip_cover.cpp
+    transline_calculations/test_rectwaveguide.cpp
+    transline_calculations/test_soldermask.cpp
+    transline_calculations/test_transline_roundtrip.cpp
+    transline_calculations/test_twistedpair.cpp
 
     io/test_csv.cpp
     io/altium/test_altium_parser.cpp
     io/altium/test_altium_parser_utils.cpp
+    io/altium/test_altium_project_variants.cpp
     io/cadstar/test_cadstar_parts_parser.cpp
 
     io/cadstar/test_cadstar_archive_parser.cpp
@@ -122,29 +176,35 @@ set( QA_COMMON_SRCS
     io/pads/test_pads_unit_converter.cpp
 
     test_kigit_common.cpp
+    test_scratch_doc.cpp
     test_kigit_orphan_registry.cpp
     test_throttle.cpp
     view/test_zoom_controller.cpp
     view/test_view_null_safety.cpp
-    view/test_view_rtree_stale_bbox.cpp
+    widgets/test_file_checklist_ctrl.cpp
 
+    test_netclass.cpp
     test_netname_validator.cpp
 
     # GAL tests
+    test_gal_cursor.cpp
     test_gal_xor_mode.cpp
     test_gal_resize_strategy.cpp
 
     # Preview item / drawing utility tests
+    test_construction_geom.cpp
     test_dashed_line.cpp
 
     # Graphics import tests
     test_graphics_importer_buffer.cpp
+    test_svg_import.cpp
 
     # Project template tests (source included directly since it's from kicad executable)
     test_project_template.cpp
     ${CMAKE_SOURCE_DIR}/kicad/project_template.cpp
 
     # Project file tests
+    test_import_proj_properties.cpp
     test_project_file.cpp
     test_settings_manager.cpp
     test_nested_settings.cpp
@@ -166,6 +226,12 @@ set( QA_COMMON_SRCS
     test_job_sch_erc.cpp
     test_jobs_runner.cpp
     test_jobs_output_archive.cpp
+    test_job_output_path.cpp
+    test_jobs_runner_record_output.cpp
+    ${CMAKE_SOURCE_DIR}/kicad/jobs_runner.cpp
+
+    # Translation integrity tests
+    test_translation_format_strings.cpp
 
     # Navlib safe initialization tests
     test_navlib_safe_init.cpp
@@ -197,10 +263,12 @@ target_link_libraries( qa_common
     common
     libcontext
     gal
+    rhi
     pads_common
     qa_utils
     Boost::headers
     Boost::unit_test_framework
+    Fontconfig::Fontconfig
     ${wxWidgets_LIBRARIES}
     ZLIB::ZLIB
     ${CMAKE_DL_LIBS}
@@ -210,29 +278,30 @@ if( TARGET api_schema_build_copy )
     add_dependencies( qa_common api_schema_build_copy )
 endif()
 
-# The print-to-file reset test reaches into the native GtkPrintSettings on GTK builds.
-# The GTK3 libraries themselves propagate transitively through kiplatform.
-if( KICAD_WX_PORT STREQUAL "gtk" )
-    find_package( PkgConfig REQUIRED )
-    pkg_check_modules( GTK3 REQUIRED gtk+-3.0 )
-    target_include_directories( qa_common SYSTEM PRIVATE ${GTK3_INCLUDE_DIRS} )
-endif()
-
 include_directories(
     ${CMAKE_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/kicad
     ${CMAKE_SOURCE_DIR}/pcbnew
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/common
+    ${CMAKE_SOURCE_DIR}/common/dialogs
     ${CMAKE_SOURCE_DIR}/common/io/pads
     ${CMAKE_SOURCE_DIR}/qa/mocks/include
     ${INC_AFTER}
 )
 
 set_source_files_properties( test_remote_provider_metadata.cpp test_remote_provider_client.cpp
-        test_json_schema_validator.cpp PROPERTIES
+        test_translation_format_strings.cpp test_json_schema_validator.cpp test_svg_import.cpp PROPERTIES
         COMPILE_DEFINITIONS "QA_SRC_ROOT=(\"${CMAKE_SOURCE_DIR}\")"
         )
+
+# Give the desktop-id test the same launcher identifiers pgm_base.cpp is built with so it can
+# assert the exact ids, matching regular and Flatpak prefixes.
+if( UNIX AND NOT APPLE )
+    set_property( SOURCE test_desktop_app_id.cpp APPEND PROPERTY COMPILE_DEFINITIONS
+        KICAD_DESKTOP_APP_NAME="${KICAD_APP_NAME}"
+        KICAD_DESKTOP_APP_PREFIX="${KICAD_APP_PREFIX}" )
+endif()
 
 if( KICAD_TEST_DATABASE_LIBRARIES )
     set_source_files_properties( test_database.cpp PROPERTIES
@@ -243,3 +312,11 @@ endif()
 kicad_add_boost_test( qa_common qa_common )
 
 setup_qa_env( qa_common )
+
+
+kicad_add_shaders( TARGET qa_common SHADERS
+    rhi_compute/checkerboard.comp
+    rhi_compute/workgroup.comp
+    rhi_compute/reduction.comp
+    rhi_compute/multipass.comp
+)

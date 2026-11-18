@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "dialog_import_symbol_select.h"
@@ -25,6 +25,7 @@
 #include <kiway.h>
 #include <lib_symbol.h>
 #include <lib_symbol_library_manager.h>
+#include <reporter.h>
 #include <symbol_edit_frame.h>
 #include <widgets/symbol_preview_widget.h>
 #include <wx/filename.h>
@@ -79,6 +80,10 @@ DIALOG_IMPORT_SYMBOL_SELECT::DIALOG_IMPORT_SYMBOL_SELECT( SYMBOL_EDIT_FRAME* aPa
         m_plugin( SCH_IO_MGR::FindPlugin( aPluginType ) ),
         m_preview( nullptr )
 {
+    // This is a direct user action, so surface any import warnings the plugin reports.
+    if( m_plugin )
+        m_plugin->SetReporter( &WXLOG_REPORTER::GetInstance() );
+
     wxFileName fn( aFilePath );
     SetTitle( wxString::Format( _( "Import Symbols from %s" ), fn.GetFullName() ) );
 
@@ -96,7 +101,7 @@ DIALOG_IMPORT_SYMBOL_SELECT::DIALOG_IMPORT_SYMBOL_SELECT( SYMBOL_EDIT_FRAME* aPa
                            nullptr, this );
 
     m_preview = new SYMBOL_PREVIEW_WIDGET( m_previewPanel, &Kiway(), false,
-                                           EDA_DRAW_PANEL_GAL::GAL_TYPE_OPENGL );
+                                           m_frame->GetCanvas()->GetBackend() );
     m_previewSizer->Add( m_preview, 1, wxEXPAND, 0 );
     m_previewPanel->Layout();
     m_unitChoice->Enable( false );

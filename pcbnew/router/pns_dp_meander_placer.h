@@ -16,8 +16,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef __PNS_DP_MEANDER_PLACER_H
@@ -69,7 +69,7 @@ public:
      *
      * @return true if route has been committed.  May return false if the routing result is
      *         violating design rules.  In such cases, the track is only committed if
-     *         Settings.CanViolateDRC() is on.
+     *         ROUTING_SETTINGS::AllowDRCViolations() is on.
      */
     bool FixRoute( const VECTOR2I& aP, ITEM* aEndItem, bool aForceFinish = false ) override;
 
@@ -138,10 +138,10 @@ private:
 
     void calculateTimeDomainTargets();
 
-    ///< Current routing start point (end of tail, beginning of head).
+    /// Current routing start point (end of tail, beginning of head).
     VECTOR2I m_currentStart;
 
-    ///< Current world state.
+    /// Current world state.
     NODE* m_currentNode;
 
     DIFF_PAIR m_originPair;

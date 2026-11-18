@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PREVIEW_ITEMS_CENTERLINE_RECT_ITEM_H
@@ -51,20 +47,20 @@ public:
 
     CENTRELINE_RECT_ITEM( const TWO_POINT_GEOMETRY_MANAGER& aGeomMgr, double aAspect );
 
-    ///< Gets the bounding box of the rectangle
+    /// Gets the bounding box of the rectangle
     virtual const BOX2I ViewBBox() const override;
 
 private:
 
-    ///< Get the rectangular outline
+    /// Get the rectangular outline
     SHAPE_POLY_SET getOutline() const;
 
-    ///< Draw rectangle and center line onto GAL
+    /// Draw rectangle and center line onto GAL
     void drawPreviewShape( KIGFX::VIEW* aView ) const override;
 
     const TWO_POINT_GEOMETRY_MANAGER& m_geomMgr;
 
-    ///< The aspect ratio of the rectangle to draw
+    /// The aspect ratio of the rectangle to draw
     double m_aspect;
 };
 

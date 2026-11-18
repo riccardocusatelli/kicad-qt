@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <dialog_update_symbol_fields.h>
@@ -41,7 +41,7 @@ DIALOG_UPDATE_SYMBOL_FIELDS::DIALOG_UPDATE_SYMBOL_FIELDS( SYMBOL_EDIT_FRAME* aPa
     for( FIELD_T fieldId : MANDATORY_FIELDS )
     {
         m_mandatoryFieldListIndexes[fieldId] = m_fieldsBox->GetCount();
-        m_fieldsBox->Append( GetDefaultFieldName( fieldId, DO_TRANSLATE ) );
+        m_fieldsBox->Append( GetDefaultFieldName( fieldId, TRANSLATED ) );
         m_fieldsBox->Check( m_fieldsBox->GetCount() - 1, true );
     }
 
@@ -137,12 +137,12 @@ void DIALOG_UPDATE_SYMBOL_FIELDS::onOkButtonClicked( wxCommandEvent& aEvent )
             options.m_updateFields.insert( m_fieldsBox->GetString( i ) );
     }
 
-    // Mandatory rows show translated names, but SyncFieldsFromParent() matches on canonical
+    // Mandatory rows show translated names, but SyncFieldsFromParent() matches on untranslated
     // names, so add those too or a non-English UI would never update mandatory fields.
     for( FIELD_T fieldId : MANDATORY_FIELDS )
     {
         if( m_fieldsBox->IsChecked( m_mandatoryFieldListIndexes[fieldId] ) )
-            options.m_updateFields.insert( GetCanonicalFieldName( fieldId ) );
+            options.m_updateFields.insert( GetDefaultFieldName( fieldId, UNTRANSLATED ) );
     }
 
     options.m_removeExtraFields = m_removeExtraBox->GetValue();

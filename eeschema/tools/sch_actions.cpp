@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "tools/sch_actions.h"
@@ -28,7 +24,9 @@
 #include <core/typeinfo.h>
 #include <layer_ids.h>
 #include <sch_bitmap.h>
+#include <sch_shape.h>
 #include <sch_line_wire_bus_tool.h>
+#include <tool/arc_draw_mode.h>
 #include <tool/tool_action.h>
 
 class DESIGN_BLOCK;
@@ -63,6 +61,20 @@ TOOL_ACTION SCH_ACTIONS::diffSymbol( TOOL_ACTION_ARGS()
         .Scope( AS_GLOBAL )
         .FriendlyName( _( "Compare Symbol with Library" ) )
         .Tooltip( _( "Show differences between schematic symbol and its library equivalent" ) )
+        .Icon( BITMAPS::library ) );
+
+TOOL_ACTION SCH_ACTIONS::compareSchematicWithFile( TOOL_ACTION_ARGS()
+        .Name( "eeschema.InspectionTool.CompareSchematicWithFile" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Compare Schematic with File..." ) )
+        .Tooltip( _( "Diff the current schematic against another .kicad_sch file" ) )
+        .Icon( BITMAPS::library ) );
+
+TOOL_ACTION SCH_ACTIONS::compareSchematicWithHistory( TOOL_ACTION_ARGS()
+        .Name( "eeschema.InspectionTool.CompareSchematicWithHistory" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Compare Schematic with Local History..." ) )
+        .Tooltip( _( "Diff the current schematic against the most recent local-history snapshot" ) )
         .Icon( BITMAPS::library ) );
 
 TOOL_ACTION SCH_ACTIONS::showBusSyntaxHelp( TOOL_ACTION_ARGS()
@@ -183,6 +195,27 @@ TOOL_ACTION SCH_ACTIONS::saveLibraryAs( TOOL_ACTION_ARGS()
         .FriendlyName( _( "Save Library As..." ) )
         .Tooltip( _( "Save the current library to a new file" ) ) );
 
+TOOL_ACTION SCH_ACTIONS::saveLibraryAsPacked( TOOL_ACTION_ARGS()
+        .Name( "eeschema.SymbolLibraryControl.saveLibraryAsPacked" )
+        .Scope( AS_GLOBAL )
+        .LegacyHotkeyName( "Save As Packed" )
+        .FriendlyName( _( "Save Library As Packed..." ) )
+        .Tooltip( _( "Save the current unpacked library to a new packed library file" ) ) );
+
+TOOL_ACTION SCH_ACTIONS::saveLibraryAsUnpacked( TOOL_ACTION_ARGS()
+        .Name( "eeschema.SymbolLibraryControl.saveLibraryAsUnpacked" )
+        .Scope( AS_GLOBAL )
+        .LegacyHotkeyName( "Save As Unpacked" )
+        .FriendlyName( _( "Save Library As Unpacked..." ) )
+        .Tooltip( _( "Save the current packed library to a new unpacked library folder" ) ) );
+
+TOOL_ACTION SCH_ACTIONS::compareLibraryWithFile( TOOL_ACTION_ARGS()
+        .Name( "eeschema.SymbolLibraryControl.CompareLibraryWithFile" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Compare Library with File..." ) )
+        .Tooltip( _( "Diff the current symbol library against another .kicad_sym file" ) )
+        .Icon( BITMAPS::library ) );
+
 TOOL_ACTION SCH_ACTIONS::newSymbol( TOOL_ACTION_ARGS()
         .Name( "eeschema.SymbolLibraryControl.newSymbol" )
         .Scope( AS_GLOBAL )
@@ -282,6 +315,25 @@ TOOL_ACTION SCH_ACTIONS::flattenSymbol( TOOL_ACTION_ARGS()
         .Scope( AS_GLOBAL )
         .FriendlyName( _( "Flatten Symbol" ) )
         .Tooltip( _( "Remove inheritance from symbol" ) ) );
+
+// Not DefaultHotkeys because GTK refuses WXK_TAB as a menu accelerator. Ctrl+Tab uses the char hook.
+TOOL_ACTION SCH_ACTIONS::nextSymbolTab( TOOL_ACTION_ARGS()
+        .Name( "eeschema.SymbolLibraryControl.nextSymbolTab" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Next Symbol Tab" ) )
+        .Tooltip( _( "Switch to the next open symbol tab" ) ) );
+
+TOOL_ACTION SCH_ACTIONS::prevSymbolTab( TOOL_ACTION_ARGS()
+        .Name( "eeschema.SymbolLibraryControl.prevSymbolTab" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Previous Symbol Tab" ) )
+        .Tooltip( _( "Switch to the previous open symbol tab" ) ) );
+
+TOOL_ACTION SCH_ACTIONS::closeSymbolTab( TOOL_ACTION_ARGS()
+        .Name( "eeschema.SymbolLibraryControl.closeSymbolTab" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Close Symbol Tab" ) )
+        .Tooltip( _( "Close the active symbol tab" ) ) );
 
 TOOL_ACTION SCH_ACTIONS::showLibFieldsTable( TOOL_ACTION_ARGS()
         .Name( "eeschema.SymbolLibraryControl.showLibraryFieldsTable" )
@@ -517,7 +569,7 @@ TOOL_ACTION SCH_ACTIONS::placeNoConnect( TOOL_ACTION_ARGS()
         .Scope( AS_GLOBAL )
         .DefaultHotkey( 'Q' )
         .LegacyHotkeyName( "Add No Connect Flag" )
-        .FriendlyName( _( "Place No Connect Flags" ) )
+        .FriendlyName( _( "Place/Remove No Connect Flags" ) )
         .ToolbarState( TOOLBAR_STATE::TOGGLE )
         .Icon( BITMAPS::noconn )
         .Flags( AF_ACTIVATE )
@@ -697,6 +749,24 @@ TOOL_ACTION SCH_ACTIONS::drawCircle( TOOL_ACTION_ARGS()
         .Flags( AF_ACTIVATE )
         .Parameter( SHAPE_T::CIRCLE ) );
 
+TOOL_ACTION SCH_ACTIONS::drawEllipse( TOOL_ACTION_ARGS()
+        .Name( "eeschema.InteractiveDrawing.drawEllipse" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Draw Ellipses" ) )
+        .ToolbarState( TOOLBAR_STATE::TOGGLE )
+        .Icon( BITMAPS::add_ellipse )
+        .Flags( AF_ACTIVATE )
+        .Parameter( SHAPE_T::ELLIPSE ) );
+
+TOOL_ACTION SCH_ACTIONS::drawEllipseArc( TOOL_ACTION_ARGS()
+        .Name( "eeschema.InteractiveDrawing.drawEllipseArc" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Draw Elliptical Arcs" ) )
+        .ToolbarState( TOOLBAR_STATE::TOGGLE )
+        .Icon( BITMAPS::add_ellipse_arc )
+        .Flags( AF_ACTIVATE )
+        .Parameter( SHAPE_T::ELLIPSE_ARC ) );
+
 TOOL_ACTION SCH_ACTIONS::drawArc( TOOL_ACTION_ARGS()
         .Name( "eeschema.InteractiveDrawing.drawArc" )
         .Scope( AS_GLOBAL )
@@ -705,6 +775,71 @@ TOOL_ACTION SCH_ACTIONS::drawArc( TOOL_ACTION_ARGS()
         .Icon( BITMAPS::add_arc )
         .Flags( AF_ACTIVATE )
         .Parameter( SHAPE_T::ARC ) );
+
+TOOL_ACTION SCH_ACTIONS::drawArcCenter( TOOL_ACTION_ARGS()
+        .Name( "eeschema.InteractiveDrawing.drawArcCenter" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Draw Arc: Center, Start, End" ) )
+        .Tooltip( _( "Draw arcs by clicking the center, the start point, then the end point" ) )
+        .ToolbarState( TOOLBAR_STATE::TOGGLE )
+        .Icon( BITMAPS::add_arc_center )
+        .Flags( AF_ACTIVATE )
+        .Parameter( ARC_DRAW_MODE::CENTER_START_END ) );
+
+TOOL_ACTION SCH_ACTIONS::drawArcStartEndMid( TOOL_ACTION_ARGS()
+        .Name( "eeschema.InteractiveDrawing.drawArcStartEndMid" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Draw Arc: Start, End, Midpoint" ) )
+        .Tooltip( _( "Draw arcs by clicking the start point, the end point, then a point on the arc" ) )
+        .ToolbarState( TOOLBAR_STATE::TOGGLE )
+        .Icon( BITMAPS::add_arc_start_end_mid )
+        .Flags( AF_ACTIVATE )
+        .Parameter( ARC_DRAW_MODE::START_END_MID ) );
+
+TOOL_ACTION SCH_ACTIONS::drawArcStartEndCenter( TOOL_ACTION_ARGS()
+        .Name( "eeschema.InteractiveDrawing.drawArcStartEndCenter" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Draw Arc: Start, End, Center" ) )
+        .Tooltip( _( "Draw arcs by clicking the start point, the end point, then the center" ) )
+        .ToolbarState( TOOLBAR_STATE::TOGGLE )
+        .Icon( BITMAPS::add_arc_start_end_center )
+        .Flags( AF_ACTIVATE )
+        .Parameter( ARC_DRAW_MODE::START_END_CENTER ) );
+
+TOOL_ACTION SCH_ACTIONS::drawArcTangent( TOOL_ACTION_ARGS()
+        .Name( "eeschema.InteractiveDrawing.drawArcTangent" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Draw Arc: Tangent" ) )
+        .Tooltip( _( "Draw arcs tangent to the previous arc or to the line or arc ending at the start point" ) )
+        .ToolbarState( TOOLBAR_STATE::TOGGLE )
+        .Icon( BITMAPS::add_arc_tangent )
+        .Flags( AF_ACTIVATE )
+        .Parameter( ARC_DRAW_MODE::TANGENT ) );
+
+TOOL_ACTION SCH_ACTIONS::drawArcStartDirEnd( TOOL_ACTION_ARGS()
+        .Name( "eeschema.InteractiveDrawing.drawArcStartDirEnd" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Draw Arc: Start, Direction, End" ) )
+        .Tooltip( _( "Draw arcs by clicking the start point, a point giving the start direction, then the end point" ) )
+        .ToolbarState( TOOLBAR_STATE::TOGGLE )
+        .Icon( BITMAPS::add_arc_start_dir_end )
+        .Flags( AF_ACTIVATE )
+        .Parameter( ARC_DRAW_MODE::START_DIR_END ) );
+
+const TOOL_ACTION& SCH_ACTIONS::DrawArcForMode( ARC_DRAW_MODE aMode )
+{
+    switch( aMode )
+    {
+    case ARC_DRAW_MODE::CENTER_START_END: return drawArcCenter;
+    case ARC_DRAW_MODE::START_END_MID:    return drawArcStartEndMid;
+    case ARC_DRAW_MODE::START_END_CENTER: return drawArcStartEndCenter;
+    case ARC_DRAW_MODE::TANGENT:          return drawArcTangent;
+    case ARC_DRAW_MODE::START_DIR_END:    return drawArcStartDirEnd;
+    }
+
+    return drawArcCenter;
+}
+
 
 TOOL_ACTION SCH_ACTIONS::drawBezier( TOOL_ACTION_ARGS()
         .Name( "eeschema.InteractiveDrawing.drawBezier" )
@@ -715,6 +850,15 @@ TOOL_ACTION SCH_ACTIONS::drawBezier( TOOL_ACTION_ARGS()
         .Flags( AF_ACTIVATE )
         .Parameter( SHAPE_T::BEZIER ) );
 
+TOOL_ACTION SCH_ACTIONS::drawPolygon( TOOL_ACTION_ARGS()
+        .Name( "eeschema.InteractiveDrawing.drawPolygon" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Draw Polygons" ) )
+        .ToolbarState( TOOLBAR_STATE::TOGGLE )
+        .Icon( BITMAPS::add_graphical_polygon )
+        .Flags( AF_ACTIVATE )
+        .Parameter( SHAPE_T::POLY ) );
+
 TOOL_ACTION SCH_ACTIONS::placeImage( TOOL_ACTION_ARGS()
         .Name( "eeschema.InteractiveDrawing.placeImage" )
         .Scope( AS_GLOBAL )
@@ -724,6 +868,13 @@ TOOL_ACTION SCH_ACTIONS::placeImage( TOOL_ACTION_ARGS()
         .Flags( AF_ACTIVATE )
         .Parameter<SCH_BITMAP*>( nullptr ) );
 
+TOOL_ACTION SCH_ACTIONS::convertImageToOutlines( TOOL_ACTION_ARGS()
+        .Name( "eeschema.InteractiveDrawing.convertImageToOutlines" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Convert to Outlines..." ) )
+        .Tooltip( _( "Trace the image into schematic graphics" ) )
+        .Icon( BITMAPS::image ) );
+
 TOOL_ACTION SCH_ACTIONS::drawRuleArea( TOOL_ACTION_ARGS()
         .Name( "eeschema.InteractiveDrawing.drawRuleArea" )
         .Scope( AS_GLOBAL )
@@ -732,13 +883,6 @@ TOOL_ACTION SCH_ACTIONS::drawRuleArea( TOOL_ACTION_ARGS()
         .Icon( BITMAPS::add_keepout_area )
         .Flags( AF_ACTIVATE )
         .Parameter( SHAPE_T::RECTANGLE ) );
-
-TOOL_ACTION SCH_ACTIONS::deleteLastPoint( TOOL_ACTION_ARGS()
-        .Name( "eeschema.InteractiveDrawing.deleteLastPoint" )
-        .Scope( AS_CONTEXT )
-        .FriendlyName( _( "Delete Last Point" ) )
-        .Tooltip( _( "Delete the last point added to the current item" ) )
-        .Icon( BITMAPS::undo ) );
 
 TOOL_ACTION SCH_ACTIONS::closeOutline( TOOL_ACTION_ARGS()
         .Name( "eeschema.InteractiveDrawing.closeOutline" )
@@ -825,6 +969,27 @@ TOOL_ACTION SCH_ACTIONS::swapUnitLabels( TOOL_ACTION_ARGS()
         .Tooltip( _( "Swap labels between selected units" ) )
         .Icon( BITMAPS::swap ) );
 
+TOOL_ACTION SCH_ACTIONS::toggleLock( TOOL_ACTION_ARGS()
+        .Name( "eeschema.InteractiveEdit.toggleLock" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Toggle Lock" ) )
+        .Tooltip( _( "Lock or unlock selected items" ) )
+        .Icon( BITMAPS::lock_unlock ) );
+
+TOOL_ACTION SCH_ACTIONS::lock( TOOL_ACTION_ARGS()
+        .Name( "eeschema.InteractiveEdit.lock" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Lock" ) )
+        .Tooltip( _( "Prevent items from being moved and/or resized on the canvas" ) )
+        .Icon( BITMAPS::locked ) );
+
+TOOL_ACTION SCH_ACTIONS::unlock( TOOL_ACTION_ARGS()
+        .Name( "eeschema.InteractiveEdit.unlock" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Unlock" ) )
+        .Tooltip( _( "Allow items to be moved and/or resized on the canvas" ) )
+        .Icon( BITMAPS::unlocked ) );
+
 TOOL_ACTION SCH_ACTIONS::properties( TOOL_ACTION_ARGS()
         .Name( "eeschema.InteractiveEdit.properties" )
         .Scope( AS_GLOBAL )
@@ -893,6 +1058,20 @@ TOOL_ACTION SCH_ACTIONS::updateSymbol( TOOL_ACTION_ARGS()
         .FriendlyName( _( "Update Symbol..." ) )
         .Tooltip( _( "Update symbol to include any changes from the library" ) )
         .Icon( BITMAPS::refresh ) );
+
+TOOL_ACTION SCH_ACTIONS::setVariantSymbol( TOOL_ACTION_ARGS()
+        .Name( "eeschema.InteractiveEdit.setVariantSymbol" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Set Variant Symbol..." ) )
+        .Tooltip( _( "Assign an alternate library symbol for this design variant" ) )
+        .Icon( BITMAPS::exchange ) );
+
+TOOL_ACTION SCH_ACTIONS::clearVariantSymbol( TOOL_ACTION_ARGS()
+        .Name( "eeschema.InteractiveEdit.clearVariantSymbol" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Clear Variant Symbol" ) )
+        .Tooltip( _( "Remove the variant symbol override and revert to the base symbol" ) )
+        .Icon( BITMAPS::cancel ) );
 
 TOOL_ACTION SCH_ACTIONS::assignNetclass( TOOL_ACTION_ARGS()
         .Name( "eeschema.InteractiveEdit.assignNetclass" )
@@ -989,6 +1168,13 @@ TOOL_ACTION SCH_ACTIONS::symbolProperties( TOOL_ACTION_ARGS()
         .FriendlyName( _( "Symbol Properties..." ) )
         .Icon( BITMAPS::part_properties ) );
 
+TOOL_ACTION SCH_ACTIONS::editSymbolPinMaps( TOOL_ACTION_ARGS()
+        .Name( "eeschema.InteractiveEdit.editSymbolPinMaps" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Symbol Pin Maps..." ) )
+        .Tooltip( _( "Edit the symbol's pin-to-pad maps and associated footprints" ) )
+        .Icon( BITMAPS::pin_table ) );
+
 TOOL_ACTION SCH_ACTIONS::pinTable( TOOL_ACTION_ARGS()
         .Name( "eeschema.InteractiveEdit.pinTable" )
         .Scope( AS_GLOBAL )
@@ -1058,6 +1244,42 @@ TOOL_ACTION SCH_ACTIONS::highlightNetTool( TOOL_ACTION_ARGS()
         .Icon( BITMAPS::net_highlight_schematic )
         .Flags( AF_ACTIVATE ) );
 
+TOOL_ACTION SCH_ACTIONS::highlightNetChain( TOOL_ACTION_ARGS()
+        .Name( "eeschema.EditorControl.highlightNetChain" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Highlight Net Chain" ) )
+        .Tooltip( _( "Highlight the net chain under the cursor" ) )
+        .Icon( BITMAPS::net_highlight_schematic ) );
+
+TOOL_ACTION SCH_ACTIONS::removeFromNetChain( TOOL_ACTION_ARGS()
+        .Name( "eeschema.EditorControl.removeFromNetChain" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Remove from Net Chain" ) )
+        .Tooltip( _( "Remove the selected net from its net chain by disabling propagation on the bridging component(s)" ) ) );
+
+TOOL_ACTION SCH_ACTIONS::replaceTerminalPin( TOOL_ACTION_ARGS()
+        .Name( "eeschema.EditorControl.replaceTerminalPin" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Replace Terminal Pin" ) ) );
+
+TOOL_ACTION SCH_ACTIONS::nameNetChain( TOOL_ACTION_ARGS()
+        .Name( "eeschema.EditorControl.nameNetChain" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Name Net Chain" ) )
+        .Tooltip( _( "Assign a name to the net chain" ) ) );
+
+TOOL_ACTION SCH_ACTIONS::createNetChainBetweenPins( TOOL_ACTION_ARGS()
+        .Name( "eeschema.EditorControl.createNetChainBetweenPins" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Create Net Chain Between Pins" ) )
+        .Tooltip( _( "Create a new net chain connecting the two selected pins" ) ) );
+
+TOOL_ACTION SCH_ACTIONS::createNetChain( TOOL_ACTION_ARGS()
+        .Name( "eeschema.EditorControl.createNetChain" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Create Net Chain..." ) )
+        .Tooltip( _( "Detect net chain paths through passives and create a named net chain" ) ) );
+
 TOOL_ACTION SCH_ACTIONS::showNetNavigator( TOOL_ACTION_ARGS()
         .Name( "eeschema.EditorControl.showNetNavigator" )
         .Scope( AS_GLOBAL )
@@ -1123,7 +1345,7 @@ TOOL_ACTION SCH_ACTIONS::editSymbolLibraryLinks( TOOL_ACTION_ARGS()
         .Scope( AS_GLOBAL )
         .FriendlyName( _( "Bulk Edit Symbol Library Links..." ) )
         .Tooltip( _( "Edit a table of links between schematic and library symbols" ) )
-        .Icon( BITMAPS::edit_cmp_symb_links ) );
+        .Icon( BITMAPS::link ) );
 
 TOOL_ACTION SCH_ACTIONS::assignFootprints( TOOL_ACTION_ARGS()
         .Name( "eeschema.EditorControl.assignFootprints" )
@@ -1467,7 +1689,11 @@ TOOL_ACTION SCH_ACTIONS::navigateNext( TOOL_ACTION_ARGS()
 TOOL_ACTION SCH_ACTIONS::showHierarchy( TOOL_ACTION_ARGS()
         .Name( "eeschema.EditorTool.showHierarchy" )
         .Scope( AS_GLOBAL )
+#if defined( __WXMAC__ )
+        .DefaultHotkey( MD_ALT + 'H' )
+#else
         .DefaultHotkey( MD_CTRL + 'H' )
+#endif
         .FriendlyName( _( "Hierarchy Navigator" ) )
         .Tooltip( _( "Show/hide the schematic sheet hierarchy navigator" ) )
         .ToolbarState( TOOLBAR_STATE::TOGGLE )
@@ -1720,11 +1946,24 @@ TOOL_ACTION SCH_ACTIONS::toggleDottedSecondary( TOOL_ACTION_ARGS()
         .FriendlyName( _( "Dotted Current/Phase" ) )
         .Tooltip( _( "Draw secondary signal trace (current or phase) with a dotted line" ) ) );
 
+TOOL_ACTION SCH_ACTIONS::toggleSmithChart( TOOL_ACTION_ARGS()
+        .Name( "eeschema.Simulator.toggleSmithChart" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Smith Chart" ) )
+        .Tooltip( _( "Show S-parameter results on a Smith chart" ) ) );
+
 TOOL_ACTION SCH_ACTIONS::toggleDarkModePlots( TOOL_ACTION_ARGS()
         .Name( "eeschema.Simulator.toggleDarkModePlots" )
         .Scope( AS_GLOBAL )
         .FriendlyName( _( "Dark Mode Plots" ) )
         .Tooltip( _( "Draw plots with a black background" ) ) );
+
+TOOL_ACTION SCH_ACTIONS::toggleTrackCursor( TOOL_ACTION_ARGS()
+        .Name( "eeschema.Simulator.toggleTrackCursor" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Track Cursor" ) )
+        .Tooltip( _( "Show a crosshair that follows the mouse and reads out every signal's "
+                      "value" ) ) );
 
 TOOL_ACTION SCH_ACTIONS::simAnalysisProperties( TOOL_ACTION_ARGS()
         .Name( "eeschema.Simulation.simAnalysisProperties" )
@@ -1787,10 +2026,22 @@ TOOL_ACTION SCH_ACTIONS::removeVariant( TOOL_ACTION_ARGS()
         .FriendlyName( _( "Remove Design Variant..." ) )
         .Tooltip( _( "Remove an existing design variant from the schematic." ) ) );
 
-TOOL_ACTION SCH_ACTIONS::editVariantDescription( TOOL_ACTION_ARGS()                                                   
+TOOL_ACTION SCH_ACTIONS::editVariantDescription( TOOL_ACTION_ARGS()
         .Name( "eeschema.EditorControl.editVariantDescription" )
         .Scope( AS_GLOBAL )
         .FriendlyName( _( "Edit Variant Description..." ) )
         .Tooltip( _( "Edit the description of an existing design variant." ) ) );
+
+TOOL_ACTION SCH_ACTIONS::renameVariant( TOOL_ACTION_ARGS()
+        .Name( "eeschema.EditorControl.renameVariant" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Rename Design Variant..." ) )
+        .Tooltip( _( "Rename an existing design variant." ) ) );
+
+TOOL_ACTION SCH_ACTIONS::copyVariant( TOOL_ACTION_ARGS()
+        .Name( "eeschema.EditorControl.copyVariant" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Copy Design Variant..." ) )
+        .Tooltip( _( "Create a copy of an existing design variant." ) ) );
 
 // clang-format on

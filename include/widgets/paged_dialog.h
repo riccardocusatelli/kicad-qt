@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -39,6 +39,14 @@ public:
     WX_TREEBOOK* GetTreebook() { return m_treebook; }
 
     void SetInitialPage( const wxString& aPage, const wxString& aParentPage = wxEmptyString );
+
+    /**
+     * Select the page with the given title.
+     *
+     * @return the page, resolved if it was created lazily, or nullptr where no page carries
+     *         that title or the page is not the one now showing.
+     */
+    wxWindow* ShowPage( const wxString& aTitle );
 
     void SetModified() { m_modified = true; }
 
@@ -66,6 +74,8 @@ protected:
     virtual void onPageChanged( wxBookCtrlEvent& aEvent );
     virtual void onPageChanging( wxBookCtrlEvent& aEvent );
     virtual void onCharHook( wxKeyEvent& aEvent );
+    void         onTreeLeftDown( wxMouseEvent& aEvent );
+    void         onTreeItemActivated( wxTreeEvent& aEvent );
 
     WX_TREEBOOK* m_treebook;
     wxButton*    m_auxiliaryButton;
@@ -79,6 +89,8 @@ private:
     wxBoxSizer* m_buttonsSizer;
 
     std::vector<bool> m_macHack;
+
+    wxTreeItemId      m_clickExpandedItem;
 };
 
 

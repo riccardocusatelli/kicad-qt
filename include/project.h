@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #ifndef PROJECT_H_
 #define PROJECT_H_
@@ -35,7 +31,6 @@
 #include <kiid.h>
 #include <wx_filename.h>
 #include <wx/string.h>
-#include <core/typeinfo.h>
 #include <core/ki_assert.h>
 
 /// A variable name whose value holds the current project directory.
@@ -56,6 +51,7 @@ class FOOTPRINT_LIBRARY_ADAPTER;
 class PROJECT_FILE;
 class PROJECT_LOCAL_SETTINGS;
 class LOCKFILE;
+class KIGIT_COMMON;
 
 
 /**
@@ -68,7 +64,7 @@ class KICOMMON_API PROJECT
 {
 public:
     /**
-     * The set of #_ELEMs that a #PROJECT can hold.
+     * The set of #_ELEM objects that a #PROJECT can hold.
      */
     enum class ELEM
     {
@@ -215,14 +211,30 @@ public:
         return *m_localSettings;
     }
 
+    /**
+     * This project's Git session, created empty on first use. The repository handle is null
+     * until AttachGitRepository() finds one.
+     *
+     * UI thread only, the lazy creation is not synchronized. Background work takes a shared
+     * pointer captured on the UI thread instead.
+     */
+    virtual std::shared_ptr<KIGIT_COMMON> GetGitCommon() const;
+
+    /**
+     * Find the Git repository containing the project directory and bind it to the session.
+     * Does nothing when Git integration is disabled for this project.
+     */
+    virtual bool AttachGitRepository();
+
+    /// Safely release the session's repository handle and drop the session.
+    virtual void ReleaseGitCommon();
+
     /// Retain a number of project specific wxStrings, enumerated here:
     enum RSTRING_T
     {
         DOC_PATH,
         SCH_LIB_PATH,
         SCH_LIB_SELECT, // eeschema/selpart.cpp
-        SCH_LIBEDIT_CUR_LIB,
-        SCH_LIBEDIT_CUR_SYMBOL, // eeschema/libeditframe.cpp
 
         VIEWER_3D_PATH,
         VIEWER_3D_FILTER_INDEX,
@@ -343,7 +355,7 @@ private:
     /**
      * Set the backing store file for this project.
      *
-     * This should only be called by #SETTINGS_MANGER on load.
+     * This should only be called by #SETTINGS_MANAGER on load.
      *
      * @param aFile is a loaded PROJECT_FILE.
      */
@@ -365,7 +377,7 @@ private:
     }
 
     /**
-     * Return the full path and file name of the project specific library table \a aLibTableName..
+     * Return the full path and file name of the project specific library table \a aLibTableName.
      */
     const wxString libTableName( const wxString& aLibTableName ) const;
 
@@ -382,6 +394,9 @@ private:
 
     /// Backing store for project local settings -- owned by SETTINGS_MANAGER
     PROJECT_LOCAL_SETTINGS*  m_localSettings;
+
+    /// Git session for the repository containing this project, created on first use
+    mutable std::shared_ptr<KIGIT_COMMON> m_gitCommon;
 
     std::map<KIID, wxString> m_sheetNames;
 

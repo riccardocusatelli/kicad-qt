@@ -14,18 +14,18 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include <bitmaps.h>
+#include <api/api_utils.h>
+#include <api/schematic/schematic_types.pb.h>
+#include <google/protobuf/any.pb.h>
 #include <eda_group.h>
 #include <geometry/shape_compound.h>
 #include <sch_item.h>
 #include <sch_group.h>
 #include <sch_screen.h>
+#include <schematic.h>
 #include <sch_symbol.h>
 #include <symbol.h>
 #include <widgets/msgpanel_item.h>
@@ -36,20 +36,95 @@
 #include <properties/property_mgr.h>
 #include <core/ki_assert.h>
 
-SCH_GROUP::SCH_GROUP() : SCH_ITEM( nullptr, SCH_GROUP_T )
+
+SCH_GROUP::SCH_GROUP() :
+        SCH_ITEM( nullptr, SCH_GROUP_T )
 {
     SetLayer( LAYER_GROUP );
 }
 
-SCH_GROUP::SCH_GROUP( SCH_ITEM* aParent ) : SCH_ITEM( aParent, SCH_GROUP_T )
+
+SCH_GROUP::SCH_GROUP( SCH_ITEM* aParent ) :
+        SCH_ITEM( aParent, SCH_GROUP_T )
 {
     SetLayer( LAYER_GROUP );
 }
 
-SCH_GROUP::SCH_GROUP( SCH_SCREEN* aParent ) : SCH_ITEM( aParent, SCH_GROUP_T )
+
+SCH_GROUP::SCH_GROUP( SCH_SCREEN* aParent ) :
+        SCH_ITEM( aParent, SCH_GROUP_T )
 {
     SetLayer( LAYER_GROUP );
 }
+
+
+void SCH_GROUP::Serialize( google::protobuf::Any& aContainer ) const
+{
+    using namespace kiapi::schematic::types;
+
+    Group group;
+    EDA_ITEM_SET sortedItems( m_items.begin(), m_items.end() );
+
+    group.mutable_id()->set_value( m_Uuid.AsStdString() );
+    group.set_name( GetName().ToUTF8() );
+    group.set_locked( IsLocked() ? kiapi::common::types::LockedState::LS_LOCKED
+                                 : kiapi::common::types::LockedState::LS_UNLOCKED );
+
+    for( EDA_ITEM* member : sortedItems )
+        group.add_items()->set_value( member->m_Uuid.AsStdString() );
+
+    kiapi::common::PackCustomProperties( group.mutable_custom_properties(), *this );
+
+    if( !aContainer.PackFrom( group ) )
+        KI_FAIL_MSG( wxT( "Failed to pack SCH_GROUP" ) );
+}
+
+
+bool SCH_GROUP::Deserialize( const google::protobuf::Any& aContainer )
+{
+    return DeserializeGroup( aContainer, nullptr );
+}
+
+
+// Note: this only records the group members in m_deserializedItems.  A proper AddItem() must
+// be done in a second pass (FinalizeGroupDeserialization()).
+bool SCH_GROUP::DeserializeGroup( const google::protobuf::Any& aContainer, COMMIT* aCommit )
+{
+    using namespace kiapi::schematic::types;
+
+    Group group;
+
+    if( !aContainer.UnpackTo( &group ) )
+        return false;
+
+    const_cast<KIID&>( m_Uuid ) = KIID( group.id().value() );
+    SetName( wxString::FromUTF8( group.name() ) );
+    SetLocked( group.locked() == kiapi::common::types::LockedState::LS_LOCKED );
+    kiapi::common::UnpackCustomProperties( group.custom_properties(), *this );
+
+    m_items.clear();
+    m_deserializedItems.clear();
+
+    SCHEMATIC* schematic = Schematic();
+
+    if( !schematic )
+        return false;
+
+    for( const kiapi::common::types::KIID& memberId : group.items() )
+    {
+        KIID id( memberId.value() );
+        EDA_ITEM* item = schematic->ResolveItem( id, nullptr, true );
+
+        if( !item && aCommit )
+            item = aCommit->ResolveItem( id );
+
+        if( item )
+            m_deserializedItems.insert( item );
+    }
+
+    return true;
+}
+
 
 std::unordered_set<SCH_ITEM*> SCH_GROUP::GetSchItems() const
 {
@@ -69,22 +144,22 @@ std::unordered_set<SCH_ITEM*> SCH_GROUP::GetSchItems() const
  * @return if not in the symbol editor and aItem is in a symbol, returns the
  * symbol's parent group. Otherwise, returns the aItem's parent group.
  */
-EDA_GROUP* getClosestGroup( SCH_ITEM* aItem, bool isSymbolEditor )
+static EDA_GROUP* getClosestGroup( const SCH_ITEM& aItem, bool isSymbolEditor )
 {
     // In the schematic editor, items with either symbols or sheets as their parents (e.g., fields,
     // pins, sheet pins, etc.) don't get their own groups and instead follow the group of their parent
     // object.
-    if( !isSymbolEditor && aItem->GetParent() && aItem->GetParent()->Type() == SCH_SYMBOL_T )
-        return static_cast<SCH_SYMBOL*>( aItem->GetParent() )->GetParentGroup();
-    else if( aItem->GetParent() && aItem->GetParent()->Type() == SCH_SHEET_T )
-        return static_cast<SCH_SHEET*>( aItem->GetParent() )->GetParentGroup();
+    if( !isSymbolEditor && aItem.GetParent() && aItem.GetParent()->Type() == SCH_SYMBOL_T )
+        return static_cast<SCH_SYMBOL*>( aItem.GetParent() )->GetParentGroup();
+    else if( aItem.GetParent() && aItem.GetParent()->Type() == SCH_SHEET_T )
+        return static_cast<SCH_SHEET*>( aItem.GetParent() )->GetParentGroup();
     else
-        return aItem->GetParentGroup();
+        return aItem.GetParentGroup();
 }
 
 
 /// Returns the top level group inside the aScope group, or nullptr
-EDA_GROUP* getNestedGroup( SCH_ITEM* aItem, EDA_GROUP* aScope, bool isSymbolEditor )
+static EDA_GROUP* getNestedGroup( const SCH_ITEM& aItem, const EDA_GROUP* aScope, bool isSymbolEditor )
 {
     EDA_GROUP* group = getClosestGroup( aItem, isSymbolEditor );
 
@@ -103,13 +178,13 @@ EDA_GROUP* getNestedGroup( SCH_ITEM* aItem, EDA_GROUP* aScope, bool isSymbolEdit
 }
 
 
-EDA_GROUP* SCH_GROUP::TopLevelGroup( SCH_ITEM* aItem, EDA_GROUP* aScope, bool isSymbolEditor )
+EDA_GROUP* SCH_GROUP::TopLevelGroup( const SCH_ITEM& aItem, const EDA_GROUP* aScope, bool isSymbolEditor )
 {
     return getNestedGroup( aItem, aScope, isSymbolEditor );
 }
 
 
-bool SCH_GROUP::WithinScope( SCH_ITEM* aItem, SCH_GROUP* aScope, bool isSymbolEditor )
+bool SCH_GROUP::WithinScope( const SCH_ITEM& aItem, const SCH_GROUP* aScope, bool isSymbolEditor )
 {
     EDA_GROUP* group = getClosestGroup( aItem, isSymbolEditor );
 
@@ -429,14 +504,26 @@ double SCH_GROUP::Similarity( const SCH_ITEM& aOther ) const
 
     const SCH_GROUP& other = static_cast<const SCH_GROUP&>( aOther );
 
+    if( m_items.empty() )
+        return 0.0;
+
     double similarity = 0.0;
 
     for( EDA_ITEM* item : m_items )
     {
+        double maxSimilarity = 0.0;
+
         for( EDA_ITEM* otherItem : other.m_items )
         {
-            similarity += static_cast<SCH_ITEM*>( item )->Similarity( *static_cast<SCH_ITEM*>( otherItem ) );
+            double itemSimilarity = static_cast<SCH_ITEM*>( item )->Similarity( *static_cast<SCH_ITEM*>( otherItem ) );
+
+            maxSimilarity = std::max( maxSimilarity, itemSimilarity );
+
+            if( maxSimilarity == 1.0 )
+                break;
         }
+
+        similarity += maxSimilarity;
     }
 
     return similarity / m_items.size();
@@ -459,8 +546,8 @@ static struct SCH_GROUP_DESC
 
         const wxString groupTab = _HKI( "Group Properties" );
 
-        propMgr.AddProperty(
-                new PROPERTY<EDA_GROUP, wxString>( _HKI( "Name" ), &SCH_GROUP::SetName, &SCH_GROUP::GetName ),
-                groupTab );
+        propMgr.AddProperty( new PROPERTY<EDA_GROUP, wxString>( _HKI( "Name" ),
+                    &SCH_GROUP::SetName, &SCH_GROUP::GetName ),
+                    groupTab );
     }
 } _SCH_GROUP_DESC;

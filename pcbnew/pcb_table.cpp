@@ -14,20 +14,18 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "pcb_table.h"
 #include <msg_panel_context.h>
 #include <widgets/msgpanel_item.h>
 #include <i18n_utility.h>
+
 #include <footprint.h>
-#include <pcb_table.h>
+#include <bitmaps.h>
 #include <board.h>
-#include <board_design_settings.h>
+#include <board_design_settings_defaults.h>
 #include <geometry/shape_simple.h>
 #include <geometry/shape_segment.h>
 #include <geometry/shape_compound.h>
@@ -42,10 +40,12 @@
 #include <api/api_utils.h>
 #include <api/api_pcb_utils.h>
 #include <api/board/board_types.pb.h>
+#include <board_commit.h>
+#include <eda_group.h>
 
 
-PCB_TABLE::PCB_TABLE( BOARD_ITEM* aParent, int aLineWidth ) :
-        BOARD_ITEM_CONTAINER( aParent, PCB_TABLE_T ),
+PCB_TABLE::PCB_TABLE( BOARD_ITEM* aParent, KICAD_T aType, int aLineWidth ) :
+        BOARD_ITEM_CONTAINER( aParent, aType ),
         m_strokeExternal( true ),
         m_StrokeHeaderSeparator( true ),
         m_borderStroke( aLineWidth, LINE_STYLE::DEFAULT, COLOR4D::UNSPECIFIED ),
@@ -53,6 +53,12 @@ PCB_TABLE::PCB_TABLE( BOARD_ITEM* aParent, int aLineWidth ) :
         m_strokeColumns( true ),
         m_separatorsStroke( aLineWidth, LINE_STYLE::DEFAULT, COLOR4D::UNSPECIFIED ),
         m_colCount( 0 )
+{
+}
+
+
+PCB_TABLE::PCB_TABLE( BOARD_ITEM* aParent, int aLineWidth ) :
+        PCB_TABLE( aParent, PCB_TABLE_T, aLineWidth )
 {
 }
 
@@ -90,6 +96,65 @@ PCB_TABLE::~PCB_TABLE()
 }
 
 
+void PCB_TABLE::CopyFrom( const BOARD_ITEM* aOther )
+{
+    KI_CHECK( aOther && aOther->Type() == PCB_TABLE_T, /* void */ );
+
+    BOARD*           board = GetBoard();
+    const PCB_TABLE* other = static_cast<const PCB_TABLE*>( aOther );
+
+    BOARD_ITEM::CopyFrom( aOther );
+
+    m_strokeExternal = other->m_strokeExternal;
+    m_StrokeHeaderSeparator = other->m_StrokeHeaderSeparator;
+    m_borderStroke = other->m_borderStroke;
+    m_strokeRows = other->m_strokeRows;
+    m_strokeColumns = other->m_strokeColumns;
+    m_separatorsStroke = other->m_separatorsStroke;
+
+    m_colCount = other->m_colCount;
+    m_colWidths = other->m_colWidths;
+    m_rowHeights = other->m_rowHeights;
+
+    if( board )
+        board->UncacheChildrenById( *this );
+
+    ClearCells();
+
+    for( PCB_TABLECELL* cell : other->m_cells )
+        AddCell( static_cast<PCB_TABLECELL*>( cell->Clone() ) );
+
+    if( board )
+        board->CacheChildrenById( *this );
+}
+
+
+BOARD_ITEM* PCB_TABLE::Duplicate( bool addToParentGroup, BOARD_COMMIT* aCommit ) const
+{
+    BOARD_ITEM* dupe = static_cast<BOARD_ITEM*>( Clone() );
+    dupe->ResetUuid();
+
+    dupe->RunOnChildren( []( BOARD_ITEM* aChild )
+                   {
+                       aChild->ResetUuid();
+                   },
+                   RECURSE_MODE::NO_RECURSE );
+
+    if( addToParentGroup )
+    {
+        KI_CHECK_MSG( aCommit, dupe, "Must supply a commit to update parent group" );
+
+        if( EDA_GROUP* group = dupe->GetParentGroup() )
+        {
+            aCommit->Modify( group->AsEdaItem(), nullptr, RECURSE_MODE::NO_RECURSE );
+            group->AddItem( dupe );
+        }
+    }
+
+    return dupe;
+}
+
+
 void PCB_TABLE::Serialize( google::protobuf::Any& aContainer ) const
 {
     using namespace kiapi::board;
@@ -109,9 +174,7 @@ void PCB_TABLE::Serialize( google::protobuf::Any& aContainer ) const
         table.add_row_heights( GetRowHeight( row ) );
 
     for( const PCB_TABLECELL* cell : m_cells )
-    {
         cell->Serialize( *table.add_cells() );
-    }
 
     table.set_external_border( m_strokeExternal ? types::TSM_ENABLED : types::TSM_DISABLED );
     table.set_header_separator( m_StrokeHeaderSeparator ? types::TSM_ENABLED : types::TSM_DISABLED );
@@ -126,7 +189,10 @@ void PCB_TABLE::Serialize( google::protobuf::Any& aContainer ) const
     else if( const BOARD* board = GetBoard() )
         table.mutable_parent()->set_value( board->m_Uuid.AsStdString() );
 
-    aContainer.PackFrom( table );
+    kiapi::common::PackCustomProperties( table.mutable_custom_properties(), *this );
+
+    if( !aContainer.PackFrom( table ) )
+        KI_FAIL_MSG( wxT( "Failed to pack PCB_TABLE" ) );
 }
 
 
@@ -144,6 +210,7 @@ bool PCB_TABLE::Deserialize( const google::protobuf::Any& aContainer )
     SetUuidDirect( KIID( table.id().value() ) );
     SetLayer( FromProtoEnum<PCB_LAYER_ID, types::BoardLayer>( table.layer() ) );
     SetLocked( table.locked() == kiapi::common::types::LockedState::LS_LOCKED );
+    kiapi::common::UnpackCustomProperties( table.custom_properties(), *this );
 
     ClearCells();
     m_colWidths.clear();
@@ -160,8 +227,10 @@ bool PCB_TABLE::Deserialize( const google::protobuf::Any& aContainer )
 
         if( !cell->Deserialize( protoCell ) )
         {
+            // Since cells are positional, we must add something to the table.  Probably better
+            // to add a new, empy cell than a partially deserialized who-knows-what.
             delete cell;
-            continue;
+            cell = new PCB_TABLECELL( this );
         }
 
         AddCell( cell );
@@ -184,13 +253,15 @@ bool PCB_TABLE::Deserialize( const google::protobuf::Any& aContainer )
     if( table.has_separators_stroke() )
         kiapi::common::UnpackStroke( m_separatorsStroke, table.separators_stroke() );
 
+    Normalize();
+
     return true;
 }
 
 
 void PCB_TABLE::swapData( BOARD_ITEM* aImage )
 {
-    KI_CHECK_RET( aImage != nullptr && aImage->Type() == PCB_TABLE_T, wxT( "Cannot swap data with invalid table." ) );
+    KI_CHECK_RET( aImage != nullptr && aImage->Type() == Type(), wxT( "Cannot swap data with invalid table." ) );
 
     PCB_TABLE* table = static_cast<PCB_TABLE*>( aImage );
 
@@ -215,6 +286,25 @@ void PCB_TABLE::swapData( BOARD_ITEM* aImage )
 
     for( PCB_TABLECELL* cell : table->m_cells )
         cell->SetParent( table );
+
+    std::swap( m_customProperties, table->m_customProperties );
+}
+
+
+void PCB_TABLE::ResizeCells( int aRows, int aCols )
+{
+    const size_t wanted = static_cast<size_t>( aRows ) * static_cast<size_t>( aCols );
+
+    m_colCount = aCols;
+
+    while( m_cells.size() > wanted )
+    {
+        delete m_cells.back();
+        m_cells.pop_back();
+    }
+
+    while( m_cells.size() < wanted )
+        AddCell( new PCB_TABLECELL( this ) );
 }
 
 
@@ -370,8 +460,12 @@ void PCB_TABLE::Autosize()
 
         for( int col = 0; col < GetColCount(); ++col )
         {
+            PCB_TABLECELL* cell = GetCell( row, col );
             SHAPE_POLY_SET textPoly;
-            GetCell( row, col )->TransformTextToPolySet( textPoly, 0, ARC_LOW_DEF, ERROR_INSIDE );
+            cell->TransformTextToPolySet( textPoly, 0, ARC_LOW_DEF, ERROR_INSIDE );
+
+            // Measured in the cell's own frame, or a rotated table swaps its widths and heights
+            textPoly.Rotate( -cell->GetDrawRotation(), cell->GetDrawPos() );
             extents[row].push_back( textPoly.BBox() );
         }
     }
@@ -390,6 +484,8 @@ void PCB_TABLE::Autosize()
         SetColWidth( col, colWidth );
     }
 
+    std::vector<int> needed;
+
     for( int row = 0; row < GetRowCount(); ++row )
     {
         int rowHeight = 0;
@@ -397,14 +493,22 @@ void PCB_TABLE::Autosize()
         for( int col = 0; col < GetColCount(); ++col )
         {
             PCB_TABLECELL* cell = GetCell( row, col );
-            int            margins = cell->GetMarginLeft() + cell->GetMarginRight();
+            int            margins = cell->GetMarginTop() + cell->GetMarginBottom();
             rowHeight = std::max( rowHeight, (int) extents[row][col].GetHeight() + margins );
         }
 
-        SetRowHeight( row, rowHeight );
+        needed.push_back( rowHeight );
     }
 
+    setAutosizedRowHeights( needed );
     Normalize();
+}
+
+
+void PCB_TABLE::setAutosizedRowHeights( const std::vector<int>& aNeeded )
+{
+    for( int row = 0; row < static_cast<int>( aNeeded.size() ); ++row )
+        SetRowHeight( row, aNeeded[row] );
 }
 
 
@@ -427,8 +531,66 @@ void PCB_TABLE::Rotate( const VECTOR2I& aRotCentre, const EDA_ANGLE& aAngle )
 }
 
 
+void PCB_TABLE::OnFootprintTransformed()
+{
+    for( PCB_TABLECELL* cell : m_cells )
+        cell->OnFootprintTransformed();
+}
+
+
+void PCB_TABLE::OnFootprintRescaled( double aRatioX, double aRatioY, double aLinearFactor, const VECTOR2I& aAnchor,
+                                     const EDA_ANGLE& aParentRotate )
+{
+    for( PCB_TABLECELL* cell : m_cells )
+        cell->OnFootprintRescaled( aRatioX, aRatioY, aLinearFactor, aAnchor, aParentRotate );
+}
+
+
+static void mirrorCellColumns( std::vector<PCB_TABLECELL*>& aCells, int aRowCount, int aColCount )
+{
+    const std::vector<PCB_TABLECELL*> oldCells = aCells;
+
+    for( int row = 0; row < aRowCount; ++row )
+    {
+        const int rowOffset = row * aColCount;
+
+        for( int col = 0; col < aColCount; )
+        {
+            const int span = std::clamp( oldCells[rowOffset + col]->GetColSpan(), 1, aColCount - col );
+
+            for( int ii = 0; ii < span; ++ii )
+                aCells[rowOffset + aColCount - col - span + ii] = oldCells[rowOffset + col + ii];
+
+            col += span;
+        }
+    }
+}
+
+
 void PCB_TABLE::Flip( const VECTOR2I& aCentre, FLIP_DIRECTION aFlipDirection )
 {
+    // FP-child path keeps cells in lib frame, the standalone path below
+    // would corrupt them because FOOTPRINT::Flip zeroes the FP rotation.
+    if( GetParentFootprint() )
+    {
+        for( PCB_TABLECELL* cell : m_cells )
+            cell->Flip( aCentre, aFlipDirection );
+
+        // Flipping a cell also turns its text 180 degrees, so in the frame the table reads in
+        // it always comes out mirrored left to right.
+        mirrorCellColumns( m_cells, GetRowCount(), GetColCount() );
+
+        std::map<int, int> newColWidths;
+
+        for( int col = 0; col < GetColCount(); ++col )
+            newColWidths[col] = m_colWidths[GetColCount() - 1 - col];
+
+        m_colWidths = std::move( newColWidths );
+
+        SetLayer( GetFlippedLayer( GetLayer() ) );
+        return;
+    }
+
     BOX2I originalBBox = GetBoundingBox();
 
     VECTOR2I targetPos;
@@ -456,16 +618,7 @@ void PCB_TABLE::Flip( const VECTOR2I& aCentre, FLIP_DIRECTION aFlipDirection )
 
     // Flipping a cell turns its text 180 degrees and the grid is laid out in the frame the
     // cells read in, so that turn reverses the rows already. Only the columns are left.
-    std::vector<PCB_TABLECELL*> oldCells = m_cells;
-    int                         rowOffset = 0;
-
-    for( int row = 0; row < GetRowCount(); ++row )
-    {
-        for( int col = 0; col < GetColCount(); ++col )
-            m_cells[rowOffset + col] = oldCells[rowOffset + GetColCount() - 1 - col];
-
-        rowOffset += GetColCount();
-    }
+    mirrorCellColumns( m_cells, GetRowCount(), GetColCount() );
 
     std::map<int, int> newColWidths;
 
@@ -474,7 +627,7 @@ void PCB_TABLE::Flip( const VECTOR2I& aCentre, FLIP_DIRECTION aFlipDirection )
 
     m_colWidths = std::move( newColWidths );
 
-    SetLayer( GetBoard()->FlipLayer( GetLayer() ) );
+    SetLayer( GetFlippedLayer( GetLayer() ) );
     Normalize();
 
     if( originalAngle != ANGLE_0 )
@@ -489,13 +642,15 @@ void PCB_TABLE::Mirror( const VECTOR2I& aCentre, FLIP_DIRECTION aFlipDirection )
 {
     // Mirror is Flip with the layer restored. TOP_BOTTOM needs a 180 deg pre-rotation
     // because rotate-then-LR-flip equals TB-flip.
-    PCB_LAYER_ID              origLayer = GetLayer();
-    std::vector<PCB_LAYER_ID> origCellLayers;
-
-    origCellLayers.reserve( m_cells.size() );
+    PCB_LAYER_ID                           origLayer = GetLayer();
+    std::map<PCB_TABLECELL*, PCB_LAYER_ID> origCellLayers;
+    std::map<PCB_TABLECELL*, bool>         origMirrorSettings;
 
     for( PCB_TABLECELL* cell : m_cells )
-        origCellLayers.push_back( cell->GetLayer() );
+    {
+        origCellLayers[cell] = cell->GetLayer();
+        origMirrorSettings[cell] = cell->IsMirrored();
+    }
 
     if( aFlipDirection == FLIP_DIRECTION::TOP_BOTTOM )
         Rotate( aCentre, ANGLE_180 );
@@ -504,8 +659,11 @@ void PCB_TABLE::Mirror( const VECTOR2I& aCentre, FLIP_DIRECTION aFlipDirection )
 
     SetLayer( origLayer );
 
-    for( size_t i = 0; i < m_cells.size(); ++i )
-        m_cells[i]->SetLayer( origCellLayers[i] );
+    for( PCB_TABLECELL* cell : m_cells )
+    {
+        cell->SetLayer( origCellLayers[cell] );
+        cell->SetMirrored( origMirrorSettings[cell] );
+    }
 }
 
 
@@ -528,6 +686,9 @@ const BOX2I PCB_TABLE::GetBoundingBox() const
     for( PCB_TABLECELL* cell : m_cells )
         bbox.Merge( cell->GetBoundingBox() );
 
+    if( m_strokeExternal )
+        bbox.Inflate( m_borderStroke.GetWidth() / 2 );
+
     return bbox;
 }
 
@@ -535,7 +696,7 @@ const BOX2I PCB_TABLE::GetBoundingBox() const
 double PCB_TABLE::ViewGetLOD( int aLayer, const KIGFX::VIEW* aView ) const
 {
     // Hide the locked shadow when the table's own layer is not shown
-    if( aLayer == LAYER_LOCKED_ITEM_SHADOW && !aView->IsLayerVisible( m_layer ) )
+    if( aLayer == LAYER_LOCKED_ITEM_SHADOW && !aView->IsLayerVisibleCached( m_layer ) )
         return LOD_HIDE;
 
     return LOD_SHOW;
@@ -545,12 +706,14 @@ double PCB_TABLE::ViewGetLOD( int aLayer, const KIGFX::VIEW* aView ) const
 void PCB_TABLE::DrawBorders( const std::function<void( const VECTOR2I& aPt1, const VECTOR2I& aPt2,
                                                        const STROKE_PARAMS& aStroke )>& aCallback ) const
 {
+    if( m_cells.empty() )   // Shouldn't be possible....
+        return;
+
     EDA_ANGLE             drawAngle = GetCell( 0, 0 )->GetDrawRotation();
     std::vector<VECTOR2I> topLeft = GetCell( 0, 0 )->GetCornersInSequence( drawAngle );
     std::vector<VECTOR2I> bottomLeft = GetCell( GetRowCount() - 1, 0 )->GetCornersInSequence( drawAngle );
     std::vector<VECTOR2I> topRight = GetCell( 0, GetColCount() - 1 )->GetCornersInSequence( drawAngle );
-    std::vector<VECTOR2I> bottomRight =
-            GetCell( GetRowCount() - 1, GetColCount() - 1 )->GetCornersInSequence( drawAngle );
+    std::vector<VECTOR2I> botRight = GetCell( GetRowCount() - 1, GetColCount() - 1 )->GetCornersInSequence( drawAngle );
     STROKE_PARAMS stroke;
 
     for( int col = 0; col < GetColCount() - 1; ++col )
@@ -608,14 +771,14 @@ void PCB_TABLE::DrawBorders( const std::function<void( const VECTOR2I& aPt1, con
     if( StrokeExternal() && GetBorderStroke().GetWidth() >= 0 )
     {
         aCallback( topLeft[0], topRight[1], GetBorderStroke() );
-        aCallback( topRight[1], bottomRight[2], GetBorderStroke() );
-        aCallback( bottomRight[2], bottomLeft[3], GetBorderStroke() );
+        aCallback( topRight[1], botRight[2], GetBorderStroke() );
+        aCallback( botRight[2], bottomLeft[3], GetBorderStroke() );
         aCallback( bottomLeft[3], topLeft[0], GetBorderStroke() );
     }
 }
 
 
-std::shared_ptr<SHAPE> PCB_TABLE::GetEffectiveShape( PCB_LAYER_ID aLayer, FLASHING aFlash ) const
+std::shared_ptr<SHAPE> PCB_TABLE::GetEffectiveShape( PCB_LAYER_ID aLayer, FLASHING, DRC_CONSTRAINT_T ) const
 {
     EDA_ANGLE             angle = GetCell( 0, 0 )->GetDrawRotation();
     std::vector<VECTOR2I> topLeft = GetCell( 0, 0 )->GetCornersInSequence( angle );
@@ -807,6 +970,9 @@ int PCB_TABLE::Compare( const PCB_TABLE* aTable, const PCB_TABLE* aOther )
             return diff;
     }
 
+    if( ( diff = aTable->GetRowCount() - aOther->GetRowCount() ) != 0 )
+        return diff;
+
     for( int row = 0; row < aTable->GetRowCount(); ++row )
     {
         if( ( diff = aTable->GetRowHeight( row ) - aOther->GetRowHeight( row ) ) != 0 )
@@ -959,44 +1125,54 @@ static struct PCB_TABLE_DESC
 
         propMgr.AddProperty( new PROPERTY<PCB_TABLE, bool>( _HKI( "External Border" ),
                     &PCB_TABLE::SetStrokeExternal, &PCB_TABLE::StrokeExternal ),
-                    tableProps );
+                    tableProps )
+                .SetIsCopyable();
 
         propMgr.AddProperty( new PROPERTY<PCB_TABLE, bool>( _HKI( "Header Border" ),
                     &PCB_TABLE::SetStrokeHeaderSeparator, &PCB_TABLE::StrokeHeaderSeparator ),
-                    tableProps );
+                    tableProps )
+                .SetIsCopyable();
 
         propMgr.AddProperty( new PROPERTY<PCB_TABLE, int>( _HKI( "Border Width" ),
                     &PCB_TABLE::SetBorderWidth, &PCB_TABLE::GetBorderWidth,
                     PROPERTY_DISPLAY::PT_SIZE ),
-                    tableProps );
+                    tableProps )
+                .SetIsCopyable();
 
         propMgr.AddProperty( new PROPERTY_ENUM<PCB_TABLE, LINE_STYLE>( _HKI( "Border Style" ),
                     &PCB_TABLE::SetBorderStyle, &PCB_TABLE::GetBorderStyle ),
-                    tableProps );
+                    tableProps )
+                .SetIsCopyable();
 
         propMgr.AddProperty( new PROPERTY<PCB_TABLE, COLOR4D>( _HKI( "Border Color" ),
                     &PCB_TABLE::SetBorderColor, &PCB_TABLE::GetBorderColor ),
-                    tableProps );
+                    tableProps )
+                .SetIsCopyable();
 
         propMgr.AddProperty( new PROPERTY<PCB_TABLE, bool>( _HKI( "Row Separators" ),
                     &PCB_TABLE::SetStrokeRows, &PCB_TABLE::StrokeRows ),
-                    tableProps );
+                    tableProps )
+                .SetIsCopyable();
 
         propMgr.AddProperty( new PROPERTY<PCB_TABLE, bool>( _HKI( "Cell Separators" ),
                     &PCB_TABLE::SetStrokeColumns, &PCB_TABLE::StrokeColumns ),
-                    tableProps );
+                    tableProps )
+                .SetIsCopyable();
 
         propMgr.AddProperty( new PROPERTY<PCB_TABLE, int>( _HKI( "Separators Width" ),
                     &PCB_TABLE::SetSeparatorsWidth, &PCB_TABLE::GetSeparatorsWidth,
                     PROPERTY_DISPLAY::PT_SIZE ),
-                    tableProps );
+                    tableProps )
+                .SetIsCopyable();
 
         propMgr.AddProperty( new PROPERTY_ENUM<PCB_TABLE, LINE_STYLE>( _HKI( "Separators Style" ),
                     &PCB_TABLE::SetSeparatorsStyle, &PCB_TABLE::GetSeparatorsStyle ),
-                    tableProps );
+                    tableProps )
+                .SetIsCopyable();
 
         propMgr.AddProperty( new PROPERTY<PCB_TABLE, COLOR4D>( _HKI( "Separators Color" ),
                     &PCB_TABLE::SetSeparatorsColor, &PCB_TABLE::GetSeparatorsColor ),
-                    tableProps );
+                    tableProps )
+                .SetIsCopyable();
     }
 } _PCB_TABLE_DESC;

@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef KICAD_FONTCONFIG_H
@@ -65,6 +65,7 @@ public:
     /**
      * List the current available font families.
      *
+     * @param aFonts
      * @param aDesiredLang The desired language of font name to report back if available,
      *                     otherwise it will fallback.
      * @param aEmbeddedFiles A list of embedded to use for searching fonts, if nullptr, this
@@ -84,9 +85,9 @@ public:
     /**
      * Get the current reporter used for font substitution warnings.
      *
-     * @return The current reporter, or nullptr if not set.
+     * @return The current reporter, or #NULL_REPORTER if not set.
      */
-    static REPORTER* GetReporter();
+    static REPORTER& GetReporter();
 
 private:
     std::map<std::string, FONTINFO> m_fontInfoCache;
@@ -125,7 +126,7 @@ private:
      * @param aPat reference to FcPattern container
      * @param aDesiredLang Language to research for (RFC3066 format)
      */
-    std::string getFamilyStringByLang( FONTCONFIG_PAT& APat, const wxString& aDesiredLang );
+    std::string getFamilyStringByLang( FONTCONFIG_PAT& aPat, const wxString& aDesiredLang );
 
     /**
      * Wrapper of FcPatternGetString to return a std::string

@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <limits>
@@ -377,7 +377,8 @@ bool GERBVIEW_SELECTION_TOOL::selectable( const EDA_ITEM* aItem ) const
         return false;
 
     // We do not want to select items that are in the background
-    if( frame->gvconfig()->m_Display.m_HighContrastMode && layer != frame->GetActiveLayer() )
+    if( frame->gvconfig()->m_Display.m_InactiveLayerMode != GBR_INACTIVE_LAYER_MODE::NORMAL
+        && layer != frame->GetActiveLayer() )
         return false;
 
     return frame->IsLayerVisible( layer );

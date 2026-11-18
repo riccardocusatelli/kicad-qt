@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef COMMAND_EXPORT_PCB_IPC2581_H
@@ -31,7 +31,6 @@ namespace CLI
 #define ARG_SUBTRACT_SOLDERMASK "--subtract-soldermask"
 #define ARG_DISABLE_APERTURE_MACROS "--disable-aperture-macros"
 #define ARG_USE_DRILL_FILE_ORIGIN "--use-drill-file-origin"
-#define ARG_PRECISION "--precision"
 #define ARG_NO_PROTEL_EXTENSION "--no-protel-ext"
 
 class PCB_EXPORT_IPC2581_COMMAND : public PCB_EXPORT_BASE_COMMAND

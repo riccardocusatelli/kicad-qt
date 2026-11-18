@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifdef PROFILE
@@ -448,12 +444,8 @@ bool CONNECTIVITY_DATA::IsConnectedOnLayer( const BOARD_CONNECTED_ITEM *aItem, i
         {
             CN_ZONE_LAYER* zoneLayer = dynamic_cast<CN_ZONE_LAYER*>( connected );
 
-            // lyIdx is compatible with StartLayer() and EndLayer() notation in CN_ITEM
-            // items, where B_Cu is set to INT_MAX (std::numeric_limits<int>::max())
-            int lyIdx = aLayer;
-
-            if( aLayer == B_Cu )
-                lyIdx = std::numeric_limits<int>::max();
+            // StartLayer() and EndLayer() are copper layer ordinals, not PCB_LAYER_IDs
+            int lyIdx = static_cast<int>( CopperLayerToOrdinal( ToLAYER_ID( aLayer ) ) );
 
             if( connected->Valid()
                     && connected->StartLayer() <= lyIdx && connected->EndLayer() >= lyIdx
@@ -488,6 +480,16 @@ bool CONNECTIVITY_DATA::IsConnectedOnLayer( const BOARD_CONNECTED_ITEM *aItem, i
                     {
                         continue;
                     }
+                }
+
+                // A pad or a via spans several layers, so touching us is not the same as
+                // touching us here
+                if( connectedItem->Type() == PCB_PAD_T || connectedItem->Type() == PCB_VIA_T )
+                {
+                    const BOARD_CONNECTED_ITEM* other = static_cast<const BOARD_CONNECTED_ITEM*>( connectedItem );
+
+                    if( !ItemsTouchOnLayer( aItem, other, ToLAYER_ID( aLayer ) ) )
+                        continue;
                 }
 
                 if( aItem->Type() == PCB_PAD_T && zoneLayer )
@@ -842,7 +844,7 @@ bool CONNECTIVITY_DATA::TestTrackEndpointDangling( PCB_TRACK* aTrack, bool aIgno
                 continue;
 
             if( zone )
-                rtree = zone->GetBoard()->m_CopperZoneRTreeCache[ zone ].get();
+                rtree = zone->GetBoard()->GetCopperZoneRTree( zone );
 
             if( rtree )
             {

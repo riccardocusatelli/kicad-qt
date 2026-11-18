@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <algorithm>
@@ -182,8 +178,9 @@ LIB_SYMBOL* LEGACY_SYMBOL_LIB::FindSymbol( const LIB_ID& aLibId ) const
 void LEGACY_SYMBOL_LIB::AddSymbol( LIB_SYMBOL* aSymbol )
 {
     // add a clone, not the caller's copy, the plugin take ownership of the new symbol.
+    std::unique_ptr<LIB_SYMBOL> clonedSymbol = std::make_unique<LIB_SYMBOL>( *aSymbol->SharedPtr().get(), this );
     m_plugin->SaveSymbol( fileName.GetFullPath(),
-                          new LIB_SYMBOL( *aSymbol->SharedPtr().get(), this ),
+                          std::move( clonedSymbol ),
                           m_properties.get() );
 
     // If we are not buffering, the library file is updated immediately when the plugin
@@ -208,27 +205,6 @@ LIB_SYMBOL* LEGACY_SYMBOL_LIB::RemoveSymbol( LIB_SYMBOL* aEntry )
 
     ++m_mod_hash;
     return nullptr;
-}
-
-
-LIB_SYMBOL* LEGACY_SYMBOL_LIB::ReplaceSymbol( LIB_SYMBOL* aOldSymbol, LIB_SYMBOL* aNewSymbol )
-{
-    KI_ASSERT( aOldSymbol != nullptr );
-    KI_ASSERT( aNewSymbol != nullptr );
-
-    m_plugin->DeleteSymbol( fileName.GetFullPath(), aOldSymbol->GetName(), m_properties.get() );
-
-    LIB_SYMBOL* my_part = new LIB_SYMBOL( *aNewSymbol, this );
-
-    m_plugin->SaveSymbol( fileName.GetFullPath(), my_part, m_properties.get() );
-
-    // If we are not buffering, the library file is updated immediately when the plugin
-    // SaveSymbol() function is called.
-    if( IsBuffering() )
-        isModified = true;
-
-    ++m_mod_hash;
-    return my_part;
 }
 
 
@@ -591,12 +567,8 @@ void LEGACY_SYMBOL_LIBS::LoadAllLibraries( PROJECT* aProject, PROGRESS_REPORTER*
         }
         catch( const IO_ERROR& ioe )
         {
-            wxString msg = wxString::Format( _( "Error loading symbol library '%s'." )
-                                             + wxS( "\n%s" ),
-                                             cache_name,
-                                             ioe.What() );
-
-            THROW_IO_ERROR( msg );
+            THROW_IO_ERRORF( _( "Error loading symbol library '%s'." ) + wxS( "\n%s" ),
+                             cache_name, ioe.What() );
         }
     }
 

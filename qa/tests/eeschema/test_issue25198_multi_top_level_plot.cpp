@@ -22,10 +22,10 @@
 // https://gitlab.com/kicad/code/kicad/-/issues/25203
 // https://gitlab.com/kicad/code/kicad/-/issues/25231
 
+#include <qa_utils/file_utils.h>
 #include <qa_utils/pdf_test_utils.h>
 #include <qa_utils/wx_utils/unit_test_utils.h>
 
-#include <algorithm>
 #include <memory>
 #include <set>
 #include <string>
@@ -40,7 +40,6 @@
 #include <sch_sheet_path.h>
 #include <schematic.h>
 
-#include <wx/dir.h>
 #include <wx/filefn.h>
 #include <wx/filename.h>
 #include <wx/stdpaths.h>
@@ -99,29 +98,12 @@ struct MULTI_TOP_LEVEL_PLOT_FIXTURE
         SCH_PLOTTER plotter( m_schematic.get() );
         plotter.Plot( aFormat, opts, &renderSettings, nullptr );
 
-        // SCH_PLOTTER only reports the last file it wrote, so read back what the plot actually
-        // left in the output directory.  The fixture gives every test an empty one of its own
-        const wxString ext = aFormat == PLOT_FORMAT::PDF ? wxS( "pdf" ) : wxS( "svg" );
-        wxArrayString  files;
-
-        wxDir::GetAllFiles( m_outputDir, &files, wxS( "*." ) + ext, wxDIR_FILES );
-
-        std::vector<wxString> paths( files.begin(), files.end() );
-        std::sort( paths.begin(), paths.end() );
-
-        return paths;
+        return plotter.GetOutputFilePaths();
     }
 
     std::unique_ptr<SCHEMATIC> m_schematic;
     wxString                   m_outputDir;
 };
-
-
-std::string ReadFile( const wxString& aPath )
-{
-    std::vector<uint8_t> bytes = KI_TEST::LoadBinaryData( aPath.ToStdString() );
-    return std::string( bytes.begin(), bytes.end() );
-}
 
 
 int CountPdfPages( const wxString& aPath )
@@ -196,7 +178,7 @@ BOOST_AUTO_TEST_CASE( PlotsEveryTopLevelSheetToItsOwnSvg )
         BOOST_REQUIRE( wxFileName::FileExists( path ) );
 
         // An empty file is not a plot
-        std::string contents = ReadFile( path );
+        std::string contents = KI_TEST::LoadStringData( path );
         BOOST_CHECK_MESSAGE( contents.find( "<svg" ) != std::string::npos,
                              path.ToStdString() + " is not an SVG" );
         BOOST_CHECK_MESSAGE( contents.find( "</svg>" ) != std::string::npos,

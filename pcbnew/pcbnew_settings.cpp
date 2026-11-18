@@ -14,13 +14,8 @@
 * GNU General Public License for more details.
 *
 * You should have received a copy of the GNU General Public License
-* along with this program; if not, you may find one here:
-* http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-* or you may search the http://www.gnu.org website for the version 2 license,
-* or you may write to the Free Software Foundation, Inc.,
-* 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+* along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-
 
 #include <common.h>
 #include <settings/color_settings.h>
@@ -33,7 +28,9 @@
 #include <settings/common_settings.h>
 #include <settings/nested_settings.h>
 #include <settings/parameters.h>
+#include <settings/snap_settings_params.h>
 #include <settings/settings_manager.h>
+#include <tools/match_properties.h>
 #include <wx/config.h>
 #include <wx/tokenzr.h>
 #include <base_units.h>
@@ -45,30 +42,42 @@
 const int pcbnewSchemaVersion = 5;
 
 
-PCBNEW_SETTINGS::PCBNEW_SETTINGS()
-        : PCB_VIEWERS_SETTINGS_BASE( "pcbnew", pcbnewSchemaVersion ),
-          m_AuiPanels(),
-          m_FootprintChooser(),
-          m_FootprintViewer(),
-          m_FootprintWizard(),
-          m_Display(),
-          m_TrackDragAction( TRACK_DRAG_ACTION::DRAG ),
-          m_ArcEditMode( ARC_EDIT_MODE::KEEP_CENTER_ADJUST_ANGLE_RADIUS ),
-          m_CtrlClickHighlight( false ),
-          m_AngleSnapMode( LEADER_MODE::DIRECT ),
-          m_FlipDirection( FLIP_DIRECTION::TOP_BOTTOM ),
-          m_ESCClearsNetHighlight( true ),
-          m_PolarCoords( false ),
-          m_RotationAngle( ANGLE_90 ),
-          m_ShowPageLimits( true ),
-          m_ShowCourtyardCollisions( true ),
-          m_AutoRefillZones( false ),
-          m_AllowFreePads( false ),
-          m_ImportKeepKiCadLayerNames( false ),
-          m_PnsSettings( nullptr ),
-          m_FootprintViewerLibListWidth( 200 ),
-          m_FootprintViewerFPListWidth( 300 )
+void PCB_VIEWERS_SETTINGS_BASE::addMatchPropertiesParam()
 {
+    m_params.emplace_back( new PARAM_SET<wxString>( "pcb_editing.match_properties", &m_MatchProperties,
+                                                    MATCH_PROPERTIES_CATALOG::DefaultKeys() ) );
+}
+
+
+PCBNEW_SETTINGS::PCBNEW_SETTINGS() :
+        PCB_VIEWERS_SETTINGS_BASE( "pcbnew", pcbnewSchemaVersion ),
+        m_AuiPanels(),
+        m_FootprintChooser(),
+        m_FootprintViewer(),
+        m_FootprintWizard(),
+        m_Display(),
+        m_FieldEditorPanel(),
+        m_TrackDragAction( TRACK_DRAG_ACTION::DRAG ),
+        m_ArcEditMode( ARC_EDIT_MODE::KEEP_CENTER_ADJUST_ANGLE_RADIUS ),
+        m_CtrlClickHighlight( false ),
+        m_AngleSnapMode( LEADER_MODE::DIRECT ),
+        m_FlipDirection( FLIP_DIRECTION::TOP_BOTTOM ),
+        m_AutoConstraints( true ),
+        m_ESCClearsNetHighlight( true ),
+        m_PolarCoords( false ),
+        m_RotationAngle( ANGLE_90 ),
+        m_ShowPageLimits( true ),
+        m_ShowCourtyardCollisions( true ),
+        m_AutoRefillZones( false ),
+        m_AllowFreePads( false ),
+        m_AreaAnchorPointSelection( false ),
+        m_ImportKeepKiCadLayerNames( false ),
+        m_PnsSettings( nullptr ),
+        m_FootprintViewerLibListWidth( 200 ),
+        m_FootprintViewerFPListWidth( 300 )
+{
+    addMatchPropertiesParam();
+
     m_MagneticItems.pads      = MAGNETIC_OPTIONS::CAPTURE_CURSOR_IN_TRACK_TOOL;
     m_MagneticItems.tracks    = MAGNETIC_OPTIONS::CAPTURE_CURSOR_IN_TRACK_TOOL;
     m_MagneticItems.graphics  = false;
@@ -110,22 +119,25 @@ PCBNEW_SETTINGS::PCBNEW_SETTINGS()
     m_params.emplace_back( new PARAM<bool>( "aui.show_properties",
             &m_AuiPanels.show_properties, true ) );
 
+    m_params.emplace_back( new PARAM<bool>( "aui.show_git_commit_pane", &m_AuiPanels.show_git_commit_pane, false ) );
+
     m_params.emplace_back( new PARAM<bool>( "aui.show_search",
             &m_AuiPanels.show_search, false ) );
 
     m_params.emplace_back( new PARAM<bool>( "aui.show_net_inspector",
             &m_AuiPanels.show_net_inspector, false ) );
 
-    m_params.emplace_back( new PARAM<bool>( "aui.design_blocks_show", &m_AuiPanels.design_blocks_show, false ) );
+    m_params.emplace_back( new PARAM<bool>( "aui.design_blocks_show",
+            &m_AuiPanels.design_blocks_show, false ) );
 
     m_params.emplace_back( new PARAM<int>( "aui.design_blocks_panel_docked_width",
-                                           &m_AuiPanels.design_blocks_panel_docked_width, -1 ) );
+            &m_AuiPanels.design_blocks_panel_docked_width, -1 ) );
 
-    m_params.emplace_back(
-            new PARAM<int>( "aui.design_blocks_panel_float_width", &m_AuiPanels.design_blocks_panel_float_width, -1 ) );
+    m_params.emplace_back( new PARAM<int>( "aui.design_blocks_panel_float_width",
+            &m_AuiPanels.design_blocks_panel_float_width, -1 ) );
 
     m_params.emplace_back( new PARAM<int>( "aui.design_blocks_panel_float_height",
-                                           &m_AuiPanels.design_blocks_panel_float_height, -1 ) );
+            &m_AuiPanels.design_blocks_panel_float_height, -1 ) );
 
     m_params.emplace_back( new PARAM<int>( "footprint_chooser.width",
             &m_FootprintChooser.width, -1 ) );
@@ -172,6 +184,8 @@ PCBNEW_SETTINGS::PCBNEW_SETTINGS()
     m_params.emplace_back( new PARAM<bool>( "editing.magnetic_all_layers",
             &m_MagneticItems.allLayers, false ) );
 
+    AddSnapInferenceParams( m_params, m_SnapInference );
+
     m_params.emplace_back( new PARAM<bool>( "editing.polar_coords",
             &m_PolarCoords, false ) );
 
@@ -190,11 +204,16 @@ PCBNEW_SETTINGS::PCBNEW_SETTINGS()
             reinterpret_cast<int*>( &m_AngleSnapMode ),
             static_cast<int>( LEADER_MODE::DIRECT ) ) );
 
+    m_params.emplace_back( new PARAM<bool>( "editing.auto_constraints", &m_AutoConstraints, true ) );
+
     m_params.emplace_back( new PARAM<bool>( "editing.auto_fill_zones",
             &m_AutoRefillZones, false ) );
 
     m_params.emplace_back( new PARAM<bool>( "editing.allow_free_pads",
             &m_AllowFreePads, false ) );
+
+    m_params.emplace_back(
+            new PARAM<bool>( "editing.area_anchor_point_selection", &m_AreaAnchorPointSelection, false ) );
 
     m_params.emplace_back( new PARAM<bool>( "import.keep_kicad_layer_names",
             &m_ImportKeepKiCadLayerNames, false ) );
@@ -251,6 +270,9 @@ PCBNEW_SETTINGS::PCBNEW_SETTINGS()
     m_params.emplace_back( new PARAM<bool>( "pcb_display.ratsnest_global",
             &m_Display.m_ShowGlobalRatsnest, true ) );
 
+    m_params.emplace_back( new PARAM<bool>( "pcb_display.show_constraints",
+            &m_Display.m_ShowConstraints, false ) );
+
     m_params.emplace_back( new PARAM<bool>( "pcb_display.ratsnest_footprint",
             &m_Display.m_ShowModuleRatsnest, true ) );
 
@@ -260,8 +282,9 @@ PCBNEW_SETTINGS::PCBNEW_SETTINGS()
     m_params.emplace_back( new PARAM<double>( "pcb_display.ratsnest_thickness",
             &m_Display.m_RatsnestThickness, 0.5 ) );
 
-    m_params.emplace_back( new PARAM<int>( "pcb_display.track_clearance_mode",
-            reinterpret_cast<int*>( &m_Display.m_TrackClearance ), SHOW_WITH_VIA_WHILE_ROUTING ) );
+    m_params.emplace_back( new PARAM_ENUM<TRACK_CLEARANCE_MODE>( "pcb_display.track_clearance_mode",
+            &m_Display.m_TrackClearance, SHOW_WITH_VIA_WHILE_ROUTING, DO_NOT_SHOW_CLEARANCE,
+            SHOW_WITH_VIA_ALWAYS ) );
 
     m_params.emplace_back( new PARAM<bool>( "pcb_display.track_fill",
             &m_Display.m_DisplayPcbTrackFill, true ) );
@@ -288,41 +311,23 @@ PCBNEW_SETTINGS::PCBNEW_SETTINGS()
     m_params.emplace_back( new PARAM<bool>( "pcb_display.show_page_borders",
             &m_ShowPageLimits, true ) );
 
+    m_params.emplace_back( new PARAM_MAP<int>( "field_editor.field_widths",
+            &m_FieldEditorPanel.field_widths, {} ) );
+
+    m_params.emplace_back( new PARAM<int>( "field_editor.selection_mode",
+            &m_FieldEditorPanel.selection_mode, 0 ) );
+
+    m_params.emplace_back( new PARAM<int>( "field_editor.sash_pos",
+            &m_FieldEditorPanel.sash_pos, 400 ) );
+
+    m_params.emplace_back( new PARAM<int>( "field_editor.variant_sash_pos",
+            &m_FieldEditorPanel.variant_sash_pos, 500 ) );
+
+    m_params.emplace_back( new PARAM<bool>( "field_editor.sidebar_collapsed",
+            &m_FieldEditorPanel.sidebar_collapsed, false ) );
+
     m_params.emplace_back( new PARAM<bool>( "export_d356.doNotExportUnconnectedPads",
             &m_ExportD356.doNotExportUnconnectedPads, false ) );
-
-    m_params.emplace_back( new PARAM_LAMBDA<nlohmann::json>( "action_plugins",
-            [&]() -> nlohmann::json
-            {
-                nlohmann::json js = nlohmann::json::array();
-
-                for( const auto& pair : m_VisibleActionPlugins )
-                    js.push_back( nlohmann::json( { { pair.first.ToUTF8(), pair.second } } ) );
-
-                return js;
-            },
-            [&]( const nlohmann::json& aObj )
-            {
-                m_VisibleActionPlugins.clear();
-
-                if( !aObj.is_array() )
-                {
-                    return;
-                }
-
-                for( const auto& entry : aObj )
-                {
-                    if( entry.empty() || !entry.is_object() )
-                        continue;
-
-                    for( const auto& pair : entry.items() )
-                    {
-                        m_VisibleActionPlugins.emplace_back( std::make_pair(
-                                wxString( pair.key().c_str(), wxConvUTF8 ), pair.value() ) );
-                    }
-                }
-            },
-            nlohmann::json::array() ) );
 
     addParamsForWindow( &m_FootprintViewer, "footprint_viewer" );
 
@@ -354,6 +359,21 @@ PCBNEW_SETTINGS::PCBNEW_SETTINGS()
 
     m_params.emplace_back( new PARAM<bool>( "DRC.scroll_on_crossprobe",
             &m_DRCDialog.scroll_on_crossprobe, true ) );
+
+    m_params.emplace_back( new PARAM<COLOR4D>( "diff_phase_skew.zero_color",
+            &m_DiffPhaseSkewSettings.m_ZeroSkewColor, COLOR4D( 1.0, 1.0, 1.0, 1.0 ) ) );
+
+    m_params.emplace_back( new PARAM<COLOR4D>( "diff_phase_skew.positive_color",
+            &m_DiffPhaseSkewSettings.m_PositiveSkewColor, COLOR4D( 0.0, 0.0, 1.0, 1.0 ) ) );
+
+    m_params.emplace_back( new PARAM<COLOR4D>( "diff_phase_skew.negative_color",
+            &m_DiffPhaseSkewSettings.m_NegativeSkewColor, COLOR4D( 1.0, 0.0, 0.0, 1.0 ) ) );
+
+    m_params.emplace_back( new PARAM<COLOR4D>( "diff_phase_skew.unknown_color",
+            &m_DiffPhaseSkewSettings.m_UnknownSkewColor, COLOR4D( 0.5, 0.5, 0.5, 1.0 ) ) );
+
+    m_params.emplace_back( new PARAM<bool>( "diff_phase_skew.use_log_scale",
+            &m_DiffPhaseSkewSettings.m_UseLogScale, false ) );
 
     registerMigration( 0, 1,
             [&]()

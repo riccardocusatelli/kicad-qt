@@ -10,6 +10,7 @@
 #include <wx/artprov.h>
 #include <wx/xrc/xmlres.h>
 #include <wx/intl.h>
+class PANEL_FAB_EXPORT_CONTENT;
 class STD_BITMAP_BUTTON;
 class WX_HTML_REPORT_PANEL;
 
@@ -58,20 +59,7 @@ class DIALOG_EXPORT_2581_BASE : public DIALOG_SHIM
 		wxStaticText* m_lblVersion;
 		wxChoice* m_versionChoice;
 		wxCheckBox* m_cbCompress;
-		wxStaticText* m_lblBomRev;
-		wxTextCtrl* m_textBomRev;
-		wxStaticText* m_columnsLabel;
-		wxStaticLine* m_staticline2;
-		wxStaticText* m_lblOEM;
-		wxChoice* m_oemRef;
-		wxStaticText* m_staticText6;
-		wxChoice* m_choiceMPN;
-		wxStaticText* m_staticText7;
-		wxChoice* m_choiceMfg;
-		wxStaticText* m_staticText8;
-		wxChoice* m_choiceDistPN;
-		wxStaticText* m_staticText9;
-		wxTextCtrl* m_textDistributor;
+		PANEL_FAB_EXPORT_CONTENT* m_contentPanel;
 		WX_HTML_REPORT_PANEL* m_messagesPanel;
 		wxStdDialogButtonSizer* m_stdButtons;
 		wxButton* m_stdButtonsOK;
@@ -80,8 +68,6 @@ class DIALOG_EXPORT_2581_BASE : public DIALOG_SHIM
 		// Virtual event handlers, override them in your derived class
 		virtual void onBrowseClicked( wxCommandEvent& event ) { event.Skip(); }
 		virtual void onCompressCheck( wxCommandEvent& event ) { event.Skip(); }
-		virtual void onMfgPNChange( wxCommandEvent& event ) { event.Skip(); }
-		virtual void onDistPNChange( wxCommandEvent& event ) { event.Skip(); }
 		virtual void onOKClick( wxCommandEvent& event ) { event.Skip(); }
 
 

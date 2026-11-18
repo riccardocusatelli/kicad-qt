@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <magic_enum.hpp>
@@ -76,7 +72,7 @@ void from_json( const nlohmann::json& aJson, TOOLBAR_ITEM& aItem )
     if( aJson.contains( "type" ) )
     {
         auto type = magic_enum::enum_cast<TOOLBAR_ITEM_TYPE>( aJson["type"].get<std::string>(),
-                                                            magic_enum::case_insensitive );
+                                                              magic_enum::case_insensitive );
 
         if( type.has_value() )
             aItem.m_Type = type.value();
@@ -115,6 +111,7 @@ void from_json( const nlohmann::json& aJson, TOOLBAR_ITEM& aItem )
             for( const nlohmann::json& it : aJson.at( "group_items" ) )
                 aItem.m_GroupItems.push_back( it.get<TOOLBAR_ITEM>() );
         }
+
         break;
     }
 }
@@ -148,44 +145,43 @@ TOOLBAR_SETTINGS::TOOLBAR_SETTINGS( const wxString& aFullPath ) :
         JSON_SETTINGS( aFullPath, SETTINGS_LOC::TOOLBARS, toolbarSchemaVersion )
 {
     m_params.emplace_back( new PARAM_LAMBDA<nlohmann::json>( "toolbars",
-        [&]() -> nlohmann::json
-        {
-            // Serialize the toolbars
-            nlohmann::json js = nlohmann::json::array();
-
-            for( const auto& [loc, tb] : m_toolbars )
+            [&]() -> nlohmann::json
             {
-                js.push_back( nlohmann::json( { { "name", magic_enum::enum_name( loc ) },
-                                                  { "contents", tb } } ) );
-            }
+                // Serialize the toolbars
+                nlohmann::json js = nlohmann::json::array();
 
-            return js;
-        },
-        [&]( const nlohmann::json& aObj )
-        {
-            // Deserialize the toolbars
-            m_toolbars.clear();
-
-            if( !aObj.is_array() )
-                return;
-
-            for( const auto& entry : aObj )
-            {
-                if( entry.empty() || !entry.is_object() )
-                    continue;
-
-                auto loc = magic_enum::enum_cast<TOOLBAR_LOC>( entry["name"].get<std::string>(),
-                                                               magic_enum::case_insensitive );
-
-                if( loc.has_value() )
+                for( const auto& [loc, tb] : m_toolbars )
                 {
-                    m_toolbars.emplace(
-                        std::make_pair( loc.value(),
-                                        entry["contents"].get<TOOLBAR_CONFIGURATION>() ) );
+                    js.push_back( nlohmann::json( { { "name", magic_enum::enum_name( loc ) },
+                                                    { "contents", tb } } ) );
                 }
-            }
-        },
-        nlohmann::json::array() ) );
+
+                return js;
+            },
+            [&]( const nlohmann::json& aObj )
+            {
+                // Deserialize the toolbars
+                m_toolbars.clear();
+
+                if( !aObj.is_array() )
+                    return;
+
+                for( const auto& entry : aObj )
+                {
+                    if( entry.empty() || !entry.is_object() )
+                        continue;
+
+                    auto loc = magic_enum::enum_cast<TOOLBAR_LOC>( entry["name"].get<std::string>(),
+                                                                   magic_enum::case_insensitive );
+
+                    if( loc.has_value() )
+                    {
+                        m_toolbars.emplace( std::make_pair( loc.value(),
+                                                            entry["contents"].get<TOOLBAR_CONFIGURATION>() ) );
+                    }
+                }
+            },
+            nlohmann::json::array() ) );
 }
 
 
@@ -222,8 +218,7 @@ std::optional<TOOLBAR_CONFIGURATION> TOOLBAR_SETTINGS::GetStoredToolbarConfig( T
 }
 
 
-TOOLBAR_CONFIGURATION& TOOLBAR_ITEM_REF::WithContextMenu(
-        TOOLBAR_CONTEXT_MENU_REGISTRY::MENU_FACTORY aFactory )
+TOOLBAR_CONFIGURATION& TOOLBAR_ITEM_REF::WithContextMenu( TOOLBAR_CONTEXT_MENU_REGISTRY::MENU_FACTORY aFactory )
 {
     // Register the factory globally so JSON configs get the same menu
     TOOLBAR_CONTEXT_MENU_REGISTRY::RegisterMenuFactory( m_item.m_ActionName, std::move( aFactory ) );

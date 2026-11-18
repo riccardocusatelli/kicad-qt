@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include <cstdint>
 #include <thread>
@@ -46,6 +42,7 @@
 #include "zone_filler.h"
 #include "teardrop/teardrop.h"
 #include <core/profile.h>
+<<<<<<< b2e17e0a
 #include <kidialog.h>
 
 
@@ -93,6 +90,11 @@ private:
 };
 
 } // namespace
+||||||| 1304b76aad
+=======
+#include <pcb_generator.h>
+#include <tools/generator_tool.h>
+>>>>>>> ed8c16703e
 
 ZONE_FILLER_TOOL::ZONE_FILLER_TOOL() :
     PCB_TOOL_BASE( ZONE_FILLER_TOOL_NAME ),
@@ -108,6 +110,70 @@ ZONE_FILLER_TOOL::~ZONE_FILLER_TOOL()
 
 void ZONE_FILLER_TOOL::Reset( RESET_REASON aReason )
 {
+}
+
+
+std::vector<PCB_GENERATOR*> ZONE_FILLER_TOOL::RegenerateDirtyGenerators( BOARD_COMMIT& aCommit )
+{
+    std::vector<PCB_GENERATOR*> regenerated;
+
+    BOARD*          brd = board();
+    GENERATOR_TOOL* genTool = m_toolMgr ? m_toolMgr->GetTool<GENERATOR_TOOL>() : nullptr;
+
+    if( !brd || !genTool )
+        return regenerated;
+
+    for( PCB_GENERATOR* gen : brd->Generators() )
+    {
+        if( !gen->IsDirty() )
+            continue;
+
+        gen->EditStart( genTool, brd, &aCommit );
+        gen->Update( genTool, brd, &aCommit );
+        gen->EditFinish( genTool, brd, &aCommit );
+        regenerated.push_back( gen );
+    }
+
+    return regenerated;
+}
+
+
+void ZONE_FILLER_TOOL::refillAroundGenerators( const std::vector<PCB_GENERATOR*>& aRegenerated )
+{
+    if( aRegenerated.empty() )
+        return;
+
+    BOARD* brd = board();
+
+    if( !brd )
+        return;
+
+    // Build a list of zones that need refill after wacking the generators
+    // and deduplicate
+    std::set<ZONE*> uniqueZones;
+
+    for( PCB_GENERATOR* gen : aRegenerated )
+    {
+        std::vector<ZONE*> zones = gen->GetZonesNeedingRefillAfterUpdate();
+
+        for( ZONE* zone : zones )
+            uniqueZones.insert( zone );
+    }
+
+    if( uniqueZones.empty() )
+        return;
+
+    std::vector<ZONE*> toRefill( uniqueZones.begin(), uniqueZones.end() );
+
+    brd->IncrementTimeStamp(); // make the just-pushed children visible to the refill
+
+    BOARD_COMMIT refillCommit( this );
+    ZONE_FILLER  refiller( brd, &refillCommit );
+
+    if( refiller.Fill( toRefill ) )
+        refillCommit.Push( wxEmptyString, APPEND_UNDO | SKIP_CONNECTIVITY | ZONE_FILL_OP );
+    else
+        refillCommit.Revert();
 }
 
 
@@ -150,8 +216,7 @@ void ZONE_FILLER_TOOL::CheckAllZones( wxWindow* aCaller, PROGRESS_REPORTER* aRep
         commit.Revert();
     }
 
-    rebuildConnectivity();
-    refresh();
+    PostFillRefresh();
 
     m_fillInProgress = false;
     m_filler.reset( nullptr );
@@ -165,10 +230,10 @@ void ZONE_FILLER_TOOL::singleShotRefocus( wxIdleEvent& )
 }
 
 
-void ZONE_FILLER_TOOL::FillAllZones( wxWindow* aCaller, PROGRESS_REPORTER* aReporter, bool aHeadless )
+bool ZONE_FILLER_TOOL::FillAllZones( wxWindow* aCaller, PROGRESS_REPORTER* aReporter, bool aHeadless )
 {
     if( m_fillInProgress )
-        return;
+        return false;
 
     m_fillInProgress = true;
 
@@ -193,17 +258,13 @@ void ZONE_FILLER_TOOL::FillAllZones( wxWindow* aCaller, PROGRESS_REPORTER* aRepo
     if( !aHeadless && !board()->GetDesignSettings().m_DRCEngine->RulesValid() )
     {
         WX_INFOBAR* infobar = frame->GetInfoBar();
-        wxHyperlinkCtrl* button = new wxHyperlinkCtrl( infobar, wxID_ANY, _( "Show DRC rules" ), wxEmptyString );
 
-        button->Bind( wxEVT_COMMAND_HYPERLINK,
-                      std::function<void( wxHyperlinkEvent& aEvent )>(
+        infobar->RemoveAllButtons();
+        infobar->AddLink( _( "Show DRC rules" ),
                       [frame]( wxHyperlinkEvent& aEvent )
                       {
                           frame->ShowBoardSetupDialog( _( "Rules" ) );
-                      } ) );
-
-        infobar->RemoveAllButtons();
-        infobar->AddButton( button );
+                      } );
 
         infobar->ShowMessageFor( _( "Zone fills may be inaccurate.  DRC rules contain errors." ), 10000,
                                  wxICON_WARNING );
@@ -219,29 +280,36 @@ void ZONE_FILLER_TOOL::FillAllZones( wxWindow* aCaller, PROGRESS_REPORTER* aRepo
         m_filler->SetProgressReporter( reporter.get() );
     }
 
+    bool filled = false;
+
     if( m_filler->Fill( toFill ) )
     {
         if( m_filler->GetProgressReporter() )
             m_filler->GetProgressReporter()->AdvancePhase();
 
+        // First pass on allowing generators like via-stitch to update
+        board()->OnZonesFilled( toFill );
+        std::vector<PCB_GENERATOR*> regenerated = RegenerateDirtyGenerators( commit );
+
         commit.Push( _( "Fill Zone(s)" ), SKIP_CONNECTIVITY | ZONE_FILL_OP );
+
         if( !aHeadless )
             frame->m_ZoneFillsDirty = false;
+
+        // Refill again as generators like via stitches can cause punch outs
+        refillAroundGenerators( regenerated );
+
+        filled = true;
     }
     else
     {
         commit.Revert();
     }
 
-    rebuildConnectivity( aHeadless );
+    PostFillRefresh( aHeadless );
 
-    if( !aHeadless )
-    {
-        refresh();
-
-        if( m_filler->IsDebug() )
-            frame->UpdateUserInterface();
-    }
+    if( !aHeadless && m_filler->IsDebug() )
+        frame->UpdateUserInterface();
 
     m_fillInProgress = false;
     m_filler.reset( nullptr );
@@ -250,6 +318,8 @@ void ZONE_FILLER_TOOL::FillAllZones( wxWindow* aCaller, PROGRESS_REPORTER* aRepo
         // wxWidgets has keyboard focus issues after the progress reporter.  Re-setting the focus
         // here doesn't work, so we delay it to an idle event.
         canvas()->Bind( wxEVT_IDLE, &ZONE_FILLER_TOOL::singleShotRefocus, this );
+
+    return filled;
 }
 
 
@@ -286,17 +356,14 @@ int ZONE_FILLER_TOOL::ZoneFillDirty( const TOOL_EVENT& aEvent )
     if( !board()->GetDesignSettings().m_DRCEngine->RulesValid() )
     {
         WX_INFOBAR* infobar = frame->GetInfoBar();
-        wxHyperlinkCtrl* button = new wxHyperlinkCtrl( infobar, wxID_ANY, _( "Show DRC rules" ), wxEmptyString );
 
-        button->Bind( wxEVT_COMMAND_HYPERLINK,
-                      std::function<void( wxHyperlinkEvent& aLocEvent )>(
+        infobar->RemoveAllButtons();
+
+        infobar->AddLink( _( "Show DRC rules" ),
                       [frame]( wxHyperlinkEvent& aLocEvent )
                       {
                           frame->ShowBoardSetupDialog( _( "Rules" ) );
-                      } ) );
-
-        infobar->RemoveAllButtons();
-        infobar->AddButton( button );
+                      } );
 
         infobar->ShowMessageFor( _( "Zone fills may be inaccurate.  DRC rules contain errors." ), 10000,
                                  wxICON_WARNING );
@@ -320,29 +387,39 @@ int ZONE_FILLER_TOOL::ZoneFillDirty( const TOOL_EVENT& aEvent )
         }
     }
 
-    if( m_filler->Fill( toFill ) )
+    bool                        filled = m_filler->Fill( toFill );
+    std::vector<PCB_GENERATOR*> regenerated;
+
+    if( filled )
+    {
+        board()->OnZonesFilled( toFill );
+        regenerated = RegenerateDirtyGenerators( commit );
+
         commit.Push( _( "Auto-fill Zone(s)" ), APPEND_UNDO | SKIP_CONNECTIVITY | ZONE_FILL_OP );
+    }
     else
+    {
         commit.Revert();
+    }
+
+    if( filled )
+        refillAroundGenerators( regenerated );
 
     rebuildConnectivity();
-    refresh();
+    PostFillRefresh();
 
-    if( GetRunningMicroSecs() - startTime > 3000000 )   // 3 seconds
+    WX_INFOBAR* infobar = frame->GetInfoBar();
+
+    // Only hint after a completed fill, and never over another tool's message and links
+    if( filled && !infobar->IsShownOnScreen() && GetRunningMicroSecs() - startTime > 3000000 )   // 3 seconds
     {
-        WX_INFOBAR* infobar = frame->GetInfoBar();
-
-        wxHyperlinkCtrl* button = new wxHyperlinkCtrl( infobar, wxID_ANY, _( "Open Preferences" ),
-                                                       wxEmptyString );
-
-        button->Bind( wxEVT_COMMAND_HYPERLINK, std::function<void( wxHyperlinkEvent& )>(
+        infobar->RemoveAllButtons();
+        infobar->AddLink( _( "Open Preferences" ),
                 [this]( wxHyperlinkEvent& )
                 {
                     getEditFrame<PCB_EDIT_FRAME>()->ShowPreferences( _( "Editing Options" ), _( "PCB Editor" ) );
-                } ) );
+                } );
 
-        infobar->RemoveAllButtons();
-        infobar->AddButton( button );
         infobar->ShowMessageFor( _( "Automatic refill of zones can be turned off in Preferences if it becomes "
                                     "too slow." ),
                                  10000, wxICON_INFORMATION, WX_INFOBAR::MESSAGE_TYPE::GENERIC );
@@ -417,8 +494,7 @@ int ZONE_FILLER_TOOL::ZoneFill( const TOOL_EVENT& aEvent )
         commit.Revert();
     }
 
-    rebuildConnectivity();
-    refresh();
+    PostFillRefresh();
 
     m_fillInProgress = false;
     m_filler.reset( nullptr );
@@ -497,6 +573,15 @@ PROGRESS_REPORTER* ZONE_FILLER_TOOL::GetProgressReporter()
         return m_filler->GetProgressReporter();
     else
         return nullptr;
+}
+
+
+void ZONE_FILLER_TOOL::PostFillRefresh( bool aHeadless )
+{
+    rebuildConnectivity( aHeadless );
+
+    if( !aHeadless )
+        refresh();
 }
 
 

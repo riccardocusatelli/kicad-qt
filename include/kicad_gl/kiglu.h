@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -42,5 +38,21 @@
 #include <GL/gl.h>
 #include <GL/glu.h>
 #endif
+
+// Windows headers define CALLBACK, so a Windows build without it should fail rather than lose __stdcall
+#if !defined( CALLBACK ) && !defined( _WIN32 )
+#define CALLBACK
+#endif
+
+/**
+ * Convert a tessellator callback to the untyped pointer gluTessCallback takes.
+ *
+ * A direct cast between function pointer types raises MSVC C4191; the hop through void* does not.
+ */
+template <typename FN>
+inline auto ToGluCallback( FN* aCallback )
+{
+    return reinterpret_cast<void( CALLBACK* )()>( reinterpret_cast<void*>( aCallback ) );
+}
 
 #endif  // KIGLU_H_

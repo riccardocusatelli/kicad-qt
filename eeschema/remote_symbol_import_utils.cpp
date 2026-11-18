@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "remote_symbol_import_utils.h"
@@ -72,8 +72,7 @@ wxString RemoteLibraryPrefix()
 }
 
 
-bool WriteRemoteBinaryFile( const wxFileName& aOutput, const std::vector<uint8_t>& aPayload,
-                            wxString& aError )
+bool WriteRemoteBinaryFile( const wxFileName& aOutput, const std::vector<uint8_t>& aPayload, wxString& aError )
 {
     if( aPayload.empty() )
     {
@@ -148,13 +147,11 @@ bool EnsureRemoteDestinationRoot( wxFileName& aOutDir, wxString& aError )
 
 
 bool EnsureRemoteLibraryEntry( LIBRARY_TABLE_TYPE aTableType, const wxFileName& aLibraryPath,
-                                const wxString& aNickname, bool aGlobalTable, bool aStrict,
-                                wxString& aError )
+                               const wxString& aNickname, bool aGlobalTable, bool aStrict, wxString& aError )
 {
     LIBRARY_MANAGER& manager = Pgm().GetLibraryManager();
-    std::optional<LIBRARY_TABLE*> tableOpt = manager.Table(
-            aTableType,
-            aGlobalTable ? LIBRARY_TABLE_SCOPE::GLOBAL : LIBRARY_TABLE_SCOPE::PROJECT );
+    auto             tableOpt = manager.Table( aTableType, aGlobalTable ? LIBRARY_TABLE_SCOPE::GLOBAL
+                                                                        : LIBRARY_TABLE_SCOPE::PROJECT );
 
     if( !tableOpt )
     {
@@ -223,26 +220,22 @@ bool SaveRemoteSymbolToLibrary( SYMBOL_LIBRARY_ADAPTER& aAdapter, const wxFileNa
         return false;
     }
 
-    if( aAdapter.SaveSymbol( aNickname, aSymbol.get(), true ) != SYMBOL_LIBRARY_ADAPTER::SAVE_OK )
+    if( aAdapter.SaveSymbol( aNickname, std::move( aSymbol ), true ) != SYMBOL_LIBRARY_ADAPTER::SAVE_OK )
     {
         aError = _( "Unable to save the downloaded symbol." );
         return false;
     }
 
-    (void) aSymbol.release();   // ownership transferred to library cache
-
     const LIBRARY_TABLE_SCOPE scope = aGlobalTable ? LIBRARY_TABLE_SCOPE::GLOBAL : LIBRARY_TABLE_SCOPE::PROJECT;
 
-    // Without the load the library stays in LOADING state and placement cannot see the symbol
     Pgm().GetLibraryManager().ReloadLibraryEntry( LIBRARY_TABLE_TYPE::SYMBOL, aNickname, scope );
-    aAdapter.LoadOne( aNickname );
 
     return true;
 }
 
 
-bool PlaceRemoteDownloadedSymbol( SCH_EDIT_FRAME* aFrame, const wxString& aNickname,
-                                  const wxString& aLibItemName, wxString& aError )
+bool PlaceRemoteDownloadedSymbol( SCH_EDIT_FRAME* aFrame, const wxString& aNickname, const wxString& aLibItemName,
+                                  wxString& aError )
 {
     if( !aFrame )
     {
@@ -278,15 +271,15 @@ bool PlaceRemoteDownloadedSymbol( SCH_EDIT_FRAME* aFrame, const wxString& aNickn
     }
 
     aFrame->Raise();
-    toolMgr->PostAction( SCH_ACTIONS::placeSymbol,
-                         SCH_ACTIONS::PLACE_SYMBOL_PARAMS{ symbol, true } );
+    toolMgr->PostAction( SCH_ACTIONS::placeSymbol, SCH_ACTIONS::PLACE_SYMBOL_PARAMS{ symbol,
+                                                                                     true,
+                                                                                     symbol->IsMultiUnit() } );
     return true;
 }
 
 
 std::unique_ptr<LIB_SYMBOL> LoadRemoteSymbolFromPayload( const std::vector<uint8_t>& aPayload,
-                                                        const wxString& aLibItemName,
-                                                        wxString& aError )
+                                                        const wxString& aLibItemName, wxString& aError )
 {
     if( aPayload.empty() )
     {
@@ -354,11 +347,17 @@ std::unique_ptr<LIB_SYMBOL> LoadRemoteSymbolFromPayload( const std::vector<uint8
 
 LIB_ID BuildRemoteLibId( const wxString& aResolvedLibrary, const wxString& aResolvedItemName )
 {
-    const wxString nickname =
-            RemoteLibraryPrefix() + wxS( "_" )
-            + SanitizeRemoteFileComponent( aResolvedLibrary, wxS( "footprints" ), true );
+    wxString nickname = RemoteLibraryPrefix()
+                               + wxS( "_" )
+                               + SanitizeRemoteFileComponent( aResolvedLibrary, wxS( "footprints" ), true );
 
-    const wxString itemName = SanitizeRemoteFileComponent( aResolvedItemName, wxS( "footprint" ) );
+    if( nickname.EndsWith( wxT( ".pretty" ) ) )
+        nickname = nickname.BeforeLast( '.' );
+
+    wxString itemName = SanitizeRemoteFileComponent( aResolvedItemName, wxS( "footprint" ) );
+
+    if( itemName.EndsWith( wxT( ".kicad_mod" ) ) )
+        itemName = itemName.BeforeLast( '.' );
 
     LIB_ID id;
     id.SetLibNickname( nickname );

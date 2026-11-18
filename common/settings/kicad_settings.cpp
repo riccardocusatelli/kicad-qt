@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "settings/kicad_settings.h"
@@ -37,11 +37,14 @@ const nlohmann::json PCM_DEFAULT_REPOSITORIES = nlohmann::json::array( {
 
 
 KICAD_SETTINGS::KICAD_SETTINGS() :
-        APP_SETTINGS_BASE( "kicad", kicadSchemaVersion ), m_LeftWinWidth( 200 ),
-        m_ShowHistoryPanel( false )
+        APP_SETTINGS_BASE( "kicad", kicadSchemaVersion ),
+        m_LeftWinWidth( 200 ),
+        m_ShowHistoryPanel( false ),
+        m_ShowGitCommitPanel( true )
 {
     m_params.emplace_back( new PARAM<int>( "appearance.left_frame_width", &m_LeftWinWidth, 200 ) );
     m_params.emplace_back( new PARAM<bool>( "aui.show_history_panel", &m_ShowHistoryPanel, false ) );
+    m_params.emplace_back( new PARAM<bool>( "aui.show_git_commit_panel", &m_ShowGitCommitPanel, true ) );
 
     m_params.emplace_back( new PARAM_LIST<wxString>( "system.open_projects", &m_OpenProjects, {} ) );
 
@@ -56,6 +59,7 @@ KICAD_SETTINGS::KICAD_SETTINGS() :
     m_params.emplace_back( new PARAM<wxSize>( "template.window.size", &m_TemplateWindowSize, wxSize( -1, -1 ) ) );
     m_params.emplace_back( new PARAM<wxString>( "template.last_used", &m_LastUsedTemplate, "" ) );
     m_params.emplace_back( new PARAM_LIST<wxString>( "template.recent_templates", &m_RecentTemplates, {} ) );
+    m_params.emplace_back( new PARAM_LIST<wxString>( "template.pinned_templates", &m_PinnedTemplates, {} ) );
 
     m_params.emplace_back( new PARAM<int>( "template.filter", &m_TemplateFilterChoice, 0 ) );
 
@@ -115,11 +119,11 @@ KICAD_SETTINGS::KICAD_SETTINGS() :
                             entry["hidden"] = true;
 
                         if( !entry.empty() )
-                            tableJs[nickname.ToStdString()] = entry;
+                            tableJs[std::string( nickname.ToUTF8() )] = entry;
                     }
 
                     if( !tableJs.empty() )
-                        js[tablePath.ToStdString()] = tableJs;
+                        js[std::string( tablePath.ToUTF8() )] = tableJs;
                 }
 
                 return js;

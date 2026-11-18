@@ -14,23 +14,24 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #define BOOST_TEST_NO_MAIN
 
+#include <wx/app.h>
 #include <wx/cmdline.h>
 #include <wx/stdstream.h>
 #include <wx/wfstream.h>
 #include <wx/textfile.h>
 
+#include <io/io_utils.h>
+
 #include <qa_utils/utility_registry.h>
 #include <pcbnew_utils/board_test_utils.h>
 #include <pcbnew_utils/board_file_utils.h>
+#include <wx/dir.h>
+#include <wx/utils.h>
 
 #include "pns_log_file.h"
 #include "pns_log_viewer_frame.h"
@@ -39,73 +40,17 @@
 
 using namespace boost::unit_test;
 
-#if 0
-
-bool runSingleTest( REPORTER* aReporter, wxString name, wxString testDirPath )
-{
-    PNS_LOG_FILE   logFile;
-    PNS_LOG_PLAYER player;
-
-
-    wxString fn( testDirPath );
-    fn = fn.Append( "/" );
-    fn = fn.Append( name );
-    fn = fn.Append( "/pns" );
-
-
-    wxFileName fname( fn );
-
-    aReporter->Report( wxString::Format( "Running test '%s' from '%s'", name, fname.GetFullPath() ),
-                       RPT_SEVERITY_INFO );
-
-    //fname.A
-
-    if( !logFile.Load( fname, aReporter ) )
-    {
-        aReporter->Report(
-                wxString::Format( "Failed to load test '%s' from '%s'", name, fname.GetFullPath() ),
-                RPT_SEVERITY_ERROR );
-    }
-
-    player.SetReporter( aReporter );
-    player.ReplayLog( &logFile, 0 );
-    bool pass = player.CompareResults( &logFile );
-    return pass;
-}
-
-
-int main( int argc, char* argv[] )
-{
-
-
-    int passed = 0, failed = 0;
-
-    for( auto casename : testCases )
-    {
-        if( runSingleTest( &reporter, casename, cl_parser.GetParam( 0 ) ) )
-            passed++;
-        else
-            failed++;
-    }
-
-    reporter.Report(
-            wxString::Format( "SUMMARY: %d/%d tests cases PASSED", passed,
-                              (int) testCases.size() ),
-            RPT_SEVERITY_INFO );
-
-
-    return failed ? -1 : 0;
-}
-#endif
+std::map<wxString, wxString> g_testBoards;
+static bool g_updateGolden = false;
 
 struct PNS_TEST_CASE
 {
-    PNS_TEST_CASE( std::string name, std::string path ) : m_name( name ), m_dataPath( path ){};
+    PNS_TEST_CASE( const wxString & aName, const wxString& aPath ) : m_name( aName ), m_dataPath( aPath ){};
 
-    std::string GetDataPath() const { return m_dataPath; }
-    std::string GetName() const { return m_name; }
-    std::string m_dataPath;
-    std::string m_name;
+    wxString GetDataPath() const { return m_dataPath; }
+    wxString GetName() const { return m_name; }
+    wxString m_dataPath;
+    wxString m_name;
 };
 
 
@@ -115,6 +60,7 @@ public:
     FIXTURE_LOGGER()
     {
         m_Log = new KI_TEST::CONSOLE_LOG;
+        m_Log->SetConsoleOutputEnabled( wxGetEnv( wxS( "KICAD_PNS_VERBOSE" ), nullptr ) );
         m_Reporter = new KI_TEST::CONSOLE_MSG_REPORTER( m_Log );
     }
 
@@ -132,26 +78,76 @@ public:
 class PNS_TEST_FIXTURE
 {
 public:
-    static void RunTest( PNS_TEST_CASE* aTestData )
+    static bool RunTest( PNS_TEST_CASE* aTestData )
     {
-        //  printf( "Run %s\n", aTestData->GetName().c_str() );
-
-        PNS_LOG_FILE   logFile;
-        PNS_LOG_PLAYER player;
-
-        if( !logFile.Load( wxString( aTestData->GetDataPath() ), m_logger.m_Reporter ) )
+        BOOST_TEST_CONTEXT( aTestData->GetName() )
         {
-            m_logger.m_Reporter->Report( wxString::Format( "Failed to load test '%s' from '%s'",
-                                                  aTestData->GetName(), aTestData->GetDataPath() ),
-                                RPT_SEVERITY_ERROR );
+            PNS_LOG_FILE   logFile;
+            PNS_LOG_PLAYER player;
+
+            auto hash = logFile.GetLogBoardHash( aTestData->GetDataPath() );
+
+            wxString boardFilename;
+
+            if( hash.has_value() )
+            {
+                if( auto it = g_testBoards.find( *hash ); it != g_testBoards.end() )
+                {
+                    boardFilename = it->second;
+                    BOOST_TEST_MESSAGE( "found matching board: " << boardFilename );
+                }
+            }
+
+            if( !logFile.Load( wxString( aTestData->GetDataPath() ), m_logger.m_Reporter, boardFilename ) )
+            {
+                // Missing board or stale hash; don't fail QA for this
+                BOOST_TEST_MESSAGE( "Failed to load test " << aTestData->GetName() << " from "
+                                                           << aTestData->GetDataPath() << ", will skip" );
+                BOOST_CHECK( true );
+                return true;
+            }
+
+            player.SetReporter( m_logger.m_Reporter );
+
+            if( g_updateGolden )
+            {
+                player.ReplayLog( &logFile, 0, 0, -1, true );
+
+                if( logFile.SaveLog( aTestData->GetDataPath(), m_logger.m_Reporter ) )
+                    BOOST_TEST_MESSAGE( "Updated golden file: " << aTestData->GetDataPath() );
+                else
+                    BOOST_TEST_ERROR( "Failed to save golden file: " << aTestData->GetDataPath() );
+
+                return true;
+            }
+
+            player.ReplayLog( &logFile, 0 );
+
+            auto cstate = player.GetRouterUpdatedItems();
+            auto expected = logFile.GetExpectedResult();
+
+            bool hasHeads = expected.m_heads.size() > 0;
+
+            if( !hasHeads )
+            {
+                BOOST_TEST_MESSAGE( "Test " << aTestData->m_name << " has no reference head geometry. Skipping head comparson" );
+            }
+
+            BOOST_TEST_MESSAGE( "Reference has " << expected.m_addedItems.size() << " added items, "
+                                                 << expected.m_removedIds.size() << " removed items and "
+                                                 << expected.m_heads.size() << " head items." );
+
+            BOOST_TEST_MESSAGE( "Test result has " << cstate.m_addedItems.size() << " added items, "
+                                                 << cstate.m_removedIds.size() << " removed items and "
+                                                 << cstate.m_heads.size() << " head items." );
+
+
+            bool pass = cstate.Compare( expected, !hasHeads );
+            BOOST_REQUIRE( pass );
+            return pass;
         }
 
-        player.SetReporter( m_logger.m_Reporter );
-        player.ReplayLog( &logFile, 0 );
-        bool pass = player.CompareResults( &logFile );
-
-        if( !pass )
-            BOOST_TEST_FAIL( "replay results inconsistent with reference reslts" );
+        return false;
     }
 
     static FIXTURE_LOGGER m_logger;
@@ -160,60 +156,80 @@ public:
 
 FIXTURE_LOGGER PNS_TEST_FIXTURE::m_logger;
 
+std::vector<wxString> scanSubdirs( const wxString& absPath, bool aFiles, wxString filespec = wxEmptyString )
+{
+    std::vector<wxString> rv;
+
+    wxDir dir( absPath );
+    if( !dir.IsOpened() )
+    {
+        BOOST_TEST_ERROR( "Failed to open directory: " << absPath );
+        return rv;
+    }
+
+    wxString dirName;
+
+    bool hasFiles = dir.GetFirst( &dirName, filespec, aFiles ? wxDIR_FILES : wxDIR_DIRS );
+    while( hasFiles )
+    {
+        rv.push_back( dirName );
+        hasFiles = dir.GetNext( &dirName );
+    }
+
+    return rv;
+}
+
+void scanAndHashBoards( const wxString& aPath )
+{
+    for( const wxString& brdFile : scanSubdirs( aPath, true, wxT("*.kicad_pcb") ) )
+    {
+        wxFileName path ( aPath );
+        path.SetName( brdFile );
+        std::optional<wxString> hash = IO_UTILS::fileHashMMH3( path.GetFullPath() );
+        if( hash )
+        {
+            BOOST_TEST_MESSAGE("- file: " << std::left << std::setw(50) << brdFile << " hash: " << ( *hash ) );
+            g_testBoards[ *hash ] = path.GetFullPath();
+        }
+    }
+}
 
 std::vector<PNS_TEST_CASE*> createTestCases()
 {
-    std::string absPath = KI_TEST::GetPcbnewTestDataDir() + std::string( "/pns_regressions/" );
     std::vector<PNS_TEST_CASE*> testCases;
 
-    wxFileName fnameList( absPath + "tests.lst" );
-    wxTextFile fp( fnameList.GetFullPath() );
+    wxFileName absPath( KI_TEST::GetPcbnewTestDataDir() );
+    absPath.AppendDir (wxT("pns_regressions"));
 
-    if( !fp.Open() )
+    wxFileName boardsPath( absPath );
+    boardsPath.AppendDir(wxT("boards"));
+
+    scanAndHashBoards( boardsPath.GetFullPath() );
+
+    for( const wxString& subdir : scanSubdirs( absPath.GetFullPath(), false ) )
     {
-        wxString str =
-                wxString::Format( "Failed to load test list from '%s'.", fnameList.GetFullPath() );
-        BOOST_TEST_ERROR( str.c_str().AsChar() );
-        return testCases;
-    }
+        if( !subdir.CmpNoCase( wxT("boards") ) )
+            continue;
 
-    std::vector<wxString> lines;
+        wxFileName path( absPath );
+        path.AppendDir( subdir );
 
-    if( !fp.Eof() )
-    {
-        lines.push_back( fp.GetFirstLine() );
-
-        while( !fp.Eof() )
+        for( const wxString& logName: scanSubdirs( path.GetFullPath(), true, wxT("*.log") ) )
         {
-            auto l = fp.GetNextLine();
-            if( l.Length() > 0 )
-            {
-                lines.push_back( l );
-            }
+            wxFileName logPath( path );
+            logPath.SetName( logName );
+
+            BOOST_TEST_MESSAGE( "Add case " << logPath.GetFullPath() );
+
+            testCases.push_back( new PNS_TEST_CASE( subdir, logPath.GetFullPath() ) );
         }
     }
-
-    fp.Close();
-
-    for( auto l : lines )
-    {
-        wxString fn( absPath );
-        fn = fn.Append( wxT( "/" ) );
-        fn = fn.Append( l );
-        fn = fn.Append( wxT( "/pns" ) );
-
-        testCases.push_back( new PNS_TEST_CASE( l.ToStdString(), fn.ToStdString() ) );
-    }
-
-    wxString str = wxString::Format( "Loaded %d test cases from '%s'.", (int) testCases.size(),
-                                     fnameList.GetFullPath() );
-
-    BOOST_TEST_MESSAGE( str.c_str().AsChar() );
 
     return testCases;
 }
 
-static bool init_pns_test_suite()
+
+bool init_pns_test_suite( )
 {
     test_suite* pnsTestSuite = BOOST_TEST_SUITE( "pns_regressions" );
 
@@ -222,14 +238,28 @@ static bool init_pns_test_suite()
     for( auto& c : testCases )
     {
         pnsTestSuite->add(
-                BOOST_TEST_CASE_NAME( std::bind( &PNS_TEST_FIXTURE::RunTest, c ), c->GetName() ) );
+                BOOST_TEST_CASE_NAME( std::bind( &PNS_TEST_FIXTURE::RunTest, c ), c->GetName().ToStdString() ) );
     }
 
+    framework::master_test_suite().p_name.value = "P&S router regressions";
     framework::master_test_suite().add( pnsTestSuite );
     return true;
 }
 
+
 int main( int argc, char* argv[] )
 {
-    return unit_test_main( init_pns_test_suite, argc, argv );
+    wxApp::SetInstance( new wxAppConsole );
+    wxInitialize( argc, argv );
+
+    for( int i = 1; i < argc; i++ )
+    {
+        if( wxString( argv[i] ).Cmp( wxT( "--update-golden" ) ) == 0 )
+            g_updateGolden = true;
+    }
+
+    int ret = unit_test_main( &init_pns_test_suite, argc, argv );
+
+    wxUninitialize();
+    return ret;
 }

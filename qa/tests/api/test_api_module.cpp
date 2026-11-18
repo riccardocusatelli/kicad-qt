@@ -13,18 +13,19 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <boost/test/unit_test.hpp>
 #include <wx/app.h>
 
 #include <mock_pgm_base.h>
+#include <pcbnew_settings.h>
 #include <pgm_base.h>
 #include <settings/settings_manager.h>
+#include <qa_utils/file_utils.h>
 #include <qa_utils/wx_utils/wx_assert.h>
-#include <settings/settings_manager.h>
 #include <locale_io.h>
 
 bool init_unit_test()
@@ -45,8 +46,12 @@ bool init_unit_test()
     {
         wxSetAssertHandler( &KI_TEST::wxAssertThrower );
 
-        Pgm().InitPgm( true, true, true );
+        Pgm().InitPgm( true, true );
         Pgm().GetSettingsManager().LoadProject( "" );
+
+        // Board commits read PCBNEW_SETTINGS from the program settings manager, which the
+        // pcbnew kiface registers in a real session
+        Pgm().GetSettingsManager().RegisterSettings( new PCBNEW_SETTINGS, false );
     }
 
     return ok;
@@ -55,5 +60,7 @@ bool init_unit_test()
 
 int main( int argc, char* argv[] )
 {
+    KI_TEST::SCOPED_PROCESS_TEMP_DIR scopedTempDir( "kicad_qa_api" );
+
     return boost::unit_test::unit_test_main( &init_unit_test, argc, argv );
 }

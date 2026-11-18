@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -26,6 +22,7 @@
  * Test suite for WX_FILNAME
  */
 
+#include <boost/test/tools/old/interface.hpp>
 #include <qa_utils/wx_utils/unit_test_utils.h>
 
 // Code under test
@@ -235,5 +232,53 @@ BOOST_AUTO_TEST_CASE( ResolveArchiveEntryPath_StaysBelowDestination )
     BOOST_CHECK( !WX_FILENAME::ResolveArchiveEntryPath( dest, wxT( "../kicad-unarchive-dest-evil/x" ), resolved ) );
 }
 
+
+BOOST_AUTO_TEST_CASE( IsSafeChildPath_RejectsTraversal )
+{
+    for( const wxString& name : hostile_entry_names )
+    {
+        BOOST_TEST_CONTEXT( name )
+        {
+            BOOST_CHECK( !WX_FILENAME::IsSafeChildPath( name ) );
+        }
+    }
+
+    // A child is exactly one component: a name that would need normalizing is rejected rather
+    // than rewritten, so callers always get back the name they asked for.
+    const std::vector<wxString> nested_names = {
+        wxT( "sub/board.kicad_pcb" ),
+        wxT( "./board.kicad_pcb" ),
+        wxT( "sub/./deep/board.kicad_pcb" ),
+        wxT( "board.kicad_pcb/" ),
+    };
+
+    for( const wxString& name : nested_names )
+    {
+        BOOST_TEST_CONTEXT( name )
+        {
+            BOOST_CHECK( !WX_FILENAME::IsSafeChildPath( name ) );
+        }
+    }
+}
+
+
+BOOST_AUTO_TEST_CASE( IsSafeChildPath_AcceptsSingleComponentNames )
+{
+    // ".." and "." are only special as whole components, so these are all legal child names.
+    const std::vector<wxString> child_names = {
+        wxT( "board.kicad_pcb" ),
+        wxT( "a..b" ),
+        wxT( "...leading" ),
+        wxT( "name with spaces.txt" ),
+    };
+
+    for( const wxString& name : child_names )
+    {
+        BOOST_TEST_CONTEXT( name )
+        {
+            BOOST_CHECK( WX_FILENAME::IsSafeChildPath( name ) );
+        }
+    }
+}
 
 BOOST_AUTO_TEST_SUITE_END()

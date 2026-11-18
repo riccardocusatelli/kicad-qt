@@ -14,11 +14,7 @@
 * GNU General Public License for more details.
 *
 * You should have received a copy of the GNU General Public License
-* along with this program; if not, you may find one here:
-* http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-* or you may search the http://www.gnu.org website for the version 2 license,
-* or you may write to the Free Software Foundation, Inc.,
-* 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+* along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #ifndef IO_UTILS_H
@@ -27,6 +23,7 @@
 #include <kicommon.h>
 #include <cstdint>
 #include <vector>
+#include <optional>
 
 #include <wx/string.h>
 
@@ -55,6 +52,15 @@ KICOMMON_API bool fileStartsWithPrefix( const wxString& aFilePath, const wxStrin
 KICOMMON_API bool fileHasBinaryHeader( const wxString&             aFilePath,
                                        const std::vector<uint8_t>& aHeader,
                                        size_t                      aOffset = 0 );
+
+/**
+ * Calculates an MMH3 hash of a given file. This is not a secure hash, use it
+ * as a checksum, not as a secure digest!
+ *
+ * @param aFilePath path to the file where we want to calculate the hash for.
+ * @return hash value as a hex string or none in case of an error.
+ */
+KICOMMON_API std::optional<wxString> fileHashMMH3( const wxString& aFilePath );
 
 }
 

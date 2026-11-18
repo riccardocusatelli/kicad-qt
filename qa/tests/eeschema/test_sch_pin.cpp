@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
@@ -198,7 +194,7 @@ BOOST_AUTO_TEST_CASE( AlternatePinRenameUpdates )
     m_lib_pin->GetAlternates()[ wxS( "ALT1" ) ] = alt;
 
     m_parent_symbol->SetLibSymbol( m_parent_part->Flatten().release() );
-    m_sch_pin = m_parent_symbol->GetPins()[0];
+    m_sch_pin = m_parent_symbol->GetGraphicalPins( ALL_UNITS, ALL_BODY_STYLES )[0];
     m_sch_pin->SetAlt( wxS( "ALT1" ) );
 
     SCH_PIN::ALT altNew = alt;
@@ -208,7 +204,7 @@ BOOST_AUTO_TEST_CASE( AlternatePinRenameUpdates )
 
     m_parent_symbol->SetLibSymbol( m_parent_part->Flatten().release() );
 
-    SCH_PIN* updatedPin = m_parent_symbol->GetPins()[0];
+    SCH_PIN* updatedPin = m_parent_symbol->GetGraphicalPins( ALL_UNITS, ALL_BODY_STYLES )[0];
 
     BOOST_CHECK_EQUAL( updatedPin->GetAlt(), "ALT1_NEW" );
     BOOST_CHECK( updatedPin->GetAlternates().count( wxS( "ALT1" ) ) == 0 );
@@ -232,7 +228,7 @@ BOOST_AUTO_TEST_CASE( AlternatePinTypeReturnsCorrectType )
 
     // Flatten and update the symbol to get a fresh schematic pin
     m_parent_symbol->SetLibSymbol( m_parent_part->Flatten().release() );
-    m_sch_pin = m_parent_symbol->GetPins()[0];
+    m_sch_pin = m_parent_symbol->GetGraphicalPins( ALL_UNITS, ALL_BODY_STYLES )[0];
 
     // Before selecting alternate, type should be the default (NC)
     BOOST_CHECK( m_sch_pin->GetType() == ELECTRICAL_PINTYPE::PT_NC );
@@ -268,7 +264,7 @@ BOOST_AUTO_TEST_CASE( AlternatePinTypePersistsThroughSymbolUpdate )
 
     // First flatten to set up the symbol
     m_parent_symbol->SetLibSymbol( m_parent_part->Flatten().release() );
-    m_sch_pin = m_parent_symbol->GetPins()[0];
+    m_sch_pin = m_parent_symbol->GetGraphicalPins( ALL_UNITS, ALL_BODY_STYLES )[0];
 
     // Set the alternate on the schematic pin (like the parser would)
     m_sch_pin->SetAlt( wxS( "8.pow" ) );
@@ -278,7 +274,7 @@ BOOST_AUTO_TEST_CASE( AlternatePinTypePersistsThroughSymbolUpdate )
     // Now simulate what happens when the library symbol is re-resolved
     // This is similar to what happens after loading a schematic from file
     m_parent_symbol->SetLibSymbol( m_parent_part->Flatten().release() );
-    m_sch_pin = m_parent_symbol->GetPins()[0];
+    m_sch_pin = m_parent_symbol->GetGraphicalPins( ALL_UNITS, ALL_BODY_STYLES )[0];
 
     // After the symbol update, the alternate should still be set
     BOOST_CHECK_EQUAL( m_sch_pin->GetAlt(), "8.pow" );

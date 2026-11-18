@@ -43,7 +43,7 @@ void EDA_TEXT::Print( const RENDER_SETTINGS* aSettings, const VECTOR2I& aOffset,
     {
         std::vector<VECTOR2I> positions;
         wxArrayString         strings;
-        wxStringSplit( GetShownText( true ), strings, '\n' );
+        wxStringSplit( GetShownText( FOR_CANVAS ), strings, '\n' );
 
         positions.reserve( strings.Count() );
 
@@ -54,7 +54,7 @@ void EDA_TEXT::Print( const RENDER_SETTINGS* aSettings, const VECTOR2I& aOffset,
     }
     else
     {
-        printOneLineOfText( aSettings, aOffset, aColor, GetShownText( true ), GetDrawPos() );
+        printOneLineOfText( aSettings, aOffset, aColor, GetShownText( FOR_CANVAS ), GetDrawPos() );
     }
 }
 

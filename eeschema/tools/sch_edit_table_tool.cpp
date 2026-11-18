@@ -14,13 +14,12 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <sch_edit_frame.h>
+#include <tool/tool_manager.h>
+#include <tools/sch_selection_tool.h>
 #include <sch_actions.h>
 #include <tools/sch_edit_table_tool.h>
 #include <dialogs/dialog_table_properties.h>
@@ -117,10 +116,8 @@ int SCH_EDIT_TABLE_TOOL::ExportTableToCSV( const TOOL_EVENT& aEvent )
     SCH_SHEET_PATH& currentSheet = m_frame->GetCurrentSheet();
 
     // Show file save dialog
-    wxFileDialog saveDialog( m_frame, _( "Export Table to CSV" ),
-                            wxEmptyString, wxEmptyString,
-                            _( "CSV files (*.csv)|*.csv" ),
-                            wxFD_SAVE | wxFD_OVERWRITE_PROMPT );
+    wxFileDialog saveDialog( m_frame, _( "Export Table to CSV" ), wxEmptyString, wxEmptyString,
+                            _( "CSV files (*.csv)|*.csv" ), wxFD_SAVE | wxFD_OVERWRITE_PROMPT );
 
     KIPLATFORM::UI::AllowNetworkFileSystems( &saveDialog );
 
@@ -128,6 +125,7 @@ int SCH_EDIT_TABLE_TOOL::ExportTableToCSV( const TOOL_EVENT& aEvent )
     {
         if( clearSelection )
             m_toolMgr->RunAction( ACTIONS::selectionClear );
+
         return 0;
     }
 
@@ -143,27 +141,29 @@ int SCH_EDIT_TABLE_TOOL::ExportTableToCSV( const TOOL_EVENT& aEvent )
     if( !outFile.is_open() )
     {
         wxMessageBox( wxString::Format( _( "Failed to open file:\n%s" ), filePath ),
-                     _( "Export Error" ), wxOK | wxICON_ERROR, m_frame );
+                      _( "Export Error" ), wxOK | wxICON_ERROR, m_frame );
 
         if( clearSelection )
             m_toolMgr->RunAction( ACTIONS::selectionClear );
+
         return 0;
     }
 
     // Helper function to escape CSV fields
-    auto escapeCSV = []( const wxString& field ) -> wxString
-    {
-        wxString escaped = field;
+    auto escapeCSV =
+            []( const wxString& field ) -> wxString
+            {
+                wxString escaped = field;
 
-        // If field contains comma, quote, or newline, wrap in quotes and escape quotes
-        if( escaped.Contains( ',' ) || escaped.Contains( '\"' ) || escaped.Contains( '\n' ) )
-        {
-            escaped.Replace( "\"", "\"\"" );  // Escape quotes by doubling them
-            escaped = "\"" + escaped + "\"";
-        }
+                // If field contains comma, quote, or newline, wrap in quotes and escape quotes
+                if( escaped.Contains( ',' ) || escaped.Contains( '\"' ) || escaped.Contains( '\n' ) )
+                {
+                    escaped.Replace( "\"", "\"\"" );  // Escape quotes by doubling them
+                    escaped = "\"" + escaped + "\"";
+                }
 
-        return escaped;
-    };
+                return escaped;
+            };
 
     // Export table data
     for( int row = 0; row < parentTable->GetRowCount(); ++row )
@@ -173,7 +173,7 @@ int SCH_EDIT_TABLE_TOOL::ExportTableToCSV( const TOOL_EVENT& aEvent )
             SCH_TABLECELL* cell = parentTable->GetCell( row, col );
 
             // Get resolved text (with variables expanded)
-            wxString cellText = cell->GetShownText( nullptr, &currentSheet, false, 0 );
+            wxString cellText = cell->GetShownText( nullptr, &currentSheet, FOR_CANVAS, 0 );
 
             // Write escaped cell text
             outFile << escapeCSV( cellText ).ToStdString();

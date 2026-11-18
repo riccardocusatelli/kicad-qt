@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -32,6 +28,7 @@
 #include <functional>
 
 #include <gal/color4d.h>
+#include <widgets/ui_common.h>
 #include <dialogs/dialog_color_picker.h>
 
 enum SWATCH_SIZE
@@ -62,6 +59,11 @@ public:
      * @param aParent parent window.
      * @param aColor initial swatch color.
      * @param aID id to use when sending swatch events.
+     * @param aBackground is the background color of the swatch.
+     * @param aDefault is the default color for the swatch.
+     * @param aSwatchType
+     * @param aTriggerWithSingleClick is used to indicate if the color picker is launched with a single or
+     *                                double left mouse button click.
      */
     COLOR_SWATCH( wxWindow* aParent, const KIGFX::COLOR4D& aColor, int aID,
                   const KIGFX::COLOR4D& aBackground, const KIGFX::COLOR4D& aDefault,
@@ -78,6 +80,11 @@ public:
      */
     void SetSwatchColor( const KIGFX::COLOR4D& aColor, bool aSendEvent );
 
+    void SetIndeterminate()
+    {
+        SetSwatchColor( KIGFX::COLOR4D( INDETERMINATE_STATE ), false );
+    }
+
     /**
      * Sets the color that will be chosen with the "Reset to Default" button in the chooser
      */
@@ -92,6 +99,11 @@ public:
      * @return the current swatch color.
      */
     KIGFX::COLOR4D GetSwatchColor() const;
+
+    bool IsIndeterminate() const
+    {
+        return m_color.m_text && *m_color.m_text == INDETERMINATE_STATE;
+    }
 
     /**
      * Update the window ID of this control and its children.
@@ -148,23 +160,24 @@ private:
      */
     void onMouseEvent( wxEvent& aEvent );
 
-    KIGFX::COLOR4D        m_color;
-    KIGFX::COLOR4D        m_background;
-    KIGFX::COLOR4D        m_default;
-    CUSTOM_COLORS_LIST*   m_userColors;
+private:
+    KIGFX::COLOR4D                  m_color;
+    KIGFX::COLOR4D                  m_background;
+    KIGFX::COLOR4D                  m_default;
+    std::vector<CUSTOM_COLOR_ITEM>* m_userColors;
 
-    wxStaticBitmap*       m_swatch;
+    wxStaticBitmap*                 m_swatch;
 
-    wxSize                m_size;
-    wxSize                m_checkerboardSize;
-    KIGFX::COLOR4D        m_checkerboardBg;
+    wxSize                          m_size;
+    wxSize                          m_checkerboardSize;
+    KIGFX::COLOR4D                  m_checkerboardBg;
 
     /// A read-only swatch won't show the color chooser dialog but otherwise works normally
-    bool                  m_readOnly;
-    std::function<void()> m_readOnlyCallback;
+    bool                            m_readOnly;
+    std::function<void()>           m_readOnlyCallback;
 
     /// If opacity is not supported the color chooser dialog will be displayed without it
-    bool                  m_supportsOpacity;
+    bool                            m_supportsOpacity;
 };
 
 

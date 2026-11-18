@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <gal/opengl/gpu_manager.h>
@@ -223,12 +219,15 @@ void GPU_CACHED_MANAGER::EndDrawing()
         drawCalls++;
     }
 
+    (void) drawCalls; // silence warning
     cntDraw.Stop();
 
-    KI_TRACE( traceGalProfile,
-              "Cached manager size: VBO size %u iranges %zu max elt size %u drawcalls %u\n",
+#ifdef KICAD_GAL_PROFILE
+    KI_LOG_TRACE( traceGalProfile,
+              "Cached manager size: VBO size %u iranges %zu max elt size %u drawcalls %u",
               cached->AllItemsSize(), m_vranges.size(), m_indexBufMaxSize, drawCalls );
-    KI_TRACE( traceGalProfile, "Timing: %s\n", cntDraw.to_string() );
+    KI_LOG_TRACE( traceGalProfile, "Timing: %s", cntDraw.to_string() );
+#endif
 
     glBindBuffer( GL_ARRAY_BUFFER, 0 );
     cached->ClearDirty();

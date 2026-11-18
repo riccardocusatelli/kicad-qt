@@ -20,11 +20,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef GERBER_JOBFILE_WRITER_H
@@ -97,28 +93,31 @@ public:
 
     /**
      * Creates an Gerber job file in JSON format
+     *
      * @param aFullFilename = the full filename
-     * @param aParams = true for a NPTH file, false for a PTH file
      * @return true, or false if the file cannot be created
      */
     bool  WriteJSONJobFile( const wxString& aFullFilename );
 
 private:
-    /** @return SIDE_NONE if no silk screen layer is in list
-     * SIDE_TOP if top silk screen layer is in list
-     * SIDE_BOTTOM if bottom silk screen layer is in list
-     * SIDE_BOTH if top and bottom silk screen layers are in list
+    /**
+     * @retval SIDE_NONE if no silk screen layer is in list
+     * @retval SIDE_TOP if top silk screen layer is in list
+     * @retval SIDE_BOTTOM if bottom silk screen layer is in list
+     * @retval SIDE_BOTH if top and bottom silk screen layers are in list
      */
     enum ONSIDE hasSilkLayers();
 
-    /** @return SIDE_NONE if no soldermask layer is in list
-     * SIDE_TOP if top soldermask layer is in list
-     * SIDE_BOTTOM if bottom soldermask layer is in list
-     * SIDE_BOTH if top and bottom soldermask layers are in list
+    /**
+     * @retval SIDE_NONE if no soldermask layer is in list
+     * @retval SIDE_TOP if top soldermask layer is in list
+     * @retval SIDE_BOTTOM if bottom soldermask layer is in list
+     * @retval SIDE_BOTH if top and bottom soldermask layers are in list
      */
     enum ONSIDE hasSolderMasks();
 
-    /** @return the key associated to sides used for some layers
+    /**
+     * @return the key associated to sides used for some layers
      * No TopOnly BotOnly Both
      */
     const char* sideKeyValue( enum ONSIDE aValue );
@@ -150,12 +149,14 @@ private:
      */
     void addJSONDesignRules();
 
-    /** A helper function to convert a wxString ( therefore a Unicode text ) to
+    /**
+     * A helper function to convert a wxString ( therefore a Unicode text ) to
      * a JSON compatible string (a escaped unicode sequence of 4 hexa).
      */
     std::string formatStringFromUTF32( const wxString& aText );
 
-    /** A helper function to convert a double in Pcbnew internal units to
+    /**
+     * A helper function to convert a double in Pcbnew internal units to
      * a JSON double value (in mm), with only 4 digits in mantissa for a better readability
      * when printed using %g or equivalent format.
      */

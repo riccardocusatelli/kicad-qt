@@ -58,8 +58,39 @@ void SYMBOL_EDIT_FRAME::setupLayout()
     m_auimgr.AddPane( m_tbRight, EDA_PANE().VToolbar().Name( "RightToolbar" )
                       .Right().Layer( 2 ) );
 
-    // Center
-    m_auimgr.AddPane( GetCanvas(), wxAuiPaneInfo().Name( "DrawFrame" )
+    m_tabsPanel = new EDITOR_TABS_PANEL( this, GetCanvas() );
+
+    m_tabsPanel->onActivateTab =
+            [this]( int aIdx )
+            {
+                if( SYMBOL_EDITOR_TAB_CONTEXT* ctx = symbolTabContextForIndex( aIdx ) )
+                    activateSymbolTab( ctx );
+            };
+
+    m_tabsPanel->onCloseTabRequested =
+            [this]( int aIdx ) -> bool
+            {
+                return promptAndCloseSymbolTab( aIdx );
+            };
+
+    m_tabsPanel->onQueryVisualState =
+            [this]( int aIdx ) -> TAB_VISUAL_STATE
+            {
+                // The panel model owns preview. Read modified from the live context.
+                const std::vector<EDITOR_TABS_MODEL::ENTRY>& entries = m_tabsPanel->Model().Entries();
+
+                if( aIdx < 0 || aIdx >= static_cast<int>( entries.size() ) )
+                    return TAB_VISUAL_STATE{};
+
+                bool modified = entries[aIdx].modified;
+
+                if( SYMBOL_EDITOR_TAB_CONTEXT* ctx = symbolTabContextForIndex( aIdx ) )
+                    modified = ctx->IsModified();
+
+                return ResolveTabVisualState( entries[aIdx].preview, modified );
+            };
+
+    m_auimgr.AddPane( m_tabsPanel, wxAuiPaneInfo().Name( "DrawFrame" )
                       .CentrePane() );
 
     // Columns; layers 1 - 3

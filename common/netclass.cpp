@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <algorithm>
@@ -134,6 +130,36 @@ bool NETCLASS::operator==( const NETCLASS& other ) const
 }
 
 
+bool NETCLASS::EqualsByPersistedFields( const NETCLASS& aOther ) const
+{
+    // m_Description intentionally omitted: the project-file JSON writer does not
+    // serialize description, so a load round-trip drops it.  Including it here
+    // would mark every fresh load dirty (or every CopyFrom-produced copy unequal).
+    //
+    // This list is a hand-maintained mirror of the netclass JSON serialization in
+    // NET_SETTINGS (common/project/net_settings.cpp, the saveNetclass/readNetClass
+    // lambdas).  Any new persisted field added there must be added here too, or two
+    // netclasses differing only in the new field will silently compare equal.
+    return m_Name            == aOther.m_Name
+        && m_Priority        == aOther.m_Priority
+        && m_Clearance       == aOther.m_Clearance
+        && m_TrackWidth      == aOther.m_TrackWidth
+        && m_ViaDia          == aOther.m_ViaDia
+        && m_ViaDrill        == aOther.m_ViaDrill
+        && m_uViaDia         == aOther.m_uViaDia
+        && m_uViaDrill       == aOther.m_uViaDrill
+        && m_diffPairWidth   == aOther.m_diffPairWidth
+        && m_diffPairGap     == aOther.m_diffPairGap
+        && m_diffPairViaGap  == aOther.m_diffPairViaGap
+        && m_wireWidth       == aOther.m_wireWidth
+        && m_busWidth        == aOther.m_busWidth
+        && m_schematicColor  == aOther.m_schematicColor
+        && m_lineStyle       == aOther.m_lineStyle
+        && m_pcbColor        == aOther.m_pcbColor
+        && m_tuningProfile   == aOther.m_tuningProfile;
+}
+
+
 void NETCLASS::Serialize( kiapi::common::project::NetClass& nc ) const
 {
     using namespace kiapi::common;
@@ -186,10 +212,10 @@ void NETCLASS::Serialize( kiapi::common::project::NetClass& nc ) const
     project::NetClassSchematicSettings* schematic = nc.mutable_schematic();
 
     if( m_wireWidth )
-        schematic->mutable_wire_width()->set_value_nm( *m_wireWidth );
+        PackDistance( *schematic->mutable_wire_width(), *m_wireWidth, schIUScale );
 
     if( m_busWidth )
-        schematic->mutable_bus_width()->set_value_nm( *m_busWidth );
+        PackDistance( *schematic->mutable_bus_width(), *m_busWidth, schIUScale );
 
     if( m_schematicColor != COLOR4D::UNSPECIFIED )
         PackColor( *schematic->mutable_color(), m_schematicColor );
@@ -208,7 +234,9 @@ void NETCLASS::Serialize( google::protobuf::Any &aContainer ) const
 {
     kiapi::common::project::NetClass nc;
     Serialize( nc );
-    aContainer.PackFrom( nc );
+
+    if( !aContainer.PackFrom( nc ) )
+        KI_FAIL_MSG( wxT( "Failed to pack NETCLASS" ) );
 }
 
 
@@ -257,10 +285,10 @@ bool NETCLASS::Deserialize( const kiapi::common::project::NetClass& nc )
         m_tuningProfile = wxString::FromUTF8( nc.board().tuning_profile() );
 
     if( nc.schematic().has_wire_width() )
-        m_wireWidth = nc.schematic().wire_width().value_nm();
+        m_wireWidth = UnpackDistance( nc.schematic().wire_width(), schIUScale );
 
     if( nc.schematic().has_bus_width() )
-        m_busWidth = nc.schematic().bus_width().value_nm();
+        m_busWidth = UnpackDistance( nc.schematic().bus_width(), schIUScale );
 
     if( nc.schematic().has_color() )
         m_schematicColor = UnpackColor( nc.schematic().color() );
@@ -362,7 +390,7 @@ const wxString NETCLASS::GetName() const
     size_t strLen = m_constituents.size() - 1; // Count commas
 
     for( std::size_t i = 0; i < m_constituents.size(); ++i )
-        strLen += m_constituents[0]->m_Name.length();
+        strLen += m_constituents[i]->m_Name.length();
 
     wxString name;
     name.reserve( strLen );
@@ -376,4 +404,33 @@ const wxString NETCLASS::GetName() const
     }
 
     return name;
+}
+
+
+bool NETCLASS::NameEquals( const wxString& aName ) const
+{
+    if( m_constituents.size() <= 1 )
+        return m_Name == aName;
+
+    size_t offset = 0;
+
+    for( size_t i = 0; i < m_constituents.size(); ++i )
+    {
+        if( i > 0 )
+        {
+            if( offset >= aName.length() || aName[offset] != wxS( ',' ) )
+                return false;
+
+            ++offset;
+        }
+
+        const wxString& constituentName = m_constituents[i]->m_Name;
+
+        if( aName.compare( offset, constituentName.length(), constituentName ) != 0 )
+            return false;
+
+        offset += constituentName.length();
+    }
+
+    return offset == aName.length();
 }

@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "widgets/net_selector.h"
@@ -27,10 +23,6 @@
 
 #include <board.h>
 #include <netinfo.h>
-
-
-#define NO_NET _( "<no net>" )
-#define CREATE_NET _( "<create net>" )
 
 
 class NET_SELECTOR_COMBOPOPUP : public FILTER_COMBOPOPUP
@@ -118,9 +110,8 @@ public:
 
             if( BOARD* board = m_netinfoList->GetParent() )
             {
-                NETINFO_ITEM *newnet = new NETINFO_ITEM( board, remainingName, 0 );
+                NETINFO_ITEM* newnet = board->FindOrAddNet( remainingName, 0 );
 
-                board->Add( newnet );
                 rebuildList();
 
                 if( newnet->GetNetCode() > 0 )
@@ -187,7 +178,7 @@ protected:
         std::sort( aNetnames.begin(), aNetnames.end(),
                 []( const wxString& lhs, const wxString& rhs )
                 {
-                    return StrNumCmp( lhs, rhs, true /* ignore case */ ) < 0;
+                    return StrNumCmp( lhs, rhs, CMP_T::IGNORE_CASE ) < 0;
                 } );
 
         // Special handling for <no net>

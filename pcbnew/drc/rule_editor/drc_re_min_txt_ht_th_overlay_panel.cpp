@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "drc_re_min_txt_ht_th_overlay_panel.h"
@@ -26,7 +22,6 @@
 #include "drc_rule_editor_utils.h"
 #include "drc_re_validator_numeric_ctrl.h"
 
-#include <dialogs/rule_editor_dialog_base.h>
 #include <base_units.h>
 #include <widgets/unit_binder.h>
 
@@ -70,28 +65,8 @@ DRC_RE_MIN_TXT_HT_TH_OVERLAY_PANEL::DRC_RE_MIN_TXT_HT_TH_OVERLAY_PANEL(
     minTextThicknessField->SetUnitBinder( m_minTextThicknessBinder.get() );
     minTextThicknessField->GetControl()->SetValidator( VALIDATOR_NUMERIC_CTRL( false, false ) );
 
-    auto notifyModified = [this]( wxCommandEvent& )
-    {
-        RULE_EDITOR_DIALOG_BASE* dlg = RULE_EDITOR_DIALOG_BASE::GetDialog( this );
-        if( dlg )
-            dlg->SetModified();
-    };
-
-    auto notifySave = [this]( wxCommandEvent& aEvent )
-    {
-        RULE_EDITOR_DIALOG_BASE* dlg = RULE_EDITOR_DIALOG_BASE::GetDialog( this );
-        if( dlg )
-            dlg->OnSave( aEvent );
-    };
-
-    minTextHeightField->GetControl()->Bind( wxEVT_TEXT, notifyModified );
-    minTextThicknessField->GetControl()->Bind( wxEVT_TEXT, notifyModified );
-
-    minTextHeightField->GetControl()->Bind( wxEVT_TEXT_ENTER, notifySave );
-    minTextThicknessField->GetControl()->Bind( wxEVT_TEXT_ENTER, notifySave );
-
-    PositionFields();
     TransferDataToWindow();
+    PositionFields();
 }
 
 

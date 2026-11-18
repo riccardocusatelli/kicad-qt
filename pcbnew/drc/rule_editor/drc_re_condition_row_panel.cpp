@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "drc_re_condition_row_panel.h"
@@ -28,13 +24,16 @@
 #include <widgets/netclass_selector.h>
 #include <widgets/area_selector.h>
 #include <bitmaps.h>
+#include <widgets/ui_common.h>
+
+#include <algorithm>
 
 #include <wx/sizer.h>
 #include <wx/choice.h>
 #include <wx/bmpbuttn.h>
 #include <wx/stc/stc.h>
 #include <scintilla_tricks.h>
-#include <wx/regex.h>
+#include "drc_rule_editor_utils.h"
 #include <wx/log.h>
 #include <core/ki_log.h>
 
@@ -62,6 +61,17 @@ DRC_RE_CONDITION_ROW_PANEL::DRC_RE_CONDITION_ROW_PANEL( wxWindow* aParent, BOARD
 
     m_objectChoice = new wxChoice( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, objectChoices );
     m_objectChoice->SetSelection( 0 );
+    m_objectChoice->SetToolTip( _( "Which of the two compared objects this condition applies to" ) );
+
+    // The best size ellipsises these labels, so fit the widest plus room for the drop-down arrow
+    int widest = 0;
+
+    for( const wxString& choice : objectChoices )
+        widest = std::max( widest, KIUI::GetTextSize( choice, m_objectChoice ).x );
+
+    widest += m_objectChoice->FromDIP( 34 );
+
+    m_objectChoice->SetMinSize( wxSize( std::max( widest, m_objectChoice->GetBestSize().x ), -1 ) );
     m_rowSizer->Add( m_objectChoice, 0, wxALL | wxALIGN_CENTER_VERTICAL, 2 );
 
     if( !aShowObjectSelector )
@@ -77,23 +87,27 @@ DRC_RE_CONDITION_ROW_PANEL::DRC_RE_CONDITION_ROW_PANEL( wxWindow* aParent, BOARD
 
     m_conditionChoice = new wxChoice( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, conditionChoices );
     m_conditionChoice->SetSelection( 0 );
+    m_conditionChoice->SetToolTip( _( "How items are matched by this condition" ) );
     m_rowSizer->Add( m_conditionChoice, 0, wxALL | wxALIGN_CENTER_VERTICAL, 2 );
 
     // Net selector
     m_netSelector = new NET_SELECTOR( this, wxID_ANY );
     m_netSelector->SetNetInfo( &aBoard->GetNetInfo() );
+    m_netSelector->SetToolTip( _( "Net an item must belong to" ) );
     m_rowSizer->Add( m_netSelector, 1, wxALL | wxEXPAND, 2 );
     m_netSelector->Hide();
 
     // Netclass selector
     m_netclassSelector = new NETCLASS_SELECTOR( this, wxID_ANY );
     m_netclassSelector->SetBoard( aBoard );
+    m_netclassSelector->SetToolTip( _( "Net class an item must belong to" ) );
     m_rowSizer->Add( m_netclassSelector, 1, wxALL | wxEXPAND, 2 );
     m_netclassSelector->Hide();
 
     // Area selector
     m_areaSelector = new AREA_SELECTOR( this, wxID_ANY );
     m_areaSelector->SetBoard( aBoard );
+    m_areaSelector->SetToolTip( _( "Rule area an item must be inside" ) );
     m_rowSizer->Add( m_areaSelector, 1, wxALL | wxEXPAND, 2 );
     m_areaSelector->Hide();
 
@@ -101,6 +115,7 @@ DRC_RE_CONDITION_ROW_PANEL::DRC_RE_CONDITION_ROW_PANEL( wxWindow* aParent, BOARD
 
     // Custom query text control - shown only when Custom Query is selected
     m_customQueryCtrl = new wxStyledTextCtrl( this, wxID_ANY, wxDefaultPosition, wxSize( -1, 60 ) );
+    m_customQueryCtrl->SetToolTip( _( "Custom match expression in the DRC rule language" ) );
     m_customQueryCtrl->SetUseTabs( true );
     m_customQueryCtrl->SetTabWidth( 4 );
     m_customQueryCtrl->SetIndent( 4 );
@@ -252,39 +267,30 @@ bool DRC_RE_CONDITION_ROW_PANEL::ParseExpression( const wxString& aExpr )
         expr = expr.Mid( 2 );
     }
 
-    // Try to match known patterns
-    static wxRegEx netRe( wxT( "^NetName\\s*==\\s*'([^']*)'" ) );
-    static wxRegEx netclassRe1( wxT( "^hasNetclass\\('([^']*)'\\)" ) );
-    static wxRegEx netclassRe2( wxT( "^NetClass\\s*==\\s*'([^']*)'" ) );
-    static wxRegEx areaRe( wxT( "^(?:enclosedByArea|intersectsArea)\\('([^']*)'\\)" ) );
+    if( std::optional<DRC_RULE_EDITOR_UTILS::SELECTOR_CONDITION> cond =
+                DRC_RULE_EDITOR_UTILS::ParseSelectorCondition( expr ) )
+    {
+        switch( cond->kind )
+        {
+        case DRC_RULE_EDITOR_UTILS::SELECTOR_KIND::NET:
+            SetConditionType( CONDITION_TYPE::NET );
+            m_netSelector->SetSelectedNet( cond->operand );
+            return true;
 
-    if( netRe.Matches( expr ) )
-    {
-        KI_LOG_TRACE( TRACE_COND, wxS( "[ParseExpression] matched NET pattern" ) );
-        SetConditionType( CONDITION_TYPE::NET );
-        m_netSelector->SetSelectedNet( netRe.GetMatch( expr, 1 ) );
-        return true;
-    }
-    else if( netclassRe1.Matches( expr ) )
-    {
-        KI_LOG_TRACE( TRACE_COND, wxS( "[ParseExpression] matched NETCLASS (hasNetclass) pattern" ) );
-        SetConditionType( CONDITION_TYPE::NETCLASS );
-        m_netclassSelector->SetSelectedNetclass( netclassRe1.GetMatch( expr, 1 ) );
-        return true;
-    }
-    else if( netclassRe2.Matches( expr ) )
-    {
-        KI_LOG_TRACE( TRACE_COND, wxS( "[ParseExpression] matched NETCLASS (NetClass==) pattern" ) );
-        SetConditionType( CONDITION_TYPE::NETCLASS );
-        m_netclassSelector->SetSelectedNetclass( netclassRe2.GetMatch( expr, 1 ) );
-        return true;
-    }
-    else if( areaRe.Matches( expr ) )
-    {
-        KI_LOG_TRACE( TRACE_COND, wxS( "[ParseExpression] matched WITHIN_AREA pattern" ) );
-        SetConditionType( CONDITION_TYPE::WITHIN_AREA );
-        m_areaSelector->SetSelectedArea( areaRe.GetMatch( expr, 1 ) );
-        return true;
+        case DRC_RULE_EDITOR_UTILS::SELECTOR_KIND::NETCLASS:
+            SetConditionType( CONDITION_TYPE::NETCLASS );
+            m_netclassSelector->SetSelectedNetclass( cond->operand );
+            return true;
+
+        case DRC_RULE_EDITOR_UTILS::SELECTOR_KIND::INTERSECTS_AREA:
+            SetConditionType( CONDITION_TYPE::WITHIN_AREA );
+            m_areaSelector->SetSelectedArea( cond->operand );
+            return true;
+
+        // The area row writes intersectsArea, so it cannot hold this test
+        case DRC_RULE_EDITOR_UTILS::SELECTOR_KIND::ENCLOSED_BY_AREA:
+            break;
+        }
     }
 
     // Fallback to custom query

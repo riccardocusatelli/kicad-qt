@@ -27,12 +27,19 @@
 #include <system_error>
 
 #include <board.h>
+#include <board_commit.h>
 #include <footprint.h>
 #include <layer_ids.h>
 #include <locale_io.h>
+#include <pcb_shape.h>
 #include <pcb_track.h>
+#include <zone.h>
 #include <pcbnew_utils/board_file_utils.h>
+#include <pcbnew_utils/board_test_utils.h>
 #include <specctra_import_export/specctra.h>
+#include <tool/tool_manager.h>
+#include <reporter.h>
+#include <ranges>
 
 #include <wx/filename.h>
 #include <wx/string.h>
@@ -59,6 +66,7 @@ public:
 
     const std::filesystem::path& Path() const { return m_path; }
     std::string                  Str() const { return m_path.string(); }
+    wxString                     WxStr() const { return wxString( m_path.string() ); }
 
 private:
     std::filesystem::path m_path;
@@ -81,10 +89,7 @@ std::unique_ptr<BOARD> loadTestBoard()
 
     BOOST_REQUIRE( std::filesystem::exists( boardPath ) );
 
-    std::unique_ptr<BOARD> board = KI_TEST::ReadBoardFromFileOrStream( boardPath.string() );
-    BOOST_REQUIRE( board );
-
-    return board;
+    return KI_TEST::RequireBoardFromPcbnewQAData( "issue3812.kicad_pcb" );
 }
 
 
@@ -99,6 +104,31 @@ int countTraces( BOARD* aBoard )
     }
 
     return n;
+}
+
+
+void importSession( BOARD* aBoard, const wxString& aSesPath )
+{
+    TOOL_MANAGER toolMgr;
+    toolMgr.SetEnvironment( aBoard, nullptr, nullptr, nullptr, nullptr );
+    toolMgr.RegisterTool( new KI_TEST::DUMMY_TOOL() );
+
+    BOARD_COMMIT commit( &toolMgr, true, false );
+    ImportSpecctraSession( aBoard, aSesPath, commit );
+    commit.Push( wxT( "Import Specctra Session" ), SKIP_UNDO );
+}
+
+
+void importSession( BOARD* aBoard, const wxString& aSesPath, WX_STRING_REPORTER* aReporter,
+                    int* aSkipped )
+{
+    TOOL_MANAGER toolMgr;
+    toolMgr.SetEnvironment( aBoard, nullptr, nullptr, nullptr, nullptr );
+    toolMgr.RegisterTool( new KI_TEST::DUMMY_TOOL() );
+
+    BOARD_COMMIT commit( &toolMgr, true, false );
+    ImportSpecctraSession( aBoard, aSesPath, commit, aReporter, aSkipped );
+    commit.Push( wxT( "Import Specctra Session" ), SKIP_UNDO );
 }
 } // namespace
 
@@ -159,6 +189,98 @@ BOOST_AUTO_TEST_CASE( SpecctraExportDuplicateEmptyRefs )
 }
 
 
+// Allegro Specctra writes zone fills as (wire (poly ...)) — an abbreviation of (polygon).
+// Parsing must accept that token and skip the pour geometry (zones stay on the board).
+// A rule area inside a rotated footprint must be exported in the footprint's frame, like its pads:
+// the keepout polygon of the image is the library-frame outline, whatever the placement.
+BOOST_AUTO_TEST_CASE( SpecctraExportRotatedFootprintKeepout )
+{
+    LOCALE_IO toggle;
+    BOARD     board;
+
+    // A board outline, which the export requires.
+    const VECTOR2I corners[4] = { { 0, 0 }, { pcbIUScale.mmToIU( 150 ), 0 },
+                                  { pcbIUScale.mmToIU( 150 ), pcbIUScale.mmToIU( 100 ) },
+                                  { 0, pcbIUScale.mmToIU( 100 ) } };
+
+    for( int i = 0; i < 4; ++i )
+    {
+        PCB_SHAPE* edge = new PCB_SHAPE( &board, SHAPE_T::SEGMENT );
+        edge->SetLayer( Edge_Cuts );
+        edge->SetStart( corners[i] );
+        edge->SetEnd( corners[( i + 1 ) % 4] );
+        board.Add( edge );
+    }
+
+    FOOTPRINT* footprint = new FOOTPRINT( &board );
+    footprint->SetReference( wxS( "K1" ) );
+    footprint->SetPosition( { pcbIUScale.mmToIU( 100 ), pcbIUScale.mmToIU( 50 ) } );
+    footprint->SetOrientation( ANGLE_90 );
+
+    // Library frame: x 1..3 mm, y 0.5..1.5 mm.
+    ZONE* keepout = new ZONE( footprint );
+    keepout->SetIsRuleArea( true );
+    keepout->SetDoNotAllowTracks( true );
+    keepout->SetDoNotAllowVias( true );
+    keepout->SetLayer( F_Cu );
+    keepout->AppendCorner( { pcbIUScale.mmToIU( 1 ), pcbIUScale.mmToIU( 0.5 ) }, -1 );
+    keepout->AppendCorner( { pcbIUScale.mmToIU( 3 ), pcbIUScale.mmToIU( 0.5 ) }, -1 );
+    keepout->AppendCorner( { pcbIUScale.mmToIU( 3 ), pcbIUScale.mmToIU( 1.5 ) }, -1 );
+    keepout->AppendCorner( { pcbIUScale.mmToIU( 1 ), pcbIUScale.mmToIU( 1.5 ) }, -1 );
+    footprint->Add( keepout );
+    board.Add( footprint );
+
+    TEMP_FILE out( wxT( "kicad_specctra_keepout_" ) );
+    BOOST_REQUIRE_NO_THROW( ExportBoardToSpecctraFile( &board, out.Str() ) );
+
+    const std::string dsn = slurp( out.Path() );
+    const size_t      image = dsn.find( "(image " );
+    BOOST_REQUIRE( image != std::string::npos );
+    const std::string imageText = dsn.substr( image, dsn.find( "(network", image ) - image );
+
+    // DSN points are in micrometres with y up: the library-frame corners, not a rotated copy.
+    BOOST_CHECK_MESSAGE( imageText.find( "(keepout" ) != std::string::npos, imageText );
+    BOOST_CHECK_MESSAGE( imageText.find( "1000 -500" ) != std::string::npos, imageText );
+    BOOST_CHECK_MESSAGE( imageText.find( "3000 -1500" ) != std::string::npos, imageText );
+    BOOST_CHECK_MESSAGE( imageText.find( "3000 -500" ) != std::string::npos, imageText );
+    BOOST_CHECK_MESSAGE( imageText.find( "1000 -1500" ) != std::string::npos, imageText );
+}
+
+
+BOOST_AUTO_TEST_CASE( SpecctraImportAllegroPolyWire )
+{
+    LOCALE_IO              toggle;
+    std::unique_ptr<BOARD> board = loadTestBoard();
+
+    TEMP_FILE ses( wxT( "kicad_specctra_allegro_poly_" ) );
+
+    const std::string validLayer = std::string( board->GetLayerName( F_Cu ).ToUTF8() );
+
+    std::ofstream out( ses.Path() );
+    out << "(session test.ses\n"
+        << "  (base_design test.dsn)\n"
+        << "  (routes\n"
+        << "    (resolution um 10)\n"
+        << "    (library_out )\n"
+        << "    (network_out\n"
+        << "      (net \"/ALLPST\"\n"
+        << "        (wire (path \"" << validLayer << "\" 1600  0 0  1000 0)\n"
+        << "          (type route))\n"
+        << "        (wire (poly \"" << validLayer << "\" 0  0 0  1000 0  1000 1000  0 1000  0 0)\n"
+        << "          (type normal))\n"
+        << "      )\n"
+        << "    )\n"
+        << "  )\n"
+        << ")\n";
+    out.close();
+
+    BOOST_REQUIRE_NO_THROW( importSession( board.get(), ses.Str() ) );
+
+    // Path wire imported; poly wire ignored (zone fill), so exactly one trace.
+    BOOST_CHECK_EQUAL( countTraces( board.get() ), 1 );
+}
+
+
 // #24948: single unresolved session items (an unknown wire layer or a placement referencing a
 // uniquified id the board never had) must be skipped rather than sinking the whole import.
 BOOST_AUTO_TEST_CASE( SpecctraImportSkipsInvalidWireLayer )
@@ -194,9 +316,83 @@ BOOST_AUTO_TEST_CASE( SpecctraImportSkipsInvalidWireLayer )
         << ")\n";
     out.close();
 
-    BOOST_REQUIRE_NO_THROW( ImportSpecctraSession( board.get(), ses.Str() ) );
+#ifdef __WXMAC__
+    // Don't convert log messages to throws, as they will trip up BOOST_REQUIRE_NO_THROW
+    wxLog::SetTimestamp( wxEmptyString );
+#endif
+
+    BOOST_REQUIRE_NO_THROW( importSession( board.get(), ses.Str() ) );
 
     // The session replaces all unlocked traces; only the valid wire survives, the bogus wire and
     // the unresolved placement are dropped rather than throwing.
     BOOST_CHECK_EQUAL( countTraces( board.get() ), 1 );
+}
+
+
+/*
+ * DSN export must produce a file that the DSN parser can read back.
+ */
+BOOST_AUTO_TEST_CASE( SpecctraDsnExportParseable )
+{
+    LOCALE_IO              toggle;
+    std::unique_ptr<BOARD> board = loadTestBoard();
+
+    TEMP_FILE out( wxT( "kicad_specctra_parseable_" ) );
+    BOOST_REQUIRE_NO_THROW( ExportBoardToSpecctraFile( board.get(), out.Str() ) );
+
+    SPECCTRA_DB db;
+    try
+    {
+        db.LoadPCB( out.WxStr() );
+        BOOST_CHECK( db.GetPCB() != nullptr );
+    }
+    catch( const IO_ERROR& ioe )
+    {
+        BOOST_FAIL( ioe.What().ToStdString() );
+    }
+}
+
+
+BOOST_AUTO_TEST_CASE( SpecctraDsnExportContent )
+{
+    LOCALE_IO              toggle;
+    std::unique_ptr<BOARD> board = loadTestBoard();
+
+    BOOST_REQUIRE( !board->Footprints().empty() );
+
+    TEMP_FILE out( wxT( "kicad_specctra_content_" ) );
+    BOOST_REQUIRE_NO_THROW( ExportBoardToSpecctraFile( board.get(), out.Str() ) );
+
+    const std::string dsn = slurp( out.Path() );
+
+    // The unit declaration the exporter writes (mm-based resolution; um units).
+    BOOST_CHECK( dsn.find( "(unit um" ) != std::string::npos );
+
+    // At least one (net "<name>" header matches an existing net.
+    bool netHeaderFound = false;
+
+    for( const NETINFO_ITEM* net : board->GetNetInfo().NetsByNetcode() | std::views::values )
+    {
+        if( net->GetNetname().IsEmpty() )
+            continue;
+
+        if( dsn.find( "(net \"" + std::string( net->GetNetname().ToUTF8() ) + "\"" ) != std::string::npos )
+            netHeaderFound = true;
+    }
+
+    BOOST_CHECK( netHeaderFound );
+}
+
+
+BOOST_AUTO_TEST_CASE( SpecctraExportReporterCapturesOutlineWarning )
+{
+    LOCALE_IO toggle;
+
+    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
+
+    WX_STRING_REPORTER reporter;
+    TEMP_FILE out( wxT( "kicad_specctra_reporter_" ) );
+    BOOST_REQUIRE_NO_THROW( ExportBoardToSpecctraFile( board.get(), out.WxStr(), &reporter ) );
+
+    BOOST_CHECK( reporter.GetMessages().Contains( wxT( "Board outline is malformed" ) ) );
 }

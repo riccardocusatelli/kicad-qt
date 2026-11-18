@@ -18,12 +18,13 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <wx/bitmap.h>
 
+#include <bitmaps.h>
 #include <kiplatform/ui.h>
 #include <confirm.h>
 #include <lset.h>
@@ -241,12 +242,7 @@ void PCB_ONE_LAYER_SELECTOR::onCharHook( wxKeyEvent& event )
     if( layer != UNDEFINED_LAYER )
     {
         m_layerSelected = layer;
-
-        if( IsQuasiModal() )
-            EndQuasiModal( 1 );
-        else
-            EndDialog( 1 );
-
+        EndDialogShim( 1 );
         return;
     }
 
@@ -321,10 +317,7 @@ void PCB_ONE_LAYER_SELECTOR::OnLeftGridCellClick( wxGridEvent& event )
 {
     m_layerSelected = m_layersIdLeftColumn[event.GetRow()];
 
-    if( IsQuasiModal() )
-        EndQuasiModal( 1 );
-    else
-        EndDialog( 1 );
+    EndDialogShim( 1 );
 }
 
 
@@ -332,10 +325,7 @@ void PCB_ONE_LAYER_SELECTOR::OnRightGridCellClick( wxGridEvent& event )
 {
     m_layerSelected = m_layersIdRightColumn[event.GetRow()];
 
-    if( IsQuasiModal() )
-        EndQuasiModal( 2 );
-    else
-        EndDialog( 2 );
+    EndDialogShim( 2 );
 }
 
 

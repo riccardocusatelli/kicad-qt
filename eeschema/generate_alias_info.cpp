@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <generate_alias_info.h>
@@ -82,11 +82,25 @@ public:
         m_stripe = blendColour( bg, fg, 0.05 ).GetAsString( wxC2S_HTML_SYNTAX );
     }
 
+    FOOTPRINT_INFO_GENERATOR( const LIB_SYMBOL* aSymbol, int aUnit ) :
+            m_html( DescriptionFormat ),
+            m_libs( nullptr ),
+            m_lib_id( aSymbol ? aSymbol->GetLibId() : LIB_ID() ),
+            m_symbol( aSymbol ),
+            m_unit( aUnit )
+    { }
+
     /**
      * Generate the HTML internally.
      */
     void GenerateHtml()
     {
+        if( m_symbol )
+        {
+            fillFromSymbol();
+            return;
+        }
+
         KI_CHECK_RET( m_libs, "Symbol library manager adapter pointer is not valid" );
 
         if( !m_lib_id.IsValid() )
@@ -110,17 +124,9 @@ public:
         }
 
         if( m_symbol )
-        {
-            SetHtmlName();
-            SetHtmlAliasOf();
-            SetHtmlDesc();
-            SetHtmlKeywords();
-            SetHtmlFieldTable();
-        }
+            fillFromSymbol();
         else
-        {
             ClearPlaceholders();
-        }
     }
 
     /**
@@ -132,6 +138,15 @@ public:
     }
 
 protected:
+    void fillFromSymbol()
+    {
+        SetHtmlName();
+        SetHtmlAliasOf();
+        SetHtmlDesc();
+        SetHtmlKeywords();
+        SetHtmlFieldTable();
+    }
+
     void SetHtmlName()
     {
         m_html.Replace( wxS( "__NAME__" ), EscapeHTML( UnescapeString( m_symbol->GetName() ) ) );
@@ -183,7 +198,7 @@ protected:
 
     void SetHtmlDesc()
     {
-        wxString esc_desc = EscapeHTML( UnescapeString( m_symbol->GetShownDescription() ) );
+        wxString esc_desc = EscapeHTML( UnescapeString( m_symbol->GetShownDescription( FOR_GUI ) ) );
 
         // Add line breaks
         esc_desc.Replace( wxS( "\n" ), wxS( "<br>" ) );
@@ -199,7 +214,7 @@ protected:
 
     void SetHtmlKeywords()
     {
-        wxString keywords = m_symbol->GetShownKeyWords();
+        wxString keywords = m_symbol->GetShownKeyWords( FOR_GUI );
 
         if( keywords.empty() )
             m_html.Replace( wxS( "__KEY__" ), wxEmptyString );
@@ -210,7 +225,7 @@ protected:
 
     wxString GetHtmlFieldRow( const SCH_FIELD& aField ) const
     {
-        wxString name = aField.GetCanonicalName();
+        wxString name = aField.GetUntranslatedName();
         wxString text;
         wxString fieldhtml = FieldFormat;
 
@@ -220,7 +235,7 @@ protected:
         switch( aField.GetId() )
         {
         case FIELD_T::DATASHEET:
-            text = m_symbol->GetDatasheetField().GetShownText( false );
+            text = m_symbol->GetDatasheetField().GetShownText( FOR_GUI );
 
             if( text.IsEmpty() || text == wxT( "~" ) )
             {
@@ -251,7 +266,7 @@ protected:
             break;
 
         default:
-            text = aField.GetShownText( false );
+            text = aField.GetShownText( FOR_GUI );
 
             if( aField.HasHypertext() )
             {
@@ -301,7 +316,7 @@ protected:
 
                 for( const SCH_FIELD* parentField : parentFields )
                 {
-                    if( m_symbol->GetField( parentField->GetCanonicalName() ) )
+                    if( m_symbol->GetField( parentField->GetUntranslatedName() ) )
                         continue;
 
                     fieldtable += GetHtmlFieldRow( *parentField );
@@ -329,7 +344,7 @@ private:
     wxString                        m_html;
     SYMBOL_LIBRARY_ADAPTER* m_libs;
     LIB_ID const                    m_lib_id;
-    LIB_SYMBOL*                     m_symbol;
+    const LIB_SYMBOL*               m_symbol;
     int                             m_unit;
     mutable int                     m_rowIndex;
     wxString                        m_muted;
@@ -340,6 +355,14 @@ private:
 wxString GenerateAliasInfo( SYMBOL_LIBRARY_ADAPTER* aLibs, LIB_ID const& aLibId, int aUnit )
 {
     FOOTPRINT_INFO_GENERATOR gen( aLibs, aLibId, aUnit );
+    gen.GenerateHtml();
+    return gen.GetHtml();
+}
+
+
+wxString GenerateAliasInfo( const LIB_SYMBOL* aSymbol, int aUnit )
+{
+    FOOTPRINT_INFO_GENERATOR gen( aSymbol, aUnit );
     gen.GenerateHtml();
     return gen.GetHtml();
 }

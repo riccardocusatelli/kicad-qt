@@ -14,11 +14,7 @@
 * GNU General Public License for more details.
 *
 * You should have received a copy of the GNU General Public License
-* along with this program; if not, you may find one here:
-* http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-* or you may search the http://www.gnu.org website for the version 2 license,
-* or you may write to the Free Software Foundation, Inc.,
-* 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+* along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <gal_display_options_common.h>
@@ -27,7 +23,6 @@
 
 #include <wx/log.h>
 
-#include <config_map.h>
 #include <dpi_scaling_common.h>
 #include <core/ki_log.h>
 
@@ -43,18 +38,6 @@ using namespace KIGFX;
 static const wxChar* traceGalDispOpts = wxT( "KICAD_GAL_DISPLAY_OPTIONS" );
 
 
-static const UTIL::CFG_MAP<KIGFX::GRID_STYLE> gridStyleConfigVals = {
-    { KIGFX::GRID_STYLE::DOTS, 0 },
-    { KIGFX::GRID_STYLE::LINES, 1 },
-    { KIGFX::GRID_STYLE::SMALL_CROSS, 2 },
-};
-
-static const UTIL::CFG_MAP<KIGFX::GRID_SNAPPING> gridSnapConfigVals = {
-    { KIGFX::GRID_SNAPPING::ALWAYS, 0 },
-    { KIGFX::GRID_SNAPPING::WITH_GRID, 1 },
-    { KIGFX::GRID_SNAPPING::NEVER, 2 }
-};
-
 GAL_DISPLAY_OPTIONS_IMPL::GAL_DISPLAY_OPTIONS_IMPL() :
     GAL_DISPLAY_OPTIONS(),
     m_dpi( { nullptr, nullptr } )
@@ -66,10 +49,11 @@ void GAL_DISPLAY_OPTIONS_IMPL::ReadWindowSettings( WINDOW_SETTINGS& aCfg )
 {
     KI_LOG_TRACE( traceGalDispOpts, wxS( "Reading app-specific options" ) );
 
-    m_gridStyle = UTIL::GetValFromConfig( gridStyleConfigVals, aCfg.grid.style );
-    m_gridSnapping = UTIL::GetValFromConfig( gridSnapConfigVals, aCfg.grid.snap );
+    m_gridStyle = aCfg.grid.style;
+    m_gridSnapping = aCfg.grid.snap;
     m_gridLineWidth = aCfg.grid.line_width;
     m_gridMinSpacing = aCfg.grid.min_spacing;
+    m_gridShowMajor = aCfg.grid.show_major;
     m_axesEnabled = aCfg.grid.axes_enabled;
 
     m_crossHairMode = aCfg.cursor.cross_hair_mode;
@@ -84,8 +68,7 @@ void GAL_DISPLAY_OPTIONS_IMPL::ReadCommonConfig( COMMON_SETTINGS& aSettings,
 {
     KI_LOG_TRACE( traceGalDispOpts, wxS( "Reading common config" ) );
 
-    antialiasing_mode =
-            static_cast<KIGFX::GAL_ANTIALIASING_MODE>( aSettings.m_Graphics.aa_mode );
+    antialiasing_mode = static_cast<KIGFX::GAL_ANTIALIASING_MODE>( aSettings.m_Graphics.aa_mode );
 
     m_dpi = DPI_SCALING_COMMON( &aSettings, aWindow );
     UpdateScaleFactor();
@@ -110,11 +93,12 @@ void GAL_DISPLAY_OPTIONS_IMPL::WriteConfig( WINDOW_SETTINGS& aCfg )
 {
     KI_LOG_TRACE( traceGalDispOpts, wxS( "Writing window settings" ) );
 
-    aCfg.grid.style = UTIL::GetConfigForVal( gridStyleConfigVals, m_gridStyle );
-    aCfg.grid.snap = UTIL::GetConfigForVal( gridSnapConfigVals, m_gridSnapping );
+    aCfg.grid.style = m_gridStyle;
+    aCfg.grid.snap = m_gridSnapping;
     aCfg.grid.line_width = m_gridLineWidth;
     aCfg.grid.min_spacing = m_gridMinSpacing;
     aCfg.grid.axes_enabled = m_axesEnabled;
+    aCfg.grid.show_major = m_gridShowMajor;
     aCfg.cursor.cross_hair_mode = m_crossHairMode;
     aCfg.cursor.always_show_cursor = m_forceDisplayCursor;
 }

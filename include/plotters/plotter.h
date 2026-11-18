@@ -15,19 +15,16 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PLOT_COMMON_H_
 #define PLOT_COMMON_H_
 
-#include <eda_shape.h>
 #include <set>
 #include <vector>
+#include <eda_fill.h>
+#include <geometry/eda_angle.h>
 #include <math/box2.h>
 #include <gr_text.h>
 #include <page_info.h>
@@ -41,6 +38,7 @@
 
 
 class COLOR_SETTINGS;
+class EDA_SHAPE;
 class SHAPE_ARC;
 class SHAPE_POLY_SET;
 class SHAPE_LINE_CHAIN;
@@ -48,6 +46,7 @@ class GBR_NETLIST_METADATA;
 class PROJECT;
 class FOOTPRINT;
 
+using KIGFX::COLOR4D;
 using KIGFX::RENDER_SETTINGS;
 
 
@@ -63,7 +62,7 @@ enum class DXF_UNITS
 /**
  * The set of supported output plot formats.
  *
-   They should be kept in order of the radio buttons in the plot panel/windows.
+ * They should be kept in order of the radio buttons in the plot panel/windows.
  */
 enum class PLOT_FORMAT
 {
@@ -75,7 +74,8 @@ enum class PLOT_FORMAT
     DXF,
     PDF,
     SVG,
-    LAST_FORMAT = SVG
+    PNG,
+    LAST_FORMAT = PNG
 };
 
 /**
@@ -219,9 +219,9 @@ public:
      * @param aOffset is the plot offset.
      * @param aIusPerDecimil gives the scaling factor from IUs to device units
      * @param aScale is the user set plot scaling factor (either explicitly
-     *      or using 'fit to A4').
+     *               or using 'fit to A4').
      * @param aMirror flips the plot in the Y direction (useful for toner
-     *      transfers or some kind of film).
+     *                transfers or some kind of film).
      */
     virtual void SetViewport( const VECTOR2I& aOffset, double aIusPerDecimil,
                               double aScale, bool aMirror ) = 0;
@@ -236,7 +236,10 @@ public:
      *                        This updates the internal list of layers that will
      *                        be processed for export.
      */
-    void SetLayersToExport( const std::vector<std::pair<PCB_LAYER_ID, wxString>>& aLayersToExport ) { m_layersToExport = aLayersToExport; }
+    void SetLayersToExport( const std::vector<std::pair<PCB_LAYER_ID, wxString>>& aLayersToExport )
+    {
+        m_layersToExport = aLayersToExport;
+    }
 
     /**
      * @brief Gets the ID of the current layer.
@@ -271,7 +274,6 @@ public:
 
     /**
      * Open or create the plot file \a aFullFilename.
-     * .
      *
      * @param aFullFilename is the full file name of the file to create.
      * @return true if success, false if the file cannot be created/opened.
@@ -317,8 +319,8 @@ public:
      *
      * @param pos is the target position.
      * @param plume specifies the kind of motion: 'U' only moves the pen,
-     *      'D' draw a line from the current position and 'Z' finish
-     *      the drawing and returns the 'pen' to rest (flushes the trace).
+     *              'D' draw a line from the current position and 'Z' finish
+     *              the drawing and returns the 'pen' to rest (flushes the trace).
      */
     virtual void PenTo( const VECTOR2I& pos, char plume ) = 0;
 
@@ -368,16 +370,18 @@ public:
     virtual void PlotPoly( const SHAPE_LINE_CHAIN& aLineChain, FILL_T aFill, int aWidth, void* aData );
 
     /**
-     * Only PostScript plotters can plot bitmaps.
+     * Plot a bitmap.
      *
-     * A rectangle is plotted for plotters that cannot plot a bitmap.
+     * Plotters that cannot embed a bitmap plot a placeholder rectangle instead.
      *
      * @param aImage is the bitmap.
      * @param aPos is position of the center of the bitmap.
      * @param aScaleFactor is the scale factor to apply to the bitmap size
      *                      (this is not the plot scale factor).
+     * @param aAlpha is the opacity to apply to the whole bitmap, on top of the image's own
+     *               alpha (1.0 is fully opaque).
      */
-    virtual void PlotImage( const RASTER_IMAGE& aImage, const VECTOR2I& aPos, double aScaleFactor );
+    virtual void PlotImage( const RASTER_IMAGE& aImage, const VECTOR2I& aPos, double aScaleFactor, double aAlpha );
 
     // Higher level primitives -- can be drawn as line, sketch or 'filled'
     virtual void ThickSegment( const VECTOR2I& start, const VECTOR2I& end, int width, void* aData );
@@ -463,7 +467,7 @@ public:
      * Flash a regular polygon. Useful only in Gerber files to flash a regular polygon.
      *
      * @param aShapePos is the center of the circle containing the polygon.
-     * @param aRadius is the radius of the circle containing the polygon.
+     * @param aDiameter is the diameter of the circle containing the polygon.
      * @param aCornerCount is the number of vertices.
      * @param aOrient is the polygon rotation.
      * @param aData is a auxiliary parameter used (if needed) to handle extra info
@@ -490,6 +494,8 @@ public:
      * @param aBold use true to use a bold font Useful only with default width value
      *              (aPenWidth = 0).
      * @param aMultilineAllowed use true to plot text as multiline, otherwise single line.
+     * @param aFont is the font to use to plot the text.
+     * @param aFontMetrics are the metrics used to plot \a aFont.
      * @param aData is a parameter used by some plotters in SetCurrentLineWidth(),
      *              not directly used here.
      */
@@ -541,7 +547,8 @@ public:
      * Create a bookmark to a symbol
      *
      * @param aBox is the rectangular click target
-     * @param aSymbolReference is the symbol schematic ref
+     * @param aName
+     * @param aGroupName
      */
     virtual void Bookmark( const BOX2I& aBox, const wxString& aName,
                            const wxString& aGroupName = wxEmptyString )
@@ -561,7 +568,7 @@ public:
      * @param aDiameter is the diameter of the marker.
      * @param aShapeId is the index (used to generate forms characters).
      */
-    void Marker( const VECTOR2I& position, int diametre, unsigned aShapeId );
+    void Marker( const VECTOR2I& aPosition, int aDiameter, unsigned aShapeId );
 
     /**
      * Set the current Gerber layer polarity to positive or negative
@@ -599,6 +606,17 @@ public:
     }
 
     /**
+     * Set an explicit bounding box for the plotted content (in IUs).
+     *
+     * Used by the SVG plotter to derive its viewBox from the content instead of the page
+     * size, so the content origin can stay at the SVG origin.
+     */
+    virtual void SetPlotBBox( const BOX2I& aBBoxIU )
+    {
+        // NOP for most plotters. Only for SVG plotter
+    }
+
+    /**
      * calling this function allows one to define the beginning of a group
      * of drawing items, for instance in SVG  or Gerber format.
      * (example: group all segments of a letter or a text)
@@ -620,6 +638,11 @@ public:
      * @return the plot offset in IUs, set by SetViewport() and used to plot items.
      */
     VECTOR2I GetPlotOffsetUserUnits() {return m_plotOffset; }
+
+    /**
+     * @return the plot scale set by SetViewport().
+     */
+    double GetPlotScale() const { return m_plotScale; }
 
 
 protected:
@@ -653,12 +676,12 @@ protected:
     void markerSlash( const VECTOR2I& pos, int radius );
 
     /**
-     * Plot a \ bar centered on the position. Building block for markers
+     * Plot a \\ bar centered on the position. Building block for markers
      */
     void markerBackSlash( const VECTOR2I& pos, int radius );
 
     /**
-     * Plot a | bar centered on the position. Building block for markers
+     * Plot a \| bar centered on the position. Building block for markers
      */
     void markerVBar( const VECTOR2I& pos, int radius );
 

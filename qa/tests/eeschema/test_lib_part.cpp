@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -32,14 +28,25 @@
 #include <sch_shape.h>
 #include <sch_pin.h>
 #include <lib_symbol.h>
+#include <functional>
+#include <connectivity/conn_facts.h>
+#include <font/font.h>
+#include <locale_io.h>
 #include <sch_file_versions.h>
 #include <sch_io/sch_io.h>
 #include <sch_io/sch_io_mgr.h>
+#include <sch_io/kicad_sexpr/sch_io_kicad_sexpr.h>
+#include <richio.h>
+#include <locale_io.h>
+#include <units_provider.h>
 
 #include <wx/file.h>
 #include <wx/filename.h>
 
 #include "lib_field_test_utils.h"
+
+extern void CheckDuplicatePins( LIB_SYMBOL* aSymbol, std::vector<wxString>& aMessages,
+                               UNITS_PROVIDER* aUnitsProvider );
 
 class TEST_LIB_SYMBOL_FIXTURE
 {
@@ -49,7 +56,7 @@ public:
     {
     }
 
-    ///< Part with no extra data set
+    /// Part with no extra data set
     LIB_SYMBOL m_part_no_data;
 };
 
@@ -126,8 +133,33 @@ static void saveToLib( const wxString& aLibPath, const LIB_SYMBOL& aSymbol )
     IO_RELEASER<SCH_IO> pi( SCH_IO_MGR::FindPlugin( SCH_IO_MGR::SCH_KICAD ) );
 
     pi->CreateLibrary( aLibPath );
-    pi->SaveSymbol( aLibPath, new LIB_SYMBOL( aSymbol ) );
+    pi->SaveSymbol( aLibPath, std::make_unique<LIB_SYMBOL>( aSymbol ) );
     pi->SaveLibrary( aLibPath );
+}
+
+
+/**
+ * Build a footprint filter list.
+ */
+static wxArrayString filterList( const std::vector<wxString>& aFilters )
+{
+    wxArrayString filters;
+
+    for( const wxString& filter : aFilters )
+        filters.Add( filter );
+
+    return filters;
+}
+
+
+/**
+ * Serialize one symbol the way the library writer would.
+ */
+static wxString formatted( LIB_SYMBOL& aSymbol )
+{
+    STRING_FORMATTER out;
+    SCH_IO_KICAD_SEXPR::FormatLibSymbol( &aSymbol, out );
+    return wxString( out.GetString() );
 }
 
 
@@ -237,6 +269,25 @@ BOOST_AUTO_TEST_CASE( AddedFields )
  */
 BOOST_AUTO_TEST_CASE( AddedDrawItems )
 {
+    const size_t defaultCount = m_part_no_data.GetDrawItems().size();
+
+    SCH_PIN* pin = new SCH_PIN( &m_part_no_data );
+    pin->SetNumber( "1" );
+    m_part_no_data.AddDrawItem( pin );
+
+    BOOST_CHECK_EQUAL( m_part_no_data.GetDrawItems().size(), defaultCount + 1 );
+    BOOST_CHECK( pin->GetParentSymbol() == &m_part_no_data );
+    BOOST_CHECK_EQUAL( m_part_no_data.GetPinCount(), 1 );
+
+    m_part_no_data.RemoveDrawItem( pin );
+
+    BOOST_CHECK_EQUAL( m_part_no_data.GetDrawItems().size(), defaultCount );
+    BOOST_CHECK_EQUAL( m_part_no_data.GetPinCount(), 0 );
+
+    // Mandatory fields are never removable, so the accessors can't be left dangling
+    m_part_no_data.RemoveDrawItem( &m_part_no_data.GetReferenceField() );
+
+    BOOST_CHECK_EQUAL( m_part_no_data.GetDrawItems().size(), defaultCount );
 }
 
 
@@ -474,6 +525,241 @@ BOOST_AUTO_TEST_CASE( SubReference )
 }
 
 
+BOOST_AUTO_TEST_CASE( NativeBezierComparisonHandlesUnequalCaches )
+{
+    LOCALE_IO locale;
+    auto symbol = loadDeMorganSymbol();
+    BOOST_REQUIRE( symbol );
+    SCH_SHAPE* shape = nullptr;
+
+    for( SCH_ITEM& item : symbol->GetDrawItems()[SCH_SHAPE_T] )
+    {
+        shape = static_cast<SCH_SHAPE*>( &item );
+        break;
+    }
+
+    BOOST_REQUIRE( shape );
+    shape->SetShape( SHAPE_T::BEZIER );
+    shape->SetStart( VECTOR2I( 0, 0 ) );
+    shape->SetEnd( VECTOR2I( 100000, 0 ) );
+    shape->SetBezierC1( VECTOR2I( 0, 100000 ) );
+    shape->SetBezierC2( VECTOR2I( 100000, 100000 ) );
+    BOOST_REQUIRE( shape->GetBezierPoints().empty() );
+    SCH_SHAPE rebuilt( *shape );
+    rebuilt.RebuildBezierToSegmentsPointsList( 100 );
+    BOOST_REQUIRE( !rebuilt.GetBezierPoints().empty() );
+    const auto& empty = static_cast<const EDA_SHAPE&>( *shape );
+    const auto& populated = static_cast<const EDA_SHAPE&>( rebuilt );
+    BOOST_REQUIRE_NE( empty.Compare( &populated ), 0 );
+    BOOST_CHECK_LT( empty.Compare( &populated ), 0 );
+    BOOST_CHECK_GT( populated.Compare( &empty ), 0 );
+}
+
+
+BOOST_AUTO_TEST_CASE( NativeCapturedDuplicatePinsMatchChecker )
+{
+    LOCALE_IO locale;
+    const auto original = loadDeMorganSymbol();
+    BOOST_REQUIRE( original );
+    UNITS_PROVIDER units( schIUScale, EDA_UNITS::MILS );
+    std::vector<wxString> messages;
+    CheckDuplicatePins( original.get(), messages, &units );
+    BOOST_REQUIRE( messages.empty() );
+
+    for( int change = 0; change < 7; ++change )
+    {
+        BOOST_TEST_CONTEXT( "native duplicate pin change=" << change )
+        {
+            auto changed = std::make_unique<LIB_SYMBOL>( *original );
+            const auto pins = changed->GetGraphicalPins( 0, 0 );
+            BOOST_REQUIRE( !pins.empty() );
+            auto* extra = static_cast<SCH_PIN*>( pins.front()->Clone() );
+            changed->AddDrawItem( extra );
+
+            switch( change )
+            {
+            case 0: break;
+            case 1: extra->SetBodyStyle( 99 ); break;
+            case 2: extra->SetBodyStyle( 0 ); break;
+            case 3: extra->SetUnit( 0 ); break;
+            case 4: extra->SetNumber( wxS( "[" ) + pins.front()->GetNumber() + wxS( ",98765]" ) ); break;
+            case 5: extra->SetNumber( wxS( "[98765,98765]" ) ); break;
+            case 6: extra->SetNumber( wxS( "[malformed" ) ); break;
+            }
+
+            messages.clear();
+            CheckDuplicatePins( changed.get(), messages, &units );
+            const bool expected = change == 0 || change == 2 || change == 3 || change == 4;
+            BOOST_REQUIRE_EQUAL( !messages.empty(), expected );
+            const auto captured = SCH_CONNECTIVITY::ExtractLibrarySymbolFact( *changed );
+            BOOST_CHECK_EQUAL( captured.HasDuplicatePins(), expected );
+        }
+    }
+}
+
+
+BOOST_AUTO_TEST_CASE( NativeLibrarySnapshotsMatchLiveComparison )
+{
+    LOCALE_IO locale;
+    auto original = loadDeMorganSymbol();
+    BOOST_REQUIRE( original );
+    const auto captured = SCH_CONNECTIVITY::ExtractLibrarySymbolFact( *original );
+    using FLAGS = SCH_ITEM::COMPARE_FLAGS;
+    const int baseFlags = ~( FLAGS::UUID | FLAGS::UNIT | FLAGS::IDENTITY );
+    const std::vector<int> masks{ 0, FLAGS::PIN_VISIBILITIES, FLAGS::PIN_ALT_DEFS, FLAGS::FIELD_TEXT,
+            FLAGS::FIELD_POSITIONS, FLAGS::FIELD_SIZE_AND_STYLE, FLAGS::FIELD_VISIBILITY,
+            FLAGS::MISSING_FIELDS, FLAGS::EXTRA_FIELDS };
+
+    for( int change = 0; change < 13; ++change )
+    {
+        BOOST_TEST_CONTEXT( "native snapshot change=" << change )
+        {
+            LIB_SYMBOL changed( *original );
+            const auto pins = changed.GetGraphicalPins( 0, 0 );
+            BOOST_REQUIRE( !pins.empty() );
+            SCH_PIN* pin = pins.front();
+            SCH_FIELD* field = changed.GetField( FIELD_T::VALUE );
+            BOOST_REQUIRE( field );
+
+            switch( change )
+            {
+            case 0: break;
+            case 1: pin->SetName( pin->GetName() + "_Changed" ); break;
+            case 2: pin->SetVisible( !pin->IsVisible() ); break;
+            case 3:
+                pin->GetAlternates().emplace( wxS( "CapturedAlt" ),
+                        SCH_PIN::ALT{ wxS( "CapturedAlt" ), GRAPHIC_PINSHAPE::CLOCK,
+                                      ELECTRICAL_PINTYPE::PT_OUTPUT } );
+                break;
+            case 4:
+            {
+                auto* extra = static_cast<SCH_PIN*>( pin->Clone() );
+                extra->SetNumber( wxS( "CapturedExtra" ) );
+                changed.AddDrawItem( extra );
+                break;
+            }
+            case 5: changed.AddField( new SCH_FIELD( &changed, FIELD_T::USER, wxS( "CapturedField" ) ) ); break;
+            case 6: field->SetText( field->GetText() + "_Changed" ); break;
+            case 7: field->SetPosition( field->GetPosition() + VECTOR2I( 1000, 2000 ) ); break;
+            case 8: field->SetFont( field->GetFont() ? nullptr : KIFONT::FONT::GetFont( wxString() ) ); break;
+            case 9: changed.SetKeyWords( changed.GetKeyWords() + "_Changed" ); break;
+            case 10:
+                BOOST_REQUIRE( !changed.GetDrawItems()[SCH_SHAPE_T].empty() );
+                static_cast<SCH_SHAPE&>( changed.GetDrawItems()[SCH_SHAPE_T].front() ).Move( VECTOR2I( 1000, 2000 ) );
+                break;
+            case 11: changed.GetField( FIELD_T::REFERENCE )->SetText( wxS( "ChangedReference" ) ); break;
+            case 12: field->SetVisible( !field->IsVisible() ); break;
+            }
+
+            const auto values = SCH_CONNECTIVITY::ExtractLibrarySymbolFact( changed );
+
+            for( int mask : masks )
+            {
+                const int flags = baseFlags & ~mask;
+                BOOST_CHECK_EQUAL( captured.Matches( values, flags ), original->Compare( changed, flags ) == 0 );
+                BOOST_CHECK_EQUAL( values.Matches( captured, flags ), changed.Compare( *original, flags ) == 0 );
+            }
+        }
+    }
+
+    LIB_SYMBOL baseline( *original );
+    LIB_SYMBOL derived( *original );
+    derived.SetParent( original.get() );
+    const auto inherited = SCH_CONNECTIVITY::ExtractLibrarySymbolFact( derived );
+    BOOST_REQUIRE( inherited.inheritedPins );
+    BOOST_REQUIRE( captured.Matches( inherited, baseFlags ) );
+    SCH_PIN* parentPin = original->GetGraphicalPins( 0, 0 ).front();
+    parentPin->SetLength( parentPin->GetLength() + 1 );
+    const auto editedParent = SCH_CONNECTIVITY::ExtractLibrarySymbolFact( derived );
+    BOOST_CHECK( !captured.Matches( editedParent, baseFlags ) );
+    BOOST_CHECK_NE( baseline.Compare( derived, baseFlags ), 0 );
+}
+
+
+BOOST_AUTO_TEST_CASE( NativeSymbolAttributesMatchCompareFlags )
+{
+    LOCALE_IO locale;
+    auto original = loadDeMorganSymbol();
+    BOOST_REQUIRE( original );
+    const auto captured = original->ComparisonAttributes();
+    using FLAGS = SCH_ITEM::COMPARE_FLAGS;
+    const int flags = ~( FLAGS::UUID | FLAGS::UNIT | FLAGS::IDENTITY );
+    const std::vector<std::pair<int, std::function<void( LIB_SYMBOL& )>>> changes{
+        { 0, []( auto& symbol ) { symbol.SetLocalPower(); } },
+        { 0, []( auto& symbol ) { symbol.SetUnitCount( symbol.GetUnitCount() + 1, false ); } },
+        { 0, []( auto& symbol ) { symbol.SetKeyWords( symbol.GetKeyWords() + " CapturedKeyword" ); } },
+        { 0, []( auto& symbol ) { symbol.SetPinNameOffset( symbol.GetPinNameOffset() + 1 ); } },
+        { 0, []( auto& symbol ) { symbol.LockUnits( !symbol.UnitsLocked() ); } },
+        { 0, []( auto& symbol ) { symbol.GetUnitDisplayNames()[1] = wxS( "CapturedUnit" ); } },
+        { 0, []( auto& symbol ) { symbol.SetBodyStyleNames( { wxS( "CapturedBody" ) } ); } },
+        { 0, []( auto& symbol )
+            {
+                auto filters = symbol.GetFPFilters();
+                filters.Add( wxS( "CapturedFilter*" ) );
+                symbol.SetFPFilters( filters );
+            } },
+        { FLAGS::PIN_VISIBILITIES, []( auto& symbol ) { symbol.SetShowPinNames( !symbol.GetShowPinNames() ); } },
+        { FLAGS::PIN_VISIBILITIES, []( auto& symbol ) { symbol.SetShowPinNumbers( !symbol.GetShowPinNumbers() ); } },
+        { FLAGS::EXCLUDE_FROM_SIM,
+          []( auto& symbol ) { symbol.SetExcludedFromSim( !symbol.GetExcludedFromSim() ); } },
+        { FLAGS::EXCLUDE_FROM_BOM,
+          []( auto& symbol ) { symbol.SetExcludedFromBOM( !symbol.GetExcludedFromBOM() ); } },
+        { FLAGS::EXCLUDE_FROM_BOARD,
+          []( auto& symbol ) { symbol.SetExcludedFromBoard( !symbol.GetExcludedFromBoard() ); } },
+        { FLAGS::EXCLUDE_FROM_POS_FILES,
+          []( auto& symbol ) { symbol.SetExcludedFromPosFiles( !symbol.GetExcludedFromPosFiles() ); } },
+        { FLAGS::DNP, []( auto& symbol ) { symbol.SetDNP( !symbol.GetDNP() ); } }
+    };
+
+    for( size_t i = 0; i < changes.size(); ++i )
+    {
+        BOOST_TEST_CONTEXT( "native attribute change=" << i )
+        {
+            LIB_SYMBOL changed( *original );
+            BOOST_REQUIRE( captured.Matches( changed.ComparisonAttributes(), flags ) );
+            BOOST_REQUIRE_EQUAL( original->Compare( changed, flags ), 0 );
+            const auto& [optionalFlag, mutate] = changes[i];
+            mutate( changed );
+            const auto values = changed.ComparisonAttributes();
+            BOOST_CHECK( captured != values );
+            BOOST_CHECK( !captured.Matches( values, flags ) );
+            BOOST_CHECK_NE( original->Compare( changed, flags ), 0 );
+
+            if( optionalFlag )
+            {
+                BOOST_CHECK( captured.Matches( values, flags & ~optionalFlag ) );
+                BOOST_CHECK_EQUAL( original->Compare( changed, flags & ~optionalFlag ), 0 );
+            }
+        }
+    }
+
+    original->SetDuplicatePinNumbersAreJumpers( !captured.duplicatePinNumbersAreJumpers );
+    const auto jumpers = original->ComparisonAttributes();
+    BOOST_CHECK( captured != jumpers );
+    BOOST_CHECK( captured.Matches( jumpers, flags ) );
+
+    const auto pins = original->GetGraphicalPins( 0, 0 );
+    BOOST_REQUIRE( !pins.empty() );
+    PIN_MAP map( wxS( "CapturedAttributes" ) );
+    map.SetEntry( pins.front()->GetNumber(), wxS( "CapturedPad" ) );
+    original->PinMaps().AddOrReplace( map );
+    const auto mapped = original->ComparisonAttributes();
+    BOOST_CHECK( !captured.Matches( mapped, flags ) );
+    original->PinMaps().FindByName( map.GetName() )->SetEntry( pins.front()->GetNumber(), wxS( "LaterPad" ) );
+    BOOST_CHECK( !mapped.Matches( original->ComparisonAttributes(), flags ) );
+    BOOST_CHECK_EQUAL( mapped.pinMaps.FindByName( map.GetName() )->GetPadNumber( pins.front()->GetNumber() ),
+                       wxString( "CapturedPad" ) );
+
+    LIB_ID footprint;
+    footprint.SetLibNickname( wxS( "CapturedLibrary" ) );
+    footprint.SetLibItemName( wxS( "CapturedFootprint" ) );
+    original->SetAssociatedFootprints( { { footprint, map.GetName() } } );
+    const auto associated = original->ComparisonAttributes();
+    original->SetAssociatedFootprints( {} );
+    BOOST_CHECK( !associated.Matches( original->ComparisonAttributes(), flags ) );
+}
+
+
 /**
  * Check the compare method.
  */
@@ -486,7 +772,7 @@ BOOST_AUTO_TEST_CASE( Compare )
     BOOST_CHECK_EQUAL( m_part_no_data.Compare( m_part_no_data ), 0 );
 
     // Test for identical LIB_SYMBOL.
-    BOOST_CHECK_EQUAL( m_part_no_data.Compare( testPart, SCH_ITEM::COMPARE_FLAGS::EQUALITY ), 0 );
+    BOOST_CHECK_EQUAL( m_part_no_data.Compare( testPart, ~SCH_ITEM::COMPARE_FLAGS::UUID ), 0 );
 
     // Test name.
     testPart.SetName( "tart_name" );
@@ -525,22 +811,22 @@ BOOST_AUTO_TEST_CASE( Compare )
     // Draw item list size comparison tests.
     testPart.AddDrawItem( new SCH_SHAPE( SHAPE_T::RECTANGLE, LAYER_DEVICE ) );
     m_part_no_data.AddDrawItem( new SCH_SHAPE( SHAPE_T::RECTANGLE, LAYER_DEVICE ) );
-    BOOST_CHECK_EQUAL( m_part_no_data.Compare( testPart, SCH_ITEM::COMPARE_FLAGS::EQUALITY ), 0 );
+    BOOST_CHECK_EQUAL( m_part_no_data.Compare( testPart, ~SCH_ITEM::COMPARE_FLAGS::UUID ), 0 );
     m_part_no_data.RemoveDrawItem( &m_part_no_data.GetDrawItems()[SCH_SHAPE_T].front() );
-    BOOST_CHECK( m_part_no_data.Compare( testPart, SCH_ITEM::COMPARE_FLAGS::EQUALITY ) < 0 );
+    BOOST_CHECK( m_part_no_data.Compare( testPart, ~SCH_ITEM::COMPARE_FLAGS::UUID ) < 0 );
     testPart.RemoveDrawItem( &testPart.GetDrawItems()[SCH_SHAPE_T].front() );
     m_part_no_data.AddDrawItem( new SCH_SHAPE( SHAPE_T::RECTANGLE, LAYER_DEVICE ) );
-    BOOST_CHECK( m_part_no_data.Compare( testPart, SCH_ITEM::COMPARE_FLAGS::EQUALITY ) > 0 );
+    BOOST_CHECK( m_part_no_data.Compare( testPart, ~SCH_ITEM::COMPARE_FLAGS::UUID ) > 0 );
     m_part_no_data.RemoveDrawItem( &m_part_no_data.GetDrawItems()[SCH_SHAPE_T].front() );
 
     // Draw item list contents comparison tests.
     testPart.AddDrawItem( new SCH_SHAPE( SHAPE_T::RECTANGLE, LAYER_DEVICE ) );
     m_part_no_data.AddDrawItem( new SCH_SHAPE( SHAPE_T::ARC, LAYER_DEVICE ) );
-    BOOST_CHECK( m_part_no_data.Compare( testPart, SCH_ITEM::COMPARE_FLAGS::EQUALITY ) > 0 );
+    BOOST_CHECK( m_part_no_data.Compare( testPart, ~SCH_ITEM::COMPARE_FLAGS::UUID ) > 0 );
     m_part_no_data.RemoveDrawItem( &m_part_no_data.GetDrawItems()[SCH_SHAPE_T].front() );
     testPart.RemoveDrawItem( &testPart.GetDrawItems()[SCH_SHAPE_T].front() );
     m_part_no_data.AddDrawItem( new SCH_PIN( &m_part_no_data ) );
-    BOOST_CHECK( m_part_no_data.Compare( testPart, SCH_ITEM::COMPARE_FLAGS::EQUALITY ) > 0 );
+    BOOST_CHECK( m_part_no_data.Compare( testPart, ~SCH_ITEM::COMPARE_FLAGS::UUID ) > 0 );
     m_part_no_data.RemoveDrawItem( &m_part_no_data.GetDrawItems()[SCH_PIN_T].front() );
 
     // Footprint filter array comparison tests.
@@ -548,11 +834,11 @@ BOOST_AUTO_TEST_CASE( Compare )
     BOOST_CHECK( m_part_no_data.GetFPFilters() == footPrintFilters );
     footPrintFilters.Add( "b" );
     testPart.SetFPFilters( footPrintFilters );
-    BOOST_CHECK( m_part_no_data.Compare( testPart, SCH_ITEM::COMPARE_FLAGS::EQUALITY ) < 0 );
+    BOOST_CHECK( m_part_no_data.Compare( testPart, ~SCH_ITEM::COMPARE_FLAGS::UUID ) < 0 );
     m_part_no_data.SetFPFilters( footPrintFilters );
     footPrintFilters.Clear();
     testPart.SetFPFilters( footPrintFilters );
-    BOOST_CHECK( m_part_no_data.Compare( testPart, SCH_ITEM::COMPARE_FLAGS::EQUALITY ) > 0 );
+    BOOST_CHECK( m_part_no_data.Compare( testPart, ~SCH_ITEM::COMPARE_FLAGS::UUID ) > 0 );
     footPrintFilters.Clear();
     m_part_no_data.SetFPFilters( footPrintFilters );
     testPart.SetFPFilters( footPrintFilters );
@@ -560,78 +846,78 @@ BOOST_AUTO_TEST_CASE( Compare )
     // Description string tests.
     m_part_no_data.SetDescription( "b" );
     testPart.SetDescription( "b" );
-    BOOST_CHECK_EQUAL( m_part_no_data.Compare( testPart, SCH_ITEM::COMPARE_FLAGS::EQUALITY ), 0 );
+    BOOST_CHECK_EQUAL( m_part_no_data.Compare( testPart, ~SCH_ITEM::COMPARE_FLAGS::UUID ), 0 );
     m_part_no_data.SetDescription( "a" );
-    BOOST_CHECK( m_part_no_data.Compare( testPart, SCH_ITEM::COMPARE_FLAGS::EQUALITY ) < 0 );
+    BOOST_CHECK( m_part_no_data.Compare( testPart, ~SCH_ITEM::COMPARE_FLAGS::UUID ) < 0 );
     m_part_no_data.SetDescription( "c" );
-    BOOST_CHECK( m_part_no_data.Compare( testPart, SCH_ITEM::COMPARE_FLAGS::EQUALITY ) > 0 );
+    BOOST_CHECK( m_part_no_data.Compare( testPart, ~SCH_ITEM::COMPARE_FLAGS::UUID ) > 0 );
     m_part_no_data.SetDescription( wxEmptyString );
     testPart.SetDescription( wxEmptyString );
 
     // Key word string tests.
     m_part_no_data.SetKeyWords( "b" );
     testPart.SetKeyWords( "b" );
-    BOOST_CHECK_EQUAL( m_part_no_data.Compare( testPart, SCH_ITEM::COMPARE_FLAGS::EQUALITY ), 0 );
+    BOOST_CHECK_EQUAL( m_part_no_data.Compare( testPart, ~SCH_ITEM::COMPARE_FLAGS::UUID ), 0 );
     m_part_no_data.SetKeyWords( "a" );
-    BOOST_CHECK( m_part_no_data.Compare( testPart, SCH_ITEM::COMPARE_FLAGS::EQUALITY ) < 0 );
+    BOOST_CHECK( m_part_no_data.Compare( testPart, ~SCH_ITEM::COMPARE_FLAGS::UUID ) < 0 );
     m_part_no_data.SetKeyWords( "c" );
-    BOOST_CHECK( m_part_no_data.Compare( testPart, SCH_ITEM::COMPARE_FLAGS::EQUALITY ) > 0 );
+    BOOST_CHECK( m_part_no_data.Compare( testPart, ~SCH_ITEM::COMPARE_FLAGS::UUID ) > 0 );
     m_part_no_data.SetKeyWords( wxEmptyString );
     testPart.SetKeyWords( wxEmptyString );
 
     // Pin name offset comparison tests.
     testPart.SetPinNameOffset( testPart.GetPinNameOffset() + 1 );
-    BOOST_CHECK( m_part_no_data.Compare( testPart, SCH_ITEM::COMPARE_FLAGS::EQUALITY ) < 0 );
+    BOOST_CHECK( m_part_no_data.Compare( testPart, ~SCH_ITEM::COMPARE_FLAGS::UUID ) < 0 );
     testPart.SetPinNameOffset( testPart.GetPinNameOffset() - 2 );
-    BOOST_CHECK( m_part_no_data.Compare( testPart, SCH_ITEM::COMPARE_FLAGS::EQUALITY ) > 0 );
+    BOOST_CHECK( m_part_no_data.Compare( testPart, ~SCH_ITEM::COMPARE_FLAGS::UUID ) > 0 );
     testPart.SetPinNameOffset( testPart.GetPinNameOffset() + 1 );
 
     // Units locked flag comparison tests.
     testPart.LockUnits( true );
-    BOOST_CHECK( m_part_no_data.Compare( testPart, SCH_ITEM::COMPARE_FLAGS::EQUALITY ) < 0 );
+    BOOST_CHECK( m_part_no_data.Compare( testPart, ~SCH_ITEM::COMPARE_FLAGS::UUID ) < 0 );
     testPart.LockUnits( false );
     m_part_no_data.LockUnits( true );
-    BOOST_CHECK( m_part_no_data.Compare( testPart, SCH_ITEM::COMPARE_FLAGS::EQUALITY ) > 0 );
+    BOOST_CHECK( m_part_no_data.Compare( testPart, ~SCH_ITEM::COMPARE_FLAGS::UUID ) > 0 );
     m_part_no_data.LockUnits( false );
 
     // Include in BOM support tests.
     testPart.SetExcludedFromBOM( true );
-    BOOST_CHECK( m_part_no_data.Compare( testPart, SCH_ITEM::COMPARE_FLAGS::EQUALITY ) > 0 );
+    BOOST_CHECK( m_part_no_data.Compare( testPart, ~SCH_ITEM::COMPARE_FLAGS::UUID ) > 0 );
     testPart.SetExcludedFromBOM( false );
     m_part_no_data.SetExcludedFromBOM( true );
-    BOOST_CHECK( m_part_no_data.Compare( testPart, SCH_ITEM::COMPARE_FLAGS::EQUALITY ) < 0 );
+    BOOST_CHECK( m_part_no_data.Compare( testPart, ~SCH_ITEM::COMPARE_FLAGS::UUID ) < 0 );
     m_part_no_data.SetExcludedFromBOM( false );
 
     // Include on board support tests.
     testPart.SetExcludedFromBoard( true );
-    BOOST_CHECK( m_part_no_data.Compare( testPart, SCH_ITEM::COMPARE_FLAGS::EQUALITY ) > 0 );
+    BOOST_CHECK( m_part_no_data.Compare( testPart, ~SCH_ITEM::COMPARE_FLAGS::UUID ) > 0 );
     testPart.SetExcludedFromBoard( false );
     m_part_no_data.SetExcludedFromBoard( true );
-    BOOST_CHECK( m_part_no_data.Compare( testPart, SCH_ITEM::COMPARE_FLAGS::EQUALITY ) < 0 );
+    BOOST_CHECK( m_part_no_data.Compare( testPart, ~SCH_ITEM::COMPARE_FLAGS::UUID ) < 0 );
     m_part_no_data.SetExcludedFromBoard( false );
 
     // Include in position files support tests.
     testPart.SetExcludedFromPosFiles( true );
-    BOOST_CHECK( m_part_no_data.Compare( testPart, SCH_ITEM::COMPARE_FLAGS::EQUALITY ) > 0 );
+    BOOST_CHECK( m_part_no_data.Compare( testPart, ~SCH_ITEM::COMPARE_FLAGS::UUID ) > 0 );
     testPart.SetExcludedFromPosFiles( false );
     m_part_no_data.SetExcludedFromPosFiles( true );
-    BOOST_CHECK( m_part_no_data.Compare( testPart, SCH_ITEM::COMPARE_FLAGS::EQUALITY ) < 0 );
+    BOOST_CHECK( m_part_no_data.Compare( testPart, ~SCH_ITEM::COMPARE_FLAGS::UUID ) < 0 );
     m_part_no_data.SetExcludedFromPosFiles( false );
 
     // Show pin names flag comparison tests.
     m_part_no_data.SetShowPinNames( false );
-    BOOST_CHECK( m_part_no_data.Compare( testPart, SCH_ITEM::COMPARE_FLAGS::EQUALITY ) < 0 );
+    BOOST_CHECK( m_part_no_data.Compare( testPart, ~SCH_ITEM::COMPARE_FLAGS::UUID ) < 0 );
     m_part_no_data.SetShowPinNames( true );
     testPart.SetShowPinNames( false );
-    BOOST_CHECK( m_part_no_data.Compare( testPart, SCH_ITEM::COMPARE_FLAGS::EQUALITY ) > 0 );
+    BOOST_CHECK( m_part_no_data.Compare( testPart, ~SCH_ITEM::COMPARE_FLAGS::UUID ) > 0 );
     testPart.SetShowPinNames( true );
 
     // Show pin numbers flag comparison tests.
     m_part_no_data.SetShowPinNumbers( false );
-    BOOST_CHECK( m_part_no_data.Compare( testPart, SCH_ITEM::COMPARE_FLAGS::EQUALITY ) < 0 );
+    BOOST_CHECK( m_part_no_data.Compare( testPart, ~SCH_ITEM::COMPARE_FLAGS::UUID ) < 0 );
     m_part_no_data.SetShowPinNumbers( true );
     testPart.SetShowPinNumbers( false );
-    BOOST_CHECK( m_part_no_data.Compare( testPart, SCH_ITEM::COMPARE_FLAGS::EQUALITY ) > 0 );
+    BOOST_CHECK( m_part_no_data.Compare( testPart, ~SCH_ITEM::COMPARE_FLAGS::UUID ) > 0 );
     testPart.SetShowPinNumbers( true );
 
     // Time stamp comparison tests.
@@ -653,11 +939,11 @@ BOOST_AUTO_TEST_CASE( GetUnitItems )
     // A single unique unit with 1 pin common to all units and all body styles.
     SCH_PIN* pin1 = new SCH_PIN( &m_part_no_data );
     m_part_no_data.AddDrawItem( pin1 );
-    BOOST_CHECK( m_part_no_data.GetUnitDrawItems( 0, 0 ).size() == 1 );
+    BOOST_CHECK( m_part_no_data.GetUnitDrawItems( ALL_UNITS, ALL_BODY_STYLES ).size() == 1 );
 
     // A single unique unit with 1 pin in unit 1 and common to all body styles.
     pin1->SetUnit( 1 );
-    BOOST_CHECK( m_part_no_data.GetUnitDrawItems( 1, 0 ).size() == 1 );
+    BOOST_CHECK( m_part_no_data.GetUnitDrawItems( 1, ALL_BODY_STYLES ).size() == 1 );
 
     // A single unique unit with 1 pin in unit 1 and body style 1.
     pin1->SetBodyStyle( 1 );
@@ -673,9 +959,9 @@ BOOST_AUTO_TEST_CASE( GetUnitItems )
     m_part_no_data.AddDrawItem( pin2 );
     BOOST_CHECK( m_part_no_data.GetUnitDrawItems( 2, 2 ).size() == 1 );
 
-    // Make pin 1 body style common to all units.
-    pin1->SetBodyStyle( 0 );
-    BOOST_CHECK( m_part_no_data.GetUnitDrawItems( 1, 1 ).size() == 0 );
+    // Make pin 1 body style common to all body styles.
+    pin1->SetBodyStyle( ALL_BODY_STYLES );
+    BOOST_CHECK( m_part_no_data.GetUnitDrawItems( 1, 1 ).size() == 1 );
     BOOST_CHECK( m_part_no_data.GetUnitDrawItems( 2, 1 ).size() == 1 );
 
     m_part_no_data.RemoveDrawItem( pin2 );
@@ -689,18 +975,53 @@ BOOST_AUTO_TEST_CASE( GetUnitItems )
  */
 BOOST_AUTO_TEST_CASE( GetUnitDrawItems )
 {
-    // There are no unit draw items in the empty LIB_SYMBOL object.
-    BOOST_CHECK( m_part_no_data.GetUnitDrawItems().size() == 0 );
+    // An empty symbol still reports its unit and body style so the saver writes them out
+    std::vector<struct LIB_SYMBOL_UNIT> units = m_part_no_data.GetUnitDrawItems();
 
-    // A single unique unit with 1 pin common to all units and all body styles.
+    BOOST_REQUIRE_EQUAL( units.size(), 1u );
+    BOOST_CHECK_EQUAL( units[0].m_unit, 1 );
+    BOOST_CHECK_EQUAL( units[0].m_bodyStyle, 1 );
+    BOOST_CHECK( units[0].m_items.empty() );
+
+    // A pin common to all units and all body styles matches no numbered unit and gets a
+    // record of its own rather than being dropped
     SCH_PIN* pin1 = new SCH_PIN( &m_part_no_data );
     pin1->SetNumber( "1" );
     m_part_no_data.AddDrawItem( pin1 );
-    std::vector<struct LIB_SYMBOL_UNIT> units = m_part_no_data.GetUnitDrawItems();
-    BOOST_CHECK( units.size() == 1 );
-    BOOST_CHECK( units[0].m_unit == 0 );
-    BOOST_CHECK( units[0].m_bodyStyle == 0 );
-    BOOST_CHECK( units[0].m_items[0] == pin1 );
+
+    units = m_part_no_data.GetUnitDrawItems();
+
+    BOOST_REQUIRE_EQUAL( units.size(), 2u );
+    BOOST_CHECK_EQUAL( units[0].m_unit, 0 );
+    BOOST_CHECK_EQUAL( units[0].m_bodyStyle, 0 );
+    BOOST_REQUIRE_EQUAL( units[0].m_items.size(), 1u );
+    BOOST_CHECK_EQUAL( units[0].m_items[0], pin1 );
+    BOOST_CHECK_EQUAL( units[1].m_unit, 1 );
+    BOOST_CHECK_EQUAL( units[1].m_bodyStyle, 1 );
+    BOOST_CHECK( units[1].m_items.empty() );
+
+    // Units without draw items of their own are still reported
+    m_part_no_data.SetUnitCount( 3, true );
+
+    units = m_part_no_data.GetUnitDrawItems();
+
+    BOOST_REQUIRE_EQUAL( units.size(), 4u );
+    BOOST_CHECK_EQUAL( units[0].m_unit, 0 );
+    BOOST_CHECK_EQUAL( units[1].m_unit, 1 );
+    BOOST_CHECK_EQUAL( units[2].m_unit, 2 );
+    BOOST_CHECK_EQUAL( units[3].m_unit, 3 );
+    BOOST_CHECK( units[1].m_items.empty() );
+    BOOST_CHECK( units[2].m_items.empty() );
+    BOOST_CHECK( units[3].m_items.empty() );
+
+    // Both body styles of every unit are reported once De Morgan is enabled
+    m_part_no_data.SetHasDeMorganBodyStyles( true );
+
+    units = m_part_no_data.GetUnitDrawItems();
+
+    BOOST_REQUIRE_EQUAL( units.size(), 7u );
+    BOOST_CHECK_EQUAL( units[1].m_bodyStyle, 1 );
+    BOOST_CHECK_EQUAL( units[2].m_bodyStyle, 2 );
 }
 
 
@@ -856,20 +1177,20 @@ BOOST_AUTO_TEST_CASE( SetUnitCountRejectsInvalidValues )
     LIB_SYMBOL baseline( wxS( "test_part" ) );
     checkMandatoryFields( baseline );
 
-    // In debug builds the wxCHECK fires (caught by CHECK_WX_ASSERT) and the function does
-    // not modify the symbol. In release builds, the wxCHECK is silent and the function
-    // returns early without modification. Cover both call paths so the test exercises the
-    // actual SetUnitCount entry on every build configuration.
+    // When wxDEBUG_LEVEL > 0 the wxCHECK fires (caught by CHECK_WX_ASSERT) and the function
+    // does not modify the symbol. With wxDEBUG_LEVEL == 0 the wxCHECK is silent and the
+    // function returns early without modification. Cover both call paths so the test
+    // exercises the actual SetUnitCount entry on every build configuration.
     LIB_SYMBOL zeroCount( wxS( "test_part" ) );
     CHECK_WX_ASSERT( zeroCount.SetUnitCount( 0, true ) );
-#ifndef __WXDEBUG__
+#if wxDEBUG_LEVEL == 0
     zeroCount.SetUnitCount( 0, true );
 #endif
     checkMandatoryFields( zeroCount );
 
     LIB_SYMBOL negativeCount( wxS( "test_part" ) );
     CHECK_WX_ASSERT( negativeCount.SetUnitCount( -1, true ) );
-#ifndef __WXDEBUG__
+#if wxDEBUG_LEVEL == 0
     negativeCount.SetUnitCount( -1, true );
 #endif
     checkMandatoryFields( negativeCount );
@@ -939,6 +1260,239 @@ BOOST_AUTO_TEST_CASE( OrphanedBodyStyleItemsAreNotLoaded )
     // The standard body style must survive the pruning
     BOOST_CHECK( !reloaded->GetUnitDrawItems( 1, BODY_STYLE::BASE ).empty() );
     BOOST_CHECK_EQUAL( reloaded->GetUnitCount(), symbol->GetUnitCount() );
+}
+
+
+BOOST_AUTO_TEST_CASE( NativeComparisonDetectsPinTypeChanges )
+{
+    LOCALE_IO locale;
+    const auto original = loadDeMorganSymbol();
+    BOOST_REQUIRE( original );
+    LIB_SYMBOL changed( *original );
+    const int flags = ~( SCH_ITEM::COMPARE_FLAGS::UUID | SCH_ITEM::COMPARE_FLAGS::UNIT
+                        | SCH_ITEM::COMPARE_FLAGS::IDENTITY );
+    BOOST_REQUIRE_EQUAL( original->Compare( changed, flags ), 0 );
+    BOOST_REQUIRE_EQUAL( changed.Compare( *original, flags ), 0 );
+    SCH_PIN* pin = changed.GetGraphicalPins( 0, 0 ).front();
+    BOOST_REQUIRE( pin );
+    const auto previous = pin->GetType();
+    pin->SetType( previous == ELECTRICAL_PINTYPE::PT_INPUT ? ELECTRICAL_PINTYPE::PT_OUTPUT
+                                                         : ELECTRICAL_PINTYPE::PT_INPUT );
+    BOOST_REQUIRE( pin->GetType() != previous );
+    BOOST_CHECK_NE( original->Compare( changed, flags ), 0 );
+    BOOST_CHECK_NE( changed.Compare( *original, flags ), 0 );
+}
+
+
+BOOST_AUTO_TEST_CASE( NativeComparisonDetectsAddedPins )
+{
+    LOCALE_IO locale;
+    const auto original = loadDeMorganSymbol();
+    BOOST_REQUIRE( original );
+    LIB_SYMBOL changed( *original );
+    const int flags = ~( SCH_ITEM::COMPARE_FLAGS::UUID | SCH_ITEM::COMPARE_FLAGS::UNIT
+                        | SCH_ITEM::COMPARE_FLAGS::IDENTITY );
+    BOOST_REQUIRE_EQUAL( original->Compare( changed, flags ), 0 );
+    BOOST_REQUIRE_EQUAL( changed.Compare( *original, flags ), 0 );
+    const auto pins = original->GetGraphicalPins( 0, 0 );
+    BOOST_REQUIRE( !pins.empty() );
+    auto* extra = static_cast<SCH_PIN*>( pins.front()->Clone() );
+    extra->SetNumber( "NativeExtra" );
+    changed.AddDrawItem( extra );
+    BOOST_REQUIRE_EQUAL( changed.GetGraphicalPins( 0, 0 ).size(), pins.size() + 1 );
+    BOOST_CHECK_NE( original->Compare( changed, flags ), 0 );
+    BOOST_CHECK_NE( changed.Compare( *original, flags ), 0 );
+}
+
+
+BOOST_AUTO_TEST_CASE( NativeComparisonHonorsMissingAndExtraFieldFlags )
+{
+    LOCALE_IO locale;
+    const auto original = loadDeMorganSymbol();
+    BOOST_REQUIRE( original );
+    LIB_SYMBOL changed( *original );
+    const int flags = ~( SCH_ITEM::COMPARE_FLAGS::UUID | SCH_ITEM::COMPARE_FLAGS::UNIT
+                        | SCH_ITEM::COMPARE_FLAGS::IDENTITY );
+    BOOST_REQUIRE_EQUAL( original->Compare( changed, flags ), 0 );
+    BOOST_REQUIRE_EQUAL( changed.Compare( *original, flags ), 0 );
+    const wxString name( "Native comparison field" );
+    BOOST_REQUIRE( !original->GetField( name ) );
+    changed.AddField( new SCH_FIELD( &changed, FIELD_T::USER, name ) );
+    BOOST_REQUIRE( changed.GetField( name ) );
+    BOOST_CHECK_EQUAL( original->Compare( changed, flags & ~SCH_ITEM::COMPARE_FLAGS::MISSING_FIELDS ), 0 );
+    BOOST_CHECK_EQUAL( changed.Compare( *original, flags & ~SCH_ITEM::COMPARE_FLAGS::EXTRA_FIELDS ), 0 );
+    BOOST_CHECK_NE( original->Compare( changed, flags ), 0 );
+    BOOST_CHECK_NE( changed.Compare( *original, flags ), 0 );
+}
+
+
+BOOST_AUTO_TEST_CASE( NativeComparisonHonorsPinVisibilityFlag )
+{
+    LOCALE_IO locale;
+    const auto original = loadDeMorganSymbol();
+    BOOST_REQUIRE( original );
+    LIB_SYMBOL changed( *original );
+    const int flags = ~( SCH_ITEM::COMPARE_FLAGS::UUID | SCH_ITEM::COMPARE_FLAGS::UNIT
+                        | SCH_ITEM::COMPARE_FLAGS::IDENTITY );
+    BOOST_REQUIRE_EQUAL( original->Compare( changed, flags ), 0 );
+    BOOST_REQUIRE_EQUAL( changed.Compare( *original, flags ), 0 );
+    const auto pins = changed.GetGraphicalPins( 0, 0 );
+    BOOST_REQUIRE( !pins.empty() );
+    SCH_PIN* pin = pins.front();
+    pin->SetVisible( !pin->IsVisible() );
+    BOOST_CHECK_EQUAL( original->Compare( changed, flags & ~SCH_ITEM::COMPARE_FLAGS::PIN_VISIBILITIES ), 0 );
+    BOOST_CHECK_EQUAL( changed.Compare( *original, flags & ~SCH_ITEM::COMPARE_FLAGS::PIN_VISIBILITIES ), 0 );
+    BOOST_CHECK_NE( original->Compare( changed, flags ), 0 );
+    BOOST_CHECK_NE( changed.Compare( *original, flags ), 0 );
+}
+
+
+BOOST_AUTO_TEST_CASE( NativeComparisonHonorsAlternateDefinitionFlag )
+{
+    LOCALE_IO locale;
+    const auto original = loadDeMorganSymbol();
+    BOOST_REQUIRE( original );
+    LIB_SYMBOL changed( *original );
+    const int flags = ~( SCH_ITEM::COMPARE_FLAGS::UUID | SCH_ITEM::COMPARE_FLAGS::UNIT
+                        | SCH_ITEM::COMPARE_FLAGS::IDENTITY );
+    BOOST_REQUIRE_EQUAL( original->Compare( changed, flags ), 0 );
+    BOOST_REQUIRE_EQUAL( changed.Compare( *original, flags ), 0 );
+    const auto pins = changed.GetGraphicalPins( 0, 0 );
+    BOOST_REQUIRE( !pins.empty() );
+    SCH_PIN* pin = pins.front();
+    const wxString name( "Native alternate" );
+    BOOST_REQUIRE( !pin->GetAlternates().contains( name ) );
+    pin->GetAlternates().emplace( name, SCH_PIN::ALT{ name, GRAPHIC_PINSHAPE::LINE,
+                                                     ELECTRICAL_PINTYPE::PT_INPUT } );
+    BOOST_CHECK_EQUAL( original->Compare( changed, flags & ~SCH_ITEM::COMPARE_FLAGS::PIN_ALT_DEFS ), 0 );
+    BOOST_CHECK_EQUAL( changed.Compare( *original, flags & ~SCH_ITEM::COMPARE_FLAGS::PIN_ALT_DEFS ), 0 );
+    BOOST_CHECK_NE( original->Compare( changed, flags ), 0 );
+    BOOST_CHECK_NE( changed.Compare( *original, flags ), 0 );
+}
+
+
+/**
+ * A derived symbol that defines no filters of its own must not be written carrying its
+ * parent's, because the parser assigns whatever it reads straight onto the symbol, so a
+ * written inherited value comes back as an override and the symbol stops following its parent.
+ */
+BOOST_AUTO_TEST_CASE( InheritedFootprintFiltersAreNotWritten )
+{
+    LIB_SYMBOL parent( wxS( "MAX291" ) );
+    LIB_SYMBOL derived( wxS( "MAX293" ) );
+
+    parent.SetFPFilters( filterList( { wxS( "DIP*" ), wxS( "SOIC*" ) } ) );
+    derived.SetParent( &parent );
+
+    BOOST_REQUIRE( derived.IsDerived() );
+    BOOST_CHECK( derived.GetRawFPFilters().IsEmpty() );
+
+    // The resolving accessor must keep reporting what the symbol uses
+    BOOST_CHECK( derived.GetFPFilters() == parent.GetFPFilters() );
+
+    BOOST_CHECK( formatted( parent ).Contains( wxS( "ki_fp_filters" ) ) );
+    BOOST_CHECK( !formatted( derived ).Contains( wxS( "ki_fp_filters" ) ) );
+
+    // A schematic caches a flattened copy, which is a root and so must carry the filters
+    std::unique_ptr<LIB_SYMBOL> flattened = derived.Flatten();
+    BOOST_REQUIRE( flattened );
+    BOOST_CHECK( flattened->IsRoot() );
+    BOOST_CHECK( flattened->GetRawFPFilters() == parent.GetFPFilters() );
+    BOOST_CHECK( formatted( *flattened ).Contains( wxS( "ki_fp_filters" ) ) );
+}
+
+
+/**
+ * Filters the derived symbol does own are a deliberate override and must still be written.
+ */
+BOOST_AUTO_TEST_CASE( OwnFootprintFiltersAreWritten )
+{
+    LIB_SYMBOL parent( wxS( "MAX291" ) );
+    LIB_SYMBOL derived( wxS( "MAX293" ) );
+
+    parent.SetFPFilters( filterList( { wxS( "DIP*" ) } ) );
+    derived.SetParent( &parent );
+    derived.SetFPFilters( filterList( { wxS( "QFN*" ) } ) );
+
+    BOOST_CHECK( derived.GetFPFilters() == filterList( { wxS( "QFN*" ) } ) );
+
+    wxString text = formatted( derived );
+    BOOST_CHECK( text.Contains( wxS( "ki_fp_filters" ) ) );
+    BOOST_CHECK( text.Contains( wxS( "QFN*" ) ) );
+    BOOST_CHECK( !text.Contains( wxS( "DIP*" ) ) );
+}
+
+
+/**
+ * Clearing a derived symbol's filters returns it to inheriting rather than writing a copy of
+ * the parent's list onto it.  An empty own-list is how a symbol says "inherit", so a derived
+ * symbol cannot express "deliberately no filters" at all, the same as for its keywords and its
+ * empty mandatory fields.
+ */
+BOOST_AUTO_TEST_CASE( ClearingOwnFootprintFiltersReturnsToInheriting )
+{
+    LIB_SYMBOL parent( wxS( "MAX291" ) );
+    LIB_SYMBOL derived( wxS( "MAX293" ) );
+
+    parent.SetFPFilters( filterList( { wxS( "DIP*" ), wxS( "SOIC*" ) } ) );
+    derived.SetParent( &parent );
+
+    // Dropping one of two inherited filters is a real override and must be kept
+    derived.SetFPFilters( filterList( { wxS( "SOIC*" ) } ) );
+    BOOST_CHECK( derived.GetFPFilters() == filterList( { wxS( "SOIC*" ) } ) );
+
+    wxString kept = formatted( derived );
+    BOOST_CHECK( kept.Contains( wxS( "SOIC*" ) ) );
+    BOOST_CHECK( !kept.Contains( wxS( "DIP*" ) ) );
+
+    // Dropping the last one leaves nothing of its own, so the parent's list applies again
+    derived.SetFPFilters( wxArrayString() );
+    BOOST_CHECK( derived.GetRawFPFilters().IsEmpty() );
+    BOOST_CHECK( derived.GetFPFilters() == parent.GetFPFilters() );
+
+    // What must not happen is the parent's list being stamped onto the child as an override
+    BOOST_CHECK( !formatted( derived ).Contains( wxS( "ki_fp_filters" ) ) );
+}
+
+
+/**
+ * The round trip through a real library file is what makes the leak permanent: write, read
+ * back, and the child owns filters nobody set on it.
+ */
+BOOST_AUTO_TEST_CASE( FootprintFiltersSurviveSaveAndReload )
+{
+    SCOPED_TEMP_LIB tempLib;
+
+    {
+        LIB_SYMBOL parent( wxS( "MAX291" ) );
+        parent.GetValueField().SetText( wxS( "MAX291" ) );
+        parent.SetFPFilters( filterList( { wxS( "DIP*" ), wxS( "SOIC*" ) } ) );
+
+        LIB_SYMBOL derived( wxS( "MAX293" ) );
+        derived.GetValueField().SetText( wxS( "MAX293" ) );
+        derived.SetParent( &parent );
+
+        // saveToLib() writes a single symbol, and the parent has to land first
+        IO_RELEASER<SCH_IO> pi( SCH_IO_MGR::FindPlugin( SCH_IO_MGR::SCH_KICAD ) );
+        pi->CreateLibrary( tempLib.GetPath() );
+        pi->SaveSymbol( tempLib.GetPath(), std::make_unique<LIB_SYMBOL>( parent ) );
+        pi->SaveSymbol( tempLib.GetPath(), std::make_unique<LIB_SYMBOL>( derived ) );
+        pi->SaveLibrary( tempLib.GetPath() );
+    }
+
+    IO_RELEASER<SCH_IO> pi( SCH_IO_MGR::FindPlugin( SCH_IO_MGR::SCH_KICAD ) );
+    LIB_SYMBOL*         parent = pi->LoadSymbol( tempLib.GetPath(), wxS( "MAX291" ) );
+    LIB_SYMBOL*         derived = pi->LoadSymbol( tempLib.GetPath(), wxS( "MAX293" ) );
+
+    BOOST_REQUIRE( parent && derived );
+    BOOST_REQUIRE( derived->IsDerived() );
+
+    BOOST_CHECK( derived->GetRawFPFilters().IsEmpty() );
+    BOOST_CHECK( derived->GetFPFilters() == filterList( { wxS( "DIP*" ), wxS( "SOIC*" ) } ) );
+
+    // Retracking the parent is the point: a new parent filter reaches the child
+    parent->SetFPFilters( filterList( { wxS( "QFN*" ) } ) );
+    BOOST_CHECK( derived->GetFPFilters() == filterList( { wxS( "QFN*" ) } ) );
 }
 
 

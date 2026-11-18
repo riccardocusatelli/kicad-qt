@@ -13,8 +13,8 @@
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 * General Public License for more details.
 *
-* You should have received a copy of the GNU General Public License along
-* with this program.  If not, see <http://www.gnu.org/licenses/>.
+* You should have received a copy of the GNU General Public License
+* along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <printing.h>
@@ -50,7 +50,7 @@ PRINT_RESULT PrintPDF( const std::string& aFile, bool fit_to_page)
         NSPrintInfo* printInfo = [NSPrintInfo sharedPrintInfo];
 
         PDFPrintScalingMode scalingMode = fit_to_page ?
-            kPDFPrintPageScaleDownToFit : kPDFPrintPageScaleNone;
+            kPDFPrintPageScaleToFit : kPDFPrintPageScaleNone;
 
         NSPrintOperation* op = [document printOperationForPrintInfo:printInfo
                                                         scalingMode:scalingMode
@@ -62,35 +62,21 @@ PRINT_RESULT PrintPDF( const std::string& aFile, bool fit_to_page)
             return PRINT_RESULT::FAILED_TO_PRINT;
         }
 
+        // Names the queued job and the file offered by Save as PDF
+        [op setJobTitle:[[path lastPathComponent] stringByDeletingPathExtension]];
         [op setShowsPrintPanel:YES];
         [op setShowsProgressPanel:YES];
 
-        BOOL success = [op runOperation];
-
-        PRINT_RESULT result;
-
-        if (success)
-        {
-            result = PRINT_RESULT::OK;
-        } else
-        {
-            // Check if operation was cancelled (uncertain that this works)
-            NSPrintInfo* info = [op printInfo];
-            NSDictionary* settings = [info printSettings];
-
-            if ([[settings objectForKey:NSPrintJobDisposition] isEqualToString:NSPrintCancelJob]) {
-                result = PRINT_RESULT::CANCELLED;
-            } else {
-                result = PRINT_RESULT::FAILED_TO_PRINT;
-            }
-        }
+        // AppKit reports a cancelled panel and a failed run alike, and spooler failures surface in
+        // the print queue rather than here, so NO is treated as the user backing out
+        PRINT_RESULT result = [op runOperation] ? PRINT_RESULT::OK : PRINT_RESULT::CANCELLED;
 
         [document release];
         return result;
     }
 }
 
-PRINT_RESULT PrintPDF(const std::string& aFile)
+PRINT_RESULT PrintPDF( const std::string& aFile, int )
 {
     return PrintPDF(aFile, true);
 }

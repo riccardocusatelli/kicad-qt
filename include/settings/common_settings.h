@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -25,6 +25,7 @@
 #include <mouse_drag_action.h>
 #include <settings/environment.h>
 #include <settings/json_settings.h>
+#include <template_fieldnames.h>
 
 struct COMMON_SETTINGS_INTERNALS;
 
@@ -52,6 +53,12 @@ enum class BACKUP_LOCATION
 {
     PROJECT_DIR = 0,    ///< Inside the project directory (default)
     USER_DIR    = 1     ///< Under the KiCad user data directory
+};
+
+enum class TOUCHPAD_MODE
+{
+    NATIVE_GESTURES = 0,
+    SCROLL_GESTURES = 1
 };
 
 class KICOMMON_API COMMON_SETTINGS : public JSON_SETTINGS
@@ -85,6 +92,8 @@ public:
 
         /// Maximum total size of backups (bytes), 0 for unlimited
         unsigned long long limit_total_size;
+
+        constexpr static unsigned long long UNLIMITED_SIZE = 0; ///< Value representing unlimited total size
     };
 
     struct ENVIRONMENT
@@ -106,6 +115,8 @@ public:
         bool zoom_acceleration;
         int  zoom_speed;
         bool zoom_speed_auto;
+
+        TOUCHPAD_MODE touchpad_mode;
 
         int scroll_modifier_zoom;
         int scroll_modifier_pan_h;
@@ -180,6 +191,7 @@ public:
     // Sticky "Use relative path" choice, remembered per file-picker context.
     struct RELATIVE_PATH_DEFAULTS
     {
+        bool drawing_sheet;
         bool jobset_destination;
     };
 
@@ -207,6 +219,7 @@ public:
         bool                        useDefaultAuthor;
         wxString                    authorName;
         wxString                    authorEmail;
+        bool                        showContributorAvatars;
     };
 
     struct API
@@ -248,6 +261,7 @@ private:
     bool migrateSchema3to4();
     bool migrateSchema4to5();
     bool migrateSchema5to6();
+    bool migrateSchema6to7();
 
     struct LEGACY_3D_SEARCH_PATH
     {
@@ -278,9 +292,15 @@ public:
     GIT                 m_Git;
     API                 m_Api;
 
+    /// Global field name templates shared by all project editors.
+    TEMPLATES           m_FieldNameTemplates;
+
     /// Extra directories to search for 3D models, added by the user through
     /// the 3D model migration dialog.  Persists across sessions.
     std::vector<wxString> m_Extra3DSearchDirs;
+
+    /// Preview-component requirements explicitly dismissed by the user.
+    std::vector<wxString> m_DeclinedModelPreviewRequirements;
 
     std::unique_ptr<COMMON_SETTINGS_INTERNALS> m_csInternals;
 };

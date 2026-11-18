@@ -15,22 +15,17 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PGM_KICAD_H_
 #define PGM_KICAD_H_
 
 #include <pgm_gui.h>
-#include <bin_mod.h>
-
-#ifdef KICAD_IPC_API
 #include <api/api_handler_common.h>
-#endif
+#include <api/api_handler_libraries.h>
+#include <libraries/library_table.h>
+#include <bin_mod.h>
 
 /**
  * PGM_KICAD
@@ -64,18 +59,17 @@ public:
 
     // The PGM_* classes can have difficulties at termination if they
     // are not destroyed soon enough.  Relying on a static destructor can be
-    // too late for contained objects like wxSingleInstanceChecker.
+    // too late for the objects they contain.
     void Destroy();
 
 protected:
 
     BIN_MOD         m_bm;
 
-#ifdef KICAD_IPC_API
     // In PGM_SINGLE_TOP because PGM_BASE is in kicommon, and this can't be in the DLL
     // because it depends on things like EDA_TEXT and EDA_SHAPE that aren't in the DLL
     std::unique_ptr<API_HANDLER_COMMON> m_api_common_handler;
-#endif
+    std::unique_ptr<API_HANDLER_LIBRARIES> m_api_libraries_handler;
 };
 
 

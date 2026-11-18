@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <vector>
@@ -73,9 +73,8 @@ POINT_INFO AnalyzePoint( const EE_RTREE& aItem, const VECTOR2I& aPosition, bool 
  *
  * @param aScreen  The schematic screen containing the existing items.
  * @param aItems   Temporary items not yet added to the screen.
- * @return Locations of needed junctions represented as new SCH_JUNCTION items.
+ * @return Locations of needed junctions represented as new #SCH_JUNCTION items.
  */
-std::vector<SCH_JUNCTION*> PreviewJunctions( const class SCH_SCREEN* aScreen,
-                                             const std::vector<class SCH_ITEM*>& aItems );
+std::vector<SCH_JUNCTION*> PreviewJunctions( const SCH_SCREEN* aScreen, const std::vector<class SCH_ITEM*>& aItems );
 
 } // namespace JUNCTION_HELPERS

@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef KIWAY_PLAYER_H_
@@ -54,15 +50,8 @@ class wxCmdLineParser;
  * Because this class provides a dummy implementation,it is not a certainty that all
  * classes which inherit from this class intend to participate in a #KIWAY.  Those that
  * do must actually interact with the provided #KIWAY.
- *
- * #EDA_BASE_FRAME would not have sufficed because #BM2CMP_FRAME_BASE is not derived
- * from it.
  */
-#ifdef SWIG
-class KIWAY_PLAYER : public wxFrame, public KIWAY_HOLDER
-#else
 class KIWAY_PLAYER : public EDA_BASE_FRAME
-#endif
 {
 public:
     KIWAY_PLAYER( KIWAY* aKiway, wxWindow* aParent, FRAME_T aFrameType,
@@ -136,7 +125,7 @@ public:
                             wxWindow* aResultantFocusWindow = nullptr );
 
     /**
-     * Receive #KIWAY_ROUTED_EVENT messages from other players.
+     * Receive #KIWAY_MAIL_EVENT messages from other players.
      *
      * Override it in derived classes.
      */
@@ -189,9 +178,7 @@ protected:
     wxSocketServer*             m_socketServer;
     std::vector<wxSocketBase*>  m_sockets;         /// Interprocess communication.
 
-#ifndef SWIG
     DECLARE_EVENT_TABLE()
-#endif
 };
 
 #endif // KIWAY_PLAYER_H_

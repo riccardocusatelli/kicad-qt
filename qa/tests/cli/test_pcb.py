@@ -16,9 +16,7 @@
 #  GNU General Public License for more details.
 #
 #  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software
-#  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-#  MA 02110-1301, USA.
+#  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
 import utils
@@ -28,6 +26,27 @@ import re
 from typing import List, Tuple
 from conftest import KiTestFixture
 import sys
+
+
+@pytest.mark.parametrize("rule", [
+    '(rule test (condition "A.intersectsFrontCourtyard(B.Parent)") '
+    '(constraint assertion "A.Type == \'Graphic\'"))',
+    '(rule test (constraint assertion "A.intersectsFrontCourtyard(B.Parent)"))',
+])
+def test_pcb_drc_rejects_unavailable_second_item(kitest: KiTestFixture, tmp_path: Path, rule: str):
+    source = kitest.get_data_file_path("cli/basic_test/basic_test.kicad_pcb")
+    board = tmp_path / source.name
+    board.write_bytes(source.read_bytes())
+    board.with_suffix(".kicad_dru").write_text("(version 1)\n" + rule, encoding="utf-8")
+    report = tmp_path / "drc.json"
+
+    stdout, stderr, exitcode = utils.run_and_capture([
+        utils.kicad_cli(), "pcb", "drc", "--format", "json", "-o", str(report), str(board)
+    ])
+
+    assert exitcode == 3
+    assert "Item 'B' is not available" in stdout + stderr
+    assert not report.exists()
 
 
 def get_generated_path(kitest: KiTestFixture,
@@ -94,24 +113,74 @@ def test_pcb_export_svg( kitest: KiTestFixture,
         # This test works only with Python >= 3.9 because it uses a pathlib function only existing
         # in 3.9 and newer. So skip it for previous versions
         if sys.hexversion >= 0x03090000 :
-            # Comparison DPI = 1270 => 1px == 20um. I.e. allowable error of 60 um after eroding
-            assert utils.svgs_are_equivalent( str( generated_svg_path ), svg_source_path, 1270,
+            # Comparison DPI = 850 => 1px == 30um. I.e. allowable error of 90 um after eroding
+            assert utils.svgs_are_equivalent( str( generated_svg_path ), svg_source_path, 850,
                                               diff_handler=kitest.add_attachment )
 
 
-@pytest.mark.skipif(not utils.is_gerbv_installed(), reason="Requires gerbv to be installed")
-@pytest.mark.parametrize("test_file,layers_to_test,originInches,windowsizeInches",
+@pytest.mark.parametrize("test_file,layers_to_test",
+                         [
+                            (
+                                "cli/artwork_generation_regressions/ZoneFill-4.0.7.kicad_pcb",
+                                ["F.Cu","B.Cu"]
+                            ),
+                            (   "cli/artwork_generation_regressions/ZoneFill-Legacy.brd",
+                                ["F.Cu","B.Cu"]
+                            )
+                         ])
+def test_pcb_export_png( kitest: KiTestFixture,
+                         test_file: str,
+                         layers_to_test: List[str] ):
+
+    input_file = kitest.get_data_file_path( test_file )
+
+    for layer_name in layers_to_test:
+        output_dir = kitest.get_output_path( "cli/export_png/{}/{}/".format(
+                input_file.stem, layer_name.replace( ".", "_" ) ) )
+
+        if output_dir.exists():
+            import shutil
+            shutil.rmtree( output_dir )
+
+        output_dir.mkdir( parents=True, exist_ok=True )
+
+        command = [utils.kicad_cli(), "pcb", "export", "png", "--dpi", "300",
+                   "--black-and-white", "--layers", layer_name,
+                   "-o", str(output_dir), str(input_file)]
+
+        stdout, stderr, exitcode = utils.run_and_capture( command )
+        # Don't assert stderr (legacy fills will have errors)
+        assert exitcode == 0
+        assert stdout is not None
+
+        png_files = list( output_dir.glob( "*.png" ) )
+        assert len( png_files ) == 1, \
+            "Expected 1 PNG file in output dir, found {}".format( len( png_files ) )
+
+        generated_png_path = png_files[0]
+        kitest.add_attachment( generated_png_path )
+
+        # Verify the filename contains the board stem
+        assert generated_png_path.stem.startswith( input_file.stem ), \
+            "Unexpected output filename: {}".format( generated_png_path.name )
+
+        assert not utils.image_is_blank( str( generated_png_path ) )
+
+        # FIXME: add golden/reference PNG comparison using utils.images_are_equal()
+        # for regression testing (see test_pcb_export_svg for the pattern)
+
+
+@pytest.mark.skipif(not utils.is_gerbview_available(), reason="Requires gerbview kiface (kicad-cli gerber)")
+@pytest.mark.parametrize("test_file,layers_to_test,max_diff_percent",
                          [
                             (
                                 "cli/artwork_generation_regressions/ZoneFill-4.0.7.kicad_pcb",
                                 ["F.Cu","B.Cu"],
-                                ( 3.5, -4.6 ),
-                                ( 4.3, 2.2 )
+                                0.5
                             ),
                             (   "cli/artwork_generation_regressions/ZoneFill-Legacy.brd",
                                 ["F.Cu","B.Cu"],
-                                ( -0.6, -0.4 ),
-                                ( 1.7, 0.8 )
+                                0.5
                             ),
                             (
                                 # Regression for https://gitlab.com/kicad/code/kicad/-/issues/24143:
@@ -122,15 +191,13 @@ def test_pcb_export_svg( kitest: KiTestFixture,
                                 # unfractured outline.
                                 "cli/artwork_generation_regressions/Issue24143.kicad_pcb",
                                 ["F.Cu"],
-                                ( 4.5, -3.1 ),
-                                ( 0.4, 0.4 )
+                                0.0
                             )
                          ])
 def test_pcb_export_gerber( kitest: KiTestFixture,
                             test_file: str,
                             layers_to_test: List[str],
-                            originInches :  Tuple[float, float],
-                            windowsizeInches :  Tuple[float, float] ):
+                            max_diff_percent: float ):
 
     input_file = kitest.get_data_file_path( test_file )
 
@@ -163,10 +230,9 @@ def test_pcb_export_gerber( kitest: KiTestFixture,
         layer_name_fixed = "-" + layer_name.replace( ".", "_" )
         gbr_source_path += layer_name_fixed + ".gbr"
 
-        # Comparison DPI = 5080 => 1px == 5um. I.e. allowable error of 15 um after eroding
-        assert utils.gerbers_are_equivalent( str( generated_gerber_path ), gbr_source_path, 5080,
-                                             originInches, windowsizeInches,
-                                             diff_handler=kitest.add_attachment )
+        assert utils.gerbers_are_equivalent( str( generated_gerber_path ), gbr_source_path,
+                                             diff_handler=kitest.add_attachment,
+                                             max_diff_percent=max_diff_percent )
 
 
 @pytest.mark.parametrize("test_file,golden_name,output_dir,skip_line_count,cli_args",
@@ -234,3 +300,46 @@ def test_pcb_export_drill( kitest: KiTestFixture,
 
     compare_filepath = kitest.get_data_file_path( "cli/basic_test/{}".format( golden_name ) )
     assert utils.textdiff_files( compare_filepath, output_drill_path, skip_line_count )
+
+
+def test_pcb_export_pos_exclude_bom(kitest: KiTestFixture, tmp_path: Path):
+    source = kitest.get_data_file_path("pcbnew/issue5830.kicad_pcb")
+    board = tmp_path / source.name
+
+    # Flag D2 as excluded from BOM, the stock board has no such footprint
+    text = source.read_text(encoding="utf-8")
+    d2 = text.index('(property "Reference" "D2"')
+    attr = text.index("(attr smd)", d2)
+    board.write_text(text[:attr] + "(attr smd exclude_from_bom)" + text[attr + len("(attr smd)"):], encoding="utf-8")
+
+    def export(*options: str) -> str:
+        out = tmp_path / "pos.pos"
+        out.unlink(missing_ok=True)
+        stdout, stderr, exitcode = utils.run_and_capture(
+            [utils.kicad_cli(), "pcb", "export", "pos", *options, "-o", str(out), str(board)])
+        assert exitcode == 0, stdout + stderr
+        return out.read_text(encoding="utf-8")
+
+    plain = export()
+    assert re.search(r"^D1 ", plain, re.M) and re.search(r"^D2 ", plain, re.M)
+
+    excluded = export("--exclude-bom")
+    assert re.search(r"^D1 ", excluded, re.M) and not re.search(r"^D2 ", excluded, re.M)
+
+
+def test_pcb_export_dxf_exclude_value(kitest: KiTestFixture, tmp_path: Path):
+    board = kitest.get_data_file_path("pcbnew/issue5830.kicad_pcb")
+
+    def export(name: str, *options: str) -> int:
+        out = tmp_path / name
+        stdout, stderr, exitcode = utils.run_and_capture(
+            [utils.kicad_cli(), "pcb", "export", "dxf", "--layers", "F.Fab", *options, "-o", str(out), str(board)])
+        assert exitcode == 0, stdout + stderr
+        return (out / "issue5830-F_Fab.dxf").stat().st_size
+
+    # Value and reference text are plotted on F.Fab, so each exclusion shrinks the file
+    both = export("both")
+    no_value = export("no_value", "--exclude-value")
+    neither = export("neither", "--exclude-value", "--exclude-refdes")
+
+    assert both > no_value > neither

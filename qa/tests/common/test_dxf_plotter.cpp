@@ -14,15 +14,13 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <boost/test/unit_test.hpp>
+#include <qa_utils/file_utils.h>
 
+#include <algorithm>
 #include <string>
 
 #include <wx/filename.h>
@@ -45,7 +43,9 @@ BOOST_AUTO_TEST_CASE( R2000HandlesAndTableSkeleton )
 
     plotter.SetRenderSettings( &renderSettings );
 
-    wxString dxfPath = wxFileName::CreateTempFileName( wxT( "kicad_dxf_r2000" ) );
+    KI_TEST::SCOPED_TEMP_DIR tempDir( "kicad_dxf_r2000" );
+    const wxString           dxfPath = tempDir.CreateChildFileStr( "plot.dxf" );
+
     BOOST_REQUIRE( !dxfPath.IsEmpty() );
     BOOST_TEST_MESSAGE( "DXF output: " << dxfPath.ToStdString() );
     BOOST_REQUIRE( plotter.OpenFile( dxfPath ) );
@@ -70,6 +70,8 @@ BOOST_AUTO_TEST_CASE( R2000HandlesAndTableSkeleton )
     buffer.resize( static_cast<size_t>( len ) );
     BOOST_REQUIRE_EQUAL( file.Read( buffer.data(), len ), static_cast<size_t>( len ) );
     file.Close();
+
+    buffer.erase( std::remove( buffer.begin(), buffer.end(), '\r' ), buffer.end() );
 
     // AC1018 makes the 420 true-color tag legal; $HANDSEED must exist for strict
     // R2000+ readers.
@@ -183,8 +185,6 @@ BOOST_AUTO_TEST_CASE( R2000HandlesAndTableSkeleton )
                          "Expected Model layout (precondition for the next check)" );
     BOOST_CHECK_MESSAGE( buffer.find( " 70\n1024\n" ) != std::string::npos,
                          "Expected ModelType (1024) flag on the Model layout" );
-
-    MaybeRemoveFile( dxfPath );
 }
 
 

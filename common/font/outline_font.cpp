@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <limits>
@@ -28,6 +24,7 @@
 #include <bezier_curves.h>
 #include <geometry/shape_poly_set.h>
 #include <font/fontconfig.h>
+#include <font/glyph_types.h>
 #include <font/outline_font.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -94,8 +91,7 @@ OUTLINE_FONT::EMBEDDING_PERMISSION OUTLINE_FONT::GetEmbeddingPermission() const
 
 
 OUTLINE_FONT* OUTLINE_FONT::LoadFont( const wxString& aFontName, bool aBold, bool aItalic,
-                                      const std::vector<wxString>* aEmbeddedFiles,
-                                      bool aForDrawingSheet )
+                                      const std::vector<wxString>* aEmbeddedFiles, bool aForDrawingSheet )
 {
     std::unique_ptr<OUTLINE_FONT> font = std::make_unique<OUTLINE_FONT>();
 
@@ -104,8 +100,7 @@ OUTLINE_FONT* OUTLINE_FONT::LoadFont( const wxString& aFontName, bool aBold, boo
     using fc = fontconfig::FONTCONFIG;
 
 
-    fc::FF_RESULT retval = Fontconfig()->FindFont( aFontName, fontFile, faceIndex, aBold, aItalic,
-                                                   aEmbeddedFiles );
+    fc::FF_RESULT retval = Fontconfig()->FindFont( aFontName, fontFile, faceIndex, aBold, aItalic, aEmbeddedFiles );
 
     if( retval == fc::FF_RESULT::FF_ERROR )
         return nullptr;
@@ -234,9 +229,8 @@ BOX2I OUTLINE_FONT::getBoundingBox( const std::vector<std::unique_ptr<GLYPH>>& a
 }
 
 
-void OUTLINE_FONT::GetLinesAsGlyphs( std::vector<std::unique_ptr<GLYPH>>* aGlyphs,
-                                     const wxString& aText, const VECTOR2I& aPosition,
-                                     const TEXT_ATTRIBUTES& aAttrs,
+void OUTLINE_FONT::GetLinesAsGlyphs( std::vector<std::unique_ptr<GLYPH>>* aGlyphs, const wxString& aText,
+                                     const VECTOR2I& aPosition, const TEXT_ATTRIBUTES& aAttrs,
                                      const METRICS& aFontMetrics ) const
 {
     wxArrayString         strings;
@@ -252,15 +246,14 @@ void OUTLINE_FONT::GetLinesAsGlyphs( std::vector<std::unique_ptr<GLYPH>>* aGlyph
     for( size_t i = 0; i < strings.GetCount(); i++ )
     {
         (void) drawMarkup( nullptr, aGlyphs, strings.Item( i ), positions[i], aAttrs.m_Size,
-                           aAttrs.m_Angle, aAttrs.m_Mirrored, aPosition, textStyle, aFontMetrics );
+                           aAttrs.m_Angle.GetAngle(), aAttrs.m_Mirrored, aPosition, textStyle, aFontMetrics );
     }
 }
 
 
 VECTOR2I OUTLINE_FONT::GetTextAsGlyphs( BOX2I* aBBox, std::vector<std::unique_ptr<GLYPH>>* aGlyphs,
-                                        const wxString& aText, const VECTOR2I& aSize,
-                                        const VECTOR2I& aPosition, const EDA_ANGLE& aAngle,
-                                        bool aMirror, const VECTOR2I& aOrigin,
+                                        const wxString& aText, const VECTOR2I& aSize, const VECTOR2I& aPosition,
+                                        const EDA_ANGLE& aAngle, bool aMirror, const VECTOR2I& aOrigin,
                                         TEXT_STYLE_FLAGS aTextStyle ) const
 {
     // HarfBuzz needs further processing to split tab-delimited text into text runs.
@@ -283,8 +276,8 @@ VECTOR2I OUTLINE_FONT::GetTextAsGlyphs( BOX2I* aBBox, std::vector<std::unique_pt
         {
             if( !textRun.IsEmpty() )
             {
-                position = getTextAsGlyphs( aBBox, aGlyphs, textRun, aSize, position, aAngle,
-                                            aMirror, aOrigin, aTextStyle );
+                position = getTextAsGlyphs( aBBox, aGlyphs, textRun, aSize, position, aAngle, aMirror, aOrigin,
+                                            aTextStyle );
                 textRun.clear();
             }
 
@@ -300,25 +293,20 @@ VECTOR2I OUTLINE_FONT::GetTextAsGlyphs( BOX2I* aBBox, std::vector<std::unique_pt
     }
 
     if( !textRun.IsEmpty() )
-    {
-        position = getTextAsGlyphs( aBBox, aGlyphs, textRun, aSize, position, aAngle, aMirror,
-                                    aOrigin, aTextStyle );
-    }
+        position = getTextAsGlyphs( aBBox, aGlyphs, textRun, aSize, position, aAngle, aMirror, aOrigin, aTextStyle );
 
     return position;
 }
 
 
 VECTOR2I OUTLINE_FONT::getTextAsGlyphs( BOX2I* aBBox, std::vector<std::unique_ptr<GLYPH>>* aGlyphs,
-                                        const wxString& aText, const VECTOR2I& aSize,
-                                        const VECTOR2I& aPosition, const EDA_ANGLE& aAngle,
-                                        bool aMirror, const VECTOR2I& aOrigin,
+                                        const wxString& aText, const VECTOR2I& aSize, const VECTOR2I& aPosition,
+                                        const EDA_ANGLE& aAngle, bool aMirror, const VECTOR2I& aOrigin,
                                         TEXT_STYLE_FLAGS aTextStyle ) const
 {
     std::lock_guard<std::mutex> guard( m_freeTypeMutex );
 
-    return getTextAsGlyphsUnlocked( aBBox, aGlyphs, aText, aSize, aPosition, aAngle, aMirror,
-                                    aOrigin, aTextStyle );
+    return getTextAsGlyphsUnlocked( aBBox, aGlyphs, aText, aSize, aPosition, aAngle, aMirror, aOrigin, aTextStyle );
 }
 
 
@@ -357,8 +345,7 @@ namespace std
 }
 
 
-static const HARFBUZZ_CACHE_ENTRY& getHarfbuzzShape( FT_Face aFace, const wxString& aText,
-                                                     int aScaler )
+static const HARFBUZZ_CACHE_ENTRY& getHarfbuzzShape( FT_Face aFace, const wxString& aText, int aScaler )
 {
     static std::unordered_map<HARFBUZZ_CACHE_KEY, HARFBUZZ_CACHE_ENTRY> s_harfbuzzCache;
 
@@ -434,12 +421,52 @@ namespace std
 }
 
 
-VECTOR2I OUTLINE_FONT::getTextAsGlyphsUnlocked( BOX2I* aBBox,
-                                                std::vector<std::unique_ptr<GLYPH>>* aGlyphs,
+bool OUTLINE_FONT::LoadGlyphContours( unsigned int aGlyphIndex, std::vector<CONTOUR>& aContours ) const
+{
+    aContours.clear();
+
+    if( m_fakeItal )
+    {
+        FT_Matrix matrix;
+        // Create a 12 degree slant
+        const float angle = (float) ( -M_PI * 12.0f ) / 180.0f;
+        matrix.xx = (FT_Fixed) ( cos( angle ) * 0x10000L );
+        matrix.xy = (FT_Fixed) ( -sin( angle ) * 0x10000L );
+        matrix.yx = 0;  // Don't rotate in the y direction
+        matrix.yy = 0x10000L;
+
+        FT_Set_Transform( m_face, &matrix, nullptr );
+    }
+
+    // FreeType clears the shared glyph slot before the font driver runs, so a failed load leaves
+    // an empty or partially parsed outline. Decomposing it would silently render nothing, so bail
+    // and let the caller draw a placeholder box instead.
+    if( FT_Load_Glyph( m_face, aGlyphIndex, FT_LOAD_NO_BITMAP ) != 0 )
+        return false;
+
+    // Bitmap-only fonts ignore FT_LOAD_NO_BITMAP and load without error, leaving no outline.
+    if( m_face->glyph->format != FT_GLYPH_FORMAT_OUTLINE )
+        return false;
+
+    if( m_fakeBold )
+        FT_Outline_Embolden( &m_face->glyph->outline, 1 << 6 );
+
+    OUTLINE_DECOMPOSER decomposer( m_face->glyph->outline );
+
+    if( !decomposer.OutlineToSegments( &aContours ) )
+    {
+        aContours.clear();
+        return false;
+    }
+
+    return true;
+}
+
+
+VECTOR2I OUTLINE_FONT::getTextAsGlyphsUnlocked( BOX2I* aBBox, std::vector<std::unique_ptr<GLYPH>>* aGlyphs,
                                                 const wxString& aText, const VECTOR2I& aSize,
-                                                const VECTOR2I& aPosition, const EDA_ANGLE& aAngle,
-                                                bool aMirror, const VECTOR2I& aOrigin,
-                                                TEXT_STYLE_FLAGS aTextStyle ) const
+                                                const VECTOR2I& aPosition, const EDA_ANGLE& aAngle, bool aMirror,
+                                                const VECTOR2I& aOrigin, TEXT_STYLE_FLAGS aTextStyle ) const
 {
     VECTOR2D glyphSize = aSize;
     FT_Face  face = m_face;
@@ -479,39 +506,18 @@ VECTOR2I OUTLINE_FONT::getTextAsGlyphsUnlocked( BOX2I* aBBox,
     {
         if( aGlyphs )
         {
-            GLYPH_CACHE_KEY key = { face, glyphInfo[i].codepoint, scaleFactor, m_forDrawingSheet,
-                                    m_fakeItal, m_fakeBold, aMirror, supersub, aAngle };
+            GLYPH_CACHE_KEY key = { face, glyphInfo[i].codepoint, scaleFactor, m_forDrawingSheet, m_fakeItal,
+                                    m_fakeBold, aMirror, supersub, aAngle };
             GLYPH_DATA&     glyphData = s_glyphCache[ key ];
 
-            if( glyphData.m_Contours.empty() )
+            if( !glyphData.m_Loaded )
             {
-                if( m_fakeItal )
-                {
-                    FT_Matrix matrix;
-                    // Create a 12 degree slant
-                    const float angle = (float)( -M_PI * 12.0f ) / 180.0f;
-                    matrix.xx = (FT_Fixed) ( cos( angle ) * 0x10000L );
-                    matrix.xy = (FT_Fixed) ( -sin( angle ) * 0x10000L );
-                    matrix.yx = (FT_Fixed) ( 0 * 0x10000L );  // Don't rotate in the y direction
-                    matrix.yy = (FT_Fixed) ( 1 * 0x10000L );
+                glyphData.m_Loaded = true;
 
-                    FT_Set_Transform( face, &matrix, nullptr );
-                }
-
-                FT_Load_Glyph( face, glyphInfo[i].codepoint, FT_LOAD_NO_BITMAP );
-
-                if( m_fakeBold )
-                    FT_Outline_Embolden( &face->glyph->outline, 1 << 6 );
-
-                OUTLINE_DECOMPOSER decomposer( face->glyph->outline );
-
-                if( !decomposer.OutlineToSegments( &glyphData.m_Contours ) )
+                if( !LoadGlyphContours( glyphInfo[i].codepoint, glyphData.m_Contours ) )
                 {
                     double  hb_advance = glyphPos[i].x_advance * GLYPH_SIZE_SCALER;
-                    BOX2D   tofuBox( { scaler * 0.03, 0.0 },
-                                     { hb_advance - scaler * 0.02, scaler * 0.72 } );
-
-                    glyphData.m_Contours.clear();
+                    BOX2D   tofuBox( { scaler * 0.03, 0.0 }, { hb_advance - scaler * 0.02, scaler * 0.72 } );
 
                     CONTOUR outline;
                     outline.m_Winding = 1;
@@ -524,8 +530,7 @@ VECTOR2I OUTLINE_FONT::getTextAsGlyphsUnlocked( BOX2I* aBBox,
 
                     CONTOUR hole;
                     tofuBox.Move( { scaler * 0.06, scaler * 0.06 } );
-                    tofuBox.SetSize( { tofuBox.GetWidth() - scaler * 0.06,
-                                       tofuBox.GetHeight() - scaler * 0.06 } );
+                    tofuBox.SetSize( { tofuBox.GetWidth() - scaler * 0.06, tofuBox.GetHeight() - scaler * 0.06 } );
                     hole.m_Winding = 1;
                     hole.m_Orientation = FT_ORIENTATION_NONE;
                     hole.m_Points.push_back( tofuBox.GetPosition() );
@@ -539,10 +544,10 @@ VECTOR2I OUTLINE_FONT::getTextAsGlyphsUnlocked( BOX2I* aBBox,
             std::unique_ptr<OUTLINE_GLYPH> glyph = std::make_unique<OUTLINE_GLYPH>();
             std::vector<SHAPE_LINE_CHAIN>  holes;
 
-            for( CONTOUR& c : glyphData.m_Contours )
+            for( const CONTOUR& c : glyphData.m_Contours )
             {
-                std::vector<VECTOR2D> points = c.m_Points;
-                SHAPE_LINE_CHAIN      shape;
+                const std::vector<VECTOR2D>& points = c.m_Points;
+                SHAPE_LINE_CHAIN             shape;
 
                 shape.ReservePoints( points.size() );
 
@@ -596,7 +601,7 @@ VECTOR2I OUTLINE_FONT::getTextAsGlyphsUnlocked( BOX2I* aBBox,
 
             if( glyphData.m_TriangulationData.empty() )
             {
-                glyph->CacheTriangulation( false, false );
+                glyph->CacheTriangulation();
                 glyphData.m_TriangulationData = glyph->GetTriangulationData();
             }
             else
@@ -623,61 +628,3 @@ VECTOR2I OUTLINE_FONT::getTextAsGlyphsUnlocked( BOX2I* aBBox,
 
     return VECTOR2I( aPosition.x + cursor.x * scaleFactor.x, aPosition.y - cursor.y * scaleFactor.y );
 }
-
-
-#undef OUTLINEFONT_RENDER_AS_PIXELS
-#ifdef OUTLINEFONT_RENDER_AS_PIXELS
-/*
- * WIP: Eeschema (and PDF output?) should use pixel rendering instead of linear segmentation
- */
-void OUTLINE_FONT::RenderToOpenGLCanvas( KIGFX::OPENGL_GAL& aGal, const wxString& aString,
-                                         const VECTOR2D& aGlyphSize, const VECTOR2I& aPosition,
-                                         const EDA_ANGLE& aOrientation, bool aIsMirrored ) const
-{
-    hb_buffer_t* buf = hb_buffer_create();
-    hb_buffer_add_utf8( buf, UTF8( aString ).c_str(), -1, 0, -1 );
-
-    // guess direction, script, and language based on contents
-    hb_buffer_guess_segment_properties( buf );
-
-    unsigned int         glyphCount;
-    hb_glyph_info_t*     glyphInfo = hb_buffer_get_glyph_infos( buf, &glyphCount );
-    hb_glyph_position_t* glyphPos = hb_buffer_get_glyph_positions( buf, &glyphCount );
-
-    std::lock_guard<std::mutex> guard( m_freeTypeMutex );
-
-    hb_font_t* referencedFont = hb_ft_font_create_referenced( m_face );
-
-    hb_shape( referencedFont, buf, nullptr, 0 );
-
-    const double mirror_factor = ( aIsMirrored ? 1 : -1 );
-    const double x_scaleFactor = mirror_factor * aGlyphSize.x / mScaler;
-    const double y_scaleFactor = aGlyphSize.y / mScaler;
-
-    hb_position_t cursor_x = 0;
-    hb_position_t cursor_y = 0;
-
-    for( unsigned int i = 0; i < glyphCount; i++ )
-    {
-        const hb_glyph_position_t& pos = glyphPos[i];
-        int                  codepoint = glyphInfo[i].codepoint;
-
-        FT_Error e = FT_Load_Glyph( m_face, codepoint, FT_LOAD_DEFAULT );
-        // TODO handle FT_Load_Glyph error
-
-        FT_Glyph glyph;
-        e = FT_Get_Glyph( m_face->glyph, &glyph );
-        // TODO handle FT_Get_Glyph error
-
-        wxPoint pt( aPosition );
-        pt.x += ( cursor_x >> 6 ) * x_scaleFactor;
-        pt.y += ( cursor_y >> 6 ) * y_scaleFactor;
-
-        cursor_x += pos.x_advance;
-        cursor_y += pos.y_advance;
-    }
-
-    hb_buffer_destroy( buf );
-}
-
-#endif //OUTLINEFONT_RENDER_AS_PIXELS

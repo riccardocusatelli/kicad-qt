@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "grid_tricks.h"
@@ -46,7 +46,7 @@ public:
     void showPopupMenu( wxMenu& menu, wxGridEvent& aEvent ) override;
     void doPopupSelection( wxCommandEvent& event ) override;
 
-    static void AppendRowHandler( WX_GRID* aGrid );
+    static void AppendRowHandler( WX_GRID* aGrid, const wxString& aType );
     static void DeleteRowHandler( WX_GRID* aGrid );
 
     static void MoveUpHandler( WX_GRID* aGrid );
@@ -62,7 +62,7 @@ protected:
     void onGridCellLeftClick( wxGridEvent& aEvent ) override;
     bool handleDoubleClick( wxGridEvent& aEvent ) override;
 
-    void onCharHook( wxKeyEvent& ev );
+    void onCharHook( wxKeyEvent& ev ) override;
 
     /*
      * Handle specialized clipboard text, either s-expr syntax starting with a lib table preamble

@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "zone_settings_bag.h"
@@ -33,7 +29,8 @@ ZONE_SETTINGS_BAG::ZONE_SETTINGS_BAG( BOARD* aBoard )
 {
     for( ZONE* zone : aBoard->Zones() )
     {
-        if( !zone->GetIsRuleArea() && !zone->IsTeardropArea() && zone->IsOnCopperLayer() )
+        if( !zone->GetIsRuleArea() && !zone->IsTeardropArea() && !zone->IsCopperThieving()
+                && zone->IsOnCopperLayer() )
         {
             auto zone_clone = std::shared_ptr<ZONE>( static_cast<ZONE*>( zone->Clone() ) );
             m_zonesCloneMap.try_emplace( zone, zone_clone );
@@ -91,30 +88,31 @@ void ZONE_SETTINGS_BAG::SwapPriority( ZONE* aZone, ZONE* otherZone )
 
 wxString ZONE_SETTINGS_BAG::GetUniqueZoneName( const BOARD& aBoard, const wxString& aBaseName, const ZONE* aZone ) const
 {
-    auto inUse = [&]( const wxString& aName )
-    {
-        for( ZONE* zone : aBoard.Zones() )
-        {
-            ZONE* working = zone;
+    auto inUse =
+            [&]( const wxString& aName )
+            {
+                for( ZONE* zone : aBoard.Zones() )
+                {
+                    ZONE* working = zone;
 
-            if( auto clone = m_zonesCloneMap.find( zone ); clone != m_zonesCloneMap.end() )
-                working = clone->second.get();
+                    if( auto clone = m_zonesCloneMap.find( zone ); clone != m_zonesCloneMap.end() )
+                        working = clone->second.get();
 
-            if( working == aZone )
-                continue;
+                    if( working == aZone )
+                        continue;
 
-            auto     settings = m_zoneSettings.find( working );
-            wxString name = working->GetZoneName();
+                    auto     settings = m_zoneSettings.find( working );
+                    wxString name = working->GetZoneName();
 
-            if( settings != m_zoneSettings.end() && settings->second )
-                name = settings->second->m_Name;
+                    if( settings != m_zoneSettings.end() && settings->second )
+                        name = settings->second->m_Name;
 
-            if( name == aName )
-                return true;
-        }
+                    if( name == aName )
+                        return true;
+                }
 
-        return false;
-    };
+                return false;
+            };
 
     return BOARD::MakeUniqueZoneName( aBaseName, inUse );
 }
@@ -126,6 +124,29 @@ void ZONE_SETTINGS_BAG::SetZonePriority( ZONE* aClone, unsigned aPriority )
 
     if( m_zoneSettings.contains( aClone ) )
         m_zoneSettings[aClone]->m_ZonePriority = aPriority;
+}
+
+
+void ZONE_SETTINGS_BAG::RemoveZone( ZONE* aOriginalZone )
+{
+    auto it = m_zonesCloneMap.find( aOriginalZone );
+
+    if( it != m_zonesCloneMap.end() )
+    {
+        ZONE* clone = it->second.get();
+
+        // Remove from cloned list
+        m_clonedZoneList.erase( std::remove( m_clonedZoneList.begin(), m_clonedZoneList.end(), clone ),
+                                m_clonedZoneList.end() );
+
+
+        // Remove from zone settings and priorities maps
+        m_zoneSettings.erase( clone );
+        m_zonePriorities.erase( clone );
+
+        // Remove from clone map
+        m_zonesCloneMap.erase( it );
+    }
 }
 
 

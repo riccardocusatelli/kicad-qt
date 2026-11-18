@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /*
@@ -64,8 +60,10 @@ FOOTPRINT_INFO* FOOTPRINT_LIST::GetFootprintInfo( const wxString& aFootprintName
 }
 
 
-std::vector<SEARCH_TERM>& FOOTPRINT_INFO::GetSearchTerms()
+void FOOTPRINT_INFO::cacheSearchTerms()
 {
+    const wxString keywords = GetKeywords();
+
     m_searchTerms.clear();
     m_searchTerms.reserve( 6 );
 
@@ -73,14 +71,22 @@ std::vector<SEARCH_TERM>& FOOTPRINT_INFO::GetSearchTerms()
     m_searchTerms.emplace_back( SEARCH_TERM( GetName(), 8, true ) );
     m_searchTerms.emplace_back( SEARCH_TERM( GetLIB_ID().Format(), 16, true ) );
 
-    wxStringTokenizer keywordTokenizer( GetKeywords(), " \t\r\n", wxTOKEN_STRTOK );
+    wxStringTokenizer keywordTokenizer( keywords, " \t\r\n", wxTOKEN_STRTOK );
 
     while( keywordTokenizer.HasMoreTokens() )
         m_searchTerms.emplace_back( SEARCH_TERM( keywordTokenizer.GetNextToken(), 4 ) );
 
     // Also include keywords as one long string, just in case
-    m_searchTerms.emplace_back( SEARCH_TERM( GetKeywords(), 1 ) );
+    m_searchTerms.emplace_back( SEARCH_TERM( keywords, 1 ) );
     m_searchTerms.emplace_back( SEARCH_TERM( GetDesc(), 1 ) );
+}
+
+
+std::vector<SEARCH_TERM>& FOOTPRINT_INFO::GetSearchTerms()
+{
+    // Empty means not built yet, cacheSearchTerms() always adds the name terms
+    if( m_searchTerms.empty() )
+        cacheSearchTerms();
 
     return m_searchTerms;
 }
@@ -94,7 +100,7 @@ bool FOOTPRINT_INFO::InLibrary( const wxString& aLibrary ) const
 
 bool operator<( const FOOTPRINT_INFO& lhs, const FOOTPRINT_INFO& rhs )
 {
-    int retv = StrNumCmp( lhs.m_nickname, rhs.m_nickname, false );
+    int retv = StrNumCmp( lhs.m_nickname, rhs.m_nickname, CMP_T::CASE_SENSITIVE );
 
     if( retv != 0 )
         return retv < 0;
@@ -103,7 +109,7 @@ bool operator<( const FOOTPRINT_INFO& lhs, const FOOTPRINT_INFO& rhs )
     // as the footprint name.  On windows this would be problematic because windows does
     // not support case sensitive file names by default.  This should not cause any issues
     // and allow for a future change to use the name defined in the footprint file.
-    return StrNumCmp( lhs.m_fpname, rhs.m_fpname, false ) < 0;
+    return StrNumCmp( lhs.m_fpname, rhs.m_fpname, CMP_T::CASE_SENSITIVE ) < 0;
 }
 
 

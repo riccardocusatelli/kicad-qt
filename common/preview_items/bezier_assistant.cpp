@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "preview_items/bezier_assistant.h"
@@ -71,23 +67,22 @@ void BEZIER_ASSISTANT::ViewDraw( int aLayer, KIGFX::VIEW* aView ) const
 
     KIGFX::PREVIEW::DRAW_CONTEXT preview_ctx( *aView );
 
-    int dashSize = KiROUND( aView->ToWorld( 12 ) );
+    // 12 pixels will be *far* larger than 12IU unless the display is zoomed in a few billion percent
+    int dashSize = std::max( 12 /* IU */, KiROUND( aView->ToWorld( 12 /* pixels */ ) ) );
 
     if( step >= BEZIER_GEOM_MANAGER::BEZIER_STEPS::SET_CONTROL1 )
     {
         // Draw the first control point control line
-        preview_ctx.DrawLineDashed( start, m_constructMan.GetControlC1(), dashSize, dashSize / 2,
-                                    false );
+        preview_ctx.DrawLineDashed( start, m_constructMan.GetControlC1(), dashSize, dashSize / 2, false );
     }
 
     if( step >= BEZIER_GEOM_MANAGER::BEZIER_STEPS::SET_CONTROL2 )
     {
         const VECTOR2I c2vec = m_constructMan.GetControlC2() - m_constructMan.GetEnd();
 
-        // Draw the second control point control line as a double length line
-        // centered on the end point
-        preview_ctx.DrawLineDashed( m_constructMan.GetEnd() - c2vec, m_constructMan.GetControlC2(),
-                                    dashSize, dashSize / 2, false );
+        // Draw the second control point control line as a double length line centered on the end point
+        preview_ctx.DrawLineDashed( m_constructMan.GetEnd() - c2vec, m_constructMan.GetControlC2(), dashSize,
+                                    dashSize / 2, false );
     }
 
     wxArrayString cursorStrings;
@@ -97,15 +92,13 @@ void BEZIER_ASSISTANT::ViewDraw( int aLayer, KIGFX::VIEW* aView ) const
         // Going to need a better way to get a length here
         // const int length = m_constructMan.GetBezierLength();
         // Have enough points to report a bezier length
-        // cursorStrings.push_back( DimensionLabel( wxString::FromUTF8( "L" ), 12300000,
-        //                                         m_iuScale, m_units ) );
+        // cursorStrings.push_back( DimensionLabel( wxString::FromUTF8( "L" ), 12300000, m_iuScale, m_units ) );
     }
 
     if( !cursorStrings.empty() )
     {
         // place the text next to cursor, on opposite side from radius
-        DrawTextNextToCursor( aView, m_constructMan.GetLastPoint(),
-                              start - m_constructMan.GetLastPoint(), cursorStrings,
-                              aLayer == LAYER_SELECT_OVERLAY );
+        DrawTextNextToCursor( aView, m_constructMan.GetLastPoint(), start - m_constructMan.GetLastPoint(),
+                              cursorStrings, aLayer == LAYER_SELECT_OVERLAY );
     }
 }

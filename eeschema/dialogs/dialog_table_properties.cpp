@@ -14,13 +14,11 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <bitmaps.h>
+#include <scintilla_tricks.h>
 #include <kiplatform/ui.h>
 #include <scintilla_tricks.h>
 #include <sch_edit_frame.h>
@@ -237,15 +235,14 @@ bool DIALOG_TABLE_PROPERTIES::TransferDataToWindow()
 }
 
 
-void DIALOG_TABLE_PROPERTIES::getContextualTextVars( const wxString& aCrossRef,
-                                                     wxArrayString*  aTokens )
+void DIALOG_TABLE_PROPERTIES::getContextualTextVars( const wxString& aCrossRef, wxArrayString*  aTokens )
 {
     if( !aCrossRef.IsEmpty() )
     {
         SCH_REFERENCE_LIST refs;
         SCH_SYMBOL*        refSymbol = nullptr;
 
-        m_frame->Schematic().Hierarchy().GetSymbols( refs, SYMBOL_FILTER_ALL );
+        m_frame->Schematic().Hierarchy().GetSymbols( refs, SYMBOL_FILTER_NON_POWER );
 
         for( int jj = 0; jj < (int) refs.GetCount(); jj++ )
         {
@@ -326,6 +323,10 @@ bool DIALOG_TABLE_PROPERTIES::TransferDataFromWindow()
         {
             SCH_TABLECELL* tableCell = m_table->GetCell( row, col );
             wxString       txt = m_grid->GetCellValue( row, col );
+
+            // Don't insert grey colour value back in to table cell
+            if( tableCell->GetColSpan() == 0 || tableCell->GetRowSpan() == 0 )
+                txt = wxEmptyString;
 
             // convert any text variable cross-references to their UUIDs
             if( SCHEMATIC* schematic = tableCell->Schematic() )

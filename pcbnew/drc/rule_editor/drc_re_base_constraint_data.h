@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef DRC_RE_BASE_CONSTRAINT_DATA_H_
@@ -34,14 +30,16 @@
 
 #include <vector>
 
+#include "dsnlexer.h"
+
 
 class DRC_RE_BASE_CONSTRAINT_DATA : public RULE_EDITOR_DATA_BASE
 {
 public:
     DRC_RE_BASE_CONSTRAINT_DATA() = default;
 
-    explicit DRC_RE_BASE_CONSTRAINT_DATA( int aId, int aParentId, const wxString& aRuleName ) :
-            RULE_EDITOR_DATA_BASE( aId, aParentId, aRuleName )
+    explicit DRC_RE_BASE_CONSTRAINT_DATA( int aId, const wxString& aRuleName ) :
+            RULE_EDITOR_DATA_BASE( aId, aRuleName )
     {
     }
 
@@ -83,6 +81,12 @@ public:
         return {};
     }
 
+    /**
+     * Returns a predicate this panel holds in its own fields rather than in the rule condition,
+     * such as a via type. It is written in front of the condition, joined with &&.
+     */
+    virtual wxString GetConditionPredicate() const { return wxEmptyString; }
+
     std::vector<PCB_LAYER_ID> GetLayers() { return m_layers; }
 
     void SetLayers( std::vector<PCB_LAYER_ID> aLayers ) { m_layers = aLayers; }
@@ -103,18 +107,6 @@ public:
 
     void SetGeneratedRule( const wxString& aRule ) { m_generatedRule = aRule; }
 
-    wxString GetOriginalRuleText() const { return m_originalRuleText; }
-
-    void SetOriginalRuleText( const wxString& aText ) { m_originalRuleText = aText; }
-
-    bool WasEdited() const { return m_wasEdited; }
-
-    void SetWasEdited( bool aEdited ) { m_wasEdited = aEdited; }
-
-    int GetOriginalEntryCount() const { return m_originalEntryCount; }
-
-    void SetOriginalEntryCount( int aCount ) { m_originalEntryCount = aCount; }
-
     SEVERITY GetSeverity() const { return m_severity; }
 
     void SetSeverity( SEVERITY aSeverity ) { m_severity = aSeverity; }
@@ -129,28 +121,29 @@ public:
         m_layerSource = source.m_layerSource;
         m_constraintCode = source.m_constraintCode;
         m_generatedRule = source.m_generatedRule;
-        m_originalRuleText = source.m_originalRuleText;
-        m_wasEdited = source.m_wasEdited;
-        m_originalEntryCount = source.m_originalEntryCount;
         m_severity = source.m_severity;
         m_ruleCondition = source.m_ruleCondition;
     }
 
     /**
-     * Format a rule name for use in S-expression output while preserving the exact
-     * name the user chose.  If the name is a bare symbol (non-empty, alphanumeric
-     * plus `_`, `-` or `.`, and not starting with a digit) it is emitted unquoted;
-     * otherwise it is emitted as a double-quoted string with embedded quotes
-     * escaped via the standard CTX_QUOTED_STR encoding.
+     * Format a rule name for use in S-expression output while preserving the exact name
+     * the user chose.  If the name is a bare symbol (non-empty, alphanumeric plus `_`,
+     * `-` or `.`, and failing the DSNLEXER::isNumber() test) it is emitted  unquoted;
+     * otherwise it is emitted as a double-quoted string with embedded quotes escaped via
+     * the standard CTX_QUOTED_STR encoding.
      */
     static wxString formatRuleName( const wxString& aRuleName )
     {
         if( aRuleName.IsEmpty() )
             return wxString( wxS( "\"\"" ) );
 
-        bool needsQuoting = false;
+        bool              needsQuoting = false;
+        std::vector<char> buffer( aRuleName.size() );
 
-        if( wxIsdigit( *aRuleName.begin() ) )
+        for( size_t ii = 0; ii < aRuleName.size(); ++ii )
+            buffer[ii] = aRuleName[ii];
+
+        if( DSNLEXER::isNumber( buffer.data(), buffer.data() + aRuleName.size() ) )
         {
             needsQuoting = true;
         }
@@ -260,10 +253,7 @@ private:
     wxString m_layerSource;     ///< Original layer text: "inner", "outer", or layer name
     wxString m_ruleCondition;
     wxString m_constraintCode;
-    wxString m_generatedRule;
-    wxString m_originalRuleText;
-    bool     m_wasEdited = false;
-    int                       m_originalEntryCount = 1;
+    wxString                  m_generatedRule;
     SEVERITY m_severity = RPT_SEVERITY_UNDEFINED;
 };
 

@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef BOM_GENERATOR_HANDLERS_H
@@ -148,25 +144,25 @@ protected:
      **/
     static wxString getOutputExtension( const wxString& aHeader );
 
-    ///< true if the plugin is working (i.e. if the plugin file exists and was read
+    /// true if the plugin is working (i.e. if the plugin file exists and was read
     bool m_isOk;
 
-    ///< Path to the plugin
+    /// Path to the plugin
     wxFileName m_file;
 
-    ///< Path to the plugin stored in config (can be absolute or just a filename)
+    /// Path to the plugin stored in config (can be absolute or just a filename)
     const wxString m_storedPath;
 
-    ///< User customisable name
+    /// User customisable name
     wxString m_name;
 
-    ///< Command to execute the plugin
+    /// Command to execute the plugin
     wxString m_cmd;
 
-    ///< Description of the plugin (normally from the plugin header)
+    /// Description of the plugin (normally from the plugin header)
     wxString m_info;
 
-    ///< Plugin specific options
+    /// Plugin specific options
     wxArrayString m_options;
 };
 

@@ -18,16 +18,21 @@
  */
 
 #include <boost/test/unit_test.hpp>
+#include <qa_utils/file_utils.h>
 #include <qa_utils/wx_utils/unit_test_utils.h>
 
 #include <connection_graph.h>
 #include <erc/erc.h>
 #include <lib_id.h>
+#include <reporter.h>
 #include <schematic.h>
 #include <sch_io/altium/sch_io_altium.h>
+#include <sch_label.h>
 #include <sch_no_connect.h>
+#include <sch_line.h>
 #include <sch_screen.h>
 #include <sch_sheet.h>
+#include <sch_sheet_path.h>
 #include <sch_symbol.h>
 #include <settings/settings_manager.h>
 
@@ -42,7 +47,9 @@ namespace
 
 struct ALTIUM_SCH_IMPORT_FIXTURE
 {
-    ALTIUM_SCH_IMPORT_FIXTURE() : m_schematic( nullptr )
+    ALTIUM_SCH_IMPORT_FIXTURE() :
+            m_loadInfoScope( &NULL_REPORTER::GetInstance() ),
+            m_schematic( nullptr )
     {
         m_settingsManager.LoadProject( "" );
         m_schematic.SetProject( &m_settingsManager.Prj() );
@@ -72,6 +79,13 @@ struct ALTIUM_SCH_IMPORT_FIXTURE
                + aName;
     }
 
+    wxString ticket1303DataFile( const wxString& aName ) const
+    {
+        return wxString::FromUTF8( KI_TEST::GetEeschemaTestDataDir()
+                                   + "/plugins/altium/ticket1303/" )
+               + aName;
+    }
+
     wxString issue16903DataFile( const wxString& aName ) const
     {
         return wxString::FromUTF8( KI_TEST::GetEeschemaTestDataDir()
@@ -86,8 +100,10 @@ struct ALTIUM_SCH_IMPORT_FIXTURE
                + aName;
     }
 
-    SETTINGS_MANAGER m_settingsManager;
-    SCHEMATIC        m_schematic;
+    // The fixture project has no symbol libraries, so every symbol link fails by design
+    LOAD_INFO_REPORTER_SCOPE m_loadInfoScope;
+    SETTINGS_MANAGER         m_settingsManager;
+    SCHEMATIC                m_schematic;
 };
 
 } // namespace
@@ -136,6 +152,52 @@ BOOST_AUTO_TEST_CASE( Issue22943_SourceLibrarySymbolLibId )
                              "Library id '" << libId.Format().wx_str()
                                             << "' does not resolve in mounting_holes.SchLib" );
     }
+}
+
+
+// A sheet may not take the file of the root or of a sheet the schematic already holds, or saving
+// would write one over the other
+BOOST_AUTO_TEST_CASE( SheetsClaimFilesNoOtherSheetSavesTo )
+{
+    KI_TEST::SCOPED_TEMP_DIR directory( "altium-sheet-files" );
+    const wxString          projectFile = directory.PathStr() + "/2_cubesat_bus.kicad_pro";
+    BOOST_REQUIRE( wxCopyFile( KI_TEST::GetEeschemaTestDataDir() + "issue13591.kicad_pro", projectFile ) );
+
+    SETTINGS_MANAGER         settings;
+    BOOST_REQUIRE( settings.LoadProject( projectFile ) );
+
+    SCHEMATIC schematic( nullptr );
+    schematic.SetProject( &settings.Prj() );
+    schematic.Reset();
+
+    auto sheetFiles =
+            []( SCH_SHEET* aSheet )
+            {
+                std::set<wxString> files;
+
+                for( SCH_ITEM* item : aSheet->GetScreen()->Items().OfType( SCH_SHEET_T ) )
+                    files.insert( static_cast<SCH_SHEET*>( item )->GetFileName() );
+
+                return files;
+            };
+
+    SCH_IO_ALTIUM firstImport;
+    SCH_SHEET*    root = firstImport.LoadSchematicFile( dataFile( "1_cover.SchDoc" ), &schematic );
+    BOOST_REQUIRE( root );
+
+    const std::set<wxString> hostFiles = sheetFiles( root );
+    BOOST_CHECK( hostFiles.contains( wxS( "2_cubesat_bus_1.kicad_sch" ) ) );
+
+    std::map<std::string, UTF8> properties{ { "hierarchical_sheet_load", "1" } };
+    auto                        appended = std::make_unique<SCH_SHEET>( &schematic );
+    appended->SetFileName( dataFile( "1_cover.SchDoc" ) );
+
+    SCH_IO_ALTIUM secondImport;
+    BOOST_REQUIRE( secondImport.LoadSchematicFile( dataFile( "1_cover.SchDoc" ), &schematic, appended.get(),
+                                                   &properties ) );
+
+    for( const wxString& file : sheetFiles( appended.get() ) )
+        BOOST_CHECK_MESSAGE( !hostFiles.contains( file ), file << " is already saved by the host" );
 }
 
 
@@ -198,6 +260,180 @@ BOOST_AUTO_TEST_CASE( Issue24861_RepeatedSchematicChannels )
                                                         wxT( "LED1_CH3" ) } ) );
     BOOST_CHECK( resistorReferences == std::set<wxString>( { wxT( "R1_CH1" ), wxT( "R1_CH2" ),
                                                              wxT( "R1_CH3" ) } ) );
+
+    // The channel names are suffixes, so every channel keeps the base the annotator shares
+    BOOST_CHECK( m_schematic.Settings().m_AnnotateReusedSheetSuffixes );
+
+    for( const auto& [channelName, sheetPath] : channelPaths )
+    {
+        BOOST_CHECK_EQUAL( m_schematic.GetRefSuffix( sheetPath ), wxT( "_" ) + channelName );
+
+        for( SCH_ITEM* item : sheetPath.LastScreen()->Items().OfType( SCH_SYMBOL_T ) )
+        {
+            SCH_SYMBOL* symbol = static_cast<SCH_SYMBOL*>( item );
+
+            if( !symbol->GetRef( &sheetPath ).StartsWith( wxT( "#" ) ) )
+                BOOST_CHECK( !symbol->GetBaseRef( &sheetPath ).Contains( wxT( "_CH" ) ) );
+        }
+    }
+}
+
+
+// Repeated channels save one file, so they must share one screen and the top-level sheet uuid must
+// match its file uuid or the per-channel references are dropped when the project is reloaded
+BOOST_AUTO_TEST_CASE( RepeatedChannelsShareOneSavedScreen )
+{
+    SCH_IO_ALTIUM plugin;
+
+    std::map<std::string, UTF8> properties;
+    properties.emplace( "project_file", UTF8( issue24861DataFile( wxT( "Repeated_Schematic.PrjPcb" ) ) ) );
+    properties.emplace( "sch0", UTF8( issue24861DataFile( wxT( "Repeated_Schematic.SchDoc" ) ) ) );
+    properties.emplace( "sch1", UTF8( issue24861DataFile( wxT( "Channel.SchDoc" ) ) ) );
+
+    BOOST_REQUIRE( plugin.LoadSchematicFile( wxEmptyString, &m_schematic, nullptr, &properties ) );
+
+    const std::vector<SCH_SHEET*> topLevelSheets = m_schematic.GetTopLevelSheets();
+    BOOST_REQUIRE_EQUAL( topLevelSheets.size(), 1 );
+    BOOST_CHECK( topLevelSheets.front()->m_Uuid == topLevelSheets.front()->GetScreen()->GetUuid() );
+
+    std::set<SCH_SCREEN*> channelScreens;
+
+    for( const SCH_SHEET_PATH& sheetPath : m_schematic.Hierarchy() )
+    {
+        if( sheetPath.Last()->GetName().StartsWith( wxT( "CH" ) ) )
+            channelScreens.insert( sheetPath.LastScreen() );
+    }
+
+    BOOST_CHECK_EQUAL( channelScreens.size(), 1 );
+}
+
+
+// https://gitlab.com/kicad/code/kicad/-/issues/22908
+// Only the 34 Generic No ERC crosses are no-connects, the four Specific No ERC checkboxes are not
+BOOST_AUTO_TEST_CASE( Issue22908_SpecificNoErcIsNotNoConnect )
+{
+    SCH_IO_ALTIUM plugin;
+
+    SCH_SHEET* rootSheet = plugin.LoadSchematicFile( issue22908DataFile( wxT( "3_mpcie.SchDoc" ) ), &m_schematic );
+    BOOST_REQUIRE( rootSheet );
+
+    SCH_SCREEN* screen = rootSheet->GetScreen();
+    BOOST_REQUIRE( screen );
+
+    // Altium places these in 10 mil units with the Y axis flipped about the page bottom
+    static const std::vector<VECTOR2I> crosses = {
+        { 360, 500 }, { 360, 540 }, { 360, 610 }, { 360, 600 }, { 360, 620 }, { 360, 530 }, { 360, 460 },
+        { 360, 450 }, { 170, 550 }, { 170, 540 }, { 170, 520 }, { 170, 510 }, { 170, 610 }, { 170, 590 },
+        { 170, 580 }, { 880, 500 }, { 880, 540 }, { 880, 610 }, { 880, 600 }, { 880, 620 }, { 880, 530 },
+        { 880, 460 }, { 880, 450 }, { 690, 550 }, { 690, 540 }, { 690, 520 }, { 690, 510 }, { 690, 610 },
+        { 690, 590 }, { 690, 580 }, { 480, 650 }, { 1000, 650 }, { 290, 340 }, { 810, 340 }
+    };
+
+    const int gridPitch = m_schematic.Settings().m_ConnectionGridSize;
+    const int pageHeight = screen->GetPageSettings().GetHeightIU( schIUScale.IU_PER_MILS );
+    const int flipY = ( pageHeight / gridPitch ) * gridPitch;
+
+    std::set<std::pair<int, int>> expected;
+
+    for( const VECTOR2I& cross : crosses )
+        expected.emplace( schIUScale.MilsToIU( cross.x * 10 ), flipY - schIUScale.MilsToIU( cross.y * 10 ) );
+
+    std::set<std::pair<int, int>> actual;
+
+    size_t actualCount = 0;
+
+    for( SCH_ITEM* item : screen->Items().OfType( SCH_NO_CONNECT_T ) )
+    {
+        ++actualCount;
+        actual.emplace( item->GetPosition().x, item->GetPosition().y );
+    }
+
+    BOOST_CHECK_EQUAL( actualCount, crosses.size() );
+    BOOST_CHECK( actual == expected );
+}
+
+
+// Support ticket #1303: an OrCad-derived Altium sheet symbol references several source files
+// through a single semicolon-separated filename ("pagea.SchDoc;pageb.SchDoc"), the two pages of one
+// multi-page block. The pages cross-reference each other (and one references itself). Every page
+// must be merged into the one sub-sheet screen, and the cyclic cross-references must not create a
+// recursive hierarchy that trips SCH_SHEET_LIST::BuildSheetList.
+BOOST_AUTO_TEST_CASE( Ticket1303_MultiPageBlock )
+{
+    SCH_IO_ALTIUM plugin;
+
+    SCH_SHEET* rootSheet = plugin.LoadSchematicFile( ticket1303DataFile( wxT( "overview.SchDoc" ) ),
+                                                     &m_schematic, nullptr, nullptr );
+    BOOST_REQUIRE( rootSheet );
+    BOOST_REQUIRE( rootSheet->GetScreen() );
+
+    // Walking the hierarchy must not trip the recursion guard in SCH_SHEET_LIST::BuildSheetList.
+    // Before the fix this raised a KI_ASSERT (the pages resolved to sub-sheets whose remapped
+    // filenames collided in the ancestry).
+    SCH_SHEET_LIST hierarchy = m_schematic.Hierarchy();
+
+    // Both pages of the block land in a single merged sub-sheet screen; a regression drops one (or
+    // both), leaving the sheet empty. The screen also holds no residual sub-sheet symbols, since the
+    // cross-page references were pruned rather than descended into.
+    bool foundMergedScreen = false;
+
+    for( const SCH_SHEET_PATH& sheetPath : hierarchy )
+    {
+        SCH_SCREEN* screen = sheetPath.LastScreen();
+
+        if( !screen || screen == rootSheet->GetScreen() )
+            continue;
+
+        std::optional<VECTOR2I> posA;
+        std::optional<VECTOR2I> posB;
+
+        for( SCH_ITEM* item : screen->Items().OfType( SCH_LABEL_T ) )
+        {
+            SCH_LABEL* label = static_cast<SCH_LABEL*>( item );
+
+            if( label->GetText() == wxT( "ONLY_A" ) )
+                posA = label->GetPosition();
+            else if( label->GetText() == wxT( "ONLY_B" ) )
+                posB = label->GetPosition();
+        }
+
+        if( !posA || !posB )
+            continue;
+
+        foundMergedScreen = true;
+
+        // The cross-page references were pruned, not descended into: the merged screen holds no
+        // residual sub-sheet symbols.
+        int subSheetCount = 0;
+
+        for( SCH_ITEM* item : screen->Items().OfType( SCH_SHEET_T ) )
+        {
+            (void) item;
+            subSheetCount++;
+        }
+
+        BOOST_CHECK_EQUAL( subSheetCount, 0 );
+
+        // Page B is tiled below page A rather than superimposed, even though both labels sit at the
+        // same coordinates in their source files.
+        BOOST_CHECK_MESSAGE( *posA != *posB, "Merged pages must be tiled, not overlapping" );
+
+        // The pruned cross-reference sheet's pin was converted to a hierarchical label so the wire
+        // that terminated on it still connects by name.
+        bool foundSigLabel = false;
+
+        for( SCH_ITEM* item : screen->Items().OfType( SCH_HIER_LABEL_T ) )
+        {
+            if( static_cast<SCH_HIERLABEL*>( item )->GetText() == wxT( "SIG" ) )
+                foundSigLabel = true;
+        }
+
+        BOOST_CHECK_MESSAGE( foundSigLabel,
+                             "Pruned sheet pin must survive as a hierarchical label" );
+    }
+
+    BOOST_CHECK_MESSAGE( foundMergedScreen,
+                         "Both pages of the multi-file sheet symbol must load into one screen" );
 }
 
 
@@ -210,6 +446,9 @@ BOOST_AUTO_TEST_CASE( Issue24861_RepeatedSchematicChannels )
 BOOST_AUTO_TEST_CASE( Issue24843_SymbolOrientationMatchesAltium )
 {
     SCH_IO_ALTIUM plugin;
+
+    // The source embeds images by absolute Windows paths that cannot resolve here
+    plugin.SetReporter( &NULL_REPORTER::GetInstance() );
 
     SCH_SHEET* rootSheet = plugin.LoadSchematicFile( eDPAdapterDataFile( "power.SchDoc" ),
                                                      &m_schematic );
@@ -265,51 +504,6 @@ BOOST_AUTO_TEST_CASE( Issue16903_ImportKeepsGeometryOnGrid )
 
     ERC_TESTER tester( &m_schematic );
     BOOST_CHECK_EQUAL( tester.TestOffGridEndpoints(), 0 );
-}
-
-
-// https://gitlab.com/kicad/code/kicad/-/issues/22908
-// Only the 34 Generic No ERC crosses are no-connects, the four Specific No ERC checkboxes are not
-BOOST_AUTO_TEST_CASE( Issue22908_SpecificNoErcIsNotNoConnect )
-{
-    SCH_IO_ALTIUM plugin;
-
-    SCH_SHEET* rootSheet = plugin.LoadSchematicFile( issue22908DataFile( wxT( "3_mpcie.SchDoc" ) ), &m_schematic );
-    BOOST_REQUIRE( rootSheet );
-
-    SCH_SCREEN* screen = rootSheet->GetScreen();
-    BOOST_REQUIRE( screen );
-
-    // Altium places these in 10 mil units with the Y axis flipped about the page bottom
-    static const std::vector<VECTOR2I> crosses = {
-        { 360, 500 }, { 360, 540 }, { 360, 610 }, { 360, 600 }, { 360, 620 }, { 360, 530 }, { 360, 460 },
-        { 360, 450 }, { 170, 550 }, { 170, 540 }, { 170, 520 }, { 170, 510 }, { 170, 610 }, { 170, 590 },
-        { 170, 580 }, { 880, 500 }, { 880, 540 }, { 880, 610 }, { 880, 600 }, { 880, 620 }, { 880, 530 },
-        { 880, 460 }, { 880, 450 }, { 690, 550 }, { 690, 540 }, { 690, 520 }, { 690, 510 }, { 690, 610 },
-        { 690, 590 }, { 690, 580 }, { 480, 650 }, { 1000, 650 }, { 290, 340 }, { 810, 340 }
-    };
-
-    const int gridPitch = m_schematic.Settings().m_ConnectionGridSize;
-    const int pageHeight = screen->GetPageSettings().GetHeightIU( schIUScale.IU_PER_MILS );
-    const int flipY = ( pageHeight / gridPitch ) * gridPitch;
-
-    std::set<std::pair<int, int>> expected;
-
-    for( const VECTOR2I& cross : crosses )
-        expected.emplace( schIUScale.MilsToIU( cross.x * 10 ), flipY - schIUScale.MilsToIU( cross.y * 10 ) );
-
-    std::set<std::pair<int, int>> actual;
-
-    size_t actualCount = 0;
-
-    for( SCH_ITEM* item : screen->Items().OfType( SCH_NO_CONNECT_T ) )
-    {
-        ++actualCount;
-        actual.emplace( item->GetPosition().x, item->GetPosition().y );
-    }
-
-    BOOST_CHECK_EQUAL( actualCount, crosses.size() );
-    BOOST_CHECK( actual == expected );
 }
 
 

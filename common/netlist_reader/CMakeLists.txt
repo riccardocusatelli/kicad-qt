@@ -13,11 +13,7 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, you may find one here:
-# http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-# or you may search the http://www.gnu.org website for the version 2 license,
-# or you may write to the Free Software Foundation, Inc.,
-# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 set( NETLIST_READER_SRCS
     netlist.cpp
@@ -46,6 +42,9 @@ target_include_directories( netlist_reader_obj PRIVATE
 # Ensure netlist_lexer.h is generated before compiling netlist_reader_obj
 # The lexer files are generated as part of the kicommon target
 add_dependencies( netlist_reader_obj kicommon )
+
+# reporter.h pulls in ki_error.h, which needs fmt/format.h
+target_link_libraries( netlist_reader_obj PRIVATE fmt::fmt )
 
 target_include_directories( netlist_reader_obj PUBLIC
     ${CMAKE_SOURCE_DIR}/common  # So users can find netlist_reader/netlist.h

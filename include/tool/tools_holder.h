@@ -14,17 +14,13 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef  TOOL_HOLDER_H
-#define  TOOL_HOLDER_H
+#pragma once
 
 #include <vector>
+#include <tool/tool_event.h>
 #include <tool/selection.h>
 #include <mouse_drag_action.h>
 #include <toolkit/toolkit_types.h>
@@ -64,8 +60,7 @@ public:
      * @param aAction is the action to register.
      * @param aConditions are the UI conditions to use for the control states.
      */
-    virtual void RegisterUIUpdateHandler( const TOOL_ACTION& aAction,
-                                          const ACTION_CONDITIONS& aConditions );
+    virtual void RegisterUIUpdateHandler( const TOOL_ACTION& aAction, const ACTION_CONDITIONS& aConditions );
 
     /**
      * Register a UI update handler for the control with ID @c aID.
@@ -196,4 +191,28 @@ protected:
     bool              m_moveWarpsCursor;    // cursor is warped to move/drag origin
 };
 
-#endif  // TOOL_HOLDER_H
+
+class SCOPED_TOOL_PUSHER
+{
+public:
+    // nodiscard on the constructor makes an unnamed temporary (which pops immediately) a warning
+    [[nodiscard]] SCOPED_TOOL_PUSHER( TOOLS_HOLDER* aHolder, const TOOL_EVENT& aEvent ) :
+            m_holder( aHolder ),
+            m_event( aEvent )
+    {
+        m_holder->PushTool( m_event );
+    }
+
+    ~SCOPED_TOOL_PUSHER()
+    {
+        m_holder->PopTool( m_event );
+    }
+
+    // No copying or it can lead to double-popping of the tool stack.
+    SCOPED_TOOL_PUSHER( const SCOPED_TOOL_PUSHER& ) = delete;
+    SCOPED_TOOL_PUSHER& operator=( const SCOPED_TOOL_PUSHER& ) = delete;
+
+private:
+    TOOLS_HOLDER* m_holder;
+    TOOL_EVENT    m_event;
+};

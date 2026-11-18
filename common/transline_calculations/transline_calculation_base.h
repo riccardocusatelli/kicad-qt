@@ -12,9 +12,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this package; see the file COPYING.  If not, write to
- * the Free Software Foundation, Inc., 51 Franklin Street - Fifth Floor,
- * Boston, MA 02110-1301, USA.
+ * along with this package.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef TRANSLINE_CALCULATIONS_TRANSLINE_CALCULATION_BASE_H
@@ -22,7 +20,10 @@
 
 
 #include <cmath>
+#include <optional>
 #include <unordered_map>
+
+#include <transline_calculations/dielectric_djordjevic_sarkar.h>
 
 
 /// All possible parameters used (as inputs or outputs) by the transmission line calculations
@@ -73,6 +74,36 @@ enum class TRANSLINE_PARAMETERS : int
     ATTEN_DILECTRIC_EVEN, // The even mode attenuation of the dilectric
     ATTEN_DILECTRIC_ODD,  // The odd mode attenuation of the dilectric
     Z_DIFF,               // The differential impedance
+
+    // Common-mode characteristic impedance for a symmetric coupled line, Z_comm = Z0e / 2.
+    // The two strips driven at equal potential present Z0e to ground in parallel.  Derived
+    // from Pozar, "Microwave Engineering" 4th ed., Sec. 7.6 Eqs. 7.68-7.69.
+    Z_COMM,
+
+    // Coupling coefficient k_c = (Z0e - Z0o) / (Z0e + Z0o).  Dimensionless, bounded in
+    // [0, 1) for physically realisable passive geometries.  Pozar, "Microwave Engineering"
+    // 4th ed., Sec. 7.6 Eq. 7.81 (voltage coupling coefficient C).
+    COUPLING_K,
+
+    // Coplanar waveguide back-metal flag.  A value of 0.0 means ungrounded CPW; a value of 1.0
+    // means grounded (CBCPW).  Exposed as a parameter rather than a C++ member so a single
+    // COPLANAR class can drive both UI entry points without ad-hoc subclassing.
+    CPW_BACKMETAL,
+
+    DIELECTRIC_MODEL_SEL, // 0 = CONSTANT, 1 = DJORDJEVIC_SARKAR (double for parameter-map compatibility)
+    EPSILONR_SPEC_FREQ,   // Frequency at which EPSILONR and TAND are specified (Hz).
+                          // Used only when DIELECTRIC_MODEL_SEL == DJORDJEVIC_SARKAR.
+
+    SOLDERMASK_PRESENT,   // 1.0 = mask enabled, 0.0 = disabled.  A zero here must leave the
+                          // un-coated Analyse() path bit-identical so every pre-mask regression
+                          // test continues to pass without tolerance widening.
+    SOLDERMASK_THICKNESS, // Mask layer thickness C, metres.  Zero also produces a bit-identical
+                          // un-coated result because tanh(0) = 0 kills the correction Q.
+    SOLDERMASK_EPSILONR,  // Mask relative permittivity.  Typical LPI 3.3 - 3.8.
+    SOLDERMASK_TAND,      // Mask loss tangent.  Typical LPI 0.025 - 0.035.
+    SOLDERMASK_FILLS_GAPS, // CPW / CBCPW only.  1.0 = mask fills the coplanar slots (default),
+                           // 0.0 = mask over traces only, slots left air-filled.
+
     EXTRAS_COUNT
 };
 
@@ -80,9 +111,20 @@ enum class TRANSLINE_PARAMETERS : int
 /// Options for specifying synthesis inputs, targets, or strategies
 enum class SYNTHESIZE_OPTS
 {
-    DEFAULT,    // Use the default synthesis options for the calculation
-    FIX_WIDTH,  // Fixes the width of a differential pair
-    FIX_SPACING // Fixes the spacing of a differential pair
+    DEFAULT,           // Use the default synthesis options for the calculation
+    FIX_WIDTH,         // Fixes the width of a differential pair
+    FIX_SPACING,       // Fixes the spacing of a differential pair
+    FROM_ZDIFF_ZCOMM   // Read Z_DIFF / Z_COMM as the design target instead of Z0_E / Z0_O.
+                       // Translates to (Z0_E, Z0_O) and runs the DEFAULT 2-D solver.  Only
+                       // honoured by calculators that can jointly optimise both modes.
+};
+
+
+/// Frequency-domain model used for the substrate dielectric properties
+enum class DIELECTRIC_MODEL : int
+{
+    CONSTANT,          // Classic behaviour, epsR and tan delta are frequency-independent.
+    DJORDJEVIC_SARKAR, // Causal wideband Debye.  See Djordjevic et al. 2001 IEEE TEMC 43(4).
 };
 
 
@@ -96,17 +138,17 @@ enum class TRANSLINE_STATUS
 
 
 /**
-* The base class for all transmission line calculations.
-* This is used by the PCB calculator, and by delay profiles
-*/
+ * The base class for all transmission line calculations.
+ * This is used by the PCB calculator, and by delay profiles
+ */
 class TRANSLINE_CALCULATION_BASE
 {
 public:
     /**
-    * Constructs the transmission line calculation object.
-    *
-    * @aParameters all parameters that are used (as inputs or outputs) by the calculation
-    */
+     * Constructs the transmission line calculation object.
+     *
+     * @param aParameters all parameters that are used (as inputs or outputs) by the calculation.
+     */
     TRANSLINE_CALCULATION_BASE( std::initializer_list<TRANSLINE_PARAMETERS> aParameters )
     {
         InitProperties( aParameters );
@@ -135,6 +177,79 @@ public:
     /// Synthesis the transmission line using the current parameter set target
     /// @returns true if the synthesis converged, otherwise false
     virtual bool Synthesize( SYNTHESIZE_OPTS aOpts ) = 0;
+
+    /**
+     * Hint from UI picking which geometry parameter is the unknown when Synthesize is called.
+     * Coax picks Din or Dout; coupled stripline picks W or S; rectangular waveguide picks
+     * width or height, etc.  Subclasses may override to reject unsupported targets; the
+     * default implementation simply stores the value.
+     */
+    virtual void SetSynthesizeTarget( TRANSLINE_PARAMETERS aTarget ) { m_synthesizeTarget = aTarget; }
+
+    /// Returns the parameter that will be solved for during synthesis
+    TRANSLINE_PARAMETERS GetSynthesizeTarget() const { return m_synthesizeTarget; }
+
+    /**
+     * Refit the Djordjevic-Sarkar model from the current parameter map.  Clears the
+     * fitted model when DIELECTRIC_MODEL_SEL is CONSTANT or the spec frequency is
+     * non-positive so the accessors fall through to the raw EPSILONR / TAND values.
+     */
+    void UpdateDielectricModel();
+
+    /// Dispersed permittivity at aF.  Returns raw EPSILONR when the model is inactive.
+    double GetDispersedEpsilonR( double aF ) const;
+
+    /// Dispersed loss tangent at aF.  Returns raw TAND when the model is inactive.
+    double GetDispersedTanDelta( double aF ) const;
+
+    /**
+     * Incremental filling factor Delta q_mask representing the fraction of the un-coated
+     * above-trace air region that a mask of thickness C displaces when laid on top of the
+     * substrate.  Default zero means the subclass is not mask-eligible (stripline, coax,
+     * rectangular waveguide, twisted pair) and ApplySoldermaskCorrection will return its
+     * inputs unchanged.  Mask-eligible subclasses (microstrip, coupled microstrip, CPW)
+     * override using the Wan-Hoorfar 2000 improved Svacina formula or a CPW-specific
+     * empirical form.
+     */
+    virtual double GetSoldermaskDeltaQ( double /*aWOverH*/, double /*aCOverH*/ ) const
+    {
+        return 0.0;
+    }
+
+    /**
+     * Apply a three-layer (substrate / soldermask / air) correction to an un-coated
+     * (eps_eff, tan_delta) pair using the air-replacement decomposition of Bahl and
+     * Stuchly 1980, with the mask filling factor computed from Svacina 1992 as improved
+     * by Wan and Hoorfar 2000.
+     *
+     *     eps_eff_coated   = eps_eff_uncoated + Delta q_mask * (eps_mask - 1)
+     *     tan_delta_coated = [ q_sub * eps_sub * tan_delta_sub
+     *                          + Delta q_mask * eps_mask * tan_delta_mask ] / eps_eff_coated
+     *
+     * q_sub is inferred from eps_eff_uncoated using the standard filling factor relation
+     * q_sub = (eps_eff_uncoated - 1) / (eps_sub - 1), which is exact to within the quasi-
+     * TEM assumption that produces eps_eff in the first place.  Returns the inputs
+     * unchanged when SOLDERMASK_PRESENT is 0, the mask thickness is 0, the mask
+     * parameters are non-physical, or the subclass reports Delta q_mask <= 0.  aF is
+     * reserved for a future frequency-dependent mask model and currently unused.
+     */
+    std::pair<double, double> ApplySoldermaskCorrection( double aEpsEffUncoated,
+                                                         double aTanDeltaSubstrate,
+                                                         double aEpsRSubstrate,
+                                                         double aWOverH,
+                                                         double aF ) const;
+
+    /**
+     * Filling factor q_2 for the second dielectric layer of a multilayer microstrip with
+     * normalised strip width aU = w/h and normalised cumulative layer boundary
+     * aHBarTop = h_2/h (so aHBarTop = 1 corresponds to the top of the substrate and
+     * aHBarTop > 1 means a mask of thickness (aHBarTop - 1) * h sits on top).
+     *
+     * Wan-Hoorfar 2000 eq. (12) for wide strips (aU >= 1) and eq. (13) for narrow strips.
+     * The letter prints the narrow-strip logarithm as ln(0.125 * w), but its Table I is
+     * only reproduced with ln(8 / w), which is also the form in Svacina 1992.
+     */
+    static double WanHoorfarQ2( double aU, double aHBarTop );
 
 protected:
     /// Initialises the properties used (as inputs or outputs) by the calculation
@@ -188,17 +303,17 @@ protected:
     bool MinimiseZ0Error2D( TRANSLINE_PARAMETERS aParam1, TRANSLINE_PARAMETERS aParam2 );
 
     /**
-    * Calculate skin depth
-    *
-    * \f$ \frac{1}{\sqrt{ \pi \cdot f \cdot \mu \cdot \sigma }} \f$
-    */
+     * Calculate skin depth
+     *
+     * \f$ \frac{1}{\sqrt{ \pi \cdot f \cdot \mu \cdot \sigma }} \f$
+     */
     double SkinDepth() const;
 
     /**
-    * Calculates the unit propagation delay (ps/cm) for the given effective permittivity
-    *
-    * @aEpsilonEff is the effective permittivity of the material
-    */
+     * Calculates the unit propagation delay (ps/cm) for the given effective permittivity
+     *
+     * @param aEpsilonEff is the effective permittivity of the material
+     */
     static double UnitPropagationDelay( double aEpsilonEff );
 
     /**
@@ -226,6 +341,12 @@ protected:
 
     /// The maximum error for Z0 optimisations
     static constexpr double m_maxError{ 0.000001 };
+
+    /// Which geometry parameter is the unknown during synthesis (set by the UI)
+    TRANSLINE_PARAMETERS m_synthesizeTarget{ TRANSLINE_PARAMETERS::UNKNOWN_ID };
+
+    /// Fitted Djordjevic-Sarkar model.  Empty unless DIELECTRIC_MODEL_SEL selects it.
+    std::optional<DIELECTRIC_DJORDJEVIC_SARKAR> m_dsModel;
 };
 
 #endif //TRANSLINE_CALCULATIONS_TRANSLINE_CALCULATION_BASE_H

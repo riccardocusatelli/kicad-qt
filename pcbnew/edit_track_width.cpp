@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <board_design_settings.h>
@@ -35,6 +31,7 @@ void PCB_EDIT_FRAME::SetTrackSegmentWidth( PCB_TRACK* aItem, PICKED_ITEMS_LIST* 
                                            bool aUseDesignRules )
 {
     PCB_VIA* via = dynamic_cast<PCB_VIA*>( aItem );
+    int      current_width = via ? via->GetWidth( PADSTACK::ALL_LAYERS ) : aItem->GetWidth();
     int      new_width = -1;
     int      new_drill = -1;
 
@@ -43,7 +40,7 @@ void PCB_EDIT_FRAME::SetTrackSegmentWidth( PCB_TRACK* aItem, PICKED_ITEMS_LIST* 
         MINOPTMAX<int> constraint = aItem->GetWidthConstraint();
 
         if( constraint.HasOpt() )
-            new_width = constraint.Opt();
+            new_width = constraint.PinnedOpt();
         else if( constraint.Min() > 0 )
             new_width = constraint.Min();
 
@@ -52,15 +49,21 @@ void PCB_EDIT_FRAME::SetTrackSegmentWidth( PCB_TRACK* aItem, PICKED_ITEMS_LIST* 
             constraint = via->GetDrillConstraint();
 
             if( constraint.HasOpt() )
-                new_drill = constraint.Opt();
+                new_drill = constraint.PinnedOpt();
             else if( constraint.Min() > 0 )
                 new_drill = constraint.Min();
         }
     }
     else if( via && via->GetViaType() == VIATYPE::MICROVIA )
     {
-        new_width = aItem->GetEffectiveNetClass()->GetuViaDiameter();
-        new_drill = aItem->GetEffectiveNetClass()->GetuViaDrill();
+        NETCLASS* netClass = via->GetEffectiveNetClass();
+        PCB_VIA   original( *via );
+
+        // Resolve on the live via, since rules such as fromTo() match board items only
+        via->SetSizeFromRules( netClass->GetuViaDiameter(), netClass->GetuViaDrill() );
+        new_width = via->GetWidth( PADSTACK::ALL_LAYERS );
+        new_drill = via->GetDrillValue();
+        via->CopyFrom( &original );
     }
     else if( via )
     {
@@ -73,18 +76,21 @@ void PCB_EDIT_FRAME::SetTrackSegmentWidth( PCB_TRACK* aItem, PICKED_ITEMS_LIST* 
     }
 
     if( new_width <= 0 )
-        new_width = aItem->GetWidth();
+        new_width = current_width;
 
     if( via && new_drill <= 0 )
         new_drill = via->GetDrillValue();
 
-    if( aItem->GetWidth() != new_width || ( via && via->GetDrillValue() != new_drill ) )
+    if( current_width != new_width || ( via && via->GetDrillValue() != new_drill ) )
     {
         ITEM_PICKER picker( nullptr, aItem, UNDO_REDO::CHANGED );
         picker.SetLink( aItem->Clone() );
         aItemsListPicker->PushItem( picker );
 
-        aItem->SetWidth( new_width );
+        if( via )
+            via->SetWidth( PADSTACK::ALL_LAYERS, new_width );
+        else
+            aItem->SetWidth( new_width );
 
         if( via && new_drill > 0 )
             via->SetDrill( new_drill );
@@ -92,7 +98,45 @@ void PCB_EDIT_FRAME::SetTrackSegmentWidth( PCB_TRACK* aItem, PICKED_ITEMS_LIST* 
 }
 
 
+<<<<<<< b2e17e0a
 void PCB_EDIT_FRAME::Tracks_and_Vias_Size_Event( int aCommandId )
+||||||| 1304b76aad
+void PCB_EDIT_FRAME::Tracks_and_Vias_Size_Event( wxCommandEvent& event )
+=======
+void PCB_EDIT_FRAME::SelectViaStack_Event( wxCommandEvent& event )
+{
+    int nPresets = (int) GetDesignSettings().m_ViaStackPresets.size();
+    int sel = m_SelViaStackBox->GetSelection();
+
+    if( sel == int( m_SelViaStackBox->GetCount() - 2 ) )
+    {
+        // the "---" separator
+        m_SelViaStackBox->SetSelection( GetDesignSettings().GetViaStackIndex() );
+    }
+    else if( sel == int( m_SelViaStackBox->GetCount() - 1 ) )
+    {
+        // "Edit Via Stacks..."
+        m_SelViaStackBox->SetSelection( GetDesignSettings().GetViaStackIndex() );
+
+        // See the matching comment in Tracks_and_Vias_Size_Event: defer so the GTK
+        // EVT_CHOICE signal unwinds before the toolbar is rebuilt.
+        CallAfter(
+                [this]()
+                {
+                    ShowBoardSetupDialog( _( "Microvia Stacks" ) );
+                } );
+    }
+    else if( sel >= 0 && sel < nPresets )
+    {
+        GetDesignSettings().SetViaStackIndex( sel );
+    }
+
+    GetCanvas()->SetFocus();
+}
+
+
+void PCB_EDIT_FRAME::Tracks_and_Vias_Size_Event( wxCommandEvent& event )
+>>>>>>> ed8c16703e
 {
     int ii;
     int id = aCommandId;

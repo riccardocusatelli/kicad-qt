@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <cstdio>
@@ -43,12 +43,17 @@
 #include "pns_shove.h"
 #include "pns_dragger.h"
 #include "pns_multi_dragger.h"
+#include "pns_block_dragger.h"
 #include "pns_component_dragger.h"
 #include "pns_topology.h"
 #include "pns_diff_pair_placer.h"
 #include "pns_meander_placer.h"
 #include "pns_meander_skew_placer.h"
 #include "pns_dp_meander_placer.h"
+#include "pns_tracks_spreader.h"
+#include "pns_utils.h"
+#include "pns_diff_pair.h"
+
 #include "router_preview_item.h"
 #include <core/ki_assert.h>
 
@@ -97,8 +102,10 @@ void ROUTER::SyncWorld()
 {
     ClearWorld();
 
-    m_world = std::make_unique<NODE>( );
+    m_world = std::make_unique<NODE>();
+    m_world->BeginBulkAdd();
     m_iface->SyncWorld( m_world.get() );
+    m_world->FinalizeBulkAdd();
     m_world->FixupVirtualVias();
 }
 
@@ -129,6 +136,70 @@ const ITEM_SET ROUTER::QueryHoverItems( const VECTOR2I& aP, int aSlopRadius )
 
     KI_CHECK( node, ret );
 
+    if( m_mode == PNS_MODE_ROUTE_DIFF_PAIR && m_state == ROUTE_TRACK )
+    {
+        NODE::OBSTACLES          obs;
+        SEGMENT                  test( SEG( aP, aP ), nullptr );
+        COLLISION_SEARCH_OPTIONS opts;
+
+        test.SetWidth( Sizes().DiffPairGap() + 2 * Sizes().DiffPairWidth() );
+        test.SetLayers( PNS_LAYER_RANGE::All() );
+
+        opts.m_differentNetsOnly = false;
+        node->QueryColliding( &test, obs, opts );
+
+        DIFF_PAIR_PLACER* dpPlacer = static_cast<DIFF_PAIR_PLACER*>( Placer() );
+        auto              currentDP = dpPlacer->CurrentTrace();
+
+        int distP = std::numeric_limits<int>::max();
+        int distN = std::numeric_limits<int>::max();
+
+        ITEM* best = nullptr;
+
+        for( const OBSTACLE& obstacle : obs )
+        {
+            NET_HANDLE netP, netN;
+
+            if( m_iface->GetRuleResolver()->DpNetPair( obstacle.m_item, netP, netN ) )
+            {
+                int dist = obstacle.m_item->Shape( obstacle.m_item->Layer() )->Distance( aP );
+
+                if( dist <= 0 )
+                {
+                    ret.Add( obstacle.m_item, false );
+                }
+
+                int polarity = m_iface->GetRuleResolver()->DpNetPolarity( obstacle.m_item->Net() );
+
+                if( polarity > 0 )
+                {
+                    if( dist < distP )
+                    {
+                        distP = dist;
+                        best = obstacle.m_item;
+                    }
+                }
+                else
+                {
+                    if( dist < distN )
+                    {
+                        distN = dist;
+                        if( distN <= distP )
+                            best = obstacle.m_item;
+                    }
+                }
+            }
+        }
+
+        if( distP < Sizes().DiffPairGap() && distN < Sizes().DiffPairGap() )
+        {
+            ret.Add( best, false );
+            return ret;
+        }
+
+        return ret;
+    }
+
     if( aSlopRadius > 0 )
     {
         NODE::OBSTACLES          obs;
@@ -139,8 +210,8 @@ const ITEM_SET ROUTER::QueryHoverItems( const VECTOR2I& aP, int aSlopRadius )
         test.SetLayers( PNS_LAYER_RANGE::All() );
 
         opts.m_differentNetsOnly = false;
-        opts.m_overrideClearance = aSlopRadius;
-
+        opts.SetFixedClearanceOverride( aSlopRadius );
+        
         node->QueryColliding( &test, obs, opts );
 
         for( const OBSTACLE& obstacle : obs )
@@ -161,24 +232,64 @@ bool ROUTER::StartDragging( const VECTOR2I& aP, ITEM* aItem, int aDragMode )
     return StartDragging( aP, ITEM_SET( aItem ), aDragMode );
 }
 
+bool ROUTER::hasDiffPairMembers( const ITEM_SET& aItems ) const
+{
+     auto rr = GetRuleResolver();
+
+    for( auto item : aItems.CItems() )
+    {
+
+        if( item->OfKind( ITEM::SEGMENT_T | ITEM::ARC_T ) )
+        {
+            NET_HANDLE coupledNet = rr->DpCoupledNet( item->Net() );
+            if( coupledNet )
+            {
+                PNS_DBG( dbg(), Message, wxString::Format( wxT("found DP in itemset: %s/%s"),
+                GetInterface()->GetNetName( item->Net() ),
+                GetInterface()->GetNetName( coupledNet ) ) );
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 
 bool ROUTER::StartDragging( const VECTOR2I& aP, ITEM_SET aStartItems, int aDragMode )
 {
     m_leaderSegments.clear();
     SetFailureReason( wxEmptyString );
-
+    auto dbg = GetInterface()->GetDebugDecorator();
     if( aStartItems.Empty() )
         return false;
 
-    GetRuleResolver()->ClearCaches();
+    auto rr = GetRuleResolver();
+    rr->ClearCaches();
 
-    if( aStartItems.Count( ITEM::SOLID_T ) == aStartItems.Size() )
+    bool useMultidragger = aStartItems.Count( ITEM::SEGMENT_T | ITEM::ARC_T ) > 1;
+
+    PNS_DBG( dbg, Message, wxString::Format(wxT("start-drag items %d usemulti %d"),
+    aStartItems.Count( ITEM::SEGMENT_T | ITEM::ARC_T ), useMultidragger?1:0 ));
+
+    // we use MULTI_DRAGGER also for differential pairs (with somewhat different optimization strategy)
+    if( !useMultidragger && Settings().GetKeepDPCouplingWhenDragging() )
+    {
+        useMultidragger = hasDiffPairMembers( aStartItems );
+    }
+
+    if( aDragMode & DM_BLOCK )
+    {
+        m_dragger = std::make_unique<BLOCK_DRAGGER>( this );
+        m_state = DRAG_COMPONENT;
+    }
+    else if( aStartItems.Count( ITEM::SOLID_T ) > 0 )
     {
         m_dragger = std::make_unique<COMPONENT_DRAGGER>( this );
         m_state = DRAG_COMPONENT;
     }
     // more than 1 track segment or arc to drag? launch the multisegment dragger
-    else if( aStartItems.Count( ITEM::SEGMENT_T | ITEM::ARC_T ) > 1 )
+    else if( useMultidragger )
     {
         m_dragger = std::make_unique<MULTI_DRAGGER>( this );
         m_state = DRAG_SEGMENT;
@@ -346,78 +457,32 @@ bool ROUTER::isStartingPointRoutable( const VECTOR2I& aWhere, ITEM* aStartItem, 
         }
 
         DP_PRIMITIVE_PAIR dpPair;
+        DIFF_PAIR_PLACER  dpPlacer( this );
         wxString          errorMsg;
 
-        if( !DIFF_PAIR_PLACER::FindDpPrimitivePair( m_world.get(), startPoint, aStartItem, dpPair,
+        
+        if( !dpPlacer.FindDpPrimitivePair( m_world.get(), startPoint, aStartItem, dpPair,
                                                     &errorMsg ) )
         {
             SetFailureReason( errorMsg );
             return false;
         }
 
-        // We intentionally do not reject a start point whose existing gap differs from the
-        // configured diff pair gap. Starting inside a neckdown area (e.g. a narrowed gap under a
-        // BGA) and widening out to the netclass gap is a legitimate workflow. The placer fits the
-        // widening transition starting from the existing anchor pair.
-
-        SHAPE_LINE_CHAIN dummyStartSegA;
-        SHAPE_LINE_CHAIN dummyStartSegB;
-        LINE             dummyStartLineA;
-        LINE             dummyStartLineB;
-
-        dummyStartSegA.Append( dpPair.AnchorN() );
-        dummyStartSegA.Append( dpPair.AnchorN(), true );
-
-        dummyStartSegB.Append( dpPair.AnchorP() );
-        dummyStartSegB.Append( dpPair.AnchorP(), true );
-
-        dummyStartLineA.SetShape( dummyStartSegA );
-        dummyStartLineA.SetLayer( aLayer );
-        dummyStartLineA.SetNet( dpPair.PrimN()->Net() );
-        dummyStartLineA.SetWidth( m_sizes.DiffPairWidth() );
-
-        dummyStartLineB.SetShape( dummyStartSegB );
-        dummyStartLineB.SetLayer( aLayer );
-        dummyStartLineB.SetNet( dpPair.PrimP()->Net() );
-        dummyStartLineB.SetWidth( m_sizes.DiffPairWidth() );
-
-        if( m_world->CheckColliding( &dummyStartLineA, ITEM::ANY_T )
-                || m_world->CheckColliding( &dummyStartLineB, ITEM::ANY_T ) )
-        {
-            // If the only reason we collide is track width; it's better to allow the user to start
-            // anyway and just highlight the resulting collisions, so they can change width later.
-            dummyStartLineA.SetWidth( m_sizes.BoardMinTrackWidth() );
-            dummyStartLineB.SetWidth( m_sizes.BoardMinTrackWidth() );
-
-            if( m_world->CheckColliding( &dummyStartLineA, ITEM::ANY_T )
-                || m_world->CheckColliding( &dummyStartLineB, ITEM::ANY_T ) )
-            {
-                ITEM_SET          dummyStartSet;
-                NODE::ITEM_VECTOR highlightedItems;
-
-                dummyStartSet.Add( dummyStartLineA );
-                dummyStartSet.Add( dummyStartLineB );
-                markViolations( m_world.get(), dummyStartSet, highlightedItems );
-
-                for( ITEM* item : highlightedItems )
-                    m_iface->HideItem( item );
-
-                SetFailureReason( _( "The routing start point violates DRC." ) );
-                return false;
-            }
-        }
     }
 
     return true;
 }
 
 
-bool ROUTER::StartRouting( const VECTOR2I& aP, ITEM* aStartItem, int aLayer )
+bool ROUTER::StartRouting( const VECTOR2I& aP, ITEM* aStartItem, int aLayer, const ITEM_SET& aAuxItems )
 {
     GetRuleResolver()->ClearCaches();
 
-    if( !isStartingPointRoutable( aP, aStartItem, aLayer ) )
-        return false;
+    if( m_mode != PNS_MODE_SPREAD_TRACKS )
+    {
+        if( !isStartingPointRoutable( aP, aStartItem, aLayer ) )
+            return false;
+    }
 
     switch( m_mode )
     {
@@ -441,6 +506,12 @@ bool ROUTER::StartRouting( const VECTOR2I& aP, ITEM* aStartItem, int aLayer )
         m_placer = std::make_unique<MEANDER_SKEW_PLACER>( this );
         break;
 
+    case PNS_MODE_SPREAD_TRACKS:
+        m_placer = std::make_unique<TRACKS_SPREADER>( this );
+	// fixme: ugly cast
+        static_cast<TRACKS_SPREADER*>( m_placer.get() )->SetSpreadableItems( aAuxItems );
+        break;
+
     default:
         return false;
     }
@@ -457,7 +528,17 @@ bool ROUTER::StartRouting( const VECTOR2I& aP, ITEM* aStartItem, int aLayer )
         if( m_logger )
         {
             m_logger->Clear();
-            m_logger->Log( LOGGER::EVT_START_ROUTE, aP, aStartItem, &m_sizes, m_placer->CurrentLayer() );
+            std::vector<ITEM*> logItems;
+            logItems.push_back( aStartItem );
+
+            if( m_mode == PNS_MODE_SPREAD_TRACKS )
+            {
+                auto spreadable = static_cast<TRACKS_SPREADER*>( m_placer.get() )->GetSpreadableItems();
+                for( auto item : spreadable.Items() )
+                    logItems.push_back( item );
+            }
+
+            m_logger->LogM( LOGGER::EVT_START_ROUTE, aP, logItems, &m_sizes, m_placer->CurrentLayer() );
         }
 
         return true;
@@ -583,7 +664,7 @@ bool ROUTER::Finish()
     } while( placer->CurrentEnd() != moveResultPoint && triesLeft );
 
     // If we've made it, fix the route and we're done
-    if( moveResultPoint == otherEnd && otherEndLayers.Overlaps( GetCurrentLayer() ) )
+    if( placer->CurrentEnd() == otherEnd && otherEndLayers.Overlaps( GetCurrentLayer() ) )
     {
         bool forceFinish = false;
         bool allowViolations = false;
@@ -723,6 +804,18 @@ void ROUTER::markViolations( NODE* aNode, ITEM_SET& aCurrent, NODE::ITEM_VECTOR&
 }
 
 
+bool ROUTER::areWeLengthTuning() const
+{
+    if( m_state != ROUTE_TRACK )
+        return false;
+
+    if( m_mode == PNS_MODE_TUNE_DIFF_PAIR_SKEW || m_mode == PNS_MODE_TUNE_DIFF_PAIR || m_mode == PNS_MODE_TUNE_SINGLE )
+        return true;
+
+    return false;
+}
+
+
 void ROUTER::updateView( NODE* aNode, ITEM_SET& aCurrent, bool aDragging )
 {
     NODE::ITEM_VECTOR removed, added;
@@ -735,8 +828,7 @@ void ROUTER::updateView( NODE* aNode, ITEM_SET& aCurrent, bool aDragging )
     // by design can never generate clearance violations. Since markViolations() calls multiple
     // collision/clearance queries, it can be extremely expensive with certain custom DRC rules
     // (rule area/courtyard-based, see issue #24052 for examples)
-    if( m_mode == PNS_MODE_ROUTE_SINGLE ||
-        m_mode == PNS_MODE_ROUTE_DIFF_PAIR )
+    if( !areWeLengthTuning() )
     {
         markViolations( aNode, aCurrent, removed );
     }
@@ -1088,14 +1180,12 @@ void ROUTER::BreakSegmentOrArc( ITEM *aItem, const VECTOR2I& aP )
 {
     NODE *node = m_world->Branch();
 
-    LINE_PLACER placer( this );
-
     bool ret = false;
 
     if( aItem->OfKind( ITEM::SEGMENT_T ) )
-        ret = placer.SplitAdjacentSegments( node, aItem, aP );
+        ret = SplitAdjacentSegments( node, aItem, aP );
     else if( aItem->OfKind( ITEM::ARC_T ) )
-        ret = placer.SplitAdjacentArcs( node, aItem, aP );
+        ret = SplitAdjacentArcs( node, aItem, aP );
 
     if( ret )
     {
@@ -1105,6 +1195,13 @@ void ROUTER::BreakSegmentOrArc( ITEM *aItem, const VECTOR2I& aP )
     {
         delete node;
     }
+}
+
+
+void ROUTER::AbortPlacement()
+{
+    if( m_placer )
+        m_placer->AbortPlacement();
 }
 
 }

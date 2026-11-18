@@ -38,11 +38,12 @@ struct CLIP_LINE_TO_VIA_FIXTURE
     // inside the pad.
     std::unique_ptr<PCB_VIA> MakeVia( const VECTOR2I& aCenter )
     {
-        auto via = std::make_unique<PCB_VIA>( &m_board );
+        std::unique_ptr<PCB_VIA> via = std::make_unique<PCB_VIA>( &m_board );
+        via->SetPadstackMode( PADSTACK::MODE::NORMAL );
         via->SetPosition( aCenter );
         via->SetLayerPair( F_Cu, B_Cu );
         via->SetDrill( 400000 );  // 0.4 mm
-        via->SetWidth( 1270000 ); // 1.27 mm -> radius 0.635 mm
+        via->SetWidth( PADSTACK::ALL_LAYERS, 1270000 ); // 1.27 mm -> radius 0.635 mm
         return via;
     }
 
@@ -50,7 +51,8 @@ struct CLIP_LINE_TO_VIA_FIXTURE
     // so it is the reference.
     std::unique_ptr<PAD> MakeCircularPad( const VECTOR2I& aCenter )
     {
-        auto pad = std::make_unique<PAD>( &m_footprint );
+        std::unique_ptr<PAD> pad = std::make_unique<PAD>( &m_footprint );
+        pad->SetPadstackMode( PADSTACK::MODE::NORMAL );
         pad->SetAttribute( PAD_ATTRIB::PTH );
         pad->SetShape( PADSTACK::ALL_LAYERS, PAD_SHAPE::CIRCLE );
         pad->SetSize( PADSTACK::ALL_LAYERS, VECTOR2I( 1270000, 1270000 ) );
@@ -158,10 +160,12 @@ BOOST_AUTO_TEST_CASE( Merge_DoesNotDropArcLength )
         LENGTH_DELAY_CALCULATION_ITEM s;
         s.SetLine( straight );
         s.SetLayers( F_Cu );
+        s.SetWidth( 200000 );
 
         LENGTH_DELAY_CALCULATION_ITEM c;
         c.SetLine( arcChain );
         c.SetLayers( F_Cu );
+        c.SetWidth( 200000 );
 
         items.push_back( s );
         items.push_back( c );

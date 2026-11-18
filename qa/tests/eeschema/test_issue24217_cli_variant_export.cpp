@@ -14,8 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 // Regression test for https://gitlab.com/kicad/code/kicad/-/issues/24217
@@ -86,6 +85,6 @@ BOOST_AUTO_TEST_CASE( Issue24217_VariantSurvivesStaleInstancePath )
     SCH_FIELD* r1Value = r1->GetSymbol()->GetField( FIELD_T::VALUE );
     BOOST_REQUIRE( r1Value );
 
-    wxString resolved = r1Value->GetShownText( &r1->GetSheetPath(), false, 0, wxS( "H0" ) );
+    wxString resolved = r1Value->GetShownText( &r1->GetSheetPath(), INTERNAL, wxS( "H0" ) );
     BOOST_CHECK_EQUAL( resolved, wxS( "10k" ) );
 }

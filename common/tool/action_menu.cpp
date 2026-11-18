@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "tool/action_menu.h"
@@ -74,14 +70,29 @@ ACTION_MENU::~ACTION_MENU()
     for( auto subitem : GetMenuItems() )
         subitem->SetBitmap( wxNullBitmap );
 
+    // Free submenus while their native handles are alive. The base class frees our handle first, which on
+    // Windows frees theirs too, and each orphaned submenu would then free its dead handle again
+    for( int i = GetMenuItemCount() - 1; i >= 0; --i )
+    {
+        wxMenuItem* item = FindItemByPosition( i );
+
+        if( !item->IsSubMenu() )
+            continue;
+
+        wxMenu* submenu = item->GetSubMenu();
+
+        m_submenus.remove_if(
+                [submenu]( ACTION_MENU* aMenu )
+                {
+                    return aMenu == submenu;
+                } );
+
+        Destroy( item );
+    }
+
     // Set parent to NULL to prevent submenus from unregistering from a nonexistent object
     for( ACTION_MENU* menu : m_submenus )
-    {
-        for( auto menuItem : GetMenuItems() )
-            menuItem->SetBitmap( wxNullBitmap );
-
         menu->SetParent( nullptr );
-    }
 
     ACTION_MENU* parent = dynamic_cast<ACTION_MENU*>( GetParent() );
 
@@ -506,6 +517,20 @@ void ACTION_MENU::OnMenuEvent( wxMenuEvent& aEvent )
                 #endif
 
                     focus->HandleWindowEvent( keyEvent );
+
+                    // A native text box types from the platform key event, which the menu
+                    // took, so the character has to be put in by hand. A shifted key other
+                    // than a letter is left alone, since its character depends on the layout.
+                    wxTextEntry* textEntry = dynamic_cast<wxTextEntry*>( focus );
+                    bool         isLetter = keyCode >= 'A' && keyCode <= 'Z';
+
+                    if( textEntry && textEntry->IsEditable() && keyEvent.GetSkipped() && !keyEvent.ControlDown()
+                        && !keyEvent.AltDown() && keyCode >= WXK_SPACE && keyCode < WXK_START
+                        && ( isLetter || !keyEvent.ShiftDown() ) )
+                    {
+                        textEntry->WriteText( wxString( wxUniChar( keyEvent.m_keyCode ) ) );
+                        return;
+                    }
                 }
 
                 // Don't bubble-up dangerous actions; the target may be behind a modeless dialog.

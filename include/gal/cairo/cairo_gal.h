@@ -50,20 +50,29 @@ public:
      *                       can be any wxWindow, but is often a derived instance of this
      *                       class or a containing wxFrame.  The "paint event" here is a
      *                       wxCommandEvent holding EVT_GAL_REDRAW, as sent by PostPaint().
-     *
-     * @param aName is the name of this window for use by wxWindow::FindWindowByName().
+     * @param aName is the name of the Cairo canvas.
      */
     CAIRO_GAL( GAL_DISPLAY_OPTIONS& aDisplayOptions, wxWindow* aParent,
                wxEvtHandler* aMouseListener = nullptr, wxEvtHandler* aPaintListener = nullptr,
                const wxString& aName = wxT( "CairoCanvas" ) );
 
-    ///< @copydoc GAL::IsVisible()
+    /// @copydoc GAL::IsVisible()
     bool IsVisible() const override
     {
         return IsShownOnScreen() && !GetClientRect().IsEmpty();
     }
 
     void ResizeScreen( int aWidth, int aHeight ) override;
+
+    /**
+     * Set areas, in canvas coordinates, that the frame blit must leave alone.
+     *
+     * The blit happens outside the paint cycle, so it would otherwise erase any window
+     * stacked over the canvas.
+     *
+     * @param aRects are the areas to preserve
+     */
+    void SetOverlayExclusions( const std::vector<wxRect>& aRects ) { m_overlayExclusions = aRects; }
 
     bool Show( bool aShow ) override;
 
@@ -124,7 +133,7 @@ protected:
      */
     void onSetNativeCursor( wxSetCursorEvent& aEvent );
 
-    ///< Cairo-specific update handlers
+    /// Cairo-specific update handlers
     bool updatedGalDisplayOptions( const GAL_DISPLAY_OPTIONS& aOptions ) override;
 
     // Variables related to wxWidgets
@@ -134,6 +143,8 @@ protected:
     std::vector<unsigned char> m_wxOutput;     ///< wxImage compatible buffer
 
     WX_CURSOR_TYPE      m_currentwxCursor;     ///< wx cursor showing the current native cursor
+
+    std::vector<wxRect> m_overlayExclusions;   ///< Areas the frame blit must leave alone
 };
 
 } // namespace KIGFX

@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <dialogs/dialog_reference_image_properties.h>
@@ -32,13 +28,14 @@
 #include <pcb_layer_box_selector.h>
 
 
-DIALOG_REFERENCE_IMAGE_PROPERTIES::DIALOG_REFERENCE_IMAGE_PROPERTIES( PCB_BASE_FRAME* aParent,
+DIALOG_REFERENCE_IMAGE_PROPERTIES::DIALOG_REFERENCE_IMAGE_PROPERTIES( PCB_BASE_FRAME*      aParent,
                                                                       PCB_REFERENCE_IMAGE& aBitmap ) :
         DIALOG_REFERENCE_IMAGE_PROPERTIES_BASE( aParent ),
         m_frame( aParent ),
         m_bitmap( aBitmap ),
         m_posX( aParent, m_XPosLabel, m_ModPositionX, m_XPosUnit ),
         m_posY( aParent, m_YPosLabel, m_ModPositionY, m_YPosUnit ),
+        m_rotation( aParent, m_RotationLabel, m_ModRotation, m_RotationUnit ),
         m_width( aParent, m_WidthLabel, m_ModWidth, m_WidthUnit ),
         m_height( aParent, m_HeightLabel, m_ModHeight, m_HeightUnit )
 {
@@ -49,6 +46,7 @@ DIALOG_REFERENCE_IMAGE_PROPERTIES::DIALOG_REFERENCE_IMAGE_PROPERTIES( PCB_BASE_F
 
     m_posX.SetCoordType( ORIGIN_TRANSFORMS::ABS_X_COORD );
     m_posY.SetCoordType( ORIGIN_TRANSFORMS::ABS_Y_COORD );
+    m_rotation.SetUnits( EDA_UNITS::DEGREES );
     m_width.SetCoordType( ORIGIN_TRANSFORMS::ABS_X_COORD );
     m_height.SetCoordType( ORIGIN_TRANSFORMS::ABS_Y_COORD );
 
@@ -93,6 +91,11 @@ bool DIALOG_REFERENCE_IMAGE_PROPERTIES::TransferDataToWindow()
 {
     m_posX.SetValue( m_bitmap.GetPosition().x );
     m_posY.SetValue( m_bitmap.GetPosition().y );
+    m_rotation.SetAngleValue( m_bitmap.GetReferenceImage().GetOrientation() );
+
+    // A UNIT_BINDER only reads wxTextEntry and wxStaticText controls, so a spin control would
+    // silently report 0.
+    m_ModOpacity->SetValue( m_bitmap.GetReferenceImage().GetOpacity() );
 
     m_LayerSelectionCtrl->SetLayerSelection( m_bitmap.GetLayer() );
 
@@ -126,6 +129,8 @@ bool DIALOG_REFERENCE_IMAGE_PROPERTIES::TransferDataFromWindow()
 
         // Set position, etc.
         m_bitmap.SetPosition( VECTOR2I( m_posX.GetIntValue(), m_posY.GetIntValue() ) );
+        m_bitmap.GetReferenceImage().SetOrientation( m_rotation.GetAngleValue() );
+        m_bitmap.GetReferenceImage().SetOpacity( m_ModOpacity->GetValue() );
         m_bitmap.SetLayer( ToLAYER_ID( m_LayerSelectionCtrl->GetLayerSelection() ) );
 
         // Only save locked status on non-footprint editor windows

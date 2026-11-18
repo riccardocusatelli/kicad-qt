@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -127,9 +123,10 @@ public:
     /**
       * Compute closest points between this arc and \a aArc.
       *
-      * @param aPtA point on this arc (output)
-      * @param aPtB point on the other arc (output)
-      * @param aDistSq squared distance between points (output)
+      * @param[in] aArc is the arc to test against
+      * @param[out] aPtA point on this arc
+      * @param[out] aPtB point on the other arc
+      * @param[out] aDistSq squared distance between points
       * @return true if the operation was successful
       */
     bool NearestPoints( const SHAPE_ARC& aArc, VECTOR2I& aPtA, VECTOR2I& aPtB, int64_t& aDistSq ) const;
@@ -137,9 +134,10 @@ public:
     /**
       * Compute closest points between this arc and \a aCircle.
       *
-      * @param aPtA point on this arc (output)
-      * @param aPtB point on the circle (output)
-      * @param aDistSq squared distance between points (output)
+      * @param aCircle is the circle to test against
+      * @param[out] aPtA point on this arc
+      * @param[out] aPtB point on the circle
+      * @param[out] aDistSq squared distance between points
       * @return true if the operation was successful
       */
     bool NearestPoints( const SHAPE_CIRCLE& aCircle, VECTOR2I& aPtA, VECTOR2I& aPtB, int64_t& aDistSq ) const;
@@ -147,9 +145,10 @@ public:
     /**
       * Compute closest points between this arc and \a aSeg.
       *
-      * @param aPtA point on this arc (output)
-      * @param aPtB point on the segment (output)
-      * @param aDistSq squared distance between points (output)
+      * @param aSeg is the segement to test against
+      * @param[out] aPtA point on this arc
+      * @param[out] aPtB point on the segment
+      * @param[out] aDistSq squared distance between points
       * @return true if the operation was successful
       */
     bool NearestPoints( const SEG& aSeg, VECTOR2I& aPtA, VECTOR2I& aPtB, int64_t& aDistSq ) const;
@@ -157,9 +156,10 @@ public:
     /**
       * Compute closest points between this arc and \a aRect.
       *
-      * @param aPtA point on this arc (output)
-      * @param aPtB point on the rectangle (output)
-      * @param aDistSq squared distance between points (output)
+      * @param aRect is the rectangle to test against
+      * @param[out] aPtA point on this arc)
+      * @param[out] aPtB point on the rectangle
+      * @param[out] aDistSq squared distance between points
       * @return true if the operation was successful
       */
     bool NearestPoints( const SHAPE_RECT& aRect, VECTOR2I& aPtA, VECTOR2I& aPtB, int64_t& aDistSq ) const;
@@ -189,7 +189,7 @@ public:
     /**
      * Find intersection points between this arc and a CIRCLE. Ignores arc width.
      *
-     * @param aCircle Circle to intersect against
+     * @param aArc Arc to intersect against
      * @param aIpsBuffer Buffer to store the resulting intersection points (if any)
      * @return Number of intersection points found
      */

@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <dialogs/pcb_text_syntax_help.h>
@@ -26,6 +22,7 @@
 
 #include <wx/hyperlink.h>
 
+#include <bitmaps.h>
 #include <widgets/bitmap_button.h>
 #include <widgets/font_choice.h>
 #include <dialogs/html_message_box.h>
@@ -140,7 +137,7 @@ DIALOG_TEXTBOX_PROPERTIES::DIALOG_TEXTBOX_PROPERTIES( PCB_BASE_EDIT_FRAME* aPare
     m_separator4->SetIsSeparator();
 
     m_autoTextThickness->SetIsCheckButton();
-    m_autoTextThickness->SetBitmap( KiBitmapBundle( BITMAPS::edit_cmp_symb_links ) );
+    m_autoTextThickness->SetBitmap( KiBitmapBundle( BITMAPS::link ) );
 
     // Configure the layers list selector.  Note that footprints are built outside the current
     // board and so we may need to show all layers if the text is on an unactivated layer.
@@ -217,8 +214,11 @@ bool DIALOG_TEXTBOX_PROPERTIES::TransferDataToWindow()
 
     if( m_textBox->GetAutoThickness() )
     {
+        // Show the base width (frozen if auto is unchecked); Bold scales it at render time.
+        // Must match EDA_TEXT::SetAutoThickness()'s formula so unchecking auto doesn't
+        // silently change the stored width.
         m_autoTextThickness->Check( m_textBox->GetAutoThickness() );
-        m_thickness.SetValue( m_textBox->GetEffectiveTextPenWidth() );
+        m_thickness.SetValue( GetPenSizeForNormal( m_textBox->GetTextWidth() ) );
         m_thickness.Enable( false );
     }
     else
@@ -246,6 +246,7 @@ bool DIALOG_TEXTBOX_PROPERTIES::TransferDataToWindow()
     }
 
     m_mirrored->Check( m_textBox->IsMirrored() );
+    m_knockout->SetValue( m_textBox->IsKnockout() );
 
     EDA_ANGLE orientation = m_textBox->GetTextAngle();
     m_orientation.SetAngleValue( orientation.Normalize180() );
@@ -282,33 +283,7 @@ void DIALOG_TEXTBOX_PROPERTIES::onValignButton( wxCommandEvent& aEvent )
 
 void DIALOG_TEXTBOX_PROPERTIES::onFontSelected( wxCommandEvent& aEvent )
 {
-    if( KIFONT::FONT::IsStroke( aEvent.GetString() ) )
-    {
-        m_thickness.Show( true );
-
-        int textSize = std::min( m_textWidth.GetValue(), m_textHeight.GetValue() );
-        int thickness = m_thickness.GetValue();
-
-        m_bold->Check( abs( thickness - GetPenSizeForBold( textSize ) )
-                       < abs( thickness - GetPenSizeForNormal( textSize ) ) );
-    }
-    else
-    {
-        m_thickness.Show( false );
-    }
-}
-
-
-void DIALOG_TEXTBOX_PROPERTIES::onBoldToggle( wxCommandEvent& aEvent )
-{
-    int textSize = std::min( m_textWidth.GetValue(), m_textHeight.GetValue() );
-
-    if( aEvent.IsChecked() )
-        m_thickness.ChangeValue( GetPenSizeForBold( textSize ) );
-    else
-        m_thickness.ChangeValue( GetPenSizeForNormal( textSize ) );
-
-    aEvent.Skip();
+    m_thickness.Show( KIFONT::FONT::IsStroke( aEvent.GetString() ) );
 }
 
 
@@ -322,31 +297,10 @@ void DIALOG_TEXTBOX_PROPERTIES::onHalignButton( wxCommandEvent& aEvent )
 }
 
 
-void DIALOG_TEXTBOX_PROPERTIES::onThickness( wxCommandEvent& event )
-{
-    int textSize = std::min( m_textWidth.GetValue(), m_textHeight.GetValue() );
-    int thickness = m_thickness.GetValue();
-
-    m_bold->Check( abs( thickness - GetPenSizeForBold( textSize ) )
-                   < abs( thickness - GetPenSizeForNormal( textSize ) ) );
-}
-
-
 void DIALOG_TEXTBOX_PROPERTIES::onTextSize( wxCommandEvent& aEvent )
 {
     if( m_autoTextThickness->IsChecked() )
-    {
-        int textSize = std::min( m_textWidth.GetValue(), m_textHeight.GetValue() );
-        int thickness;
-
-        // Calculate the "best" thickness from text size and bold option:
-        if( m_bold->IsChecked() )
-            thickness = GetPenSizeForBold( textSize );
-        else
-            thickness = GetPenSizeForNormal( textSize );
-
-        m_thickness.SetValue( thickness );
-    }
+        m_thickness.SetValue( GetPenSizeForNormal( m_textWidth.GetValue() ) );
 }
 
 
@@ -450,6 +404,7 @@ bool DIALOG_TEXTBOX_PROPERTIES::TransferDataFromWindow()
         }
     }
 
+    m_textBox->SetIsKnockout( m_knockout->GetValue() );
     m_textBox->SetTextAngle( m_orientation.GetAngleValue().Normalize() );
     m_textBox->SetBoldFlag( m_bold->IsChecked() );
     m_textBox->SetItalicFlag( m_italic->IsChecked() );

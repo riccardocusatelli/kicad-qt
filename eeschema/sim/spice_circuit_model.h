@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef SPICE_CIRCUIT_MODEL_H
@@ -54,8 +50,8 @@ struct SPICE_PZ_ANALYSES
 class SPICE_CIRCUIT_MODEL : public NETLIST_EXPORTER_SPICE, public SIMULATION_MODEL
 {
 public:
-    SPICE_CIRCUIT_MODEL( SCHEMATIC* aSchematic ) :
-            NETLIST_EXPORTER_SPICE( aSchematic )
+    SPICE_CIRCUIT_MODEL( SCHEMATIC* aSchematic, KIWAY* aKiway ) :
+            NETLIST_EXPORTER_SPICE( aSchematic, aKiway )
     {}
 
     virtual ~SPICE_CIRCUIT_MODEL() {}
@@ -65,8 +61,7 @@ public:
      *
      * @param aVector is name of the vector produced by ngspice
      * @param [out] aSignal is output in form: V(R1), Ib(Q2), I(L8)
-     * @return [SPT_VOLTAGE, SPT_CURRENT]. Otherwise SPT_UNKNOWN if vector is of different,
-     *                                     unsupported type.
+     * @return [SPT_VOLTAGE, SPT_CURRENT]. Otherwise SPT_UNKNOWN if vector is of different, unsupported type.
      */
     SIM_TRACE_TYPE VectorToSignal( const std::string& aVector, wxString& aSignal ) const;
 
@@ -85,10 +80,11 @@ public:
      * Parse a two-source .dc command directive into its symbols.
      *
      * @param aCmd is the input command string
+     * @param aSource1
+     * @param aSource2
      * @return true if the command was parsed successfully
      */
-    bool ParseDCCommand( const wxString& aCmd, SPICE_DC_PARAMS* aSource1,
-                         SPICE_DC_PARAMS* aSource2 );
+    bool ParseDCCommand( const wxString& aCmd, SPICE_DC_PARAMS* aSource1, SPICE_DC_PARAMS* aSource2 );
 
     bool ParsePZCommand( const wxString& aCmd, wxString* transferFunction, wxString* input,
                          wxString* inputRef, wxString* output, wxString* outputRef,

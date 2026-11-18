@@ -86,9 +86,6 @@ KIWAY_FACES::FACE_T KIWAY::KifaceType( FRAME_T aFrameType )
     case FRAME_CVPCB_DISPLAY:
         return FACE_CVPCB;
 
-    case FRAME_PYTHON:
-        return FACE_PYTHON;
-
     case FRAME_GERBER:
         return FACE_GERBVIEW;
 
@@ -97,9 +94,6 @@ KIWAY_FACES::FACE_T KIWAY::KifaceType( FRAME_T aFrameType )
 
     case FRAME_CALC:
         return FACE_PCB_CALCULATOR;
-
-    case FRAME_BM2CMP:
-        return FACE_BMP2CMP;
 
     default:
         return FACE_T( -1 );

@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -37,6 +33,10 @@ class wxKeyEvent;
 
 #include <stdarg.h>
 #include <map>
+
+#ifdef KICAD_GAL_PROFILE
+#include <core/profile.h>
+#endif
 
 /**
  * @defgroup trace_env_vars Trace Environment Variables
@@ -99,6 +99,13 @@ extern KICOMMON_API const wxChar* const kicadTraceCoroutineStack;
  * Use "KICAD_AUTOSAVE" to enable.
  */
 extern KICOMMON_API const wxChar* const traceAutoSave;
+
+/**
+ * Flag to enable native operating-system model preview debug output.
+ *
+ * Use "KICAD_MODEL_PREVIEW" to enable.
+ */
+extern KICOMMON_API const wxChar* const traceModelPreview;
 
 /**
  * Flag to enable schematic library memory deletion debug output.
@@ -263,6 +270,20 @@ extern KICOMMON_API const wxChar* const traceGalProfile;
 extern KICOMMON_API const wxChar* const traceGalContext;
 
 /**
+ * Flag to enable debug output of GAL cached group creation and drawing.
+ *
+ * Use "KICAD_GAL_GROUPS" to enable.
+ */
+extern KICOMMON_API const wxChar* const traceGalGroups;
+
+/**
+ * Flag to enable debug output of the RHI rendering backend.
+ *
+ * Use "KICAD_RHI" to enable.
+ */
+extern KICOMMON_API const wxChar* const traceRhi;
+
+/**
  * Flag to enable KiCad2Step debug tracing.
  *
  * Use "KICAD2STEP" to enable.
@@ -283,12 +304,82 @@ extern KICOMMON_API const wxChar* const traceUiProfile;
  */
 extern KICOMMON_API const wxChar* const traceGit;
 
+/**
+ * Flag to enable diff/merge engine and renderer debugging output.
+ *
+ * Use "KICAD_DIFF_MERGE" to enable.
+ */
+extern KICOMMON_API const wxChar* const traceDiffMerge;
+
 /*
  * Flag to enable Eagle I/O debug tracing.
  *
  * Use "KICAD_EAGLE_IO" to enable.
  */
 extern KICOMMON_API const wxChar* const traceEagleIo;
+
+/*
+ * Flag to enable DipTrace I/O debug tracing.
+ *
+ * Use "KICAD_DIPTRACE_IO" to enable.
+ */
+extern KICOMMON_API const wxChar* const traceDiptraceIo;
+
+/*
+ * Flag to enable Easy-PC / DesignSpark PCB I/O debug tracing.
+ *
+ * Use "KICAD_EASYPC_IO" to enable.
+ */
+extern KICOMMON_API const wxChar* const traceEasyPc;
+
+/*
+ * Flag to enable CADSTAR I/O debug tracing.
+ *
+ * Use "KICAD_CADSTAR_IO" to enable.
+ */
+extern KICOMMON_API const wxChar* const traceCadstarIo;
+
+/*
+ * Flag to enable FABMASTER I/O debug tracing.
+ *
+ * Use "KICAD_FABMASTER" to enable.
+ */
+extern KICOMMON_API const wxChar* const traceFabmaster;
+
+/*
+ * Flag to enable Altium I/O debug tracing.
+ *
+ * Use "KICAD_ALTIUM_IO" to enable.
+ */
+extern KICOMMON_API const wxChar* const traceAltiumIo;
+
+/*
+ * Flag to enable ODB++ I/O debug tracing.
+ *
+ * Use "KICAD_ODBPP_IO" to enable.
+ */
+extern KICOMMON_API const wxChar* const traceOdbppIo;
+
+/*
+ * Flag to enable EasyEDA I/O debug tracing.
+ *
+ * Use "KICAD_EASYEDA_IO" to enable.
+ */
+extern KICOMMON_API const wxChar* const traceEasyEdaIo;
+
+/*
+ * Flag to enable PADS I/O debug tracing.
+ *
+ * Use "KICAD_PADS_IO" to enable.
+ */
+extern KICOMMON_API const wxChar* const tracePadsIo;
+
+/*
+ * Flag to enable P-CAD I/O debug tracing.
+ *
+ * Use "KICAD_PCAD_IO" to enable.
+ */
+extern KICOMMON_API const wxChar* const tracePcadIo;
 
 /*
  * Flag to enable Design Block O debug tracing.
@@ -339,6 +430,13 @@ extern KICOMMON_API const wxChar* const traceLibWatch;
 extern KICOMMON_API const wxChar* const traceLibraries;
 
 /**
+ * Flag to enable database library tracing.
+ *
+ * Use "KICAD_DATABASE" to enable.
+ */
+extern KICOMMON_API const wxChar* const traceDatabase;
+
+/**
  * Flag to watch how schematic move tool actions are handled.
  *
  * Use "KICAD_SCH_MOVE" to enable.
@@ -351,6 +449,20 @@ extern KICOMMON_API const wxChar* const traceSchMove;
  * Use "KICAD_SYMBOL_INHERITANCE" to enable.
  */
 extern KICOMMON_API const wxChar* const traceSymbolInheritance;
+
+/**
+ * Flag to enable tracing of schematic net chain rebuild and ERC cross-chain checks.
+ *
+ * Use "KICAD_SCH_NETCHAIN" to enable.
+ */
+extern KICOMMON_API const wxChar* const traceSchNetChain;
+
+/**
+ * Flag to enable tracing of imported net-name reconciliation between a schematic and its board.
+ *
+ * Use "KICAD_IMPORT_NET_NAMES" to enable.
+ */
+extern KICOMMON_API const wxChar* const traceImportNetNames;
 
 ///@}
 
@@ -370,14 +482,6 @@ extern KICOMMON_API wxString dump( const wxKeyEvent& aEvent );
  */
 extern KICOMMON_API wxString dump( const wxArrayString& aArray );
 
-class KICOMMON_API TRACE_MANAGER
-{
-public:
-    TRACE_MANAGER() :
-        m_globalTraceEnabled( false ),
-        m_printAllTraces (false )
-    {};
-    ~TRACE_MANAGER(){};
 
     static TRACE_MANAGER& Instance();
 
@@ -408,5 +512,11 @@ private:
     else                                                                                           \
     {                                                                                              \
     }
+
+
+#ifdef KICAD_GAL_PROFILE
+extern KICOMMON_API LATENCY_PROBE latencyProbeZoomToRender;
+extern KICOMMON_API LATENCY_PROBE latencyProbeRepaintToMotion;
+#endif
 
 #endif    // _TRACE_HELPERS_H_

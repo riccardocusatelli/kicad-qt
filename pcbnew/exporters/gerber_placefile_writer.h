@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -70,6 +70,8 @@ public:
      * @param aFullFilename is the full filename.
      * @param aLayer is the layer (F_Cu or B_Cu) to generate.
      * @param aIncludeBrdEdges use true to include board outlines.
+     * @param aExcludeDNP determine if footprints marked as DNP should be excluded.
+     * @param aExcludeBOM determine if footprints in BOM should be excluded.
      * @return component count, or -1 if the file cannot be created.
      */
     int CreatePlaceFile( const wxString& aFullFilename, PCB_LAYER_ID aLayer, bool aIncludeBrdEdges,

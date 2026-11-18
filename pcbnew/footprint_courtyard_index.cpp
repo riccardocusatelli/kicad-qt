@@ -24,6 +24,10 @@
 
 FOOTPRINT_COURTYARD_INDEX::FOOTPRINT_COURTYARD_INDEX( const BOARD* aBoard )
 {
+    KIRTREE::PACKED_RTREE<FOOTPRINT*, int, 2>::Builder builder;
+
+    builder.Reserve( aBoard->Footprints().size() );
+
     for( FOOTPRINT* footprint : aBoard->Footprints() )
     {
         BOX2I bbox;
@@ -52,8 +56,10 @@ FOOTPRINT_COURTYARD_INDEX::FOOTPRINT_COURTYARD_INDEX( const BOARD* aBoard )
         const int min[2] = { bbox.GetLeft(), bbox.GetTop() };
         const int max[2] = { bbox.GetRight(), bbox.GetBottom() };
 
-        m_tree.Insert( min, max, footprint );
+        builder.Add( min, max, footprint );
     }
+
+    m_tree = builder.Build();
 }
 
 

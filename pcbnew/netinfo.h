@@ -15,21 +15,15 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /*
  *  Classes to handle info on nets
  */
 
-#ifndef CLASS_NETINFO_
-#define CLASS_NETINFO_
+#pragma once
 
-#include <macros_swig.h>
 #include <netclass.h>
 #include <board_item.h>
 
@@ -42,10 +36,12 @@ class BOARD_ITEM;
 class BOARD_COMMIT;
 class MSG_PANEL_ITEM;
 class PCB_BASE_FRAME;
+class REPORTER;
 
 
-DECL_VEC_FOR_SWIG( PADS_VEC, PAD* )
-DECL_VEC_FOR_SWIG( TRACKS_VEC, PCB_TRACK* )
+#define NO_NET _( "<no net>" )
+#define CREATE_NET _( "<create net>" )
+
 
 /**
  * Handle the data for a net.
@@ -65,6 +61,12 @@ public:
     wxString GetClass() const override
     {
         return wxT( "NETINFO_ITEM" );
+    }
+
+    PCB_LAYER_ID GetLayer() const override
+    {
+        KI_FAIL_MSG( wxT( "NETINFO_ITEM::GetLayer() desn't have meaning.  Don't call it." ) );
+        return UNDEFINED_LAYER;
     }
 
 #if defined(DEBUG)
@@ -97,11 +99,7 @@ public:
      *       std::shared_ptr stuff shows up large in performance profiling.
      */
     NETCLASS* GetNetClass() { return m_netClass.get(); }
-
-    /**
-     * @note Slow version for swig access
-    */
-    std::shared_ptr<NETCLASS> GetNetClassSlow() { return m_netClass; }
+    const NETCLASS* GetNetClass() const { return m_netClass.get(); }
 
     int GetNetCode() const { return m_netCode; }
     void SetNetCode( int aNetCode ) { m_netCode = aNetCode; }
@@ -121,6 +119,32 @@ public:
      */
     const wxString& GetDisplayNetname() const { return m_displayNetname; }
 
+    const wxString& GetNetChain() const { return m_netChain; }
+    void SetNetChain( const wxString& aNetChain ) { m_netChain = aNetChain; }
+
+    PAD* GetTerminalPad( int aIndex ) const { return m_terminalPads[aIndex]; }
+    void SetTerminalPad( int aIndex, PAD* aPad ) { m_terminalPads[aIndex] = aPad; }
+    void SetTerminalPadUuid( int aIndex, const KIID& aUuid ) { m_terminalPadUuids[aIndex] = aUuid; }
+    const KIID& GetTerminalPadUuid( int aIndex ) const { return m_terminalPadUuids[aIndex]; }
+
+    /**
+     * Reset the terminal-pad pointer and UUID at @p aIndex to their empty state so the
+     * pair stays in lockstep.
+     */
+    void ClearTerminalPad( int aIndex )
+    {
+        m_terminalPads[aIndex] = nullptr;
+        m_terminalPadUuids[aIndex] = niluuid;
+    }
+
+    /**
+     * Set the terminal-pad pointer and the persisted UUID at @p aIndex from a single pad,
+     * keeping the two views consistent.
+     */
+    void SetTerminal( int aIndex, PAD* aPad );
+
+    void ResolveTerminalPads( BOARD* aBoard );
+
     /**
      * @return true if the net was not labelled by the user.
      */
@@ -139,7 +163,8 @@ public:
      * Return the information about the #NETINFO_ITEM in \a aList to display in the
      * message panel.
      *
-     * @param aList is the list in which to place the  status information.
+     * @param aFrame is the parent frame that receives the message panel information.
+     * @param aList is the list in which to place the status information.
      */
     void GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList ) override;
 
@@ -178,9 +203,14 @@ private:
     wxString    m_shortNetname;    ///< Short net name, like vout from /sheet/subsheet/vout.
 
     wxString    m_displayNetname;  ///< Unescaped netname for display.  Usually the short netname,
-                                   ///< but will be the full netname if disambiguation required.
-                                   ///< The NETINFO_LIST is repsonsible for the management of when
-                                   ///< these need to be updated/disambiguated.
+                                  ///< but will be the full netname if disambiguation required.
+                                  ///< The NETINFO_LIST is repsonsible for the management of when
+                                  ///< these need to be updated/disambiguated.
+
+    wxString    m_netChain;
+
+    PAD*        m_terminalPads[2];
+    KIID        m_terminalPadUuids[2];
 
     std::shared_ptr<NETCLASS> m_netClass;
 
@@ -192,18 +222,8 @@ private:
 };
 
 
-#if 0
-// waiting for swig to support std::unordered_map, see
-// http://www.swig.org/Doc3.0/CPlusPlus11.html
-// section 7.3.3
-#include <hashtables.h>
-DECL_HASH_FOR_SWIG( NETNAMES_MAP, wxString,  NETINFO_ITEM* )
-DECL_HASH_FOR_SWIG( NETCODES_MAP, int,       NETINFO_ITEM* )
-#else
-// use std::map for now
-DECL_MAP_FOR_SWIG( NETNAMES_MAP, wxString,  NETINFO_ITEM* )
-DECL_MAP_FOR_SWIG( NETCODES_MAP, int,       NETINFO_ITEM* )
-#endif
+typedef std::map<wxString, NETINFO_ITEM*> NETNAMES_MAP;
+typedef std::map<int, NETINFO_ITEM*> NETCODES_MAP;
 
 /**
  * Container for #NETINFO_ITEM elements, which are the nets.
@@ -242,6 +262,20 @@ public:
 
     void RebuildDisplayNetnames() const;
 
+    /**
+     * Rename nets in place, keeping the name lookup in sync.
+     *
+     * Net codes, item connectivity and net ownership are untouched, so renaming never moves
+     * copper between nets.  Source names that no net carries are ignored.  The whole batch is
+     * rejected, leaving every net unchanged, if a target name is empty, names the unconnected
+     * net, or collides with another net.
+     *
+     * @param aNewNames maps each existing net name to the name it should carry.
+     * @param aReporter receives the reason a rejected batch was rejected.
+     * @return true if the batch was applied.
+     */
+    bool RenameNets( const std::map<wxString, wxString>& aNewNames, REPORTER& aReporter );
+
     /// Constant that holds the "unconnected net" number (typically 0)
     /// all items "connected" to this net are actually not connected items
     static const int UNCONNECTED;
@@ -266,7 +300,6 @@ public:
     void Show() const;
 #endif
 
-#ifndef SWIG
     /// Wrapper class, so you can iterate through NETINFO_ITEM*s, not
     /// std::pair<int/wxString, NETINFO_ITEM*>
     class iterator
@@ -324,7 +357,6 @@ public:
     {
         return iterator( m_netNames.end() );
     }
-#endif
 
     BOARD* GetParent() const
     {
@@ -335,8 +367,13 @@ protected:  // Access is through the BOARD, which is a friend class
     /**
      * Add \a aNewElement to the end of the net list. Negative net code means it is going to be
      * auto-assigned.
+     *
+     * The list takes ownership of \a aNewElement.  If another net already has its name it is
+     * deleted and must not be used again.
+     *
+     * @return true if \a aNewElement is in the list, false if it was deleted.
      */
-    void AppendNet( NETINFO_ITEM* aNewElement );
+    bool AppendNet( NETINFO_ITEM* aNewElement );
 
     /**
      * Remove a net from the net list.
@@ -349,6 +386,16 @@ private:
      * Delete the list of nets (and free memory).
      */
     void clear();
+
+    /**
+     * Drop all entries from the lookup maps without freeing the items.
+     *
+     * Used when ownership of the contained NETINFO_ITEMs is being transferred
+     * to a caller that will free them after some intermediate operation (for
+     * example, after dispatching listener notifications that need live
+     * pointers).
+     */
+    void detachAll();
 
     /**
      * Rebuild the list of NETINFO_ITEMs
@@ -373,5 +420,3 @@ private:
 
     int          m_newNetCode;      ///< possible value for new net code assignment
 };
-
-#endif  // CLASS_NETINFO_

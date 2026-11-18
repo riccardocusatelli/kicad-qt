@@ -75,9 +75,21 @@ wxSize KIUI::GetTextSize( const wxString& aSingleLine, wxWindow* aWindowCompat )
 }
 
 
-wxFont KIUI::GetMonospacedUIFont()
+wxFont KIUI::GetMonospacedUIFont( int aRelativeSize )
 {
-    return QFontDatabase::systemFont( QFontDatabase::FixedFont );
+    QFont font = QFontDatabase::systemFont( QFontDatabase::FixedFont );
+
+    if( aRelativeSize != 0 && font.pointSizeF() > 0 )
+        font.setPointSizeF( font.pointSizeF() + aRelativeSize );
+
+    return font;
+}
+
+
+void KIUI::FollowSystemLinkColour( wxHyperlinkCtrl* aLink )
+{
+    // The links of Qt follow the palette of the application, which follows the theme
+    (void) aLink;
 }
 
 
@@ -346,4 +358,21 @@ wxMenuItem* KIUI::AddMenuItem( wxMenu* aMenu, wxMenu* aSubMenu, int aId, const w
     aMenu->Append( item );
 
     return item;
+}
+
+
+int FindNotebookPage( wxNotebook* aNotebook, wxWindow* aChildWindow )
+{
+    QWidget* candidate = aChildWindow ? aChildWindow->GetHandle() : nullptr;
+
+    // A page is a child of the stacked widget inside the tab widget: walk up to the page
+    while( candidate )
+    {
+        if( int index = aNotebook->indexOf( candidate ); index >= 0 )
+            return index;
+
+        candidate = candidate->parentWidget();
+    }
+
+    return 0;
 }

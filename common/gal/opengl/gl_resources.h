@@ -14,15 +14,17 @@
 * GNU General Public License for more details.
 *
 * You should have received a copy of the GNU General Public License
-* along with this program; if not, you may find one here:
-* http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-* or you may search the http://www.gnu.org website for the version 2 license,
-* or you may write to the Free Software Foundation, Inc.,
-* 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+* along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #ifndef GAL_OPENGL_RESOURCES_H___
 #define GAL_OPENGL_RESOURCES_H___
+
+#include <gal/gal.h>
+#include <math/vector2d.h>
+#include <utility>
+
+class UTF8;
 
 #define BITMAP_FONT_USE_SPANS
 
@@ -35,7 +37,8 @@ namespace KIGFX {
             unsigned int width, height;
             unsigned int char_border;
             unsigned int spacing;
-            unsigned char pixels[1024 * 1024 * 3];
+            // Height must match the atlas in bitmap_font_img.c
+            unsigned char pixels[1024 * 1107 * 3];
         };
 
         struct FONT_INFO_TYPE
@@ -61,10 +64,29 @@ namespace KIGFX {
             float advance;
         };
 
-        extern FONT_IMAGE_TYPE font_image;
+        extern GAL_API FONT_IMAGE_TYPE font_image;
         extern FONT_INFO_TYPE  font_information;
 
-        const FONT_GLYPH_TYPE* LookupGlyph( unsigned int aCodePoint );
+        /** Where a glyph's quad sits and what it samples, in font units, which are also atlas texels */
+        struct GLYPH_BOX
+        {
+            float x, y;           /**< corner of the quad from the pen position */
+            float w, h;           /**< size of the quad and of its cell in the atlas */
+            float atlasX, atlasY; /**< corner of the cell in the atlas, inside its smoothing border */
+        };
+
+        GAL_API const FONT_GLYPH_TYPE* LookupGlyph( unsigned int aCodePoint );
+
+        /** The number of glyphs in the font, starting at LookupGlyph( '!' ) */
+        GAL_API unsigned int GlyphCount();
+
+        GAL_API GLYPH_BOX ComputeGlyphBox( const FONT_GLYPH_TYPE& aGlyph );
+
+        /** How far a space moves the pen. The font has no space glyph, so this matches the stroke font. */
+        GAL_API double SpaceAdvance();
+
+        /** Size of a line of text in atlas units, and how far its glyphs sit above their lowest point */
+        GAL_API std::pair<VECTOR2D, float> ComputeBitmapTextSize( const UTF8& aText );
 
     }
 

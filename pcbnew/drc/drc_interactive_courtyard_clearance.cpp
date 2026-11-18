@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <drc/drc_interactive_courtyard_clearance.h>
@@ -181,6 +177,10 @@ void DRC_INTERACTIVE_COURTYARD_CLEARANCE::testCourtyardClearances()
         bool disallowFront = ( zone->GetLayerSet() & LSET::FrontMask() ).any();
         bool disallowBack = ( zone->GetLayerSet() & LSET::BackMask() ).any();
 
+        // Don't use GetBoardOutline().  We know we're looking at a board zone, and copying the outline
+        // is too expensive for DRC.
+        SHAPE_POLY_SET* boardZoneOutline = zone->Outline();
+
         for( FOOTPRINT* fp : m_FpInMove )
         {
             if( disallowFront )
@@ -189,7 +189,7 @@ void DRC_INTERACTIVE_COURTYARD_CLEARANCE::testCourtyardClearances()
 
                 if( !frontCourtyard.IsEmpty() )
                 {
-                    if( zone->Outline()->Collide( &frontCourtyard.Outline( 0 ) ) )
+                    if( boardZoneOutline->Collide( &frontCourtyard.Outline( 0 ) ) )
                     {
                         m_itemsInConflict.insert( fp );
                         m_itemsInConflict.insert( zone );
@@ -204,7 +204,7 @@ void DRC_INTERACTIVE_COURTYARD_CLEARANCE::testCourtyardClearances()
 
                 if( !backCourtyard.IsEmpty() )
                 {
-                    if( zone->Outline()->Collide( &backCourtyard.Outline( 0 ) ) )
+                    if( boardZoneOutline->Collide( &backCourtyard.Outline( 0 ) ) )
                     {
                         m_itemsInConflict.insert( fp );
                         m_itemsInConflict.insert( zone );
@@ -253,7 +253,7 @@ void DRC_INTERACTIVE_COURTYARD_CLEARANCE::UpdateConflicts( KIGFX::VIEW* aView,
     for( BOARD_ITEM* item: m_lastItemsInConflict )
     {
         item->ClearFlags(COURTYARD_CONFLICT );
-        aView->Update( item );
+        aView->Update( item, KIGFX::APPEARANCE );
         aView->MarkTargetDirty( KIGFX::TARGET_OVERLAY );
     }
 
@@ -266,7 +266,7 @@ void DRC_INTERACTIVE_COURTYARD_CLEARANCE::UpdateConflicts( KIGFX::VIEW* aView,
             if( !item->HasFlag( COURTYARD_CONFLICT ) )
             {
                 item->SetFlags( COURTYARD_CONFLICT );
-                aView->Update( item );
+                aView->Update( item, KIGFX::APPEARANCE );
                 aView->MarkTargetDirty( KIGFX::TARGET_OVERLAY );
             }
 

@@ -17,28 +17,21 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-/**
- * The common library
- * @file common.h
- */
-
-#ifndef INCLUDE__COMMON_H_
-#define INCLUDE__COMMON_H_
+#pragma once
 
 #include <kicommon.h>
 #include <functional>
 #include <memory>
+#include <vector>
 
 #include <wx/fileconf.h>
 #include <wx/string.h>
 #include <wx/process.h>
+
+#include <text_var_dependency.h>
 
 class PROJECT;
 class SEARCH_STACK;
@@ -85,44 +78,72 @@ KICOMMON_API wxString JoinExtensions( const std::vector<std::string>& aExts );
 /**
  * Replace any environment variable & text variable references with their values.
  *
- * @param aString a string containing (perhaps) references to env var
+ * @param aString a string containing (perhaps) references to env var.
+ * @param aProject the project to get variable substitutions from.
  * @param aAllowEscapes false in a URI, where a backslash can only be a separator.
+ *
  * @return the expanded environment variable.
  */
 KICOMMON_API const wxString ExpandEnvVarSubstitutions( const wxString& aString, const PROJECT* aProject,
                                                        bool aAllowEscapes = true );
 
-/**
- * Expand '${var-name}' templates in text.
- */
-#define FOR_ERC_DRC 1
+enum RESOLUTION_CONTEXT
+{
+    FOR_CANVAS,
+    FOR_GUI,
+    FOR_NETNAME,
+    FOR_ERC_DRC,
+    INTERNAL,       // Importantly, keeps the escape on literal variable references (such as "\${foo}")
+    RESOLVED,
+    RAW_VALUE,
+    FOR_URI // A backslash is a path separator here, so no escapes are recognized
+};
 
-/**
- * Resolving a URI, where a backslash is a path separator and never an escape.
- */
-#define FOR_URI 2
+KICOMMON_API void FinalizeTextVarExpansion( wxString& aText, RESOLUTION_CONTEXT aContext );
 
 KICOMMON_API wxString ExpandTextVars( const wxString& aSource, const std::function<bool( wxString* )>* aResolver,
-                                      int aFlags = 0, int aDepth = 0 );
+                                      RESOLUTION_CONTEXT aContext, int aDepth = 0 );
 
-KICOMMON_API wxString ExpandTextVars( const wxString& aSource, const PROJECT* aProject, int aFlags = 0 );
+KICOMMON_API wxString ExpandTextVars( const wxString& aSource, const PROJECT* aProject,
+                                      RESOLUTION_CONTEXT aContext );
+
+/**
+ * Normalize a file path so its text variables survive ExpandTextVars.
+ *
+ * ExpandTextVars treats \${ and \@{ as escape sequences, so a Windows path like
+ * "subdir\${REVISION}.csv" leaves the variable unexpanded. Callers that expand text
+ * variables in a user-entered file path must run the path through this first so the
+ * backslash reads as a separator, not an escape. Backslashes not immediately preceding a
+ * text variable are left untouched.
+ */
+KICOMMON_API wxString NormalizeFilePathForTextVars( const wxString& aPath );
+
+/**
+ * Lex-scan @p aSource and return every `${...}` reference that appears, without
+ * resolving. Nested references are captured at every nesting level.
+ *
+ * Used by the reactive dependency tracker to register edges on SetText without
+ * needing a resolver context. Escape sequences (`\${...}`) are skipped. `\@{...}`
+ * math expressions are walked so that nested `${...}` inside them is captured.
+ */
+KICOMMON_API std::vector<TEXT_VAR_REF_KEY> ExtractTextVarReferences( const wxString& aSource );
 
 /**
  * Multi-pass text variable expansion and math expression evaluation.
  *
- * Performs recursive resolution of both ${...} variable references and @{...} math expressions,
- * then cleans up escape sequences (\${...} and \@{...}) to display literals.
+ * Performs recursive resolution of both ${...} variable references and \@{...} math expressions.
  *
  * This helper encapsulates the common pattern used across schematic text components:
- * - While text contains ${...} or @{...} and depth < max:
+ * - While text contains ${...} or \@{...} and depth < max:
  *   - Expand variables via ExpandTextVars()
  *   - Evaluate math expressions via EXPRESSION_EVALUATOR
- * - Convert escape markers back to literals
+ *
+ * Escaped references are left as markers.
  *
  * @param aSource The source text containing variables and/or expressions
  * @param aResolver Function to resolve variable references
  * @param aDepth Current recursion depth (passed by reference, will be incremented)
- * @return Fully expanded and evaluated text with escape sequences cleaned up
+ * @return Expanded and evaluated text, escaped references still as markers
  */
 KICOMMON_API wxString ResolveTextVars( const wxString& aSource, const std::function<bool( wxString* )>* aResolver,
                                        int& aDepth );
@@ -133,9 +154,14 @@ KICOMMON_API wxString ResolveTextVars( const wxString& aSource, const std::funct
 KICOMMON_API wxString GetGeneratedFieldDisplayName( const wxString& aSource );
 
 /**
- * Returns true if the string is generated, e.g contains a single text var reference
+ * Returns true if the entire string is generated, e.g is a single text var reference
  */
-KICOMMON_API bool IsGeneratedField( const wxString& aSource );
+KICOMMON_API bool IsGeneratedField( const wxString& aFieldName );
+
+/**
+ * Returns true if some of the string is generated, e.g contains a text var or expression
+ */
+KICOMMON_API bool IsGeneratedValue( const wxString& aValue );
 
 /**
  * Returns a user-visible HTML string describing a footprint reference designator.
@@ -171,4 +197,3 @@ KICOMMON_API wxString ResolveProjectPath( const wxString& aPath, const PROJECT* 
 
 
 
-#endif // INCLUDE__COMMON_H_

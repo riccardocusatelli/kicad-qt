@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <tool/tool_manager.h>
@@ -86,6 +82,16 @@ bool DIALOG_GROUP_PROPERTIES::TransferDataToWindow()
 
 bool DIALOG_GROUP_PROPERTIES::TransferDataFromWindow()
 {
+    LIB_ID libId;
+
+    if( !m_libraryLink->GetValue().IsEmpty() && libId.Parse( m_libraryLink->GetValue(), true ) >= 0 )
+    {
+        wxString error;
+        error.Printf( _( "Invalid library link: '%s'" ), m_libraryLink->GetValue() );
+        wxMessageBox( error, _( "Error" ), wxOK | wxICON_ERROR, m_frame );
+        return false;
+    }
+
     m_commit->Modify( m_group->AsEdaItem(), m_frame->GetScreen(), RECURSE_MODE::RECURSE );
 
     for( size_t ii = 0; ii < m_membersList->GetCount(); ++ii )
@@ -104,25 +110,7 @@ bool DIALOG_GROUP_PROPERTIES::TransferDataFromWindow()
 
     m_group->SetName( m_nameCtrl->GetValue() );
     m_group->AsEdaItem()->SetLocked( m_locked->GetValue() );
-
-    if( !m_libraryLink->GetValue().IsEmpty() )
-    {
-        LIB_ID libId;
-
-        if( libId.Parse( m_libraryLink->GetValue(), true ) >= 0 )
-        {
-            wxString error;
-            error.Printf( _( "Invalid library link: '%s'" ), m_libraryLink->GetValue() );
-            wxMessageBox( error, _( "Error" ), wxOK | wxICON_ERROR, m_frame );
-            return false;
-        }
-
-        m_group->SetDesignBlockLibId( libId );
-    }
-    else
-    {
-        m_group->SetDesignBlockLibId( LIB_ID() );
-    }
+    m_group->SetDesignBlockLibId( libId );
 
     m_toolMgr->RunAction( ACTIONS::selectionClear );
     m_group->RemoveAll();

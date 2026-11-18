@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <pgm_base.h>
@@ -63,7 +63,7 @@ public:
         m_bmpWarning->Show( m_showWarning );
         m_stWarning->Show( m_showWarning );
 
-        m_containingSizer->Fit( this );
+        GetSizer()->Fit( this );
         SetSize( GetBestSize() );
     }
 
@@ -361,4 +361,3 @@ void STARTWIZARD_PROVIDER_LIBRARIES::ApplyDefaults()
         LIBRARY_MANAGER::CreateGlobalTable( type, true );
     }
 }
-

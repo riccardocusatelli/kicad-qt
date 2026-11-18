@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -43,17 +39,18 @@
  * @param aUseSelectedMaterial if material should be set for selection mode.
  * @param aSelectionColor material to use for selection in case it is enabled.
  */
-void OglSetMaterial( const SMATERIAL& aMaterial, float aOpacity,
-                     bool aUseSelectedMaterial = false,
+void OglSetMaterial( const SMATERIAL& aMaterial, float aOpacity, bool aUseSelectedMaterial = false,
                      SFVEC3F aSelectionColor = SFVEC3F( 0.0f ) );
 
 /**
- * Sets only the diffuse color and keep other parameters with default values.
+ * Set only the diffuse color and keep other parameters with default values.
  *
  * @param aMaterialDiffuse the diffuse color to assign to material properties.
+ * @param aOpacity is the opacity fo the diffused material.
+ * @param aUseSelectedMaterial if material should be set for selection mode.
+ * @param aSelectionColor material to use for selection in case it is enabled.
  */
-void OglSetDiffuseMaterial( const SFVEC3F& aMaterialDiffuse, float aOpacity,
-                            bool aUseSelectedMaterial = false,
+void OglSetDiffuseMaterial( const SFVEC3F& aMaterialDiffuse, float aOpacity, bool aUseSelectedMaterial = false,
                             SFVEC3F aSelectionColor = SFVEC3F( 0.0f ) );
 
 /**

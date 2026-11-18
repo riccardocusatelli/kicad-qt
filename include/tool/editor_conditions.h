@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef EDITOR_CONDITIONS_H_
@@ -136,15 +132,6 @@ public:
 
     SELECTION_CONDITION BoundingBoxes();
 
-    /**
-     * Create a functor testing if the python scripting console window is visible.
-     *
-     * @note This requires the frame passed into the constructor be be derived from EDA_DRAW_FRAME.
-     *
-     * @return Functor testing if the python scripting console window is visible
-     */
-    SELECTION_CONDITION ScriptingConsoleVisible();
-
 protected:
     /// Helper function used by ContentModified().
     static bool contentModifiedFunc( const SELECTION& aSelection, EDA_BASE_FRAME* aFrame );
@@ -180,9 +167,6 @@ protected:
 
     /// Helper function used by DrawBoundingBoxes().
     static bool bboxesFunc( const SELECTION& aSelection, EDA_DRAW_FRAME* aFrame );
-
-    /// Helper function used by ScriptingConsoleVisible().
-    static bool consoleVisibleFunc( const SELECTION& aSelection, EDA_DRAW_FRAME* aFrame );
 
     /// The frame to apply the conditions to.
     EDA_BASE_FRAME* m_frame;

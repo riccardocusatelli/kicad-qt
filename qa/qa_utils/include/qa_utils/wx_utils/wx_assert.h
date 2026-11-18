@@ -14,17 +14,14 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef UNIT_TEST_UTILS_WX_ASSERT__H
 #define UNIT_TEST_UTILS_WX_ASSERT__H
 
 #include <wx/string.h>
+#include <wx/thread.h>
 
 #include <exception>
 #include <string>
@@ -63,6 +60,19 @@ public:
 };
 
 
+/**
+ * Print a wx assertion that fired outside the main thread, then exit the process.
+ *
+ * Worker threads reach wx assertions through the thread pool, whose tasks are detached and
+ * therefore cannot transport an exception back to a caller.  Throwing there unwinds straight
+ * into std::terminate, which reports only the last exception to escape - typically some
+ * unrelated assertion raised while the process was already coming apart.  Reporting from the
+ * faulting thread keeps the assertion and its stack together.
+ */
+[[noreturn]] void ReportAssertOffMainThread( const wxString& aFile, int aLine,
+                                             const wxString& aFunc, const wxString& aCond,
+                                             const wxString& aMsg );
+
 /*
  * Simple function to handle a WX assertion and throw a real exception.
  *
@@ -71,6 +81,9 @@ public:
 inline void wxAssertThrower( const wxString& aFile, int aLine, const wxString& aFunc,
                              const wxString& aCond, const wxString& aMsg )
 {
+    if( !wxThread::IsMain() )
+        ReportAssertOffMainThread( aFile, aLine, aFunc, aCond, aMsg );
+
     throw KI_TEST::WX_ASSERT_ERROR( aFile, aLine, aFunc, aCond, aMsg );
 }
 

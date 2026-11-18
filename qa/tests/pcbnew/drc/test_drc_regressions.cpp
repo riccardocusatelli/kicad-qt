@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
@@ -36,6 +32,8 @@
 #include <widgets/report_severity.h>
 
 
+namespace
+{
 struct DRC_REGRESSION_TEST_FIXTURE
 {
     DRC_REGRESSION_TEST_FIXTURE()
@@ -44,6 +42,7 @@ struct DRC_REGRESSION_TEST_FIXTURE
     SETTINGS_MANAGER       m_settingsManager;
     std::unique_ptr<BOARD> m_board;
 };
+} // namespace
 
 
 BOOST_FIXTURE_TEST_CASE( DRCFalsePositiveRegressions, DRC_REGRESSION_TEST_FIXTURE )
@@ -69,6 +68,7 @@ BOOST_FIXTURE_TEST_CASE( DRCFalsePositiveRegressions, DRC_REGRESSION_TEST_FIXTUR
         "issue18839",            // False positive board edge clearance between concentric arcs
         "unconnected-netnames/unconnected-netnames", // Raised false schematic partity error
         "net_tie_drc",                               // Net tie bridging soldermask DRC test
+        "net_tie_hole_clearance",                    // Net-tie hole clearance with layer-changing copper
         "issue24974",                    // Net-tie graphic copper on last pad, UUID-order-independent exemption
         "diff_pair_uncoupled_tuning_drc" // Tuning pattern length wrongly counted as uncoupled
     };
@@ -111,11 +111,10 @@ BOOST_FIXTURE_TEST_CASE( DRCFalsePositiveRegressions, DRC_REGRESSION_TEST_FIXTUR
             UNITS_PROVIDER unitsProvider( pcbIUScale, EDA_UNITS::INCH );
 
             wxString report;
-            std::map<KIID, EDA_ITEM*> itemMap;
-            m_board->FillItemMap( itemMap );
+            BOARD_RC_ITEM_RESOLVER resolver( *m_board );
 
             for( const DRC_ITEM& item : violations )
-                report += item.ShowReport( &unitsProvider, RPT_SEVERITY_ERROR, itemMap );
+                report += item.ShowReport( &unitsProvider, RPT_SEVERITY_ERROR, resolver );
 
             BOOST_ERROR( wxString::Format( "DRC regression: %s\n"
                                            "%d violations found (expected 0)\n"
@@ -132,36 +131,37 @@ BOOST_FIXTURE_TEST_CASE( DRCFalseNegativeRegressions, DRC_REGRESSION_TEST_FIXTUR
 {
     // These documents at one time failed to catch DRC errors that they should have
 
-    std::map<int, SEVERITY> issue19325_ignore, issue22102_ignore;
+    std::map<int, SEVERITY> issue19325_ignore, issue22102_ignore, issue18142_ignore;
     issue19325_ignore[DRCE_DRILLED_HOLES_TOO_CLOSE] = SEVERITY::RPT_SEVERITY_IGNORE;
     issue22102_ignore[DRCE_UNCONNECTED_ITEMS] = SEVERITY::RPT_SEVERITY_IGNORE;
     issue22102_ignore[DRCE_DANGLING_TRACK] = SEVERITY::RPT_SEVERITY_IGNORE;
+    issue18142_ignore[DRCE_MICROVIA_CROSSES_CORE] = SEVERITY::RPT_SEVERITY_IGNORE;
+    issue18142_ignore[DRCE_MICROVIA_SPANS_DIELECTRICS] = SEVERITY::RPT_SEVERITY_IGNORE;
 
-    std::vector<std::tuple<wxString, int, decltype(BOARD_DESIGN_SETTINGS::m_DRCSeverities)>> tests =
-    {
-        { "issue1358",  2, {} },
-        { "issue2512",  5, {} },
-        { "issue2528",  1, {} },
-        { "issue5750",  4, {} },   // Shorting zone fills pass DRC in some cases
-        { "issue5854",  3, {} },
-        { "issue6879",  6, {} },
-        { "issue6945",  2, {} },
-        { "issue7241",  1, {} },
-        { "issue7267",  5, {} },
-        { "issue7325",  2, {} },
-        { "issue8003",  2, {} },
-        { "issue9081",  2, {} },
-        { "issue12109", 8, {} },        // Pads fail annular width test
-        { "issue14334", 2, {} },        // Thermal spoke to otherwise unconnected island
-        { "issue16566", 6, {} },        // Pad_Shape vs Shape property
-        { "issue18142", 1, {} },        // blind/buried via to micro-via hole-to-hole
-        { "reverse_via", 3, {} },       // Via/track ordering
-        { "intersectingzones", 1, {} }, // zones are too close to each other
-        { "fill_bad",   1, {} },        // zone max BBox was too small
-        { "issue18878", 12, {} },       // Updated: fix reports all cross-net mask bridge pairs
+    std::vector<std::tuple<wxString, int, decltype( BOARD_DESIGN_SETTINGS::m_DRCSeverities )>> tests = {
+        { "issue1358", 2, {} },
+        { "issue2512", 5, {} },
+        { "issue2528", 1, {} },
+        { "issue5750", 4, {} }, // Shorting zone fills pass DRC in some cases
+        { "issue5854", 3, {} },
+        { "issue6879", 6, {} },
+        { "issue6945", 2, {} },
+        { "issue7241", 1, {} },
+        { "issue7267", 6, {} },                            // One track sits wholly inside a footprint slot
+        { "issue7325", 2, {} },
+        { "issue8003", 2, {} },
+        { "issue9081", 2, {} },
+        { "issue12109", 8, {} },                           // Pads fail annular width test
+        { "issue14334", 2, {} },                           // Thermal spoke to otherwise unconnected island
+        { "issue16566", 6, {} },                           // Pad_Shape vs Shape property
+        { "issue18142", 1, issue18142_ignore },            // blind/buried via to micro-via hole-to-hole
+        { "reverse_via", 3, {} },                          // Via/track ordering
+        { "intersectingzones", 1, {} },                    // zones are too close to each other
+        { "fill_bad", 1, {} },                             // zone max BBox was too small
+        { "issue18878", 12, {} },                          // Updated: fix reports all cross-net mask bridge pairs
         { "issue19325/issue19325", 4, issue19325_ignore }, // Overlapping pad annular ring calculation
-        { "issue22102", 2, issue22102_ignore },        // arc-to-rect collision; colocated arcs collision
-        { "issue11814", 2, {} },        // Teardrop clearance to pad
+        { "issue22102", 2, issue22102_ignore },            // arc-to-rect collision; colocated arcs collision
+        { "issue11814", 2, {} },                           // Teardrop clearance to pad
     };
 
     for( const auto& [testName, expectedErrors, customSeverities] : tests )
@@ -188,7 +188,7 @@ BOOST_FIXTURE_TEST_CASE( DRCFalseNegativeRegressions, DRC_REGRESSION_TEST_FIXTUR
                 {
                     markers.emplace_back( PCB_MARKER( aItem, aPos ) );
 
-                    if( bds.m_DrcExclusions.find( markers.back().SerializeToString() )
+                    if( bds.m_DrcExclusions.find( DRC_EXCLUSION::FromMarker( markers.back() ) )
                         == bds.m_DrcExclusions.end() )
                     {
                         violations.push_back( *aItem );
@@ -207,11 +207,10 @@ BOOST_FIXTURE_TEST_CASE( DRCFalseNegativeRegressions, DRC_REGRESSION_TEST_FIXTUR
             UNITS_PROVIDER unitsProvider( pcbIUScale, EDA_UNITS::INCH );
 
             wxString report;
-            std::map<KIID, EDA_ITEM*> itemMap;
-            m_board->FillItemMap( itemMap );
+            BOARD_RC_ITEM_RESOLVER resolver( *m_board );
 
             for( const DRC_ITEM& item : violations )
-                report += item.ShowReport( &unitsProvider, RPT_SEVERITY_ERROR, itemMap );
+                report += item.ShowReport( &unitsProvider, RPT_SEVERITY_ERROR, resolver );
 
             BOOST_ERROR( wxString::Format( "DRC regression: %s\n"
                                            "%d violations found (expected %d)\n"
@@ -274,11 +273,10 @@ BOOST_FIXTURE_TEST_CASE( DRCZoneFalsePositiveRegressions, DRC_REGRESSION_TEST_FI
             UNITS_PROVIDER unitsProvider( pcbIUScale, EDA_UNITS::INCH );
 
             wxString report;
-            std::map<KIID, EDA_ITEM*> itemMap;
-            m_board->FillItemMap( itemMap );
+            BOARD_RC_ITEM_RESOLVER resolver( *m_board );
 
             for( const DRC_ITEM& item : violations )
-                report += item.ShowReport( &unitsProvider, RPT_SEVERITY_ERROR, itemMap );
+                report += item.ShowReport( &unitsProvider, RPT_SEVERITY_ERROR, resolver );
 
             BOOST_ERROR( wxString::Format( "DRC zone regression: %s\n"
                                            "%d violations found (expected 0)\n"
@@ -323,17 +321,16 @@ BOOST_FIXTURE_TEST_CASE( DRCTeardropOverCopperField, DRC_REGRESSION_TEST_FIXTURE
 
     bds.m_DRCEngine->RunTests( EDA_UNITS::MM, true, false );
 
-    std::map<KIID, EDA_ITEM*> itemMap;
-    m_board->FillItemMap( itemMap );
+    BOARD_RC_ITEM_RESOLVER resolver( *m_board );
 
     auto involvesCopperField =
             [&]( const DRC_ITEM& aItem )
             {
                 for( const KIID& id : { aItem.GetMainItemID(), aItem.GetAuxItemID() } )
                 {
-                    auto it = itemMap.find( id );
+                    const EDA_ITEM* resolved = resolver.ResolveItemById( id );
 
-                    if( it != itemMap.end() && it->second->Type() == PCB_FIELD_T )
+                    if( resolved && resolved->Type() == PCB_FIELD_T )
                         return true;
                 }
 
@@ -353,7 +350,7 @@ BOOST_FIXTURE_TEST_CASE( DRCTeardropOverCopperField, DRC_REGRESSION_TEST_FIXTURE
         UNITS_PROVIDER unitsProvider( pcbIUScale, EDA_UNITS::MM );
 
         for( const DRC_ITEM& item : violations )
-            BOOST_TEST_MESSAGE( item.ShowReport( &unitsProvider, RPT_SEVERITY_ERROR, itemMap ) );
+            BOOST_TEST_MESSAGE( item.ShowReport( &unitsProvider, RPT_SEVERITY_ERROR, resolver ) );
     }
 
     // Exactly one short: the visible field bridges the two nets; the hidden field does not.

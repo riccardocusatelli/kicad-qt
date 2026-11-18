@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef CACHED_CONTAINER_GPU_H_
@@ -51,13 +47,13 @@ public:
         return m_isMapped;
     }
 
-    ///< @copydoc VERTEX_CONTAINER::Abandon()
+    /// @copydoc VERTEX_CONTAINER::Abandon()
     void Abandon() override;
 
-    ///< @copydoc VERTEX_CONTAINER::Map()
+    /// @copydoc VERTEX_CONTAINER::Map()
     void Map() override;
 
-    ///< @copydoc VERTEX_CONTAINER::Unmap()
+    /// @copydoc VERTEX_CONTAINER::Unmap()
     void Unmap() override;
 
     virtual unsigned int AllItemsSize() const override;
@@ -86,13 +82,13 @@ protected:
      */
     bool defragmentResizeStaged( unsigned int aNewSize );
 
-    ///< Flag saying if vertex buffer is currently mapped
+    /// Flag saying if vertex buffer is currently mapped
     bool m_isMapped;
 
-    ///< Vertex buffer handle
+    /// Vertex buffer handle
     unsigned int m_glBufferHandle;
 
-    ///< Flag saying whether it is safe to use glCopyBufferSubData
+    /// Flag saying whether it is safe to use glCopyBufferSubData
     bool m_useCopyBuffer;
 };
 } // namespace KIGFX

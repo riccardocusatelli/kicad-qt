@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef OCE_VIS_OCE_UTILS_H
@@ -65,7 +61,10 @@ static constexpr double COPPER_THICKNESS_DEFAULT_MM = 0.035;
 // Max error to approximate an arc by segments (in mm)
 static constexpr double ARC_TO_SEGMENT_MAX_ERROR_MM = 0.005;
 
+class FOOTPRINT;
 class PAD;
+enum class EXTRUSION_MATERIAL;
+class EXTRUDED_3D_BODY;
 
 class TDocStd_Document;
 class XCAFApp_Application;
@@ -210,25 +209,57 @@ public:
 
     /**
      * Convert a SHAPE_POLY_SET to TopoDS_Shape's (polygonal vertical prisms, or flat faces)
-     * @param aShapes is the TopoDS_Shape list to append to
-     * @param aPolySet is the polygon set
-     * @param aConvertToArcs set to approximate with arcs
+     *
+     * @param aShapes is the TopoDS_Shape list to append to.
+     * @param aPolySet is the polygon set.
+     * @param aConvertToArcs set to approximate with arcs.
      * @param aThickness is the height of the created prism, or 0.0: flat face pointing up, -0.0: down.
-     * @param aOrigin is the origin of the coordinates
+     * @param aZposition is the Z axis coordinate of the shape.
+     * @param aOrigin is the origin of the coordinates.
      * @return true if success
      */
     bool MakeShapes( std::vector<TopoDS_Shape>& aShapes, const SHAPE_POLY_SET& aPolySet,
                      bool aConvertToArcs, double aThickness, double aZposition, const VECTOR2D& aOrigin );
 
     /**
+     * Add an extruded 3D body from a 2D outline polygon.
+     * @param aOutline is the 2D outline polygon in board coordinates.
+     * @param aBottom true if the footprint is on the bottom side.
+     * @param aStandoff is the standoff height in mm (gap between board surface and body bottom).
+     * @param aHeight is the body height in mm.
+     * @param aOrigin is the coordinate origin.
+     * @param aColor is the body color (RGBA packed as uint32_t).
+     * @param aMaterial is the surface material type.
+     * @param aRefDes is the footprint reference used for the STEP label.
+     * @return true if the body was successfully created.
+     */
+    bool AddExtrudedBody( const SHAPE_POLY_SET& aOutline, bool aBottom, double aStandoff, double aHeight,
+                          const VECTOR2D& aOrigin, uint32_t aColor, EXTRUSION_MATERIAL aMaterial,
+                          const wxString& aRefDes );
+
+    /**
+     * Add pin extrusions for pad holes. Plated holes get metal pins and NPTH holes get pegs
+     * in the body material. The pins shift with the body Z offset.
+     * @param aFootprint the footprint whose pad holes to extrude.
+     * @param aBody supplies the pin transform, may be null.
+     * @param aBottom true if the footprint is on the bottom side.
+     * @param aStandoff is the standoff height plus the body Z offset in mm.
+     * @param aOrigin is the coordinate origin.
+     * @return true if any pins were created.
+     */
+    bool AddExtrudedPins( const FOOTPRINT* aFootprint, const EXTRUDED_3D_BODY* aBody, bool aBottom, double aStandoff,
+                          const VECTOR2D& aOrigin );
+
+    /**
      * Make a segment shape based on start and end point. If they're too close, make a cylinder.
      * It is a specialized version of MakeShape()
-     * @param aShape is the TopoDS_Shape to initialize (must be empty)
-     * @param aStartPoint is the start point of the segment
-     * @param aEndPoint is the end point of the segment
-     * @param aWidth is the width of the segment
+     * @param aShape is the TopoDS_Shape to initialize (must be empty).
+     * @param aStartPoint is the start point of the segment.
+     * @param aEndPoint is the end point of the segment.
+     * @param aWidth is the width of the segment.
      * @param aThickness is the height of the created segment, or 0.0: flat face pointing up, -0.0: down.
-     * @param aOrigin is the origin of the coordinates
+     * @param aZposition is the Z axis position of the segment.
+     * @param aOrigin is the origin of the coordinates.
      * @return true if success
      */
     bool MakeShapeAsThickSegment( TopoDS_Shape& aShape, const VECTOR2D& aStartPoint,
@@ -381,6 +412,18 @@ private:
     std::vector<TopoDS_Shape> m_board_back_silk;
     std::vector<TopoDS_Shape> m_board_front_mask;
     std::vector<TopoDS_Shape> m_board_back_mask;
+
+    // Extruded 3D bodies from footprint outlines
+    struct EXTRUDED_BODY_ENTRY
+    {
+        std::vector<TopoDS_Shape> bodyShapes;
+        std::vector<TopoDS_Shape> pinShapes;
+        wxString                  refDes;
+        uint32_t                  colorKey;
+        EXTRUSION_MATERIAL        material;
+    };
+
+    std::vector<EXTRUDED_BODY_ENTRY> m_extruded_bodies;
 
     // Data for pads. Key example: Pad_F_U2_1_GND
     std::map<wxString, std::vector<std::pair<gp_Pnt, TopoDS_Shape>>> m_pad_points;

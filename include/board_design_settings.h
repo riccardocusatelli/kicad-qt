@@ -15,103 +15,33 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
 
 #include <memory>
+#include <optional>
+#include <set>
+#include <string>
+#include <vector>
 
 #include <board_stackup_manager/board_stackup.h>
+#include <drill/drill_symbol_profile.h>
+#include <drc/drc_exclusion.h>
+#include <eda_units.h>
 #include <lset.h>
 #include <settings/nested_settings.h>
+#include <settings/bom_settings.h>
 #include <widgets/report_severity.h>
 #include <zone_settings.h>
 #include <teardrop/teardrop_parameters.h>
 #include <router/pns_meander.h>
 
 
-#define DEFAULT_SILK_LINE_WIDTH       0.1
-#define DEFAULT_COPPER_LINE_WIDTH     0.2
-#define DEFAULT_EDGE_WIDTH            0.05
-#define DEFAULT_COURTYARD_WIDTH       0.05
-#define DEFAULT_LINE_WIDTH            0.10
-
-#define DEFAULT_SILK_TEXT_SIZE        1.0
-#define DEFAULT_COPPER_TEXT_SIZE      1.5
-#define DEFAULT_TEXT_SIZE             1.0
-
-#define DEFAULT_SILK_TEXT_WIDTH       0.1
-#define DEFAULT_COPPER_TEXT_WIDTH     0.30
-#define DEFAULT_TEXT_WIDTH            0.15
-
-#define DEFAULT_DIMENSION_ARROW_LENGTH         50 // mils, for legacy purposes
-#define DEFAULT_DIMENSION_EXTENSION_OFFSET     0.5
-
-// Board thickness, mainly for 3D view:
-#define DEFAULT_BOARD_THICKNESS_MM             1.6
-
-#define DEFAULT_PCB_EDGE_THICKNESS             0.15
-
-// soldermask to pad clearance. The default is 0 because usually board houses
-// create a clearance depending on their fab process: mask material, color, price, etc.
-#define DEFAULT_SOLDERMASK_EXPANSION           0.0
-
-#define DEFAULT_SOLDERMASK_TO_COPPER_CLEARANCE 0.0
-
-#define DEFAULT_SOLDERMASK_MIN_WIDTH           0.0
-
-#define DEFAULT_SOLDERPASTE_CLEARANCE          0.0
-#define DEFAULT_SOLDERPASTE_RATIO              0.0
-
-#define DEFAULT_CUSTOMTRACKWIDTH      0.2
-#define DEFAULT_CUSTOMDPAIRWIDTH      0.125
-#define DEFAULT_CUSTOMDPAIRGAP        0.18
-#define DEFAULT_CUSTOMDPAIRVIAGAP     0.18
-
-#define DEFAULT_MEANDER_SPACING       0.6
-#define DEFAULT_DP_MEANDER_SPACING    1.0
-
-#define DEFAULT_MINCLEARANCE          0.0     // overall min clearance
-#define DEFAULT_MINCONNECTION         0.0     // overall min connection width
-#define DEFAULT_TRACKMINWIDTH         0.2     // track width min value (mm)
-#define DEFAULT_VIASMINSIZE           0.5     // vias (not micro vias) min diameter
-#define DEFAULT_MINTHROUGHDRILL       0.3     // through holes (not micro vias) min drill diameter
-#define DEFAULT_MICROVIASMINSIZE      0.2     // micro vias (not vias) min diameter
-#define DEFAULT_MICROVIASMINDRILL     0.1     // micro vias (not vias) min drill diameter
-#define DEFAULT_HOLETOHOLEMIN         0.25    // minimum web thickness between two drilled holes
-#define DEFAULT_HOLECLEARANCE         0.25    // copper-to-hole clearance (from IPC level A)
-
-#define DEFAULT_COPPEREDGECLEARANCE   0.5     // clearance between copper items and edge cuts
-#define LEGACY_COPPEREDGECLEARANCE   -0.01    // A flag to indicate the legacy method (based
-                                              // on edge cut line thicknesses) should be used.
-#define DEFAULT_SILKCLEARANCE         0.0
-#define DEFAULT_MINGROOVEWIDTH        0.0
-
-#define DEFAULT_MINRESOLVEDSPOKES     2       // Fewer resolved spokes indicates a starved thermal
-
-#define MINIMUM_ERROR_SIZE_MM         0.001   // For arc approximation
-#define MAXIMUM_ERROR_SIZE_MM         0.1     // For arc approximation
-
 class DRC_ENGINE;
 class NET_SETTINGS;
 class NETCLASS;
-
-#define MAXIMUM_CLEARANCE             pcbIUScale.mmToIU( 500 )  // to prevent int-overflows
-
-// Min/max values used in dialogs to validate settings
-#define MINIMUM_LINE_WIDTH_MM         0.005   // minimal line width entered in a dialog
-#define MAXIMUM_LINE_WIDTH_MM         100.0   // max line width entered in a dialog
-
-// Default pad properties
-#define DEFAULT_PAD_WIDTH_MM          2.54
-#define DEFAULT_PAD_HEIGTH_MM         1.27
-#define DEFAULT_PAD_DRILL_DIAMETER_MM 0.8
-#define DEFAULT_PAD_RR_RADIUS_RATIO   0.15
 
 /**
  * Container to handle a stock of specific vias each with unique diameter and drill sizes
@@ -148,6 +78,27 @@ struct VIA_DIMENSION
 
         return m_Drill < aOther.m_Drill;
     }
+};
+
+
+/**
+ * A named microvia stack definition, chosen while routing instead of entering the values
+ * each time. See PCB_VIA_STACK.
+ */
+struct VIA_STACK_PRESET
+{
+    wxString     m_Name;
+    PCB_LAYER_ID m_StartLayer = F_Cu;
+    PCB_LAYER_ID m_EndLayer = In1_Cu;
+    bool         m_Staggered = false;
+    int          m_ViaSize = 0; // <= 0 means use netclass
+    int          m_ViaDrill = 0;
+    bool         m_UseNetclass = false;
+    bool         m_Filled = true;
+    bool         m_Capped = false;
+    int          m_Pitch = 0; // staggered only
+
+    bool operator==( const VIA_STACK_PRESET& aOther ) const = default;
 };
 
 
@@ -246,12 +197,18 @@ class PAD;
 /**
  * Container for design settings for a #BOARD object.
  */
-class BOARD_DESIGN_SETTINGS : public NESTED_SETTINGS
+class BOARD_DESIGN_SETTINGS : public NESTED_SETTINGS, public FIELDS_TABLE_BOM_SETTINGS
 {
 public:
     BOARD_DESIGN_SETTINGS( JSON_SETTINGS* aParent, const std::string& aPath );
 
     virtual ~BOARD_DESIGN_SETTINGS();
+
+    struct VALIDATION_ERROR
+    {
+        wxString setting_name;
+        wxString error_message;
+    };
 
     bool operator==( const BOARD_DESIGN_SETTINGS& aOther ) const;
     bool operator!=( const BOARD_DESIGN_SETTINGS& aOther ) const
@@ -268,17 +225,41 @@ public:
     BOARD_STACKUP& GetStackupDescriptor() { return m_stackup; }
     const BOARD_STACKUP& GetStackupDescriptor() const { return m_stackup; }
 
+    DRILL_SYMBOL_PROFILE& GetDrillSymbolProfile() { return m_drillSymbolProfile; }
+    const DRILL_SYMBOL_PROFILE& GetDrillSymbolProfile() const { return m_drillSymbolProfile; }
+
     TEARDROP_PARAMETERS_LIST* GetTeadropParamsList()
     {
         return &m_TeardropParamsList;
     }
 
-    SEVERITY GetSeverity( int aDRCErrorCode );
+    /**
+     * Return the severity of a given DRC error code.
+     *
+     * If the error code is not recognized, RPT_SEVERITY_ERROR is returned.
+     */
+    SEVERITY GetSeverity( int aDRCErrorCode ) const;
 
     /**
-     * Return true if the DRC error code's severity is SEVERITY_IGNORE.
+     * Return true if the DRC error code's severity is RPT_SEVERITY_ERROR.
      */
-    bool Ignore( int aDRCErrorCode );
+    bool Ignore( int aDRCErrorCode ) const;
+
+    /**
+     * Validate design settings values and return per-field errors.
+     *
+     * @return empty vector if valid, otherwise one or more validation errors.
+     */
+    std::vector<VALIDATION_ERROR> ValidateDesignRules( std::optional<EDA_UNITS> aUnits = std::nullopt ) const;
+
+    /**
+     * Find design rule values that are legal but have no effect because other rules imply a stricter limit.
+     *
+     * These are advisory and must not block saving; existing projects can contain them.
+     *
+     * @return empty vector if consistent, otherwise one entry per redundant setting.
+     */
+    std::vector<VALIDATION_ERROR> GetDesignRuleWarnings( std::optional<EDA_UNITS> aUnits = std::nullopt ) const;
 
     ZONE_SETTINGS& GetDefaultZoneSettings()
     {
@@ -293,7 +274,7 @@ public:
     /**
      * @return the current net class name.
      */
-    inline const wxString& GetCurrentNetClassName() const
+    const wxString& GetCurrentNetClassName() const
     {
         return m_currentNetClassName;
     }
@@ -301,17 +282,17 @@ public:
     /**
      * Return true if netclass values should be used to obtain appropriate track width.
      */
-    inline bool UseNetClassTrack() const { return ( m_trackWidthIndex <= 0 && !m_useCustomTrackVia ); }
+    bool UseNetClassTrack() const { return ( m_trackWidthIndex <= 0 && !m_useCustomTrackVia ); }
 
     /**
      * Return true if netclass values should be used to obtain appropriate via size.
      */
-    inline bool UseNetClassVia() const { return ( m_viaSizeIndex <= 0 && !m_useCustomTrackVia ); }
+    bool UseNetClassVia() const { return ( m_viaSizeIndex <= 0 && !m_useCustomTrackVia ); }
 
     /**
      * Return true if netclass values should be used to obtain appropriate diff pair dimensions.
      */
-    inline bool UseNetClassDiffPair() const
+    bool UseNetClassDiffPair() const
     {
         return ( m_diffPairIndex == 0 && !m_useCustomDiffPair );
     }
@@ -329,7 +310,7 @@ public:
     /**
      * @return the current track width list index.
      */
-    inline int GetTrackWidthIndex() const { return m_trackWidthIndex; }
+    int GetTrackWidthIndex() const { return m_trackWidthIndex; }
 
     /**
      * Set the current track width list index to \a aIndex.
@@ -337,6 +318,15 @@ public:
      * @param aIndex is the track width list index.
      */
     void SetTrackWidthIndex( int aIndex );
+
+    /**
+     * Compute the next track width list index when cycling predefined sizes, skipping the
+     * index-0 netclass placeholder on roll-over so the sequence stays monotonic.
+     *
+     * @param aIndex is the start index track width buffer.
+     * @param aForward steps larger when true, smaller when false.
+     */
+    int GetNextTrackWidthIndex( int aIndex, bool aForward ) const;
 
     /**
      * @return the current track width according to the selected options
@@ -353,13 +343,23 @@ public:
      *
      * @param aWidth is the new track width.
      */
-    inline void SetCustomTrackWidth( int aWidth ) { m_customTrackWidth = aWidth; }
-    inline int GetCustomTrackWidth() const { return m_customTrackWidth; }
+    void SetCustomTrackWidth( int aWidth ) { m_customTrackWidth = aWidth; }
+    int GetCustomTrackWidth() const { return m_customTrackWidth; }
 
     /**
      * @return the current via size list index.
      */
-    inline int GetViaSizeIndex() const { return m_viaSizeIndex; }
+    int GetViaSizeIndex() const { return m_viaSizeIndex; }
+
+    /**
+     * @return the currently selected via stack preset index (into m_ViaStackPresets).
+     */
+    inline int GetViaStackIndex() const { return m_viaStackIndex; }
+
+    /**
+     * Set the current via stack preset index to \a aIndex.
+     */
+    inline void SetViaStackIndex( int aIndex ) { m_viaStackIndex = aIndex; }
 
     /**
      * Set the current via size list index to \a aIndex.
@@ -367,6 +367,15 @@ public:
      * @param aIndex is the via size list index.
      */
     void SetViaSizeIndex( int aIndex );
+
+    /**
+     * Compute the next via size list index when cycling predefined sizes, skipping the
+     * index-0 netclass placeholder on roll-over so the sequence stays monotonic.
+     *
+     * @param aIndex is the via size list index.
+     * @param aForward steps larger when true, smaller when false.
+     */
+    int GetNextViaSizeIndex( int aIndex, bool aForward ) const;
 
     /**
      * @return the current via size, according to the selected options
@@ -383,18 +392,12 @@ public:
      *
      * @param aSize is the new drill diameter.
      */
-    inline void SetCustomViaSize( int aSize )
-    {
-        m_customViaSize.m_Diameter = aSize;
-    }
+    void SetCustomViaSize( int aSize ) { m_customViaSize.m_Diameter = aSize; }
 
     /**
      * @return Current custom size for the via diameter.
      */
-    inline int GetCustomViaSize() const
-    {
-        return m_customViaSize.m_Diameter;
-    }
+    int GetCustomViaSize() const { return m_customViaSize.m_Diameter; }
 
     /**
      * @return the current via size, according to the selected options
@@ -411,18 +414,12 @@ public:
      *
      * @param aDrill is the new drill size.
      */
-    inline void SetCustomViaDrill( int aDrill )
-    {
-        m_customViaSize.m_Drill = aDrill;
-    }
+    void SetCustomViaDrill( int aDrill ) { m_customViaSize.m_Drill = aDrill; }
 
     /**
      * @return Current custom size for the via drill.
      */
-    inline int GetCustomViaDrill() const
-    {
-        return m_customViaSize.m_Drill;
-    }
+    int GetCustomViaDrill() const { return m_customViaSize.m_Drill; }
 
     /**
      * Enables/disables custom track/via size settings.
@@ -432,23 +429,17 @@ public:
      *
      * @param aEnabled decides if custom settings should be used for new tracks/vias.
      */
-    inline void UseCustomTrackViaSize( bool aEnabled )
-    {
-        m_useCustomTrackVia = aEnabled;
-    }
+    void UseCustomTrackViaSize( bool aEnabled ) { m_useCustomTrackVia = aEnabled; }
 
     /**
      * @return True if custom sizes of tracks & vias are enabled, false otherwise.
      */
-    inline bool UseCustomTrackViaSize() const
-    {
-        return m_useCustomTrackVia;
-    }
+    bool UseCustomTrackViaSize() const { return m_useCustomTrackVia;  }
 
     /**
      * @return the current diff pair dimension list index.
      */
-    inline int GetDiffPairIndex() const { return m_diffPairIndex; }
+    int GetDiffPairIndex() const { return m_diffPairIndex; }
 
     /**
      * @param aIndex is the diff pair dimensions list index to set.
@@ -456,42 +447,38 @@ public:
     void SetDiffPairIndex( int aIndex );
 
     /**
+     * Compute the next diff pair dimensions list index when cycling predefined sizes, skipping
+     * the index-0 netclass placeholder on roll-over so the sequence stays monotonic.
+     *
+     * @param aIndex is the index of the next differential pair.
+     * @param aForward steps larger when true, smaller when false.
+     */
+    int GetNextDiffPairIndex( int aIndex, bool aForward ) const;
+
+    /**
      * Sets custom track width for differential pairs (i.e. not available in netclasses or
      * preset list).
      *
-     * @param aDrill is the new track width.
+     * @param aWidth is the new track width.
      */
-    inline void SetCustomDiffPairWidth( int aWidth )
-    {
-        m_customDiffPair.m_Width = aWidth;
-    }
+    void SetCustomDiffPairWidth( int aWidth ) { m_customDiffPair.m_Width = aWidth; }
 
     /**
      * @return Current custom track width for differential pairs.
      */
-    inline int GetCustomDiffPairWidth()
-    {
-        return m_customDiffPair.m_Width;
-    }
+    int GetCustomDiffPairWidth() { return m_customDiffPair.m_Width; }
 
     /**
      * Sets custom gap for differential pairs (i.e. not available in netclasses or preset
      * list).
      * @param aGap is the new gap.
      */
-    inline void SetCustomDiffPairGap( int aGap )
-    {
-        m_customDiffPair.m_Gap = aGap;
-    }
+    void SetCustomDiffPairGap( int aGap ) { m_customDiffPair.m_Gap = aGap; }
 
     /**
-     * Function GetCustomDiffPairGap
      * @return Current custom gap width for differential pairs.
      */
-    inline int GetCustomDiffPairGap()
-    {
-        return m_customDiffPair.m_Gap;
-    }
+    int GetCustomDiffPairGap() { return m_customDiffPair.m_Gap; }
 
     /**
      * Sets custom via gap for differential pairs (i.e. not available in netclasses or
@@ -499,15 +486,12 @@ public:
      *
      * @param aGap is the new gap.  Specify 0 to use the DiffPairGap for vias as well.
      */
-    inline void SetCustomDiffPairViaGap( int aGap )
-    {
-        m_customDiffPair.m_ViaGap = aGap;
-    }
+    void SetCustomDiffPairViaGap( int aGap ) { m_customDiffPair.m_ViaGap = aGap; }
 
     /**
      * @return Current custom via gap width for differential pairs.
      */
-    inline int GetCustomDiffPairViaGap()
+    int GetCustomDiffPairViaGap()
     {
         return m_customDiffPair.m_ViaGap > 0 ? m_customDiffPair.m_ViaGap : m_customDiffPair.m_Gap;
     }
@@ -517,18 +501,12 @@ public:
      *
      * @param aEnabled decides if custom settings should be used for new differential pairs.
      */
-    inline void UseCustomDiffPairDimensions( bool aEnabled )
-    {
-        m_useCustomDiffPair = aEnabled;
-    }
+    void UseCustomDiffPairDimensions( bool aEnabled ) { m_useCustomDiffPair = aEnabled; }
 
     /**
      * @return True if custom sizes of diff pairs are enabled, false otherwise.
      */
-    inline bool UseCustomDiffPairDimensions() const
-    {
-        return m_useCustomDiffPair;
-    }
+    bool UseCustomDiffPairDimensions() const { return m_useCustomDiffPair; }
 
     /**
      * @return the current diff pair track width, according to the selected options
@@ -554,10 +532,7 @@ public:
      *
      * @return the enabled layers in bit-mapped form.
      */
-    inline const LSET& GetEnabledLayers() const
-    {
-        return m_enabledLayers;
-    }
+    const LSET& GetEnabledLayers() const { return m_enabledLayers; }
 
     /**
      * Change the bit-mask of enabled layers to \a aMask.
@@ -572,7 +547,7 @@ public:
      * @param aLayerId The layer to be tested.
      * @return true if the layer is enabled.
      */
-    inline bool IsLayerEnabled( PCB_LAYER_ID aLayerId ) const
+    bool IsLayerEnabled( PCB_LAYER_ID aLayerId ) const
     {
         if( aLayerId >= 0 && aLayerId < PCB_LAYER_ID_COUNT )
             return m_enabledLayers[aLayerId];
@@ -583,10 +558,7 @@ public:
     /**
      * @return the number of enabled copper layers.
      */
-    inline int GetCopperLayerCount() const
-    {
-        return m_copperLayerCount;
-    }
+    int GetCopperLayerCount() const { return m_copperLayerCount; }
 
     /**
      * Set the copper layer count to \a aNewLayerCount.
@@ -598,10 +570,7 @@ public:
     /**
      * @return the number of enabled user defined layers.
      */
-    inline int GetUserDefinedLayerCount() const
-    {
-        return m_userDefinedLayerCount;
-    }
+    int GetUserDefinedLayerCount() const { return m_userDefinedLayerCount; }
 
     /**
      * Set the number of user defined layers to \a aNewLayerCount.
@@ -614,8 +583,8 @@ public:
      * The full thickness of the board including copper and masks.
      * @return
      */
-    inline int GetBoardThickness() const { return m_boardThickness; }
-    inline void SetBoardThickness( int aThickness ) { m_boardThickness = aThickness; }
+    int GetBoardThickness() const { return m_boardThickness; }
+    void SetBoardThickness( int aThickness ) { m_boardThickness = aThickness; }
 
     /**
      * Return an epsilon which accounts for rounding errors, etc.
@@ -658,17 +627,18 @@ public:
     void            SetGridOrigin( const VECTOR2I& aOrigin ) { m_gridOrigin = aOrigin; }
     const VECTOR2I& GetGridOrigin() const { return m_gridOrigin; }
 
-    void SetDefaultMasterPad();
-
 private:
     void initFromOther( const BOARD_DESIGN_SETTINGS& aOther );
 
     bool migrateSchema0to1();
+    bool migrateSchema2to3();
+    bool migrateSchema3to4();
 
 public:
     // Note: the first value in each dimensions list is the current netclass value
     std::vector<int>                 m_TrackWidthList;
     std::vector<VIA_DIMENSION>       m_ViasDimensionsList;
+    std::vector<VIA_STACK_PRESET>    m_ViaStackPresets;
     std::vector<DIFF_PAIR_DIMENSION> m_DiffPairDimensionsList;
 
     /**
@@ -703,12 +673,11 @@ public:
     int        m_SilkClearance;             // Min dist between two silk items
     int        m_MinResolvedSpokes;         // Min spoke count to not be a starved thermal
     int        m_MinSilkTextHeight;         // Min text height for silkscreen layers
-    int        m_MinSilkTextThickness;      // Min text thickness for silkscreen layers
+    int        m_MinSilkLineWidth;          // Min line width for silkscreen layers
 
     std::shared_ptr<DRC_ENGINE>  m_DRCEngine;
     std::map<int, SEVERITY>      m_DRCSeverities;           // Map from DRCErrorCode to SEVERITY
-    std::set<wxString>           m_DrcExclusions;           // Serialized excluded DRC markers
-    std::map<wxString, wxString> m_DrcExclusionComments;    // Map from serialization to comment
+    std::set<DRC_EXCLUSION, DRC_EXCLUSION_COMPARE> m_DrcExclusions;
 
     // When smoothing the zone's outline there's the question of external fillets (that is, those
     // applied to concave corners).  While it seems safer to never have copper extend outside the
@@ -728,22 +697,22 @@ public:
     int        m_SolderPasteMargin;           // Solder paste margin absolute value
     double     m_SolderPasteMarginRatio;      // Solder mask margin ratio value of pad size
                                               // The final margin is the sum of these 2 values
-    bool m_AllowSoldermaskBridgesInFPs;
+    bool       m_AllowSoldermaskBridgesInFPs;
 
-    bool m_TentViasFront; // The default tenting option if not overridden on an
-    bool m_TentViasBack;  // individual via
+    bool       m_TentViasFront;               // The default tenting option if not overridden on an
+    bool       m_TentViasBack;                // individual via
 
-    bool m_CoverViasFront; // The default covering option if not overridden on an
-    bool m_CoverViasBack;  // individual via
+    bool       m_CoverViasFront;              // The default covering option if not overridden on an
+    bool       m_CoverViasBack;               // individual via
 
-    bool m_PlugViasFront; // The default plugging option if not overridden on an
-    bool m_PlugViasBack;  // individual via
+    bool       m_PlugViasFront;               // The default plugging option if not overridden on an
+    bool       m_PlugViasBack;                // individual via
 
-    bool m_CapVias; // The default capping option if not overridden on an
-                    // individual via
+    bool       m_CapVias;                     // The default capping option if not overridden on an
+                                              // individual via
 
-    bool m_FillVias; // The default filling option if not overridden on ana
-                     // individual via
+    bool       m_FillVias;                    // The default filling option if not overridden on ana
+                                              // individual via
 
     std::shared_ptr<NET_SETTINGS> m_NetSettings;
 
@@ -757,11 +726,11 @@ public:
     std::map<PCB_LAYER_ID, ZONE_LAYER_PROPERTIES> m_ZoneLayerProperties;
 
     // Arrays of default values for the various layer classes.
-    int        m_LineThickness[ LAYER_CLASS_COUNT ];
-    VECTOR2I   m_TextSize[LAYER_CLASS_COUNT];
-    int        m_TextThickness[ LAYER_CLASS_COUNT ];
-    bool       m_TextItalic[ LAYER_CLASS_COUNT ];
-    bool       m_TextUpright[ LAYER_CLASS_COUNT ];
+    int               m_LineThickness[ LAYER_CLASS_COUNT ];
+    VECTOR2I          m_TextSize[LAYER_CLASS_COUNT];
+    int               m_TextThickness[ LAYER_CLASS_COUNT ];
+    bool              m_TextItalic[ LAYER_CLASS_COUNT ];
+    bool              m_TextUpright[ LAYER_CLASS_COUNT ];
 
     // Default values for dimension objects
     DIM_UNITS_MODE    m_DimensionUnitsMode;
@@ -778,10 +747,6 @@ public:
     bool              m_StyleFPShapes;
     bool              m_StyleFPDimensions;
     bool              m_StyleFPBarcodes;
-
-    // Miscellaneous
-    std::unique_ptr<PAD> m_Pad_Master; // A dummy pad to store all default parameters
-                                       // when importing values or creating a new pad
 
     // Set to true if the board has a stackup management.
     // If not set a default basic stackup will be used to generate the gbrjob file.
@@ -800,6 +765,7 @@ private:
     int        m_trackWidthIndex;
     int        m_viaSizeIndex;
     int        m_diffPairIndex;
+    int        m_viaStackIndex; // current selection into m_ViaStackPresets
 
     // Custom values for track/via sizes (specified via dialog instead of netclass or lists)
     bool       m_useCustomTrackVia;
@@ -827,6 +793,12 @@ private:
      * It includes not only layers enabled for the board edition, but also dielectric layers.
      */
     BOARD_STACKUP m_stackup;
+
+    /**
+     * Grouping rules and symbol assignments shared by every drill chart and map on the board.
+     */
+    DRILL_SYMBOL_PROFILE m_drillSymbolProfile;
+
 
     /// The default settings that will be used for new zones.
     ZONE_SETTINGS m_defaultZoneSettings;

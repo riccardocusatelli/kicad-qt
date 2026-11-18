@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -107,8 +107,8 @@ BOOST_AUTO_TEST_CASE( XmlExportClassMatchesNetSettings )
         wxRemoveFile( netFile.GetFullPath() );
 
     WX_STRING_REPORTER                    reporter;
-    std::unique_ptr<NETLIST_EXPORTER_XML> exporter =
-            std::make_unique<NETLIST_EXPORTER_XML>( m_schematic.get() );
+    std::unique_ptr<NETLIST_EXPORTER_XML> exporter = std::make_unique<NETLIST_EXPORTER_XML>( m_schematic.get(),
+                                                                                             nullptr );
 
     bool success = exporter->WriteNetlist( netFile.GetFullPath(), 0, reporter );
     BOOST_REQUIRE( success );

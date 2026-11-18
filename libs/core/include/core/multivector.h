@@ -18,11 +18,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef MULTIVECTOR_H
@@ -125,7 +121,7 @@ public:
             m_filter = ( aType != UNDEFINED_TYPE );
         }
 
-        ///< Assures the iterator is in a valid state.
+        /// Assures the iterator is in a valid state.
         void validate()
         {
             // for all-items iterators (unfiltered): check if this is the end of the
@@ -149,25 +145,25 @@ public:
             }
         }
 
-        ///< Wrapped container
+        /// Wrapped container
         ITEM_CONTAINER* m_parent;
 
-        ///< Iterator for one of the ptr_vector containers stored in the array
+        /// Iterator for one of the ptr_vector containers stored in the array
         ITEM_CONTAINER_IT m_it;
 
-        ///< Flag indicating whether type filtering is enabled
+        /// Flag indicating whether type filtering is enabled
         bool m_filter;
 
-        ///< Type of the currently iterated items
+        /// Type of the currently iterated items
         int m_curType;
 
         friend class MULTIVECTOR;
     };
 
-    ///< The non-const iterator
+    /// The non-const iterator
     typedef ITERATOR_BASE<T, MULTIVECTOR<T, FIRST_TYPE_VAL, LAST_TYPE_VAL>,
                           typename ITEM_PTR_VECTOR::iterator> ITERATOR;
-    ///< The const iterator
+    /// The const iterator
     typedef ITERATOR_BASE<const T, const MULTIVECTOR<T, FIRST_TYPE_VAL, LAST_TYPE_VAL>,
                           typename ITEM_PTR_VECTOR::const_iterator> CONST_ITERATOR;
 
@@ -299,7 +295,7 @@ public:
     static constexpr int TYPES_COUNT = LAST_TYPE - FIRST_TYPE + 1;
 
 private:
-    ///< Get first non-empty type or first type if all are empty.
+    /// Get first non-empty type or first type if all are empty.
     int first() const
     {
         int i = 0;
@@ -310,7 +306,7 @@ private:
         return ( i == TYPES_COUNT ) ? FIRST_TYPE : FIRST_TYPE + i;
     }
 
-    ///< Get last non-empty type or first type if all are empty.
+    /// Get last non-empty type or first type if all are empty.
     int last() const
     {
         int i = TYPES_COUNT - 1;
@@ -321,7 +317,7 @@ private:
         return ( i < 0 ) ? FIRST_TYPE : FIRST_TYPE + i;
     }
 
-    ///< Contained items by type
+    /// Contained items by type
     ITEM_PTR_VECTOR m_data[TYPES_COUNT];
 };
 

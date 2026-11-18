@@ -13,13 +13,6 @@ add_subdirectory(router)
 #psnrouter depends on make_lexer outputs in common( bug #1285878 )
 add_dependencies( pnsrouter pcbcommon )
 
-
-file( MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/swig )
-
-#Infrequently needed headers go at end of search paths, append to INC_AFTER
-set( INC_AFTER ${INC_AFTER} python/scripting )
-set( INC_AFTER ${INC_AFTER} ${CMAKE_SOURCE_DIR}/common/swig )
-
 include_directories( BEFORE ${INC_BEFORE} )
 include_directories(
     ./dialogs
@@ -37,6 +30,10 @@ include_directories(
     )
 
 set( PCBNEW_DIALOGS
+    dialogs/dialog_constraint_value.cpp
+    dialogs/dialog_constraint_value_base.cpp
+    dialogs/dialog_constraint_list.cpp
+    dialogs/dialog_constraint_list_base.cpp
     dialogs/dialog_filter_selection.cpp
     dialogs/dialog_filter_selection_base.cpp
     dialogs/dialog_barcode_properties.cpp
@@ -54,6 +51,8 @@ set( PCBNEW_DIALOGS
     dialogs/dialog_copper_zones_base.cpp
     dialogs/dialog_create_array.cpp
     dialogs/dialog_create_array_base.cpp
+    dialogs/dialog_diff_phase_skew_properties.cpp
+    dialogs/dialog_diff_phase_skew_properties_base.cpp
     dialogs/dialog_dimension_properties.cpp
     dialogs/dialog_dimension_properties_base.cpp
     dialogs/dialog_drc.cpp
@@ -61,6 +60,8 @@ set( PCBNEW_DIALOGS
     dialogs/dialog_drc_job_config.cpp
     dialogs/dialog_board_stats_job.cpp
     dialogs/dialog_board_stats_job_base.cpp
+    dialogs/dialog_board_stackup_job.cpp
+    dialogs/dialog_board_stackup_job_base.cpp
     dialogs/dialog_footprint_associations.cpp
     dialogs/dialog_footprint_associations_base.cpp
     dialogs/dialog_footprint_checker.cpp
@@ -69,12 +70,18 @@ set( PCBNEW_DIALOGS
     dialogs/dialog_footprint_properties_base.cpp
     dialogs/dialog_footprint_properties_fp_editor.cpp
     dialogs/dialog_footprint_properties_fp_editor_base.cpp
+    dialogs/dialog_footprint_users.cpp
+    dialogs/dialog_footprint_users_base.cpp
     dialogs/dialog_enum_pads.cpp
     dialogs/dialog_enum_pads_base.cpp
     dialogs/dialog_exchange_footprints.cpp
     dialogs/dialog_exchange_footprints_base.cpp
     dialogs/dialog_export_2581.cpp
     dialogs/dialog_export_2581_base.cpp
+    dialogs/dialog_export_2581_bom.cpp
+    dialogs/dialog_export_2581_bom_base.cpp
+    dialogs/panel_fab_export_content.cpp
+    dialogs/panel_fab_export_content_base.cpp
     dialogs/dialog_export_idf.cpp
     dialogs/dialog_export_idf_base.cpp
     dialogs/dialog_export_step.cpp
@@ -87,6 +94,10 @@ set( PCBNEW_DIALOGS
     dialogs/dialog_export_vrml_base.cpp
     dialogs/dialog_find.cpp
     dialogs/dialog_find_base.cpp
+    dialogs/dialog_find_by_properties.cpp
+    dialogs/dialog_find_by_properties_base.cpp
+    dialogs/dialog_footprint_fields_table.cpp
+    dialogs/dialog_lib_footprint_fields_table.cpp
     dialogs/dialog_footprint_wizard_list.cpp
     dialogs/dialog_footprint_wizard_list_base.cpp
     dialogs/dialog_gen_footprint_position.cpp
@@ -106,6 +117,9 @@ set( PCBNEW_DIALOGS
     dialogs/dialog_global_edit_teardrops_base.cpp
     dialogs/dialog_global_edit_text_and_graphics.cpp
     dialogs/dialog_global_edit_text_and_graphics_base.cpp
+    dialogs/dialog_grid_item_properties.cpp
+    dialogs/dialog_grid_item_properties_base.cpp
+    dialogs/geom_field_helpers.cpp
     dialogs/dialog_push_pad_properties.cpp
     dialogs/dialog_push_pad_properties_base.cpp
     dialogs/dialog_shape_properties.cpp
@@ -149,6 +163,14 @@ set( PCBNEW_DIALOGS
     dialogs/dialog_render_job.cpp
     dialogs/dialog_swap_layers.cpp
     dialogs/dialog_swap_layers_base.cpp
+    dialogs/dialog_generated_table_properties.cpp
+    dialogs/dialog_generated_table_properties_base.cpp
+    dialogs/dialog_drill_groups.cpp
+    dialogs/dialog_drill_groups_base.cpp
+    dialogs/panel_drill_chart_options.cpp
+    dialogs/panel_drill_chart_options_base.cpp
+    dialogs/panel_setup_drill_chart.cpp
+    dialogs/panel_setup_drill_chart_base.cpp
     dialogs/dialog_table_properties.cpp
     dialogs/dialog_table_properties_base.cpp
     dialogs/dialog_tablecell_properties.cpp
@@ -160,6 +182,8 @@ set( PCBNEW_DIALOGS
     dialogs/dialog_text_properties_base.cpp
     dialogs/dialog_textbox_properties.cpp
     dialogs/dialog_textbox_properties_base.cpp
+    dialogs/dialog_microvia_stack.cpp
+    dialogs/dialog_microvia_stack_base.cpp
     dialogs/dialog_track_via_properties.cpp
     dialogs/dialog_track_via_properties_base.cpp
     dialogs/dialog_track_via_size.cpp
@@ -170,10 +194,14 @@ set( PCBNEW_DIALOGS
     dialogs/dialog_unused_pad_layers_base.cpp
     dialogs/dialog_update_pcb.cpp
     dialogs/dialog_update_pcb_base.cpp
+    dialogs/dialog_via_stitch_properties.cpp
+    dialogs/dialog_via_stitch_properties_base.cpp
     dialogs/dialog_multichannel_generate_rule_areas_base.cpp
     dialogs/dialog_multichannel_generate_rule_areas.cpp
     dialogs/dialog_multichannel_repeat_layout_base.cpp
     dialogs/dialog_multichannel_repeat_layout.cpp
+    dialogs/dialog_router_save_test_case_base.cpp
+    dialogs/dialog_router_save_test_case.cpp
     dialogs/panel_display_options.cpp
     dialogs/panel_display_options_base.cpp
     dialogs/panel_edit_options.cpp
@@ -200,6 +228,9 @@ set( PCBNEW_DIALOGS
     dialogs/panel_assign_component_classes_base.cpp
     dialogs/panel_setup_constraints.cpp
     dialogs/panel_setup_constraints_base.cpp
+    dialogs/panel_setup_constraint_rules.cpp
+    dialogs/constraint_rules_list.cpp
+    dialogs/constraint_rules_list_base.cpp
     dialogs/panel_setup_defaults.cpp
     dialogs/panel_setup_defaults_base.cpp
     dialogs/panel_setup_dimensions.cpp
@@ -218,6 +249,8 @@ set( PCBNEW_DIALOGS
     dialogs/panel_setup_text_and_graphics_base.cpp
     dialogs/panel_setup_tracks_and_vias.cpp
     dialogs/panel_setup_tracks_and_vias_base.cpp
+    dialogs/panel_setup_via_stacks.cpp
+    dialogs/panel_setup_via_stacks_base.cpp
     dialogs/panel_setup_tuning_patterns.cpp
     dialogs/panel_setup_tuning_patterns_base.cpp
     dialogs/panel_setup_tuning_profiles_base.cpp
@@ -228,6 +261,8 @@ set( PCBNEW_DIALOGS
     dialogs/panel_setup_zones_base.cpp
     dialogs/panel_setup_zone_hatch_offsets.cpp
     dialogs/panel_setup_zone_hatch_offsets_base.cpp
+    dialogs/panel_zone_conversion.cpp
+    dialogs/panel_zone_conversion_base.cpp
     dialogs/panel_zone_properties.cpp
     dialogs/panel_zone_properties_base.cpp
     footprint_wizard.cpp
@@ -291,12 +326,21 @@ set( PCBNEW_MICROWAVE_SRCS
 
 set( PCBNEW_GENERATORS_SRCS
     generators/pcb_tuning_pattern.cpp
+<<<<<<< b2e17e0a
     generators/pcb_tuning_pattern_edit.cpp
+||||||| 1304b76aad
+=======
+    generators/pcb_via_stack.cpp
+    generators/pcb_via_stitch.cpp
+    generators/via_stitch_tool.cpp
+>>>>>>> ed8c16703e
     )
 
 set( PCBNEW_DRC_SRCS
+    drc/drc_chain_topology.cpp
     drc/drc_interactive_courtyard_clearance.cpp
     drc/drc_creepage_utils.cpp
+    drc/drc_creepage_engine.cpp
     drc/drc_report.cpp
     drc/drc_test_provider.cpp
     drc/drc_test_provider_links.cpp
@@ -313,14 +357,18 @@ set( PCBNEW_DRC_SRCS
     drc/drc_test_provider_hole_to_hole.cpp
     drc/drc_test_provider_hole_size.cpp
     drc/drc_test_provider_library_parity.cpp
+    drc/drc_test_provider_line_width.cpp
     drc/drc_test_provider_schematic_parity.cpp
     drc/drc_test_provider_misc.cpp
+    drc/drc_test_provider_net_chain_tuning_profiles.cpp
     drc/drc_test_provider_text_dims.cpp
     drc/drc_test_provider_track_angle.cpp
     drc/drc_test_provider_track_width.cpp
     drc/drc_test_provider_track_segment_length.cpp
     drc/drc_test_provider_zone_connections.cpp
     drc/drc_test_provider_via_diameter.cpp
+    drc/drc_test_provider_via_stack.cpp
+    drc/drc_test_provider_via_stitch.cpp
     drc/drc_test_provider_solder_mask.cpp
     drc/drc_test_provider_silk_clearance.cpp
     drc/drc_test_provider_matched_length.cpp
@@ -332,7 +380,7 @@ set( PCBNEW_DRC_SRCS
     drc/rule_editor/drc_re_panel_matcher.cpp
     drc/rule_editor/drc_re_rule_loader.cpp
     drc/rule_editor/drc_re_rule_saver.cpp
-    drc/rule_editor/dialog_drc_rule_editor.cpp
+    drc/rule_editor/drc_rule_document.cpp
     drc/rule_editor/panel_drc_rule_editor_base.cpp
     drc/rule_editor/panel_drc_rule_editor.cpp
     drc/rule_editor/drc_re_bitmap_overlay_panel.cpp
@@ -352,8 +400,6 @@ set( PCBNEW_DRC_SRCS
     drc/rule_editor/drc_re_condition_row_panel.cpp
     drc/rule_editor/drc_re_condition_group_panel.cpp
     drc/rule_editor/drc_re_custom_rule_panel.cpp
-    drc/rule_editor/panel_drc_group_header_base.cpp
-    drc/rule_editor/panel_drc_group_header.cpp
     drc/rule_editor/drc_re_validator_checkbox_list.cpp
     drc/rule_editor/drc_re_validator_combo_ctrl.cpp
     drc/rule_editor/drc_re_validator_min_max_ctrl.cpp
@@ -364,6 +410,7 @@ set( PCBNEW_DRC_SRCS
 set( PCBNEW_NETLIST_SRCS
     netlist_reader/board_netlist_updater.cpp
     netlist_reader/netlist.cpp
+    netlist_reader/pcb_netlist_utils.cpp
     )
 
 set( ZONE_MANAGER_SRCS
@@ -390,22 +437,30 @@ set( PCBNEW_CLASS_SRCS
     autorouter/ar_matrix.cpp
     autorouter/autoplace_tool.cpp
 
-    action_plugin.cpp
     array_pad_number_provider.cpp
+    board_loader.cpp
+    constraints/board_constraint_adapter.cpp
+    constraints/constraint_system_2d.cpp
+    tools/constraint_edit_tool.cpp
+    tools/constraint_overlay.cpp
+    tools/view_overlay_holder.cpp
     board_statistics.cpp
     board_statistics_report.cpp
     board_tables/board_characteristics_table.cpp
-    board_tables/board_stackup_table.cpp
     build_BOM_from_board.cpp
     cleanup_item.cpp
     convert_shape_list_to_polygon.cpp
     cross-probing.cpp
+    downgrade/board_downgrade.cpp
+    pcb_io/kicad_sexpr/writers/pcb_writer_v9.cpp
+    pcb_io/kicad_sexpr/writers/pcb_writer_v10.cpp
     edit_track_width.cpp
     files.cpp
     footprint_info_impl.cpp
     footprint_wizard.cpp
     footprint_editor_utils.cpp
     footprint_editor_settings.cpp
+    footprint_editor_tab_context.cpp
     fp_tree_synchronizing_adapter.cpp
     footprint_chooser_frame.cpp
     footprint_edit_frame.cpp
@@ -415,13 +470,18 @@ set( PCBNEW_CLASS_SRCS
     footprint_viewer_frame.cpp
     footprint_viewer_frame_wx.cpp
     fp_tree_model_adapter.cpp
+    footprint_fields_data_model.cpp
     generate_footprint_info.cpp
     graphics_cleaner.cpp
     grid_layer_box_helpers.cpp
     grid_layer_box_helpers.h
+    import_design_rules.cpp
+    import_local_footprint_libs.cpp
+    import_net_reconciler.cpp
     initpcb.cpp
     layer_pairs.cpp
     load_select_footprint.cpp
+    net_chain_bridging.cpp
     menubar_footprint_editor.cpp
     menubar_pcb_editor.cpp
     padstack.cpp
@@ -443,6 +503,7 @@ set( PCBNEW_CLASS_SRCS
     pcbplot.cpp
     plot_board_layers.cpp
     plot_brditems_plotter.cpp
+    ref_suffix_split.cpp
     specctra_import_export/specctra.cpp
     specctra_import_export/specctra_export.cpp
     specctra_import_export/specctra_import.cpp
@@ -457,28 +518,50 @@ set( PCBNEW_CLASS_SRCS
     zone_settings_bag.cpp
     edit_zone_helpers.cpp
 
-    ratsnest/ratsnest.cpp
+    api/api_handler_board.cpp
+    api/api_handler_fp_libraries.cpp
+    api/api_handler_footprint.cpp
+    api/api_handler_pcb.cpp
+    api/api_handler_pcb_tasks.cpp
+    api/footprint_context.cpp
+    api/headless_pcb_context.cpp
+    api/headless_footprint_context.cpp
+    api/pcb_context.cpp
 
     tools/array_tool.cpp
+    tools/block_drag_capability.cpp
+    tools/block_drag_dependents.cpp
+    tools/block_drag_displacement.cpp
+    tools/block_drag_pick.cpp
+    tools/block_drag_validation.cpp
     tools/board_editor_control.cpp
     tools/board_editor_control_export.cpp
     tools/board_inspection_tool.cpp
     tools/board_reannotate_tool.cpp
     tools/convert_tool.cpp
+    tools/diff_phase_skew_tool.cpp
+    tools/creepage_overlay.cpp
     tools/drawing_tool.cpp
     tools/drc_tool.cpp
     tools/edit_tool.cpp
     tools/edit_tool_move_fct.cpp
+    tools/graphic_edit.cpp
+    tools/graphic_edit_tool.cpp
+    tools/graphic_extend.cpp
+    tools/graphic_trim.cpp
     tools/pcb_edit_table_tool.cpp
     tools/global_edit_tool.cpp
     tools/footprint_editor_control.cpp
     tools/footprint_chooser_selection_tool.cpp
     tools/footprint_wizard_tools.cpp
+    tools/hover_picker.cpp
     tools/item_modification_routine.cpp
+    tools/match_properties_tool.cpp
     tools/pad_tool.cpp
     tools/pcb_control.cpp
     tools/pcb_design_block_control.cpp
     tools/pcb_group_tool.cpp
+    tools/pcb_handle_key.cpp
     tools/pcb_picker_tool.cpp
     tools/pcb_selection.cpp
     tools/pcb_selection_conditions.cpp
@@ -494,7 +577,6 @@ set( PCBNEW_CLASS_SRCS
     tools/generator_tool.cpp
     tools/generator_tool_pns_proxy.cpp
     tools/multichannel_tool.cpp
-    tools/drc_rule_editor_tool.cpp
 
     footprint_preview_panel.cpp
     footprint_tree_pane.cpp
@@ -502,6 +584,10 @@ set( PCBNEW_CLASS_SRCS
     widgets/appearance_controls.cpp
     widgets/appearance_controls_wx.cpp
     widgets/appearance_controls_base.cpp
+    widgets/footprint_wizard_properties_panel.cpp
+    widgets/constraint_list_view.cpp
+    widgets/panel_constraints.cpp
+    widgets/panel_constraints_base.cpp
     widgets/panel_footprint_chooser.cpp
     widgets/panel_selection_filter.cpp
     widgets/panel_selection_filter_base.cpp
@@ -516,6 +602,8 @@ set( PCBNEW_CLASS_SRCS
     widgets/pcb_net_inspector_panel.cpp
     widgets/pcb_net_inspector_panel_wx.cpp
     widgets/vertex_editor_pane.cpp
+    widgets/via_cross_section_geometry.cpp
+    widgets/via_cross_section_preview.cpp
 
     component_classes/component_class.cpp
     component_classes/component_class_cache_proxy.cpp
@@ -528,17 +616,26 @@ set( PCBNEW_GIT_SRCS
     git/kigit_pcb_merge.cpp
     )
 
+set( PCBNEW_DIFF_MERGE_SRCS
+    diff_merge/pcb_differ.cpp
+    diff_merge/pcb_merge_applier.cpp
+    diff_merge/fp_lib_differ.cpp
+    diff_merge/pcb_geometry_extractor.cpp
+    diff_merge/pcb_diff_canvas_context.cpp
+    )
+
 set( PCBNEW_SRCS
     ${PCBNEW_MICROWAVE_SRCS}
     ${PCBNEW_CLASS_SRCS}
-    ${PCBNEW_DIALOGS}
     ${PCBNEW_GIT_SRCS}
+    ${PCBNEW_DIFF_MERGE_SRCS}
     )
 
 #extra sources from common
 set( PCBNEW_COMMON_SRCS
     )
 
+<<<<<<< b2e17e0a
 set( PCBNEW_SCRIPTING_PYTHON_HELPERS
     ${CMAKE_SOURCE_DIR}/common/swig/wx_python_helpers.cpp
     python/scripting/pcbnew_action_plugins.cpp
@@ -693,6 +790,162 @@ if( DOXYGEN_FOUND )
     add_dependencies( doxygen-python version_header xml-to-docstrings )
 endif()
 
+||||||| 1304b76aad
+set( PCBNEW_SCRIPTING_PYTHON_HELPERS
+    ${CMAKE_SOURCE_DIR}/common/swig/wx_python_helpers.cpp
+    python/scripting/pcbnew_action_plugins.cpp
+    python/scripting/pcbnew_footprint_wizards.cpp
+    python/scripting/pcbnew_scripting_helpers.cpp
+    python/scripting/pcbnew_scripting.cpp
+    python/scripting/pcbnew_utils_3d.cpp
+    python/scripting/pcb_scripting_tool.cpp
+    )
+
+if( KICAD_IPC_API )
+    set( PCBNEW_SRCS ${PCBNEW_SRCS}
+        api/api_handler_pcb.cpp
+        )
+endif()
+
+#Disable all warnings for the SWIG file
+if( CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang" )
+    if( MSYS )
+#For some reason the.cxx file generated by SWIG cannot be linked if compiled with debug options:
+#it creates a* lot* of not found symbols.So compile it with release mode
+        set_source_files_properties( pcbnew_wrap.cxx PROPERTIES COMPILE_FLAGS "-O2 -w" )
+    else()
+        set_source_files_properties( pcbnew_wrap.cxx PROPERTIES COMPILE_FLAGS "-w" )
+    endif()
+endif()
+
+set( PCBNEW_SCRIPTING_SRCS
+    pcbnew_wrap.cxx
+    ${PCBNEW_SCRIPTING_PYTHON_HELPERS}
+    )
+
+set( SWIG_FLAGS
+    -I${CMAKE_CURRENT_SOURCE_DIR}
+    -I${CMAKE_SOURCE_DIR}/include
+    -I${CMAKE_SOURCE_DIR}/scripting
+    -I${CMAKE_SOURCE_DIR}/pcbnew/python/scripting
+    -I${CMAKE_SOURCE_DIR}/common/swig
+    -I${CMAKE_SOURCE_DIR}/libs/core/include
+    -I${CMAKE_SOURCE_DIR}/libs/kimath/include
+    -I${CMAKE_BINARY_DIR}
+    )
+
+if( DEBUG )
+    set( SWIG_FLAGS ${SWIG_FLAGS} -DDEBUG )
+endif()
+
+#collect CFLAGS, and pass them to swig later
+get_directory_property( DirDefs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMPILE_DEFINITIONS )
+foreach( d ${DirDefs} )
+    set( SWIG_FLAGS ${SWIG_FLAGS} -D${d} )
+endforeach()
+
+
+#We deliberately do not use the CMake support for swig here,
+#i.e.swig_add_footprint() ) because we want full       control.
+
+#Avoid threading in SWIG( breaks threads in pcbnew )
+set( SWIG_OPTS -python -c++ -nothreads -fastdispatch -fvirtual )
+
+set( SWIG_OPTS ${SWIG_OPTS} -outdir ${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/ ${SWIG_FLAGS} )
+
+#Avoid "nothing known about base class" warning output
+set( SWIG_OPTS ${SWIG_OPTS} -w401 -w402 )
+
+if( EXISTS ${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/doxygen-xml )
+    set( SWIG_OPTS ${SWIG_OPTS} -DENABLE_DOCSTRINGS_FROM_DOXYGEN )
+    set( SWIG_OPTS ${SWIG_OPTS} -I${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/docstrings )
+endif()
+
+add_custom_command( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/pcbnew_wrap.cxx
+                    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/pcbnew.py
+
+    DEPENDS python/swig/pcbnew.i
+
+    DEPFILE ${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/pcbnew_wrap.d
+
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/docstrings
+
+    # Make docstrings.i available if it doesn't exist
+    COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/docstrings/docstrings.i
+
+    COMMAND ${SWIG_EXECUTABLE}
+        ${SWIG_OPTS} -MMD -MF ${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/pcbnew_wrap.d -MT pcbnew/pcbnew_wrap.cxx -o ${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/pcbnew_wrap.cxx ${CMAKE_SOURCE_DIR}/pcbnew/python/swig/pcbnew.i
+
+#was needed only with SWIG version < 4 to disable a python section "def swig_import_helper()"
+#found in pcbnew.py but not existing in SWIG version >= 4
+#So it is left                               here for documentation purpose
+#COMMAND ${ PYTHON_EXECUTABLE }
+#${ CMAKE_SOURCE_DIR } / tools / build / fix_swig_imports.py ${ CMAKE_CURRENT_BINARY_DIR } / pcbnew.py
+
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    )
+
+if( UNIX AND NOT APPLE )
+    list( APPEND PCBNEW_EXTRA_LIBS rt )
+endif()
+
+
+###
+#Doxygen python documentation
+###
+
+if( DOXYGEN_FOUND )
+#create XML files from doxygen parsing
+    add_custom_target( doxygen-python-xml
+        ${CMAKE_COMMAND} -E remove_directory doxygen-python-xml
+        COMMAND SOURCES_DIR=${CMAKE_SOURCE_DIR} ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile_xml
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/
+        DEPENDS Doxyfile_xml
+        COMMENT "building doxygen docs into directory doxygen-python/html"
+        )
+
+    add_dependencies( doxygen-python-xml version_header )
+
+#create.i files from XML doxygen parsing, docstrings.i will include all of them
+    add_custom_target( xml-to-docstrings
+        COMMAND ${CMAKE_COMMAND} -E remove_directory docstrings
+        COMMAND ${CMAKE_COMMAND} -E make_directory docstrings
+        COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/build/extract_docstrings.py pcbnew.py doxygen-xml/xml docstrings
+        COMMAND ${CMAKE_COMMAND} -E remove pcbnew.py # force removal so it will be recreated later with the new docstrings
+        COMMENT "building docstring files"
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/
+        DEPENDS pcbnew.py
+        )
+
+    add_dependencies( xml-to-docstrings doxygen-python-xml )
+
+#The sources to give to the Python Doxygen target
+    set( DOXYGEN_PYTHON_SOURCES
+        ${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/pcbnew.py
+        ${CMAKE_CURRENT_SOURCE_DIR}/${KICMAKE_CFG_INTDIR}/python/plugins/FootprintWizardBase.py
+        ${CMAKE_CURRENT_SOURCE_DIR}/${KICMAKE_CFG_INTDIR}/python/plugins/PadArray.py )
+
+#The Doxyfile expects a space - separated list in the env var
+    string(REPLACE ";" " " DOXYGEN_PYTHON_SOURCES_STR "${DOXYGEN_PYTHON_SOURCES}")
+
+#Create doxygen - python html
+    add_custom_target( doxygen-python
+        ${CMAKE_COMMAND} -E remove_directory doxygen-python
+        COMMAND ${CMAKE_COMMAND} -E env
+            PYTHON_SOURCES_TO_DOC=${DOXYGEN_PYTHON_SOURCES_STR}
+            CMAKE_SOURCE_DIR=${CMAKE_SOURCE_DIR}
+            ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile_python
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/
+        DEPENDS Doxyfile_python
+        DEPENDS ${DOXYGEN_PYTHON_SOURCES}
+        COMMENT "building doxygen docs into directory doxygen-python/html"
+        )
+
+    add_dependencies( doxygen-python version_header xml-to-docstrings )
+endif()
+
+=======
+>>>>>>> ed8c16703e
 if( WIN32 )
     if( MINGW )
 #PCBNEW_RESOURCES variable is set by the macro.
@@ -802,8 +1055,13 @@ add_subdirectory( pcb_io/fabmaster )
 add_subdirectory( pcb_io/ipc2581 )
 add_subdirectory( pcb_io/odbpp )
 add_subdirectory( pcb_io/pads )
+add_subdirectory( pcb_io/sprint_layout )
+add_subdirectory( pcb_io/diptrace )
+add_subdirectory( pcb_io/easypc )
+add_subdirectory( pcb_io/autotrax )
+add_subdirectory( pcb_io/target3001 )
 
-set( PCBNEW_IO_LIBRARIES pcad2kicadpcb allegro2pcbnew altium2pcbnew cadstar2pcbnew easyeda easyedapro fabmaster ipc2581 odbpp pads2pcbnew CACHE INTERNAL "")
+set( PCBNEW_IO_LIBRARIES pcad2kicadpcb allegro2pcbnew altium2pcbnew cadstar2pcbnew easyeda easyedapro fabmaster ipc2581 odbpp pads2pcbnew sprint_layout2pcbnew diptrace2pcbnew easypc2pcbnew autotrax2pcbnew target30012pcbnew CACHE INTERNAL "")
 
 #a very small program launcher for pcbnew_kiface
 add_executable( pcbnew WIN32 MACOSX_BUNDLE
@@ -828,7 +1086,6 @@ target_link_options( pcbnew PRIVATE
 add_library( pcbnew_kiface_objects OBJECT
     ${PCBNEW_SRCS}
     ${PCBNEW_COMMON_SRCS}
-    ${PCBNEW_SCRIPTING_SRCS}
     )
 
 if( KICAD_USE_PCH )
@@ -862,6 +1119,7 @@ target_link_libraries( pcbnew_kiface_objects
         rectpack2d
         gzip-hpp
         nanoflann
+        planegcs
         Boost::boost
         ZLIB::ZLIB
         ${OCC_LIBRARIES}
@@ -901,13 +1159,10 @@ set( PCBNEW_KIFACE_LIBRARIES
     kiplatform
     common
     gal
-    scripting
     core
-    idf3
     markdown_lib
     ${PCBNEW_IO_LIBRARIES}
     ${wxWidgets_LIBRARIES}
-    ${PYTHON_LIBRARIES}
     Boost::headers
     ${PCBNEW_EXTRA_LIBS}    # -lrt must follow Boost
     )
@@ -949,6 +1204,9 @@ if( WIN32 )
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:kicad_3dsg>" "$<TARGET_FILE_DIR:pcbnew>"
         )
     add_custom_command( TARGET pcbnew POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:kicad_3d_import>" "$<TARGET_FILE_DIR:pcbnew>"
+        )
+    add_custom_command( TARGET pcbnew POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "$<TARGET_FILE:kiapi>" "$<TARGET_FILE_DIR:pcbnew>"
         )
 endif()
@@ -965,10 +1223,10 @@ if( APPLE )
         )
 
     set_target_properties( pcbnew PROPERTIES INSTALL_RPATH
-            "@executable_path/../Frameworks;@executable_path/../Frameworks/Python.framework" )
+            "@executable_path/../Frameworks" )
 
     set_target_properties( pcbnew_kiface PROPERTIES INSTALL_RPATH
-            "@executable_path/../Frameworks;@executable_path/../Frameworks/Python.framework" )
+            "@executable_path/../Frameworks" )
     set_target_properties( pcbnew_kiface PROPERTIES BUILD_WITH_INSTALL_RPATH 1 )
 
 #put individual bundle outside of main bundle as a first step
@@ -1015,6 +1273,7 @@ if( KICAD_WIN32_INSTALL_PDBS )
     install(FILES $<TARGET_PDB_FILE:pcbnew> DESTINATION ${KICAD_BIN})
     install(FILES $<TARGET_PDB_FILE:pcbnew_kiface> DESTINATION ${KICAD_KIFACE})
 endif()
+<<<<<<< b2e17e0a
 
 if( NOT APPLE )
     install( FILES ${CMAKE_BINARY_DIR}/pcbnew/pcbnew.py DESTINATION ${PYTHON_DEST} )
@@ -1119,3 +1378,109 @@ if( APPLE )
         COMMENT "Creating Python library directory ${PYTHON_DEST}"
         )
 endif()
+||||||| 1304b76aad
+
+if( NOT APPLE )
+    install( FILES ${CMAKE_BINARY_DIR}/pcbnew/pcbnew.py DESTINATION ${PYTHON_DEST} )
+else()
+#put into bundle at build time, it is relocated at install
+    add_custom_target( ScriptingPcbnewPyCopy ALL
+        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/pcbnew/pcbnew.py" "${PYTHON_DEST}/"
+        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/pcbnew.py
+        COMMENT "Copying pcbnew.py into ${PYTHON_DEST}"
+        )
+    add_dependencies( ScriptingPcbnewPyCopy ScriptingPythonDirectoryCreation )
+endif()
+
+#python plugins
+install( DIRECTORY ${PROJECT_SOURCE_DIR}/pcbnew/python/plugins/
+    DESTINATION ${KICAD_DATA}/scripting/plugins
+    FILE_PERMISSIONS OWNER_EXECUTE OWNER_READ OWNER_WRITE GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
+)
+
+
+#Here is built the                    _pcbnew.{ so, pyd } which is the native part of the pcbnew Python library
+#when Python is used from the command line.
+
+if( WIN32 )
+    install( FILES ${CMAKE_BINARY_DIR}/pcbnew/_pcbnew.pyd DESTINATION ${PYTHON_DEST} )
+    set( PYMOD_EXT "pyd" )
+elseif( APPLE )
+#put everything into bundle at build time, it is relocated at install
+    add_custom_target( ScriptingModulesPcbnewSoCopy ALL
+        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_BINARY_DIR}/${KICMAKE_CFG_INTDIR}//pcbnew/_pcbnew.so" "${PYTHON_DEST}/"
+        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/_pcbnew.so
+        COMMENT "Copying _pcbnew.so into ${PYTHON_DEST}"
+        )
+    add_dependencies( ScriptingModulesPcbnewSoCopy ScriptingPythonDirectoryCreation )
+    set( PYMOD_EXT "so" )
+else()
+#Linux is the remaining platform, and all that has to be installed is the created symlink.
+    set( PYMOD_EXT "so" )
+
+    install( FILES ${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/python/_pcbnew.${PYMOD_EXT} DESTINATION ${PYTHON_DEST} )
+endif()
+
+if( APPLE )
+     add_custom_command( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/_pcbnew.${PYMOD_EXT}
+        DEPENDS pcbnew_kiface
+        COMMAND ${CMAKE_COMMAND} -E copy  ${OSX_BUNDLE_BUILD_KIFACE_DIR}/_pcbnew.kiface _pcbnew.${PYMOD_EXT}
+        COMMENT "Creating python's pcbnew native module _pcbnew.${PYMOD_EXT} for command line use."
+        )
+
+     set( PYTHON_FILES ${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/_pcbnew.${PYMOD_EXT} )
+elseif( WIN32 )
+    # For phase 1, copy _pcbnew.kiface to the python module.
+    add_custom_command( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/_pcbnew.${PYMOD_EXT}
+        DEPENDS pcbnew_kiface
+        COMMAND ${CMAKE_COMMAND} -E copy _pcbnew${KIFACE_SUFFIX} _pcbnew.${PYMOD_EXT}
+        COMMENT "Creating python's pcbnew native module _pcbnew.${PYMOD_EXT} for command line use."
+        )
+
+    set( PYTHON_FILES ${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/_pcbnew.${PYMOD_EXT} )
+else()
+    # For linux, just create a symlink in the build directory to ensure the unit tests can find the library
+    # We don't actually do anything with this symlink though, since we create the proper one for the install
+    # later.
+    add_custom_command( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/_pcbnew.${PYMOD_EXT}
+        DEPENDS pcbnew_kiface
+        COMMAND ${CMAKE_COMMAND} -E create_symlink _pcbnew${KIFACE_SUFFIX} _pcbnew.${PYMOD_EXT}
+        COMMENT "Symlinking _pcbnew.${PYMOD_EXT} to _pcbnew${KIFACE_SUFFIX}."
+        )
+
+    if( IS_ABSOLUTE ${KICAD_KIFACE} )
+        file( RELATIVE_PATH PCBNEW_PYTHON_SYMLINK ${PYTHON_FULL_DEST} ${KICAD_KIFACE}/_pcbnew${KIFACE_SUFFIX} )
+    else()
+        file( RELATIVE_PATH PCBNEW_PYTHON_SYMLINK ${PYTHON_FULL_DEST} ${CMAKE_INSTALL_PREFIX}/${KICAD_KIFACE}/_pcbnew${KIFACE_SUFFIX} )
+    endif()
+
+    file( MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/python )
+
+    # This is the symlink we use in the installation directory, so it will not resolve in the build directory.
+    add_custom_command( OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/python/_pcbnew.${PYMOD_EXT}
+        DEPENDS pcbnew_kiface
+        COMMAND ln -sf "${PCBNEW_PYTHON_SYMLINK}" "${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/python/_pcbnew.${PYMOD_EXT}"
+        COMMENT "Creating install symlink from _pcbnew.${PYMOD_EXT} to _pcbnew${KIFACE_SUFFIX}."
+        )
+
+    set( PYTHON_FILES
+         ${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/_pcbnew.${PYMOD_EXT}
+         ${CMAKE_CURRENT_BINARY_DIR}/${KICMAKE_CFG_INTDIR}/python/_pcbnew.${PYMOD_EXT}
+        )
+endif()
+
+add_custom_target(
+    pcbnew_python_module ALL
+    DEPENDS ${PYTHON_FILES}
+    )
+
+
+if( APPLE )
+#If we don't have wxPython, then we must create the site-packages directory
+    add_custom_target( ScriptingPythonDirectoryCreation ALL
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${PYTHON_DEST}"
+        COMMENT "Creating Python library directory ${PYTHON_DEST}"
+        )
+endif()
+=======
+>>>>>>> ed8c16703e

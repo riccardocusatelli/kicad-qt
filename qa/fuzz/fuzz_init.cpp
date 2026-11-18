@@ -14,15 +14,14 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <wx/init.h>
 #include <wx/app.h>
+
+#include <qa_utils/wx_utils/wx_assert.h>
+
 #include <kiplatform/app.h>
 #include <mock_pgm_base.h>
 #include <settings/settings_manager.h>
@@ -44,7 +43,7 @@ int fuzz_init( int* argc, char*** argv )
 
     wxSetAssertHandler( &KI_TEST::wxAssertThrower );
 
-    Pgm().InitPgm( true, true, true );
+    Pgm().InitPgm( true, true );
 
     Pgm().GetSettingsManager().RegisterSettings( new PCBNEW_SETTINGS, false );
 

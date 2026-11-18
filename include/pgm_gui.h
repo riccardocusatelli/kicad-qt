@@ -30,31 +30,25 @@
 #include <mutex>
 
 #include <pgm_base.h>
-#include <toolkit/single_instance.h>
 #include <toolkit/toolkit_types.h>
-
-class SINGLE_INSTANCE_CHECKER;
 
 class BACKGROUND_JOBS_MONITOR;
 class GL_CONTEXT_MANAGER;
 class KISTATUSBAR;
 class KIWAY;
 class NOTIFICATIONS_MANAGER;
-class SCRIPTING;
 struct BACKGROUND_JOB;
-struct LOAD_MESSAGE;
-
-#ifdef KICAD_IPC_API
+class KI_ERROR;
 class API_PLUGIN_MANAGER;
 class KICAD_API_SERVER;
-#endif
+class wxEvent;
 
 
 /**
  * The program services of the graphical KiCad applications: PGM_BASE plus the application of
  * the GUI toolkit, the
- * splash screen, the single instance checker, background job and notification UI, the
- * IPC API plugins, Python scripting and the GL context manager.
+ * splash screen, background job and notification UI, the IPC API plugins and the GL context
+ * manager.
  *
  * The editors and the project manager derive their program class from PGM_GUI; GUI code
  * reaches it with PgmGui().
@@ -87,11 +81,11 @@ public:
         return *m_notifications_manager;
     }
 
-#ifdef KICAD_IPC_API
     virtual API_PLUGIN_MANAGER& GetPluginManager() const { return *m_plugin_manager; }
 
     KICAD_API_SERVER& GetApiServer() { return *m_api_server; }
-#endif
+
+    KICAD_API_SERVER* ApiServerOrNull() const { return m_api_server.get(); }
 
     /**
      * Return the path to the preferred text editor application.
@@ -120,8 +114,7 @@ public:
      */
     virtual TOOLKIT_APP& App();
 
-    bool InitPgm( bool aHeadless = false, bool aSkipPyInit = false,
-                  bool aIsUnitTest = false ) override;
+    bool InitPgm( bool aHeadless = false, bool aIsUnitTest = false ) override;
 
     void Destroy() override;
 
@@ -133,14 +126,6 @@ public:
     void HideSplash();
 
     /**
-     * Allow access to the single instance checker to test for other running KiCads.
-     */
-    std::unique_ptr<SINGLE_INSTANCE_CHECKER>& SingleInstance()
-    {
-        return m_pgm_checker;
-    }
-
-    /**
      * Starts a background job to preload the global and project design block libraries.
      * Design block handling code is not associated with a particular KIFACE so this is
      * handled here unlike symbol/footprint loading which are taken care of by the KIFACEs.
@@ -148,12 +133,17 @@ public:
     void PreloadDesignBlockLibraries( KIWAY* aKiway );
 
     /**
-     * Ask the design block preload to stop and wait for it to finish.
-     *
-     * The coordinator runs on its own thread, so it outlives the thread pool drain at exit
-     * and keeps submitting library workers to the pool.  Call this before that drain.
+     * Asks the design block preload to stop, without waiting for it. A transition calls this before it aborts the
+     * library loads, so a preload still queued behind those loads is not waited on while they run.
+     * WaitForDesignBlockPreload() must follow before the project goes away.
      */
     void CancelDesignBlockPreload();
+
+    /**
+     * Waits for the design block preload to end, so it no longer reaches the project, and clears the cancel.
+     * Called on the main thread after the library loads were aborted and before the active project changes.
+     */
+    void WaitForDesignBlockPreload();
 
     /**
      * Register a status bar to receive library load warning messages.
@@ -170,12 +160,18 @@ public:
      * Add library load messages to all registered status bars.
      * Thread-safe - can be called from background threads.
      */
-    void AddLibraryLoadMessages( const std::vector<LOAD_MESSAGE>& aMessages );
+    void AddLibraryLoadMessages( const std::vector<KI_ERROR>& aMessages );
 
     /**
      * Clear library load messages from all registered status bars.
      */
     void ClearLibraryLoadMessages();
+
+    /**
+     * Handle events that must be seen once per application, before any window processes them.
+     * Each application's wxApp::FilterEvent() forwards here (wxWidgets build only).
+     */
+    int FilterAppEvent( wxEvent& aEvent );
 
     /**
      * wxWidgets on MSW tends to crash if you spool up more than one print job at a time.
@@ -206,15 +202,8 @@ protected:
     std::unique_ptr<BACKGROUND_JOBS_MONITOR> m_background_jobs_monitor;
     std::unique_ptr<NOTIFICATIONS_MANAGER> m_notifications_manager;
 
-    std::unique_ptr<SCRIPTING> m_python_scripting;
-
-    /// Check if there is another copy of Kicad running at the same time.
-    std::unique_ptr<SINGLE_INSTANCE_CHECKER> m_pgm_checker;
-
-#ifdef KICAD_IPC_API
     std::unique_ptr<API_PLUGIN_MANAGER> m_plugin_manager;
     std::unique_ptr<KICAD_API_SERVER> m_api_server;
-#endif
 
     GL_CONTEXT_MANAGER* m_glContextManager;
 

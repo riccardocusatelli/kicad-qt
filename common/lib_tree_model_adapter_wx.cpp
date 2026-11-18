@@ -16,8 +16,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -183,8 +183,13 @@ void LIB_TREE_MODEL_ADAPTER::SaveSettings()
 
         for( const std::pair<const wxString, wxDataViewColumn*>& pair : m_colNameMap )
         {
-            if( pair.second && IsValidColumnWidth( pair.second->GetWidth() ) )
-                m_cfg.column_widths[pair.first] = pair.second->GetWidth();
+            if( !pair.second )
+                continue;
+
+            int width = KIPLATFORM::UI::GetColumnWidth( pair.second ) - redrawNudge( pair.first );
+
+            if( IsValidColumnWidth( width ) )
+                m_cfg.column_widths[pair.first] = width;
         }
 
         m_cfg.open_libs = GetOpenLibs();
@@ -231,8 +236,10 @@ void LIB_TREE_MODEL_ADAPTER::UpdateSearchString( const wxString& aSearch, bool a
         BeforeReset();
 
         scoreAndSortNodes( aSearch );
-        AfterReset();
+
+        // AfterReset rebuilds the view from GetParent(), which reports no parents while frozen
         Thaw();
+        AfterReset();
 
         // Move showResults inside the update locker to ensure all tree manipulation
         // (including ExpandAncestors) happens while the window is frozen. This prevents
@@ -287,6 +294,7 @@ void LIB_TREE_MODEL_ADAPTER::recreateColumns()
     m_columns.clear();
     m_colIdxMap.clear();
     m_colNameMap.clear();
+    m_redrawNudge.clear();
 
     // The Item column is always shown
     doAddColumn( wxT( "Item" ) );
@@ -432,7 +440,7 @@ void LIB_TREE_MODEL_ADAPTER::FinishTreeInitialization()
     }
 
     int remainingWidth = m_widget->GetSize().x - totalWidth;
-    header = m_columns[idx]->GetTitle();
+    header = m_colIdxMap[idx];
 
     m_columns[idx]->SetWidth( std::max( m_colWidths[header], remainingWidth ) );
 }
@@ -445,25 +453,18 @@ void LIB_TREE_MODEL_ADAPTER::RefreshTree()
     // user's scroll position (which re-attaching or deleting/re-inserting columns does).
     static int walk = 1;
 
-    std::vector<int> widths;
-
-    for( const wxDataViewColumn* col : m_columns )
-        widths.emplace_back( col->GetWidth() );
-
-    KI_ASSERT( widths.size() );
+    KI_ASSERT( !m_columns.empty() );
 
     // Only use the widths read back if they are non-zero.
     // GTK returns the displayed width of the column, which is not calculated immediately
-    if( widths[0] > 0 )
+    if( m_columns[0]->GetWidth() > 0 )
     {
-        size_t i = 0;
-
         for( const auto& [ colName, colPtr ] : m_colNameMap )
         {
-            if( i >= widths.size() )
-                break;
+            if( !colPtr )
+                continue;
 
-            int width = widths[i++];
+            int width = KIPLATFORM::UI::GetColumnWidth( colPtr ) - redrawNudge( colName );
 
             // Keep the prior sane width if a DPI change handed back a corrupt one.
             if( IsValidColumnWidth( width ) )
@@ -471,13 +472,11 @@ void LIB_TREE_MODEL_ADAPTER::RefreshTree()
         }
     }
 
-    auto colIt = m_colWidths.begin();
+    // The nudge only forces the redraw; the widths read back and saved leave it out
+    auto first = m_colWidths.begin();
+    auto second = std::next( first );
 
-    colIt->second += walk;
-    colIt++;
-
-    if( colIt != m_colWidths.end() )
-        colIt->second -= walk;
+    m_redrawNudge.clear();
 
     for( const auto& [ colName, colPtr ] : m_colNameMap )
     {
@@ -485,10 +484,23 @@ void LIB_TREE_MODEL_ADAPTER::RefreshTree()
             continue;
 
         KI_ASSERT( m_colWidths.count( colName ) );
-        colPtr->SetWidth( m_colWidths[ colName ] );
+
+        if( colName == first->first )
+            m_redrawNudge[colName] = walk;
+        else if( second != m_colWidths.end() && colName == second->first )
+            m_redrawNudge[colName] = -walk;
+
+        colPtr->SetWidth( m_colWidths[ colName ] + redrawNudge( colName ) );
     }
 
     walk = -walk;
+}
+
+
+int LIB_TREE_MODEL_ADAPTER::redrawNudge( const wxString& aColumn ) const
+{
+    auto it = m_redrawNudge.find( aColumn );
+    return it == m_redrawNudge.end() ? 0 : it->second;
 }
 
 
@@ -511,17 +523,17 @@ wxDataViewItem LIB_TREE_MODEL_ADAPTER::GetParent( const wxDataViewItem& aItem ) 
         return ToItem( nullptr );
 
     LIB_TREE_NODE* node   = ToNode( aItem );
-    LIB_TREE_NODE* parent = node ? node->m_Parent : nullptr;
 
-    if( node->m_Type == LIB_TREE_NODE::TYPE::INVALID )
+    if( !node || node->m_Type == LIB_TREE_NODE::TYPE::INVALID )
         return ToItem( nullptr );
 
-    // wxDataViewModel has no root node, but rather top-level elements have
-    // an invalid (null) parent.
-    if( !node || !parent || parent->m_Type == LIB_TREE_NODE::TYPE::ROOT )
+    LIB_TREE_NODE* parent = node->m_Parent;
+
+    // wxDataViewModel has no root node, but rather top-level elements have an invalid (null) parent.
+    if( !parent || parent->m_Type == LIB_TREE_NODE::TYPE::ROOT )
         return ToItem( nullptr );
-    else
-        return ToItem( parent );
+
+    return ToItem( parent );
 }
 
 

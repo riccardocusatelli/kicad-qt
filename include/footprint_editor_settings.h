@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef FOOTPRINT_EDITOR_SETTINGS_H_
@@ -23,6 +23,8 @@
 
 #include <board_design_settings.h>
 #include <settings/app_settings.h>
+#include <settings/bom_settings.h>
+#include <settings/snap_settings.h>
 #include <pcbnew_settings.h>
 #include <project/board_project_settings.h>
 
@@ -60,6 +62,8 @@ public:
     // Only the magneticPads element is used
     MAGNETIC_SETTINGS m_MagneticItems;
 
+    SNAP_INFERENCE_SETTINGS m_SnapInference;
+
     PCB_DISPLAY_OPTIONS m_Display;
 
     AUI_PANELS m_AuiPanels;
@@ -76,9 +80,14 @@ public:
 
     LEADER_MODE m_AngleSnapMode;
 
+    bool m_AutoConstraints;
+
     ARC_EDIT_MODE m_ArcEditMode;
 
     int m_LibWidth;
+
+    FIELDS_TABLE_SETTINGS     m_LibFieldEditor;
+    FIELDS_TABLE_BOM_SETTINGS m_LibFieldEditorBom;
 
     wxString m_LastExportPath;
 
@@ -87,6 +96,19 @@ public:
     std::vector<LAYER_PRESET> m_LayerPresets;
 
     wxString m_ActiveLayerPreset;
+
+    /// One open tab persisted across sessions.
+    struct OPEN_TAB
+    {
+        wxString m_lib;
+        wxString m_fpName;
+        bool     m_preview = false;
+    };
+
+    std::vector<OPEN_TAB> m_OpenTabs;
+
+    /// Tab key ("lib:fpName") of the tab that was active when the editor last closed.
+    wxString m_ActiveTab;
 
 protected:
 

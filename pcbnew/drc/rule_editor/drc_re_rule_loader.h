@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef DRC_RE_RULE_LOADER_H_
@@ -76,7 +72,21 @@ public:
      * @param aRulesText The text content of the rules.
      * @return Vector of panel entries for all rules in the text.
      */
-    std::vector<DRC_RE_LOADED_PANEL_ENTRY> LoadFromString( const wxString& aRulesText );
+    std::vector<DRC_RE_LOADED_PANEL_ENTRY> LoadFromString( const wxString& aRulesText, bool* aParsed = nullptr );
+
+    /**
+     * @return The text outside the rules of the last loaded file, for DRC_RULE_SAVER.
+     */
+    const DRC_RE_FILE_TRIVIA& GetFileTrivia() const { return m_fileTrivia; }
+
+    /**
+     * Extract the complete original text of a rule from file content.
+     *
+     * @param aContent The full file content.
+     * @param aRuleName The name of the rule to extract.
+     * @return The complete rule text including (rule ...) wrapper, or empty if not found.
+     */
+    static wxString ExtractRuleText( const wxString& aContent, const wxString& aRuleName );
 
     /**
      * Extract the body of a rule from its original text, stripping the
@@ -85,7 +95,7 @@ public:
      * @param aOriginalText The full original text of a single rule.
      * @return The inner body (constraints, conditions) without the rule wrapper.
      */
-    static wxString extractRuleBody( const wxString& aOriginalText );
+    static wxString ExtractRuleBody( const wxString& aOriginalText );
 
     /**
      * Extract comment lines from a rule.
@@ -94,7 +104,7 @@ public:
      * @param aOriginalText Rule text.
      * @return Extracted comment text (empty if none).
      */
-    static wxString extractRuleComment( const wxString& aOriginalText );
+    static wxString ExtractRuleComment( const wxString& aOriginalText );
 
 private:
     /**
@@ -125,15 +135,6 @@ private:
     double toMM( int aValue );
 
     /**
-     * Extract the complete original text of a rule from file content.
-     *
-     * @param aContent The full file content.
-     * @param aRuleName The name of the rule to extract.
-     * @return The complete rule text including (rule ...) wrapper, or empty if not found.
-     */
-    wxString extractRuleText( const wxString& aContent, const wxString& aRuleName );
-
-    /**
      * Convert internal time units to picoseconds.
      */
     double toPS( int aValue );
@@ -144,7 +145,8 @@ private:
      */
     wxString cleanStrippedCondition( const wxString& aCondition );
 
-    DRC_PANEL_MATCHER m_matcher;
+    DRC_PANEL_MATCHER  m_matcher;
+    DRC_RE_FILE_TRIVIA m_fileTrivia;
 };
 
 

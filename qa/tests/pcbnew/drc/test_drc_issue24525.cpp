@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
@@ -78,8 +74,7 @@ BOOST_FIXTURE_TEST_CASE( DRCIssue24525_TableAndBarcodeOnEdgeCuts, DRC_ISSUE24525
 
     bds.m_DRCEngine->RunTests( EDA_UNITS::MM, true, false );
 
-    std::map<KIID, EDA_ITEM*> itemMap;
-    m_board->FillItemMap( itemMap );
+    BOARD_RC_ITEM_RESOLVER resolver( *m_board );
 
     // Tally the violations by the type of the offending item so the test pins down exactly
     // which item types are caught, not just the total.
@@ -87,11 +82,11 @@ BOOST_FIXTURE_TEST_CASE( DRCIssue24525_TableAndBarcodeOnEdgeCuts, DRC_ISSUE24525
 
     for( const DRC_ITEM& item : violations )
     {
-        auto it = itemMap.find( item.GetMainItemID() );
+        const EDA_ITEM* resolved = resolver.ResolveItemById( item.GetMainItemID() );
 
-        BOOST_REQUIRE( it != itemMap.end() );
+        BOOST_REQUIRE( resolved );
 
-        KICAD_T type = it->second->Type();
+        KICAD_T type = resolved->Type();
 
         if( BaseType( type ) == PCB_DIMENSION_T )
             type = PCB_DIMENSION_T;

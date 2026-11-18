@@ -12,18 +12,81 @@
 #include <geometry/shape_poly_set.h>
 #include <geometry/shape_line_chain.h>
 #include <geometry/polygon_triangulation.h>
+#include <geometry/geometry_predicates.h>
+#include <advanced_config.h>
 #include <trigo.h>
 #include <thread>
 #include <chrono>
 #include <future>
+#include <filesystem>
+#include <fstream>
+#include <array>
+
+#include <wx/log.h>
 
 #include <qa_utils/geometry/geometry.h>
 #include <qa_utils/numeric.h>
 #include <qa_utils/wx_utils/unit_test_utils.h>
 
 #include "geom_test_utils.h"
+#include <geometry/fracture_edge_index_utils.h>
 
 BOOST_AUTO_TEST_SUITE( PolygonTriangulation )
+
+struct POLYGON_TRIANGULATION_TEST_ACCESS
+{
+    static std::vector<double> PartitionAreaFractions( POLYGON_TRIANGULATION& aTriangulator,
+                                                       const SHAPE_LINE_CHAIN& aPoly,
+                                                       size_t aTargetLeaves )
+    {
+        return aTriangulator.PartitionAreaFractionsForTesting( aPoly, aTargetLeaves );
+    }
+};
+
+namespace fs = std::filesystem;
+
+class TRACE_LOG : public wxLog
+{
+public:
+    bool Contains( const wxString& aText ) const { return m_text.Contains( aText ); }
+
+protected:
+    void DoLogTextAtLevel( wxLogLevel, const wxString& aText ) override { m_text += aText; }
+
+private:
+    wxString m_text;
+};
+
+class SCOPED_TRACE_CAPTURE
+{
+public:
+    explicit SCOPED_TRACE_CAPTURE( const wxString& aMask ) :
+            m_log( new TRACE_LOG ),
+            m_chain( m_log ),
+            m_mask( aMask ),
+            m_maskWasAllowed( wxLog::IsAllowedTraceMask( aMask ) )
+    {
+        m_chain.PassMessages( false );
+
+        if( !m_maskWasAllowed )
+            wxLog::AddTraceMask( m_mask );
+    }
+
+    ~SCOPED_TRACE_CAPTURE()
+    {
+        if( !m_maskWasAllowed )
+            wxLog::RemoveTraceMask( m_mask );
+    }
+
+    bool Contains( const wxString& aText ) const { return m_log->Contains( aText ); }
+
+private:
+    TRACE_LOG* m_log;
+    wxLogChain m_chain;
+    wxString   m_mask;
+    bool       m_maskWasAllowed;
+};
+
 
 // Helper class to properly manage TRIANGULATED_POLYGON lifecycle
 class TRIANGULATION_TEST_FIXTURE
@@ -77,6 +140,28 @@ SHAPE_LINE_CHAIN createConcavePolygon( int size = 100 )
     chain.Append( size/2, size/2 );  // Create concave section
     chain.Append( size/2, size );
     chain.Append( 0, size );
+    chain.SetClosed( true );
+    return chain;
+}
+
+SHAPE_LINE_CHAIN createSerpentinePolygon( int step = 20000, int teeth = 16 )
+{
+    SHAPE_LINE_CHAIN chain;
+    chain.Append( 0, 0 );
+
+    int x = 0;
+
+    for( int ii = 0; ii < teeth; ++ii )
+    {
+        x += step;
+        chain.Append( x, 0 );
+        chain.Append( x, step * 3 );
+        x += step;
+        chain.Append( x, step * 3 );
+        chain.Append( x, step * 4 );
+    }
+
+    chain.Append( 0, step * 4 );
     chain.SetClosed( true );
     return chain;
 }
@@ -138,6 +223,181 @@ bool validateTriangulation( const SHAPE_POLY_SET::TRIANGULATED_POLYGON& result,
     return true;
 }
 
+int countSpikeyTriangles( const SHAPE_POLY_SET::TRIANGULATED_POLYGON& aResult )
+{
+    int count = 0;
+
+    for( const auto& tri : aResult.Triangles() )
+    {
+        VECTOR2I pa = tri.GetPoint( 0 );
+        VECTOR2I pb = tri.GetPoint( 1 );
+        VECTOR2I pc = tri.GetPoint( 2 );
+
+        double ab = pa.Distance( pb );
+        double bc = pb.Distance( pc );
+        double ca = pc.Distance( pa );
+
+        double longest = std::max( { ab, bc, ca } );
+        double shortest = std::min( { ab, bc, ca } );
+
+        if( shortest > 0.0 && longest / shortest > 10.0 )
+            ++count;
+    }
+
+    return count;
+}
+
+bool parsePolyFileForTest( const fs::path& aPath, std::vector<SHAPE_POLY_SET>& aZones )
+{
+    std::ifstream file( aPath );
+
+    if( !file.is_open() )
+        return false;
+
+    std::string content( ( std::istreambuf_iterator<char>( file ) ),
+                         std::istreambuf_iterator<char>() );
+
+    size_t zonePos = 0;
+
+    while( ( zonePos = content.find( "(zone (layer \"", zonePos ) ) != std::string::npos )
+    {
+        size_t polysetStart = content.find( "polyset ", zonePos );
+
+        if( polysetStart != std::string::npos )
+        {
+            SHAPE_POLY_SET polySet;
+            std::string    remainder = content.substr( polysetStart );
+            std::stringstream ss( remainder );
+
+            if( polySet.Parse( ss ) )
+                aZones.push_back( std::move( polySet ) );
+        }
+
+        size_t layerEnd = content.find( "\")", zonePos + 14 );
+
+        if( layerEnd == std::string::npos )
+            break;
+
+        zonePos = layerEnd + 1;
+    }
+
+    return !aZones.empty();
+}
+
+// Forces the fracture implementation under test regardless of the developer's kicad_advanced
+class SCOPED_FRACTURE_CFG
+{
+public:
+    explicit SCOPED_FRACTURE_CFG( bool aUseIndex ) :
+            m_cfg( const_cast<ADVANCED_CFG&>( ADVANCED_CFG::GetCfg() ) ),
+            m_cacheFriendly( m_cfg.m_EnableCacheFriendlyFracture ),
+            m_edgeIndex( m_cfg.m_EnableFractureEdgeIndex )
+    {
+        m_cfg.m_EnableCacheFriendlyFracture = true;
+        m_cfg.m_EnableFractureEdgeIndex = aUseIndex;
+    }
+
+    ~SCOPED_FRACTURE_CFG()
+    {
+        m_cfg.m_EnableCacheFriendlyFracture = m_cacheFriendly;
+        m_cfg.m_EnableFractureEdgeIndex = m_edgeIndex;
+    }
+
+private:
+    ADVANCED_CFG& m_cfg;
+    bool          m_cacheFriendly;
+    bool          m_edgeIndex;
+};
+
+
+BOOST_AUTO_TEST_CASE( FractureEdgeIndexMatchesLinearScan )
+{
+#if !defined( __MINGW32__ )
+    const fs::path              polyPath = KI_TEST::GetTestDataRootDir() + "triangulation/vme-wren.kicad_polys";
+    std::vector<SHAPE_POLY_SET> zones;
+
+    BOOST_REQUIRE( parsePolyFileForTest( polyPath, zones ) );
+
+    int deepest = 0;
+
+    for( SHAPE_POLY_SET& zone : zones )
+    {
+        zone.Unfracture();
+
+        for( int polygon = 0; polygon < zone.OutlineCount(); ++polygon )
+            deepest = std::max( deepest, zone.HoleCount( polygon ) );
+    }
+
+    // The index only engages past its hole and visit thresholds, so a fixture that shrank would
+    // leave this comparing two linear runs
+    BOOST_REQUIRE_GE( deepest, 100 );
+
+    std::vector<SHAPE_POLY_SET> linear = zones;
+    std::vector<SHAPE_POLY_SET> indexed = zones;
+
+    {
+        SCOPED_FRACTURE_CFG cfg( false );
+
+        for( SHAPE_POLY_SET& zone : linear )
+            zone.Fracture( false );
+    }
+
+    SCOPED_TRACE_CAPTURE trace( wxS( "KICAD_FRACTURE_INDEX" ) );
+
+    {
+        SCOPED_FRACTURE_CFG cfg( true );
+
+        for( SHAPE_POLY_SET& zone : indexed )
+            zone.Fracture( false );
+    }
+
+#if wxUSE_LOG_TRACE
+    BOOST_REQUIRE( trace.Contains( wxS( "Using fracture edge index" ) ) );
+#endif
+
+    for( size_t zone = 0; zone < linear.size(); ++zone )
+    {
+        BOOST_REQUIRE_EQUAL( indexed[zone].OutlineCount(), linear[zone].OutlineCount() );
+
+        for( int polygon = 0; polygon < linear[zone].OutlineCount(); ++polygon )
+        {
+            const SHAPE_LINE_CHAIN& a = linear[zone].COutline( polygon );
+            const SHAPE_LINE_CHAIN& b = indexed[zone].COutline( polygon );
+            BOOST_REQUIRE_EQUAL( a.PointCount(), b.PointCount() );
+
+            for( int point = 0; point < a.PointCount(); ++point )
+                BOOST_CHECK_EQUAL( a.CPoint( point ), b.CPoint( point ) );
+        }
+    }
+#endif
+}
+
+
+double computeBoardSpikeyRatio( const fs::path& aPath )
+{
+    std::vector<SHAPE_POLY_SET> zones;
+
+    if( !parsePolyFileForTest( aPath, zones ) )
+        return 1.0;
+
+    int totalTriangles = 0;
+    int totalSpikey = 0;
+
+    for( SHAPE_POLY_SET& polySet : zones )
+    {
+        polySet.CacheTriangulation();
+
+        for( unsigned int i = 0; i < polySet.TriangulatedPolyCount(); ++i )
+        {
+            const auto* triPoly = polySet.TriangulatedPolygon( static_cast<int>( i ) );
+            totalTriangles += triPoly->GetTriangleCount();
+            totalSpikey += countSpikeyTriangles( *triPoly );
+        }
+    }
+
+    return totalTriangles > 0 ? static_cast<double>( totalSpikey ) / totalTriangles : 0.0;
+}
+
 // Core functionality tests
 BOOST_AUTO_TEST_CASE( BasicTriangleTriangulation )
 {
@@ -167,6 +427,29 @@ BOOST_AUTO_TEST_CASE( BasicSquareTriangulation )
     BOOST_TEST( fixture.GetResult().GetVertexCount() == 4 );
     BOOST_TEST( fixture.GetResult().GetTriangleCount() == 2 );
     BOOST_TEST( validateTriangulation( fixture.GetResult(), square ) );
+}
+
+BOOST_AUTO_TEST_CASE( SplitFirstFracturePartitionProducesMultipleLeaves )
+{
+    TRIANGULATION_TEST_FIXTURE fixture;
+    auto triangulator = fixture.CreateTriangulator();
+    SHAPE_LINE_CHAIN serpentine = createSerpentinePolygon();
+    std::vector<double> fractions =
+            POLYGON_TRIANGULATION_TEST_ACCESS::PartitionAreaFractions( *triangulator,
+                                                                       serpentine, 4 );
+
+    BOOST_TEST( fractions.size() == 4 );
+
+    for( double fraction : fractions )
+        BOOST_TEST( fraction > 0.15 );
+}
+
+BOOST_AUTO_TEST_CASE( EarLookaheadImprovesBadTriangulationCase )
+{
+    fs::path polyPath = KI_TEST::GetTestDataRootDir() + "triangulation/bad_triangulation_case.kicad_polys";
+
+    BOOST_TEST( fs::exists( polyPath ) );
+    BOOST_TEST( computeBoardSpikeyRatio( polyPath ) < 0.47 );
 }
 
 BOOST_AUTO_TEST_CASE( ConcavePolygonTriangulation )
@@ -277,6 +560,42 @@ BOOST_AUTO_TEST_CASE( HintDataOptimization )
     // Results should be identical when hint is applicable
     BOOST_TEST( fixture1.GetResult().GetVertexCount() == fixture2.GetResult().GetVertexCount() );
     BOOST_TEST( fixture1.GetResult().GetTriangleCount() == fixture2.GetResult().GetTriangleCount() );
+}
+
+BOOST_AUTO_TEST_CASE( HintDataOptimizationWithSimplifiedInput )
+{
+    SHAPE_LINE_CHAIN noisySquare;
+    noisySquare.Append( 0, 0 );
+    noisySquare.Append( 100, 0 );
+    noisySquare.Append( 100, 10 );
+    noisySquare.Append( 100, 100 );
+    noisySquare.Append( 0, 100 );
+    noisySquare.SetClosed( true );
+
+    TRIANGULATION_TEST_FIXTURE hintFixture;
+    auto hintTriangulator = hintFixture.CreateTriangulator();
+
+    bool success1 = hintTriangulator->TesselatePolygon( noisySquare, nullptr );
+    BOOST_TEST( success1 );
+
+    auto poisonedTriangles = hintFixture.GetResult().Triangles();
+    BOOST_REQUIRE_GE( poisonedTriangles.size(), 2U );
+    std::reverse( poisonedTriangles.begin(), poisonedTriangles.end() );
+    hintFixture.GetResult().SetTriangles( poisonedTriangles );
+
+    TRIANGULATION_TEST_FIXTURE fixture;
+    auto triangulator = fixture.CreateTriangulator();
+
+    bool success2 = triangulator->TesselatePolygon( noisySquare, &hintFixture.GetResult() );
+    BOOST_TEST( success2 );
+    BOOST_TEST( fixture.GetResult().GetTriangleCount() == poisonedTriangles.size() );
+
+    for( size_t i = 0; i < poisonedTriangles.size(); ++i )
+    {
+        BOOST_TEST( fixture.GetResult().Triangles()[i].a == poisonedTriangles[i].a );
+        BOOST_TEST( fixture.GetResult().Triangles()[i].b == poisonedTriangles[i].b );
+        BOOST_TEST( fixture.GetResult().Triangles()[i].c == poisonedTriangles[i].c );
+    }
 }
 
 BOOST_AUTO_TEST_CASE( HintDataInvalidation )
@@ -395,8 +714,12 @@ BOOST_AUTO_TEST_CASE( LargePolygonStressTest )
         BOOST_TEST( fixture.GetResult().GetTriangleCount() > 0 );
     }
 
-    // Performance check - should complete in reasonable time
+    // Sanitizer instrumentation changes execution cost, not the triangulation contract
+#if defined( KICAD_SANITIZE_THREADS ) || defined( KICAD_SANITIZE_ADDRESS )
+    BOOST_TEST_MESSAGE( "Instrumented triangulation: " << duration.count() << " ms" );
+#else
     BOOST_TEST( duration.count() < 10000 ); // Less than 10 seconds
+#endif
 }
 
 // Thread safety tests (following SHAPE_POLY_SET patterns)
@@ -491,7 +814,7 @@ BOOST_AUTO_TEST_CASE( Issue18083_SelfIntersectingPolygonArea )
     BOOST_TEST( polySet.IsSelfIntersecting() );
 
     // Triangulate via SHAPE_POLY_SET
-    polySet.CacheTriangulation( false );
+    polySet.CacheTriangulation();
     BOOST_TEST( polySet.IsTriangulationUpToDate() );
 
     // Calculate the triangulated area
@@ -513,6 +836,84 @@ BOOST_AUTO_TEST_CASE( Issue18083_SelfIntersectingPolygonArea )
     // The triangulated area should match the expected area
     BOOST_TEST( std::abs( triangulatedArea - expectedAreaMmSq ) < expectedAreaMmSq * 0.01,
                 "Triangulated area should match expected area of 49 mm²" );
+}
+
+BOOST_AUTO_TEST_CASE( Issue18083_IndexedSelfTouchingOutlineArea )
+{
+    const int SCALE = 1000000;
+    const std::array<VECTOR2I, 5> corners = { VECTOR2I( 165 * SCALE, 87 * SCALE ),
+                                               VECTOR2I( 179 * SCALE, 87 * SCALE ),
+                                               VECTOR2I( 174 * SCALE, 94 * SCALE ),
+                                               VECTOR2I( 169 * SCALE, 87 * SCALE ),
+                                               VECTOR2I( 167 * SCALE, 94 * SCALE ) };
+    SHAPE_LINE_CHAIN outline;
+
+    // Subdivision preserves the pinch and its area while exercising the indexed split
+    for( size_t i = 0; i < corners.size(); ++i )
+    {
+        const VECTOR2I& a = corners[i];
+        const VECTOR2I& b = corners[( i + 1 ) % corners.size()];
+
+        for( int step = 0; step < 8; ++step )
+            outline.Append( a.x + ( b.x - a.x ) * step / 8, a.y + ( b.y - a.y ) * step / 8 );
+    }
+
+    outline.SetClosed( true );
+    BOOST_REQUIRE_EQUAL( outline.PointCount(), 40 );
+
+    SHAPE_POLY_SET polySet;
+    polySet.AddOutline( outline );
+    const double outlineArea = polySet.Area();
+
+    polySet.CacheTriangulation( false );
+    BOOST_TEST( polySet.IsTriangulationUpToDate() );
+
+    double triangulatedArea = 0.0;
+
+    for( int i = 0; i < polySet.TriangulatedPolyCount(); ++i )
+    {
+        const auto triPoly = polySet.TriangulatedPolygon( i );
+
+        for( const auto& tri : triPoly->Triangles() )
+            triangulatedArea += std::abs( tri.Area() );
+    }
+
+    BOOST_TEST( std::abs( triangulatedArea - outlineArea ) < outlineArea * 0.01 );
+}
+
+BOOST_AUTO_TEST_CASE( Issue25141_FractureCorridorIsNotAPinchPoint )
+{
+    // Vertex 6 sits 1nm off vertex 1 and the corridor runs just under 45 degrees, so it rounds
+    // onto segment 1-2.  The folded lobe makes the direct pass over-cover, which is what routes
+    // this through splitSelfTouchingOutlines() at all.
+    SHAPE_LINE_CHAIN outline( { 0, 0,
+                                20000, 0,          // corridor mouth
+                                60001, 40000,      // hole ring
+                                60001, 60000,
+                                80000, 50000,
+                                60001, 40000,
+                                20001, 0,          // corridor return
+                                100000, 0,
+                                100000, 100000,
+                                30000, 20000,      // fold
+                                90000, 90000,
+                                0, 100000 } );
+    outline.SetClosed( true );
+
+    SHAPE_POLY_SET polySet;
+    polySet.AddOutline( outline );
+
+    polySet.CacheTriangulation( false );
+    BOOST_TEST( polySet.IsTriangulationUpToDate() );
+
+    const VECTOR2I inHole( 64000, 50000 );
+    std::vector<const SHAPE*> triangles;
+
+    polySet.GetIndexableSubshapes( triangles );
+    BOOST_TEST( !polySet.Contains( inHole, -1, 0, false ) );
+
+    for( const SHAPE* tri : triangles )
+        BOOST_TEST( !tri->Collide( inHole, 0 ) );
 }
 
 BOOST_AUTO_TEST_CASE( NearlyCollinearVertices )
@@ -718,6 +1119,208 @@ BOOST_AUTO_TEST_CASE( PerformanceRegression )
     }
 }
 
+/**
+ * Verify that the parallel partition triangulation path produces correct results
+ * by registering a task submitter that uses std::async and triangulating a polygon
+ * large enough to trigger balanced partitioning (>50K vertices produces 4 leaves).
+ */
+BOOST_AUTO_TEST_CASE( ParallelPartitionTriangulation )
+{
+    SHAPE_POLY_SET polySet;
+    SHAPE_LINE_CHAIN outline;
+    constexpr int vertexCount = 120000;
+    constexpr int centerX = 5000000;
+    constexpr int centerY = 5000000;
+    constexpr int radius  = 4000000;
+
+    for( int i = 0; i < vertexCount; ++i )
+    {
+        double angle = 2.0 * M_PI * i / vertexCount;
+        int x = centerX + static_cast<int>( radius * cos( angle ) );
+        int y = centerY + static_cast<int>( radius * sin( angle ) );
+        outline.Append( x, y );
+    }
+
+    outline.SetClosed( true );
+    polySet.AddOutline( outline );
+
+    std::atomic<int> tasksSubmitted( 0 );
+
+    SHAPE_POLY_SET::TASK_SUBMITTER submitter =
+            [&tasksSubmitted]( std::function<void()> aTask )
+            {
+                tasksSubmitted++;
+                std::thread( std::move( aTask ) ).detach();
+            };
+
+    polySet.CacheTriangulation( false, submitter );
+
+    BOOST_TEST( polySet.IsTriangulationUpToDate() );
+    BOOST_TEST( tasksSubmitted.load() > 0 );
+
+    double originalArea = std::abs( outline.Area() );
+    double triArea = 0.0;
+
+    for( unsigned int i = 0; i < polySet.TriangulatedPolyCount(); i++ )
+    {
+        const auto* triPoly = polySet.TriangulatedPolygon( static_cast<int>( i ) );
+
+        for( const auto& tri : triPoly->Triangles() )
+            triArea += std::abs( tri.Area() );
+    }
+
+    // Partitioning may clip edges, so allow a few percent tolerance
+    if( originalArea > 0.0 )
+    {
+        double coverage = triArea / originalArea;
+        BOOST_TEST( coverage > 0.90 );
+        BOOST_TEST( coverage < 1.10 );
+    }
+}
+
+/**
+ * Regression test for issue #24059: infinite loop in eliminateHoles()
+ * when filterPoints() removes the vertex used as its loop sentinel.
+ *
+ * The hole's leftmost vertex coincides with an outer ring vertex (a zero-length bridge).
+ * After split(), the two bridge copies (b2 and a2)
+ * are adjacent and coordinate-equal.  filterPoints(b2, a2) then tries to
+ * remove a2, which is the loop sentinel. This caused an infinite loop.
+ */
+BOOST_AUTO_TEST_CASE( Issue24059_HoleEliminationSentinelRemoval )
+{
+    SHAPE_LINE_CHAIN outer;
+    outer.Append( 0, 0 );
+    outer.Append( 10000, 0 );
+    outer.Append( 10000, 10000 );
+    outer.Append( 0, 10000 );
+    outer.SetClosed( true );
+
+    SHAPE_LINE_CHAIN hole;
+    hole.Append( 0, 0 );
+    hole.Append( 1000, 1000 );
+    hole.Append( 0, 2000 );
+    hole.SetClosed( true );
+
+    SHAPE_POLY_SET::POLYGON polygon;
+    polygon.push_back( outer );
+    polygon.push_back( hole );
+
+    TRIANGULATION_TEST_FIXTURE fixture;
+    auto triangulator = fixture.CreateTriangulator();
+
+    std::atomic<bool> finished( false );
+    bool result = false;
+
+    std::thread worker( [&]()
+    {
+        result = triangulator->TesselatePolygon( polygon, nullptr );
+        finished.store( true );
+    } );
+
+    worker.detach();
+
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds( 5 );
+
+    while( !finished.load() && std::chrono::steady_clock::now() < deadline )
+        std::this_thread::sleep_for( std::chrono::milliseconds( 50 ) );
+
+    BOOST_CHECK_MESSAGE( finished.load(), "TesselatePolygon hung (issue #24059)" );
+
+    if( finished.load() )
+    {
+        BOOST_TEST( result );
+        BOOST_TEST( fixture.GetResult().GetTriangleCount() > 0 );
+    }
+}
+
+/**
+ * Regression test for issue #24121: loading a custom drawing sheet whose
+ * outline-font glyphs contain tiny holes (small details on letters such as
+ * 'B', 'P', 'O') crashed in eliminateHoles().
+ *
+ * Root cause: when a hole's points all collapsed below the triangulation
+ * simplification distance, createRing() would self-remove the surviving
+ * vertex via the duplicate-tail cleanup, leaving the caller with a vertex
+ * whose next/prev pointers were null.  The hole-ring acceptance check
+ * (holeRing->next != holeRing) silently passed nullptr through, and
+ * eliminateHoles() then dereferenced p->next == nullptr.
+ *
+ * The fix tightens the cleanup in createRing() (do not self-remove a
+ * single-vertex ring) and tightens the acceptance check
+ * (holeRing->prev != holeRing->next) so degenerate holes never reach
+ * eliminateHoles().
+ */
+BOOST_AUTO_TEST_CASE( Issue24121_DegenerateHoleAllDuplicates )
+{
+    SHAPE_LINE_CHAIN outer;
+    outer.Append( 0, 0 );
+    outer.Append( 10000, 0 );
+    outer.Append( 10000, 10000 );
+    outer.Append( 0, 10000 );
+    outer.SetClosed( true );
+
+    // Hole with all coincident points: simplification leaves one vertex, then the
+    // duplicate-tail cleanup formerly self-removed it and produced a nullptr-next
+    // ring that crashed eliminateHoles().
+    SHAPE_LINE_CHAIN hole;
+    hole.Append( 5000, 5000 );
+    hole.Append( 5000, 5000 );
+    hole.Append( 5000, 5000 );
+    hole.Append( 5000, 5000 );
+    hole.SetClosed( true );
+
+    SHAPE_POLY_SET::POLYGON polygon;
+    polygon.push_back( outer );
+    polygon.push_back( hole );
+
+    TRIANGULATION_TEST_FIXTURE fixture;
+    auto triangulator = fixture.CreateTriangulator();
+
+    bool result = triangulator->TesselatePolygon( polygon, nullptr );
+
+    BOOST_TEST( result );
+    BOOST_TEST( fixture.GetResult().GetTriangleCount() > 0 );
+}
+
+/**
+ * Companion regression for #24121: hole vertices spaced below the
+ * simplification level (50 internal units by default) all collapse during
+ * createRing(), reproducing the same degenerate state via a more font-like
+ * point cloud rather than literal duplicates.
+ */
+BOOST_AUTO_TEST_CASE( Issue24121_DegenerateHoleBelowSimplification )
+{
+    SHAPE_LINE_CHAIN outer;
+    outer.Append( 0, 0 );
+    outer.Append( 10000, 0 );
+    outer.Append( 10000, 10000 );
+    outer.Append( 0, 10000 );
+    outer.SetClosed( true );
+
+    // All four points lie within a 4-unit box, well below the default 50-unit
+    // simplification threshold, so addVertex() in createRing() collapses them
+    // to a single vertex.
+    SHAPE_LINE_CHAIN tinyHole;
+    tinyHole.Append( 5000, 5000 );
+    tinyHole.Append( 5002, 5000 );
+    tinyHole.Append( 5002, 5002 );
+    tinyHole.Append( 5000, 5002 );
+    tinyHole.SetClosed( true );
+
+    SHAPE_POLY_SET::POLYGON polygon;
+    polygon.push_back( outer );
+    polygon.push_back( tinyHole );
+
+    TRIANGULATION_TEST_FIXTURE fixture;
+    auto triangulator = fixture.CreateTriangulator();
+
+    bool result = triangulator->TesselatePolygon( polygon, nullptr );
+
+    BOOST_TEST( result );
+    BOOST_TEST( fixture.GetResult().GetTriangleCount() > 0 );
+}
+
 BOOST_AUTO_TEST_CASE( CacheTriangulation_AfterMove_FreshPoly )
 {
     SHAPE_LINE_CHAIN outline;
@@ -738,6 +1341,338 @@ BOOST_AUTO_TEST_CASE( CacheTriangulation_AfterMove_FreshPoly )
 
     BOOST_TEST( polySet.IsTriangulationUpToDate() );
     BOOST_TEST( polySet.TriangulatedPolyCount() > 0 );
+}
+
+BOOST_AUTO_TEST_CASE( CacheTriangulation_AfterUpdateTriangulationDataHash )
+{
+    SHAPE_LINE_CHAIN outline;
+    outline.Append( 0, 0 );
+    outline.Append( 10000, 0 );
+    outline.Append( 10000, 10000 );
+    outline.Append( 0, 10000 );
+    outline.SetClosed( true );
+
+    SHAPE_POLY_SET polySet;
+    polySet.AddOutline( outline );
+
+    polySet.UpdateTriangulationDataHash();
+    polySet.CacheTriangulation();
+
+    BOOST_TEST( polySet.IsTriangulationUpToDate() );
+    BOOST_TEST( polySet.TriangulatedPolyCount() > 0 );
+}
+
+namespace
+{
+double meshMinAngleDeg( const SHAPE_POLY_SET::TRIANGULATED_POLYGON& aTri )
+{
+    double minAngle = 180.0;
+
+    for( const auto& tri : aTri.Triangles() )
+    {
+        minAngle = std::min( minAngle, GEOM_TEST::TriangleMinAngleDeg( tri.GetPoint( 0 ),
+                                                                       tri.GetPoint( 1 ),
+                                                                       tri.GetPoint( 2 ) ) );
+    }
+
+    return minAngle;
+}
+
+
+double meshArea( const SHAPE_POLY_SET::TRIANGULATED_POLYGON& aTri )
+{
+    double area = 0.0;
+
+    for( const auto& tri : aTri.Triangles() )
+        area += tri.Area();
+
+    return area;
+}
+
+
+bool meshHasEdge( const SHAPE_POLY_SET::TRIANGULATED_POLYGON& aTri, int aU, int aV )
+{
+    for( const auto& tri : aTri.Triangles() )
+    {
+        bool hasU = tri.a == aU || tri.b == aU || tri.c == aU;
+        bool hasV = tri.a == aV || tri.b == aV || tri.c == aV;
+
+        if( hasU && hasV )
+            return true;
+    }
+
+    return false;
+}
+
+
+int meshSpikeyCount( const SHAPE_POLY_SET::TRIANGULATED_POLYGON& aTri )
+{
+    int count = 0;
+
+    for( const auto& tri : aTri.Triangles() )
+    {
+        VECTOR2I a = tri.GetPoint( 0 ), b = tri.GetPoint( 1 ), c = tri.GetPoint( 2 );
+
+        if( KIGEOM::IsSliverTriangle( a, b, c ) )
+            count++;
+    }
+
+    return count;
+}
+} // namespace
+
+
+BOOST_AUTO_TEST_CASE( RefineFlipsNonDelaunayDiagonal )
+{
+    // Vertex 3 lies inside the circumcircle of 0-1-2, so diagonal 0-2 is non-Delaunay and must
+    // flip to 1-3.
+    SHAPE_POLY_SET::TRIANGULATED_POLYGON tp( 0 );
+    tp.AddVertex( VECTOR2I( 0, 0 ) );
+    tp.AddVertex( VECTOR2I( 10000, 0 ) );
+    tp.AddVertex( VECTOR2I( 10000, 10000 ) );
+    tp.AddVertex( VECTOR2I( 2000, 8000 ) );
+    tp.AddTriangle( 0, 1, 2 );
+    tp.AddTriangle( 0, 2, 3 );
+
+    double beforeAngle = meshMinAngleDeg( tp );
+    double beforeArea  = meshArea( tp );
+
+    tp.Refine();
+
+    BOOST_CHECK_EQUAL( tp.GetTriangleCount(), 2u );
+    BOOST_CHECK_CLOSE( meshArea( tp ), beforeArea, 0.001 );
+    BOOST_CHECK_GT( meshMinAngleDeg( tp ), beforeAngle );
+
+    BOOST_CHECK( meshHasEdge( tp, 0, 1 ) );
+    BOOST_CHECK( meshHasEdge( tp, 1, 2 ) );
+    BOOST_CHECK( meshHasEdge( tp, 2, 3 ) );
+    BOOST_CHECK( meshHasEdge( tp, 0, 3 ) );
+
+    BOOST_CHECK( !meshHasEdge( tp, 0, 2 ) );
+    BOOST_CHECK( meshHasEdge( tp, 1, 3 ) );
+}
+
+
+BOOST_AUTO_TEST_CASE( RefinePrefersFewerSliversOverDelaunay )
+{
+    // Diagonal 0-2 is Delaunay-legal but produces a sliver; 1-3 produces none. Refine must prefer
+    // the fewer-sliver diagonal over the Delaunay one.
+    SHAPE_POLY_SET::TRIANGULATED_POLYGON tp( 0 );
+    tp.AddVertex( VECTOR2I( 0, 0 ) );
+    tp.AddVertex( VECTOR2I( 284000, 42000 ) );
+    tp.AddVertex( VECTOR2I( 276000, 68000 ) );
+    tp.AddVertex( VECTOR2I( 38000, 126000 ) );
+    tp.AddTriangle( 0, 1, 2 );
+    tp.AddTriangle( 0, 2, 3 );
+
+    // Precondition: 0-2 is Delaunay-legal, so a Delaunay-only refine would not touch it.
+    BOOST_REQUIRE( KIGEOM::InCircleDelaunayLegal( VECTOR2I( 0, 0 ), VECTOR2I( 284000, 42000 ),
+                                                  VECTOR2I( 276000, 68000 ),
+                                                  VECTOR2I( 38000, 126000 ) ) );
+    BOOST_REQUIRE_EQUAL( meshSpikeyCount( tp ), 1 );
+
+    double beforeArea = meshArea( tp );
+
+    tp.Refine();
+
+    BOOST_CHECK_EQUAL( tp.GetTriangleCount(), 2u );
+    BOOST_CHECK_CLOSE( meshArea( tp ), beforeArea, 0.001 );
+    BOOST_CHECK_EQUAL( meshSpikeyCount( tp ), 0 );
+    BOOST_CHECK( !meshHasEdge( tp, 0, 2 ) );
+    BOOST_CHECK( meshHasEdge( tp, 1, 3 ) );
+}
+
+
+BOOST_AUTO_TEST_CASE( RefineLeavesDelaunayMeshUnchanged )
+{
+    // An already-Delaunay square triangulation must be a fixed point: no spurious flips that
+    // would churn the mesh or, worse, oscillate.
+    SHAPE_POLY_SET::TRIANGULATED_POLYGON tp( 0 );
+    tp.AddVertex( VECTOR2I( 0, 0 ) );
+    tp.AddVertex( VECTOR2I( 10000, 0 ) );
+    tp.AddVertex( VECTOR2I( 10000, 10000 ) );
+    tp.AddVertex( VECTOR2I( 0, 10000 ) );
+    tp.AddTriangle( 0, 1, 2 );
+    tp.AddTriangle( 0, 2, 3 );
+
+    double beforeArea = meshArea( tp );
+
+    tp.Refine();
+
+    BOOST_CHECK_EQUAL( tp.GetTriangleCount(), 2u );
+    BOOST_CHECK_CLOSE( meshArea( tp ), beforeArea, 0.001 );
+    BOOST_CHECK( meshHasEdge( tp, 0, 2 ) );
+}
+
+
+BOOST_AUTO_TEST_CASE( PredicatesHandleFullCoordinateRange )
+{
+    // The 4e9 nm width exceeds a 32-bit difference; a->b->c is counter-clockwise and must read so.
+    VECTOR2I a( -2000000000, 0 );
+    VECTOR2I b( 2000000000, 0 );
+    VECTOR2I c( 2000000000, 1000 );
+
+    BOOST_CHECK_EQUAL( KIGEOM::OrientationSign( a, b, c ), 1 );
+    BOOST_CHECK_EQUAL( KIGEOM::OrientationSign( a, c, b ), -1 );
+
+    // The same triangle is a needle; the sliver must still register at this span.
+    BOOST_CHECK( KIGEOM::IsSliverTriangle( a, b, c ) );
+}
+
+
+BOOST_AUTO_TEST_CASE( RefinePreservesNonManifoldEdge )
+{
+    // Three triangles share edge 0-1, as a hole-bridge pinch produces. That non-manifold edge must
+    // act as a boundary and never flip.
+    SHAPE_POLY_SET::TRIANGULATED_POLYGON tp( 0 );
+    tp.AddVertex( VECTOR2I( 0, 0 ) );
+    tp.AddVertex( VECTOR2I( 100000, 0 ) );
+    tp.AddVertex( VECTOR2I( 50000, 30000 ) );
+    tp.AddVertex( VECTOR2I( 50000, -30000 ) );
+    tp.AddVertex( VECTOR2I( 50000, 60000 ) );
+    tp.AddTriangle( 0, 1, 2 );
+    tp.AddTriangle( 0, 1, 3 );
+    tp.AddTriangle( 0, 1, 4 );
+
+    std::vector<int> before;
+
+    for( const auto& tri : tp.Triangles() )
+    {
+        before.push_back( tri.a );
+        before.push_back( tri.b );
+        before.push_back( tri.c );
+    }
+
+    tp.Refine();
+
+    std::vector<int> after;
+
+    for( const auto& tri : tp.Triangles() )
+    {
+        after.push_back( tri.a );
+        after.push_back( tri.b );
+        after.push_back( tri.c );
+    }
+
+    BOOST_CHECK( before == after );
+    BOOST_CHECK( meshHasEdge( tp, 0, 1 ) );
+}
+
+
+BOOST_AUTO_TEST_CASE( DecimateRemovesCollinearRun )
+{
+    // A square subdivided into many exactly-collinear points must triangulate down to the two
+    // triangles the plain square produces; the subdivision points carry no geometry.
+    SHAPE_LINE_CHAIN chain;
+    const int size = 1000000;
+    const int steps = 20;
+
+    for( int i = 0; i < steps; i++ )
+        chain.Append( i * size / steps, 0 );
+
+    for( int i = 0; i < steps; i++ )
+        chain.Append( size, i * size / steps );
+
+    for( int i = 0; i < steps; i++ )
+        chain.Append( size - i * size / steps, size );
+
+    for( int i = 0; i < steps; i++ )
+        chain.Append( 0, size - i * size / steps );
+
+    chain.SetClosed( true );
+
+    TRIANGULATION_TEST_FIXTURE fixture;
+    auto triangulator = fixture.CreateTriangulator();
+    BOOST_REQUIRE( triangulator->TesselatePolygon( chain, nullptr ) );
+
+    BOOST_CHECK_EQUAL( fixture.GetResult().GetTriangleCount(), 2u );
+    BOOST_CHECK_CLOSE( meshArea( fixture.GetResult() ), (double) size * size, 1e-6 );
+}
+
+
+BOOST_AUTO_TEST_CASE( DecimateKeepsVerticesBeyondBand )
+{
+    // Teeth of amplitude just past the simplification level must all survive.  The teeth are
+    // tiny and the valley deep, so the area budget alone would let every one go: only the band
+    // test can hold them, which is what this pins.
+    SHAPE_LINE_CHAIN chain;
+    const int amp = TRIANGULATESIMPLIFICATIONLEVEL * 2;
+    const int halfPitch = 25000;
+    const int teeth = 10;
+
+    for( int i = 0; i <= teeth * 2; i++ )
+        chain.Append( i * halfPitch, ( i % 2 ) ? amp : 0 );
+
+    chain.Append( teeth * 2 * halfPitch, -5000000 );
+    chain.Append( 0, -5000000 );
+    chain.SetClosed( true );
+
+    TRIANGULATION_TEST_FIXTURE fixture;
+    auto triangulator = fixture.CreateTriangulator();
+    BOOST_REQUIRE( triangulator->TesselatePolygon( chain, nullptr ) );
+
+    BOOST_CHECK_EQUAL( fixture.GetResult().GetTriangleCount(),
+                       static_cast<size_t>( chain.PointCount() ) - 2 );
+}
+
+
+BOOST_AUTO_TEST_CASE( DecimateKeepsFractureBridges )
+{
+    // Fracturing bakes the hole into the outline through a zero-width corridor whose feet
+    // split an outline edge into exactly-collinear pieces.  With the outline edges subdivided
+    // there is a real run to collapse, so decimation runs on the fractured ring: it must fold
+    // the subdivided edges away (triangle count near the plain four-corner result) yet never
+    // cross the corridor and seal the hole (area preserved).
+    const int    size = 1000000;
+    const int    steps = 25;
+    SHAPE_LINE_CHAIN outline;
+
+    for( int i = 0; i < steps; i++ )
+        outline.Append( i * size / steps, 0 );
+
+    for( int i = 0; i < steps; i++ )
+        outline.Append( size, i * size / steps );
+
+    for( int i = 0; i < steps; i++ )
+        outline.Append( size - i * size / steps, size );
+
+    for( int i = 0; i < steps; i++ )
+        outline.Append( 0, size - i * size / steps );
+
+    outline.SetClosed( true );
+
+    SHAPE_LINE_CHAIN hole;
+    hole.Append( 400000, 400000 );
+    hole.Append( 400000, 600000 );
+    hole.Append( 600000, 600000 );
+    hole.Append( 600000, 400000 );
+    hole.SetClosed( true );
+
+    SHAPE_POLY_SET poly;
+    poly.AddOutline( outline );
+    poly.AddHole( hole );
+
+    const double area = poly.Area();
+
+    poly.Fracture();
+    poly.CacheTriangulation( false );
+
+    double meshTotal = 0.0;
+    size_t triangles = 0;
+
+    for( unsigned i = 0; i < poly.TriangulatedPolyCount(); i++ )
+    {
+        triangles += poly.TriangulatedPolygon( i )->GetTriangleCount();
+
+        for( const auto& tri : poly.TriangulatedPolygon( i )->Triangles() )
+            meshTotal += tri.Area();
+    }
+
+    BOOST_CHECK_CLOSE( meshTotal, area, 1e-6 );
+
+    // The 100 subdivision points carry no geometry; without decimation the fractured ring
+    // keeps them all and the mesh is an order of magnitude larger.
+    BOOST_CHECK_LT( triangles, 20u );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

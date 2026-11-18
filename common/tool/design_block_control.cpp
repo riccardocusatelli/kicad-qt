@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include <tool/actions.h>
 #include <tool/library_editor_control.h>
@@ -78,7 +74,7 @@ int DESIGN_BLOCK_CONTROL::PinLibrary( const TOOL_EVENT& aEvent )
 {
     LIB_TREE_NODE* current = getCurrentTreeNode();
 
-    if( current && !current->m_Pinned )
+    if( current && !current->m_Pinned && current->m_Type == LIB_TREE_NODE::TYPE::LIBRARY )
     {
         m_frame->Prj().PinLibrary( current->m_LibId.GetLibNickname(), PROJECT::LIB_TYPE_T::DESIGN_BLOCK_LIB );
         current->m_Pinned = true;
@@ -185,14 +181,6 @@ void DESIGN_BLOCK_CONTROL::setTransitions()
     Go( &DESIGN_BLOCK_CONTROL::UnpinLibrary,    ACTIONS::unpinLibrary.MakeEvent() );
     Go( &DESIGN_BLOCK_CONTROL::NewLibrary,      ACTIONS::newLibrary.MakeEvent() );
     Go( &DESIGN_BLOCK_CONTROL::HideLibraryTree, ACTIONS::hideLibraryTree.MakeEvent() );
-}
-
-
-LIB_ID DESIGN_BLOCK_CONTROL::getSelectedLibId()
-{
-    getDesignBlockPane()->GetSelectedLibId();
-
-    return LIB_ID();
 }
 
 

@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef KIID_H
@@ -28,9 +24,10 @@
 
 #include <kicommon.h>
 #include <boost/uuid/uuid.hpp>
-#include <macros_swig.h>
 #include <nlohmann/json_fwd.hpp>
 
+#include <array>
+#include <cstdint>
 #include <string>
 
 class wxString;
@@ -63,13 +60,15 @@ public:
      * Return a KIID derived from a name, the same name always gives the same KIID.
      */
     static KIID FromName( const std::string& aName );
+    static KIID FromBytes( const std::array<uint8_t, 16>& aBytes );
 
     bool        IsLegacyTimestamp() const;
     timestamp_t AsLegacyTimestamp() const;
 
-    wxString AsString() const;
-    wxString AsLegacyTimestampString() const;
-    std::string AsStdString() const;
+    wxString                AsString() const;
+    wxString                AsLegacyTimestampString() const;
+    std::string             AsStdString() const;
+    std::array<uint8_t, 16> AsBytes() const;
 
     /**
      * Returns true if a string has the correct formatting to be a KIID.
@@ -114,6 +113,27 @@ public:
     static KIID Combine( const KIID& aFirst, const KIID& aSecond );
 
     /**
+     * Build a deterministic UUID from an arbitrary name string.
+     *
+     * The same input always yields the same UUID, and distinct inputs almost
+     * always yield distinct UUIDs. This is useful for keying objects that have
+     * a stable name but no native UUID (e.g. library symbols / footprints,
+     * which are file-name keyed rather than UUID keyed) so that two callsites
+     * derive the identical id for the same name.
+     *
+     * The output bytes are part of the diff/merge engine's on-disk contract;
+     * the hashing here must not change once persisted artifacts depend on it.
+     *
+     * Hashing is over wxChar code units, so for non-ASCII input the result
+     * differs between platforms with 16-bit vs 32-bit wxChar (Windows vs
+     * Linux/macOS); do not rely on cross-platform stability for non-ASCII names.
+     *
+     * @param aName the source string to hash.
+     * @return a deterministic KIID derived from @p aName.
+     */
+    static KIID FromDeterministicString( const wxString& aName );
+
+    /**
      * Generates a deterministic replacement for a given ID.
      *
      * NB: destroys uniform distribution!  But it's the only thing we have when a deterministic
@@ -150,15 +170,10 @@ extern KICOMMON_API KIID niluuid;
 
 KICOMMON_API KIID& NilUuid();
 
-// declare KIID_VECT_LIST as std::vector<KIID> both for c++ and swig:
-DECL_VEC_FOR_SWIG( KIID_VECT_LIST, KIID )
-
-class KICOMMON_API KIID_PATH : public KIID_VECT_LIST
+class KICOMMON_API KIID_PATH : public std::vector<KIID>
 {
 public:
-    KIID_PATH()
-    {
-    }
+    KIID_PATH() {}
 
     KIID_PATH( const wxString& aString );
 
@@ -174,6 +189,11 @@ public:
      * @return true if this path ends with \a aPath or false if it does not.
      */
     bool EndsWith( const KIID_PATH& aPath ) const;
+
+    bool IsContainedWithin( const KIID_PATH& aParentPath ) const
+    {
+        return size() >= aParentPath.size() && std::equal( aParentPath.begin(), aParentPath.end(), begin() );
+    }
 
     wxString AsString() const;
 
@@ -246,31 +266,24 @@ public:
 class KICOMMON_API KIID_NIL_SET_RESET
 {
 public:
-    KIID_NIL_SET_RESET()
-    {
-        KIID::CreateNilUuids( true );
-    };
+    KIID_NIL_SET_RESET() { KIID::CreateNilUuids( true ); };
 
-    ~KIID_NIL_SET_RESET()
-    {
-        KIID::CreateNilUuids( false );
-    }
+    ~KIID_NIL_SET_RESET() { KIID::CreateNilUuids( false ); }
 };
 
 KICOMMON_API void to_json( nlohmann::json& aJson, const KIID& aKIID );
 
 KICOMMON_API void from_json( const nlohmann::json& aJson, KIID& aKIID );
 
-template<> struct KICOMMON_API std::hash<KIID>
+template <>
+struct KICOMMON_API std::hash<KIID>
 {
-    std::size_t operator()( const KIID& aId ) const
-    {
-        return aId.Hash();
-    }
+    std::size_t operator()( const KIID& aId ) const { return aId.Hash(); }
 };
 
 
-template<> struct std::hash<KIID_PATH>
+template <>
+struct std::hash<KIID_PATH>
 {
     std::size_t operator()( const KIID_PATH& aPath ) const
     {

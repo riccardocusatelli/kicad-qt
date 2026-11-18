@@ -83,6 +83,8 @@ public:
         SCH_CLEANUP_FLAGS connectivityCleanUp = NO_CLEANUP;
         bool              hierarchyChanged = false;     ///< Sheets were added, removed or renamed
         bool              variantsChanged = false;      ///< Symbols or sheets have changed
+        bool              variantsRestored = false;     ///< The variant settings were swapped
+        bool              refSuffixChanged = false;     ///< A sheet reference suffix was restored
     };
 
     /**

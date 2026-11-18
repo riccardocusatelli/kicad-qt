@@ -14,13 +14,11 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <bitmaps.h>
+#include <scintilla_tricks.h>
 #include <dialogs/sch_text_syntax_help.h>
 #include <gr_text.h>
 #include <scintilla_tricks.h>
@@ -147,7 +145,7 @@ void DIALOG_TABLECELL_PROPERTIES::getContextualTextVars( const wxString& aCrossR
         if( schematic )
         {
             SCH_REFERENCE_LIST refs;
-            schematic->Hierarchy().GetSymbols( refs, SYMBOL_FILTER_ALL );
+            schematic->Hierarchy().GetSymbols( refs, SYMBOL_FILTER_NON_POWER );
 
             for( int jj = 0; jj < (int) refs.GetCount(); jj++ )
             {
@@ -192,11 +190,15 @@ bool DIALOG_TABLECELL_PROPERTIES::TransferDataToWindow()
     {
         wxString text = cell->GetText();
 
-        m_cellText->SetValue( text );
-        m_cellText->EmptyUndoBuffer();
+        // show text variable cross-references in a human-readable format
+        if( SCHEMATIC* schematic = cell->Schematic() )
+            text = schematic->ConvertKIIDsToRefs( text );
 
         if( firstCell )
         {
+            m_cellText->SetValue( text );
+            m_cellText->EmptyUndoBuffer();
+
             m_fontCtrl->SetFontSelection( cell->GetFont() );
             m_textSize.SetValue( cell->GetTextWidth() );
 
@@ -228,6 +230,12 @@ bool DIALOG_TABLECELL_PROPERTIES::TransferDataToWindow()
         }
         else
         {
+            if( text != m_cellText->GetValue() )
+            {
+                m_cellText->SetValue( INDETERMINATE_STATE );
+                m_cellText->EmptyUndoBuffer();
+            }
+
             if( cell->GetFont() != m_fontCtrl->GetFontSelection( cell->IsBold(), cell->IsItalic() ) )
                 m_fontCtrl->SetSelection( -1 );
 
@@ -280,6 +288,10 @@ bool DIALOG_TABLECELL_PROPERTIES::TransferDataToWindow()
                 m_marginBottom.SetValue( INDETERMINATE_STATE );
         }
 
+        m_hAlignLeft->Check( false );
+        m_hAlignCenter->Check( false );
+        m_hAlignRight->Check( false );
+
         switch( hAlign )
         {
         case GR_TEXT_H_ALIGN_LEFT:          m_hAlignLeft->Check();   break;
@@ -287,6 +299,10 @@ bool DIALOG_TABLECELL_PROPERTIES::TransferDataToWindow()
         case GR_TEXT_H_ALIGN_RIGHT:         m_hAlignRight->Check();  break;
         case GR_TEXT_H_ALIGN_INDETERMINATE:                          break;
         }
+
+        m_vAlignTop->Check( false );
+        m_vAlignCenter->Check( false );
+        m_vAlignBottom->Check( false );
 
         switch( vAlign )
         {
@@ -354,18 +370,25 @@ bool DIALOG_TABLECELL_PROPERTIES::TransferDataFromWindow()
 
     for( SCH_TABLECELL* cell : m_cells )
     {
-        wxString text = m_cellTextCtrl->GetValue();
+        if( m_cellTextCtrl->GetValue() != INDETERMINATE_STATE )
+        {
+            wxString text = m_cellTextCtrl->GetValue();
+
+            // convert any text variable cross-references to their UUIDs
+            if( SCHEMATIC* schematic = cell->Schematic() )
+                text = schematic->ConvertRefsToKIIDs( text );
 
 #ifdef __WXMAC__
-        // On macOS CTRL+Enter produces '\r' instead of '\n' regardless of EOL setting
-        text.Replace( "\r", "\n" );
+            // On macOS CTRL+Enter produces '\r' instead of '\n' regardless of EOL setting
+            text.Replace( "\r", "\n" );
 #elif defined( __WINDOWS__ )
-        // On Windows, a new line is coded as \r\n.  We use only \n in KiCad files and in
-        // drawing routines so strip the \r char.
-        text.Replace( "\r", "" );
+            // On Windows, a new line is coded as \r\n.  We use only \n in KiCad files and in
+            // drawing routines so strip the \r char.
+            text.Replace( "\r", "" );
 #endif
 
-        cell->SetText( text );
+            cell->SetText( text );
+        }
 
         if( m_bold->Get3StateValue() == wxCHK_CHECKED )
             cell->SetBold( true );

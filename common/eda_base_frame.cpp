@@ -17,20 +17,19 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "dialogs/panel_maintenance.h"
 #include "kicad_manager_frame.h"
 #include <eda_base_frame.h>
+#include <kiway_player.h>
 #include <ui_theme.h>
 #include <nlohmann/json.hpp>
 
 #include <advanced_config.h>
+#include <api/api_plugin_manager.h>
+#include <api/api_server.h>
 #include <bitmaps.h>
 #include <bitmap_store.h>
 #include <dialog_shim.h>
@@ -42,7 +41,6 @@
 #include <dialogs/panel_spacemouse.h>
 #include <dialogs/panel_data_collection.h>
 #include <dialogs/panel_plugin_settings.h>
-#include <eda_dde.h>
 #include <file_history.h>
 #include <id.h>
 #include <kiface_base.h>
@@ -97,9 +95,6 @@
 #include <core/ki_assert.h>
 #include <kiway.h>
 
-#ifdef KICAD_IPC_API
-#include <api/api_server.h>
-#endif
 
 
 // Minimum window size
@@ -198,12 +193,13 @@ void EDA_BASE_FRAME::commonInit( FRAME_T aFrameType )
     // Store dimensions of the user area of the main window.
     GetClientSize( &m_frameSize.x, &m_frameSize.y );
 
-    Connect( ID_AUTO_SAVE_TIMER, wxEVT_TIMER,
-             wxTimerEventHandler( EDA_BASE_FRAME::onAutoSaveTimer ) );
+    Connect( ID_AUTO_SAVE_TIMER, wxEVT_TIMER, wxTimerEventHandler( EDA_BASE_FRAME::onAutoSaveTimer ) );
 
     // hook wxEVT_CLOSE_WINDOW so we can call SaveSettings().  This function seems
     // to be called before any other hook for wxCloseEvent, which is necessary.
     Connect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( EDA_BASE_FRAME::windowClosing ) );
+
+    KIPLATFORM::UI::SetWMClass( this, Pgm().GetDesktopAppId() );
 
     initExitKey();
 }
@@ -341,11 +337,10 @@ void EDA_BASE_FRAME::windowClosing( wxCloseEvent& event )
     else if( event.GetEventType() == wxEVT_END_SESSION )
         source = CLOSE_REQUEST::SOURCE::SESSION_END;
 
-    if( source != CLOSE_REQUEST::SOURCE::USER )
-    {
-        // End session means the OS is going to terminate us
-        m_isNonUserClose = true;
-    }
+    // End session means the OS is going to terminate us
+    SCOPED_SET_RESET<bool> nonUserClose( m_isNonUserClose,
+                                         m_isNonUserClose || source != CLOSE_REQUEST::SOURCE::USER
+                                                 || Pgm().IsSessionEnding() );
 
     SCOPED_SET_RESET<bool> closeGuard( m_closeInProgress, true );
 
@@ -378,18 +373,21 @@ void EDA_BASE_FRAME::windowClosing( wxCloseEvent& event )
 }
 
 
+bool EDA_BASE_FRAME::isBlockableSessionEnd() const
+{
+    return KIPLATFORM::APP::SupportsShutdownBlockReason() && Pgm().IsSessionEnding();
+}
+
+
 EDA_BASE_FRAME::~EDA_BASE_FRAME()
 {
-    Disconnect( ID_AUTO_SAVE_TIMER, wxEVT_TIMER,
-                wxTimerEventHandler( EDA_BASE_FRAME::onAutoSaveTimer ) );
+    Disconnect( ID_AUTO_SAVE_TIMER, wxEVT_TIMER, wxTimerEventHandler( EDA_BASE_FRAME::onAutoSaveTimer ) );
     Disconnect( wxEVT_CLOSE_WINDOW, wxCloseEventHandler( EDA_BASE_FRAME::windowClosing ) );
 
     delete m_autoSaveTimer;
     delete m_fileHistory;
 
     ClearUndoRedoList();
-
-    SocketCleanup();
 
     KIPLATFORM::UI::RemoveShutdownBlockReason( this );
 }
@@ -501,17 +499,16 @@ static wxString buildRecoveredFileName( const wxFileName& aSrcFn, const wxDateTi
     int seq = 1;
 
     while( recovered.FileExists() )
-    {
         recovered.SetName( aSrcFn.GetName() + wxS( ".recovered." ) + stamp + wxString::Format( wxS( ".%d" ), seq++ ) );
-    }
 
     return recovered.GetFullPath();
 }
 
 
-void EDA_BASE_FRAME::CheckForAutosaveFiles( const wxString& aProjectPath, const std::vector<wxString>& aExtensions )
+void EDA_BASE_FRAME::CheckForAutosaveFiles( const wxString& aProjectPath, const std::vector<wxString>& aExtensions,
+                                            int aCtl )
 {
-    auto stale = Kiway().LocalHistory().FindStaleAutosaveFiles( aProjectPath, aExtensions );
+    auto stale = Kiway().LocalHistory().ResolveAutosavesForLoad( aProjectPath, aExtensions, aCtl & KICTL_REVERT );
 
     if( stale.empty() )
         return;
@@ -676,7 +673,7 @@ void EDA_BASE_FRAME::onUpdateUI( wxUpdateUIEvent& aEvent )
 
 
 void EDA_BASE_FRAME::HandleUpdateUIEvent( wxUpdateUIEvent& aEvent, EDA_BASE_FRAME* aFrame,
-                                          ACTION_CONDITIONS aCond )
+                                          ACTION_CONDITIONS& aCond )
 {
     bool       checkRes  = false;
     bool       enableRes = true;
@@ -827,9 +824,9 @@ void EDA_BASE_FRAME::RecreateToolbars()
     {
         if( !m_tbRight )
         {
-            m_tbRight =
-                    new ACTION_TOOLBAR( this, wxID_ANY, wxDefaultPosition, wxDefaultSize,
-                                        KICAD_AUI_TB_STYLE | wxAUI_TB_VERTICAL | wxAUI_TB_TEXT | wxAUI_TB_OVERFLOW );
+            m_tbRight = new ACTION_TOOLBAR( this, wxID_ANY, wxDefaultPosition, wxDefaultSize,
+                                            KICAD_AUI_TB_STYLE | wxAUI_TB_VERTICAL | wxAUI_TB_TEXT
+                                                    | wxAUI_TB_OVERFLOW );
             m_tbRight->SetAuiManager( &m_auimgr );
         }
 
@@ -882,6 +879,13 @@ void EDA_BASE_FRAME::RecreateToolbars()
 
         m_tbTopAux->ApplyConfiguration( tbConfig.value() );
     }
+
+    syncToolbarSelections();
+
+    // Realize() grows each toolbar to fit all its tools, so put docked ones back in their panes to overflow
+    // there instead of painting over the status bar
+    if( m_auimgr.GetManagedWindow() )
+        m_auimgr.Update();
 }
 
 
@@ -931,8 +935,23 @@ void EDA_BASE_FRAME::ReCreateMenuBar()
 
     CallAfter( [this]()
                {
-                   if( !m_isClosing )
-                       doReCreateMenuBar();
+                   if( m_isClosing )
+                       return;
+
+                   doReCreateMenuBar();
+
+                   // A submenu entry gets a new automatic id in each menubar, and its handler
+                   // is registered under that id, so the ones of the old menubar are dead
+                   wxMenuBar* menuBar = GetMenuBar();
+
+                   std::erase_if( m_uiUpdateMap,
+                                  [menuBar]( const auto& aEntry )
+                                  {
+                                      int id = aEntry.first;
+
+                                      return id >= wxID_AUTO_LOWEST && id <= wxID_AUTO_HIGHEST
+                                             && !( menuBar && menuBar->FindItem( id ) );
+                                  } );
                } );
 }
 
@@ -1011,14 +1030,17 @@ void EDA_BASE_FRAME::CommonSettingsChanged( int aFlags )
 
     COMMON_SETTINGS* settings = Pgm().GetCommonSettings();
 
-#ifdef KICAD_IPC_API
     bool running = PgmGui().GetApiServer().Running();
 
     if( running && !settings->m_Api.enable_server )
+    {
         PgmGui().GetApiServer().Stop();
+    }
     else if( !running && settings->m_Api.enable_server )
+    {
         PgmGui().GetApiServer().Start();
-#endif
+        PgmGui().GetPluginManager().ReloadPlugins();
+    }
 
     if( m_fileHistory )
     {
@@ -1082,12 +1104,8 @@ void EDA_BASE_FRAME::LoadWindowState( const wxString& aFileName )
     if( !Pgm().GetCommonSettings()->m_Session.remember_open_files )
         return;
 
-    const PROJECT_FILE_STATE* state = Prj().GetLocalSettings().GetFileState( aFileName );
-
-    if( state != nullptr )
-    {
+    if( const PROJECT_FILE_STATE* state = Prj().GetLocalSettings().GetFileState( aFileName ) )
         LoadWindowState( state->window );
-    }
 }
 
 
@@ -1111,8 +1129,7 @@ void EDA_BASE_FRAME::LoadWindowState( const WINDOW_STATE& aState )
         m_frameSize = defaultSize( m_ident, this );
         wasDefault  = true;
 
-        KI_LOG_TRACE( traceDisplayLocation, wxS( "Using minimum size (%d, %d)" ),
-                    m_frameSize.x, m_frameSize.y );
+        KI_LOG_TRACE( traceDisplayLocation, wxS( "Using minimum size (%d, %d)" ), m_frameSize.x, m_frameSize.y );
     }
 
     KI_LOG_TRACE( traceDisplayLocation, wxS( "Number of displays: %d" ), wxDisplay::GetCount() );
@@ -1162,16 +1179,14 @@ void EDA_BASE_FRAME::LoadWindowState( const WINDOW_STATE& aState )
         // larger external monitor that is no longer attached.
         if( m_frameSize.x > clientSize.width )
         {
-            KI_LOG_TRACE( traceDisplayLocation,
-                        wxS( "Clamping window width %d to display width %d" ),
+            KI_LOG_TRACE( traceDisplayLocation, wxS( "Clamping window width %d to display width %d" ),
                         m_frameSize.x, clientSize.width );
             m_frameSize.x = clientSize.width;
         }
 
         if( m_frameSize.y > clientSize.height )
         {
-            KI_LOG_TRACE( traceDisplayLocation,
-                        wxS( "Clamping window height %d to display height %d" ),
+            KI_LOG_TRACE( traceDisplayLocation, wxS( "Clamping window height %d to display height %d" ),
                         m_frameSize.y, clientSize.height );
             m_frameSize.y = clientSize.height;
         }
@@ -1212,23 +1227,20 @@ void EDA_BASE_FRAME::ensureWindowIsOnScreen()
     wxPoint   pos        = GetPosition();
     wxSize    size       = GetWindowSize();
 
-    KI_LOG_TRACE( traceDisplayLocation,
-                wxS( "ensureWindowIsOnScreen: clientArea (%d, %d) w %d h %d" ),
+    KI_LOG_TRACE( traceDisplayLocation, wxS( "ensureWindowIsOnScreen: clientArea (%d, %d) w %d h %d" ),
                 clientSize.x, clientSize.y,
                 clientSize.width, clientSize.height );
 
     if( pos.y < clientSize.y )
     {
-        KI_LOG_TRACE( traceDisplayLocation,
-                    wxS( "ensureWindowIsOnScreen: y pos %d below minimum, setting to %d" ), pos.y,
-                    clientSize.y );
+        KI_LOG_TRACE( traceDisplayLocation, wxS( "ensureWindowIsOnScreen: y pos %d below minimum, setting to %d" ),
+                    pos.y, clientSize.y );
         pos.y = clientSize.y;
     }
 
     if( pos.x < clientSize.x )
     {
-        KI_LOG_TRACE( traceDisplayLocation,
-                    wxS( "ensureWindowIsOnScreen: x pos %d is off the client rect, setting to %d" ),
+        KI_LOG_TRACE( traceDisplayLocation, wxS( "ensureWindowIsOnScreen: x pos %d below minimum, setting to %d" ),
                     pos.x, clientSize.x );
         pos.x = clientSize.x;
     }
@@ -1236,18 +1248,16 @@ void EDA_BASE_FRAME::ensureWindowIsOnScreen()
     if( pos.x + size.x - clientSize.x > clientSize.width )
     {
         int newWidth = clientSize.width - ( pos.x - clientSize.x );
-        KI_LOG_TRACE( traceDisplayLocation,
-                    wxS( "ensureWindowIsOnScreen: effective width %d above available %d, setting "
-                         "to %d" ), pos.x + size.x, clientSize.width, newWidth );
+        KI_LOG_TRACE( traceDisplayLocation, wxS( "ensureWindowIsOnScreen: width %d above available %d, setting to %d" ),
+                    pos.x + size.x, clientSize.width, newWidth );
         size.x = newWidth;
     }
 
     if( pos.y + size.y - clientSize.y > clientSize.height )
     {
         int newHeight = clientSize.height - ( pos.y - clientSize.y );
-        KI_LOG_TRACE( traceDisplayLocation,
-                    wxS( "ensureWindowIsOnScreen: effective height %d above available %d, setting "
-                         "to %d" ), pos.y + size.y, clientSize.height, newHeight );
+        KI_LOG_TRACE( traceDisplayLocation, wxS( "ensureWindowIsOnScreen: height %d above available %d, setting to %d" ),
+                    pos.y + size.y, clientSize.height, newHeight );
         size.y = newHeight;
     }
 
@@ -1331,8 +1341,7 @@ void EDA_BASE_FRAME::LoadSettings( APP_SETTINGS_BASE* aCfg )
     int fileHistorySize = Pgm().GetCommonSettings()->m_System.file_history_size;
 
     // Load the recently used files into the history menu
-    m_fileHistory = new FILE_HISTORY( (unsigned) std::max( 1, fileHistorySize ),
-                                      ID_FILE1, ID_FILE_LIST_CLEAR );
+    m_fileHistory = new FILE_HISTORY( (unsigned) std::max( 1, fileHistorySize ), ID_FILE1, ID_FILE_LIST_CLEAR );
     m_fileHistory->Load( *aCfg );
 }
 
@@ -1399,29 +1408,17 @@ void EDA_BASE_FRAME::PrintMsg( const wxString& text )
 
 void EDA_BASE_FRAME::CreateInfoBar()
 {
-#if defined( __WXOSX_MAC__ )
-    m_infoBar = new WX_INFOBAR( GetToolCanvas() );
-#else
-    m_infoBar = new WX_INFOBAR( this, &m_auimgr );
+    wxWindow* canvas = GetToolCanvas();
 
-    m_auimgr.AddPane( m_infoBar, EDA_PANE().InfoBar().Name( wxS( "InfoBar" ) ).Top().Layer(1) );
-#endif
+    KI_CHECK( canvas, /* void */ );
+
+    m_infoBar = new WX_INFOBAR( canvas, wxID_ANY, true );
 }
 
 
 void EDA_BASE_FRAME::FinishAUIInitialization()
 {
-#if defined( __WXOSX_MAC__ )
     m_auimgr.Update();
-#else
-    // Call Update() to fix all pane default sizes, especially the "InfoBar" pane before
-    // hiding it.
-    m_auimgr.Update();
-
-    // We don't want the infobar displayed right away
-    m_auimgr.GetPane( wxS( "InfoBar" ) ).Hide();
-    m_auimgr.Update();
-#endif
 }
 
 
@@ -1608,7 +1605,7 @@ void EDA_BASE_FRAME::OnPreferences( wxCommandEvent& event )
 }
 
 
-void EDA_BASE_FRAME::ShowPreferences( wxString aStartPage, wxString aStartParentPage )
+void EDA_BASE_FRAME::ShowPreferences( const wxString& aStartPage, const wxString& aStartParentPage )
 {
     PAGED_DIALOG dlg( this, _( "Preferences" ), true, true, wxEmptyString,
                       wxWindow::FromDIP( wxSize( 980, 560 ), nullptr ) );
@@ -1689,6 +1686,7 @@ void EDA_BASE_FRAME::ShowPreferences( wxString aStartPage, wxString aStartParent
                 book->AddPage( new wxPanel( book ), _( "Symbol Editor" ) );
                 book->AddLazySubPage( LAZY_CTOR( PANEL_SYM_DISP_OPTIONS ), _( "Display Options" ) );
                 book->AddLazySubPage( LAZY_CTOR( PANEL_SYM_EDIT_GRIDS ), _( "Grids" ) );
+                book->AddLazySubPage( LAZY_CTOR( PANEL_SYM_SNAPPING ), _( "Snapping" ) );
                 book->AddLazySubPage( LAZY_CTOR( PANEL_SYM_EDIT_OPTIONS ), _( "Editing Options" ) );
                 book->AddLazySubPage( LAZY_CTOR( PANEL_SYM_COLORS ), _( "Colors" ) );
                 book->AddLazySubPage( LAZY_CTOR( PANEL_SYM_TOOLBARS ), _( "Toolbars" ) );
@@ -1699,6 +1697,7 @@ void EDA_BASE_FRAME::ShowPreferences( wxString aStartPage, wxString aStartParent
                 book->AddPage( new wxPanel( book ), _( "Schematic Editor" ) );
                 book->AddLazySubPage( LAZY_CTOR( PANEL_SCH_DISP_OPTIONS ), _( "Display Options" ) );
                 book->AddLazySubPage( LAZY_CTOR( PANEL_SCH_GRIDS ), _( "Grids" ) );
+                book->AddLazySubPage( LAZY_CTOR( PANEL_SCH_SNAPPING ), _( "Snapping" ) );
                 book->AddLazySubPage( LAZY_CTOR( PANEL_SCH_EDIT_OPTIONS ), _( "Editing Options" ) );
                 book->AddLazySubPage( LAZY_CTOR( PANEL_SCH_COLORS ), _( "Colors" ) );
                 book->AddLazySubPage( LAZY_CTOR( PANEL_SCH_TOOLBARS ), _( "Toolbars" ) );
@@ -1723,6 +1722,7 @@ void EDA_BASE_FRAME::ShowPreferences( wxString aStartPage, wxString aStartParent
                 book->AddPage( new wxPanel( book ), _( "Footprint Editor" ) );
                 book->AddLazySubPage( LAZY_CTOR( PANEL_FP_DISPLAY_OPTIONS ), _( "Display Options" ) );
                 book->AddLazySubPage( LAZY_CTOR( PANEL_FP_GRIDS ), _( "Grids" ) );
+                book->AddLazySubPage( LAZY_CTOR( PANEL_FP_SNAPPING ), _( "Snapping" ) );
                 book->AddLazySubPage( LAZY_CTOR( PANEL_FP_ORIGINS_AXES ), _( "Origins & Axes" ) );
                 book->AddLazySubPage( LAZY_CTOR( PANEL_FP_EDIT_OPTIONS ), _( "Editing Options" ) );
                 book->AddLazySubPage( LAZY_CTOR( PANEL_FP_COLORS ), _( "Colors" ) );
@@ -1737,6 +1737,7 @@ void EDA_BASE_FRAME::ShowPreferences( wxString aStartPage, wxString aStartParent
                 book->AddPage( new wxPanel( book ), _( "PCB Editor" ) );
                 book->AddLazySubPage( LAZY_CTOR( PANEL_PCB_DISPLAY_OPTS ), _( "Display Options" ) );
                 book->AddLazySubPage( LAZY_CTOR( PANEL_PCB_GRIDS ), _( "Grids" ) );
+                book->AddLazySubPage( LAZY_CTOR( PANEL_PCB_SNAPPING ), _( "Snapping" ) );
                 book->AddLazySubPage( LAZY_CTOR( PANEL_PCB_ORIGINS_AXES ), _( "Origins & Axes" ) );
                 book->AddLazySubPage( LAZY_CTOR( PANEL_PCB_EDIT_OPTIONS ), _( "Editing Options" ) );
                 book->AddLazySubPage( LAZY_CTOR( PANEL_PCB_COLORS ), _( "Colors" ) );
@@ -1771,6 +1772,7 @@ void EDA_BASE_FRAME::ShowPreferences( wxString aStartPage, wxString aStartParent
                 book->AddLazySubPage( LAZY_CTOR( PANEL_GBR_COLORS ), _( "Colors" ) );
                 book->AddLazySubPage( LAZY_CTOR( PANEL_GBR_TOOLBARS ), _( "Toolbars" ) );
                 book->AddLazySubPage( LAZY_CTOR( PANEL_GBR_GRIDS ), _( "Grids" ) );
+                book->AddLazySubPage( LAZY_CTOR( PANEL_GBR_SNAPPING ), _( "Snapping" ) );
                 book->AddLazySubPage( LAZY_CTOR( PANEL_GBR_EXCELLON_OPTIONS ), _( "Excellon Options" ) );
             }
         }
@@ -1790,6 +1792,7 @@ void EDA_BASE_FRAME::ShowPreferences( wxString aStartPage, wxString aStartParent
                 book->AddPage( new wxPanel( book ), _( "Drawing Sheet Editor" ) );
                 book->AddLazySubPage( LAZY_CTOR( PANEL_DS_DISPLAY_OPTIONS ), _( "Display Options" ) );
                 book->AddLazySubPage( LAZY_CTOR( PANEL_DS_GRIDS ), _( "Grids" ) );
+                book->AddLazySubPage( LAZY_CTOR( PANEL_DS_SNAPPING ), _( "Snapping" ) );
                 book->AddLazySubPage( LAZY_CTOR( PANEL_DS_COLORS ), _( "Colors" ) );
                 book->AddLazySubPage( LAZY_CTOR( PANEL_DS_TOOLBARS ), _( "Toolbars" ) );
 
@@ -1804,9 +1807,7 @@ void EDA_BASE_FRAME::ShowPreferences( wxString aStartPage, wxString aStartParent
         {
         }
 
-#ifdef KICAD_IPC_API
         book->AddPage( new PANEL_PLUGIN_SETTINGS( book ), _( "Plugins" ) );
-#endif
 
         book->AddPage( new PANEL_MAINTENANCE( book, this ), _( "Maintenance" ) );
 
@@ -1884,11 +1885,9 @@ bool EDA_BASE_FRAME::IsWritable( const wxFileName& aFileName, bool aVerbose )
     if( fn.GetPath().IsEmpty() && fn.HasName() )
         fn.MakeAbsolute();
 
-    KI_CHECK_MSG( fn.IsOk(), false,
-                 wxT( "File name object is invalid.  Bad programmer!" ) );
+    KI_CHECK_MSG( fn.IsOk(), false, wxT( "File name object is invalid.  Bad programmer!" ) );
     KI_CHECK_MSG( !fn.GetPath().IsEmpty(), false,
-                 wxT( "File name object path <" ) + fn.GetFullPath() +
-                 wxT( "> is not set.  Bad programmer!" ) );
+                 wxT( "File name object path <" ) + fn.GetFullPath() + wxT( "> is not set.  Bad programmer!" ) );
 
     if( fn.IsDir() && !fn.IsDirWritable() )
     {
@@ -2043,8 +2042,7 @@ void EDA_BASE_FRAME::OnMaximize( wxMaximizeEvent& aEvent )
     {
         m_normalFrameSize = GetWindowSize();
         m_normalFramePos  = GetPosition();
-        KI_LOG_TRACE( traceDisplayLocation,
-                    "Maximizing window - Saving position (%d, %d) with size (%d, %d)",
+        KI_LOG_TRACE( traceDisplayLocation, "Maximizing window - Saving position (%d, %d) with size (%d, %d)",
                     m_normalFramePos.x, m_normalFramePos.y,
                     m_normalFrameSize.x, m_normalFrameSize.y );
     }
@@ -2080,8 +2078,6 @@ wxSize EDA_BASE_FRAME::GetWindowSize()
 
 void EDA_BASE_FRAME::HandleSystemColorChange()
 {
-    // Update the icon theme when the system theme changes and update the toolbars
-    GetBitmapStore()->ThemeChanged();
     ThemeChanged();
 
     // This isn't handled by ThemeChanged()
@@ -2195,10 +2191,8 @@ void EDA_BASE_FRAME::AddMenuLanguageList( ACTION_MENU* aMasterMenu, TOOL_INTERAC
         else
             label = wxGetTranslation( LanguagesList[ii].m_Lang_Label );
 
-        wxMenuItem* item =
-                new wxMenuItem( langsMenu,
-                                LanguagesList[ii].m_KI_Lang_Identifier, // wxMenuItem wxID
-                                label, tooltip, wxITEM_CHECK );
+        wxMenuItem* item = new wxMenuItem( langsMenu, LanguagesList[ii].m_KI_Lang_Identifier, // wxMenuItem wxID
+                                           label, tooltip, wxITEM_CHECK );
 
         langsMenu->Append( item );
     }

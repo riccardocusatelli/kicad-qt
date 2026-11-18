@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "geometry/shape_utils.h"
@@ -31,6 +27,17 @@
 #include <geometry/point_types.h>
 #include <geometry/shape_poly_set.h>
 #include <geometry/shape_rect.h>
+
+
+double KIGEOM::ParameterAlong( const SEG& aSeg, const VECTOR2I& aPoint )
+{
+    SEG::ecoord length = aSeg.SquaredLength();
+
+    if( length == 0 )
+        return 0.0;
+
+    return static_cast<double>( aSeg.TCoef( aPoint ) ) / length;
+}
 
 
 SEG KIGEOM::NormalisedSeg( const SEG& aSeg )

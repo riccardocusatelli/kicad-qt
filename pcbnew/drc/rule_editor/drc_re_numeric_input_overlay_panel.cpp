@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "drc_re_numeric_input_overlay_panel.h"
@@ -26,16 +22,17 @@
 #include "drc_rule_editor_utils.h"
 #include "drc_re_validator_numeric_ctrl.h"
 
-#include <dialogs/rule_editor_dialog_base.h>
 #include <base_units.h>
+#include <i18n_utility.h>
 #include <widgets/unit_binder.h>
 
 #include <wx/textctrl.h>
 #include <eda_base_frame.h>
 
 
-DRC_RE_NUMERIC_INPUT_OVERLAY_PANEL::DRC_RE_NUMERIC_INPUT_OVERLAY_PANEL(
-        wxWindow* aParent, DRC_RE_NUMERIC_INPUT_CONSTRAINT_DATA* aData, EDA_UNITS aUnits ) :
+DRC_RE_NUMERIC_INPUT_OVERLAY_PANEL::DRC_RE_NUMERIC_INPUT_OVERLAY_PANEL( wxWindow* aParent,
+                                                                        DRC_RE_NUMERIC_INPUT_CONSTRAINT_DATA* aData,
+                                                                        EDA_UNITS aUnits ) :
         DRC_RE_BITMAP_OVERLAY_PANEL( aParent ),
         m_data( aData ),
         m_unitsProvider( pcbIUScale, aUnits )
@@ -62,25 +59,8 @@ DRC_RE_NUMERIC_INPUT_OVERLAY_PANEL::DRC_RE_NUMERIC_INPUT_OVERLAY_PANEL(
 
     valueField->GetControl()->SetValidator( VALIDATOR_NUMERIC_CTRL( false, m_data->IsIntegerOnly() ) );
 
-    auto notifyModified = [this]( wxCommandEvent& )
-    {
-        RULE_EDITOR_DIALOG_BASE* dlg = RULE_EDITOR_DIALOG_BASE::GetDialog( this );
-        if( dlg )
-            dlg->SetModified();
-    };
-
-    auto notifySave = [this]( wxCommandEvent& aEvent )
-    {
-        RULE_EDITOR_DIALOG_BASE* dlg = RULE_EDITOR_DIALOG_BASE::GetDialog( this );
-        if( dlg )
-            dlg->OnSave( aEvent );
-    };
-
-    valueField->GetControl()->Bind( wxEVT_TEXT, notifyModified );
-    valueField->GetControl()->Bind( wxEVT_TEXT_ENTER, notifySave );
-
-    PositionFields();
     TransferDataToWindow();
+    PositionFields();
 }
 
 
@@ -89,12 +69,19 @@ bool DRC_RE_NUMERIC_INPUT_OVERLAY_PANEL::TransferDataToWindow()
     if( !m_data )
         return false;
 
-    if( m_data->IsIntegerOnly() )
+    if( m_data->IsIntegerOnly() || m_data->IsUnitless() )
     {
         auto* ctrl = dynamic_cast<wxTextCtrl*>( m_fields[0]->GetControl() );
 
         if( ctrl )
-            ctrl->ChangeValue( wxString::Format( "%d", (int) m_data->GetNumericInputValue() ) );
+        {
+            const double value = m_data->GetNumericInputValue();
+
+            if( m_data->IsIntegerOnly() )
+                ctrl->ChangeValue( wxString::Format( "%d", (int) value ) );
+            else
+                ctrl->ChangeValue( wxString::Format( "%g", value ) );
+        }
     }
     else
     {
@@ -110,15 +97,25 @@ bool DRC_RE_NUMERIC_INPUT_OVERLAY_PANEL::TransferDataFromWindow()
     if( !m_data )
         return false;
 
-    if( m_data->IsIntegerOnly() )
+    if( m_data->IsIntegerOnly() || m_data->IsUnitless() )
     {
         auto* ctrl = dynamic_cast<wxTextCtrl*>( m_fields[0]->GetControl() );
 
         if( ctrl )
         {
-            long val = 0;
-            ctrl->GetValue().Strip( wxString::both ).ToLong( &val );
-            m_data->SetNumericInputValue( static_cast<double>( val ) );
+            wxString text = ctrl->GetValue().Strip( wxString::both );
+
+            if( m_data->IsIntegerOnly() )
+            {
+                long val = 0;
+                text.ToLong( &val );
+                m_data->SetNumericInputValue( static_cast<double>( val ) );
+            }
+            else
+            {
+                double val = EDA_UNIT_UTILS::UI::DoubleValueFromString( pcbIUScale, EDA_UNITS::UNSCALED, text );
+                m_data->SetNumericInputValue( val );
+            }
         }
     }
     else
@@ -151,24 +148,27 @@ bool DRC_RE_NUMERIC_INPUT_OVERLAY_PANEL::ValidateInputs( int* aErrorCount,
 
                 switch( numValidator->GetValidationState() )
                 {
-                case VALIDATOR_NUMERIC_CTRL::VALIDATION_STATE::Empty: errorMsg = wxS( "Value is required." ); break;
+                case VALIDATOR_NUMERIC_CTRL::VALIDATION_STATE::Empty:
+                    errorMsg = _( "Value is required." );
+                    break;
                 case VALIDATOR_NUMERIC_CTRL::VALIDATION_STATE::NotNumeric:
-                    errorMsg = wxS( "Value must be a number." );
+                    errorMsg = _( "Value must be a number." );
                     break;
                 case VALIDATOR_NUMERIC_CTRL::VALIDATION_STATE::NotInteger:
-                    errorMsg = wxS( "Value must be a whole number." );
+                    errorMsg = _( "Value must be a whole number." );
                     break;
                 case VALIDATOR_NUMERIC_CTRL::VALIDATION_STATE::NotGreaterThanZero:
-                    errorMsg = wxS( "Value must be greater than 0." );
+                    errorMsg = _( "Value must be greater than 0." );
                     break;
-                default: break;
+                default:
+                    break;
                 }
 
                 if( !errorMsg.IsEmpty() )
                 {
                     ( *aErrorCount )++;
                     *aValidationMessage += DRC_RULE_EDITOR_UTILS::FormatErrorMessage( *aErrorCount, errorMsg );
-                    ShowFieldError( wxS( "value" ) );
+                    ShowFieldError( wxS( "value" ), errorMsg );
                     return false;
                 }
             }

@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -254,6 +254,14 @@ public:
     wxString GetFullOutputPath( PROJECT* aProject ) const;
 
     wxString ResolveOutputPath( const wxString& aPath, bool aPathIsDirectory, PROJECT* aProject ) const;
+
+    /**
+     * Complete a resolved file output path that names a folder, either by a trailing separator or by
+     * being an existing directory, with a default file name.
+     *
+     * @return aPath unchanged when it already names a file.
+     */
+    static wxString AppendDefaultFileName( const wxString& aPath, const wxString& aDefaultName );
 
     bool GetOutputPathIsDirectory() const { return m_outputPathIsDirectory; }
 

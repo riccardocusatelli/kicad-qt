@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <unordered_map>
@@ -128,7 +124,7 @@ bool DRC_TEST_PROVIDER_SILK_CLEARANCE::Run()
                 for( PCB_LAYER_ID layer : { F_SilkS, B_SilkS } )
                 {
                     if( item->IsOnLayer( layer ) )
-                        silkTree.Insert( item, layer, 0, ATOMIC_TABLES );
+                        silkTree.Insert( item, layer, SILK_CLEARANCE_CONSTRAINT, 0, ATOMIC_TABLES );
                 }
 
                 return true;
@@ -144,7 +140,7 @@ bool DRC_TEST_PROVIDER_SILK_CLEARANCE::Run()
                     return true;
 
                 for( PCB_LAYER_ID layer : LSET( item->GetLayerSet() & targetLayers ) )
-                    targetTree.Insert( item, layer, 0, ATOMIC_TABLES );
+                    targetTree.Insert( item, layer, SILK_CLEARANCE_CONSTRAINT, 0, ATOMIC_TABLES );
 
                 return true;
             };
@@ -154,6 +150,9 @@ bool DRC_TEST_PROVIDER_SILK_CLEARANCE::Run()
 
     forEachGeometryItem( s_allBasicItems, silkLayers, addToSilkTree );
     forEachGeometryItem( s_allBasicItems, targetLayers, addToTargetTree );
+
+    silkTree.Build();
+    targetTree.Build();
 
     REPORT_AUX( wxString::Format( wxT( "Testing %d silkscreen features against %d board items." ),
                                   silkTree.size(),

@@ -16,18 +16,20 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <unordered_set>
+#include "sch_io/sch_io.h"
+
+#include <wx/dir.h>
+#include <wx/filename.h>
+#include <wx/translation.h>
 
 #include <ki_exception.h>
-#include <sch_io/sch_io.h>
+#include <lib_symbol.h>
 #include <sch_io/sch_io_mgr.h>
-#include <wx/translation.h>
-#include <wx/filename.h>
-#include <wx/dir.h>
+
 
 #define FMT_UNIMPLEMENTED wxT( "Plugin \"%s\" does not implement the \"%s\" function." )
 #define NOT_IMPLEMENTED( aCaller )                                                   \
@@ -66,6 +68,12 @@ void SCH_IO::SaveLibrary( const wxString& aFileName, const std::map<std::string,
 
 SCH_SHEET* SCH_IO::LoadSchematicFile( const wxString& aFileName, SCHEMATIC* aSchematic,
                                       SCH_SHEET* aAppendToMe, const std::map<std::string, UTF8>* aProperties )
+{
+    NOT_IMPLEMENTED( __FUNCTION__ );
+}
+
+
+std::vector<LIB_SYMBOL*> SCH_IO::GetImportedCachedLibrarySymbols()
 {
     NOT_IMPLEMENTED( __FUNCTION__ );
 }
@@ -113,7 +121,7 @@ LIB_SYMBOL* SCH_IO::LoadSymbol( const wxString& aLibraryPath, const wxString& aS
 }
 
 
-void SCH_IO::SaveSymbol( const wxString& aLibraryPath, const LIB_SYMBOL* aSymbol,
+void SCH_IO::SaveSymbol( const wxString& aLibraryPath, std::unique_ptr<LIB_SYMBOL> aSymbol,
                          const std::map<std::string, UTF8>* aProperties )
 {
     // not pure virtual so that plugins only have to implement subset of the SCH_IO interface.

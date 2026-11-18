@@ -14,19 +14,19 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+
+#include "dialog_regulator_form.h"
 
 #include <wx/msgdlg.h>
 
 #include <calculator_panels/panel_regulator.h>
 #include <class_regulator_data.h>
 #include <pcb_calculator_frame.h>
-#include "dialog_regulator_form.h"
+#include <pcb_calculator_utils.h>
 
-
-extern double DoubleFromString( const wxString& TextValue );
 
 DIALOG_REGULATOR_FORM::DIALOG_REGULATOR_FORM( wxWindow* parent, const wxString& aRegName ) :
         DIALOG_REGULATOR_FORM_BASE( parent )

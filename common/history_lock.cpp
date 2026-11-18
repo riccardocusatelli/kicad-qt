@@ -14,14 +14,11 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <history_lock.h>
+#include <git/kicad_git_common.h>
 #include <lockfile.h>
 #include <advanced_config.h>
 #include <pgm_base.h>
@@ -44,9 +41,23 @@ static wxString historyPath( const wxString& aProjectPath )
 }
 
 
+static wxString historyLockPath( const wxString& aProjectPath )
+{
+    // The lock must survive replacement of the history directory during trimming.
+    return historyPath( aProjectPath ) + wxS( ".repo" );
+}
+
+
 HISTORY_LOCK_MANAGER::HISTORY_LOCK_MANAGER( const wxString& aProjectPath, int aStaleTimeoutSec ) :
+        HISTORY_LOCK_MANAGER( aProjectPath, historyPath( aProjectPath ), aStaleTimeoutSec )
+{
+}
+
+
+HISTORY_LOCK_MANAGER::HISTORY_LOCK_MANAGER( const wxString& aProjectPath, const wxString& aHistoryPath,
+                                            int aStaleTimeoutSec ) :
         m_projectPath( aProjectPath ),
-        m_historyPath( historyPath( aProjectPath ) ),
+        m_historyPath( aHistoryPath ),
         m_repo( nullptr ),
         m_index( nullptr ),
         m_repoOwned( false ),
@@ -141,18 +152,7 @@ bool HISTORY_LOCK_MANAGER::acquireFileLock()
         }
     }
 
-    // Check for stale lock before attempting acquisition
-    if( IsLockStale( m_projectPath, m_staleTimeoutSec ) )
-    {
-        wxLogWarning( "Detected stale lock file, removing it" );
-        BreakStaleLock( m_projectPath );
-    }
-
-    // Create lock file path: .history/.repo.lock
-    wxFileName lockPath( m_historyPath, wxS( ".repo" ) );
-
-    // Use existing LOCKFILE infrastructure
-    m_fileLock = std::make_unique<LOCKFILE>( lockPath.GetFullPath(), true );
+    m_fileLock = std::make_unique<LOCKFILE>( m_historyPath + wxS( ".repo" ), true );
 
     if( !m_fileLock->Locked() )
     {
@@ -160,6 +160,14 @@ bool HISTORY_LOCK_MANAGER::acquireFileLock()
             _( "History repository is locked by %s@%s" ),
             m_fileLock->GetUsername(),
             m_fileLock->GetHostname() );
+        return false;
+    }
+
+    LOCKFILE legacyLock = LOCKFILE::Inspect( wxFileName( m_historyPath, wxS( ".repo" ) ).GetFullPath() );
+
+    if( !legacyLock.Valid() )
+    {
+        m_lockError = _( "History repository is locked by an older KiCad instance." );
         return false;
     }
 
@@ -181,10 +189,7 @@ bool HISTORY_LOCK_MANAGER::openRepository()
 
     if( rc != 0 )
     {
-        const git_error* err = git_error_last();
-        m_lockError = wxString::Format(
-            _( "Failed to open git repository: %s" ),
-            err ? wxString::FromUTF8( err->message ) : wxString( "Unknown error" ) );
+        m_lockError = wxString::Format( _( "Failed to open git repository: %s" ), KIGIT_COMMON::GetLastGitError() );
         return false;
     }
 
@@ -193,9 +198,8 @@ bool HISTORY_LOCK_MANAGER::openRepository()
 
     if( rc != 0 )
     {
-        const git_error* err = git_error_last();
         m_lockError = wxString::Format( _( "Failed to set git repository workdir to %s: %s" ), m_projectPath,
-                                        err ? wxString::FromUTF8( err->message ) : wxString( "Unknown error" ) );
+                                        KIGIT_COMMON::GetLastGitError() );
         return false;
     }
 
@@ -230,10 +234,8 @@ bool HISTORY_LOCK_MANAGER::acquireIndexLock()
 
     if( rc != 0 )
     {
-        const git_error* err = git_error_last();
-        m_lockError = wxString::Format(
-            _( "Failed to acquire git index lock (another operation in progress?): %s" ),
-            err ? wxString::FromUTF8( err->message ) : wxString( "Unknown error" ) );
+        m_lockError = wxString::Format( _( "Failed to acquire git index lock (another operation in progress?): %s" ),
+                                        KIGIT_COMMON::GetLastGitError() );
         return false;
     }
 
@@ -248,8 +250,7 @@ bool HISTORY_LOCK_MANAGER::IsLockStale( const wxString& aProjectPath, int aStale
     if( aStaleTimeoutSec <= 0 )
         aStaleTimeoutSec = ADVANCED_CFG::GetCfg().m_HistoryLockStaleTimeout;
 
-    wxString histPath = historyPath( aProjectPath );
-    wxFileName lockPath( histPath, wxS( ".repo.lock" ) );
+    wxFileName lockPath( LOCKFILE::LockPathFor( historyLockPath( aProjectPath ) ) );
 
     if( !lockPath.FileExists() )
         return false; // No lock file exists
@@ -264,43 +265,16 @@ bool HISTORY_LOCK_MANAGER::IsLockStale( const wxString& aProjectPath, int aStale
     KI_LOG_TRACE( HISTORY_LOCK_TRACE, "Lock file age: %d seconds (stale threshold: %d)",
                (int)age.GetSeconds().ToLong(), aStaleTimeoutSec );
 
-    return age.GetSeconds().ToLong() > aStaleTimeoutSec;
+    return age.GetSeconds().ToLong() > aStaleTimeoutSec
+           && LOCKFILE::Inspect( historyLockPath( aProjectPath ) ).Valid();
 }
 
 
 bool HISTORY_LOCK_MANAGER::BreakStaleLock( const wxString& aProjectPath )
 {
-    wxString histPath = historyPath( aProjectPath );
-    wxFileName lockPath( histPath, wxS( ".repo.lock" ) );
-
-    if( !lockPath.FileExists() )
-        return true; // Already removed
-
-    // Also remove the LOCKFILE-style lock file if it exists
-    wxFileName lockFilePath( histPath, wxS( ".repo" ) );
-    lockFilePath.SetName( FILEEXT::LockFilePrefix + lockFilePath.GetName() );
-    lockFilePath.SetExt( lockFilePath.GetExt() + wxS( "." ) + FILEEXT::LockFileExtension );
-
-    bool result = true;
-
-    if( lockPath.FileExists() )
-    {
-        result = wxRemoveFile( lockPath.GetFullPath() );
-        if( result )
-            KI_LOG_TRACE( HISTORY_LOCK_TRACE, "Removed stale lock: %s", lockPath.GetFullPath() );
-        else
-            wxLogError( "Failed to remove stale lock: %s", lockPath.GetFullPath() );
-    }
-
-    if( lockFilePath.FileExists() )
-    {
-        bool lockFileResult = wxRemoveFile( lockFilePath.GetFullPath() );
-        if( lockFileResult )
-            KI_LOG_TRACE( HISTORY_LOCK_TRACE, "Removed stale lockfile: %s", lockFilePath.GetFullPath() );
-        result = result && lockFileResult;
-    }
-
-    return result;
+    // Claim the abandoned lock before removing it, so a concurrent owner cannot be unlinked.
+    LOCKFILE lock( historyLockPath( aProjectPath ), true );
+    return lock.Locked();
 }
 
 

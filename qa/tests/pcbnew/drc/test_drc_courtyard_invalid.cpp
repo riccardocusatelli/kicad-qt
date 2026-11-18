@@ -14,16 +14,11 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
 
-#include <pcbnew_utils/board_construction_utils.h>
 #include <pcbnew_utils/board_file_utils.h>
 #include <board.h>
 #include <board_design_settings.h>
@@ -33,27 +28,9 @@
 #include <drc/drc_item.h>
 #include <widgets/ui_common.h>
 
-#include <pcbnew_utils/board_test_utils.h>
 
 
-struct COURTYARD_TEST_FIXTURE
-{
-    const KI_TEST::BOARD_DUMPER m_dumper;
-};
-
-
-BOOST_FIXTURE_TEST_SUITE( DrcCourtyardInvalid, COURTYARD_TEST_FIXTURE )
-
-
-/*
- * A simple mock footprint with a set of courtyard rectangles and some other information
- */
-struct COURTYARD_INVALID_TEST_FP
-{
-    std::string      m_refdes;   /// Footprint Ref-Des (for identifying DRC errors)
-    std::vector<SEG> m_segs;     /// List of segments that will be placed on the courtyard
-    VECTOR2I         m_pos;      /// Footprint position
-};
+BOOST_AUTO_TEST_SUITE( DrcCourtyardInvalid )
 
 
 struct COURTYARD_INVALID_INFO
@@ -73,9 +50,8 @@ std::ostream& operator<<( std::ostream& os, const COURTYARD_INVALID_INFO& aInval
 
 struct COURTYARD_INVALID_CASE
 {
-    std::string                            m_case_name;
-    std::vector<COURTYARD_INVALID_TEST_FP> m_mods;
-    std::vector<COURTYARD_INVALID_INFO>    m_exp_errors;
+    std::string                         m_board_name;  // Fixture under drc_courtyard/invalid/
+    std::vector<COURTYARD_INVALID_INFO> m_exp_errors;
 };
 
 
@@ -84,57 +60,20 @@ static const std::vector<COURTYARD_INVALID_CASE> courtyard_invalid_cases =
 {
     {
         // Empty board has no footprints to be invalid
-        "empty board",
-        {},
+        "empty_board",
         {},
     },
     {
-        "single footprint, no courtyard",
-        {
-            {
-                "U1",
-                {}, // Empty courtyard layer
-                { 0, 0 },
-            },
-        },
+        "single_footprint_no_courtyard",
         {   // one error: the footprint has no courtyard
             {
                 "U1",
-                    DRCE_MISSING_COURTYARD,
+                DRCE_MISSING_COURTYARD,
             },
         },
     },
     {
-        "single footprint, unclosed courtyard",
-        {
-            {
-                "U1",
-                { // Unclosed polygon
-                    { { 0, 0 }, { 0, pcbIUScale.mmToIU( 10 ) } },
-                    { { 0, pcbIUScale.mmToIU( 10 ) }, { pcbIUScale.mmToIU( 10 ), pcbIUScale.mmToIU( 10 ) } },
-                },
-                { 0, 0 },
-            },
-        },
-        {   // one error: the footprint has malformed courtyard
-            {
-                "U1",
-                    DRCE_MALFORMED_COURTYARD,
-            },
-        },
-    },
-    {
-        "single footprint, disjoint courtyard",
-        {
-            {
-                "U1",
-                { // Unclosed polygon - two disjoint segments
-                    { { 0, 0 }, { 0, pcbIUScale.mmToIU( 10 ) } },
-                    { { pcbIUScale.mmToIU( 10 ), 0 }, { pcbIUScale.mmToIU( 10 ), pcbIUScale.mmToIU( 10 ) } },
-                },
-                { 0, 0 },
-            },
-        },
+        "single_footprint_unclosed_courtyard",
         {   // one error: the footprint has malformed courtyard
             {
                 "U1",
@@ -143,37 +82,16 @@ static const std::vector<COURTYARD_INVALID_CASE> courtyard_invalid_cases =
         },
     },
     {
-        "two footprints, one OK, one malformed",
-        {
+        "single_footprint_disjoint_courtyard",
+        {   // one error: the footprint has malformed courtyard
             {
                 "U1",
-                { // Closed polygon - triangle
-                    {
-                        { 0, 0 },
-                        { 0, pcbIUScale.mmToIU( 10 ) },
-                    },
-                    {
-                        { 0, pcbIUScale.mmToIU( 10 ) },
-                        { pcbIUScale.mmToIU( 10 ), pcbIUScale.mmToIU( 10 ) }
-                    },
-                    {
-                        { pcbIUScale.mmToIU( 10 ), pcbIUScale.mmToIU( 10 ) },
-                        { 0, 0 }
-                    },
-                },
-                { 0, 0 },
-            },
-            {
-                "U2",
-                { // Un-Closed polygon - one seg
-                    {
-                        { 0, 0 },
-                        { 0, pcbIUScale.mmToIU( 10 ) },
-                    },
-                },
-                { 0, 0 },
+                DRCE_MALFORMED_COURTYARD,
             },
         },
+    },
+    {
+        "two_footprints_one_malformed",
         {   // one error: the second footprint has malformed courtyard
             {
                 "U2",
@@ -183,48 +101,6 @@ static const std::vector<COURTYARD_INVALID_CASE> courtyard_invalid_cases =
     },
 };
 // clang-format on
-
-
-/**
- * Construct a #FOOTPRINT to use in a courtyard test from a #COURTYARD_TEST_FP
- * definition.
- */
-std::unique_ptr<FOOTPRINT> MakeInvalidCourtyardTestFP( BOARD& aBoard,
-                                                       const COURTYARD_INVALID_TEST_FP& aFPDef )
-{
-    std::unique_ptr<FOOTPRINT> footprint = std::make_unique<FOOTPRINT>( &aBoard );
-
-    for( const SEG& seg : aFPDef.m_segs )
-    {
-        const PCB_LAYER_ID layer = F_CrtYd; // aRect.m_front ? F_CrtYd : B_CrtYd;
-        const int          width = pcbIUScale.mmToIU( 0.1 );
-
-        KI_TEST::DrawSegment( *footprint, seg, width, layer );
-    }
-
-    footprint->SetReference( aFPDef.m_refdes );
-
-    // As of 2019-01-17, this has to go after adding the courtyards,
-    // or all the poly sets are empty when DRC'd
-    footprint->SetPosition( aFPDef.m_pos );
-
-    return footprint;
-}
-
-
-std::unique_ptr<BOARD> MakeBoard( const std::vector<COURTYARD_INVALID_TEST_FP>& aTestFPDefs )
-{
-    auto board = std::make_unique<BOARD>();
-
-    for( const COURTYARD_INVALID_TEST_FP& fpDef : aTestFPDefs )
-    {
-        std::unique_ptr<FOOTPRINT> footprint = MakeInvalidCourtyardTestFP( *board, fpDef );
-
-        board->Add( footprint.release() );
-    }
-
-    return board;
-}
 
 
 /**
@@ -263,8 +139,9 @@ static bool InvalidMatchesExpected( BOARD& aBoard, const PCB_MARKER& aMarker,
  * Check that the produced markers match the expected. This does NOT
  * check ordering, as that is not part of the contract of the DRC function.
  *
- * @param aMarkers    list of markers produced by the DRC
- * @param aCollisions list of expected collisions
+ * @param aBoard       is the board to check.
+ * @param aMarkers     list of markers produced by the DRC.
+ * @param aExpInvalids list of invalid matches.
  */
 static void CheckInvalidsMatchExpected( BOARD& aBoard,
                                         const std::vector<std::unique_ptr<PCB_MARKER>>& aMarkers,
@@ -279,13 +156,10 @@ static void CheckInvalidsMatchExpected( BOARD& aBoard,
 }
 
 
-void DoCourtyardInvalidTest( const COURTYARD_INVALID_CASE& aCase,
-                             const KI_TEST::BOARD_DUMPER& aDumper )
+void DoCourtyardInvalidTest( const COURTYARD_INVALID_CASE& aCase )
 {
-    auto board = MakeBoard( aCase.m_mods );
-
-    // Dump if env var set
-    aDumper.DumpBoardToFile( *board, aCase.m_case_name );
+    std::unique_ptr<BOARD> board =
+            KI_TEST::RequireBoardFromPcbnewQAData( "drc_courtyard/invalid/" + aCase.m_board_name + ".kicad_pcb" );
 
     BOARD_DESIGN_SETTINGS& bds = board->GetDesignSettings();
 
@@ -325,9 +199,9 @@ BOOST_AUTO_TEST_CASE( InvalidCases )
 {
     for( const auto& c : courtyard_invalid_cases )
     {
-        BOOST_TEST_CONTEXT( c.m_case_name )
+        BOOST_TEST_CONTEXT( c.m_board_name )
         {
-            DoCourtyardInvalidTest( c, m_dumper );
+            DoCourtyardInvalidTest( c );
         }
     }
 }

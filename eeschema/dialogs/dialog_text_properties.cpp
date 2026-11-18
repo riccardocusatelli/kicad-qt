@@ -16,13 +16,10 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <bitmaps.h>
 #include <dialogs/sch_text_syntax_help.h>
 #include <sch_edit_frame.h>
 #include <symbol_edit_frame.h>
@@ -241,7 +238,7 @@ void DIALOG_TEXT_PROPERTIES::getContextualTextVars( const wxString& aCrossRef,
         if( schematic )
         {
             SCH_REFERENCE_LIST refs;
-            schematic->Hierarchy().GetSymbols( refs, SYMBOL_FILTER_ALL );
+            schematic->Hierarchy().GetSymbols( refs, SYMBOL_FILTER_NON_POWER );
 
             for( int jj = 0; jj < (int) refs.GetCount(); jj++ )
             {
@@ -357,9 +354,9 @@ bool DIALOG_TEXT_PROPERTIES::TransferDataToWindow()
         SYMBOL* symbol = m_currentItem->GetParentSymbol();
 
         m_privateCheckbox->SetValue( m_currentItem->IsPrivate() );
-        m_commonToAllUnits->SetValue( symbol->IsMultiUnit() && m_currentItem->GetUnit() == 0 );
+        m_commonToAllUnits->SetValue( symbol->IsMultiUnit() && m_currentItem->GetUnit() == ALL_UNITS );
         m_commonToAllUnits->Enable( symbol->IsMultiUnit() );
-        m_commonToAllBodyStyles->SetValue( symbol->IsMultiBodyStyle() && m_currentItem->GetBodyStyle() == 0 );
+        m_commonToAllBodyStyles->SetValue( symbol->IsMultiBodyStyle() && m_currentItem->GetBodyStyle() == ALL_BODY_STYLES );
         m_commonToAllBodyStyles->Enable( symbol->IsMultiBodyStyle() );
     }
 
@@ -463,6 +460,14 @@ bool DIALOG_TEXT_PROPERTIES::TransferDataFromWindow()
     if( !m_textSize.Validate( 0.01, 1000.0, EDA_UNITS::MM ) )
         return false;
 
+    if( !EDA_TEXT::ValidateHyperlink( m_hyperlinkCombo->GetValue() ) )
+    {
+        DisplayError( this, _( "Invalid hyperlink destination. Please enter either a valid URL "
+                               "(e.g. file:// or http(s)://) or \"#<page number>\" to create "
+                               "a hyperlink to a page in this schematic." ) );
+        return false;
+    }
+
     SCH_COMMIT commit( m_frame );
 
     /* save old text in undo list if not already in edit */
@@ -504,17 +509,7 @@ bool DIALOG_TEXT_PROPERTIES::TransferDataFromWindow()
             m_currentItem->SetBodyStyle( 0 );
     }
 
-    if( !EDA_TEXT::ValidateHyperlink( m_hyperlinkCombo->GetValue() ) )
-    {
-        DisplayError( this, _( "Invalid hyperlink destination. Please enter either a valid URL "
-                               "(e.g. file:// or http(s)://) or \"#<page number>\" to create "
-                               "a hyperlink to a page in this schematic." ) );
-        return false;
-    }
-    else
-    {
-        m_currentText->SetHyperlink( m_hyperlinkCombo->GetValue() );
-    }
+    m_currentText->SetHyperlink( m_hyperlinkCombo->GetValue() );
 
     if( m_currentText->GetTextWidth() != m_textSize.GetValue() )
         m_currentText->SetTextSize( VECTOR2I( m_textSize.GetIntValue(), m_textSize.GetIntValue() ) );

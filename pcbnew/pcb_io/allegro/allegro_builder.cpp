@@ -15,23 +15,25 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "allegro_builder.h"
+#include "allegro_db_utils.h"
 
+#include <algorithm>
+#include <array>
 #include <cmath>
 #include <limits>
+#include <regex>
 #include <set>
+#include <string>
 #include <tuple>
 #include <unordered_set>
 
 #include <convert/allegro_pcb_structs.h>
 
+#include <wx/arrstr.h>
 #include <wx/log.h>
 
 #include <core/profile.h>
@@ -41,8 +43,11 @@
 #include <board_design_settings.h>
 #include <convert_basic_shapes_to_polygon.h>
 #include <geometry/shape_utils.h>
+#include <trigo.h>
+#include <hash.h>
 #include <project/net_settings.h>
 #include <footprint.h>
+#include <lib_id.h>
 #include <netclass.h>
 #include <pad.h>
 #include <pcb_group.h>
@@ -70,60 +75,7 @@ static const wxChar* const traceAllegroBuilder = wxT( "KICAD_ALLEGRO_BUILDER" );
 static const wxChar* const traceAllegroPerf = wxT( "KICAD_ALLEGRO_PERF" );
 
 
-template <typename BLK_T>
-const BLK_T& BlockDataAs( const BLOCK_BASE& aBlock )
-{
-    return static_cast<const BLOCK<BLK_T>&>( aBlock ).GetData();
-}
-
-
 #define BLK_FIELD( BLK_T, FIELD ) BlockDataAs<BLK_T>( aBlock ).FIELD
-
-
-/**
- * Gets the next block in the linked list. Exactly which member does this depends on the block type.
- *
- * It's not yet clear if any blocks can be in multiple linked lists at once - for now just follow the "main"
- * one.
- * This is done as dispatch like this to avoid forcing all the blocks into an inheritance hierarchy.
- *
- * @param aBlock The block to get the next block from.
- * @return The next block in the linked list, or 0 if there is no next block.
- */
-static uint32_t GetPrimaryNext( const BLOCK_BASE& aBlock )
-{
-    const uint8_t type = aBlock.GetBlockType();
-
-    switch( type )
-    {
-    case 0x01: return BLK_FIELD( BLK_0x01_ARC, m_Next );
-    case 0x03: return BLK_FIELD( BLK_0x03_FIELD, m_Next );
-    case 0x04: return BLK_FIELD( BLK_0x04_NET_ASSIGNMENT, m_Next );
-    case 0x05: return BLK_FIELD( BLK_0x05_TRACK, m_Next );
-    case 0x0E: return BLK_FIELD( BLK_0x0E_RECT, m_Next );
-    case 0x14: return BLK_FIELD( BLK_0x14_GRAPHIC, m_Next );
-    case 0x15:
-    case 0x16:
-    case 0x17: return BLK_FIELD( BLK_0x15_16_17_SEGMENT, m_Next );
-    case 0x1B: return BLK_FIELD( BLK_0x1B_NET, m_Next );
-    case 0x1D: return BLK_FIELD( BLK_0x1D_CONSTRAINT_SET, m_Next );
-    case 0x1E: return BLK_FIELD( BLK_0x1E_SI_MODEL, m_Next );
-    case 0x1F: return BLK_FIELD( BLK_0x1F_PADSTACK_DIM, m_Next );
-    case 0x2B: return BLK_FIELD( BLK_0x2B_FOOTPRINT_DEF, m_Next );
-    case 0x2D: return BLK_FIELD( BLK_0x2D_FOOTPRINT_INST, m_Next );
-    case 0x2E: return BLK_FIELD( BLK_0x2E_CONNECTION, m_Next );
-    case 0x30: return BLK_FIELD( BLK_0x30_STR_WRAPPER, m_Next );
-    case 0x31: return 0; // Doesn't exist
-    case 0x32: return BLK_FIELD( BLK_0x32_PLACED_PAD, m_Next );
-    case 0x24: return BLK_FIELD( BLK_0x24_RECT, m_Next );
-    case 0x28: return BLK_FIELD( BLK_0x28_SHAPE, m_Next );
-    case 0x2C: return BLK_FIELD( BLK_0x2C_TABLE, m_Next );
-    case 0x33: return BLK_FIELD( BLK_0x33_VIA, m_Next );
-    case 0x36: return BLK_FIELD( BLK_0x36_DEF_TABLE, m_Next );
-    case 0x37: return BLK_FIELD( BLK_0x37_PTR_ARRAY, m_Next );
-    default: return 0;
-    }
-}
 
 
 /**
@@ -135,98 +87,15 @@ static uint32_t PadGetNextInFootprint( const BLOCK_BASE& aBlock )
 
     if( type != 0x32 )
     {
-        THROW_IO_ERROR(
-                wxString::Format( "Unexpected next item in 0x32 pad list: block type %#04x, offset %#lx, key %#010x",
-                                  type, aBlock.GetOffset(), aBlock.GetKey() ) );
+        THROW_IO_ERRORF( wxT( "Unexpected next item in 0x32 pad list: block type %#04x, offset %#lx, key %#010x" ),
+                         type,
+                         aBlock.GetOffset(),
+                         aBlock.GetKey() );
     }
 
     // When iterating in a footprint use this field, not m_Next.
     return BLK_FIELD( BLK_0x32_PLACED_PAD, m_NextInFp );
 }
-
-
-class LL_WALKER
-{
-public:
-
-    using NEXT_FUNC_T = std::function<uint32_t( const BLOCK_BASE& )>;
-
-    class iterator
-    {
-    public:
-        iterator( uint32_t aCurrent, uint32_t aTail, const BRD_DB& aBoard, NEXT_FUNC_T aNextFunc ) :
-                m_current( aCurrent ), m_tail( aTail ), m_board( aBoard ), m_NextFunc( aNextFunc )
-        {
-            m_currBlock = m_board.GetObjectByKey( m_current );
-
-            if( !m_currBlock )
-                m_current = 0;
-        }
-
-        const BLOCK_BASE* operator*() const { return m_currBlock; }
-
-        iterator& operator++()
-        {
-            if( m_current == m_tail || !m_currBlock )
-            {
-                m_current = 0;
-            }
-            else
-            {
-                m_current = m_NextFunc( *m_currBlock );
-
-                if( m_current == m_tail || m_board.IsSentinel( m_current ) )
-                {
-                    m_current = 0;
-                }
-                else
-                {
-                    m_currBlock = m_board.GetObjectByKey( m_current );
-
-                    if( m_currBlock == nullptr )
-                    {
-                        m_current = 0;
-                    }
-                }
-            }
-            return *this;
-        }
-
-        bool operator!=( const iterator& other ) const { return m_current != other.m_current; }
-
-    private:
-        uint32_t          m_current;
-        const BLOCK_BASE* m_currBlock;
-        uint32_t          m_tail;
-        const BRD_DB&  m_board;
-        NEXT_FUNC_T       m_NextFunc;
-    };
-
-    LL_WALKER( uint32_t aHead, uint32_t aTail, const BRD_DB& aBoard ) :
-            m_head( aHead ), m_tail( aTail ), m_board( aBoard )
-    {
-        // The default next function
-        m_nextFunction = GetPrimaryNext;
-    }
-
-    LL_WALKER( const FILE_HEADER::LINKED_LIST& aList, const BRD_DB& aBoard ) :
-            LL_WALKER( aList.m_Head, aList.m_Tail, aBoard )
-    {
-    }
-
-    iterator begin() const { return iterator( m_head, m_tail, m_board, m_nextFunction ); }
-    iterator end() const { return iterator( 0, m_tail, m_board, m_nextFunction ); }
-
-    void SetNextFunc( NEXT_FUNC_T aNextFunc ) { m_nextFunction = aNextFunc; }
-
-private:
-    uint32_t         m_head;
-    uint32_t         m_tail;
-    const BRD_DB& m_board;
-
-    // This is the function that can get the next item in a list. By default
-    NEXT_FUNC_T m_nextFunction;
-};
 
 
 template <>
@@ -588,6 +457,22 @@ LAYER_INFO expectLayerFromBlock( const BLOCK_BASE& aBlock )
 }
 
 
+/// Map a 0-based copper index (0 = F_Cu, aTotal-1 = B_Cu) to a KiCad copper layer.
+static PCB_LAYER_ID nthCopperLayerId( int aIndex, int aTotal )
+{
+    if( aIndex <= 0 )
+        return F_Cu;
+
+    if( aIndex >= aTotal - 1 )
+        return B_Cu;
+
+    return ToLAYER_ID( In1_Cu + ( aIndex - 1 ) * 2 );
+}
+
+
+/// Layer list property bit of a negative plane layer
+static constexpr uint32_t LAYER_PROP_PLANE = 0x100;
+
 /**
  * Class to handle the mapping for Allegro CLASS/SUBCLASS idiom to KiCad layers.
  */
@@ -601,6 +486,7 @@ class ALLEGRO::LAYER_MAPPER
     struct CUSTOM_LAYER
     {
         wxString m_Name;
+        uint32_t m_Properties = 0;
         // LAYER_ARTWORK: POSITIVE/NEGATIVE
         // LAYER_USE: empty, EMBEDDED_PLANE, ...?
         // bool m_IsConductor;
@@ -626,14 +512,20 @@ public:
                 {
                     const wxString& layerName = m_brdDb.GetString( entry.mLayerNameId );
 
-                    classLayers.emplace_back( CUSTOM_LAYER( layerName ) );
+                    CUSTOM_LAYER layer( layerName );
+                    layer.m_Properties = entry.m_Properties;
+
+                    classLayers.emplace_back( std::move( layer ) );
                 }
             }
             else if( aList.m_NonRefEntries.has_value() )
             {
                 for( const BLK_0x2A_LAYER_LIST::NONREF_ENTRY& entry : aList.m_NonRefEntries.value() )
                 {
-                    classLayers.emplace_back( CUSTOM_LAYER( entry.m_Name ) );
+                    CUSTOM_LAYER layer( entry.m_Name );
+                    layer.m_Properties = entry.m_Properties;
+
+                    classLayers.emplace_back( std::move( layer ) );
                 }
             }
             else
@@ -668,7 +560,10 @@ public:
         const std::vector<CUSTOM_LAYER>& etchLayers = *customLayerIt->second;
         const size_t                     numCuLayers = etchLayers.size();
 
-        m_board.GetDesignSettings().SetCopperLayerCount( numCuLayers );
+        m_etchLayerCount = static_cast<int>( numCuLayers );
+
+        // KiCad boards need an even copper layer count, so an odd stackup gets an empty inner layer
+        m_board.GetDesignSettings().SetCopperLayerCount( static_cast<int>( numCuLayers + numCuLayers % 2 ) );
 
         std::vector<INPUT_LAYER_DESC> inputLayers;
 
@@ -819,6 +714,7 @@ public:
             // exceed the copper layer count and must fall through to the custom
             // layer mapping below.
             const auto etchIt = m_ClassCustomLayerLists.find( LAYER_INFO::CLASS::ETCH );
+
             if( etchIt != m_ClassCustomLayerLists.end()
                 && cLayerList == etchIt->second
                 && aLayerInfo.m_Subclass < cLayerList->size() )
@@ -866,8 +762,30 @@ public:
     }
 
     /**
+     * Plane layers are drawn as negatives, so a line on one is a void and not copper. This is a property of the
+     * source layer, as several source layers can share one KiCad layer.
+     */
+    bool IsPlaneLayer( const LAYER_INFO& aLayerInfo ) const
+    {
+        const auto etchIt = m_ClassCustomLayerLists.find( LAYER_INFO::CLASS::ETCH );
+        const auto classIt = m_ClassCustomLayerLists.find( aLayerInfo.m_Class );
+
+        // Other classes can draw on the copper layers through the same list
+        if( etchIt == m_ClassCustomLayerLists.end() || classIt == m_ClassCustomLayerLists.end()
+            || classIt->second != etchIt->second || !etchIt->second
+            || aLayerInfo.m_Subclass >= etchIt->second->size() )
+        {
+            return false;
+        }
+
+        return ( etchIt->second->at( aLayerInfo.m_Subclass ).m_Properties & LAYER_PROP_PLANE ) != 0;
+    }
+
+    /**
      * Return whether this layer ID is something we mapped to, or the catch-all unmapped layer.
      */
+    int GetEtchLayerCount() const { return m_etchLayerCount; }
+
     bool IsLayerMapped( PCB_LAYER_ID aLayerId ) const
     {
         return aLayerId != m_unmappedLayer;
@@ -879,6 +797,7 @@ public:
      *
      * Use this function to create/choose a user layer instead.
      */
+
     PCB_LAYER_ID GetPlaceBounds( bool aTop )
     {
         const wxString name = aTop ? "PLACE_BOUND_TOP" : "PLACE_BOUND_BOTTOM";
@@ -981,11 +900,7 @@ public:
 private:
     static PCB_LAYER_ID getNthCopperLayer( int aNum, int aTotal )
     {
-        if( aNum == 0 )
-            return F_Cu;
-        if( aNum == aTotal - 1 )
-            return B_Cu;
-        return ToLAYER_ID( 2 * ( aNum + 1 ) );
+        return nthCopperLayerId( aNum, aTotal );
     }
 
     static PCB_LAYER_ID getNthUserLayer( int aNum )
@@ -1036,6 +951,7 @@ private:
      * including the copper layers.
      */
     std::unordered_map<LAYER_INFO, PCB_LAYER_ID> m_customLayerToKiMap;
+    int m_etchLayerCount = 0;
 
     /**
      * This is a map of optional, Allegro layers that we have mapped to KiCad layers with given names.
@@ -1148,7 +1064,7 @@ public:
 
         size_t task( FILL_INFO& fillInfo ) override
         {
-            SHAPE_POLY_SET finalFillPolys = *fillInfo.m_Zone->Outline();
+            SHAPE_POLY_SET finalFillPolys = fillInfo.m_Zone->GetBoardOutline();
 
             finalFillPolys.ClearArcs();
             fillInfo.m_CombinedFill.ClearArcs();
@@ -1187,6 +1103,20 @@ public:
             return;
 
         m_FillInfos.emplace_back( &aZone, aLayer, std::move( aFilledArea ) );
+    }
+
+    void AppendPolygonForZone( ZONE& aZone, SHAPE_POLY_SET aFilledArea, PCB_LAYER_ID aLayer )
+    {
+        for( FILL_INFO& fillInfo : m_FillInfos )
+        {
+            if( fillInfo.m_Zone == &aZone && fillInfo.m_Layer == aLayer )
+            {
+                fillInfo.m_CombinedFill.Append( aFilledArea );
+                return;
+            }
+        }
+
+        QueuePolygonForZone( aZone, std::move( aFilledArea ), aLayer );
     }
 
 private:
@@ -1254,7 +1184,7 @@ void BOARD_BUILDER::reportUnexpectedBlockType( uint8_t aGot, uint8_t aExpected, 
 {
     wxString name = aName.IsEmpty() ? wxString( "Object" ) : aName;
     wxString withKey = ( aKey == 0 ) ? wxString( "" ) : wxString::Format( ", with key %#010x ", aKey );
-    wxString withOffset = ( aOffset == 0 ) ? wxString( "" ) : wxString::Format( ", at offset %#lx ", aOffset );
+    wxString withOffset = ( aOffset == 0 ) ? wxString( "" ) : wxString::Format( ", at offset %#zx ", aOffset );
 
     wxString s = wxString::Format( "%s has unexpected type %#04x (expected %#04x)%s%s", name, aGot, aExpected, withKey,
                                    withOffset );
@@ -1265,12 +1195,12 @@ void BOARD_BUILDER::reportUnexpectedBlockType( uint8_t aGot, uint8_t aExpected, 
 
 wxString BOARD_BUILDER::get0x30StringValue( uint32_t a0x30Key ) const
 {
-    const BLK_0x30_STR_WRAPPER* blk0x30 = expectBlockByKey<BLK_0x30_STR_WRAPPER>( a0x30Key, 0x30 );
+    const BLK_0x30_STR_WRAPPER* blk0x30 = expectBlockByKey<BLK_0x30_STR_WRAPPER>( a0x30Key );
 
     if( blk0x30 == nullptr )
         THROW_IO_ERROR( "Failed to get 0x30 for string lookup" );
 
-    const BLK_0x31_SGRAPHIC* blk0x31 = expectBlockByKey<BLK_0x31_SGRAPHIC>( blk0x30->m_StrGraphicPtr, 0x31 );
+    const BLK_0x31_SGRAPHIC* blk0x31 = expectBlockByKey<BLK_0x31_SGRAPHIC>( blk0x30->m_StrGraphicPtr );
 
     if( blk0x31 == nullptr )
         THROW_IO_ERROR( "Failed to get 0x31 for string lookup" );
@@ -1281,17 +1211,13 @@ wxString BOARD_BUILDER::get0x30StringValue( uint32_t a0x30Key ) const
 
 void BOARD_BUILDER::cacheFontDefs()
 {
-    LL_WALKER x36_walker{ m_brdDb.m_Header->m_LL_0x36.m_Head, m_brdDb.m_Header->m_LL_0x36.m_Tail, m_brdDb };
+    TYPED_LL_WALKER<BLK_0x36_DEF_TABLE> x36Walker{ m_brdDb.m_Header->m_LL_0x36.m_Head,
+                                                   m_brdDb.m_Header->m_LL_0x36.m_Tail, m_brdDb };
 
     bool encountered = false;
 
-    for( const BLOCK_BASE* block : x36_walker )
+    for( const BLK_0x36_DEF_TABLE& blk0x36 : x36Walker )
     {
-        if( block->GetBlockType() != 0x36 )
-            continue;
-
-        const BLK_0x36_DEF_TABLE& blk0x36 = static_cast<const BLOCK<BLK_0x36_DEF_TABLE>&>( *block ).GetData();
-
         if( blk0x36.m_Code != 0x08 )
             continue;
 
@@ -1323,20 +1249,14 @@ void BOARD_BUILDER::createNets()
 
     std::vector<BOARD_ITEM*> bulkAdded;
 
-    LL_WALKER netWalker{ m_brdDb.m_Header->m_LL_0x1B_Nets, m_brdDb };
+    TYPED_LL_WALKER<BLK_0x1B_NET> netWalker{
+        m_brdDb.m_Header->m_LL_0x1B_Nets,
+        m_brdDb,
+        MISMATCH_POLICY::LOG_TRACE,
+    };
 
-    for( const BLOCK_BASE* block : netWalker )
+    for( const BLK_0x1B_NET& netBlk : netWalker )
     {
-        const uint8_t type = block->GetBlockType();
-
-        if( type != BLOCK_TYPE::x1B_NET )
-        {
-            reportUnexpectedBlockType( type, BLOCK_TYPE::x1B_NET, 0, block->GetOffset(), "Net" );
-            continue;
-        }
-
-        const auto& netBlk = static_cast<const BLOCK<BLK_0x1B_NET>&>( *block ).GetData();
-
         wxString netName = m_brdDb.GetString( netBlk.m_NetName );
 
         // Allegro allows unnamed nets. KiCad's NETINFO_LIST matches nets by name, and all
@@ -1345,12 +1265,14 @@ void BOARD_BUILDER::createNets()
         if( netName.IsEmpty() )
             netName = wxString::Format( wxS( "Net_%d" ), netCode );
 
-        auto kiNetInfo = std::make_unique<NETINFO_ITEM>( &m_board, netName, netCode );
+        const bool    isNew = m_board.FindNet( netName ) == nullptr;
+        NETINFO_ITEM* kiNetInfo = m_board.FindOrAddNet( netName, netCode, ADD_MODE::BULK_APPEND );
         netCode++;
 
-        m_netCache[netBlk.m_Key] = kiNetInfo.get();
-        bulkAdded.push_back( kiNetInfo.get() );
-        m_board.Add( kiNetInfo.release(), ADD_MODE::BULK_APPEND );
+        m_netCache[netBlk.m_Key] = kiNetInfo;
+
+        if( isNew )
+            bulkAdded.push_back( kiNetInfo );
     }
 
     m_board.FinalizeBulkAdd( bulkAdded );
@@ -1366,7 +1288,7 @@ wxString BOARD_BUILDER::resolveConstraintSetNameFromField( uint32_t aFieldKey ) 
     if( !fieldBlock || fieldBlock->GetBlockType() != 0x03 )
         return wxEmptyString;
 
-    const BLK_0x03_FIELD& field = static_cast<const BLOCK<BLK_0x03_FIELD>&>( *fieldBlock ).GetData();
+    const BLK_0x03_FIELD& field = BlockDataAs<BLK_0x03_FIELD>( *fieldBlock );
     const std::string* str = std::get_if<std::string>( &field.m_Substruct );
 
     if( !str )
@@ -1411,27 +1333,44 @@ void BOARD_BUILDER::applyConstraintSets()
     // Also map string table keys to set names for net lookup
     std::map<uint32_t, wxString> keyToSetName;
 
-    int csIndex = 0;
-    const LL_WALKER csWalker( m_brdDb.m_Header->m_LL_0x1D_0x1E_0x1F, m_brdDb );
+    int                                      csIndex = 0;
+    TYPED_LL_WALKER<BLK_0x1D_CONSTRAINT_SET> csWalker( m_brdDb.m_Header->m_LL_0x1D_0x1E_0x1F, m_brdDb );
 
-    for( const BLOCK_BASE* block : csWalker )
+    for( const BLK_0x1D_CONSTRAINT_SET& csBlock : csWalker )
     {
-        if( block->GetBlockType() != 0x1D )
-            continue;
+        wxString        setName;
+        const wxString& resolved = m_brdDb.GetString( csBlock.m_NameStrKey );
 
-        const BLK_0x1D_CONSTRAINT_SET& csBlock = static_cast<const BLOCK<BLK_0x1D_CONSTRAINT_SET>&>( *block ).GetData();
-
-        wxString setName;
-        const wxString* resolved = m_brdDb.ResolveString( csBlock.m_NameStrKey );
-
-        if( resolved && !resolved->IsEmpty() )
+        if( !resolved.IsEmpty() )
         {
-            setName = *resolved;
+            setName = resolved;
         }
         else if( csBlock.m_FieldPtr != 0 )
         {
             // Some boards store the name in a 0x03 FIELD block as a schematic cross-reference
             setName = resolveConstraintSetNameFromField( csBlock.m_FieldPtr );
+        }
+
+        // Pre-V172 boards store the name as an index into the 0x36 name table
+        if( setName.IsEmpty() && !isV172Plus && ( csBlock.m_NameStrKey >> 24 ) == 0x03 )
+        {
+            const uint32_t index = csBlock.m_NameStrKey & 0x00FFFFFF;
+
+            TYPED_LL_WALKER<BLK_0x36_DEF_TABLE> nameTables( m_brdDb.m_Header->m_LL_0x36.m_Head,
+                                                            m_brdDb.m_Header->m_LL_0x36.m_Tail, m_brdDb );
+
+            for( const BLK_0x36_DEF_TABLE& table : nameTables )
+            {
+                if( table.m_Code != 0x03 || index >= table.m_Items.size() )
+                    continue;
+
+                const auto& item = std::get<BLK_0x36_DEF_TABLE::X03>( table.m_Items[index] );
+
+                if( item.m_Str16x.has_value() )
+                    setName = wxString( item.m_Str16x.value() );
+
+                break;
+            }
         }
 
         if( setName.IsEmpty() )
@@ -1494,7 +1433,7 @@ void BOARD_BUILDER::applyConstraintSets()
         if( netSettings->HasNetclass( ncName ) )
             continue;
 
-        auto nc = std::make_shared<NETCLASS>( ncName );
+        std::shared_ptr<NETCLASS> nc = std::make_shared<NETCLASS>( ncName );
 
         if( def.lineWidth > 0 )
             nc->SetTrackWidth( def.lineWidth );
@@ -1528,32 +1467,39 @@ void BOARD_BUILDER::applyConstraintSets()
         }
     }
 
-    m_brdDb.VisitNets( [&]( const VIEW_OBJS& aView )
+    TYPED_LL_WALKER<BLK_0x1B_NET> csNetWalker{ m_brdDb.m_Header->m_LL_0x1B_Nets, m_brdDb };
+
+    for( const BLK_0x1B_NET& netBlk : csNetWalker )
     {
-        if( !aView.m_Net )
-            return;
-
-        const NET& net = *aView.m_Net;
-
         // Field 0x1a0 references the constraint set. It can be an integer (string table key
         // that matches 0x1D.m_NameStrKey) or a direct string (the constraint set name).
-        auto csField = net.m_Fields.GetOptField( FIELD_KEYS::PHYS_CONSTRAINT_SET );
-
-        wxString assignedSetName;
-
-        if( csField.has_value() )
+        auto resolveSetName = [&]( const std::optional<FIELD_VALUE>& aField ) -> wxString
         {
-            if( auto* intVal = std::get_if<uint32_t>( &csField.value() ) )
+            if( !aField.has_value() )
+                return wxEmptyString;
+
+            if( auto* intVal = std::get_if<uint32_t>( &aField.value() ) )
             {
                 auto it = keyToSetName.find( *intVal );
-
-                if( it != keyToSetName.end() )
-                    assignedSetName = it->second;
+                return it != keyToSetName.end() ? it->second : wxString();
             }
-            else if( auto* strVal = std::get_if<wxString>( &csField.value() ) )
+
+            if( auto* strVal = std::get_if<wxString>( &aField.value() ) )
+                return constraintSets.count( *strVal ) ? *strVal : wxString();
+
+            return wxEmptyString;
+        };
+
+        wxString assignedSetName = resolveSetName( GetFirstFieldOfType( m_brdDb, netBlk.m_FieldsPtr, netBlk.m_Key,
+                                                                         FIELD_KEYS::PHYS_CONSTRAINT_SET ) );
+
+        // Differential pairs carry the set on their match group table instead of on the net
+        if( assignedSetName.IsEmpty() )
+        {
+            if( const BLK_0x2C_TABLE* table = resolveMatchGroupTable( netBlk ) )
             {
-                if( constraintSets.count( *strVal ) )
-                    assignedSetName = *strVal;
+                assignedSetName = resolveSetName( GetFirstFieldOfType( m_brdDb, table->m_Ptr2, table->m_Key,
+                                                                        FIELD_KEYS::PHYS_CONSTRAINT_SET ) );
             }
         }
 
@@ -1562,7 +1508,7 @@ void BOARD_BUILDER::applyConstraintSets()
             assignedSetName = defaultSetName;
 
         if( assignedSetName.IsEmpty() )
-            return;
+            continue;
 
         wxString ncName = assignedSetName;
 
@@ -1570,17 +1516,17 @@ void BOARD_BUILDER::applyConstraintSets()
             ncName = wxS( "Allegro_Default" );
 
         if( !netSettings->HasNetclass( ncName ) )
-            return;
+            continue;
 
-        auto netIt = m_netCache.find( net.GetKey() );
+        auto netIt = m_netCache.find( netBlk.m_Key );
 
         if( netIt == m_netCache.end() )
-            return;
+            continue;
 
         NETINFO_ITEM* kiNet = netIt->second;
         netSettings->SetNetclassPatternAssignment( kiNet->GetNetname(), ncName );
         kiNet->SetNetClass( netSettings->GetNetClassByName( ncName ) );
-    } );
+    }
 
     KI_LOG_TRACE( traceAllegroBuilder, "Applied %zu physical constraint sets", constraintSets.size() );
 }
@@ -1597,19 +1543,19 @@ void BOARD_BUILDER::applyNetConstraints()
     // Allegro stores per-net min/max trace width in FIELD blocks attached to each NET.
     std::map<int, std::vector<uint32_t>> widthToNetKeys;
 
-    m_brdDb.VisitNets( [&]( const VIEW_OBJS& aView )
-    {
-        if( !aView.m_Net )
-            return;
+    TYPED_LL_WALKER<BLK_0x1B_NET> widthNetWalker{ m_brdDb.m_Header->m_LL_0x1B_Nets, m_brdDb };
 
-        std::optional<int> minWidth = aView.m_Net->GetNetMinLineWidth();
+    for( const BLK_0x1B_NET& netBlk : widthNetWalker )
+    {
+        std::optional<int> minWidth =
+                GetFirstFieldOfTypeInt( m_brdDb, netBlk.m_FieldsPtr, netBlk.m_Key, FIELD_KEYS::MIN_LINE_WIDTH );
 
         if( !minWidth.has_value() || minWidth.value() <= 0 )
-            return;
+            continue;
 
         int widthNm = scale( minWidth.value() );
-        widthToNetKeys[widthNm].push_back( aView.m_Net->GetKey() );
-    } );
+        widthToNetKeys[widthNm].push_back( netBlk.m_Key );
+    }
 
     if( widthToNetKeys.empty() )
     {
@@ -1625,7 +1571,7 @@ void BOARD_BUILDER::applyNetConstraints()
         if( netSettings->HasNetclass( ncName ) )
             continue;
 
-        auto nc = std::make_shared<NETCLASS>( ncName );
+        std::shared_ptr<NETCLASS> nc = std::make_shared<NETCLASS>( ncName );
         nc->SetTrackWidth( widthNm );
         netSettings->SetNetclass( ncName, nc );
 
@@ -1650,22 +1596,22 @@ void BOARD_BUILDER::applyNetConstraints()
 }
 
 
-wxString BOARD_BUILDER::resolveMatchGroupName( const BLK_0x1B_NET& aNet ) const
+const BLK_0x2C_TABLE* BOARD_BUILDER::resolveMatchGroupTable( const BLK_0x1B_NET& aNet ) const
 {
     if( aNet.m_MatchGroupPtr == 0 )
-        return wxEmptyString;
+        return nullptr;
 
     const BLOCK_BASE* block = m_brdDb.GetObjectByKey( aNet.m_MatchGroupPtr );
 
     if( !block )
-        return wxEmptyString;
+        return nullptr;
 
     uint32_t tableKey = 0;
 
     if( block->GetBlockType() == 0x26 )
     {
         // V172+ path: NET -> 0x26 -> m_GroupPtr -> 0x2C TABLE
-        const auto& x26 = static_cast<const BLOCK<BLK_0x26_MATCH_GROUP>&>( *block ).GetData();
+        const auto& x26 = BlockDataAs<BLK_0x26_MATCH_GROUP>( *block );
         tableKey = x26.m_GroupPtr;
 
         // Some boards have chained 0x26 blocks (m_GroupPtr -> another 0x26 -> 0x2C)
@@ -1675,7 +1621,7 @@ wxString BOARD_BUILDER::resolveMatchGroupName( const BLK_0x1B_NET& aNet ) const
 
             if( next && next->GetBlockType() == 0x26 )
             {
-                const auto& x26b = static_cast<const BLOCK<BLK_0x26_MATCH_GROUP>&>( *next ).GetData();
+                const auto& x26b = BlockDataAs<BLK_0x26_MATCH_GROUP>( *next );
                 tableKey = x26b.m_GroupPtr;
             }
         }
@@ -1687,20 +1633,26 @@ wxString BOARD_BUILDER::resolveMatchGroupName( const BLK_0x1B_NET& aNet ) const
     }
     else
     {
-        return wxEmptyString;
+        return nullptr;
     }
 
     if( tableKey == 0 )
-        return wxEmptyString;
+        return nullptr;
 
     // Verify the target is actually a 0x2C TABLE before calling expectBlockByKey to
     // avoid noisy warnings on boards with unexpected pointer chain configurations.
     const BLOCK_BASE* tableBlock = m_brdDb.GetObjectByKey( tableKey );
 
     if( !tableBlock || tableBlock->GetBlockType() != 0x2C )
-        return wxEmptyString;
+        return nullptr;
 
-    const BLK_0x2C_TABLE* tbl = expectBlockByKey<BLK_0x2C_TABLE>( tableKey, 0x2C );
+    return expectBlockByKey<BLK_0x2C_TABLE>( tableKey );
+}
+
+
+wxString BOARD_BUILDER::resolveMatchGroupName( const BLK_0x1B_NET& aNet ) const
+{
+    const BLK_0x2C_TABLE* tbl = resolveMatchGroupTable( aNet );
 
     if( !tbl || tbl->m_StringPtr == 0 )
         return wxEmptyString;
@@ -1708,9 +1660,10 @@ wxString BOARD_BUILDER::resolveMatchGroupName( const BLK_0x1B_NET& aNet ) const
     const wxString& name = m_brdDb.GetString( tbl->m_StringPtr );
 
     KI_LOG_TRACE( traceAllegroBuilder, "Resolving match group name for NET '%s': found table at key %#010x, subtype %#x, name '%s'",
-                m_brdDb.GetString( aNet.m_NetName ), tableKey, tbl->m_SubType, name );
+                m_brdDb.GetString( aNet.m_NetName ), tbl->m_Key, tbl->m_SubType, name );
 
-    return name;
+    // A group made from a schematic path keeps Cadence's \name\ wrapper, which is not part of the name
+    return DecodeEscapedIdentifiers( name );
 }
 
 
@@ -1724,14 +1677,10 @@ void BOARD_BUILDER::applyMatchGroups()
     // Group NET keys by their match group name
     std::map<wxString, std::vector<uint32_t>> groupToNetKeys;
 
-    LL_WALKER netWalker{ m_brdDb.m_Header->m_LL_0x1B_Nets, m_brdDb };
+    TYPED_LL_WALKER<BLK_0x1B_NET> netWalker{ m_brdDb.m_Header->m_LL_0x1B_Nets, m_brdDb };
 
-    for( const BLOCK_BASE* block : netWalker )
+    for( const BLK_0x1B_NET& netBlk : netWalker )
     {
-        if( block->GetBlockType() != BLOCK_TYPE::x1B_NET )
-            continue;
-
-        const auto& netBlk = static_cast<const BLOCK<BLK_0x1B_NET>&>( *block ).GetData();
         wxString groupName = resolveMatchGroupName( netBlk );
 
         if( groupName.empty() )
@@ -1760,7 +1709,7 @@ void BOARD_BUILDER::applyMatchGroups()
         if( netSettings->HasNetclass( ncName ) )
             continue;
 
-        auto nc = std::make_shared<NETCLASS>( ncName );
+        std::shared_ptr<NETCLASS> nc = std::make_shared<NETCLASS>( ncName );
 
         // Inherit constraint set values from the first net's current netclass so that
         // clearance and track width from the underlying constraint set are not lost.
@@ -1838,23 +1787,24 @@ static std::unordered_set<LAYER_INFO> ScanForLayers( const BRD_DB& aDb )
 {
     std::unordered_set<LAYER_INFO> layersFound;
 
-    const auto& addLayer = [&]( std::optional<LAYER_INFO>& info )
-    {
-        if( info.has_value() )
-        {
-            layersFound.insert( std::move( info.value() ) );
-        }
-    };
+    const auto& addLayer =
+            [&]( std::optional<LAYER_INFO>& info )
+            {
+                if( info.has_value() )
+                    layersFound.insert( std::move( info.value() ) );
+            };
 
-    const auto& simpleWalker = [&]( const FILE_HEADER::LINKED_LIST& aLL )
-    {
-        LL_WALKER walker{ aLL, aDb };
-        for( const BLOCK_BASE* block : walker )
-        {
-            std::optional<LAYER_INFO> info = tryLayerFromBlock( *block );
-            addLayer( info );
-        }
-    };
+    const auto& simpleWalker =
+            [&]( const FILE_HEADER::LINKED_LIST& aLL )
+            {
+                LL_WALKER walker{ aLL, aDb };
+
+                for( const BLOCK_BASE* block : walker )
+                {
+                    std::optional<LAYER_INFO> info = tryLayerFromBlock( *block );
+                    addLayer( info );
+                }
+            };
 
     simpleWalker( aDb.m_Header->m_LL_Shapes );
     simpleWalker( aDb.m_Header->m_LL_0x24_0x28 );
@@ -1868,7 +1818,7 @@ void BOARD_BUILDER::setupLayers()
 {
     KI_LOG_TRACE( traceAllegroBuilder, "Setting up layer mapping from Allegro to KiCad" );
 
-    const auto& layerMap = m_brdDb.m_Header->m_LayerMap;
+    const std::array<FILE_HEADER::LAYER_MAP_ENTRY, 25>& layerMap = m_brdDb.m_Header->m_LayerMap;
 
     for( size_t i = 0; i < layerMap.size(); ++i )
     {
@@ -1879,7 +1829,7 @@ void BOARD_BUILDER::setupLayers()
         if( x2aKey == 0 )
             continue;
 
-        const BLK_0x2A_LAYER_LIST* layerList = expectBlockByKey<BLK_0x2A_LAYER_LIST>( x2aKey, 0x2A );
+        const BLK_0x2A_LAYER_LIST* layerList = expectBlockByKey<BLK_0x2A_LAYER_LIST>( x2aKey );
 
         // Probably an error
         if( !layerList )
@@ -1891,6 +1841,7 @@ void BOARD_BUILDER::setupLayers()
     std::unordered_set<LAYER_INFO> layersFound = ScanForLayers( m_brdDb );
 
     KI_LOG_TRACE( traceAllegroBuilder, "Scanned %zu layers", layersFound.size() );
+
     for( const LAYER_INFO& info : layersFound )
     {
         KI_LOG_TRACE( traceAllegroBuilder, " - %#02x:%#02x (%s)", info.m_Class, info.m_Subclass,
@@ -1919,9 +1870,10 @@ const BLK_0x36_DEF_TABLE::FontDef_X08* BOARD_BUILDER::getFontDef( unsigned aInde
 {
     if( aIndex == 0 || aIndex > m_fontDefList.size() )
     {
-        m_reporter.Report(
-                wxString::Format( "Font def index %u requested, have %zu entries", aIndex, m_fontDefList.size() ),
-                RPT_SEVERITY_WARNING );
+        m_reporter.Report( wxString::Format( "Font def index %u requested, have %zu entries",
+                                             aIndex,
+                                             m_fontDefList.size() ),
+                           RPT_SEVERITY_WARNING );
         return nullptr;
     }
 
@@ -2026,7 +1978,22 @@ std::unique_ptr<PCB_SHAPE> BOARD_BUILDER::buildArc( const BLK_0x01_ARC& aArc, co
         VECTOR2I mid = start;
         RotatePoint( mid, c, -angle / 2.0 );
 
-        shape->SetArcGeometry( start, mid, end );
+        // A near-straight arc has a centre outside the coordinate range, so it cannot be transformed.
+        // The centre is measured before the arc is built since building it already rotates by it.
+        const double centreDistance =
+                ( CalcArcCenter( VECTOR2D( start ), VECTOR2D( mid ), VECTOR2D( end ) ) - VECTOR2D( start ) )
+                        .EuclideanNorm();
+
+        if( !std::isfinite( centreDistance ) || centreDistance > std::numeric_limits<int>::max() / 4 )
+        {
+            shape->SetShape( SHAPE_T::SEGMENT );
+            shape->SetStart( start );
+            shape->SetEnd( end );
+        }
+        else
+        {
+            shape->SetArcGeometry( start, mid, end );
+        }
     }
 
     return shape;
@@ -2041,7 +2008,7 @@ std::unique_ptr<PCB_TEXT> BOARD_BUILDER::buildPcbText( const BLK_0x30_STR_WRAPPE
     PCB_LAYER_ID layer = getLayer( aStrWrapper.m_Layer );
     text->SetLayer( layer );
 
-    const BLK_0x31_SGRAPHIC* strGraphic = expectBlockByKey<BLK_0x31_SGRAPHIC>( aStrWrapper.m_StrGraphicPtr, 0x31 );
+    const BLK_0x31_SGRAPHIC* strGraphic = expectBlockByKey<BLK_0x31_SGRAPHIC>( aStrWrapper.m_StrGraphicPtr );
 
     if( !strGraphic )
     {
@@ -2062,10 +2029,10 @@ std::unique_ptr<PCB_TEXT> BOARD_BUILDER::buildPcbText( const BLK_0x30_STR_WRAPPE
 
     if( !props )
     {
-        m_reporter.Report(
-                wxString::Format( "Expected one of the font properties fields in 0x30 object (key %#010x) to be set.",
-                                  aStrWrapper.m_Key ),
-                RPT_SEVERITY_WARNING );
+        m_reporter.Report( wxString::Format( "Expected one of the font properties fields in 0x30 object (key %#010x) "
+                                             "to be set.",
+                                             aStrWrapper.m_Key ),
+                           RPT_SEVERITY_WARNING );
         return nullptr;
     }
 
@@ -2132,20 +2099,22 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildDrillMarker( const 
     const VECTOR2I center = scale( VECTOR2I{ aPinDef.m_Coords[0], aPinDef.m_Coords[1] } );
     const VECTOR2I size = scaleSize( VECTOR2I{ aPinDef.m_Size[0], aPinDef.m_Size[1] } );
 
-    const auto addLine = [&]( const SEG& aSeg )
-    {
-        std::unique_ptr<PCB_SHAPE> shape = std::make_unique<PCB_SHAPE>( &aParent, SHAPE_T::SEGMENT );
-        shape->SetStart( aSeg.A );
-        shape->SetEnd( aSeg.B );
-        shapes.push_back( std::move( shape ) );
-    };
+    const auto addLine =
+            [&]( const SEG& aSeg )
+            {
+                std::unique_ptr<PCB_SHAPE> shape = std::make_unique<PCB_SHAPE>( &aParent, SHAPE_T::SEGMENT );
+                shape->SetStart( aSeg.A );
+                shape->SetEnd( aSeg.B );
+                shapes.push_back( std::move( shape ) );
+            };
 
-    const auto addPolyPts = [&]( const std::vector<VECTOR2I>& aPts )
-    {
-        std::unique_ptr<PCB_SHAPE> shape = std::make_unique<PCB_SHAPE>( &aParent, SHAPE_T::POLY );
-        shape->SetPolyPoints( aPts );
-        shapes.push_back( std::move( shape ) );
-    };
+    const auto addPolyPts =
+            [&]( const std::vector<VECTOR2I>& aPts )
+            {
+                std::unique_ptr<PCB_SHAPE> shape = std::make_unique<PCB_SHAPE>( &aParent, SHAPE_T::POLY );
+                shape->SetPolyPoints( aPts );
+                shapes.push_back( std::move( shape ) );
+            };
 
     switch( markerShape )
     {
@@ -2173,9 +2142,8 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildDrillMarker( const 
         std::vector<SEG> segs = KIGEOM::MakeCrossSegments( center, size, ANGLE_0 );
 
         for( const SEG& seg : segs )
-        {
             addLine( seg );
-        }
+
         break;
     }
     case MS::OBLONG_X:
@@ -2228,14 +2196,13 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildDrillMarker( const 
         break;
     }
     default:
-    {
         KI_LOG_TRACE( traceAllegroBuilder, "Unsupported drill marker shape type %#04x for pin definition with key %#010x",
                     markerShape, aPinDef.m_Key );
         break;
     }
-    }
 
     std::vector<std::unique_ptr<BOARD_ITEM>> items;
+
     for( std::unique_ptr<PCB_SHAPE>& shape : shapes )
     {
         shape->SetLayer( layer );
@@ -2257,13 +2224,14 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildGraphicItems( const
     {
     case 0x0c:
     {
-        const auto& pinDef = static_cast<const BLOCK<BLK_0x0C_PIN_DEF>&>( aBlock ).GetData();
+        const auto& pinDef = BlockDataAs<BLK_0x0C_PIN_DEF>( aBlock );
         newItems = buildDrillMarker( pinDef, aParent );
         break;
     }
     case 0x0e:
     {
-        const auto&                rect = static_cast<const BLOCK<BLK_0x0E_RECT>&>( aBlock ).GetData();
+        const auto& rect = BlockDataAs<BLK_0x0E_RECT>( aBlock );
+
         std::unique_ptr<PCB_SHAPE> shape = buildRect( rect, aParent );
         if( shape )
             newItems.push_back( std::move( shape ) );
@@ -2271,42 +2239,50 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildGraphicItems( const
     }
     case 0x14:
     {
-        const auto& graphicContainer = static_cast<const BLOCK<BLK_0x14_GRAPHIC>&>( aBlock ).GetData();
+        const auto& graphicContainer = BlockDataAs<BLK_0x14_GRAPHIC>( aBlock );
+
         std::vector<std::unique_ptr<PCB_SHAPE>> shapes = buildShapes( graphicContainer, aParent );
+
         for( std::unique_ptr<PCB_SHAPE>& shape : shapes )
             newItems.push_back( std::move( shape ) );
+
         break;
     }
     case 0x24:
     {
-        const auto&                rect = static_cast<const BLOCK<BLK_0x24_RECT>&>( aBlock ).GetData();
+        const auto& rect = BlockDataAs<BLK_0x24_RECT>( aBlock );
+
         std::unique_ptr<PCB_SHAPE> shape = buildRect( rect, aParent );
+
         if( shape )
             newItems.push_back( std::move( shape ) );
+
         break;
     }
     case 0x28:
     {
-        const auto&                shapeData = static_cast<const BLOCK<BLK_0x28_SHAPE>&>( aBlock ).GetData();
+        const auto&                shapeData = BlockDataAs<BLK_0x28_SHAPE>( aBlock );
         std::unique_ptr<PCB_SHAPE> shape = buildPolygon( shapeData, aParent );
+
         if( shape )
             newItems.push_back( std::move( shape ) );
+
         break;
     }
     case 0x30:
     {
-        const auto& strWrapper = static_cast<const BLOCK<BLK_0x30_STR_WRAPPER>&>( aBlock ).GetData();
+        const auto& strWrapper = BlockDataAs<BLK_0x30_STR_WRAPPER>( aBlock );
 
         std::unique_ptr<BOARD_ITEM> newItem = buildPcbText( strWrapper, aParent );
+
         if( newItem )
             newItems.push_back( std::move( newItem ) );
+
         break;
     }
     default:
-    {
         KI_LOG_TRACE( traceAllegroBuilder, "    Unhandled block type for buildItems: %#04x", aBlock.GetBlockType() );
         break;
-    }
     }
 
     return newItems;
@@ -2316,6 +2292,89 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildGraphicItems( const
 PCB_LAYER_ID BOARD_BUILDER::getLayer( const LAYER_INFO& aLayerInfo ) const
 {
     return m_layerMapper->GetLayer( aLayerInfo );
+}
+
+
+// Only PCB_SHAPE carries a net among the types the filter handles, so no dynamic_cast on a path
+// that runs once per graphic
+static int graphicNetCode( const BOARD_ITEM& aItem )
+{
+    if( aItem.Type() == PCB_SHAPE_T )
+        return static_cast<const PCB_SHAPE&>( aItem ).GetNetCode();
+
+    return NETINFO_LIST::UNCONNECTED;
+}
+
+
+size_t BOARD_BUILDER::GRAPHIC_KEY_HASH::operator()( const BOARD_ITEM* aItem ) const
+{
+    size_t seed = 0;
+    hash_combine( seed, (int) aItem->Type(), (int) aItem->GetLayer(), graphicNetCode( *aItem ) );
+
+    if( aItem->Type() == PCB_SHAPE_T )
+    {
+        const PCB_SHAPE* shape = static_cast<const PCB_SHAPE*>( aItem );
+
+        hash_combine( seed, (int) shape->GetShape(), shape->GetStart().x, shape->GetStart().y,
+                      shape->GetEnd().x, shape->GetEnd().y, shape->GetWidth() );
+    }
+    else if( aItem->Type() == PCB_TEXT_T )
+    {
+        const PCB_TEXT* text = static_cast<const PCB_TEXT*>( aItem );
+
+        hash_combine( seed, text->GetPosition().x, text->GetPosition().y, text->GetText().ToStdString() );
+    }
+
+    return seed;
+}
+
+
+bool BOARD_BUILDER::GRAPHIC_KEY_EQ::operator()( const BOARD_ITEM* aFirst, const BOARD_ITEM* aSecond ) const
+{
+    if( aFirst->Type() != aSecond->Type()
+        || aFirst->GetLayer() != aSecond->GetLayer()
+        || graphicNetCode( *aFirst ) != graphicNetCode( *aSecond ) )
+    {
+        return false;
+    }
+
+    if( aFirst->Type() == PCB_SHAPE_T )
+        return static_cast<const PCB_SHAPE*>( aFirst )->Compare( static_cast<const PCB_SHAPE*>( aSecond ) ) == 0;
+
+    if( aFirst->Type() == PCB_TEXT_T )
+        return static_cast<const PCB_TEXT*>( aFirst )->Compare( static_cast<const PCB_TEXT*>( aSecond ) ) == 0;
+
+    return false;
+}
+
+
+bool BOARD_BUILDER::GRAPHIC_DEDUP::IsFirst( const BOARD_ITEM* aItem )
+{
+    if( aItem->Type() != PCB_SHAPE_T && aItem->Type() != PCB_TEXT_T )
+        return true;
+
+    return m_seen.insert( aItem ).second;
+}
+
+
+void BOARD_BUILDER::stampIds( BOARD_ITEM& aItem, uint32_t aKey, uint32_t& aSeq )
+{
+    // RFC 4122 name-based UUID, naming the item by the block it came from and its position
+    // within that block
+    aItem.SetUuidDirect( KIID::FromName( "allegro:" + std::to_string( aKey ) + ":" + std::to_string( aSeq++ ) ) );
+
+    // A group's children are board items in their own right, stamped where they are built.
+    // Descending into them here would also re-stamp them in the order of the group's
+    // pointer-keyed member set, which varies between runs
+    if( aItem.Type() == PCB_GROUP_T )
+        return;
+
+    aItem.RunOnChildren(
+            [&]( BOARD_ITEM* aChild )
+            {
+                stampIds( *aChild, aKey, aSeq );
+            },
+            RECURSE_MODE::NO_RECURSE );
 }
 
 
@@ -2334,6 +2393,11 @@ std::vector<std::unique_ptr<PCB_SHAPE>> BOARD_BUILDER::buildShapes( const BLK_0x
     else if( layer == B_CrtYd )
         layer = m_layerMapper->GetPlaceBounds( false );
 
+    // Lines of the anti-etch class remove copper on any layer, as lines on a plane layer do. The lines of a
+    // footprint are in board coordinates too, so they join the same voids
+    const bool isVoidLine = m_layerMapper->IsPlaneLayer( aGraphic.m_Layer )
+                            || ( aGraphic.m_Layer.m_Class == LAYER_INFO::CLASS::ANTI_ETCH && IsCopperLayer( layer ) );
+
     const LL_WALKER segWalker{ aGraphic.m_SegmentPtr, aGraphic.m_Key, m_brdDb };
 
     for( const BLOCK_BASE* segBlock : segWalker )
@@ -2344,7 +2408,7 @@ std::vector<std::unique_ptr<PCB_SHAPE>> BOARD_BUILDER::buildShapes( const BLK_0x
         {
         case 0x01:
         {
-            const auto& arc = static_cast<const BLOCK<BLK_0x01_ARC>&>( *segBlock ).GetData();
+            const auto& arc = BlockDataAs<BLK_0x01_ARC>( *segBlock );
             shape = buildArc( arc, aGraphic.m_Layer, layer, aParent );
             break;
         }
@@ -2352,20 +2416,27 @@ std::vector<std::unique_ptr<PCB_SHAPE>> BOARD_BUILDER::buildShapes( const BLK_0x
         case 0x16:
         case 0x17:
         {
-            const auto& seg = static_cast<const BLOCK<BLK_0x15_16_17_SEGMENT>&>( *segBlock ).GetData();
+            const auto& seg = BlockDataAs<BLK_0x15_16_17_SEGMENT>( *segBlock );
             shape = buildLineSegment( seg, aGraphic.m_Layer, layer, aParent );
             break;
         }
         default:
-        {
             KI_LOG_TRACE( traceAllegroBuilder, "    Unhandled block type in BLK_0x14_GRAPHIC: %#04x",
                         segBlock->GetBlockType() );
             break;
         }
+
+        if( !shape )
+            continue;
+
+        // Void lines on a copper layer are kept as clearance and not as copper
+        if( isVoidLine )
+        {
+            shape->TransformShapeToPolygon( m_planeVoids[layer], layer, 0, ARC_HIGH_DEF, ERROR_INSIDE );
+            continue;
         }
 
-        if( shape )
-            shapes.push_back( std::move( shape ) );
+        shapes.push_back( std::move( shape ) );
     }
 
     return shapes;
@@ -2470,7 +2541,7 @@ std::vector<std::unique_ptr<PCB_SHAPE>> BOARD_BUILDER::buildPolygonShapes( const
         {
         case 0x01:
         {
-            const auto& arc = static_cast<const BLOCK<BLK_0x01_ARC>&>( *segBlock ).GetData();
+            const auto& arc = BlockDataAs<BLK_0x01_ARC>( *segBlock );
 
             VECTOR2I start = scale( { arc.m_StartX, arc.m_StartY } );
             VECTOR2I end = scale( { arc.m_EndX, arc.m_EndY } );
@@ -2514,7 +2585,7 @@ std::vector<std::unique_ptr<PCB_SHAPE>> BOARD_BUILDER::buildPolygonShapes( const
         case 0x16:
         case 0x17:
         {
-            const auto& seg = static_cast<const BLOCK<BLK_0x15_16_17_SEGMENT>&>( *segBlock ).GetData();
+            const auto& seg = BlockDataAs<BLK_0x15_16_17_SEGMENT>( *segBlock );
             VECTOR2I    start = scale( { seg.m_StartX, seg.m_StartY } );
             VECTOR2I    end = scale( { seg.m_EndX, seg.m_EndY } );
 
@@ -2550,13 +2621,14 @@ const BLK_0x07_COMPONENT_INST* BOARD_BUILDER::getFpInstRef( const BLK_0x2D_FOOTP
     if( refKey == 0 )
         return nullptr;
 
-    const BLK_0x07_COMPONENT_INST* blk07 = expectBlockByKey<BLK_0x07_COMPONENT_INST>( refKey, 0x07 );
+    const BLK_0x07_COMPONENT_INST* blk07 = expectBlockByKey<BLK_0x07_COMPONENT_INST>( refKey );
     return blk07;
 }
 
 
 std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK_0x1C_PADSTACK& aPadstack,
-                                                                       FOOTPRINT& aFp, const wxString& aPadName, int aNetcode )
+                                                                       FOOTPRINT& aFp, const wxString& aPadName,
+                                                                       int aNetcode, bool aBackSide )
 {
     // Not all Allegro PADSTACKS can be represented by a single KiCad pad. For example, the
     // paste and mask layers can have completely independent shapes in Allegro, but in KiCad that
@@ -2577,9 +2649,12 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
     for( size_t i = 0; i < aPadstack.GetLayerCount(); ++i )
     {
         const size_t layerBaseIndex = aPadstack.m_NumFixedCompEntries + i * aPadstack.m_NumCompsPerLayer;
-        const ALLEGRO::PADSTACK_COMPONENT& padComp = aPadstack.m_Components[layerBaseIndex + BLK_0x1C_PADSTACK::LAYER_COMP_SLOT::PAD];
-        const ALLEGRO::PADSTACK_COMPONENT& antiPadComp = aPadstack.m_Components[layerBaseIndex + BLK_0x1C_PADSTACK::LAYER_COMP_SLOT::ANTIPAD];
-        const ALLEGRO::PADSTACK_COMPONENT& thermalComp = aPadstack.m_Components[layerBaseIndex + BLK_0x1C_PADSTACK::LAYER_COMP_SLOT::THERMAL_RELIEF];
+        const ALLEGRO::PADSTACK_COMPONENT& padComp = aPadstack.m_Components[layerBaseIndex
+                                                            + BLK_0x1C_PADSTACK::LAYER_COMP_SLOT::PAD];
+        const ALLEGRO::PADSTACK_COMPONENT& antiPadComp = aPadstack.m_Components[layerBaseIndex
+                                                            + BLK_0x1C_PADSTACK::LAYER_COMP_SLOT::ANTIPAD];
+        const ALLEGRO::PADSTACK_COMPONENT& thermalComp = aPadstack.m_Components[layerBaseIndex
+                                                            + BLK_0x1C_PADSTACK::LAYER_COMP_SLOT::THERMAL_RELIEF];
 
         // If this is zero just skip entirely - I don't think we can usefully make pads with just thermal relief
         // Flag up if that happens.
@@ -2587,16 +2662,17 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
         {
             if( antiPadComp.m_Type != PADSTACK_COMPONENT::TYPE_NULL )
             {
-                m_reporter.Report(
-                        wxString::Format( "Padstack %s: Copper layer %zu has no pad component, but has antipad",
-                                          padStackName, i ),
-                        RPT_SEVERITY_WARNING );
+                m_reporter.Report( wxString::Format( "Padstack %s: Copper layer %zu has no pad component, but has "
+                                                     "antipad",
+                                                     padStackName,
+                                                     i ),
+                                   RPT_SEVERITY_WARNING );
             }
             if( thermalComp.m_Type != PADSTACK_COMPONENT::TYPE_NULL )
             {
-                m_reporter.Report(
-                        wxString::Format( "Copper layer %zu has no pad component, but has thermal relief", i ),
-                        RPT_SEVERITY_WARNING );
+                m_reporter.Report( wxString::Format( "Copper layer %zu has no pad component, but has thermal relief",
+                                                     i ),
+                                   RPT_SEVERITY_WARNING );
             }
             continue;
         }
@@ -2610,29 +2686,29 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
         case PADSTACK_COMPONENT::TYPE_RECTANGLE:
             layerCuProps->shape.shape = PAD_SHAPE::RECTANGLE;
             layerCuProps->shape.size = scaleSize( VECTOR2I{ padComp.m_W, padComp.m_H } );
-            layerCuProps->shape.offset = scale( VECTOR2I{ padComp.m_X3, padComp.m_X4 } );
+            layerCuProps->shape.offset = scale( VECTOR2I{ padComp.m_OffsetX, padComp.m_OffsetY } );
             break;
         case PADSTACK_COMPONENT::TYPE_SQUARE:
             layerCuProps->shape.shape = PAD_SHAPE::RECTANGLE;
             layerCuProps->shape.size = scaleSize( VECTOR2I{ padComp.m_W, padComp.m_W } );
-            layerCuProps->shape.offset = scale( VECTOR2I{ padComp.m_X3, padComp.m_X4 } );
+            layerCuProps->shape.offset = scale( VECTOR2I{ padComp.m_OffsetX, padComp.m_OffsetY } );
             break;
         case PADSTACK_COMPONENT::TYPE_CIRCLE:
             layerCuProps->shape.shape = PAD_SHAPE::CIRCLE;
             layerCuProps->shape.size = scaleSize( VECTOR2I{ padComp.m_W, padComp.m_H } );
-            layerCuProps->shape.offset = scale( VECTOR2I{ padComp.m_X3, padComp.m_X4 } );
+            layerCuProps->shape.offset = scale( VECTOR2I{ padComp.m_OffsetX, padComp.m_OffsetY } );
             break;
         case PADSTACK_COMPONENT::TYPE_OBLONG_X:
         case PADSTACK_COMPONENT::TYPE_OBLONG_Y:
             layerCuProps->shape.shape = PAD_SHAPE::OVAL;
             layerCuProps->shape.size = scaleSize( VECTOR2I{ padComp.m_W, padComp.m_H } );
-            layerCuProps->shape.offset = scale( VECTOR2I{ padComp.m_X3, padComp.m_X4 } );
+            layerCuProps->shape.offset = scale( VECTOR2I{ padComp.m_OffsetX, padComp.m_OffsetY } );
             break;
         case PADSTACK_COMPONENT::TYPE_ROUNDED_RECTANGLE:
         {
             layerCuProps->shape.shape = PAD_SHAPE::ROUNDRECT;
             layerCuProps->shape.size = scaleSize( VECTOR2I{ padComp.m_W, padComp.m_H } );
-            layerCuProps->shape.offset = scale( VECTOR2I{ padComp.m_X3, padComp.m_X4 } );
+            layerCuProps->shape.offset = scale( VECTOR2I{ padComp.m_OffsetX, padComp.m_OffsetY } );
 
             int minDim = std::min( std::abs( padComp.m_W ), std::abs( padComp.m_H ) );
 
@@ -2647,7 +2723,7 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
         {
             layerCuProps->shape.shape = PAD_SHAPE::CHAMFERED_RECT;
             layerCuProps->shape.size = scaleSize( VECTOR2I{ padComp.m_W, padComp.m_H } );
-            layerCuProps->shape.offset = scale( VECTOR2I{ padComp.m_X3, padComp.m_X4 } );
+            layerCuProps->shape.offset = scale( VECTOR2I{ padComp.m_OffsetX, padComp.m_OffsetY } );
 
             int minDim = std::min( std::abs( padComp.m_W ), std::abs( padComp.m_H ) );
 
@@ -2665,7 +2741,7 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
             // (tan(22.5°) ≈ 0.414, half of that as ratio ≈ 0.207, but visually 0.293 is closer)
             layerCuProps->shape.shape = PAD_SHAPE::CHAMFERED_RECT;
             layerCuProps->shape.size = scaleSize( VECTOR2I{ padComp.m_W, padComp.m_H } );
-            layerCuProps->shape.offset = scale( VECTOR2I{ padComp.m_X3, padComp.m_X4 } );
+            layerCuProps->shape.offset = scale( VECTOR2I{ padComp.m_OffsetX, padComp.m_OffsetY } );
             layerCuProps->shape.chamfered_rect_ratio = 1.0 - 1.0 / sqrt( 2.0 );
             layerCuProps->shape.chamfered_rect_positions = RECT_CHAMFER_ALL;
             break;
@@ -2674,13 +2750,11 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
         {
             // Custom shape defined by a 0x28 polygon. Walk the shape's segments and build
             // a polygon primitive for this pad.
-            const BLK_0x28_SHAPE* shapeData =
-                    expectBlockByKey<BLK_0x28_SHAPE>( padComp.m_ShapePtr, 0x28 );
+            const BLK_0x28_SHAPE* shapeData = expectBlockByKey<BLK_0x28_SHAPE>( padComp.m_ShapePtr );
 
             if( !shapeData )
             {
-                KI_LOG_TRACE( traceAllegroBuilder,
-                            "Padstack %s: SHAPE_SYMBOL on layer %zu has no 0x28 shape at %#010x",
+                KI_LOG_TRACE( traceAllegroBuilder, "Padstack %s: SHAPE_SYMBOL on layer %zu has no 0x28 shape at %#010x",
                             padStackName, i, padComp.m_ShapePtr );
                 break;
             }
@@ -2691,9 +2765,11 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
             {
                 outline.SetClosed( true );
 
+                // A custom pad ignores the shape offset, so it moves the outline instead
+                outline.Move( scale( VECTOR2I{ padComp.m_OffsetX, padComp.m_OffsetY } ) );
+
                 layerCuProps->shape.shape = PAD_SHAPE::CUSTOM;
                 layerCuProps->shape.anchor_shape = PAD_SHAPE::CIRCLE;
-                layerCuProps->shape.offset = scale( VECTOR2I{ padComp.m_X3, padComp.m_X4 } );
 
                 // Anchor size based on the shape's bounding box center
                 BOX2I bbox = outline.BBox();
@@ -2705,7 +2781,7 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
 
                 layerCuProps->shape.size = VECTOR2I( anchorSize, anchorSize );
 
-                auto poly = std::make_shared<PCB_SHAPE>( nullptr, SHAPE_T::POLY );
+                std::shared_ptr<PCB_SHAPE> poly = std::make_shared<PCB_SHAPE>( nullptr, SHAPE_T::POLY );
                 poly->SetPolyShape( SHAPE_POLY_SET( outline ) );
                 poly->SetFilled( true );
                 poly->SetWidth( 0 );
@@ -2713,8 +2789,7 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
             }
             else
             {
-                KI_LOG_TRACE( traceAllegroBuilder,
-                            "Padstack %s: SHAPE_SYMBOL on layer %zu produced only %d points",
+                KI_LOG_TRACE( traceAllegroBuilder, "Padstack %s: SHAPE_SYMBOL on layer %zu produced only %d points",
                             padStackName, i, outline.PointCount() );
             }
 
@@ -2724,16 +2799,15 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
         {
             layerCuProps->shape.shape = PAD_SHAPE::CUSTOM;
             layerCuProps->shape.anchor_shape = PAD_SHAPE::CIRCLE;
-            layerCuProps->shape.offset = scale( VECTOR2I{ padComp.m_X3, padComp.m_X4 } );
 
             const int w = std::max( padComp.m_W, 300 );
             const int h = std::max( padComp.m_H, 220 );
 
             SHAPE_LINE_CHAIN outline;
-            auto             S = [&]( int x, int y )
-            {
-                return scale( VECTOR2I{ x, y } );
-            };
+            auto S = [&]( int x, int y )
+                     {
+                         return scale( VECTOR2I{ x, y } );
+                     };
 
             // Regular pentagon with flat bottom edge
             outline.Append( S( 0, -h / 2 ) );
@@ -2742,6 +2816,7 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
             outline.Append( S( -w / 3, h / 2 ) );
             outline.Append( S( -w / 2, -h / 6 ) );
             outline.SetClosed( true );
+            outline.Move( S( padComp.m_OffsetX, padComp.m_OffsetY ) );
 
             BOX2I bbox = outline.BBox();
             int   anchorSize = static_cast<int>(
@@ -2752,7 +2827,7 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
 
             layerCuProps->shape.size = VECTOR2I( anchorSize, anchorSize );
 
-            auto poly = std::make_shared<PCB_SHAPE>( nullptr, SHAPE_T::POLY );
+            std::shared_ptr<PCB_SHAPE> poly = std::make_shared<PCB_SHAPE>( nullptr, SHAPE_T::POLY );
             poly->SetPolyShape( SHAPE_POLY_SET( outline ) );
             poly->SetFilled( true );
             poly->SetWidth( 0 );
@@ -2760,10 +2835,11 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
             break;
         }
         default:
-            m_reporter.Report(
-                    wxString::Format( "Padstack %s: unhandled copper pad shape type %d on layer %zu",
-                                      padStackName, static_cast<int>( padComp.m_Type ), i ),
-                    RPT_SEVERITY_WARNING );
+            m_reporter.Report( wxString::Format( "Padstack %s: unhandled copper pad shape type %d on layer %zu",
+                                                 padStackName,
+                                                 static_cast<int>( padComp.m_Type ),
+                                                 i ),
+                               RPT_SEVERITY_WARNING );
             break;
         }
 
@@ -2771,8 +2847,8 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
         {
             if( antiPadComp.m_Type != padComp.m_Type )
             {
-                KI_LOG_TRACE( traceAllegroBuilder, "Padstack %s: copper layer %zu antipad shape %d "
-                            "differs from pad shape %d",
+                KI_LOG_TRACE( traceAllegroBuilder,
+                            "Padstack %s: copper layer %zu antipad shape %d differs from pad shape %d",
                             padStackName, i, antiPadComp.m_Type, padComp.m_Type );
             }
 
@@ -2781,16 +2857,14 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
 
             if( clearanceX && clearanceX != clearanceY )
             {
-                KI_LOG_TRACE( traceAllegroBuilder, "Padstack %s: copper layer %zu unequal antipad "
-                            "clearance X=%d Y=%d",
+                KI_LOG_TRACE( traceAllegroBuilder, "Padstack %s: copper layer %zu unequal antipad clearance X=%d Y=%d",
                             padStackName, i, clearanceX, clearanceY );
             }
 
-            if( antiPadComp.m_X3 != 0 || antiPadComp.m_X4 != 0 )
+            if( antiPadComp.m_OffsetX != 0 || antiPadComp.m_OffsetY != 0 )
             {
-                KI_LOG_TRACE( traceAllegroBuilder, "Padstack %s: copper layer %zu antipad offset "
-                            "%d, %d",
-                            padStackName, i, antiPadComp.m_X3, antiPadComp.m_X4 );
+                KI_LOG_TRACE( traceAllegroBuilder, "Padstack %s: copper layer %zu antipad offset %d, %d", padStackName, i,
+                            antiPadComp.m_OffsetX, antiPadComp.m_OffsetY );
             }
 
             layerCuProps->clearance = clearanceX;
@@ -2808,9 +2882,9 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
                     thermalGap = gap;
             }
 
-            KI_LOG_TRACE( traceAllegroBuilder,
-                        "Padstack %s: thermal relief type=%d, gap=%snm",
-                        padStackName, thermalComp.m_Type,
+            KI_LOG_TRACE( traceAllegroBuilder, "Padstack %s: thermal relief type=%d, gap=%snm",
+                        padStackName,
+                        thermalComp.m_Type,
                         thermalGap.has_value() ? wxString::Format( "%d", thermalGap.value() )
                                                : wxString( "N/A" ) );
         }
@@ -2828,24 +2902,24 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
     }
     else
     {
-        const auto layersEqual = [&](size_t aFrom, size_t aTo) -> bool
-        {
-            bool eq = true;
-            for( size_t i = aFrom + 1; i < aTo; ++i )
-            {
-                if( !copperLayers[i - 1] || !copperLayers[i] || *copperLayers[i - 1] != *copperLayers[i] )
+        const auto layersEqual =
+                [&](size_t aFrom, size_t aTo) -> bool
                 {
-                    eq = false;
-                    break;
-                }
-            }
-            return eq;
-        };
+                    bool eq = true;
+
+                    for( size_t i = aFrom + 1; i < aTo; ++i )
+                    {
+                        if( !copperLayers[i - 1] || !copperLayers[i] || *copperLayers[i - 1] != *copperLayers[i] )
+                        {
+                            eq = false;
+                            break;
+                        }
+                    }
+                    return eq;
+                };
 
         for(size_t i = 0; i < copperLayers.size(); ++i )
-        {
             KI_LOG_TRACE( traceAllegroBuilder, "  Layer %zu: %s", i, copperLayers[i] ? "present" : "null" );
-        }
 
         padStack.SetLayerSet( PAD::PTHMask() );
 
@@ -2856,8 +2930,7 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
             PADSTACK::COPPER_LAYER_PROPS& layerProps = padStack.CopperLayer( F_Cu );
             layerProps = *copperLayers.front();
         }
-        else if( copperLayers.front() && copperLayers.back()
-                 && layersEqual( 1, copperLayers.size() - 1 ) )
+        else if( copperLayers.front() && copperLayers.back() && layersEqual( 1, copperLayers.size() - 1 ) )
         {
             KI_LOG_TRACE( traceAllegroBuilder, "  Using FRONT_INNER_BACK padstack mode (inner layers identical)" );
             padStack.SetMode( PADSTACK::MODE::FRONT_INNER_BACK );
@@ -2878,14 +2951,12 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
                 if( !copperLayers[i] )
                     continue;
 
-                PCB_LAYER_ID layer = F_Cu;
+                const int    count = static_cast<int>( copperLayers.size() );
+                PCB_LAYER_ID layer = nthCopperLayerId( static_cast<int>( i ), count );
 
-                if( i == 0 )
-                    layer = F_Cu;
-                else if( i == copperLayers.size() - 1 )
-                    layer = B_Cu;
-                else
-                    layer = ToLAYER_ID( In1_Cu + static_cast<int>( i - 1 ) * 2 );
+                // The flip mirrors around the rounded-up stackup, so start from where it lands on the right layer
+                if( aBackSide && count % 2 != 0 )
+                    layer = m_board.FlipLayer( nthCopperLayerId( count - 1 - static_cast<int>( i ), count ) );
 
                 padStack.CopperLayer( layer ) = *copperLayers[i];
             }
@@ -2970,6 +3041,30 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
             padStack.Drill().shape = PAD_DRILL_SHAPE::CIRCLE;
     }
 
+    // A hole with no copper still needs a pad size, and KiCad takes the drill as that size
+    if( !isSmd && !aPadstack.IsPlated() )
+    {
+        for( PCB_LAYER_ID layer : padStack.UniqueLayers() )
+        {
+            PADSTACK::COPPER_LAYER_PROPS& props = padStack.CopperLayer( layer );
+
+            if( props.shape.size.x <= 0 || props.shape.size.y <= 0 )
+            {
+                props.shape.shape = drillW == drillH ? PAD_SHAPE::CIRCLE : PAD_SHAPE::OVAL;
+                props.shape.size = VECTOR2I( drillW, drillH );
+            }
+        }
+    }
+
+    // A pad with no copper and no hole has no size, which KiCad cannot save
+    if( isSmd && std::none_of( copperLayers.begin(), copperLayers.end(),
+                               []( const auto& aProps ) { return aProps != nullptr; } ) )
+    {
+        KI_LOG_TRACE( traceAllegroBuilder, "Padstack %s has no copper and no drill, skipping pad '%s'", padStackName,
+                    aPadName );
+        return padItems;
+    }
+
     std::unique_ptr<PAD> pad = std::make_unique<PAD>( &aFp );
     pad->SetPadstack( padStack );
     pad->SetNumber( aPadName );
@@ -2978,7 +3073,30 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
     if( isSmd )
     {
         pad->SetAttribute( PAD_ATTRIB::SMD );
-        pad->SetLayerSet( PAD::SMDMask() );
+
+        // A one-layer padstack starts on the layer of its pad, the bottom for the far fingers of an edge connector
+        const int    etchCount = m_layerMapper->GetEtchLayerCount();
+        PCB_LAYER_ID padLayer = F_Cu;
+
+        if( aPadstack.GetLayerCount() == 1 && aPadstack.m_StartLayer < etchCount )
+        {
+            // The start layer is in board order, and the footprint flip still to come mirrors it
+            const int    boardIndex = aBackSide ? etchCount - 1 - aPadstack.m_StartLayer : aPadstack.m_StartLayer;
+            PCB_LAYER_ID boardLayer = getLayer( LAYER_INFO{ LAYER_INFO::CLASS::ETCH,
+                                                            static_cast<uint8_t>( boardIndex ) } );
+
+            if( IsCopperLayer( boardLayer ) )
+                padLayer = aBackSide ? m_board.FlipLayer( boardLayer ) : boardLayer;
+        }
+
+        if( padLayer == F_Cu )
+            pad->SetLayerSet( PAD::SMDMask() );
+        else if( padLayer == B_Cu && m_brdDb.m_FmtVer < FMT_VER::V_172 )
+            pad->SetLayerSet( LSET( { B_Cu, B_Mask } ) ); // no 16.x bottom paste slot is known
+        else if( padLayer == B_Cu )
+            pad->SetLayerSet( LSET( { B_Cu, B_Paste, B_Mask } ) );
+        else
+            pad->SetLayerSet( LSET( { padLayer } ) );
     }
     else if( aPadstack.IsPlated() )
     {
@@ -3003,18 +3121,13 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
         // Knock off known layers that are clearly null
         if( psComp.m_Type == PADSTACK_COMPONENT::TYPE_NULL)
         {
-            if( m_brdDb.m_FmtVer < FMT_VER::V_165 )
+            if( m_brdDb.m_FmtVer < FMT_VER::V_172 )
             {
                 if( i == BLK_0x1C_PADSTACK::SLOTS::SOLDERMASK_TOP_V16X )
                     pad->SetLayerSet( pad->GetLayerSet().reset( F_Mask ) );
+                else if( i == BLK_0x1C_PADSTACK::SLOTS::SOLDERMASK_BOT_V16X )
+                    pad->SetLayerSet( pad->GetLayerSet().reset( B_Mask ) );
                 else if( i == BLK_0x1C_PADSTACK::SLOTS::PASTEMASK_TOP_V16X )
-                    pad->SetLayerSet( pad->GetLayerSet().reset( F_Paste ) );
-            }
-            else if( m_brdDb.m_FmtVer < FMT_VER::V_172 )
-            {
-                if( i == BLK_0x1C_PADSTACK::SLOTS::SOLDERMASK_TOP_V165 )
-                    pad->SetLayerSet( pad->GetLayerSet().reset( F_Mask ) );
-                else if( i == BLK_0x1C_PADSTACK::SLOTS::PASTEMASK_TOP_V165 )
                     pad->SetLayerSet( pad->GetLayerSet().reset( F_Paste ) );
             }
             else
@@ -3035,8 +3148,7 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
         // All fixed slots are technical layers (solder mask, paste mask, film mask,
         // assembly variant, etc). Custom mask expansion extraction is not yet implemented;
         // KiCad's default pad-matches-mask behavior applies.
-        KI_LOG_TRACE( traceAllegroBuilder,
-                    "Fixed padstack slot %zu: type=%d, W=%d, H=%d",
+        KI_LOG_TRACE( traceAllegroBuilder, "Fixed padstack slot %zu: type=%d, W=%d, H=%d",
                     i, static_cast<int>( psComp.m_Type ), psComp.m_W, psComp.m_H );
     }
 
@@ -3046,9 +3158,177 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
 }
 
 
+static std::optional<double> modelUnitToMm( const wxString& aUnits )
+{
+    if( aUnits == wxS( "MM" ) )
+        return 1.0;
+    else if( aUnits == wxS( "CM" ) )
+        return 10.0;
+    else if( aUnits == wxS( "MICRONS" ) )
+        return 0.001;
+    else if( aUnits == wxS( "MILS" ) )
+        return 0.0254;
+    else if( aUnits == wxS( "INCH" ) )
+        return 25.4;
+
+    return std::nullopt;
+}
+
+
+// Allegro holds the model assignment on the package definition as two comma separated
+// properties, the file name plus cache metadata and the placement in the symbol frame
+static std::optional<FP_3DMODEL> build3DModel( const BRD_DB& aDb, const BLK_0x2B_FOOTPRINT_DEF& aFpDef )
+{
+    std::optional<FIELD_VALUE> fileField =
+            GetFirstFieldOfType( aDb, aFpDef.m_FieldsPtr, aFpDef.m_Key, FIELD_KEYS::MODEL_3D_FILE );
+
+    const wxString* fileValue = fileField.has_value() ? std::get_if<wxString>( &fileField.value() ) : nullptr;
+
+    if( !fileValue )
+        return std::nullopt;
+
+    wxString fileName = fileValue->BeforeFirst( ',' ).Trim( true ).Trim( false );
+
+    if( fileName.IsEmpty() )
+        return std::nullopt;
+
+    FP_3DMODEL model;
+    model.m_Filename = fileName;
+
+    std::optional<FIELD_VALUE> placementField =
+            GetFirstFieldOfType( aDb, aFpDef.m_FieldsPtr, aFpDef.m_Key, FIELD_KEYS::MODEL_3D_PLACEMENT );
+
+    const wxString* placementValue =
+            placementField.has_value() ? std::get_if<wxString>( &placementField.value() ) : nullptr;
+
+    if( !placementValue )
+        return model;
+
+    wxArrayString tokens = wxSplit( *placementValue, ',', '\0' );
+
+    if( tokens.size() < 7 )
+    {
+        KI_LOG_TRACE( traceAllegroBuilder, "  Ignoring malformed 3D placement '%s'", *placementValue );
+        return model;
+    }
+
+    const std::optional<double> toMm = modelUnitToMm( tokens[0].Trim( true ).Trim( false ).Upper() );
+
+    if( !toMm.has_value() )
+    {
+        KI_LOG_TRACE( traceAllegroBuilder, "  Unknown 3D placement units '%s'", tokens[0] );
+        return model;
+    }
+
+    std::array<double, 6> placement{};
+
+    for( size_t i = 0; i < placement.size(); ++i )
+    {
+        if( !tokens[i + 1].Trim( true ).Trim( false ).ToCDouble( &placement[i] ) )
+        {
+            KI_LOG_TRACE( traceAllegroBuilder, "  Ignoring malformed 3D placement '%s'", *placementValue );
+            return model;
+        }
+    }
+
+    // Allegro and the KiCad 3D scene share a Z-up, Y-up frame local to the symbol, but KiCad
+    // stores the negation of the rotation its renderers apply
+    model.m_Offset = VECTOR3D( placement[0] * *toMm, placement[1] * *toMm, placement[2] * *toMm );
+    model.m_Rotation = VECTOR3D( -placement[3], -placement[4], -placement[5] );
+
+    return model;
+}
+
+
+void BOARD_BUILDER::addFootprintText( FOOTPRINT& aFp, GRAPHIC_DEDUP& aGraphics,
+                                      const BLK_0x30_STR_WRAPPER& aStrWrapper, bool& aValueFieldSet )
+{
+    std::unique_ptr<PCB_TEXT> text = buildPcbText( aStrWrapper, aFp );
+
+    if( !text )
+        return;
+
+    const uint8_t textClass = aStrWrapper.m_Layer.m_Class;
+    const uint8_t textSubclass = aStrWrapper.m_Layer.m_Subclass;
+
+    bool isSilk = ( textSubclass == LAYER_INFO::SUBCLASS::SILKSCREEN_TOP
+                    || textSubclass == LAYER_INFO::SUBCLASS::SILKSCREEN_BOTTOM );
+    bool isAssembly = ( textSubclass == LAYER_INFO::SUBCLASS::ASSEMBLY_TOP
+                        || textSubclass == LAYER_INFO::SUBCLASS::ASSEMBLY_BOTTOM );
+
+    if( textClass == LAYER_INFO::CLASS::REF_DES && isSilk )
+    {
+        // Visible silkscreen refdes updates the built-in REFERENCE field.
+        PCB_FIELD* const refDes = aFp.GetField( FIELD_T::REFERENCE );
+
+        // KiCad netlisting requires non-digit + digit annotation.
+        if( !text->GetText().IsEmpty() && !wxIsalpha( text->GetText()[0] ) )
+            text->SetText( wxString( "UNK" ) + text->GetText() );
+
+        *refDes = PCB_FIELD( *text, FIELD_T::REFERENCE );
+        refDes->SetTextAngle( text->GetTextAngle() ); // Set to absolute orientation
+    }
+    else if( textClass == LAYER_INFO::CLASS::REF_DES && isAssembly )
+    {
+        // Assembly refdes becomes a text item with the magic ${REFERENCE}
+        // if it's an un-referenced refdes (e.g. in an unplaced footprint)
+        if( text->GetText().Contains( wxS( "*" ) ) )
+            text->SetText( wxS( "${REFERENCE}" ) );
+
+        aFp.Add( text.release() );
+    }
+    else if( textClass == LAYER_INFO::CLASS::COMPONENT_VALUE && isAssembly )
+    {
+        if( !aValueFieldSet )
+        {
+            // First COMPONENT_VALUE on assembly updates the built-in VALUE field
+            PCB_FIELD* valField = aFp.GetField( FIELD_T::VALUE );
+            *valField = PCB_FIELD( *text, FIELD_T::VALUE );
+            valField->SetTextAngle( text->GetTextAngle() ); // Set to absolute orientation
+            valField->SetVisible( false );
+            aValueFieldSet = true;
+        }
+        else
+        {
+            PCB_FIELD* field = new PCB_FIELD( *text, FIELD_T::USER, wxS( "Component Value" ) );
+            field->SetVisible( false );
+            aFp.Add( field, ADD_MODE::APPEND );
+        }
+    }
+    else if( textClass == LAYER_INFO::CLASS::DEVICE_TYPE )
+    {
+        PCB_FIELD* field = new PCB_FIELD( *text, FIELD_T::USER, wxS( "Device Type" ) );
+        field->SetVisible( !isAssembly );
+        aFp.Add( field, ADD_MODE::APPEND );
+    }
+    else if( textClass == LAYER_INFO::CLASS::TOLERANCE )
+    {
+        PCB_FIELD* field = new PCB_FIELD( *text, FIELD_T::USER, wxS( "Tolerance" ) );
+        field->SetVisible( isSilk );
+        aFp.Add( field, ADD_MODE::APPEND );
+    }
+    else if( textClass == LAYER_INFO::CLASS::USER_PART_NUMBER )
+    {
+        PCB_FIELD* field = new PCB_FIELD( *text, FIELD_T::USER, wxS( "User Part Number" ) );
+        field->SetVisible( isSilk );
+        aFp.Add( field, ADD_MODE::APPEND );
+    }
+    else if( textClass == LAYER_INFO::CLASS::COMPONENT_VALUE && isSilk )
+    {
+        PCB_FIELD* field = new PCB_FIELD( *text, FIELD_T::USER, wxS( "Component Value" ) );
+        field->SetVisible( true );
+        aFp.Add( field, ADD_MODE::APPEND );
+    }
+    else if( aGraphics.IsFirst( text.get() ) )
+    {
+        aFp.Add( text.release() );
+    }
+}
+
+
 std::unique_ptr<FOOTPRINT> BOARD_BUILDER::buildFootprint( const BLK_0x2D_FOOTPRINT_INST& aFpInstance )
 {
-    auto fp = std::make_unique<FOOTPRINT>( &m_board );
+    std::unique_ptr<FOOTPRINT> fp = std::make_unique<FOOTPRINT>( &m_board );
 
     const BLK_0x07_COMPONENT_INST* fpInstData = getFpInstRef( aFpInstance );
 
@@ -3074,29 +3354,35 @@ std::unique_ptr<FOOTPRINT> BOARD_BUILDER::buildFootprint( const BLK_0x2D_FOOTPRI
     fp->SetReference( refDesStr );
     fp->GetField( FIELD_T::REFERENCE )->SetVisible( false );
 
+    // Symbols without a reference (dimensions, marks) have no schematic counterpart
+    if( refDesStr.IsEmpty() )
+        fp->SetAttributes( FP_BOARD_ONLY | FP_EXCLUDE_FROM_BOM | FP_EXCLUDE_FROM_POS_FILES );
+
     KI_LOG_TRACE( traceAllegroBuilder, "  Footprint reference: '%s'", refDesStr );
 
     const VECTOR2I fpPos = scale( VECTOR2I{ aFpInstance.m_CoordX, aFpInstance.m_CoordY } );
     fp->SetPosition( fpPos );
 
-    // Find the pads.
-    // 0x0D coordinates and rotation are in the footprint's local (unrotated, unflipped) space.
-    // Add pads here, before the footprint is flipped/rotated below, so that Flip()/Rotate()
-    // carry them into board space along with the footprint.
-    LL_WALKER padWalker{ aFpInstance.m_FirstPadPtr, aFpInstance.m_Key, m_brdDb };
-    padWalker.SetNextFunc( PadGetNextInFootprint );
-    for( const BLOCK_BASE* padBlock : padWalker )
-    {
-        const auto& placedPadInfo = static_cast<const BLOCK<BLK_0x32_PLACED_PAD>&>( *padBlock ).GetData();
+    // Coincidence filters. Pad geometry is placed before the footprint is flipped and rotated
+    // and everything else after, so it is filtered in its own space first and folded into the
+    // shared filter once the transform has been applied
+    GRAPHIC_DEDUP padDedup;
+    GRAPHIC_DEDUP fpGraphics;
 
+    // Find the pads.
+    // Pads are in non-flipped local footprint's coordinate system
+    TYPED_LL_WALKER<BLK_0x32_PLACED_PAD> padWalker{ aFpInstance.m_FirstPadPtr, aFpInstance.m_Key, m_brdDb,
+                                                    MISMATCH_POLICY::THROW, PadGetNextInFootprint };
+    for( const BLK_0x32_PLACED_PAD& placedPadInfo : padWalker )
+    {
         const BLK_0x04_NET_ASSIGNMENT* netAssignment =
-                expectBlockByKey<BLK_0x04_NET_ASSIGNMENT>( placedPadInfo.m_NetPtr, 0x04 );
-        const BLK_0x0D_PAD* padInfo = expectBlockByKey<BLK_0x0D_PAD>( placedPadInfo.m_PadPtr, 0x0D );
+                expectBlockByKey<BLK_0x04_NET_ASSIGNMENT>( placedPadInfo.m_NetPtr );
+        const BLK_0x0D_PAD* padInfo = expectBlockByKey<BLK_0x0D_PAD>( placedPadInfo.m_PadPtr );
 
         if( !padInfo )
             continue;
 
-        const BLK_0x1C_PADSTACK* padStack = expectBlockByKey<BLK_0x1C_PADSTACK>( padInfo->m_PadStack, 0x1C );
+        const BLK_0x1C_PADSTACK* padStack = expectBlockByKey<BLK_0x1C_PADSTACK>( padInfo->m_PadStack );
 
         if( !padStack )
             continue;
@@ -3106,19 +3392,20 @@ std::unique_ptr<FOOTPRINT> BOARD_BUILDER::buildFootprint( const BLK_0x2D_FOOTPRI
         if( netAssignment )
         {
             auto netIt = m_netCache.find( netAssignment->m_Net );
+
             if( netIt != m_netCache.end() )
                 netCode = netIt->second->GetNetCode();
         }
 
         const wxString padName = m_brdDb.GetString( padInfo->m_NameStrId );
 
-        // 0x0D coordinates and rotation are in the footprint's local (unrotated, unflipped) space.
+        // 0x0D coordinates and rotation are in the footprint's local (unrotatesinced) space.
         // Use SetFPRelativePosition/Orientation to let KiCad handle the transform to
         // board-absolute coordinates (rotating by FP orientation and adding FP position).
         VECTOR2I  padLocalPos = scale( VECTOR2I{ padInfo->m_CoordsX, padInfo->m_CoordsY } );
         EDA_ANGLE padLocalRot = fromMillidegrees( padInfo->m_Rotation );
 
-        std::vector<std::unique_ptr<BOARD_ITEM>> padItems = buildPadItems( *padStack, *fp, padName, netCode );
+        std::vector<std::unique_ptr<BOARD_ITEM>> padItems = buildPadItems( *padStack, *fp, padName, netCode, backSide );
 
         for( std::unique_ptr<BOARD_ITEM>& item : padItems )
         {
@@ -3130,7 +3417,8 @@ std::unique_ptr<FOOTPRINT> BOARD_BUILDER::buildFootprint( const BLK_0x2D_FOOTPRI
 
             item->SetFPRelativePosition( padLocalPos );
 
-            fp->Add( item.release() );
+            if( padDedup.IsFirst( item.get() ) )
+                fp->Add( item.release() );
         }
     }
 
@@ -3143,125 +3431,42 @@ std::unique_ptr<FOOTPRINT> BOARD_BUILDER::buildFootprint( const BLK_0x2D_FOOTPRI
         fp->Rotate( fpPos, rotation );
     }
 
+    // Pad geometry has landed in the same space as everything that follows, so record it and
+    // let the graphics coming next be filtered against it too
+    for( BOARD_ITEM* placed : fp->GraphicalItems() )
+        fpGraphics.IsFirst( placed );
+
     // Graphics, text, and areas are stored in Allegro as board-absolute geometry
     // on their final layers. Pads were already placed in local footprint space and
     // the footprint Flip/Rotate above put them into board space, so these items
     // can be added as-is.
-    const LL_WALKER graphicsWalker{ aFpInstance.m_GraphicPtr, aFpInstance.m_Key, m_brdDb };
+    TYPED_LL_WALKER<BLK_0x14_GRAPHIC> graphicsWalker{ aFpInstance.m_GraphicPtr, aFpInstance.m_Key, m_brdDb,
+                                                      MISMATCH_POLICY::REPORT };
+    graphicsWalker.SetMismatchReporter(
+            [this]( uint8_t aType, const BLOCK_BASE& )
+            {
+                m_reporter.Report( wxString::Format( "Unexpected type in graphics list: %#04x", aType ),
+                                   RPT_SEVERITY_WARNING );
+            } );
 
-    for( const BLOCK_BASE* graphicsBlock : graphicsWalker )
+    for( const BLK_0x14_GRAPHIC& graphics : graphicsWalker )
     {
-        const uint8_t type = graphicsBlock->GetBlockType();
+        std::vector<std::unique_ptr<PCB_SHAPE>> shapes = buildShapes( graphics, *fp );
 
-        if( type == 0x14 )
+        for( std::unique_ptr<PCB_SHAPE>& shape : shapes )
         {
-            const auto& graphics = static_cast<const BLOCK<BLK_0x14_GRAPHIC>&>( *graphicsBlock ).GetData();
-
-            std::vector<std::unique_ptr<PCB_SHAPE>> shapes = buildShapes( graphics, *fp );
-
-            for( std::unique_ptr<PCB_SHAPE>& shape : shapes )
+            if( fpGraphics.IsFirst( shape.get() ) )
                 fp->Add( shape.release() );
-        }
-        else
-        {
-            m_reporter.Report( wxString::Format( "Unexpected type in graphics list: %#04x", type ),
-                               RPT_SEVERITY_WARNING );
         }
     }
 
     bool valueFieldSet = false;
 
-    const LL_WALKER textWalker{ aFpInstance.m_TextPtr, aFpInstance.m_Key, m_brdDb };
+    TYPED_LL_WALKER<BLK_0x30_STR_WRAPPER> textWalker{ aFpInstance.m_TextPtr, aFpInstance.m_Key, m_brdDb,
+                                                      MISMATCH_POLICY::LOG_TRACE };
 
-    for( const BLOCK_BASE* textBlock : textWalker )
-    {
-        const uint8_t type = textBlock->GetBlockType();
-
-        if( type != 0x30 )
-            continue;
-
-        const auto& strWrapper = static_cast<const BLOCK<BLK_0x30_STR_WRAPPER>&>( *textBlock ).GetData();
-
-        std::unique_ptr<PCB_TEXT> text = buildPcbText( strWrapper, *fp );
-
-        if( !text )
-            continue;
-
-        const uint8_t textClass = strWrapper.m_Layer.m_Class;
-        const uint8_t textSubclass = strWrapper.m_Layer.m_Subclass;
-
-        bool isSilk = ( textSubclass == LAYER_INFO::SUBCLASS::SILKSCREEN_TOP
-                        || textSubclass == LAYER_INFO::SUBCLASS::SILKSCREEN_BOTTOM );
-        bool isAssembly = ( textSubclass == LAYER_INFO::SUBCLASS::ASSEMBLY_TOP
-                            || textSubclass == LAYER_INFO::SUBCLASS::ASSEMBLY_BOTTOM );
-
-        if( textClass == LAYER_INFO::CLASS::REF_DES && isSilk )
-        {
-            // Visible silkscreen refdes updates the built-in REFERENCE field.
-            PCB_FIELD* const refDes = fp->GetField( FIELD_T::REFERENCE );
-
-            // KiCad netlisting requires non-digit + digit annotation.
-            if( !text->GetText().IsEmpty() && !wxIsalpha( text->GetText()[0] ) )
-                text->SetText( wxString( "UNK" ) + text->GetText() );
-
-            *refDes = PCB_FIELD( *text, FIELD_T::REFERENCE );
-            refDes->SetTextAngle( text->GetTextAngle() ); // Set to absolute orientation
-        }
-        else if( textClass == LAYER_INFO::CLASS::REF_DES && isAssembly )
-        {
-            // Assembly refdes becomes a user field with the KiCad reference variable
-            PCB_FIELD* field = new PCB_FIELD( *text, FIELD_T::USER, wxS( "Ref Des" ) );
-            field->SetText( wxS( "${REFERENCE}" ) );
-            field->SetVisible( false );
-            fp->Add( field, ADD_MODE::APPEND );
-        }
-        else if( textClass == LAYER_INFO::CLASS::COMPONENT_VALUE && isAssembly )
-        {
-            if( !valueFieldSet )
-            {
-                // First COMPONENT_VALUE on assembly updates the built-in VALUE field
-                PCB_FIELD* valField = fp->GetField( FIELD_T::VALUE );
-                *valField = PCB_FIELD( *text, FIELD_T::VALUE );
-                valField->SetTextAngle( text->GetTextAngle() ); // Set to absolute orientation
-                valField->SetVisible( false );
-                valueFieldSet = true;
-            }
-            else
-            {
-                PCB_FIELD* field = new PCB_FIELD( *text, FIELD_T::USER, wxS( "Component Value" ) );
-                field->SetVisible( false );
-                fp->Add( field, ADD_MODE::APPEND );
-            }
-        }
-        else if( textClass == LAYER_INFO::CLASS::DEVICE_TYPE )
-        {
-            PCB_FIELD* field = new PCB_FIELD( *text, FIELD_T::USER, wxS( "Device Type" ) );
-            field->SetVisible( !isAssembly );
-            fp->Add( field, ADD_MODE::APPEND );
-        }
-        else if( textClass == LAYER_INFO::CLASS::TOLERANCE )
-        {
-            PCB_FIELD* field = new PCB_FIELD( *text, FIELD_T::USER, wxS( "Tolerance" ) );
-            field->SetVisible( isSilk );
-            fp->Add( field, ADD_MODE::APPEND );
-        }
-        else if( textClass == LAYER_INFO::CLASS::USER_PART_NUMBER )
-        {
-            PCB_FIELD* field = new PCB_FIELD( *text, FIELD_T::USER, wxS( "User Part Number" ) );
-            field->SetVisible( isSilk );
-            fp->Add( field, ADD_MODE::APPEND );
-        }
-        else if( textClass == LAYER_INFO::CLASS::COMPONENT_VALUE && isSilk )
-        {
-            PCB_FIELD* field = new PCB_FIELD( *text, FIELD_T::USER, wxS( "Component Value" ) );
-            field->SetVisible( true );
-            fp->Add( field, ADD_MODE::APPEND );
-        }
-        else
-        {
-            fp->Add( text.release() );
-        }
-    }
+    for( const BLK_0x30_STR_WRAPPER& strWrapper : textWalker )
+        addFootprintText( *fp, fpGraphics, strWrapper, valueFieldSet );
 
     // Assembly drawing
     LL_WALKER assemblyWalker{ aFpInstance.m_AssemblyPtr, aFpInstance.m_Key, m_brdDb };
@@ -3271,7 +3476,10 @@ std::unique_ptr<FOOTPRINT> BOARD_BUILDER::buildFootprint( const BLK_0x2D_FOOTPRI
         std::vector<std::unique_ptr<BOARD_ITEM>> shapes = buildGraphicItems( *assemblyBlock, *fp );
 
         for( std::unique_ptr<BOARD_ITEM>& item : shapes )
-            fp->Add( item.release() );
+        {
+            if( fpGraphics.IsFirst( item.get() ) )
+                fp->Add( item.release() );
+        }
     }
 
     // Areas (courtyards, etc)
@@ -3287,7 +3495,7 @@ std::unique_ptr<FOOTPRINT> BOARD_BUILDER::buildFootprint( const BLK_0x2D_FOOTPRI
         if( layerInfo.has_value() && layerIsZone( *layerInfo ) )
         {
             // Zone within a footprint - we can handle keepouts at least
-            std::unique_ptr<ZONE> zone = buildZone( *areaBlock, {}, zoneFillHandler );
+            std::unique_ptr<ZONE> zone = buildZone( *areaBlock, {}, zoneFillHandler, *fp );
 
             if( zone )
                 fp->Add( zone.release() );
@@ -3306,14 +3514,88 @@ std::unique_ptr<FOOTPRINT> BOARD_BUILDER::buildFootprint( const BLK_0x2D_FOOTPRI
 
                     // But in KiCad, courtyards are usually not filled even if they come in as "areas"
                     if( shape.GetLayer() != F_CrtYd && shape.GetLayer() != B_CrtYd )
-                    {
                         shape.SetFilled( true );
-                    }
                 }
 
-                fp->Add( item.release() );
+                if( fpGraphics.IsFirst( item.get() ) )
+                    fp->Add( item.release() );
             }
         }
+    }
+
+    // A net tie part has exactly two pads. Anything larger that stacks nets is more likely a source error
+    if( fp->Pads().size() != 2 )
+        return fp;
+
+    // Pads of different nets stacked on one point are a net tie, which KiCad only accepts when declared
+    std::vector<std::set<wxString>> tieGroups;
+
+    for( PAD* padA : fp->Pads() )
+    {
+        for( PAD* padB : fp->Pads() )
+        {
+            if( padA->GetNetCode() <= 0 || padB->GetNetCode() <= 0 || padA->GetNetCode() == padB->GetNetCode()
+                || padA->GetPosition() != padB->GetPosition() )
+            {
+                continue;
+            }
+
+            bool overlaps = false;
+
+            for( PCB_LAYER_ID layer : LSET( padA->GetLayerSet() & padB->GetLayerSet() & LSET::AllCuMask() ).Seq() )
+            {
+                if( padA->GetEffectiveShape( layer )->Collide( padB->GetEffectiveShape( layer ).get() ) )
+                {
+                    overlaps = true;
+                    break;
+                }
+            }
+
+            if( !overlaps )
+                continue;
+
+            std::set<wxString> merged{ padA->GetNumber(), padB->GetNumber() };
+
+            for( auto it = tieGroups.begin(); it != tieGroups.end(); )
+            {
+                if( it->count( padA->GetNumber() ) || it->count( padB->GetNumber() ) )
+                {
+                    merged.insert( it->begin(), it->end() );
+                    it = tieGroups.erase( it );
+                }
+                else
+                {
+                    ++it;
+                }
+            }
+
+            tieGroups.push_back( std::move( merged ) );
+        }
+    }
+
+    for( const std::set<wxString>& group : tieGroups )
+    {
+        wxString numbers;
+
+        for( const wxString& number : group )
+        {
+            wxString escaped = number;
+
+            escaped.Replace( wxS( "\\" ), wxS( "\\\\" ) );
+            escaped.Replace( wxS( "," ), wxS( "\\," ) );
+
+            if( !numbers.IsEmpty() )
+                numbers += wxS( "," );
+
+            numbers += escaped;
+        }
+
+        fp->AddNetTiePadGroup( numbers );
+
+        m_reporter.Report( wxString::Format( _( "Footprint %s has stacked pads on different nets and is imported as a "
+                                                "net tie" ),
+                                             refDesStr ),
+                           RPT_SEVERITY_WARNING );
     }
 
     return fp;
@@ -3335,6 +3617,7 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildTrack( const BLK_0x
     const PCB_LAYER_ID layer = getLayer( aTrackBlock.m_Layer );
 
     LL_WALKER segWalker{ aTrackBlock.m_FirstSegPtr, aTrackBlock.m_Key, m_brdDb };
+
     for( const BLOCK_BASE* block : segWalker )
     {
         const uint8_t segType = block->GetBlockType();
@@ -3345,8 +3628,7 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildTrack( const BLK_0x
         case 0x16:
         case 0x17:
         {
-            const BLK_0x15_16_17_SEGMENT& segInfo =
-                    static_cast<const BLOCK<BLK_0x15_16_17_SEGMENT>&>( *block ).GetData();
+            const BLK_0x15_16_17_SEGMENT& segInfo = BlockDataAs<BLK_0x15_16_17_SEGMENT>( *block );
 
             VECTOR2I start{ segInfo.m_StartX, segInfo.m_StartY };
             VECTOR2I end{ segInfo.m_EndX, segInfo.m_EndY };
@@ -3366,7 +3648,7 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildTrack( const BLK_0x
         }
         case 0x01:
         {
-            const BLK_0x01_ARC& arcInfo = static_cast<const BLOCK<BLK_0x01_ARC>&>( *block ).GetData();
+            const BLK_0x01_ARC& arcInfo = BlockDataAs<BLK_0x01_ARC>( *block );
 
             VECTOR2I start = scale( { arcInfo.m_StartX, arcInfo.m_StartY } );
             VECTOR2I end = scale( { arcInfo.m_EndX, arcInfo.m_EndY } );
@@ -3417,7 +3699,7 @@ std::unique_ptr<BOARD_ITEM> BOARD_BUILDER::buildVia( const BLK_0x33_VIA& aViaDat
 {
     VECTOR2I viaPos{ aViaData.m_CoordsX, aViaData.m_CoordsY };
 
-    const BLK_0x1C_PADSTACK* viaPadstack = expectBlockByKey<BLK_0x1C_PADSTACK>( aViaData.m_Padstack, 0x1C );
+    const BLK_0x1C_PADSTACK* viaPadstack = expectBlockByKey<BLK_0x1C_PADSTACK>( aViaData.m_Padstack );
 
     if( !viaPadstack )
         return nullptr;
@@ -3426,22 +3708,38 @@ std::unique_ptr<BOARD_ITEM> BOARD_BUILDER::buildVia( const BLK_0x33_VIA& aViaDat
     via->SetPosition( scale( viaPos ) );
     via->SetNetCode( aNetCode );
 
-    via->SetTopLayer( F_Cu );
-    via->SetBottomLayer( B_Cu );
-
-    // Extract via size from the first copper layer's pad component
+    // The via size comes from the first copper layer's pad component.
     int viaWidth = 0;
 
     if( viaPadstack->GetLayerCount() > 0 )
     {
-        const size_t layerBaseIndex = viaPadstack->m_NumFixedCompEntries;
         const ALLEGRO::PADSTACK_COMPONENT& padComp =
-                viaPadstack->m_Components[layerBaseIndex + BLK_0x1C_PADSTACK::LAYER_COMP_SLOT::PAD];
+                viaPadstack->m_Components[viaPadstack->m_NumFixedCompEntries + BLK_0x1C_PADSTACK::LAYER_COMP_SLOT::PAD];
 
         if( padComp.m_Type != PADSTACK_COMPONENT::TYPE_NULL )
-        {
             viaWidth = scale( padComp.m_W );
-        }
+    }
+
+    const int totalCu = m_layerMapper->GetEtchLayerCount();
+
+    int startLayer = viaPadstack->m_StartLayer;
+    int layerCount = viaPadstack->GetLayerCount();
+    int endLayer = startLayer + layerCount - 1;
+
+    if( layerCount > 1 && layerCount < totalCu )
+    {
+        // Set the type before the layer pair: SanitizeLayers() snaps a THROUGH via back to
+        // F_Cu/B_Cu and would discard the span. Reaching an outer layer makes it BLIND, else BURIED.
+        const bool touchesOuter = ( startLayer == 0 ) || ( endLayer == totalCu - 1 );
+
+        via->SetViaType( touchesOuter ? VIATYPE::BLIND : VIATYPE::BURIED );
+        via->SetLayerPair( nthCopperLayerId( startLayer, totalCu ), nthCopperLayerId( endLayer, totalCu ) );
+    }
+    else
+    {
+        via->SetViaType( VIATYPE::THROUGH );
+        via->SetTopLayer( F_Cu );
+        via->SetBottomLayer( B_Cu );
     }
 
     int viaDrill = scale( viaPadstack->GetDrillSize() );
@@ -3457,9 +3755,8 @@ std::unique_ptr<BOARD_ITEM> BOARD_BUILDER::buildVia( const BLK_0x33_VIA& aViaDat
     if( viaWidth <= 0 )
     {
         const wxString& padstackName = m_brdDb.GetString( viaPadstack->m_PadStr );
-        KI_LOG_TRACE( traceAllegroBuilder,
-                    "Via at (%d, %d) in padstack '%s' key %#010x has no valid pad component, using drill-based "
-                    "fallback (%d * 2)",
+        KI_LOG_TRACE( traceAllegroBuilder, "Via at (%d, %d) in padstack '%s' key %#010x has no valid pad component, "
+                                         "using drill-based fallback (%d * 2)",
                     aViaData.m_CoordsX, aViaData.m_CoordsY, padstackName, viaPadstack->m_Key, viaDrill );
         viaWidth = viaDrill * 2;
     }
@@ -3478,18 +3775,15 @@ void BOARD_BUILDER::createTracks()
     std::vector<BOARD_ITEM*> newItems;
 
     // We need to walk this list again - we could do this all in createNets, but this seems tidier.
-    LL_WALKER netWalker{ m_brdDb.m_Header->m_LL_0x1B_Nets, m_brdDb };
-    for( const BLOCK_BASE* block : netWalker )
+    TYPED_LL_WALKER<BLK_0x1B_NET> netWalker{ m_brdDb.m_Header->m_LL_0x1B_Nets, m_brdDb, MISMATCH_POLICY::REPORT };
+    netWalker.SetMismatchReporter(
+            [this]( uint8_t aType, const BLOCK_BASE& aBlock )
+            {
+                reportUnexpectedBlockType( aType, BLK_0x1B_NET::BLOCK_TYPE_CODE, 0, aBlock.GetOffset(), "Net" );
+            } );
+
+    for( const BLK_0x1B_NET& net : netWalker )
     {
-        const uint8_t type = block->GetBlockType();
-        if( type != BLOCK_TYPE::x1B_NET )
-        {
-            reportUnexpectedBlockType( type, BLOCK_TYPE::x1B_NET, 0, block->GetOffset(), "Net" );
-            continue;
-        }
-
-        const auto& net = static_cast<const BLOCK<BLK_0x1B_NET>&>( *block ).GetData();
-
         auto netIt = m_netCache.find( net.m_Key );
 
         if( netIt == m_netCache.end() )
@@ -3497,19 +3791,19 @@ void BOARD_BUILDER::createTracks()
 
         const int netCode = netIt->second->GetNetCode();
 
-        LL_WALKER assignmentWalker{ net.m_Assignment, net.m_Key, m_brdDb };
-        for( const BLOCK_BASE* assignBlock : assignmentWalker )
+        TYPED_LL_WALKER<BLK_0x04_NET_ASSIGNMENT> assignmentWalker{ net.m_Assignment, net.m_Key, m_brdDb,
+                                                                   MISMATCH_POLICY::REPORT };
+        assignmentWalker.SetMismatchReporter(
+                [this]( uint8_t aType, const BLOCK_BASE& aBlock )
+                {
+                    reportUnexpectedBlockType( aType, 0x04, 0, aBlock.GetOffset(), "Net assignment" );
+                } );
+
+        for( const BLK_0x04_NET_ASSIGNMENT& assign : assignmentWalker )
         {
-            if( assignBlock->GetBlockType() != 0x04 )
-            {
-                reportUnexpectedBlockType( assignBlock->GetBlockType(), 0x04, 0, block->GetOffset(), "Net assignment" );
-                continue;
-            }
-
-            const auto& assign = static_cast<const BLOCK<BLK_0x04_NET_ASSIGNMENT>&>( *assignBlock ).GetData();
-
             // Walk the 0x05/0x32/... list
             LL_WALKER connWalker{ assign.m_ConnItem, assign.m_Key, m_brdDb };
+
             for( const BLOCK_BASE* connItemBlock : connWalker )
             {
                 const uint8_t connType = connItemBlock->GetBlockType();
@@ -3523,15 +3817,18 @@ void BOARD_BUILDER::createTracks()
                 // Track
                 case 0x05:
                 {
-                    const BLK_0x05_TRACK& trackData =
-                            static_cast<const BLOCK<BLK_0x05_TRACK>&>( *connItemBlock ).GetData();
+                    const BLK_0x05_TRACK& trackData = BlockDataAs<BLK_0x05_TRACK>( *connItemBlock );
                     newItemList = buildTrack( trackData, netCode );
                     break;
                 }
                 case 0x33:
                 {
-                    const BLK_0x33_VIA& viaData = static_cast<const BLOCK<BLK_0x33_VIA>&>( *connItemBlock ).GetData();
-                    newItemList.push_back( buildVia( viaData, netCode ) );
+                    const BLK_0x33_VIA& viaData = BlockDataAs<BLK_0x33_VIA>( *connItemBlock );
+
+                    // A via whose padstack is missing has nothing to place
+                    if( std::unique_ptr<BOARD_ITEM> via = buildVia( viaData, netCode ) )
+                        newItemList.push_back( std::move( via ) );
+
                     break;
                 }
                 case 0x32:
@@ -3544,8 +3841,7 @@ void BOARD_BUILDER::createTracks()
                 {
                     // 0x28 shapes on the net chain are computed copper fills.
                     // Collect them for teardrop and polygon import.
-                    const BLK_0x28_SHAPE& fillShape =
-                            static_cast<const BLOCK<BLK_0x28_SHAPE>&>( *connItemBlock ).GetData();
+                    const BLK_0x28_SHAPE& fillShape = BlockDataAs<BLK_0x28_SHAPE>( *connItemBlock );
 
                     PCB_LAYER_ID fillLayer = getLayer( fillShape.m_Layer );
 
@@ -3556,16 +3852,16 @@ void BOARD_BUILDER::createTracks()
                 }
                 case 0x2E:
                 default:
-                {
-                    KI_LOG_TRACE( traceAllegroBuilder, "  Unhandled connected item code: %#04x",
-                                (int) connType );
+                    KI_LOG_TRACE( traceAllegroBuilder, "  Unhandled connected item code: %#04x", (int) connType );
                 }
-                }
+
+                uint32_t idSeq = 0;
 
                 for( std::unique_ptr<BOARD_ITEM>& newItem : newItemList )
                 {
+                    stampIds( *newItem, connItemBlock->GetKey(), idSeq );
                     newItems.push_back( newItem.get() );
-                    m_board.Add( newItem.release(), ADD_MODE::BULK_APPEND );
+                    m_board.Add( newItem.release(), ADD_MODE::BULK_APPEND, true );
                 }
             }
         }
@@ -3602,6 +3898,7 @@ void BOARD_BUILDER::createBoardShapes()
                 continue;
 
             std::unique_ptr<PCB_SHAPE> rectShape = buildRect( rectData, m_board );
+            stampIds( *rectShape, rectData.m_Key );
             newItems.push_back( std::move( rectShape ) );
             break;
         }
@@ -3614,16 +3911,19 @@ void BOARD_BUILDER::createBoardShapes()
                 continue;
 
             std::vector<std::unique_ptr<PCB_SHAPE>> shapeItems = buildPolygonShapes( shapeData, m_board );
+            uint32_t                                idSeq = 0;
 
-            for( auto& shapeItem : shapeItems )
+            for( std::unique_ptr<PCB_SHAPE>& shapeItem : shapeItems )
+            {
+                stampIds( *shapeItem, shapeData.m_Key, idSeq );
                 newItems.push_back( std::move( shapeItem ) );
+            }
+
             break;
         }
         default:
-        {
             KI_LOG_TRACE( traceAllegroBuilder, "  Unhandled block type in outline walker: %#04x", block->GetBlockType() );
             break;
-        }
         }
     }
 
@@ -3631,6 +3931,7 @@ void BOARD_BUILDER::createBoardShapes()
     blockCount = 0;
 
     LL_WALKER outline2Walker( m_brdDb.m_Header->m_LL_Shapes, m_brdDb );
+
     for( const BLOCK_BASE* block : outline2Walker )
     {
         blockCount++;
@@ -3645,6 +3946,7 @@ void BOARD_BUILDER::createBoardShapes()
                 continue;
 
             std::unique_ptr<PCB_SHAPE> rectShape = buildRect( rectData, m_board );
+            stampIds( *rectShape, rectData.m_Key );
             newItems.push_back( std::move( rectShape ) );
             break;
         }
@@ -3656,6 +3958,7 @@ void BOARD_BUILDER::createBoardShapes()
                 continue;
 
             std::unique_ptr<PCB_SHAPE> rectShape = buildRect( rectData, m_board );
+            stampIds( *rectShape, rectData.m_Key );
             newItems.push_back( std::move( rectShape ) );
             break;
         }
@@ -3667,74 +3970,84 @@ void BOARD_BUILDER::createBoardShapes()
                 continue;
 
             std::vector<std::unique_ptr<PCB_SHAPE>> shapeItems = buildPolygonShapes( shapeData, m_board );
+            uint32_t                                idSeq = 0;
 
-            for( auto& shapeItem : shapeItems )
+            for( std::unique_ptr<PCB_SHAPE>& shapeItem : shapeItems )
+            {
+                stampIds( *shapeItem, shapeData.m_Key, idSeq );
                 newItems.push_back( std::move( shapeItem ) );
+            }
             break;
         }
         default:
-        {
             KI_LOG_TRACE( traceAllegroBuilder, "  Unhandled block type in outline walker: %#04x", block->GetBlockType() );
             break;
-        }
         }
     }
 
     KI_LOG_TRACE( traceAllegroBuilder, "  Found %d outline items in m_LL_Shapes", blockCount );
     blockCount = 0;
 
-    LL_WALKER graphicContainerWalker( m_brdDb.m_Header->m_LL_0x14, m_brdDb );
-    for( const BLOCK_BASE* block : graphicContainerWalker )
+    TYPED_LL_WALKER<BLK_0x14_GRAPHIC> graphicContainerWalker( m_brdDb.m_Header->m_LL_0x14, m_brdDb,
+                                                              MISMATCH_POLICY::LOG_TRACE );
+
+    for( const BLK_0x14_GRAPHIC& graphicContainer : graphicContainerWalker )
     {
         blockCount++;
 
-        switch( block->GetBlockType() )
-        {
-        case 0x14:
-        {
-            const auto& graphicContainer = BlockDataAs<BLK_0x14_GRAPHIC>( *block );
+        if( layerIsZone( graphicContainer.m_Layer ) )
+            continue;
 
-            if( layerIsZone( graphicContainer.m_Layer ) )
-                continue;
+        std::vector<std::unique_ptr<PCB_SHAPE>> graphicItems = buildShapes( graphicContainer, m_board );
+        uint32_t                                idSeq = 0;
 
-            std::vector<std::unique_ptr<PCB_SHAPE>> graphicItems = buildShapes( graphicContainer, m_board );
-
-            for( auto& item : graphicItems )
-                newItems.push_back( std::move( item ) );
-            break;
-        }
-        default:
+        for( std::unique_ptr<PCB_SHAPE>& item : graphicItems )
         {
-            KI_LOG_TRACE( traceAllegroBuilder, "  Unhandled block type in graphic container walker: %#04x",
-                        block->GetBlockType() );
-            break;
-        }
+            stampIds( *item, graphicContainer.m_Key, idSeq );
+            newItems.push_back( std::move( item ) );
         }
     }
 
     KI_LOG_TRACE( traceAllegroBuilder, "  Found %d graphic container items", blockCount );
 
     std::vector<BOARD_ITEM*> addedItems;
+    int                      dropped = 0;
+
     for( std::unique_ptr<BOARD_ITEM>& item : newItems )
     {
+        if( !m_boardGraphics.IsFirst( item.get() ) )
+        {
+            dropped++;
+            continue;
+        }
+
         addedItems.push_back( item.get() );
-        m_board.Add( item.release(), ADD_MODE::BULK_APPEND );
+        m_board.Add( item.release(), ADD_MODE::BULK_APPEND, true );
     }
 
     m_board.FinalizeBulkAdd( addedItems );
+
+    if( dropped > 0 )
+        KI_LOG_TRACE( traceAllegroBuilder, "Dropped %d coincident board graphics", dropped );
 
     KI_LOG_TRACE( traceAllegroBuilder, "Created %zu board shapes", addedItems.size() );
 }
 
 
-const SHAPE_LINE_CHAIN& BOARD_BUILDER::buildSegmentChain( uint32_t aStartKey ) const
+SHAPE_LINE_CHAIN BOARD_BUILDER::buildSegmentChain( uint32_t aStartKey, const TRANSFORM_TRS& aXform ) const
 {
-    auto cacheIt = m_segChainCache.find( aStartKey );
+    const bool cacheable = aXform.IsIdentity();
 
-    if( cacheIt != m_segChainCache.end() )
-        return cacheIt->second;
+    if( cacheable )
+    {
+        auto cacheIt = m_segChainCache.find( aStartKey );
 
-    SHAPE_LINE_CHAIN& outline = m_segChainCache[aStartKey];
+        if( cacheIt != m_segChainCache.end() )
+            return cacheIt->second;
+    }
+
+    SHAPE_LINE_CHAIN  localOutline;
+    SHAPE_LINE_CHAIN& outline = cacheable ? m_segChainCache[aStartKey] : localOutline;
     uint32_t          currentKey = aStartKey;
 
     // Safety limit to prevent infinite loops on corrupt data
@@ -3754,13 +4067,16 @@ const SHAPE_LINE_CHAIN& BOARD_BUILDER::buildSegmentChain( uint32_t aStartKey ) c
         {
         case 0x01:
         {
-            const auto& arc = static_cast<const BLOCK<BLK_0x01_ARC>&>( *block ).GetData();
+            const auto& arc = BlockDataAs<BLK_0x01_ARC>( *block );
             VECTOR2I    start = scale( { arc.m_StartX, arc.m_StartY } );
             VECTOR2I    end = scale( { arc.m_EndX, arc.m_EndY } );
             VECTOR2I    center = scale( KiROUND( VECTOR2D{ arc.m_CenterX, arc.m_CenterY } ) );
 
             if( start == end )
             {
+                center = aXform.InverseApply( center );
+                start = aXform.InverseApply( start );
+
                 SHAPE_ARC shapeArc( center, start, ANGLE_360 );
                 outline.Append( shapeArc );
             }
@@ -3784,6 +4100,10 @@ const SHAPE_LINE_CHAIN& BOARD_BUILDER::buildSegmentChain( uint32_t aStartKey ) c
                 VECTOR2I mid = start;
                 RotatePoint( mid, center, -arcAngle / 2.0 );
 
+                start = aXform.InverseApply( start );
+                mid = aXform.InverseApply( mid );
+                end = aXform.InverseApply( end );
+
                 SHAPE_ARC shapeArc( start, mid, end, 0 );
                 outline.Append( shapeArc );
             }
@@ -3795,14 +4115,13 @@ const SHAPE_LINE_CHAIN& BOARD_BUILDER::buildSegmentChain( uint32_t aStartKey ) c
         case 0x16:
         case 0x17:
         {
-            const auto& seg =
-                    static_cast<const BLOCK<BLK_0x15_16_17_SEGMENT>&>( *block ).GetData();
-            VECTOR2I start = scale( { seg.m_StartX, seg.m_StartY } );
+            const auto& seg = BlockDataAs<BLK_0x15_16_17_SEGMENT>( *block );
+            VECTOR2I    start = aXform.InverseApply( scale( { seg.m_StartX, seg.m_StartY } ) );
 
             if( outline.PointCount() == 0 || outline.CLastPoint() != start )
                 outline.Append( start );
 
-            VECTOR2I end = scale( { seg.m_EndX, seg.m_EndY } );
+            VECTOR2I end = aXform.InverseApply( scale( { seg.m_EndX, seg.m_EndY } ) );
             outline.Append( end );
             currentKey = seg.m_Next;
             break;
@@ -3817,7 +4136,7 @@ const SHAPE_LINE_CHAIN& BOARD_BUILDER::buildSegmentChain( uint32_t aStartKey ) c
 }
 
 
-SHAPE_LINE_CHAIN BOARD_BUILDER::buildOutline( const BLK_0x0E_RECT& aRect ) const
+SHAPE_LINE_CHAIN BOARD_BUILDER::buildOutline( const BLK_0x0E_RECT& aRect, const TRANSFORM_TRS& aXform ) const
 {
     SHAPE_LINE_CHAIN outline;
 
@@ -3834,11 +4153,14 @@ SHAPE_LINE_CHAIN BOARD_BUILDER::buildOutline( const BLK_0x0E_RECT& aRect ) const
     const EDA_ANGLE angle = fromMillidegrees( aRect.m_Rotation );
     outline.Rotate( angle, topLeft );
 
+    for( int i = 0; i < outline.PointCount(); i++ )
+        outline.SetPoint( i, aXform.InverseApply( outline.CPoint( i ) ) );
+
     return outline;
 }
 
 
-SHAPE_LINE_CHAIN BOARD_BUILDER::buildOutline( const BLK_0x24_RECT& aRect ) const
+SHAPE_LINE_CHAIN BOARD_BUILDER::buildOutline( const BLK_0x24_RECT& aRect, const TRANSFORM_TRS& aXform ) const
 {
     SHAPE_LINE_CHAIN outline;
 
@@ -3855,86 +4177,23 @@ SHAPE_LINE_CHAIN BOARD_BUILDER::buildOutline( const BLK_0x24_RECT& aRect ) const
     const EDA_ANGLE angle = fromMillidegrees( aRect.m_Rotation );
     outline.Rotate( angle, topLeft );
 
+    for( int i = 0; i < outline.PointCount(); i++ )
+        outline.SetPoint( i, aXform.InverseApply( outline.CPoint( i ) ) );
+
     return outline;
 }
 
 
-SHAPE_LINE_CHAIN BOARD_BUILDER::buildOutline( const BLK_0x28_SHAPE& aShape ) const
+SHAPE_LINE_CHAIN BOARD_BUILDER::buildOutline( const BLK_0x28_SHAPE& aShape, const TRANSFORM_TRS& aXform ) const
 {
-    SHAPE_LINE_CHAIN outline;
-    const LL_WALKER  segWalker{ aShape.m_FirstSegmentPtr, aShape.m_Key, m_brdDb };
-
-    for( const BLOCK_BASE* segBlock : segWalker )
-    {
-        switch( segBlock->GetBlockType() )
-        {
-        case 0x01:
-        {
-            const auto& arc = static_cast<const BLOCK<BLK_0x01_ARC>&>( *segBlock ).GetData();
-            VECTOR2I    start = scale( { arc.m_StartX, arc.m_StartY } );
-            VECTOR2I    end = scale( { arc.m_EndX, arc.m_EndY } );
-            VECTOR2I    center = scale( KiROUND( VECTOR2D{ arc.m_CenterX, arc.m_CenterY } ) );
-
-            if( start == end )
-            {
-                SHAPE_ARC shapeArc( center, start, ANGLE_360 );
-                outline.Append( shapeArc );
-            }
-            else
-            {
-                bool clockwise = ( arc.m_SubType & 0x40 ) != 0;
-
-                EDA_ANGLE startAngle( start - center );
-                EDA_ANGLE endAngle( end - center );
-                startAngle.Normalize();
-                endAngle.Normalize();
-
-                EDA_ANGLE arcAngle = endAngle - startAngle;
-
-                if( clockwise && arcAngle < ANGLE_0 )
-                    arcAngle += ANGLE_360;
-
-                if( !clockwise && arcAngle > ANGLE_0 )
-                    arcAngle -= ANGLE_360;
-
-                VECTOR2I mid = start;
-                RotatePoint( mid, center, -arcAngle / 2.0 );
-
-                SHAPE_ARC shapeArc( start, mid, end, 0 );
-                outline.Append( shapeArc );
-            }
-
-            break;
-        }
-        case 0x15:
-        case 0x16:
-        case 0x17:
-        {
-            const auto& seg = static_cast<const BLOCK<BLK_0x15_16_17_SEGMENT>&>( *segBlock ).GetData();
-            VECTOR2I    start = scale( { seg.m_StartX, seg.m_StartY } );
-
-            if( outline.PointCount() == 0 || outline.CLastPoint() != start )
-                outline.Append( start );
-
-            VECTOR2I end = scale( { seg.m_EndX, seg.m_EndY } );
-            outline.Append( end );
-            break;
-        }
-        default:
-            KI_LOG_TRACE( traceAllegroBuilder, "    Unhandled segment type in shape outline: %#04x",
-                        segBlock->GetBlockType() );
-            break;
-        }
-    }
-
-    return outline;
+    return buildSegmentChain( aShape.m_FirstSegmentPtr, aXform );
 }
 
 
-SHAPE_POLY_SET BOARD_BUILDER::shapeToPolySet( const BLK_0x28_SHAPE& aShape ) const
+SHAPE_POLY_SET BOARD_BUILDER::shapeToPolySet( const BLK_0x28_SHAPE& aShape, const TRANSFORM_TRS& aXform ) const
 {
     SHAPE_POLY_SET   polySet;
-    SHAPE_LINE_CHAIN outline = buildSegmentChain( aShape.m_FirstSegmentPtr );
+    SHAPE_LINE_CHAIN outline = buildSegmentChain( aShape.m_FirstSegmentPtr, aXform );
 
     if( outline.PointCount() < 3 )
     {
@@ -3955,9 +4214,9 @@ SHAPE_POLY_SET BOARD_BUILDER::shapeToPolySet( const BLK_0x28_SHAPE& aShape ) con
         if( !holeBlock || holeBlock->GetBlockType() != 0x34 )
             break;
 
-        const auto& keepout = static_cast<const BLOCK<BLK_0x34_KEEPOUT>&>( *holeBlock ).GetData();
+        const auto& keepout = BlockDataAs<BLK_0x34_KEEPOUT>( *holeBlock );
 
-        SHAPE_LINE_CHAIN holeOutline = buildSegmentChain( keepout.m_FirstSegmentPtr );
+        SHAPE_LINE_CHAIN holeOutline = buildSegmentChain( keepout.m_FirstSegmentPtr, aXform );
 
         if( holeOutline.PointCount() >= 3 )
         {
@@ -3972,7 +4231,8 @@ SHAPE_POLY_SET BOARD_BUILDER::shapeToPolySet( const BLK_0x28_SHAPE& aShape ) con
 }
 
 
-SHAPE_POLY_SET ALLEGRO::BOARD_BUILDER::tryBuildZoneShape( const BLOCK_BASE& aBlock )
+SHAPE_POLY_SET ALLEGRO::BOARD_BUILDER::tryBuildZoneShape( const BLOCK_BASE& aBlock,
+                                                          const TRANSFORM_TRS& aXform ) const
 {
     SHAPE_POLY_SET polySet;
 
@@ -3982,7 +4242,7 @@ SHAPE_POLY_SET ALLEGRO::BOARD_BUILDER::tryBuildZoneShape( const BLOCK_BASE& aBlo
     {
         const auto& rectData = BlockDataAs<BLK_0x0E_RECT>( aBlock );
 
-        SHAPE_LINE_CHAIN chain( buildOutline( rectData ) );
+        SHAPE_LINE_CHAIN chain( buildOutline( rectData, aXform ) );
         chain.SetClosed( true );
 
         polySet = SHAPE_POLY_SET( chain );
@@ -3992,7 +4252,7 @@ SHAPE_POLY_SET ALLEGRO::BOARD_BUILDER::tryBuildZoneShape( const BLOCK_BASE& aBlo
     {
         const auto& graphicContainer = BlockDataAs<BLK_0x14_GRAPHIC>( aBlock );
 
-        SHAPE_LINE_CHAIN chain = buildSegmentChain( graphicContainer.m_SegmentPtr );
+        SHAPE_LINE_CHAIN chain = buildSegmentChain( graphicContainer.m_SegmentPtr, aXform );
         chain.SetClosed( true );
 
         polySet = SHAPE_POLY_SET( chain );
@@ -4002,7 +4262,7 @@ SHAPE_POLY_SET ALLEGRO::BOARD_BUILDER::tryBuildZoneShape( const BLOCK_BASE& aBlo
     {
         const auto& rectData = BlockDataAs<BLK_0x24_RECT>( aBlock );
 
-        SHAPE_LINE_CHAIN chain( buildOutline( rectData ) );
+        SHAPE_LINE_CHAIN chain( buildOutline( rectData, aXform ) );
         chain.SetClosed( true );
 
         polySet = SHAPE_POLY_SET( chain );
@@ -4011,7 +4271,7 @@ SHAPE_POLY_SET ALLEGRO::BOARD_BUILDER::tryBuildZoneShape( const BLOCK_BASE& aBlo
     case 0x28:
     {
         const auto& shapeData = BlockDataAs<BLK_0x28_SHAPE>( aBlock );
-        polySet = shapeToPolySet( shapeData );
+        polySet = shapeToPolySet( shapeData, aXform );
         break;
     }
     default:
@@ -4024,7 +4284,7 @@ SHAPE_POLY_SET ALLEGRO::BOARD_BUILDER::tryBuildZoneShape( const BLOCK_BASE& aBlo
 
 std::unique_ptr<ZONE> BOARD_BUILDER::buildZone( const BLOCK_BASE&                     aBoundaryBlock,
                                                 const std::vector<const BLOCK_BASE*>& aRelatedBlocks,
-                                                ZONE_FILL_HANDLER&                    aZoneFillHandler )
+                                                ZONE_FILL_HANDLER& aZoneFillHandler, BOARD_ITEM_CONTAINER& aParent )
 {
     int              netCode = NETINFO_LIST::UNCONNECTED;
     const LAYER_INFO layerInfo = expectLayerFromBlock( aBoundaryBlock );
@@ -4061,7 +4321,14 @@ std::unique_ptr<ZONE> BOARD_BUILDER::buildZone( const BLOCK_BASE&               
         return nullptr;
     }
 
-    const SHAPE_POLY_SET zoneShape = tryBuildZoneShape( aBoundaryBlock );
+    // Allegro area geometry is board-absolute. Footprint zones store local outlines,
+    // so undo the parent footprint transform when one is present.
+    TRANSFORM_TRS xform;
+
+    if( FOOTPRINT* fp = dynamic_cast<FOOTPRINT*>( &aParent ) )
+        xform = fp->GetTransform();
+
+    SHAPE_POLY_SET zoneShape = tryBuildZoneShape( aBoundaryBlock, xform );
 
     if( zoneShape.OutlineCount() != 1 )
     {
@@ -4070,13 +4337,16 @@ std::unique_ptr<ZONE> BOARD_BUILDER::buildZone( const BLOCK_BASE&               
         return nullptr;
     }
 
-    auto zone = std::make_unique<ZONE>( &m_board );
+    std::unique_ptr<ZONE> zone = std::make_unique<ZONE>( &aParent );
     zone->SetHatchStyle( ZONE_BORDER_DISPLAY_STYLE::NO_HATCH );
 
     if( isCopperZone )
     {
         zone->SetLayer( layer );
         zone->SetFillMode( ZONE_FILL_MODE::POLYGONS );
+        // Allegro clearance constraints are imported as net classes. Do not impose
+        // KiCad's default local zone clearance as another minimum.
+        zone->SetLocalClearance( 0 );
     }
     else
     {
@@ -4106,6 +4376,8 @@ std::unique_ptr<ZONE> BOARD_BUILDER::buildZone( const BLOCK_BASE&               
     }
 
     SHAPE_POLY_SET combinedFill;
+    int            linkedFillNet = NETINFO_LIST::UNCONNECTED;
+    bool           conflictingFillNets = false;
 
     for( const BLOCK_BASE* block : aRelatedBlocks )
     {
@@ -4135,9 +4407,22 @@ std::unique_ptr<ZONE> BOARD_BUILDER::buildZone( const BLOCK_BASE&               
         }
         case 0x28:
         {
-            const BLK_0x28_SHAPE& shapeData = static_cast<const BLOCK<BLK_0x28_SHAPE>&>( *block ).GetData();
+            const BLK_0x28_SHAPE& shapeData = BlockDataAs<BLK_0x28_SHAPE>( *block );
 
-            SHAPE_POLY_SET fillPolySet = shapeToPolySet( shapeData );
+            if( auto it = m_zoneFillShapes.find( block->GetKey() ); it != m_zoneFillShapes.end() )
+            {
+                int fillNet = it->second.netCode;
+
+                if( fillNet != NETINFO_LIST::UNCONNECTED )
+                {
+                    if( linkedFillNet == NETINFO_LIST::UNCONNECTED )
+                        linkedFillNet = fillNet;
+                    else if( fillNet != linkedFillNet )
+                        conflictingFillNets = true;
+                }
+            }
+
+            SHAPE_POLY_SET fillPolySet = shapeToPolySet( shapeData, xform );
             combinedFill.Append( fillPolySet );
             m_usedZoneFillShapes.emplace( block->GetKey() );
             break;
@@ -4145,6 +4430,10 @@ std::unique_ptr<ZONE> BOARD_BUILDER::buildZone( const BLOCK_BASE&               
         default: break;
         }
     }
+
+    // If the boundary has no NET record, use its directly listed fills' net when they agree.
+    if( isCopperZone && netCode == NETINFO_LIST::UNCONNECTED && !conflictingFillNets )
+        netCode = linkedFillNet;
 
     // Set net code AFTER layer assignment. SetNetCode checks IsOnCopperLayer() and
     // forces net=0 if the zone isn't on a copper layer yet.
@@ -4188,17 +4477,17 @@ std::vector<const BLOCK_BASE*> BOARD_BUILDER::getShapeRelatedBlocks( const BLK_0
     if( tableKey == 0 )
         return ret;
 
-    const BLK_0x2C_TABLE* tbl = expectBlockByKey<BLK_0x2C_TABLE>( tableKey, 0x2C );
+    const BLK_0x2C_TABLE* tbl = expectBlockByKey<BLK_0x2C_TABLE>( tableKey );
 
     if( !tbl )
         return ret;
 
-    const BLK_0x37_PTR_ARRAY* ptrArray = expectBlockByKey<BLK_0x37_PTR_ARRAY>( tbl->m_Ptr1, 0x37 );
+    const BLK_0x37_PTR_ARRAY* ptrArray = expectBlockByKey<BLK_0x37_PTR_ARRAY>( tbl->m_Ptr1 );
 
     if( !ptrArray || ptrArray->m_Count == 0 )
         return ret;
 
-    const size_t count = std::min( std::min( ptrArray->m_Count, ptrArray->m_Capacity ), 100u );
+    const size_t count = std::min<size_t>( ptrArray->m_Count, ptrArray->m_Ptrs.size() );
     ret.resize( count );
 
     for( size_t i = 0; i < count; i++ )
@@ -4210,17 +4499,11 @@ std::vector<const BLOCK_BASE*> BOARD_BUILDER::getShapeRelatedBlocks( const BLK_0
 
 void BOARD_BUILDER::createBoardText()
 {
-    const LL_WALKER textWalker( m_brdDb.m_Header->m_LL_0x03_0x30, m_brdDb );
+    TYPED_LL_WALKER<BLK_0x30_STR_WRAPPER> textWalker( m_brdDb.m_Header->m_LL_0x03_0x30, m_brdDb );
     int textCount = 0;
 
-    for( const BLOCK_BASE* block : textWalker )
+    for( const BLK_0x30_STR_WRAPPER& strWrapper : textWalker )
     {
-        if( block->GetBlockType() != 0x30 )
-            continue;
-
-        const auto& strWrapper =
-                static_cast<const BLOCK<BLK_0x30_STR_WRAPPER>&>( *block ).GetData();
-
         std::unique_ptr<PCB_TEXT> text = buildPcbText( strWrapper, m_board );
 
         if( !text )
@@ -4234,10 +4517,13 @@ void BOARD_BUILDER::createBoardText()
             continue;
         }
 
-        KI_LOG_TRACE( traceAllegroBuilder, "  Board text '%s' on layer %s at (%d, %d)",
-                    text->GetText(), m_board.GetLayerName( text->GetLayer() ),
-                    text->GetPosition().x, text->GetPosition().y );
+        KI_LOG_TRACE( traceAllegroBuilder, "  Board text '%s' on layer %s at (%d, %d)", text->GetText(),
+                    m_board.GetLayerName( text->GetLayer() ), text->GetPosition().x, text->GetPosition().y );
 
+        if( !m_boardGraphics.IsFirst( text.get() ) )
+            continue;
+
+        stampIds( *text, strWrapper.m_Key );
         m_board.Add( text.release(), ADD_MODE::APPEND );
         textCount++;
     }
@@ -4255,7 +4541,7 @@ void BulkAddToBoard( BOARD& aBoard, std::vector<std::unique_ptr<T>>&& aItems )
     for( std::unique_ptr<T>& item : aItems )
     {
         rawPointers.push_back( item.get() );
-        aBoard.Add( item.release(), ADD_MODE::BULK_APPEND );
+        aBoard.Add( item.release(), ADD_MODE::BULK_APPEND, true );
     }
 
     aBoard.FinalizeBulkAdd( rawPointers );
@@ -4268,6 +4554,7 @@ void BOARD_BUILDER::createZones()
 
     std::vector<std::unique_ptr<ZONE>> newZones;
     std::vector<std::unique_ptr<ZONE>> keepoutZones;
+    std::unordered_map<uint32_t, ZONE*> zoneByTable;
 
     ZONE_FILL_HANDLER zoneFillHandler;
 
@@ -4279,40 +4566,43 @@ void BOARD_BUILDER::createZones()
     {
         std::unique_ptr<ZONE> zone;
         LAYER_INFO            layerInfo{};
+        uint32_t              tableKey = 0;
 
         switch( block->GetBlockType() )
         {
         case 0x0e:
         {
-            const BLK_0x0E_RECT& rectData = static_cast<const BLOCK<BLK_0x0E_RECT>&>( *block ).GetData();
+            const BLK_0x0E_RECT& rectData = BlockDataAs<BLK_0x0E_RECT>( *block );
 
             if( !layerIsZone( rectData.m_Layer ) )
                 continue;
 
-            zone = buildZone( *block, {}, zoneFillHandler );
+            zone = buildZone( *block, {}, zoneFillHandler, m_board );
             layerInfo = rectData.m_Layer;
             break;
         }
         case 0x24:
         {
-            const BLK_0x24_RECT& rectData = static_cast<const BLOCK<BLK_0x24_RECT>&>( *block ).GetData();
+            const BLK_0x24_RECT& rectData = BlockDataAs<BLK_0x24_RECT>( *block );
 
             if( !layerIsZone( rectData.m_Layer ) )
                 continue;
 
-            zone = buildZone( *block, {}, zoneFillHandler );
+            zone = buildZone( *block, {}, zoneFillHandler, m_board );
             layerInfo = rectData.m_Layer;
             break;
         }
         case 0x28:
         {
-            const BLK_0x28_SHAPE& shapeData = static_cast<const BLOCK<BLK_0x28_SHAPE>&>( *block ).GetData();
+            const BLK_0x28_SHAPE& shapeData = BlockDataAs<BLK_0x28_SHAPE>( *block );
 
             if( !layerIsZone( shapeData.m_Layer ) )
                 continue;
 
-            zone = buildZone( *block, getShapeRelatedBlocks( shapeData ), zoneFillHandler );
+            zone = buildZone( *block, getShapeRelatedBlocks( shapeData ), zoneFillHandler, m_board );
             layerInfo = shapeData.m_Layer;
+            if( shapeData.m_Layer.m_Class == LAYER_INFO::CLASS::BOUNDARY )
+                tableKey = shapeData.GetTablePtr();
             break;
         }
         default:
@@ -4329,6 +4619,17 @@ void BOARD_BUILDER::createZones()
                         zone->GetNetCode(), m_board.GetLayerName( zone->GetFirstLayer() ), layerInfo.m_Class,
                         layerInfo.m_Subclass );
 
+            stampIds( *zone, block->GetKey() );
+
+            if( tableKey != 0 )
+            {
+                auto [it, inserted] = zoneByTable.emplace( tableKey, zone.get() );
+
+                // If multiple boundaries use this table, do not guess which one owns a fill.
+                if( !inserted )
+                    it->second = nullptr;
+            }
+
             newZones.push_back( std::move( zone ) );
         }
     }
@@ -4344,7 +4645,7 @@ void BOARD_BUILDER::createZones()
         {
         case 0x24:
         {
-            const BLK_0x24_RECT& rectData = static_cast<const BLOCK<BLK_0x24_RECT>&>( *block ).GetData();
+            const BLK_0x24_RECT& rectData = BlockDataAs<BLK_0x24_RECT>( *block );
 
             if( !layerIsZone( rectData.m_Layer ) )
                 continue;
@@ -4352,12 +4653,12 @@ void BOARD_BUILDER::createZones()
             KI_LOG_TRACE( traceAllegroBuilder, "  Processing %s rect %#010x", layerInfoDisplayName( rectData.m_Layer ),
                         rectData.m_Key );
 
-            zone = buildZone( *block, {}, zoneFillHandler );
+            zone = buildZone( *block, {}, zoneFillHandler, m_board );
             break;
         }
         case 0x28:
         {
-            const BLK_0x28_SHAPE& shapeData = static_cast<const BLOCK<BLK_0x28_SHAPE>&>( *block ).GetData();
+            const BLK_0x28_SHAPE& shapeData = BlockDataAs<BLK_0x28_SHAPE>( *block );
 
             if( !layerIsZone( shapeData.m_Layer ) )
                 continue;
@@ -4365,7 +4666,7 @@ void BOARD_BUILDER::createZones()
             KI_LOG_TRACE( traceAllegroBuilder, "  Processing %s shape %#010x", layerInfoDisplayName( shapeData.m_Layer ),
                         shapeData.m_Key );
 
-            zone = buildZone( *block, {}, zoneFillHandler );
+            zone = buildZone( *block, {}, zoneFillHandler, m_board );
             break;
         }
         default:
@@ -4374,8 +4675,41 @@ void BOARD_BUILDER::createZones()
 
         if( zone )
         {
+            stampIds( *zone, block->GetKey() );
             newZones.push_back( std::move( zone ) );
         }
+    }
+
+    // A boundary's pointer array can omit calculated copper pieces. Those pieces
+    // can still point through a 0x26 block to the boundary's 0x2C table.
+    for( const auto& [fillKey, fill] : m_zoneFillShapes )
+    {
+        if( m_usedZoneFillShapes.contains( fillKey ) || fill.netCode == NETINFO_LIST::UNCONNECTED )
+            continue;
+
+        const BLOCK_BASE* groupBlock = m_brdDb.GetObjectByKey( fill.shape->GetTablePtr() );
+
+        if( !groupBlock || groupBlock->GetBlockType() != BLK_0x26_MATCH_GROUP::BLOCK_TYPE_CODE )
+            continue;
+
+        const auto& group = BlockDataAs<BLK_0x26_MATCH_GROUP>( *groupBlock );
+        auto        zoneIt = zoneByTable.find( group.m_GroupPtr );
+
+        if( zoneIt == zoneByTable.end() || !zoneIt->second )
+            continue;
+
+        ZONE* zone = zoneIt->second;
+
+        if( zone->GetIsRuleArea() || zone->GetNetCode() != fill.netCode || !zone->IsOnLayer( fill.layer ) )
+            continue;
+
+        SHAPE_POLY_SET fillPolys = shapeToPolySet( *fill.shape );
+        fillPolys.Simplify();
+
+        zoneFillHandler.AppendPolygonForZone( *zone, std::move( fillPolys ), fill.layer );
+        zone->SetIsFilled( true );
+        zone->SetNeedRefill( false );
+        m_usedZoneFillShapes.insert( fillKey );
     }
 
     // Deal with all the collected zone fill polygons now, all at once
@@ -4410,18 +4744,46 @@ void BOARD_BUILDER::createZones()
 }
 
 
+void BOARD_BUILDER::createPlaneVoidAreas()
+{
+    for( auto& [layer, voids] : m_planeVoids )
+    {
+        voids.Simplify();
+
+        if( voids.IsEmpty() )
+            continue;
+
+        // A zone saves only its first polygon, so every separate void gets an area of its own
+        for( const SHAPE_POLY_SET::POLYGON& polygon : voids.CPolygons() )
+        {
+            std::unique_ptr<ZONE> area = std::make_unique<ZONE>( &m_board );
+
+            area->SetIsRuleArea( true );
+            area->SetLayerSet( LSET( { layer } ) );
+            area->SetDoNotAllowZoneFills( true );
+            area->SetDoNotAllowTracks( false );
+            area->SetDoNotAllowVias( false );
+            area->SetDoNotAllowPads( false );
+            area->SetDoNotAllowFootprints( false );
+            area->SetZoneName( wxS( "Plane void" ) );
+            area->SetHatchStyle( ZONE_BORDER_DISPLAY_STYLE::NO_HATCH );
+            *area->Outline() = SHAPE_POLY_SET( polygon );
+
+            m_board.Add( area.release() );
+        }
+    }
+
+    m_planeVoids.clear();
+}
+
+
 void BOARD_BUILDER::createTables()
 {
     KI_LOG_TRACE( traceAllegroBuilder, "Creating tables from m_LL_0x2C" );
 
-    const LL_WALKER tableWalker( m_brdDb.m_Header->m_LL_0x2C, m_brdDb );
-    for( const BLOCK_BASE* block : tableWalker )
+    TYPED_LL_WALKER<BLK_0x2C_TABLE> tableWalker( m_brdDb.m_Header->m_LL_0x2C, m_brdDb );
+    for( const BLK_0x2C_TABLE& tableData : tableWalker )
     {
-        if( block->GetBlockType() != 0x2C )
-            continue;
-
-        const BLK_0x2C_TABLE& tableData = static_cast<const BLOCK<BLK_0x2C_TABLE>&>( *block ).GetData();
-
         if( tableData.m_SubType != BLK_0x2C_TABLE::SUBTYPE::SUBTYPE_GRAPHICAL_GROUP )
         {
             // 0x2c tables can have lots of subtypes. Only 0x110 seems useful to iterate in this way for now.
@@ -4432,7 +4794,7 @@ void BOARD_BUILDER::createTables()
 
         std::vector<std::unique_ptr<BOARD_ITEM>> newItems;
 
-        LL_WALKER keyTableWalker{ tableData.m_Ptr1, block->GetKey(), m_brdDb };
+        LL_WALKER keyTableWalker{ tableData.m_Ptr1, tableData.m_Key, m_brdDb };
 
         for( const BLOCK_BASE* keyTable : keyTableWalker )
         {
@@ -4449,8 +4811,7 @@ void BOARD_BUILDER::createTables()
             {
             case 0x37:
             {
-                const BLK_0x37_PTR_ARRAY& ptrArray =
-                        static_cast<const BLOCK<BLK_0x37_PTR_ARRAY>&>( *keyTable ).GetData();
+                const BLK_0x37_PTR_ARRAY& ptrArray = BlockDataAs<BLK_0x37_PTR_ARRAY>( *keyTable );
 
                 uint32_t count = std::min( ptrArray.m_Count, static_cast<uint32_t>( ptrArray.m_Ptrs.size() ) );
 
@@ -4473,7 +4834,8 @@ void BOARD_BUILDER::createTables()
 
                     for( std::unique_ptr<BOARD_ITEM>& newItem : buildGraphicItems( *entryBlock, m_board ) )
                     {
-                        newItems.push_back( std::move( newItem ) );
+                        if( m_boardGraphics.IsFirst( newItem.get() ) )
+                            newItems.push_back( std::move( newItem ) );
                     }
                 }
 
@@ -4481,7 +4843,7 @@ void BOARD_BUILDER::createTables()
             }
             case 0x3c:
             {
-                const BLK_0x3C_KEY_LIST& keyList = static_cast<const BLOCK<BLK_0x3C_KEY_LIST>&>( *keyTable ).GetData();
+                const BLK_0x3C_KEY_LIST& keyList = BlockDataAs<BLK_0x3C_KEY_LIST>( *keyTable );
 
                 KI_LOG_TRACE( traceAllegroBuilder, "    Key list with %zu entries",
                             static_cast<size_t>( keyList.m_NumEntries ) );
@@ -4503,9 +4865,15 @@ void BOARD_BUILDER::createTables()
             std::unique_ptr<PCB_GROUP> group = std::make_unique<PCB_GROUP>( &m_board );
             group->SetName( tableName );
 
-            for( const auto& item : newItems )
-                group->AddItem( item.get() );
+            uint32_t idSeq = 0;
 
+            for( const std::unique_ptr<BOARD_ITEM>& item : newItems )
+            {
+                stampIds( *item, tableData.m_Key, idSeq );
+                group->AddItem( item.get() );
+            }
+
+            stampIds( *group, tableData.m_Key, idSeq );
             newItems.push_back( std::move( group ) );
 
             BulkAddToBoard( m_board, std::move( newItems ) );
@@ -4540,16 +4908,19 @@ void BOARD_BUILDER::applyZoneFills()
         SHAPE_POLY_SET polySet = shapeToPolySet( *fill.shape );
         polySet.Simplify();
 
+        uint32_t idSeq = 0;
+
         for( const SHAPE_POLY_SET::POLYGON& poly : polySet.CPolygons() )
         {
             SHAPE_POLY_SET fractured( poly );
+            fractured.ClearArcs();
             fractured.Fracture( /* aSimplify */ false );
 
             const bool isDynCopperShape = ( fill.shape->m_Unknown2.value_or( 0 ) & 0x1000 ) != 0;
 
             if( isDynCopperShape )
             {
-                auto zone = std::make_unique<ZONE>( &m_board );
+                std::unique_ptr<ZONE> zone = std::make_unique<ZONE>( &m_board );
 
                 zone->SetTeardropAreaType( TEARDROP_TYPE::TD_VIAPAD );
                 zone->SetLayer( fill.layer );
@@ -4567,18 +4938,42 @@ void BOARD_BUILDER::applyZoneFills()
                 zone->SetNeedRefill( false );
                 zone->CalculateFilledArea();
 
+                stampIds( *zone, fillKey, idSeq );
                 m_board.Add( zone.release(), ADD_MODE::APPEND );
                 teardropCount++;
             }
+            else if( m_layerMapper->IsPlaneLayer( fill.shape->m_Layer ) )
+            {
+                // A negative plane has no clearance around other nets in its shape, so the copper has
+                // to be a zone that KiCad fills
+                std::unique_ptr<ZONE> zone = std::make_unique<ZONE>( &m_board );
+
+                zone->SetLayer( fill.layer );
+                zone->SetNetCode( fill.netCode );
+                zone->SetHatchStyle( ZONE_BORDER_DISPLAY_STYLE::NO_HATCH );
+                zone->SetFillMode( ZONE_FILL_MODE::POLYGONS );
+                zone->SetLocalClearance( 0 );
+                zone->SetMinThickness( 0 );
+                zone->Outline()->AddPolygon( poly );
+                zone->SetNeedRefill( true );
+
+                stampIds( *zone, fillKey, idSeq );
+                m_board.Add( zone.release(), ADD_MODE::APPEND );
+                copperShapeCount++;
+            }
             else
             {
-                auto shape = std::make_unique<PCB_SHAPE>( &m_board, SHAPE_T::POLY );
+                std::unique_ptr<PCB_SHAPE> shape = std::make_unique<PCB_SHAPE>( &m_board, SHAPE_T::POLY );
                 shape->SetPolyShape( fractured );
                 shape->SetFilled( true );
                 shape->SetLayer( fill.layer );
                 shape->SetNetCode( fill.netCode );
                 shape->SetStroke( STROKE_PARAMS( 0, LINE_STYLE::SOLID ) );
 
+                if( !m_boardGraphics.IsFirst( shape.get() ) )
+                    continue;
+
+                stampIds( *shape, fillKey, idSeq );
                 m_board.Add( shape.release(), ADD_MODE::APPEND );
                 copperShapeCount++;
             }
@@ -4662,11 +5057,9 @@ void BOARD_BUILDER::enablePadTeardrops()
 bool BOARD_BUILDER::BuildBoard()
 {
     KI_LOG_TRACE( traceAllegroBuilder, "Starting BuildBoard() - Phase 2 of Allegro import" );
-    KI_LOG_TRACE( traceAllegroBuilder, "  Format version: %d (V172+ = %s)",
-                static_cast<int>( m_brdDb.m_FmtVer ),
+    KI_LOG_TRACE( traceAllegroBuilder, "  Format version: %d (V172+ = %s)", static_cast<int>( m_brdDb.m_FmtVer ),
                 ( m_brdDb.m_FmtVer >= FMT_VER::V_172 ) ? "yes" : "no" );
-    KI_LOG_TRACE( traceAllegroBuilder, "  Allegro version string: %.60s",
-                m_brdDb.m_Header->m_AllegroVersion.data() );
+    KI_LOG_TRACE( traceAllegroBuilder, "  Allegro version string: %.60s", m_brdDb.m_Header->m_AllegroVersion.data() );
 
     if( m_progressReporter )
     {
@@ -4738,53 +5131,52 @@ bool BOARD_BUILDER::BuildBoard()
         m_progressReporter->KeepRefreshing();
     }
 
-    const LL_WALKER          fpWalker( m_brdDb.m_Header->m_LL_0x2B, m_brdDb );
-    std::vector<BOARD_ITEM*> bulkAddedItems;
+    TYPED_LL_WALKER<BLK_0x2B_FOOTPRINT_DEF> fpWalker( m_brdDb.m_Header->m_LL_0x2B, m_brdDb );
+    std::vector<BOARD_ITEM*>                bulkAddedItems;
 
     THROTTLE refreshThrottle( std::chrono::milliseconds( 100 ) );
 
-    for( const BLOCK_BASE* fpContainer : fpWalker )
+    for( const BLK_0x2B_FOOTPRINT_DEF& fpBlock : fpWalker )
     {
-        if( fpContainer->GetBlockType() == 0x2B )
+        TYPED_LL_WALKER<BLK_0x2D_FOOTPRINT_INST> instWalker( fpBlock.m_FirstInstPtr, fpBlock.m_Key, m_brdDb,
+                                                             MISMATCH_POLICY::REPORT );
+        instWalker.SetMismatchReporter(
+                [this, &fpBlock]( uint8_t aType, const BLOCK_BASE& )
+                {
+                    m_reporter.Report( wxString::Format( "Unexpected object of type %#04x found in footprint %#010x",
+                                                         aType,
+                                                         fpBlock.m_Key ),
+                                       RPT_SEVERITY_ERROR );
+                } );
+
+        const std::optional<FP_3DMODEL> model3D = build3DModel( m_brdDb, fpBlock );
+
+        LIB_ID fpId;
+        fpId.SetLibItemName( LIB_ID::FixIllegalChars( m_brdDb.GetString( fpBlock.m_FpStrRef ).utf8_string(), false ) );
+
+        for( const BLK_0x2D_FOOTPRINT_INST& inst : instWalker )
         {
-            const BLK_0x2B_FOOTPRINT_DEF& fpBlock =
-                    static_cast<const BLOCK<BLK_0x2B_FOOTPRINT_DEF>&>( *fpContainer ).GetData();
+            std::unique_ptr<FOOTPRINT> fp = buildFootprint( inst );
 
-            const LL_WALKER instWalker( fpBlock.m_FirstInstPtr, fpBlock.m_Key, m_brdDb );
-
-            for( const BLOCK_BASE* instBlock : instWalker )
+            if( fp )
             {
-                if( instBlock->GetBlockType() != 0x2D )
-                {
-                    m_reporter.Report(
-                            wxString::Format( "Unexpected object of type %#04x found in footprint %#010x",
-                                              instBlock->GetBlockType(), fpBlock.m_Key ),
-                            RPT_SEVERITY_ERROR );
-                }
-                else
-                {
-                    const auto& inst =
-                            static_cast<const BLOCK<BLK_0x2D_FOOTPRINT_INST>&>( *instBlock ).GetData();
+                fp->SetFPID( fpId );
 
-                    std::unique_ptr<FOOTPRINT> fp = buildFootprint( inst );
+                if( model3D.has_value() )
+                    fp->Models().push_back( *model3D );
 
-                    if( fp )
-                    {
-                        bulkAddedItems.push_back( fp.get() );
-                        m_board.Add( fp.release(), ADD_MODE::BULK_APPEND, true );
-                    }
-                    else
-                    {
-                        m_reporter.Report(
-                                wxString::Format( "Failed to construct footprint for 0x2D key %#010x",
-                                                  inst.m_Key ),
-                                RPT_SEVERITY_ERROR );
-                    }
-                }
-
-                if( m_progressReporter && refreshThrottle.Ready() )
-                    m_progressReporter->KeepRefreshing();
+                stampIds( *fp, inst.m_Key );
+                bulkAddedItems.push_back( fp.get() );
+                m_board.Add( fp.release(), ADD_MODE::BULK_APPEND, true );
             }
+            else
+            {
+                m_reporter.Report( wxString::Format( "Failed to construct footprint for 0x2D key %#010x", inst.m_Key ),
+                                   RPT_SEVERITY_ERROR );
+            }
+
+            if( m_progressReporter && refreshThrottle.Ready() )
+                m_progressReporter->KeepRefreshing();
         }
     }
 
@@ -4796,6 +5188,9 @@ bool BOARD_BUILDER::BuildBoard()
 
     KI_LOG_TRACE( traceAllegroPerf, wxT( "  FinalizeBulkAdd: %.3f ms" ), buildTimer.msecs( true ) ); //format:allow
     KI_LOG_TRACE( traceAllegroBuilder, "Converted %zu footprints", bulkAddedItems.size() );
+
+    // the footprints have added their voids by now
+    createPlaneVoidAreas();
 
     enablePadTeardrops();
     KI_LOG_TRACE( traceAllegroPerf, wxT( "  enablePadTeardrops: %.3f ms" ), buildTimer.msecs( true ) ); //format:allow

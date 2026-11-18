@@ -251,7 +251,9 @@ static void initProperty( PG_PROPERTY* aRet, const PROPERTY_BASE* aProperty )
 {
     aRet->SetLabel( wxGetTranslation( aProperty->Name() ) );
     aRet->SetName( aProperty->Name() );
-    aRet->SetHelpString( wxGetTranslation( aProperty->Name() ) );
+    const wxString& help = aProperty->HelpString();
+
+    aRet->SetHelpString( wxGetTranslation( help.IsEmpty() ? aProperty->Name() : help ) );
     aRet->SetClientData( const_cast<PROPERTY_BASE*>( aProperty ) );
 }
 

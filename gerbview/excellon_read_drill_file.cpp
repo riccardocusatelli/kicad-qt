@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /*
@@ -90,10 +86,10 @@ static VECTOR2I computeCenter( VECTOR2I aStart, VECTOR2I aEnd, int& aRadius, boo
     end.x = double(aEnd.x - aStart.x);
     end.y = double(aEnd.y - aStart.y);
 
-    // Be sure aRadius/2 > dist between aStart and aEnd
-    double min_radius = end.EuclideanNorm() * 2;
+    // Be sure circle diameter (aRadius * 2) > dist between aStart and aEnd
+    double min_radius = end.EuclideanNorm() / 2;
 
-    if( min_radius <= aRadius )
+    if( min_radius >= aRadius )
     {
         // Adjust the radius and the arc center for a 180 deg arc between end points
         aRadius = KiROUND( min_radius );
@@ -226,6 +222,11 @@ static EXCELLON_CMD excellonHeaderCmdList[] =
     { "",       DRILL_M_UNKNOWN,              0 }   // last item in list
 };
 
+static EXCELLON_CMD excellonAcceptedIHeaderUnusualCmdList[] =
+{
+    { "G05",    DRILL_G_DRILL_IN_HEADER,      0 }  // Drill Mode, found in header
+};
+
 static EXCELLON_CMD excellon_G_CmdList[] =
 {
     { "G90", DRILL_G_ABSOLUTE,    0 },  // Absolute Mode
@@ -280,8 +281,7 @@ void EXCELLON_IMAGE::ResetDefaultValues()
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 bool EXCELLON_IMAGE::TestFileIsExcellon( const wxString& aFullFileName )
 {
@@ -339,9 +339,8 @@ bool EXCELLON_IMAGE::TestFileIsExcellon( const wxString& aFullFileName )
                     foundM30 = true; // Found M30 after % = good
 
             // Check for % on its own line at end of header
-            if( ( letter = strstr( line, "%" ) ) != nullptr )
-                if( ( letter[1] == '\r' ) || ( letter[1] == '\n' ) )
-                    foundPercent = true;
+            if( strcmp( line, "%" ) == 0 )
+                foundPercent = true;
 
             // Check for T<number>
             if( ( letter = strstr( line, "T" ) ) != nullptr )
@@ -527,6 +526,27 @@ bool EXCELLON_IMAGE::Execute_HEADER_And_M_Command( char*& text )
         }
     }
 
+    // Commang not found: if parsing the header, looks for accepted ususual command in header
+    if( !cmd && m_State == EXCELLON_IMAGE::READ_HEADER_STATE )
+    {
+
+        for( unsigned ii = 0; ; ii++ )
+        {
+            EXCELLON_CMD* candidate = &excellonAcceptedIHeaderUnusualCmdList[ii];
+            int len = candidate->m_Name.size();
+
+            if( len == 0 )                                                  // End of list reached
+                break;
+
+            if( candidate->m_Name.compare( 0, len, text, len ) == 0 )       // found.
+            {
+                cmd   = candidate;
+                text += len;
+                break;
+            }
+        }
+    }
+
     if( !cmd )
     {
         msg.Printf( _( "Unknown Excellon command &lt;%s&gt;" ), text );
@@ -551,6 +571,13 @@ bool EXCELLON_IMAGE::Execute_HEADER_And_M_Command( char*& text )
         if( m_RouteModeOn )
             FinishRouteCommand();
 
+        break;
+
+    case DRILL_G_DRILL_IN_HEADER:  // unusual in a header but can be found inside header
+        m_SlotOn = false;
+        m_RouteModeOn = false;
+        m_RoutePositions.clear();
+        m_LastArcDataType = ARC_INFO_TYPE_NONE;
         break;
 
     case DRILL_M_MESSAGE:
@@ -701,6 +728,10 @@ void EXCELLON_IMAGE::readFileFormat( char*& aText )
         return;
 
     mantissaDigits = *aText - '0';
+
+    // The coordinate scale table supports at most eight fractional digits.
+    if( mantissaDigits > 8 )
+        return;
 
     m_hasFormat = true;
     m_FmtLen.x = m_FmtLen.y = characteristicDigits + mantissaDigits;

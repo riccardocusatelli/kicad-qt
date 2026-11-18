@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -41,27 +37,27 @@ public:
     DIALOG_BOARD_STATISTICS( PCB_EDIT_FRAME* aParentFrame );
     ~DIALOG_BOARD_STATISTICS();
 
-    ///< Get data from the PCB board and print it to dialog
+    /// Get data from the PCB board and print it to dialog
     bool TransferDataToWindow() override;
 
 private:
-    ///< Function to fill up all items types to be shown in the dialog.
+    /// Function to fill up all items types to be shown in the dialog.
     void refreshItemsTypes();
 
-    ///< Get data from board.
+    /// Get data from board.
     void getDataFromPCB();
 
-    ///< Apply data to dialog widgets.
+    /// Apply data to dialog widgets.
     void updateWidgets();
 
-    ///< Update drills grid.
+    /// Update drills grid.
     void updateDrillGrid();
 
     void adjustDrillGridColumns();
 
     void checkboxClicked( wxCommandEvent& aEvent ) override;
 
-    ///< Save board statistics to a file
+    /// Save board statistics to a file
     void saveReportClicked( wxCommandEvent& aEvent ) override;
 
     void drillGridSize( wxSizeEvent& aEvent ) override;

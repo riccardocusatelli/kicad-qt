@@ -16,9 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this package; see the file COPYING.  If not, write to
- * the Free Software Foundation, Inc., 51 Franklin Street - Fifth Floor,
- * Boston, MA 02110-1301, USA.
+ * along with this package.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef TRANSLINE_CALCULATIONS_STRIPLINE_H
@@ -37,7 +35,8 @@ public:
             TRANSLINE_CALCULATION_BASE( { TCP::SKIN_DEPTH, TCP::EPSILON_EFF, TCP::EPSILONR, TCP::T, TCP::STRIPLINE_A,
                                           TCP::H, TCP::Z0, TCP::LOSS_CONDUCTOR, TCP::PHYS_LEN, TCP::LOSS_DIELECTRIC,
                                           TCP::FREQUENCY, TCP::TAND, TCP::PHYS_WIDTH, TCP::UNIT_PROP_DELAY, TCP::ANG_L,
-                                          TCP::SIGMA, TCP::MURC } ),
+                                          TCP::SIGMA, TCP::MURC, TCP::DIELECTRIC_MODEL_SEL,
+                                          TCP::EPSILONR_SPEC_FREQ } ),
             unit_prop_delay( 0.0 )
     {
     }

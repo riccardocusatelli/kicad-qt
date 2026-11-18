@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -84,6 +84,23 @@ BOOST_AUTO_TEST_CASE(LSETContains)
     BOOST_CHECK(set.Contains(F_Cu));
     BOOST_CHECK(set.Contains(In1_Cu));
     BOOST_CHECK(!set.Contains(In30_Cu));
+}
+
+BOOST_AUTO_TEST_CASE( LSETContainsAllWithDifferentSizes )
+{
+    BASE_SET base( 64 );
+    base.set( F_Cu );
+
+    LSET shortSet( base );
+    LSET fullSet( { F_Cu } );
+
+    BOOST_CHECK( shortSet.ContainsAll( fullSet ) );
+    BOOST_CHECK( fullSet.ContainsAll( shortSet ) );
+
+    fullSet.set( User_14 );
+
+    BOOST_CHECK( !shortSet.ContainsAll( fullSet ) );
+    BOOST_CHECK( fullSet.ContainsAll( shortSet ) );
 }
 
 // Test Sequence Generation

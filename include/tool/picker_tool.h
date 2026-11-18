@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PICKER_TOOL_H
@@ -42,6 +38,9 @@ public:
     typedef std::function<void(const VECTOR2D&)> MOTION_HANDLER;
     typedef std::function<void(void)> CANCEL_HANDLER;
     typedef std::function<void(const int&)> FINALIZE_HANDLER;
+
+    /// Called once a rubber-band drag has left its result in the selection.
+    typedef std::function<bool(void)> AREA_HANDLER;
 
     enum pickerEndState
     {
@@ -70,6 +69,7 @@ public:
     {
         m_clickHandler.reset();
         m_motionHandler.reset();
+        m_areaHandler.reset();
         m_cancelHandler.reset();
         m_finalizeHandler.reset();
     }
@@ -94,6 +94,18 @@ public:
     {
         KI_ASSERT( !m_motionHandler );
         m_motionHandler = aHandler;
+    }
+
+    /**
+     * Set a handler for a rubber-band drag.  The picker otherwise swallows it.
+     *
+     * The drag runs the selection tool's own area loop, so the selection already holds what the
+     * box caught.  Return true to stay armed, as with the click handler.
+     */
+    inline void SetAreaHandler( AREA_HANDLER aHandler )
+    {
+        KI_ASSERT( !m_areaHandler );
+        m_areaHandler = aHandler;
     }
 
     /**
@@ -129,6 +141,7 @@ protected:
 
     std::optional<CLICK_HANDLER>    m_clickHandler;
     std::optional<MOTION_HANDLER>   m_motionHandler;
+    std::optional<AREA_HANDLER>     m_areaHandler;
     std::optional<CANCEL_HANDLER>   m_cancelHandler;
     std::optional<FINALIZE_HANDLER> m_finalizeHandler;
 

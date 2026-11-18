@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "sheet_synchronization_item.h"
@@ -44,7 +40,7 @@ SCH_HIERLABEL_SYNCHRONIZATION_ITEM::SCH_HIERLABEL_SYNCHRONIZATION_ITEM( SCH_HIER
 
 wxString SCH_HIERLABEL_SYNCHRONIZATION_ITEM::GetName() const
 {
-    return m_label->GetShownText( true );
+    return m_label->GetShownText( FOR_CANVAS );
 }
 
 
@@ -83,7 +79,7 @@ SCH_SHEET_PIN_SYNCHRONIZATION_ITEM::SCH_SHEET_PIN_SYNCHRONIZATION_ITEM( SCH_SHEE
 
 wxString SCH_SHEET_PIN_SYNCHRONIZATION_ITEM::GetName() const
 {
-    return m_pin->GetShownText( true );
+    return m_pin->GetShownText( FOR_CANVAS );
 }
 
 
@@ -128,7 +124,7 @@ ASSOCIATED_SCH_LABEL_PIN::ASSOCIATED_SCH_LABEL_PIN( SCH_HIERLABEL_SYNCHRONIZATIO
 
 wxString ASSOCIATED_SCH_LABEL_PIN::GetName() const
 {
-    return m_label->GetShownText( true );
+    return m_label->GetShownText( FOR_CANVAS );
 }
 
 

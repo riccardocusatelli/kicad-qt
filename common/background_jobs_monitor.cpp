@@ -15,15 +15,12 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <algorithm>
 #include <mutex>
+
 
 #include <background_jobs_monitor.h>
 #include <toolkit/process.h>
@@ -50,7 +47,7 @@ bool BACKGROUND_JOB_REPORTER::updateUI()
 
 void BACKGROUND_JOB_REPORTER::Report( const wxString& aMessage )
 {
-    m_job->m_status = aMessage;
+    m_job->SetStatus( aMessage );
     m_monitor->jobUpdated( m_job );
 }
 
@@ -96,18 +93,15 @@ std::shared_ptr<BACKGROUND_JOB> BACKGROUND_JOBS_MONITOR::Create( const wxString&
     std::lock_guard<std::shared_mutex> lock( m_mutex );
     m_jobs.push_back( job );
 
-    if( m_shownDialogs.size() > 0 )
+    // The lists are updated from the event loop, if they are still shown then
+    for( BACKGROUND_JOB_LIST* list : m_shownDialogs )
     {
-        // update dialogs
-        for( BACKGROUND_JOB_LIST* list : m_shownDialogs )
-        {
-            TOOLKIT::RunOnMainThread(
-                    [=, this]()
-                    {
-                        if( isShown( list ) )
-                            list->Add( job );
-                    } );
-        }
+        TOOLKIT::RunOnMainThread(
+                [=, this]()
+                {
+                    if( isShown( list ) )
+                        list->Add( job );
+                } );
     }
 
     return job;
@@ -116,9 +110,12 @@ std::shared_ptr<BACKGROUND_JOB> BACKGROUND_JOBS_MONITOR::Create( const wxString&
 
 void BACKGROUND_JOBS_MONITOR::Remove( std::shared_ptr<BACKGROUND_JOB> aJob )
 {
-    if( m_shownDialogs.size() > 0 )
+    std::shared_ptr<BACKGROUND_JOB> frontJob;
+
     {
-        // update dialogs
+        std::lock_guard<std::shared_mutex> lock( m_mutex );
+
+        m_jobs.erase( std::remove( m_jobs.begin(), m_jobs.end(), aJob ), m_jobs.end() );
 
         for( BACKGROUND_JOB_LIST* list : m_shownDialogs )
         {
@@ -129,39 +126,38 @@ void BACKGROUND_JOBS_MONITOR::Remove( std::shared_ptr<BACKGROUND_JOB> aJob )
                             list->Remove( aJob );
                     } );
         }
-    }
 
-    std::lock_guard<std::shared_mutex> lock( m_mutex );
-    m_jobs.erase( std::remove_if( m_jobs.begin(), m_jobs.end(),
-                                  [&]( std::shared_ptr<BACKGROUND_JOB> job )
-                                  {
-                                      return job == aJob;
-                                  } ) );
-
-    if( m_jobs.size() > 0 )
-    {
-        jobUpdated( m_jobs.front() );
-    }
-    else
-    {
-        for( KISTATUSBAR* statusBar : m_statusBars )
+        if( m_jobs.empty() )
         {
-            TOOLKIT::RunOnMainThread(
-                    [=, this]()
-                    {
-                        if( !isRegistered( statusBar ) )
-                            return;
+            for( KISTATUSBAR* statusBar : m_statusBars )
+            {
+                TOOLKIT::RunOnMainThread(
+                        [=, this]()
+                        {
+                            if( !isRegistered( statusBar ) )
+                                return;
 
-                        statusBar->HideBackgroundProgressBar();
-                        statusBar->SetBackgroundStatusText( wxT( "" ) );
-                    } );
+                            statusBar->HideBackgroundProgressBar();
+                            statusBar->SetBackgroundStatusText( wxT( "" ) );
+                        } );
+            }
+        }
+        else
+        {
+            frontJob = m_jobs.front();
         }
     }
+
+    // jobUpdated takes the mutex so call it after we release ours
+    if( frontJob )
+        jobUpdated( frontJob );
 }
 
 
 void BACKGROUND_JOBS_MONITOR::listClosed( BACKGROUND_JOB_LIST* aList )
 {
+    std::lock_guard<std::shared_mutex> lock( m_mutex );
+
     m_shownDialogs.erase( std::remove_if( m_shownDialogs.begin(), m_shownDialogs.end(),
                                           [&]( BACKGROUND_JOB_LIST* dialog )
                                           {
@@ -181,39 +177,36 @@ bool BACKGROUND_JOBS_MONITOR::isRegistered( KISTATUSBAR* aStatusBar ) const
 
 bool BACKGROUND_JOBS_MONITOR::isShown( BACKGROUND_JOB_LIST* aList ) const
 {
+    std::shared_lock<std::shared_mutex> lock( m_mutex );
+
     return std::find( m_shownDialogs.begin(), m_shownDialogs.end(), aList ) != m_shownDialogs.end();
 }
 
 
 void BACKGROUND_JOBS_MONITOR::jobUpdated( std::shared_ptr<BACKGROUND_JOB> aJob )
 {
-    std::shared_lock<std::shared_mutex> lock( m_mutex, std::try_to_lock );
+    // Reporters call this from other threads so all UI work runs from the event loop
+    std::shared_lock<std::shared_mutex> lock( m_mutex );
 
-    // this method is called from the reporters from potentially other threads
-    // we have to guard ui calls by running them from the event loop
-    if( m_jobs.size() > 0 )
+    //for now, we go and update the status bar if its the first job in the vector
+    if( !m_jobs.empty() && m_jobs.front() == aJob )
     {
-        //for now, we go and update the status bar if its the first job in the vector
-        if( m_jobs.front() == aJob )
+        // update all status bar entries
+        for( KISTATUSBAR* statusBar : m_statusBars )
         {
-            // update all status bar entries
-            for( KISTATUSBAR* statusBar : m_statusBars )
-            {
-                TOOLKIT::RunOnMainThread(
-                        [=, this]()
-                        {
-                            if( !isRegistered( statusBar ) )
-                                return;
+            TOOLKIT::RunOnMainThread(
+                    [=, this]()
+                    {
+                        if( !isRegistered( statusBar ) )
+                            return;
 
-                            statusBar->ShowBackgroundProgressBar();
-                            statusBar->SetBackgroundProgressMax( aJob->m_maxProgress );
-                            statusBar->SetBackgroundProgress( aJob->m_currentProgress );
-                            statusBar->SetBackgroundStatusText( aJob->m_status );
-                        } );
-            }
+                        statusBar->ShowBackgroundProgressBar();
+                        statusBar->SetBackgroundProgressMax( aJob->m_maxProgress );
+                        statusBar->SetBackgroundProgress( aJob->m_currentProgress );
+                        statusBar->SetBackgroundStatusText( aJob->GetStatus() );
+                    } );
         }
     }
-
 
     for( BACKGROUND_JOB_LIST* list : m_shownDialogs )
     {

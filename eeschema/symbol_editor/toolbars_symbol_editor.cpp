@@ -16,15 +16,15 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <advanced_config.h>
+#include <api/api_plugin_manager.h>
 #include <eeschema_id.h>
+#include <pgm_base.h>
+#include <pgm_gui.h>
+#include <settings/common_settings.h>
 #include <symbol_edit_frame.h>
 #include <sch_painter.h>
 #include <symbol_editor_settings.h>
@@ -36,7 +36,6 @@
 #include <tool/ui/toolbar_context_menu_registry.h>
 #include <tools/sch_actions.h>
 #include <tools/sch_selection_tool.h>
-#include <widgets/sch_properties_panel.h>
 #include <widgets/sch_properties_panel.h>
 #include <wx/combobox.h>
 
@@ -96,11 +95,20 @@ std::optional<TOOLBAR_CONFIGURATION> SYMBOL_EDIT_TOOLBAR_SETTINGS::DefaultToolba
 
         config.AppendSeparator()
               .AppendAction( SCH_ACTIONS::placeSymbolPin )
-              .AppendAction( SCH_ACTIONS::placeSymbolText )
-              .AppendAction( SCH_ACTIONS::drawSymbolTextBox )
+              .AppendGroup( TOOLBAR_GROUP_CONFIG( _( "Text objects" ) )
+                            .AddAction( SCH_ACTIONS::placeSymbolText )
+                            .AddAction( SCH_ACTIONS::drawSymbolTextBox ) )
               .AppendAction( SCH_ACTIONS::drawRectangle )
-              .AppendAction( SCH_ACTIONS::drawCircle )
-              .AppendAction( SCH_ACTIONS::drawArc )
+              .AppendGroup( TOOLBAR_GROUP_CONFIG( _( "Circle" ) )
+                            .AddAction( SCH_ACTIONS::drawCircle )
+                            .AddAction( SCH_ACTIONS::drawEllipse ) )
+              .AppendGroup( TOOLBAR_GROUP_CONFIG( _( "Arc" ) )
+                            .AddAction( SCH_ACTIONS::drawArcCenter )
+                            .AddAction( SCH_ACTIONS::drawArcStartEndMid )
+                            .AddAction( SCH_ACTIONS::drawArcStartEndCenter )
+                            .AddAction( SCH_ACTIONS::drawArcTangent )
+                            .AddAction( SCH_ACTIONS::drawArcStartDirEnd )
+                            .AddAction( SCH_ACTIONS::drawEllipseArc ) )
               .AppendAction( SCH_ACTIONS::drawBezier )
               .AppendAction( SCH_ACTIONS::drawSymbolLines )
               .AppendAction( SCH_ACTIONS::drawSymbolPolygon )
@@ -153,6 +161,9 @@ std::optional<TOOLBAR_CONFIGURATION> SYMBOL_EDIT_TOOLBAR_SETTINGS::DefaultToolba
 
         config.AppendSeparator()
               .AppendAction( SCH_ACTIONS::addSymbolToSchematic );
+
+        config.AppendSeparator()
+              .AppendControl( ACTION_TOOLBAR_CONTROLS::ipcScripting );
         break;
     }
 
@@ -201,6 +212,22 @@ void SYMBOL_EDIT_FRAME::configureToolbars()
 
     RegisterCustomToolbarControlFactory( ACTION_TOOLBAR_CONTROLS::unitSelector, unitDisplayFactory );
     RegisterCustomToolbarControlFactory( ACTION_TOOLBAR_CONTROLS::bodyStyleSelector, bodyDisplayFactory );
+
+    // IPC/Scripting plugin control
+    auto pluginControlFactory =
+            [this]( ACTION_TOOLBAR* aToolbar )
+            {
+                bool haveApiPlugins = Pgm().GetCommonSettings()->m_Api.enable_server
+                                        && !PgmGui().GetPluginManager().GetActionsForScope( PluginActionScope() ).empty();
+
+                if( haveApiPlugins )
+                {
+                    aToolbar->AddScaledSeparator( aToolbar->GetParent() );
+                    AddApiPluginTools( aToolbar );
+                }
+            };
+
+    RegisterCustomToolbarControlFactory( ACTION_TOOLBAR_CONTROLS::ipcScripting, pluginControlFactory );
 }
 
 
@@ -214,5 +241,3 @@ void SYMBOL_EDIT_FRAME::ClearToolbarControl( int aId )
     case ID_LIBEDIT_SELECT_BODY_STYLE:  m_bodyStyleSelectBox = nullptr; break;
     }
 }
-
-

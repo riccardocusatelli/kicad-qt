@@ -16,11 +16,7 @@
 * GNU General Public License for more details.
 *
 * You should have received a copy of the GNU General Public License
-* along with this program; if not, you may find one here:
-* http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-* or you may search the http://www.gnu.org website for the version 2 license,
-* or you may write to the Free Software Foundation, Inc.,
-* 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+* along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 /**
@@ -39,18 +35,12 @@
 class ERC_SCH_PIN_CONTEXT
 {
 public:
-    ERC_SCH_PIN_CONTEXT() :
-            m_pin( nullptr ),
-            m_sheet(),
-            m_hash( 0 )
-    {}
+    ERC_SCH_PIN_CONTEXT() = default;
 
     ERC_SCH_PIN_CONTEXT( SCH_PIN* pin, const SCH_SHEET_PATH& sheet ) :
             m_pin( pin ),
             m_sheet( sheet )
-    {
-        rehash();
-    }
+    {}
 
     ERC_SCH_PIN_CONTEXT( const ERC_SCH_PIN_CONTEXT& other ) = default;
 
@@ -69,24 +59,18 @@ public:
     const SCH_SHEET_PATH& Sheet() const;
 
     /**
-     * Test two pin contexts for equality based on the deterministic hash.
+     * Compare the exact sheet instance and pin UUID.
      */
     bool operator==( const ERC_SCH_PIN_CONTEXT& other ) const;
 
     /**
-     * Provide a deterministic ordering for item contexts based on hash value.
+     * Order by sheet instance and pin UUID, with null pins preceding live pins.
      */
     bool operator<( const ERC_SCH_PIN_CONTEXT& other ) const;
 
 protected:
-    /**
-     * Calculate the deterministic hash for this context.
-     */
-    void rehash();
-
-    SCH_PIN*       m_pin;
+    SCH_PIN*       m_pin = nullptr;
     SCH_SHEET_PATH m_sheet;
-    size_t         m_hash;
 };
 
 #endif //_ERC_ITEM_CONTEXT_H

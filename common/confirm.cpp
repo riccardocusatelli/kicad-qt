@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <confirm.h>
@@ -151,10 +147,10 @@ bool ConfirmRevertDialog( wxWindow* parent, const wxString& aMessage )
 
 static int g_lastUnsavedChangesResult = -1;
 
-bool HandleUnsavedChanges( wxWindow* aParent, const wxString& aMessage,
-                           const std::function<bool()>& aSaveFunction )
+bool HandleUnsavedChanges( wxWindow* aParent, const wxString& aMessage, const std::function<bool()>& aSaveFunction )
 {
     g_lastUnsavedChangesResult = UnsavedChangesDialog( aParent, aMessage );
+
     switch( g_lastUnsavedChangesResult )
     {
     case wxID_YES:    return aSaveFunction();
@@ -171,8 +167,8 @@ int GetLastUnsavedChangesResponse()
 
 
 int OKOrCancelDialog( wxWindow* aParent, const wxString& aWarning, const wxString& aMessage,
-                      const wxString& aDetailedMessage, const wxString& aOKLabel,
-                      const wxString& aCancelLabel, bool* aApplyToAll )
+                      const wxString& aDetailedMessage, const wxString& aOKLabel, const wxString& aCancelLabel,
+                      bool* aApplyToAll )
 {
     KICAD_RICH_MESSAGE_DIALOG_BASE dlg( aParent, aMessage, aWarning,
                                         wxOK | wxCANCEL | wxOK_DEFAULT | wxICON_WARNING | wxCENTER );
@@ -207,7 +203,7 @@ void DisplayError( wxWindow* aParent, const wxString& aText )
 
     if( !wxTheApp->IsGUI() )
     {
-        wxFprintf( stderr, aText );
+        wxFprintf( stderr, wxS( "%s" ), aText );
         return;
     }
 
@@ -232,7 +228,7 @@ void DisplayErrorMessage( wxWindow* aParent, const wxString& aText, const wxStri
 
     if( !wxTheApp->IsGUI() )
     {
-        wxFprintf( stderr, aText );
+        wxFprintf( stderr, wxS( "%s" ), aText );
         return;
     }
 

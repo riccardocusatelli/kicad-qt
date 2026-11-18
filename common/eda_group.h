@@ -14,16 +14,13 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef EDA_GROUP_H
 #define EDA_GROUP_H
 
+#include <commit.h>
 #include <eda_item.h>
 #include <lib_id.h>
 #include <lset.h>
@@ -48,6 +45,33 @@ public:
     virtual EDA_ITEM* AsEdaItem() = 0;
     virtual ~EDA_GROUP() = default;
 
+    /**
+     * Deserializes the given protobuf message into this group.
+     *
+     * Groups may contain references to items in the current commit that are not yet present
+     * in the board or schematic. When necessary, items in the provided commit are used when
+     * populating the items contained in the group.
+     *
+     * NB: this routine only adds members to the group's m_deserializedItems list.  They must
+     * be  added to the proper members list (m_items) by FinalizeGroupDeserialization() once
+     * the group has passed all the sanity checks and will be kept).  Otherwise we can end up
+     * with dangling parentGroup pointers in the member items if the group ends up being thrown
+     * away.
+     *
+     * @param aContainer is a protobuf message to be unpacked and deserialized.
+     * @param aCommit is an active commit which may contain new items that belong in the group.
+     * @return true if unpacking and deserialization succeeded.
+     */
+    virtual bool DeserializeGroup( const google::protobuf::Any& aContainer, COMMIT* aCommit ) = 0;
+    virtual void FinalizeGroupDeserialization()
+    {
+        for( EDA_ITEM* item : m_deserializedItems )
+            AddItem( item );
+
+        m_deserializedItems.clear();
+    }
+
+
     wxString GetName() const { return m_name; }
     void     SetName( const wxString& aName ) { m_name = aName; }
 
@@ -70,7 +94,7 @@ public:
     void RemoveItem( EDA_ITEM* aItem );
     void RemoveAll();
 
-    KIID_VECT_LIST GetGroupMemberIds() const;
+    std::vector<KIID> GetGroupMemberIds() const;
 
     bool HasDesignBlockLink() const { return m_designBlockLibId.IsValid(); }
 
@@ -81,6 +105,8 @@ protected:
     std::unordered_set<EDA_ITEM*> m_items;             // Members of the group (no ownership)
     wxString                      m_name;              // Optional group name
     LIB_ID                        m_designBlockLibId;  // Optional link to a design block
+
+    std::unordered_set<EDA_ITEM*> m_deserializedItems;
 };
 
 #endif // CLASS_PCB_GROUP_H_

@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef SCH_IO_EASYEDAPRO_H_
@@ -59,6 +55,8 @@ public:
                                   SCH_SHEET*             aAppendToMe = nullptr,
                                   const std::map<std::string, UTF8>* aProperties = nullptr ) override;
 
+    std::vector<LIB_SYMBOL*> GetImportedCachedLibrarySymbols() override;
+
     void EnumerateSymbolLib( wxArrayString& aSymbolNameList, const wxString& aLibraryPath,
                              const std::map<std::string, UTF8>* aProperties = nullptr ) override;
 
@@ -75,6 +73,9 @@ public:
 private:
     struct PRJ_DATA; // Opaque data structure
     PRJ_DATA* m_projectData = nullptr;
+
+    /// Definitions from the last LoadSchematicFile, cloned out to the import reconciler on request.
+    std::vector<std::unique_ptr<LIB_SYMBOL>> m_importedLibSymbols;
 };
 
 

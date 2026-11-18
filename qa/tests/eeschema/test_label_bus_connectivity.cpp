@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.en.html
- * or you may search the http://www.gnu.org website for the version 32 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -33,14 +29,19 @@
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
 
+#include <advanced_config.h>
 #include <connection_graph.h>
+#include <connectivity/conn_facade.h>
+#include <sch_commit.h>
 #include <schematic.h>
 #include <sch_label.h>
 #include <sch_line.h>
 #include <sch_screen.h>
 #include <sch_sheet.h>
 #include <sch_sheet_pin.h>
+#include <scoped_set_reset.h>
 #include <settings/settings_manager.h>
+#include <tool/tool_manager.h>
 
 
 BOOST_AUTO_TEST_SUITE( LabelBusConnectivity )
@@ -103,14 +104,22 @@ BOOST_FIXTURE_TEST_CASE( LabelNetToBusConnectivity, LABEL_BUS_CONNECTIVITY_FIXTU
     BOOST_CHECK( busConn->IsBus() );
     BOOST_CHECK( busConn->Members().empty() );
 
-    // Now change the label text to a bus name
+    TOOL_MANAGER manager;
+    manager.SetEnvironment( m_schematic.get(), nullptr, nullptr, nullptr, nullptr );
+    SCH_COMMIT commit( &manager );
+    commit.Modify( label, m_screen );
     label->SetText( wxT( "test[0..7]" ) );
+    commit.Push( "Change label to a bus", SKIP_UNDO );
 
-    // Mark items dirty and recalculate connectivity (simulating incremental update)
-    label->SetConnectivityDirty( true );
-    busWire->SetConnectivityDirty( true );
-
-    m_schematic->ConnectionGraph()->Recalculate( sheets, false );
+    // The push updates only the active engine, and the new engine publishes through the facade
+    if( ADVANCED_CFG::GetCfg().m_ConnectivityEngine )
+    {
+        const auto view = m_schematic->Connectivity().Connection( busWire->m_Uuid, path.Path() );
+        BOOST_REQUIRE( view );
+        BOOST_CHECK( view->IsBus() );
+        BOOST_CHECK_EQUAL( view->Members().leaves.size(), 8 );
+        return;
+    }
 
     // Verify: bus wire should now have members from the bus label
     busConn = busWire->Connection( &path );
@@ -227,6 +236,28 @@ BOOST_FIXTURE_TEST_CASE( SheetPinBusConnectionSurvivesMove, LABEL_BUS_CONNECTIVI
 
     BOOST_REQUIRE_MESSAGE( pinConn != nullptr, "Sheet pin lost its connection after the move" );
     BOOST_CHECK_MESSAGE( pinConn->IsBus(), "Sheet pin lost its bus connection after the move" );
+}
+
+
+// A superset bus label drives even when the subset's name sorts first
+BOOST_FIXTURE_TEST_CASE( BusSupersetLabelDrives, LABEL_BUS_CONNECTIVITY_FIXTURE )
+{
+    auto& enabled = const_cast<ADVANCED_CFG&>( ADVANCED_CFG::GetCfg() ).m_ConnectivityEngine;
+    SCOPED_SET_RESET restore( enabled, true );
+
+    SCH_LINE* busWire = new SCH_LINE( VECTOR2I( 0, 0 ), LAYER_BUS );
+    busWire->SetEndPoint( VECTOR2I( 5000000, 0 ) );
+    m_screen->Append( busWire );
+    m_screen->Append( new SCH_LABEL( VECTOR2I( 1000000, 0 ), wxS( "BUS{B}" ) ) );
+    m_screen->Append( new SCH_LABEL( VECTOR2I( 4000000, 0 ), wxS( "BUS{Z B}" ) ) );
+
+    SCH_SHEET_LIST sheets = m_schematic->BuildSheetListSortedByPageNumbers();
+    m_schematic->ConnectionGraph()->Recalculate( sheets, true );
+
+    const auto view = m_schematic->Connectivity().Connection( busWire->m_Uuid, sheets[0].Path() );
+    BOOST_REQUIRE( view );
+    BOOST_CHECK_EQUAL( view->Name( true ), wxS( "BUS{Z B}" ) );
+    BOOST_CHECK_EQUAL( view->Members().leaves.size(), 2 );
 }
 
 

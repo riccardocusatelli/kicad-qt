@@ -70,11 +70,11 @@ public:
                                       bool aKeepAnnotation );
 
     /**
-     * Remove from a pasted symbol the instances that are not of @a aProjectName (the ones it
-     * had in its source schematic).
+     * Remove from a pasted symbol the instances whose path is not in the project of @a aSchematic
+     * (the ones it had in its source schematic), and claim the others for that project.
      *
      * @warning This should **only** be called when cleaning up after a paste.  Otherwise it
      *          could clobber symbol instances for schematics shared across projects.
      */
-    static void PruneSymbolInstances( SCH_SYMBOL* aSymbol, const wxString& aProjectName );
+    static void PruneSymbolInstances( SCH_SYMBOL* aSymbol, const SCHEMATIC& aSchematic );
 };

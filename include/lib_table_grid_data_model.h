@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -43,7 +43,7 @@ enum COL_ORDER
 };
 
 /**
- * This abstract base class mixes any object derived from #LIB_TABLE into wxGridTableBase
+ * This abstract base class mixes any object derived from #LIBRARY_TABLE into wxGridTableBase
  * so the result can be used as any type of library table within wxGrid.
  */
 class LIB_TABLE_GRID_DATA_MODEL : public WX_GRID_TABLE_BASE
@@ -129,6 +129,10 @@ protected:
 protected:
     /// Working copy of a table
     LIBRARY_TABLE m_table;
+
+    /// Cached read-only state of the underlying table file.  Computed once at
+    /// construction to avoid filesystem stat() calls during grid rendering.
+    bool m_readOnly;
 
     std::function<void()> m_changeCallback;
 

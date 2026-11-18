@@ -14,12 +14,13 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
 
 #include <connection_graph.h>
+#include <jumper_group.h>
 #include <lib_symbol.h>
 #include <pin_type.h>
 
@@ -54,7 +55,7 @@ void boost_test_update_symbol_connectivity()
     LIB_SYMBOL lib( "TEST", nullptr );
     lib.SetGlobalPower();
     lib.SetDuplicatePinNumbersAreJumpers( true );
-    lib.JumperPinGroups().push_back( { wxString( "3" ), wxString( "4" ) } );
+    lib.JumperPinGroups().Add( JUMPER_GROUP::Make( { wxString( "3" ), wxString( "4" ) } ).value() );
 
     auto make_pin = [&]( const wxString& num, const wxString& name, ELECTRICAL_PINTYPE type, const VECTOR2I& pos )
     {
@@ -111,15 +112,15 @@ void boost_test_update_symbol_connectivity()
     BOOST_CHECK_EQUAL( powerPin->Connection( &sheetPath )->Name( true ), "VCC" );
 
     // Duplicate pin numbers link together
-    const SCH_ITEM_VEC& dupAConn = dupA->ConnectedItems( sheetPath );
+    const std::vector<SCH_ITEM*>& dupAConn = dupA->ConnectedItems( sheetPath );
     BOOST_CHECK( std::find( dupAConn.begin(), dupAConn.end(), dupB ) != dupAConn.end() );
-    const SCH_ITEM_VEC& dupBConn = dupB->ConnectedItems( sheetPath );
+    const std::vector<SCH_ITEM*>& dupBConn = dupB->ConnectedItems( sheetPath );
     BOOST_CHECK( std::find( dupBConn.begin(), dupBConn.end(), dupA ) != dupBConn.end() );
 
     // Jumper group links pins
-    const SCH_ITEM_VEC& jumpCConn = jumpC->ConnectedItems( sheetPath );
+    const std::vector<SCH_ITEM*>& jumpCConn = jumpC->ConnectedItems( sheetPath );
     BOOST_CHECK( std::find( jumpCConn.begin(), jumpCConn.end(), jumpD ) != jumpCConn.end() );
-    const SCH_ITEM_VEC& jumpDConn = jumpD->ConnectedItems( sheetPath );
+    const std::vector<SCH_ITEM*>& jumpDConn = jumpD->ConnectedItems( sheetPath );
     BOOST_CHECK( std::find( jumpDConn.begin(), jumpDConn.end(), jumpC ) != jumpDConn.end() );
 
     // Connection map contains all pins

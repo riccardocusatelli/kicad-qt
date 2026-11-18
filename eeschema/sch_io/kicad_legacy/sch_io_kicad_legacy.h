@@ -16,8 +16,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef SCH_IO_KICAD_LEGACY_H_
@@ -122,7 +122,7 @@ public:
                              const std::map<std::string, UTF8>* aProperties = nullptr ) override;
     LIB_SYMBOL* LoadSymbol( const wxString& aLibraryPath, const wxString& aAliasName,
                             const std::map<std::string, UTF8>* aProperties = nullptr ) override;
-    void SaveSymbol( const wxString& aLibraryPath, const LIB_SYMBOL* aSymbol,
+    void SaveSymbol( const wxString& aLibraryPath, std::unique_ptr<LIB_SYMBOL> aSymbol,
                      const std::map<std::string, UTF8>* aProperties = nullptr ) override;
     void DeleteSymbol( const wxString& aLibraryPath, const wxString& aSymbolName,
                        const std::map<std::string, UTF8>* aProperties = nullptr ) override;
@@ -175,7 +175,7 @@ private:
 protected:
     int                      m_version;          ///< Version of file being loaded.
 
-    ///< Indicate if we are appending the loaded schemitic or loading a full project.
+    /// Indicate if we are appending the loaded schemitic or loading a full project.
     bool                     m_appending;
 
     wxString                 m_error;            ///< For throwing exceptions or errors on partial

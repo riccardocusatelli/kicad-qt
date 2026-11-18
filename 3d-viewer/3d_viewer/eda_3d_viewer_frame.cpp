@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <wx/ffile.h>
@@ -103,7 +99,7 @@ EDA_3D_VIEWER_FRAME::EDA_3D_VIEWER_FRAME( KIWAY* aKiway, PCB_BASE_FRAME* aParent
     LoadSettings( GetAppSettings<EDA_3D_VIEWER_SETTINGS>( "3d_viewer" ) );
     loadCommonSettings();
 
-    m_appearancePanel->SetUserViewports( Prj().GetProjectFile().m_Viewports3D );
+    ApplyProjectFileSettings();
 
     // Create the manager
     m_toolManager = new TOOL_MANAGER;
@@ -214,6 +210,11 @@ void EDA_3D_VIEWER_FRAME::setupUIConditions()
             {
                 return m_boardAdapter.m_Cfg->m_Render.engine != RENDER_ENGINE::OPENGL;
             };
+    auto showMissingModels =
+            [this]( const SELECTION& aSel )
+            {
+                return m_boardAdapter.ShowMissingModels();
+            };
     auto showTH =
             [this]( const SELECTION& aSel )
             {
@@ -262,6 +263,7 @@ void EDA_3D_VIEWER_FRAME::setupUIConditions()
             };
 
     mgr->SetConditions( EDA_3D_ACTIONS::toggleRaytacing, ACTION_CONDITIONS().Check( raytracing ) );
+    mgr->SetConditions( EDA_3D_ACTIONS::toggleShowMissingModels, ACTION_CONDITIONS().Check( showMissingModels ) );
 
     mgr->SetConditions( EDA_3D_ACTIONS::showTHT, ACTION_CONDITIONS().Check( showTH ) );
     mgr->SetConditions( EDA_3D_ACTIONS::showSMD, ACTION_CONDITIONS().Check( showSMD ) );
@@ -360,6 +362,12 @@ void EDA_3D_VIEWER_FRAME::handleIconizeEvent( bool aIconized )
 
     if( m_spaceMouse && aIconized )
         m_spaceMouse->SetFocus( false );
+}
+
+
+void EDA_3D_VIEWER_FRAME::ApplyProjectFileSettings()
+{
+    m_appearancePanel->SetUserViewports( Prj().GetProjectFile().m_Viewports3D );
 }
 
 
@@ -507,7 +515,7 @@ void EDA_3D_VIEWER_FRAME::SaveSettings( APP_SETTINGS_BASE *aCfg )
 
         cfg->m_Camera.animation_enabled       = m_canvas->GetAnimationEnabled();
         cfg->m_Camera.moving_speed_multiplier = m_canvas->GetMovingSpeedMultiplier();
-        cfg->m_Camera.projection_mode = m_canvas->GetProjectionMode();
+        cfg->m_Viewer.projection_mode = m_canvas->GetProjectionMode();
     }
 }
 
@@ -522,7 +530,9 @@ void EDA_3D_VIEWER_FRAME::CommonSettingsChanged( int aFlags )
     loadCommonSettings();
 
     EDA_3D_VIEWER_SETTINGS* cfg = GetAppSettings<EDA_3D_VIEWER_SETTINGS>( "3d_viewer" );
-    applySettings( cfg );
+
+    if( cfg )
+        applySettings( cfg );
 
     if( EDA_3D_CONTROLLER* ctrlTool = GetToolManager()->GetTool<EDA_3D_CONTROLLER>() )
         ctrlTool->SetRotationIncrement( cfg ? cfg->m_Camera.rotation_increment : 10.0 );
@@ -567,8 +577,14 @@ RASTER_IMAGE EDA_3D_VIEWER_FRAME::captureCurrentViewScreenshot()
     bool original_highlight = cfg.highlight_on_rollover;
     cfg.highlight_on_rollover = false;
 
-    m_canvas->DoRePaint();      // init first buffer
-    m_canvas->DoRePaint();      // init second buffer
+    if( m_canvas )
+    {
+        // Ensure any in-progress background loading finishes before capture.
+        m_canvas->JoinBgWorker();
+        m_canvas->DoRePaint(); // init first buffer
+        m_canvas->JoinBgWorker();
+        m_canvas->DoRePaint(); // init second buffer
+    }
 
     RASTER_IMAGE screenshotImage;
 
@@ -644,12 +660,13 @@ RASTER_IMAGE EDA_3D_VIEWER_FRAME::captureRaytracingScreenshot( BOARD_ADAPTER& aA
     tempadapter.SetBoard( GetBoard() );
     tempadapter.m_Cfg = aAdapter.m_Cfg;
     tempadapter.InitSettings( nullptr, nullptr );
+    tempadapter.CreateLayers( nullptr );
     tempadapter.Set3dCacheManager( aAdapter.Get3dCacheManager() );
 
     RENDER_3D_RAYTRACE_RAM raytrace( tempadapter, aCamera );
     raytrace.SetCurWindowSize( aSize );
 
-    while( raytrace.Redraw( false, nullptr, nullptr ) );
+    while( raytrace.Redraw( false ) );
 
     uint8_t* rgbaBuffer = raytrace.GetBuffer();
     wxSize   realSize   = raytrace.GetRealBufferSize();
@@ -705,6 +722,7 @@ RASTER_IMAGE EDA_3D_VIEWER_FRAME::captureOpenGLScreenshot( BOARD_ADAPTER& aAdapt
     tempadapter.SetBoard( GetBoard() );
     tempadapter.m_Cfg = aAdapter.m_Cfg;
     tempadapter.InitSettings( nullptr, nullptr );
+    tempadapter.CreateLayers( nullptr );
     tempadapter.Set3dCacheManager( aAdapter.Get3dCacheManager() );
 
     auto canvas = std::make_unique<EDA_3D_CANVAS>( temp.get(),
@@ -740,7 +758,7 @@ void EDA_3D_VIEWER_FRAME::configureCanvas( std::unique_ptr<EDA_3D_CANVAS>& aCanv
     {
         aCanvas->SetAnimationEnabled( aCfg->m_Camera.animation_enabled );
         aCanvas->SetMovingSpeedMultiplier( aCfg->m_Camera.moving_speed_multiplier );
-        aCanvas->SetProjectionMode( aCfg->m_Camera.projection_mode );
+        aCanvas->SetProjectionMode( aCfg->m_Viewer.projection_mode );
     }
 
     aCanvas->SetVcSettings( EDA_DRAW_PANEL_GAL::GetVcSettings() );
@@ -810,7 +828,7 @@ void EDA_3D_VIEWER_FRAME::applySettings( EDA_3D_VIEWER_SETTINGS* cfg )
 
     m_canvas->SetAnimationEnabled( cfg->m_Camera.animation_enabled );
     m_canvas->SetMovingSpeedMultiplier( cfg->m_Camera.moving_speed_multiplier );
-    m_canvas->SetProjectionMode( cfg->m_Camera.projection_mode );
+    m_canvas->SetProjectionMode( cfg->m_Viewer.projection_mode );
 
     m_canvas->SetVcSettings( EDA_DRAW_PANEL_GAL::GetVcSettings() );
 }

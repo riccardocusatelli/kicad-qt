@@ -14,14 +14,12 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <core/profile.h>
+
+#include <board_design_settings.h>
 
 #include "pns_test_debug_decorator.h"
 #include "pns_log_file.h"
@@ -43,7 +41,8 @@ PNS_LOG_PLAYER::~PNS_LOG_PLAYER()
 {
 }
 
-void PNS_LOG_PLAYER::createRouter()
+
+void PNS_LOG_PLAYER::CreateRouter()
 {
     m_viewTracker.reset( new PNS_LOG_VIEW_TRACKER );
     m_iface.reset( new PNS_LOG_PLAYER_KICAD_IFACE( m_viewTracker.get() ) );
@@ -87,7 +86,9 @@ const PNS_LOG_FILE::COMMIT_STATE PNS_LOG_PLAYER::GetRouterUpdatedItems()
     // fixme: update the state with the head trace (not supported in current testsuite)
     // Note: we own the head items (cloned inside GetUpdatedItems) - we need to delete them!
     for( auto head : heads )
-        delete head;
+    {
+        state.m_heads.push_back( head );
+    }
 
     return state;
 }
@@ -97,7 +98,7 @@ void PNS_LOG_PLAYER::ReplayLog( PNS_LOG_FILE* aLog, int aStartEventIndex, int aF
 {
     m_board = aLog->GetBoard();
 
-    createRouter();
+    CreateRouter();
 
     m_router->LoadSettings( aLog->GetRoutingSettings() );
 
@@ -114,13 +115,20 @@ void PNS_LOG_PLAYER::ReplayLog( PNS_LOG_FILE* aLog, int aStartEventIndex, int aF
         auto  items = aLog->ItemsById( evt );
         PNS::ITEM_SET ritems;
 
-        printf("items: %zu\n", items.size() );
         ITEM* ritem = nullptr;
 
         if( items.size() && items[0] )
             ritem = m_router->GetWorld()->FindItemByParent( items[0] );
 
-        int routingLayer = ritem ? ritem->Layers().Start() : evt.layer;
+        int routingLayer = evt.layer;
+
+        if( ritem )
+        {
+            if( routingLayer < ritem->Layers().Start() )
+                routingLayer = ritem->Layers().Start();
+            if( routingLayer > ritem->Layers().End() )
+                routingLayer = ritem->Layers().End();
+        }
 
         for( BOARD_CONNECTED_ITEM* item : items )
         {
@@ -135,7 +143,9 @@ void PNS_LOG_PLAYER::ReplayLog( PNS_LOG_FILE* aLog, int aStartEventIndex, int aF
         case LOGGER::EVT_START_ROUTE:
         {
             wxString msg;
-            PNS::SIZES_SETTINGS sizes( m_router->Sizes() );
+            PNS::ITEM_SET auxItems;
+            PNS::SIZES_SETTINGS sizes( evt.sizes );
+            m_board->GetDesignSettings().m_UseConnectedTrackWidth = evt.useConnectedTrackWidth;
             m_iface->SetStartLayerFromPNS( routingLayer );
             m_iface->ImportSizes( sizes, ritem, nullptr, evt.p );
             m_router->UpdateSizes( sizes );
@@ -143,8 +153,11 @@ void PNS_LOG_PLAYER::ReplayLog( PNS_LOG_FILE* aLog, int aStartEventIndex, int aF
             m_debugDecorator->NewStage( "route-start", 0, PNSLOGINFO );
             m_viewTracker->SetStage( m_debugDecorator->GetStageCount() - 1 );
 
-            PROF_TIMER tmr("route-start");
-            bool status = m_router->StartRouting( evt.p, ritem, routingLayer );
+            for( int i = 1; i < ritems.Size(); i++ )
+                auxItems.Add( ritems[i] );
+
+            PROF_TIMER tmr("route-start");            
+            bool status = m_router->StartRouting( evt.p, ritem, routingLayer, auxItems );
             tmr.Stop();
             double msecs = tmr.msecs();
 
@@ -160,7 +173,7 @@ void PNS_LOG_PLAYER::ReplayLog( PNS_LOG_FILE* aLog, int aStartEventIndex, int aF
         case LOGGER::EVT_START_MULTIDRAG:
         case LOGGER::EVT_START_DRAG:
         {
-            PNS::SIZES_SETTINGS sizes( m_router->Sizes() );
+            PNS::SIZES_SETTINGS sizes( evt.sizes );
             m_iface->SetStartLayerFromPNS( routingLayer );
             m_iface->ImportSizes( sizes, ritem, nullptr, evt.p );
             m_router->UpdateSizes( sizes );
@@ -190,9 +203,9 @@ void PNS_LOG_PLAYER::ReplayLog( PNS_LOG_FILE* aLog, int aStartEventIndex, int aF
         {
             m_debugDecorator->NewStage( "fix", 0, PNSLOGINFO );
             m_viewTracker->SetStage( m_debugDecorator->GetStageCount() - 1 );
-            m_debugDecorator->Message( wxString::Format( "fix (%d, %d)", evt.p.x, evt.p.y ) );
             bool rv = m_router->FixRoute( evt.p, ritem, false, false );
-            printf( "  fix -> (%d, %d) ret %d\n", evt.p.x, evt.p.y, rv ? 1 : 0 );
+            m_debugDecorator->Message( wxString::Format( "fix -> (%d, %d) ret %d",
+                                                        evt.p.x, evt.p.y, rv ? 1 : 0 ) );
             break;
         }
 
@@ -201,7 +214,6 @@ void PNS_LOG_PLAYER::ReplayLog( PNS_LOG_FILE* aLog, int aStartEventIndex, int aF
             m_debugDecorator->NewStage( "unfix", 0, PNSLOGINFO );
             m_viewTracker->SetStage( m_debugDecorator->GetStageCount() - 1 );
             m_debugDecorator->Message( wxString::Format( "unfix (%d, %d)", evt.p.x, evt.p.y ) );
-            printf( "  unfix\n" );
             m_router->UndoLastSegment();
             break;
         }
@@ -323,12 +335,10 @@ void PNS_LOG_PLAYER::ReplayLog( PNS_LOG_FILE* aLog, int aStartEventIndex, int aF
 }
 
 
-bool PNS_LOG_PLAYER::CompareResults( PNS_LOG_FILE* aLog )
+bool PNS_LOG_PLAYER::CompareResults( PNS_LOG_FILE* aLog, bool aSkipHeads )
 {
     auto cstate = GetRouterUpdatedItems();
-
-    printf("Comparing %zu added/%zu removed items\n", cstate.m_addedItems.size(), cstate.m_removedIds.size() );
-    return cstate.Compare( aLog->GetExpectedResult() );
+    return cstate.Compare( aLog->GetExpectedResult(), aSkipHeads );
 }
 
 

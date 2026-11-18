@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <panel_fp_properties_3d_model.h>
@@ -38,6 +34,7 @@
 #include <board.h>
 #include <footprint.h>
 #include <footprint_library_adapter.h>
+#include <pcb_3d_body.h>
 #include <footprint_edit_frame.h>
 #include <footprint_editor_settings.h>
 #include <dialog_footprint_properties_fp_editor.h>
@@ -45,13 +42,22 @@
 #include <pgm_base.h>
 #include <kiplatform/ui.h>
 #include <dialogs/panel_preview_3d_model.h>
-#include <dialogs/dialog_select_3d_model.h>
+#include <dialogs/native_model_file_picker.h>
 #include <dialogs/panel_embedded_files.h>
+#include <settings/common_settings.h>
 #include <settings/settings_manager.h>
 #include <project_pcb.h>
+#include <widgets/color_swatch.h>
+#include <3d_rendering/3d_placeholder_utils.h>
+#include <exporters/step/step_pcb_model.h>
+#include <geometry/shape_poly_set.h>
+
+#include <reporter.h>
 
 #include <wx/defs.h>
+#include <wx/filedlg.h>
 #include <wx/msgdlg.h>
+#include <wx/notebook.h>
 
 enum MODELS_TABLE_COLUMNS
 {
@@ -59,6 +65,7 @@ enum MODELS_TABLE_COLUMNS
     COL_FILENAME = 1,
     COL_SHOWN    = 2
 };
+
 
 wxDEFINE_EVENT( wxCUSTOM_PANEL_SHOWN_EVENT, wxCommandEvent );
 
@@ -102,24 +109,25 @@ PANEL_FP_PROPERTIES_3D_MODEL::PANEL_FP_PROPERTIES_3D_MODEL( PCB_BASE_EDIT_FRAME*
     // Filename
     attr = new wxGridCellAttr;
 
-    if( cfg )
-    {
-        attr->SetEditor( new GRID_CELL_PATH_EDITOR( m_parentDialog, m_modelsGrid, &cfg->m_LastFootprint3dDir,
-                                                    wxT( "*.*" ), true, m_frame->Prj().GetProjectPath(),
-                [this]( const wxString& aFile ) -> wxString
+    attr->SetEditor( new GRID_CELL_RUN_FUNCTION_EDITOR(
+                m_parentDialog,
+                [this]( int aRow, int )
                 {
-                    EMBEDDED_FILES::EMBEDDED_FILE* result = m_filesPanel->AddEmbeddedFile( aFile );
+                    if( aRow < 0 || aRow >= static_cast<int>( m_shapes3D_list.size() ) )
+                        return;
 
-                    if( !result )
+                    FP_3DMODEL model = m_shapes3D_list[aRow];
+
+                    if( pick3DModel( m_modelsGrid->GetCellValue( aRow, COL_FILENAME ), model ) )
                     {
-                        wxString msg = wxString::Format( _( "Error adding 3D model" ) );
-                        wxMessageBox( msg, _( "Error" ), wxICON_ERROR | wxOK, this );
-                        return wxString();
+                        m_modelsGrid->CallAfter(
+                                [this, aRow, model]
+                                {
+                                    m_modelsGrid->DisableCellEditControl();
+                                    set3DModelRow( aRow, model );
+                                } );
                     }
-
-                    return result->GetLink();
                 } ) );
-    }
 
     m_modelsGrid->SetColAttr( COL_FILENAME, attr );
 
@@ -143,10 +151,23 @@ PANEL_FP_PROPERTIES_3D_MODEL::PANEL_FP_PROPERTIES_3D_MODEL( PCB_BASE_EDIT_FRAME*
     m_button3DShapeAdd->SetBitmap( KiBitmapBundle( BITMAPS::small_plus ) );
     m_button3DShapeBrowse->SetBitmap( KiBitmapBundle( BITMAPS::small_folder ) );
     m_button3DShapeRemove->SetBitmap( KiBitmapBundle( BITMAPS::small_trash ) );
+    updateConfiguredPathChoices();
+    KIPLATFORM::UI::EllipsizeChoiceBox( m_configuredPathChoice );
 
     m_modelsGrid->Bind( wxEVT_GRID_CELL_CHANGING, &PANEL_FP_PROPERTIES_3D_MODEL::on3DModelCellChanging, this );
     Bind( wxEVT_SHOW, &PANEL_FP_PROPERTIES_3D_MODEL::onShowEvent, this );
+    Bind( wxEVT_SIZE, &PANEL_FP_PROPERTIES_3D_MODEL::onSize, this );
+    m_splitter1->Bind( wxEVT_SPLITTER_SASH_POS_CHANGING, &PANEL_FP_PROPERTIES_3D_MODEL::onSashPositionChanging, this );
+    aParent->Bind( wxEVT_NOTEBOOK_PAGE_CHANGED, &PANEL_FP_PROPERTIES_3D_MODEL::onNotebookPageChanged, this );
     m_parentDialog->Bind( wxEVT_ACTIVATE, &PANEL_FP_PROPERTIES_3D_MODEL::onDialogActivateEvent, this );
+
+    // Bind extrusion control events to update the 3D preview
+    m_componentHeightCtrl->Bind( wxEVT_TEXT, &PANEL_FP_PROPERTIES_3D_MODEL::onExtrusionControlChanged, this );
+    m_standoffHeightCtrl->Bind( wxEVT_TEXT, &PANEL_FP_PROPERTIES_3D_MODEL::onExtrusionControlChanged, this );
+    m_extrusionLayerChoice->Bind( wxEVT_CHOICE, &PANEL_FP_PROPERTIES_3D_MODEL::onExtrusionControlChanged, this );
+    m_extrusionColorSwatch->Bind( COLOR_SWATCH_CHANGED, &PANEL_FP_PROPERTIES_3D_MODEL::onExtrusionColorChanged, this );
+    m_extrusionMaterialChoice->Bind( wxEVT_CHOICE, &PANEL_FP_PROPERTIES_3D_MODEL::onExtrusionMaterialChanged, this );
+    m_showExtrusionCheckbox->Bind( wxEVT_CHECKBOX, &PANEL_FP_PROPERTIES_3D_MODEL::onExtrusionControlChanged, this );
 }
 
 
@@ -158,6 +179,17 @@ PANEL_FP_PROPERTIES_3D_MODEL::~PANEL_FP_PROPERTIES_3D_MODEL()
     m_modelsGrid->Unbind( wxEVT_GRID_CELL_CHANGING, &PANEL_FP_PROPERTIES_3D_MODEL::on3DModelCellChanging, this );
     // Unbind OnShowEvent to prevent unnecessary event handling.
     Unbind( wxEVT_SHOW, &PANEL_FP_PROPERTIES_3D_MODEL::onShowEvent, this );
+    Unbind( wxEVT_SIZE, &PANEL_FP_PROPERTIES_3D_MODEL::onSize, this );
+    m_splitter1->Unbind( wxEVT_SPLITTER_SASH_POS_CHANGING, &PANEL_FP_PROPERTIES_3D_MODEL::onSashPositionChanging, this );
+    GetParent()->Unbind( wxEVT_NOTEBOOK_PAGE_CHANGED, &PANEL_FP_PROPERTIES_3D_MODEL::onNotebookPageChanged, this );
+
+    m_componentHeightCtrl->Unbind( wxEVT_TEXT, &PANEL_FP_PROPERTIES_3D_MODEL::onExtrusionControlChanged, this );
+    m_standoffHeightCtrl->Unbind( wxEVT_TEXT, &PANEL_FP_PROPERTIES_3D_MODEL::onExtrusionControlChanged, this );
+    m_extrusionLayerChoice->Unbind( wxEVT_CHOICE, &PANEL_FP_PROPERTIES_3D_MODEL::onExtrusionControlChanged, this );
+    m_extrusionColorSwatch->Unbind( COLOR_SWATCH_CHANGED, &PANEL_FP_PROPERTIES_3D_MODEL::onExtrusionColorChanged,
+                                    this );
+    m_extrusionMaterialChoice->Unbind( wxEVT_CHOICE, &PANEL_FP_PROPERTIES_3D_MODEL::onExtrusionMaterialChanged, this );
+    m_showExtrusionCheckbox->Unbind( wxEVT_CHECKBOX, &PANEL_FP_PROPERTIES_3D_MODEL::onExtrusionControlChanged, this );
 
     // free the memory used by all models, otherwise models which were
     // browsed but not used would consume memory
@@ -170,13 +202,149 @@ PANEL_FP_PROPERTIES_3D_MODEL::~PANEL_FP_PROPERTIES_3D_MODEL()
 bool PANEL_FP_PROPERTIES_3D_MODEL::TransferDataToWindow()
 {
     ReloadModelsFromFootprint();
+
+    bool hasExtrusion = m_footprint->HasBody();
+    m_enableExtrusionCheckbox->SetValue( hasExtrusion );
+
+    const EXTRUDED_3D_BODY* body = m_footprint->GetBody() ? m_footprint->GetBody()->GetExtruded() : nullptr;
+    m_showExtrusionCheckbox->SetValue( body ? body->m_show : true );
+    m_componentHeightCtrl->SetValue(
+            wxString::Format( wxT( "%.4f" ), body ? pcbIUScale.IUTomm( body->m_height ) : 0.0 ) );
+    m_standoffHeightCtrl->SetValue(
+            wxString::Format( wxT( "%.4f" ), body ? pcbIUScale.IUTomm( body->m_standoff ) : 0.0 ) );
+
+    m_extrusionLayers = { UNDEFINED_LAYER, F_CrtYd, F_Fab, F_SilkS, UNSELECTED_LAYER };
+
+    m_extrusionLayerChoice->Clear();
+    m_extrusionLayerChoice->Append( _( "Auto" ) );
+    m_extrusionLayerChoice->Append( _( "Courtyard layer" ) );
+    m_extrusionLayerChoice->Append( _( "Fabrication layer" ) );
+    m_extrusionLayerChoice->Append( _( "Silkscreen layer" ) );
+    m_extrusionLayerChoice->Append( _( "Pin bounding box" ) );
+
+    PCB_LAYER_ID layer = body ? body->m_layer : UNDEFINED_LAYER;
+    int          selection = 0; // Auto
+
+    for( size_t i = 0; i < m_extrusionLayers.size(); i++ )
+    {
+        if( m_extrusionLayers[i] == layer )
+        {
+            selection = static_cast<int>( i );
+            break;
+        }
+    }
+
+    m_extrusionLayerChoice->SetSelection( selection );
+
+    KIGFX::COLOR4D color = body ? body->m_color : KIGFX::COLOR4D::UNSPECIFIED;
+    m_userSetExtrusionColor = ( color != KIGFX::COLOR4D::UNSPECIFIED );
+
+    if( color == KIGFX::COLOR4D::UNSPECIFIED )
+        color = EXTRUDED_3D_BODY::GetDefaultColor( body ? body->m_material : EXTRUSION_MATERIAL::PLASTIC );
+
+    m_extrusionColorSwatch->SetSwatchColor( color, false );
+
+    m_extrusionMaterialChoice->SetSelection(
+            static_cast<int>( body ? body->m_material : EXTRUSION_MATERIAL::PLASTIC ) );
+
+    updateExtrusionControls();
+    updateExtrusionPreview();
+
+    m_upperPanel->Layout();
+
+    Layout();
+
+    if( GetSizer() )
+        GetSizer()->Fit( this );
+
+    return true;
+}
+
+
+bool PANEL_FP_PROPERTIES_3D_MODEL::CommitPendingChanges()
+{
+    if( !m_modelsGrid->CommitPendingChanges() )
+        return false;
+
+    return m_filesPanel->CommitPendingChanges();
+}
+
+
+bool PANEL_FP_PROPERTIES_3D_MODEL::Validate()
+{
+    if( m_enableExtrusionCheckbox->GetValue() )
+    {
+        double compHeight;
+        double standoff;
+
+        if( !readExtrusionHeights( _( "Extruded 3D Body" ), compHeight, standoff ) )
+            return false;
+
+        if( compHeight <= 0.0 )
+        {
+            wxMessageBox( _( "Component height must be greater than zero." ), _( "Extruded 3D Body" ),
+                          wxOK | wxICON_WARNING, this );
+            return false;
+        }
+
+        if( standoff < 0.0 )
+            standoff = 0.0;
+
+        if( standoff >= compHeight )
+        {
+            wxMessageBox( _( "Standoff height must be less than the overall height." ), _( "Extruded 3D Body" ),
+                          wxOK | wxICON_WARNING, this );
+            return false;
+        }
+    }
+
     return true;
 }
 
 
 bool PANEL_FP_PROPERTIES_3D_MODEL::TransferDataFromWindow()
 {
-    return m_modelsGrid->CommitPendingChanges();
+    if( m_enableExtrusionCheckbox->GetValue() )
+    {
+        double compHeight;
+        double standoff;
+
+        (void) readExtrusionHeights( _( "Extruded 3D Body" ), compHeight, standoff );
+
+        int sel = m_extrusionLayerChoice->GetSelection();
+
+        EXTRUDED_3D_BODY& body = *m_footprint->EnsureBody().MutableExtruded();
+        body.m_height = pcbIUScale.mmToIU( compHeight );
+        body.m_standoff = pcbIUScale.mmToIU( standoff );
+        body.m_layer = m_extrusionLayers[sel];
+        body.m_color = m_userSetExtrusionColor ? m_extrusionColorSwatch->GetSwatchColor() : KIGFX::COLOR4D::UNSPECIFIED;
+        body.m_material = static_cast<EXTRUSION_MATERIAL>( m_extrusionMaterialChoice->GetSelection() );
+
+        FOOTPRINT* dummyFp = m_previewPane->GetDummyFootprint();
+
+        if( dummyFp && dummyFp->HasBody() )
+        {
+            const EXTRUDED_3D_BODY* dummyBody = dummyFp->GetBody()->GetExtruded();
+            body.m_scale = dummyBody->m_scale;
+            body.m_rotation = dummyBody->m_rotation;
+            body.m_offset = dummyBody->m_offset;
+        }
+
+        body.m_show = m_showExtrusionCheckbox->GetValue();
+    }
+    else
+    {
+        m_footprint->ClearBody();
+    }
+
+    return true;
+}
+
+
+void PANEL_FP_PROPERTIES_3D_MODEL::UpdateEmbeddedFiles()
+{
+    if( m_previewPane && m_filesPanel )
+        m_previewPane->SetEmbeddedFilesDelegate( m_filesPanel->GetLocalFiles() );
 }
 
 
@@ -384,48 +552,211 @@ void PANEL_FP_PROPERTIES_3D_MODEL::OnRemove3DModel( wxCommandEvent&  )
 }
 
 
+bool PANEL_FP_PROPERTIES_3D_MODEL::pick3DModel( const wxString& aCurrentValue, FP_3DMODEL& aModel )
+{
+    PROJECT&           project = m_frame->Prj();
+    S3D_CACHE*         cache = PROJECT_PCB::Get3DCacheManager( &project );
+    FILENAME_RESOLVER* resolver = cache->GetResolver();
+    wxString           directory;
+    wxString           filename;
+
+    const wxString embeddedPrefix = wxString::FromUTF8( FILEEXT::KiCadUriPrefix ) + wxS( "://" );
+
+    if( !aCurrentValue.IsEmpty() && !aCurrentValue.StartsWith( embeddedPrefix ) )
+    {
+        wxString libraryBasePath;
+
+        if( std::optional<LIBRARY_TABLE_ROW*> row =
+                    PROJECT_PCB::FootprintLibAdapter( &project )->GetRow( m_footprint->GetFPID().GetLibNickname() ) )
+        {
+            libraryBasePath = LIBRARY_MANAGER::GetFullURI( *row, true );
+        }
+
+        wxString resolved = resolver->ResolvePath( aCurrentValue, libraryBasePath,
+                                       { m_filesPanel->GetLocalFiles(), m_frame->GetBoard()->GetEmbeddedFiles() } );
+        wxFileName currentFile( resolved );
+
+        if( currentFile.FileExists() )
+        {
+            directory = currentFile.GetPath();
+            filename = currentFile.GetFullName();
+        }
+    }
+
+    if( directory.IsEmpty() && m_configuredPathChoice->GetSelection() > 0 )
+        directory = m_configuredPathChoice->GetStringSelection();
+
+    if( directory.IsEmpty() )
+        directory = project.GetRString( PROJECT::VIEWER_3D_PATH );
+
+    PCBNEW_SETTINGS* settings = GetAppSettings<PCBNEW_SETTINGS>( "pcbnew" );
+
+    if( directory.IsEmpty() && settings )
+        directory = settings->m_LastFootprint3dDir;
+
+    if( directory.IsEmpty() )
+        wxGetEnv( ENV_VAR::GetVersionedEnvVarName( wxS( "3DMODEL_DIR" ) ), &directory );
+
+    if( directory.IsEmpty() )
+        directory = project.GetProjectPath();
+
+    wxString wildcard;
+    wxString extensions;
+    int      filterCount = 0;
+
+    if( const std::list<wxString>* filters = cache->GetFileFilters() )
+    {
+        for( const wxString& filter : *filters )
+        {
+            ++filterCount;
+
+            if( !wildcard.IsEmpty() )
+                wildcard += '|';
+
+            wildcard += filter;
+            wxString extension = filter.AfterLast( '|' );
+
+            if( extension != wxS( "*.*" ) )
+            {
+                if( !extensions.IsEmpty() )
+                    extensions += ';';
+
+                extensions += extension;
+            }
+        }
+    }
+
+    if( !extensions.IsEmpty() )
+    {
+        wxString fullFilter = wxString::Format( _( "All supported files (%s)" ), extensions );
+        fullFilter << '|' << extensions << '|' << wildcard;
+        wildcard = fullFilter;
+        ++filterCount;
+    }
+
+    if( wildcard.IsEmpty() )
+        wildcard = wxFileSelectorDefaultWildcardStr;
+
+    COMMON_SETTINGS*                 commonSettings = Pgm().GetCommonSettings();
+    NATIVE_MODEL_FILE_PICKER_OPTIONS options;
+    options.parent = m_parentDialog;
+    options.title = _( "Select 3D Model" );
+    options.directory = directory;
+    options.filename = filename;
+    options.wildcard = wildcard;
+    options.style = wxFD_OPEN | wxFD_FILE_MUST_EXIST;
+    options.embedFile = commonSettings && commonSettings->m_EmbedFileDefaults.model_3d;
+
+    long filterIndex = 0;
+    project.GetRString( PROJECT::VIEWER_3D_FILTER_INDEX ).ToLong( &filterIndex );
+    options.filterIndex = filterCount > 0
+                                  ? static_cast<int>( std::clamp( filterIndex, 0L,
+                                                                  static_cast<long>( filterCount - 1 ) ) )
+                                  : 0;
+
+    NATIVE_MODEL_FILE_PICKER_RESULT selected;
+
+    struct MODAL_SCOPE
+    {
+        explicit MODAL_SCOPE( DIALOG_SHIM* aDialog ) : dialog( aDialog ) { dialog->PrepareForModalSubDialog(); }
+        ~MODAL_SCOPE() { dialog->CleanupAfterModalSubDialog(); }
+        DIALOG_SHIM* dialog;
+    };
+
+    {
+        MODAL_SCOPE modalScope( m_parentDialog );
+        selected = ShowNativeModelFilePicker( options );
+    }
+
+    if( !selected.accepted )
+        return false;
+
+    if( commonSettings )
+        commonSettings->m_EmbedFileDefaults.model_3d = selected.embedFile;
+
+    wxFileName selectedFile( selected.path );
+    selectedFile.Normalize( FN_NORMALIZE_FLAGS | wxPATH_NORM_ENV_VARS );
+    project.SetRString( PROJECT::VIEWER_3D_PATH, selectedFile.GetPath() );
+    project.SetRString( PROJECT::VIEWER_3D_FILTER_INDEX, wxString::Format( wxS( "%d" ), selected.filterIndex ) );
+
+    if( settings )
+        settings->m_LastFootprint3dDir = selectedFile.GetPath();
+
+    if( selected.embedFile )
+    {
+        if( EMBEDDED_FILES::EMBEDDED_FILE* embedded = m_filesPanel->AddEmbeddedFile( selected.path ) )
+            aModel.m_Filename = embedded->GetLink();
+        else
+        {
+            wxMessageBox( _( "Error adding 3D model" ), _( "Error" ), wxICON_ERROR | wxOK, this );
+            return false;
+        }
+    }
+    else
+    {
+        aModel.m_Filename = resolver->ShortenPath( selectedFile.GetFullPath() );
+    }
+
+    return true;
+}
+
+
+void PANEL_FP_PROPERTIES_3D_MODEL::set3DModelRow( int aRow, const FP_3DMODEL& aModel )
+{
+    KI_CHECK_RET( aRow >= 0 && aRow < static_cast<int>( m_shapes3D_list.size() ),
+                 wxS( "invalid 3D model row" ) );
+
+    m_shapes3D_list[aRow] = aModel;
+    wxString displayName = aModel.m_Filename;
+    wxString alias;
+    wxString shortPath;
+
+    if( FILENAME_RESOLVER* resolver = PROJECT_PCB::Get3DCacheManager( &m_frame->Prj() )->GetResolver();
+        resolver && resolver->SplitAlias( displayName, alias, shortPath ) )
+    {
+        displayName = alias + wxS( ":" ) + shortPath;
+    }
+
+    m_modelsGrid->SetCellValue( aRow, COL_FILENAME, displayName );
+    m_modelsGrid->SetCellValue( aRow, COL_SHOWN, aModel.m_Show ? wxS( "1" ) : wxS( "0" ) );
+    select3DModel( aRow );
+    updateValidateStatus( aRow );
+    m_previewPane->UpdateDummyFootprint();
+    onModify();
+}
+
+
+void PANEL_FP_PROPERTIES_3D_MODEL::updateConfiguredPathChoices()
+{
+    const wxString previous = m_configuredPathChoice->GetStringSelection();
+    m_configuredPathChoice->Clear();
+    m_configuredPathChoice->Append( _( "Automatic" ) );
+
+    FILENAME_RESOLVER* resolver = PROJECT_PCB::Get3DCacheManager( &m_frame->Prj() )->GetResolver();
+
+    if( const std::list<SEARCH_PATH>* paths = resolver->GetPaths() )
+    {
+        for( const SEARCH_PATH& path : *paths )
+        {
+            if( !path.m_Pathexp.IsEmpty() && m_configuredPathChoice->FindString( path.m_Pathexp ) == wxNOT_FOUND )
+                m_configuredPathChoice->Append( path.m_Pathexp );
+        }
+    }
+
+    const int previousIndex = m_configuredPathChoice->FindString( previous );
+    m_configuredPathChoice->SetSelection( previousIndex == wxNOT_FOUND ? 0 : previousIndex );
+}
+
+
 void PANEL_FP_PROPERTIES_3D_MODEL::OnAdd3DModel( wxCommandEvent&  )
 {
     if( !m_modelsGrid->CommitPendingChanges() )
         return;
 
-    int selected = m_modelsGrid->GetGridCursorRow();
+    const int  selected = m_modelsGrid->GetGridCursorRow();
+    FP_3DMODEL model;
 
-    PROJECT&           prj = m_frame->Prj();
-    FP_3DMODEL         model;
-    S3D_CACHE*         cache = PROJECT_PCB::Get3DCacheManager( &prj );
-    FILENAME_RESOLVER* res = cache->GetResolver();
-
-    wxString initialpath = prj.GetRString( PROJECT::VIEWER_3D_PATH );
-    wxString sidx = prj.GetRString( PROJECT::VIEWER_3D_FILTER_INDEX );
-    int      filter = 0;
-
-    // If the PROJECT::VIEWER_3D_PATH hasn't been set yet, use the 3DMODEL_DIR environment
-    // variable and fall back to the project path if necessary.
-    if( initialpath.IsEmpty() )
-    {
-        if( !wxGetEnv( ENV_VAR::GetVersionedEnvVarName( wxS( "3DMODEL_DIR" ) ), &initialpath )
-            || initialpath.IsEmpty() )
-        {
-            initialpath = prj.GetProjectPath();
-        }
-    }
-
-    if( !sidx.empty() )
-    {
-        long tmp;
-        sidx.ToLong( &tmp );
-
-        if( tmp > 0 && tmp <= INT_MAX )
-            filter = (int) tmp;
-    }
-
-    DIALOG_SELECT_3DMODEL dm( m_parentDialog, cache, &model, initialpath, filter );
-
-    // Use QuasiModal so that Configure3DPaths (and its help window) will work
-    int retval = dm.ShowQuasiModal();
-
-    if( retval != wxID_OK || model.m_Filename.empty() )
+    if( !pick3DModel( wxEmptyString, model ) )
     {
         if( selected >= 0 )
         {
@@ -436,65 +767,11 @@ void PANEL_FP_PROPERTIES_3D_MODEL::OnAdd3DModel( wxCommandEvent&  )
         return;
     }
 
-    if( dm.IsEmbedded3DModel() )
-    {
-        wxString libraryName = m_footprint->GetFPID().GetLibNickname();
-        wxString footprintBasePath = wxEmptyString;
-
-        std::optional<LIBRARY_TABLE_ROW*> fpRow =
-                            PROJECT_PCB::FootprintLibAdapter( &m_frame->Prj() )->GetRow( libraryName );
-        if( fpRow )
-            footprintBasePath = LIBRARY_MANAGER::GetFullURI( *fpRow, true );
-
-        std::vector<const EMBEDDED_FILES*> embeddedFilesStack;
-        embeddedFilesStack.push_back( m_filesPanel->GetLocalFiles() );
-        embeddedFilesStack.push_back( m_frame->GetBoard()->GetEmbeddedFiles() );
-
-        wxString   fullPath = res->ResolvePath( model.m_Filename, footprintBasePath, std::move( embeddedFilesStack ) );
-        wxFileName fname( fullPath );
-
-        EMBEDDED_FILES::EMBEDDED_FILE* result = m_filesPanel->AddEmbeddedFile( fname.GetFullPath() );                                                                               ;
-
-        if( !result )
-        {
-
-            wxString msg = wxString::Format( _( "Error adding 3D model" ) );
-            wxMessageBox( msg, _( "Error" ), wxICON_ERROR | wxOK, this );
-            return;
-        }
-
-        model.m_Filename = result->GetLink();
-    }
-
-    prj.SetRString( PROJECT::VIEWER_3D_PATH, initialpath );
-    sidx = wxString::Format( wxT( "%i" ), filter );
-    prj.SetRString( PROJECT::VIEWER_3D_FILTER_INDEX, sidx );
-
-    wxString alias;
-    wxString shortPath;
-    wxString filename = model.m_Filename;
-
-    if( res && res->SplitAlias( filename, alias, shortPath ) )
-        filename = alias + wxT( ":" ) + shortPath;
-
-#ifdef __WINDOWS__
-    // In KiCad files, filenames and paths are stored using Unix notation
-    model.m_Filename.Replace( wxT( "\\" ), wxT( "/" ) );
-#endif
-
+    const int row = m_modelsGrid->GetNumberRows();
     model.m_Show = true;
     m_shapes3D_list.push_back( model );
-
-    int idx = m_modelsGrid->GetNumberRows();
     m_modelsGrid->AppendRows( 1 );
-    m_modelsGrid->SetCellValue( idx, COL_FILENAME, filename );
-    m_modelsGrid->SetCellValue( idx, COL_SHOWN, wxT( "1" ) );
-
-    select3DModel( idx );
-    updateValidateStatus( idx );
-
-    m_previewPane->UpdateDummyFootprint();
-    onModify();
+    set3DModelRow( row, model );
 }
 
 
@@ -588,17 +865,17 @@ MODEL_VALIDATE_ERRORS PANEL_FP_PROPERTIES_3D_MODEL::validateModelExists( const w
     if( !resolv->ValidateFileName( aFilename, hasAlias ) )
         return MODEL_VALIDATE_ERRORS::ILLEGAL_FILENAME;
 
-    wxString libraryName = m_footprint->GetFPID().GetLibNickname();
+    wxString fpLibrary = m_footprint->GetFPID().GetLibNickname();
     wxString footprintBasePath = wxEmptyString;
 
-    std::optional<LIBRARY_TABLE_ROW*> fpRow =
-                            PROJECT_PCB::FootprintLibAdapter( &m_frame->Prj() )->GetRow( libraryName );
+    std::optional<LIBRARY_TABLE_ROW*> fpRow = PROJECT_PCB::FootprintLibAdapter( &m_frame->Prj() )->GetRow( fpLibrary );
+
     if( fpRow )
         footprintBasePath = LIBRARY_MANAGER::GetFullURI( *fpRow, true );
 
     std::vector<const EMBEDDED_FILES*> embeddedFilesStack;
-    embeddedFilesStack.push_back( m_filesPanel->GetLocalFiles() );
     embeddedFilesStack.push_back( m_frame->GetBoard()->GetEmbeddedFiles() );
+    embeddedFilesStack.push_back( m_filesPanel->GetLocalFiles() );
 
     wxString fullPath = resolv->ResolvePath( aFilename, footprintBasePath, std::move( embeddedFilesStack ) );
 
@@ -617,7 +894,10 @@ void PANEL_FP_PROPERTIES_3D_MODEL::Cfg3DPath( wxCommandEvent& event )
     DIALOG_CONFIGURE_PATHS dlg( this );
 
     if( dlg.ShowQuasiModal() == wxID_OK )
+    {
+        updateConfiguredPathChoices();
         m_previewPane->UpdateDummyFootprint();
+    }
 }
 
 
@@ -638,6 +918,48 @@ void PANEL_FP_PROPERTIES_3D_MODEL::onShowEvent( wxShowEvent& aEvent )
 {
     postCustomPanelShownEventWithPredicate( static_cast<int>( aEvent.IsShown() ) );
     aEvent.Skip();
+
+    if( aEvent.IsShown() )
+        CallAfter( [this] { setDefaultSashPosition(); } );
+}
+
+
+void PANEL_FP_PROPERTIES_3D_MODEL::onSize( wxSizeEvent& aEvent )
+{
+    aEvent.Skip();
+    setDefaultSashPosition();
+}
+
+
+void PANEL_FP_PROPERTIES_3D_MODEL::onSashPositionChanging( wxSplitterEvent& aEvent )
+{
+    m_userSetSashPosition = true;
+    aEvent.Skip();
+}
+
+
+void PANEL_FP_PROPERTIES_3D_MODEL::setDefaultSashPosition()
+{
+    if( !m_splitter1->IsSplit() || m_userSetSashPosition )
+        return;
+
+    const int page = GetSize().y;
+
+    if( page <= 0 )
+        return;
+
+    const int rowHeight = m_modelsGrid->GetDefaultRowSize();
+    const int chrome = m_modelsGrid->GetColLabelSize() + 4;
+    const int minGrid = 3 * rowHeight + chrome;
+    const int maxGrid = std::max( minGrid, page / 3 );
+    const int grid = std::clamp( m_modelsGrid->GetNumberRows() * rowHeight + chrome, minGrid, maxGrid );
+
+    m_modelsGrid->SetMinSize( wxSize( -1, grid ) );
+    const int content = m_upperPanel->GetSizer()->CalcMin().y;
+    const int minPane = m_splitter1->GetMinimumPaneSize();
+
+    // Prevent collapsing part of the page when the window height is too small
+    m_splitter1->SetSashPosition( std::max( std::min( content, page - minPane ), minPane ) );
 }
 
 
@@ -648,10 +970,249 @@ void PANEL_FP_PROPERTIES_3D_MODEL::onDialogActivateEvent( wxActivateEvent& aEven
 }
 
 
+void PANEL_FP_PROPERTIES_3D_MODEL::onNotebookPageChanged( wxBookCtrlEvent& aEvent )
+{
+    wxNotebook* notebook = dynamic_cast<wxNotebook*>( aEvent.GetEventObject() );
+
+    if( notebook && notebook == GetParent() )
+    {
+        // Native notebooks do not consistently emit show events when hiding their pages.
+        const int selected = aEvent.GetSelection();
+        bool      isSelected = selected >= 0
+                                    && selected < static_cast<int>( notebook->GetPageCount() )
+                                    && notebook->GetPage( selected ) == this;
+
+        postCustomPanelShownEventWithPredicate( isSelected );
+
+        if( isSelected )
+            CallAfter( [this] { setDefaultSashPosition(); } );
+    }
+
+    aEvent.Skip();
+}
+
+
 void PANEL_FP_PROPERTIES_3D_MODEL::postCustomPanelShownEventWithPredicate( bool predicate )
 {
     wxCommandEvent event( wxCUSTOM_PANEL_SHOWN_EVENT );
     event.SetEventObject( m_previewPane );
     event.SetInt( static_cast<int>( predicate ) );
     m_previewPane->ProcessWindowEvent( event );
+}
+
+
+void PANEL_FP_PROPERTIES_3D_MODEL::OnEnableExtrusion( wxCommandEvent& event )
+{
+    updateExtrusionControls();
+    updateExtrusionPreview();
+    onModify();
+}
+
+
+void PANEL_FP_PROPERTIES_3D_MODEL::onExtrusionControlChanged( wxCommandEvent& event )
+{
+    updateExtrusionPreview();
+    onModify();
+    event.Skip();
+}
+
+
+void PANEL_FP_PROPERTIES_3D_MODEL::onExtrusionColorChanged( wxCommandEvent& event )
+{
+    m_userSetExtrusionColor = true;
+    updateExtrusionPreview();
+    onModify();
+    event.Skip();
+}
+
+
+void PANEL_FP_PROPERTIES_3D_MODEL::updateExtrusionControls()
+{
+    bool enabled = m_enableExtrusionCheckbox->GetValue();
+    m_showExtrusionCheckbox->Enable( enabled );
+    m_componentHeightCtrl->Enable( enabled );
+    m_standoffHeightCtrl->Enable( enabled );
+    m_extrusionLayerChoice->Enable( enabled );
+    m_extrusionColorSwatch->Enable( enabled );
+    m_extrusionMaterialChoice->Enable( enabled );
+    m_buttonExportExtruded->Enable( enabled );
+
+    if( enabled )
+    {
+        FOOTPRINT* dummyFp = m_previewPane->GetDummyFootprint();
+
+        if( dummyFp )
+            m_previewPane->SetExtrusionTransformMode( &dummyFp->EnsureBody() );
+    }
+    else
+    {
+        m_previewPane->SetExtrusionTransformMode( nullptr );
+    }
+}
+
+
+bool PANEL_FP_PROPERTIES_3D_MODEL::readExtrusionHeights( const wxString& aTitle, double& aHeight, double& aStandoff )
+{
+    wxString heightText = m_componentHeightCtrl->GetValue();
+    wxString standoffText = m_standoffHeightCtrl->GetValue();
+
+    // An empty field reads as zero.
+    aHeight = 0.0;
+    aStandoff = 0.0;
+
+    if( !heightText.IsEmpty() && !heightText.ToDouble( &aHeight ) )
+    {
+        wxMessageBox( _( "Overall height is not a valid number." ), aTitle, wxOK | wxICON_WARNING, this );
+        return false;
+    }
+
+    if( !standoffText.IsEmpty() && !standoffText.ToDouble( &aStandoff ) )
+    {
+        wxMessageBox( _( "Standoff height is not a valid number." ), aTitle, wxOK | wxICON_WARNING, this );
+        return false;
+    }
+
+    return true;
+}
+
+
+void PANEL_FP_PROPERTIES_3D_MODEL::updateExtrusionPreview()
+{
+    FOOTPRINT* dummyFp = m_previewPane->GetDummyFootprint();
+
+    if( !dummyFp || m_extrusionLayers.empty() )
+        return;
+
+    double compHeight = 0.0;
+    double standoff = 0.0;
+    m_componentHeightCtrl->GetValue().ToDouble( &compHeight );
+    m_standoffHeightCtrl->GetValue().ToDouble( &standoff );
+
+    int sel = m_extrusionLayerChoice->GetSelection();
+
+    EXTRUDED_3D_BODY& body = *dummyFp->EnsureBody().MutableExtruded();
+    body.m_height = pcbIUScale.mmToIU( compHeight );
+    body.m_standoff = pcbIUScale.mmToIU( standoff );
+    body.m_layer = m_extrusionLayers[sel];
+    body.m_color = m_userSetExtrusionColor ? m_extrusionColorSwatch->GetSwatchColor() : KIGFX::COLOR4D::UNSPECIFIED;
+    body.m_material = static_cast<EXTRUSION_MATERIAL>( m_extrusionMaterialChoice->GetSelection() );
+    body.m_show = m_enableExtrusionCheckbox->GetValue() && m_showExtrusionCheckbox->GetValue();
+
+    m_previewPane->UpdateDummyFootprint( true );
+}
+
+
+void PANEL_FP_PROPERTIES_3D_MODEL::onExtrusionMaterialChanged( wxCommandEvent& event )
+{
+    if( !m_userSetExtrusionColor )
+    {
+        EXTRUSION_MATERIAL mat = static_cast<EXTRUSION_MATERIAL>( m_extrusionMaterialChoice->GetSelection() );
+        m_extrusionColorSwatch->SetSwatchColor( EXTRUDED_3D_BODY::GetDefaultColor( mat ), false );
+    }
+
+    updateExtrusionPreview();
+    onModify();
+    event.Skip();
+}
+
+
+void PANEL_FP_PROPERTIES_3D_MODEL::OnExportExtrudedModel( wxCommandEvent& event )
+{
+    double height;
+    double standoff;
+
+    if( !readExtrusionHeights( _( "Export Extruded Body" ), height, standoff ) )
+        return;
+
+    if( height <= 0.0 )
+    {
+        wxMessageBox( _( "Component height must be greater than zero." ), _( "Export Extruded Body" ),
+                      wxOK | wxICON_WARNING, this );
+        return;
+    }
+
+    int layerSel = m_extrusionLayerChoice->GetSelection();
+
+    SHAPE_POLY_SET outline;
+    bool           gotOutline =
+            GetExtrusionOutline( m_footprint, outline, m_extrusionLayers[layerSel] ) && outline.OutlineCount() > 0;
+
+    if( !gotOutline )
+    {
+        wxMessageBox( _( "No extrusion outline could be generated for this footprint." ), _( "Export Extruded Body" ),
+                      wxOK | wxICON_WARNING, this );
+        return;
+    }
+
+    wxString defaultName = m_footprint->GetReference() + wxT( "_extruded" );
+
+    wxFileDialog dlg( this, _( "Export Extruded 3D Body" ), wxEmptyString, defaultName,
+                      _( "STEP files" ) + wxT( " (*.step)|*.step|" ) + _( "GLB files" ) + wxT( " (*.glb)|*.glb|" )
+                              + _( "STL files" ) + wxT( " (*.stl)|*.stl|" ) + _( "BREP files" )
+                              + wxT( " (*.brep)|*.brep" ),
+                      wxFD_SAVE | wxFD_OVERWRITE_PROMPT );
+
+    if( dlg.ShowModal() == wxID_CANCEL )
+        return;
+
+    wxString path = dlg.GetPath();
+    int      filterIdx = dlg.GetFilterIndex();
+
+    bool     bottom = m_footprint->IsFlipped();
+    VECTOR2D origin( m_footprint->GetPosition().x, m_footprint->GetPosition().y );
+
+    FOOTPRINT*              dummyFp = m_previewPane->GetDummyFootprint();
+    const EXTRUDED_3D_BODY* body = dummyFp && dummyFp->HasBody() ? dummyFp->GetBody()->GetExtruded() : nullptr;
+
+    double bodyStandoff = standoff;
+
+    if( body )
+    {
+        ApplyExtrusionTransform( outline, body, m_footprint->GetPosition() );
+
+        double bodyThickness = ( height - standoff ) * body->m_scale.z;
+        bodyStandoff = standoff + body->m_offset.z;
+        height = bodyStandoff + bodyThickness;
+    }
+
+    EXTRUSION_MATERIAL material = static_cast<EXTRUSION_MATERIAL>( m_extrusionMaterialChoice->GetSelection() );
+
+    KIGFX::COLOR4D c = m_extrusionColorSwatch->GetSwatchColor();
+
+    if( c == KIGFX::COLOR4D::UNSPECIFIED )
+        c = EXTRUDED_3D_BODY::GetDefaultColor( material );
+
+    uint32_t colorKey = EXTRUDED_3D_BODY::PackColorKey( c );
+
+    NULL_REPORTER  reporter;
+    STEP_PCB_MODEL model( wxT( "extruded_body" ), &reporter );
+
+    if( !model.AddExtrudedBody( outline, bottom, bodyStandoff, height, origin, colorKey, material,
+                                m_footprint->GetReference() ) )
+    {
+        wxMessageBox( _( "Failed to create extruded body geometry." ), _( "Export Extruded Body" ), wxOK | wxICON_ERROR,
+                      this );
+        return;
+    }
+
+    if( standoff > 0.0 )
+        model.AddExtrudedPins( m_footprint, body, bottom, bodyStandoff, origin );
+
+    SHAPE_POLY_SET boardOutline( outline );
+    model.CreatePCB( boardOutline, origin, false );
+
+    bool ok = false;
+
+    switch( filterIdx )
+    {
+    case 0: ok = model.WriteSTEP( path, true, false ); break;
+    case 1: ok = model.WriteGLTF( path ); break;
+    case 2: ok = model.WriteSTL( path ); break;
+    case 3: ok = model.WriteBREP( path ); break;
+    }
+
+    if( !ok )
+    {
+        wxMessageBox( _( "Failed to write file." ), _( "Export Extruded Body" ), wxOK | wxICON_ERROR, this );
+    }
 }

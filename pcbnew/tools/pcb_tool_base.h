@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PCB_TOOL_BASE_H
@@ -42,8 +38,8 @@
 /**
  * PCB_TOOL_BASE
  *
- * A tool operating on a BOARD object
-**/
+ * A tool operating on a #BOARD object.
+ */
 
 class PCB_TOOL_BASE;
 class PCB_EDIT_FRAME;
@@ -74,7 +70,8 @@ public:
     /**
      * Constructor
      *
-     * Creates a tool with given id & name. The name must be unique. */
+     * Create a tool with given id & name. The name must be unique.
+     */
     PCB_TOOL_BASE( TOOL_ID aId, const std::string& aName ) :
             TOOL_INTERACTIVE ( aId, aName ),
             m_isFootprintEditor( false ),
@@ -84,7 +81,8 @@ public:
     /**
      * Constructor
      *
-     * Creates a tool with given name. The name must be unique. */
+     * Creates a tool with given name. The name must be unique.
+     */
     PCB_TOOL_BASE( const std::string& aName ) :
             TOOL_INTERACTIVE ( aName ),
             m_isFootprintEditor( false ),
@@ -97,10 +95,10 @@ public:
     virtual void Reset( RESET_REASON aReason ) override;
 
     /**
-     * Function SetIsFootprintEditor()
+     * Toggle edit footprint mode.
      *
-     * Toggles edit footprint mode. When enabled, one may select parts of footprints individually
-     * (graphics, pads, etc.), so they can be modified.
+     * When enabled, one may select parts of footprints individually (graphics, pads, etc.), so they can be
+     * modified.
      * @param aEnabled decides if the mode should be enabled.
      */
     void SetIsFootprintEditor( bool aEnabled ) { m_isFootprintEditor = aEnabled; }
@@ -124,6 +122,11 @@ public:
      * Get the current angle snapping mode.
      */
     LEADER_MODE GetAngleSnapMode() const;
+
+    /**
+     * Should drawing tools author constraints automatically?
+     */
+    bool GetAutoConstraints() const;
 
 protected:
     /**
@@ -153,8 +156,10 @@ protected:
      * More complex interactive processes are not supported here, you
      * should implement a customised event loop for those.
      *
-     * @param aItemCreator the callable that will attempt to create the item
+     * @param aTool
+     * @param aPlacer
      * @param aCommitMessage the message used on a successful commit
+     * @param aOptions
      */
     void doInteractiveItemPlacement( const TOOL_EVENT& aTool, INTERACTIVE_PLACER_BASE* aPlacer,
                                      const wxString& aCommitMessage,

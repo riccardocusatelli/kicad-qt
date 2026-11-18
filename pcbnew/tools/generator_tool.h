@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef GENERATOR_TOOL_H
@@ -27,6 +23,7 @@
 
 #include <tools/generator_tool_pns_proxy.h>
 #include <pcb_generator.h>
+#include <properties/property_mgr.h>
 
 
 class DIALOG_GENERATORS;
@@ -34,6 +31,7 @@ class PCB_EDIT_FRAME;
 class PROGRESS_REPORTER;
 class WX_PROGRESS_REPORTER;
 
+#define GENERATOR_TOOL_NAME "pcbnew.Generators"
 
 /**
  * Handle actions specific to filling copper zones.
@@ -60,13 +58,25 @@ public:
     int RegenerateItem( const TOOL_EVENT& aEvent );
     int GenEditAction( const TOOL_EVENT& aEvent );
 
+    /// Wrap selected microvias and traces into a via stack.
+    int MakeViaStackFromSelection( const TOOL_EVENT& aEvent );
+
+    /// Remove tuning patterns that were deselected without producing any meanders.
+    int RemoveDeselectedEmptyPatterns( const TOOL_EVENT& aEvent );
+
 private:
-    ///< Set up handlers for various events.
+    /// Set up handlers for various events.
     void setTransitions() override;
 
     DIALOG_GENERATORS* m_mgrDialog;
 
-private:
+    /// RAII PROPERTY_MANAGER listener subscriptions; auto-unregister on
+    /// destruction so this tool composes cleanly with other listeners.
+    PROPERTY_LISTENER_SUBSCRIPTION m_boardItemListener;
+    PROPERTY_LISTENER_SUBSCRIPTION m_generatorListener;
+
+    /// Tuning patterns selected as of the last selection event.
+    std::set<KIID> m_selectedTuningPatterns;
 };
 
 #endif

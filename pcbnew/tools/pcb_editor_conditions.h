@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PCB_EDITOR_CONDITIONS_H_
@@ -110,28 +106,28 @@ public:
     SELECTION_CONDITION FootprintViewerAutoZoom();
 
 protected:
-    ///< Helper function used by HasItems()
+    /// Helper function used by HasItems()
     static bool hasItemsFunc( const SELECTION& aSelection, PCB_BASE_FRAME* aFrame );
 
-    ///< Helper function used by PadNumbersDisplay()
+    /// Helper function used by PadNumbersDisplay()
     static bool padNumberDisplayFunc( const SELECTION& aSelection, PCB_BASE_FRAME* aFrame );
 
-    ///< Helper function used by PadFillDisplay()
+    /// Helper function used by PadFillDisplay()
     static bool padFillDisplayFunc( const SELECTION& aSelection, PCB_BASE_FRAME* aFrame );
 
-    ///< Helper function used by TextFillDisplay()
+    /// Helper function used by TextFillDisplay()
     static bool textFillDisplayFunc( const SELECTION& aSelection, PCB_BASE_FRAME* aFrame );
 
-    ///< Helper function used by GraphicsFillDisplay()
+    /// Helper function used by GraphicsFillDisplay()
     static bool graphicsFillDisplayFunc( const SELECTION& aSelection, PCB_BASE_FRAME* aFrame );
 
-    ///< Helper function used by ViaFillDisplay()
+    /// Helper function used by ViaFillDisplay()
     static bool viaFillDisplayFunc( const SELECTION& aSelection, PCB_BASE_FRAME* aFrame );
 
-    ///< Helper function used by TrackFillDisplay()
+    /// Helper function used by TrackFillDisplay()
     static bool trackFillDisplayFunc( const SELECTION& aSelection, PCB_BASE_FRAME* aFrame );
 
-    ///< Helper function used by ZoneDisplayMode()
+    /// Helper function used by ZoneDisplayMode()
     static bool zoneDisplayModeFunc( const SELECTION& aSelection, PCB_BASE_FRAME* aFrame,
                                      ZONE_DISPLAY_MODE aMode );
 

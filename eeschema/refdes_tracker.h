@@ -34,22 +34,6 @@
 class SCH_REFERENCE;
 
 /**
- * Function type for external units availability checking.
- *
- * This allows the REFDES_TRACKER to work with mock objects or custom logic
- * without requiring actual SCH_REFERENCE dependencies.
- *
- * @param aTestRef Reference object being tested for compatibility
- * @param aExistingRefs Vector of existing references for the same reference number
- * @param aRequiredUnits Vector of unit numbers needed
- * @return true if all required units are available (no conflicts)
- */
-template<typename T>
-using UNITS_CHECKER_FUNC = std::function<bool(const T& aTestRef,
-                                              const std::vector<T>& aExistingRefs,
-                                              const std::vector<int>& aRequiredUnits)>;
-
-/**
  * Class to efficiently track reference designators and provide next available designators.
  *
  * Maintains internal data structures for O(1) lookup of existing designators and efficient
@@ -103,27 +87,13 @@ public:
      * @param aRefNumberMap map from reference numbers to vectors of SCH_REFERENCE for currently used references
      * @param aRequiredUnits vector of unit numbers needed (negative values are ignored)
      * @param aMinValue the minimum value to start searching from
+     * @param aAcceptNumber Optional additional check before a number is accepted or reserved
      * @return the next available reference number
      */
-    int GetNextRefDesForUnits( const SCH_REFERENCE& aRef,
+    int GetNextRefDesForUnits( const SCH_REFERENCE&                             aRef,
                                const std::map<int, std::vector<SCH_REFERENCE>>& aRefNumberMap,
-                               const std::vector<int>& aRequiredUnits,
-                               int aMinValue );
-
-    /**
-     * Set an external units checker function for SCH_REFERENCE objects.
-     *
-     * This allows overriding the default units availability logic without
-     * requiring LIB_SYMBOL dependencies.
-     *
-     * @param aChecker function to use for checking unit availability
-     */
-    void SetUnitsChecker( const UNITS_CHECKER_FUNC<SCH_REFERENCE>& aChecker );
-
-    /**
-     * Clear the external units checker, reverting to default behavior.
-     */
-    void ClearUnitsChecker();
+                               const std::vector<int>& aRequiredUnits, int aMinValue,
+                               const std::function<bool( int )>& aAcceptNumber = {} );
 
     /**
      * Serialize the tracker data to a compact string representation.
@@ -179,9 +149,6 @@ private:
     std::unordered_set<std::string>              m_allRefDes;
 
     bool m_reuseRefDes; ///< If true, allows reusing existing reference designators
-
-    /// External units checker function (optional)
-    UNITS_CHECKER_FUNC<SCH_REFERENCE> m_externalUnitsChecker;
 
     /**
      * Internal implementation of Insert without locking.

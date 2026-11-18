@@ -18,6 +18,8 @@
  */
 
 #include <boost/test/unit_test.hpp>
+#include <qa_utils/wx_utils/unit_test_utils.h>
+
 #include <tool/tool_dispatcher.h>
 #include <tool/tool_manager.h>
 #include <tool/tool_interactive.h>
@@ -101,7 +103,14 @@ BOOST_AUTO_TEST_SUITE_END()
 
 namespace
 {
-const TOOL_EVENT ARM_MENU_EVENT( TC_COMMAND, TA_ACTION, std::string( "test.armContextMenu" ) );
+// TOOL_EVENT's constructor reads ACTIONS::cancelInteractive, a static in another translation
+// unit, so the event has to be initialized on first use rather than at file scope
+const TOOL_EVENT& armMenuEvent()
+{
+    static const TOOL_EVENT evt( TC_COMMAND, TA_ACTION, std::string( "test.armContextMenu" ) );
+
+    return evt;
+}
 
 
 class YIELDING_EVENT_LOOP : public wxEventLoop
@@ -136,7 +145,7 @@ public:
     bool m_menuRan;
 
 private:
-    void setTransitions() override { Go( &CONTEXT_MENU_TEST_TOOL::ArmMenu, ARM_MENU_EVENT ); }
+    void setTransitions() override { Go( &CONTEXT_MENU_TEST_TOOL::ArmMenu, armMenuEvent() ); }
 
     ACTION_MENU m_menu;
 };
@@ -147,13 +156,11 @@ BOOST_AUTO_TEST_SUITE( ToolManagerContextMenu )
 
 BOOST_AUTO_TEST_CASE( RightClickOpensMenuWhileEventLoopYields )
 {
-#ifdef __WXGTK__
-    if( wxDisplay::GetCount() == 0 )
+    if( !KI_TEST::CanDoDisplayTests() )
     {
         BOOST_TEST_MESSAGE( "Skipping test - no display available" );
         return;
     }
-#endif
 
     TOOL_MANAGER            mgr;
     CONTEXT_MENU_TEST_TOOL* tool = new CONTEXT_MENU_TEST_TOOL();
@@ -165,7 +172,7 @@ BOOST_AUTO_TEST_CASE( RightClickOpensMenuWhileEventLoopYields )
     YIELDING_EVENT_LOOP  loop;
     wxEventLoopActivator activate( &loop );
 
-    mgr.ProcessEvent( ARM_MENU_EVENT );
+    mgr.ProcessEvent( armMenuEvent() );
     BOOST_CHECK( !tool->m_menuRan );
 
     mgr.ProcessEvent( TOOL_EVENT( TC_MOUSE, TA_MOUSE_CLICK, BUT_RIGHT ) );

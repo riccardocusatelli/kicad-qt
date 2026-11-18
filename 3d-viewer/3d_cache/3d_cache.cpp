@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #define GLM_FORCE_RADIANS
@@ -86,8 +82,8 @@ public:
 
 private:
     // prohibit assignment and default copy constructor
-    S3D_CACHE_ENTRY( const S3D_CACHE_ENTRY& source );
-    S3D_CACHE_ENTRY& operator=( const S3D_CACHE_ENTRY& source );
+    S3D_CACHE_ENTRY( const S3D_CACHE_ENTRY& source ) = delete;
+    S3D_CACHE_ENTRY& operator=( const S3D_CACHE_ENTRY& source ) = delete;
 
     wxString m_CacheBaseName;  // base name of cache file
 };
@@ -142,56 +138,73 @@ S3D_CACHE::~S3D_CACHE()
 }
 
 
-SCENEGRAPH* S3D_CACHE::load( const wxString& aModelFile, const wxString& aBasePath,
-                             S3D_CACHE_ENTRY** aCachePtr,
-                             std::vector<const EMBEDDED_FILES*> aEmbeddedFilesStack )
+SCENEGRAPH* S3D_CACHE::load( const wxString& aModelFile, const wxString& aBasePath, S3D_CACHE_ENTRY** aCachePtr,
+                             std::vector<const EMBEDDED_FILES*> aEmbeddedFilesStack, S3DMODEL** aRenderModel )
 {
     if( aCachePtr )
         *aCachePtr = nullptr;
 
+    if( aRenderModel )
+        *aRenderModel = nullptr;
+
     wxString full3Dpath = m_FNResolver->ResolvePath( aModelFile, aBasePath, std::move( aEmbeddedFilesStack ) );
+
+    // In CLI / scripting contexts, transparently substitute a matching
+    // STEP model for a missing WRL reference so renders and exports
+    // don't silently lose geometry.  The GUI handles this via the
+    // DIALOG_MIGRATE_3D_MODELS load-time auto-migration, so we skip the
+    // fallback there to avoid masking user-visible "missing" state.
+    if( full3Dpath.empty() && !Pgm().IsGUI() && MODEL_SUBSTITUTION::IsWrlExtension( aModelFile ) )
+    {
+        std::lock_guard<std::mutex> catLock( m_substCatalogMutex );
+
+        if( !m_substCatalogBuilt )
+        {
+            const wxString projectPath = m_project ? m_project->GetProjectPath() : wxString();
+            m_substCatalog.Build( projectPath, m_FNResolver );
+            m_substCatalogBuilt = true;
+        }
+
+        const wxString subst = m_substCatalog.FindMatchFor( aModelFile );
+
+        if( !subst.IsEmpty() )
+        {
+            KI_LOG_TRACE( MASK_3D_CACHE, wxT( "%s:%s:%d\n * [3D model] substituting '%s' -> '%s'\n" ),
+                        __FILE__, __FUNCTION__, __LINE__, aModelFile, subst );
+            full3Dpath = subst;
+        }
+    }
 
     if( full3Dpath.empty() )
     {
-        // In CLI / scripting contexts, transparently substitute a matching
-        // STEP model for a missing WRL reference so renders and exports
-        // don't silently lose geometry.  The GUI handles this via the
-        // DIALOG_MIGRATE_3D_MODELS load-time auto-migration, so we skip the
-        // fallback there to avoid masking user-visible "missing" state.
-        if( !Pgm().IsGUI() && MODEL_SUBSTITUTION::IsWrlExtension( aModelFile ) )
-        {
-            std::lock_guard<std::mutex> catLock( m_substCatalogMutex );
-
-            if( !m_substCatalogBuilt )
-            {
-                const wxString projectPath =
-                        m_project ? m_project->GetProjectPath() : wxString();
-                m_substCatalog.Build( projectPath, m_FNResolver );
-                m_substCatalogBuilt = true;
-            }
-
-            const wxString subst = m_substCatalog.FindMatchFor( aModelFile );
-
-            if( !subst.IsEmpty() )
-            {
-                KI_LOG_TRACE( MASK_3D_CACHE,
-                            wxT( "%s:%s:%d\n * [3D model] substituting '%s' -> '%s'\n" ),
-                            __FILE__, __FUNCTION__, __LINE__, aModelFile, subst );
-                full3Dpath = subst;
-            }
-        }
-
-        if( full3Dpath.empty() )
-        {
-            // the model cannot be found; we cannot proceed
-            KI_LOG_TRACE( MASK_3D_CACHE, wxT( "%s:%s:%d\n * [3D model] could not find model '%s'\n" ),
-                        __FILE__, __FUNCTION__, __LINE__, aModelFile );
-            return nullptr;
-        }
+        // the model cannot be found; we cannot proceed
+        KI_LOG_TRACE( MASK_3D_CACHE, wxT( "%s:%s:%d\n * [3D model] could not find model '%s'\n" ),
+                    __FILE__, __FUNCTION__, __LINE__, aModelFile );
+        return nullptr;
     }
 
     // check cache if file is already loaded
     std::lock_guard<std::mutex> lock( mutex3D_cache );
+
+    auto finishEntry = [&]( S3D_CACHE_ENTRY* ep ) -> SCENEGRAPH*
+    {
+        if( !ep )
+            return nullptr;
+
+        if( aCachePtr )
+            *aCachePtr = ep;
+
+        // Lazy renderData conversion under the same lock that owns the entry.
+        if( aRenderModel )
+        {
+            if( !ep->renderData && ep->sceneData )
+                ep->renderData = S3D::GetModel( ep->sceneData );
+
+            *aRenderModel = ep->renderData;
+        }
+
+        return ep->sceneData;
+    };
 
     std::map< wxString, S3D_CACHE_ENTRY*, rsort_wxString >::iterator mi;
     mi = m_CacheMap.find( full3Dpath );
@@ -229,19 +242,17 @@ SCENEGRAPH* S3D_CACHE::load( const wxString& aModelFile, const wxString& aBasePa
                 if( nullptr != mi->second->renderData )
                     S3D::Destroy3DModel( &mi->second->renderData );
 
-                mi->second->sceneData = m_Plugins->Load3DModel( full3Dpath,
-                                                                mi->second->pluginInfo );
+                mi->second->sceneData = m_Plugins->Load3DModel( full3Dpath, mi->second->pluginInfo );
             }
         }
 
-        if( nullptr != aCachePtr )
-            *aCachePtr = mi->second;
-
-        return mi->second->sceneData;
+        return finishEntry( mi->second );
     }
 
     // a cache item does not exist; search the Filename->Cachename map
-    return checkCache( full3Dpath, aCachePtr );
+    S3D_CACHE_ENTRY* ep = nullptr;
+    checkCache( full3Dpath, &ep );
+    return finishEntry( ep );
 }
 
 
@@ -271,8 +282,7 @@ SCENEGRAPH* S3D_CACHE::checkCache( const wxString& aFileName, S3D_CACHE_ENTRY** 
 
         if( m_CacheMap.emplace( aFileName, ep ).second == false )
         {
-            KI_LOG_TRACE( MASK_3D_CACHE,
-                        wxT( "%s:%s:%d\n * [BUG] duplicate entry in map file; key = '%s'" ),
+            KI_LOG_TRACE( MASK_3D_CACHE, wxT( "%s:%s:%d\n * [BUG] duplicate entry in map file; key = '%s'" ),
                         __FILE__, __FUNCTION__, __LINE__, aFileName );
 
             m_CacheList.pop_back();
@@ -289,8 +299,7 @@ SCENEGRAPH* S3D_CACHE::checkCache( const wxString& aFileName, S3D_CACHE_ENTRY** 
 
     if( m_CacheMap.emplace( aFileName, ep ).second == false )
     {
-        KI_LOG_TRACE( MASK_3D_CACHE,
-                    wxT( "%s:%s:%d\n * [BUG] duplicate entry in map file; key = '%s'" ),
+        KI_LOG_TRACE( MASK_3D_CACHE, wxT( "%s:%s:%d\n * [BUG] duplicate entry in map file; key = '%s'" ),
                     __FILE__, __FUNCTION__, __LINE__, aFileName );
 
         m_CacheList.pop_back();
@@ -308,7 +317,9 @@ SCENEGRAPH* S3D_CACHE::checkCache( const wxString& aFileName, S3D_CACHE_ENTRY** 
 
     if( !ADVANCED_CFG::GetCfg().m_Skip3DModelFileCache && wxFileName::FileExists( cachename )
         && loadCacheData( ep ) )
+    {
         return ep->sceneData;
+    }
 
     ep->sceneData = m_Plugins->Load3DModel( aFileName, ep->pluginInfo );
 
@@ -323,8 +334,7 @@ bool S3D_CACHE::getHash( const wxString& aFileName, HASH_128& aHash )
 {
     if( aFileName.empty() )
     {
-        KI_LOG_TRACE( MASK_3D_CACHE, wxT( "%s:%s:%d\n * [BUG] empty filename" ),
-                    __FILE__, __FUNCTION__, __LINE__ );
+        KI_LOG_TRACE( MASK_3D_CACHE, wxT( "%s:%s:%d\n * [BUG] empty filename" ), __FILE__, __FUNCTION__, __LINE__ );
 
         return false;
     }
@@ -357,16 +367,14 @@ bool S3D_CACHE::loadCacheData( S3D_CACHE_ENTRY* aCacheItem )
 
     if( bname.empty() )
     {
-        KI_LOG_TRACE( MASK_3D_CACHE,
-                    wxT( " * [3D model] cannot load cached model; no file hash available" ) );
+        KI_LOG_TRACE( MASK_3D_CACHE, wxT( " * [3D model] cannot load cached model; no file hash available" ) );
 
         return false;
     }
 
     if( m_CacheDir.empty() )
     {
-        KI_LOG_TRACE( MASK_3D_CACHE,
-                    wxT( " * [3D model] cannot load cached model; config directory unknown" ) );
+        KI_LOG_TRACE( MASK_3D_CACHE, wxT( " * [3D model] cannot load cached model; config directory unknown" ) );
 
         return false;
     }
@@ -413,16 +421,14 @@ bool S3D_CACHE::saveCacheData( S3D_CACHE_ENTRY* aCacheItem )
 
     if( bname.empty() )
     {
-        KI_LOG_TRACE( MASK_3D_CACHE,
-                    wxT( " * [3D model] cannot load cached model; no file hash available" ) );
+        KI_LOG_TRACE( MASK_3D_CACHE, wxT( " * [3D model] cannot load cached model; no file hash available" ) );
 
         return false;
     }
 
     if( m_CacheDir.empty() )
     {
-        KI_LOG_TRACE( MASK_3D_CACHE,
-                    wxT( " * [3D model] cannot load cached model; config directory unknown" ) );
+        KI_LOG_TRACE( MASK_3D_CACHE, wxT( " * [3D model] cannot load cached model; config directory unknown" ) );
 
         return false;
     }
@@ -433,15 +439,13 @@ bool S3D_CACHE::saveCacheData( S3D_CACHE_ENTRY* aCacheItem )
     {
         if( !wxFileName::FileExists( fname ) )
         {
-            KI_LOG_TRACE( MASK_3D_CACHE,
-                        wxT( " * [3D model] path exists but is not a regular file '%s'" ), fname );
+            KI_LOG_TRACE( MASK_3D_CACHE, wxT( " * [3D model] path exists but is not a regular file '%s'" ), fname );
 
             return false;
         }
     }
 
-    return S3D::WriteCache( fname.ToUTF8(), true, (SGNODE*)aCacheItem->sceneData,
-                            aCacheItem->pluginInfo.c_str() );
+    return S3D::WriteCache( fname.ToUTF8(), true, (SGNODE*)aCacheItem->sceneData, aCacheItem->pluginInfo.c_str() );
 }
 
 
@@ -460,8 +464,7 @@ bool S3D_CACHE::Set3DConfigDir( const wxString& aConfigDir )
 
         if( !cfgdir.DirExists() )
         {
-            KI_LOG_TRACE( MASK_3D_CACHE,
-                        wxT( "%s:%s:%d\n * failed to create 3D configuration directory '%s'" ),
+            KI_LOG_TRACE( MASK_3D_CACHE, wxT( "%s:%s:%d\n * failed to create 3D configuration directory '%s'" ),
                         __FILE__, __FUNCTION__, __LINE__, cfgdir.GetPath() );
 
             return false;
@@ -473,9 +476,8 @@ bool S3D_CACHE::Set3DConfigDir( const wxString& aConfigDir )
     // inform the file resolver of the config directory
     if( !m_FNResolver->Set3DConfigDir( m_ConfigDir ) )
     {
-        KI_LOG_TRACE( MASK_3D_CACHE,
-                    wxT( "%s:%s:%d\n * could not set 3D Config Directory on filename resolver\n"
-                         " * config directory: '%s'" ),
+        KI_LOG_TRACE( MASK_3D_CACHE, wxT( "%s:%s:%d\n * could not set 3D Config Directory on filename resolver\n"
+                                        " * config directory: '%s'" ),
                     __FILE__, __FUNCTION__, __LINE__, m_ConfigDir );
     }
 
@@ -496,8 +498,7 @@ bool S3D_CACHE::Set3DConfigDir( const wxString& aConfigDir )
 
         if( !cacheDir.DirExists() )
         {
-            KI_LOG_TRACE( MASK_3D_CACHE,
-                        wxT( "%s:%s:%d\n * failed to create 3D cache directory '%s'" ),
+            KI_LOG_TRACE( MASK_3D_CACHE, wxT( "%s:%s:%d\n * failed to create 3D cache directory '%s'" ),
                         __FILE__, __FUNCTION__, __LINE__, cacheDir.GetPath() );
 
             return false;
@@ -517,6 +518,8 @@ bool S3D_CACHE::SetProject( PROJECT* aProject )
 
     if( m_FNResolver->SetProject( aProject, &hasChanged ) && hasChanged )
     {
+        std::lock_guard<std::mutex> lock( mutex3D_cache );
+
         m_CacheMap.clear();
 
         std::list< S3D_CACHE_ENTRY* >::iterator sL = m_CacheList.begin();
@@ -557,6 +560,8 @@ std::list< wxString > const* S3D_CACHE::GetFileFilters() const
 
 void S3D_CACHE::FlushCache( bool closePlugins )
 {
+    std::lock_guard<std::mutex> lock( mutex3D_cache );
+
     std::list< S3D_CACHE_ENTRY* >::iterator sCL = m_CacheList.begin();
     std::list< S3D_CACHE_ENTRY* >::iterator eCL = m_CacheList.end();
 
@@ -584,26 +589,10 @@ void S3D_CACHE::ClosePlugins()
 S3DMODEL* S3D_CACHE::GetModel( const wxString& aModelFileName, const wxString& aBasePath,
                                std::vector<const EMBEDDED_FILES*> aEmbeddedFilesStack )
 {
-    S3D_CACHE_ENTRY* cp = nullptr;
-    SCENEGRAPH*      sp = load( aModelFileName, aBasePath, &cp, std::move( aEmbeddedFilesStack ) );
+    S3DMODEL* mp = nullptr;
 
-    if( !sp )
+    if( !load( aModelFileName, aBasePath, nullptr, std::move( aEmbeddedFilesStack ), &mp ) )
         return nullptr;
-
-    if( !cp )
-    {
-        KI_LOG_TRACE( MASK_3D_CACHE,
-                    wxT( "%s:%s:%d\n  * [BUG] model loaded with no associated S3D_CACHE_ENTRY" ),
-                    __FILE__, __FUNCTION__, __LINE__ );
-
-        return nullptr;
-    }
-
-    if( cp->renderData )
-        return cp->renderData;
-
-    S3DMODEL* mp = S3D::GetModel( sp );
-    cp->renderData = mp;
 
     return mp;
 }

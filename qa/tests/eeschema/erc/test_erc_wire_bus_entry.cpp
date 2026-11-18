@@ -14,8 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one at
- * http://www.gnu.org/licenses/
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
@@ -29,6 +28,8 @@
 #include <settings/settings_manager.h>
 #include <locale_io.h>
 
+namespace
+{
 struct ERC_REGRESSION_TEST_FIXTURE
 {
     ERC_REGRESSION_TEST_FIXTURE() {}
@@ -36,6 +37,7 @@ struct ERC_REGRESSION_TEST_FIXTURE
     SETTINGS_MANAGER           m_settingsManager;
     std::unique_ptr<SCHEMATIC> m_schematic;
 };
+} // namespace
 
 
 BOOST_FIXTURE_TEST_CASE( ERCWireBusEntry, ERC_REGRESSION_TEST_FIXTURE )

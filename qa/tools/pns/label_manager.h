@@ -51,6 +51,10 @@ public:
     void Add( VECTOR2I target, wxString msg, KIGFX::COLOR4D color );
     void Add( const SHAPE_LINE_CHAIN& aL, KIGFX::COLOR4D color );
     void Redraw( KIGFX::VIEW_OVERLAY* aOvl );
+    void Clear()
+    {
+        m_labels.clear();
+    }
 
 private:
     VECTOR2I nearestBoxCorner( BOX2I b, VECTOR2I p );

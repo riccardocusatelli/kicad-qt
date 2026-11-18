@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -30,10 +30,20 @@
 #include "odb_eda_data.h"
 
 class ODB_COMPONENT;
+class PCB_IO_ODBPP;
+struct S3DMODEL;
+class FP_3DMODEL;
+
+namespace ODB
+{
+double ModelHeightAboveBoard( const S3DMODEL& aModel, const FP_3DMODEL& aPlacement );
+bool HasShownModel( const FOOTPRINT* aFp );
+}
+
 class COMPONENTS_MANAGER : public ATTR_MANAGER
 {
 public:
-    COMPONENTS_MANAGER() = default;
+    explicit COMPONENTS_MANAGER( PCB_IO_ODBPP* aPlugin ) : m_plugin( aPlugin ) {}
 
     virtual ~COMPONENTS_MANAGER() { m_compList.clear(); }
 
@@ -42,6 +52,8 @@ public:
     void Write( std::ostream& ost ) const;
 
 private:
+    /// Plugin the export runs under, used for formatting and designator reports
+    PCB_IO_ODBPP*            m_plugin;
     std::list<ODB_COMPONENT> m_compList;
     std::set<wxString>       m_usedCompNames;
 };

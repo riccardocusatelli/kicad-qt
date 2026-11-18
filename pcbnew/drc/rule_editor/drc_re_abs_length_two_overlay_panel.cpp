@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "drc_re_abs_length_two_overlay_panel.h"
@@ -32,7 +28,6 @@
 #include <wx/checkbox.h>
 #include <wx/textctrl.h>
 #include <wx/stattext.h>
-#include <dialogs/rule_editor_dialog_base.h>
 #include <eda_base_frame.h>
 
 DRC_RE_ABS_LENGTH_TWO_OVERLAY_PANEL::DRC_RE_ABS_LENGTH_TWO_OVERLAY_PANEL(
@@ -72,47 +67,29 @@ DRC_RE_ABS_LENGTH_TWO_OVERLAY_PANEL::DRC_RE_ABS_LENGTH_TWO_OVERLAY_PANEL(
     toleranceField->SetUnitBinder( m_toleranceBinder.get() );
     toleranceField->GetControl()->SetValidator( VALIDATOR_NUMERIC_CTRL( false, false ) );
 
-    auto notifyModified = [this]( wxCommandEvent& )
-    {
-        RULE_EDITOR_DIALOG_BASE* dlg = RULE_EDITOR_DIALOG_BASE::GetDialog( this );
-        if( dlg )
-            dlg->SetModified();
-    };
 
-    optLengthField->GetControl()->Bind( wxEVT_TEXT, notifyModified );
-    toleranceField->GetControl()->Bind( wxEVT_TEXT, notifyModified );
-
-    auto notifySave = [this]( wxCommandEvent& aEvent )
-    {
-        RULE_EDITOR_DIALOG_BASE* dlg = RULE_EDITOR_DIALOG_BASE::GetDialog( this );
-        if( dlg )
-            dlg->OnSave( aEvent );
-    };
-
-    optLengthField->GetControl()->Bind( wxEVT_TEXT_ENTER, notifySave );
-    toleranceField->GetControl()->Bind( wxEVT_TEXT_ENTER, notifySave );
-
-    DRC_RE_FIELD_POSITION checkboxPos( 80, 300, 170, 3, _( "Time domain (ps)" ), LABEL_POSITION::NONE );
+    DRC_RE_FIELD_POSITION checkboxPos( 80, 300, 170, _( "Time domain (ps)" ), LABEL_POSITION::NONE,
+                                       _( "The values are picoseconds instead of a length" ) );
 
     m_timeDomainCheckbox = static_cast<wxCheckBox*>( AddCheckbox( wxS( "time_domain" ), checkboxPos )->GetControl() );
     m_timeDomainCheckbox->SetValue( m_data->IsTimeDomain() );
 
     m_timeDomainCheckbox->Bind( wxEVT_CHECKBOX,
-                                [this, notifyModified]( wxCommandEvent& aEvent )
+                                [this]( wxCommandEvent& aEvent )
                                 {
                                     TransferDataFromWindow();
                                     m_data->SetTimeDomain( m_timeDomainCheckbox->GetValue() );
                                     updateDomainUnits();
                                     TransferDataToWindow();
-                                    notifyModified( aEvent );
+                                    aEvent.Skip();
                                 } );
 
-    SetMinSize( wxSize( GetMinSize().x, FromDIP( 190 ) ) );
+    SetMinimumHeightDIP( 190 );
 
     // Position all fields and update the panel layout
     updateDomainUnits();
-    PositionFields();
     TransferDataToWindow();
+    PositionFields();
 }
 
 

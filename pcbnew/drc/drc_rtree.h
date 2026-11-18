@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef DRC_RTREE_H_
@@ -27,12 +23,13 @@
 
 #include <board_item.h>
 #include <pcb_field.h>
+#include <algorithm>
 #include <memory>
 #include <unordered_set>
 #include <set>
 #include <vector>
 
-#include <geometry/rtree.h>
+#include <geometry/rtree/packed_rtree.h>
 #include <geometry/shape.h>
 #include <geometry/shape_segment.h>
 #include <math/vector2d.h>
@@ -52,7 +49,7 @@ public:
     struct ITEM_WITH_SHAPE
     {
         ITEM_WITH_SHAPE( BOARD_ITEM *aParent, const SHAPE* aShape,
-                         std::shared_ptr<SHAPE> aParentShape = nullptr ) :
+                         std::shared_ptr<SHAPE> aParentShape ) :
             parent( aParent ),
             shape( aShape ),
             shapeStorage( nullptr ),
@@ -60,7 +57,7 @@ public:
         {};
 
         ITEM_WITH_SHAPE( BOARD_ITEM *aParent, const std::shared_ptr<SHAPE>& aShape,
-                         std::shared_ptr<SHAPE> aParentShape = nullptr ) :
+                         std::shared_ptr<SHAPE> aParentShape ) :
             parent( aParent ),
             shape( aShape.get() ),
             shapeStorage( aShape ),
@@ -70,38 +67,35 @@ public:
         BOARD_ITEM*            parent;
         const SHAPE*           shape;
         std::shared_ptr<SHAPE> shapeStorage;
+
+        /// Never null; Insert() only builds these from a shape wxCHECK2_MSG has already validated
         std::shared_ptr<SHAPE> parentShape;
     };
 
 private:
-    using drc_rtree = RTree<ITEM_WITH_SHAPE*, int, 2, double>;
+    using drc_rtree = KIRTREE::PACKED_RTREE<ITEM_WITH_SHAPE*, int, 2>;
+    using drc_rtree_builder = typename drc_rtree::Builder;
 
 public:
     DRC_RTREE()
     {
-        for( int layer : LSET::AllLayersMask() )
-            m_tree[layer] = new drc_rtree();
-
         m_count = 0;
     }
 
     ~DRC_RTREE()
     {
-        for( auto& [_, tree] : m_tree )
-        {
-            for( DRC_RTREE::ITEM_WITH_SHAPE* el : *tree )
-                delete el;
-
-            delete tree;
-        }
+        for( ITEM_WITH_SHAPE* p : m_owned )
+            delete p;
     }
 
     /**
      * Insert an item into the tree on a particular layer with an optional worst clearance.
+     * Items are staged into per-layer builders; call Build() to finalize.
      */
-    void Insert( BOARD_ITEM* aItem, PCB_LAYER_ID aLayer, int aWorstClearance = 0, bool aAtomicTables = false )
+    void Insert( BOARD_ITEM* aItem, PCB_LAYER_ID aLayer, DRC_CONSTRAINT_T aConstraintType,
+                 int aWorstClearance = 0, bool aAtomicTables = false )
     {
-        Insert( aItem, aLayer, aLayer, aWorstClearance, aAtomicTables );
+        Insert( aItem, aLayer, aLayer, aConstraintType, aWorstClearance, aAtomicTables );
     }
 
     /**
@@ -109,9 +103,10 @@ public:
      * source layer to be different from the tree layer.
      */
     void Insert( BOARD_ITEM* aItem, PCB_LAYER_ID aRefLayer, PCB_LAYER_ID aTargetLayer,
-                 int aWorstClearance, bool aAtomicTables = false )
+                 DRC_CONSTRAINT_T aConstraintType, int aWorstClearance, bool aAtomicTables = false )
     {
         KI_CHECK( aTargetLayer != UNDEFINED_LAYER, /* void */ );
+        KI_CHECK_MSG( !m_tree.count( aTargetLayer ), /* void */, wxT( "Insert after Build() is silently wrong" ) );
 
         if( aItem->Type() == PCB_FIELD_T && !static_cast<PCB_FIELD*>( aItem )->IsVisible() )
             return;
@@ -122,7 +117,7 @@ public:
             parent = aItem->GetParent();
 
         std::vector<const SHAPE*> subshapes;
-        std::shared_ptr<SHAPE> shape = aItem->GetEffectiveShape( aRefLayer );
+        std::shared_ptr<SHAPE> shape = aItem->GetEffectiveShape( aRefLayer, FLASHING::DEFAULT, aConstraintType );
 
         KI_CHECK2_MSG( shape, return, wxT( "Item does not have a valid shape for this layer" ) );
 
@@ -144,7 +139,9 @@ public:
             const int        mmax[2] = { bbox.GetRight(), bbox.GetBottom() };
             ITEM_WITH_SHAPE* itemShape = new ITEM_WITH_SHAPE( parent, subshape, shape );
 
-            m_tree[aTargetLayer]->Insert( mmin, mmax, itemShape );
+            m_owned.push_back( itemShape );
+            m_builders[aTargetLayer].Add( mmin, mmax, itemShape );
+            recordPadding( aTargetLayer, aWorstClearance );
             m_count++;
         }
 
@@ -159,9 +156,23 @@ public:
             const int        mmax[2] = { bbox.GetRight(), bbox.GetBottom() };
             ITEM_WITH_SHAPE* itemShape = new ITEM_WITH_SHAPE( parent, hole, shape );
 
-            m_tree[aTargetLayer]->Insert( mmin, mmax, itemShape );
+            m_owned.push_back( itemShape );
+            m_builders[aTargetLayer].Add( mmin, mmax, itemShape );
+            recordPadding( aTargetLayer, aWorstClearance );
             m_count++;
         }
+    }
+
+    /**
+     * Finalize all pending inserts by bulk-building packed R-trees from the staged items.
+     * Must be called after all Insert() calls and before any queries.
+     */
+    void Build()
+    {
+        for( auto& [layer, builder] : m_builders )
+            m_tree[layer] = builder.Build();
+
+        m_builders.clear();
     }
 
     /**
@@ -169,14 +180,13 @@ public:
      */
     void clear()
     {
-        for( auto& [_, tree] : m_tree )
-        {
-            for( ITEM_WITH_SHAPE* el : *tree )
-                delete el;
+        for( ITEM_WITH_SHAPE* p : m_owned )
+            delete p;
 
-            tree->RemoveAll();
-        }
-
+        m_owned.clear();
+        m_tree.clear();
+        m_builders.clear();
+        m_minPadding.clear();
         m_count = 0;
     }
 
@@ -209,61 +219,9 @@ public:
                 };
 
         if( auto it = m_tree.find( aTargetLayer ); it != m_tree.end() )
-            it->second->Search( min, max, visit );
+            it->second.Search( min, max, visit );
 
         return count > 0;
-    }
-
-    /**
-     * As CheckColliding(), but the clearance is resolved per item hit rather than once for the
-     * whole query, so a rule written against a particular obstacle is honoured.
-     * @param aClearanceResolver returns false to ignore an item, else writes what it is owed
-     */
-    bool CheckColliding( SHAPE* aRefShape, PCB_LAYER_ID aTargetLayer, int aMaxClearance,
-                         const std::function<bool( BOARD_ITEM*, int* )>& aClearanceResolver ) const
-    {
-        BOX2I box = aRefShape->BBox();
-        box.Inflate( aMaxClearance );
-
-        int min[2] = { box.GetX(),     box.GetY() };
-        int max[2] = { box.GetRight(), box.GetBottom() };
-
-        bool collision = false;
-
-        // Compound and triangulated items are visited once per subshape, but the clearance is
-        // a property of the item.
-        std::unordered_map<BOARD_ITEM*, std::pair<bool, int>> resolved;
-
-        auto visit =
-                [&] ( ITEM_WITH_SHAPE* aItem ) -> bool
-                {
-                    auto it = resolved.find( aItem->parent );
-
-                    if( it == resolved.end() )
-                    {
-                        int  clearance = 0;
-                        bool test = aClearanceResolver( aItem->parent, &clearance );
-
-                        it = resolved.emplace( aItem->parent,
-                                               std::make_pair( test, clearance ) ).first;
-                    }
-
-                    if( !it->second.first )
-                        return true;
-
-                    if( aRefShape->Collide( aItem->shape, it->second.second ) )
-                    {
-                        collision = true;
-                        return false;
-                    }
-
-                    return true;
-                };
-
-        if( auto it = m_tree.find( aTargetLayer ); it != m_tree.end() )
-            it->second->Search( min, max, visit );
-
-        return collision;
     }
 
     /**
@@ -285,13 +243,15 @@ public:
         // shapes
         std::unordered_map<BOARD_ITEM*, bool> filterResults;
 
+        std::shared_ptr<SHAPE> refShape = aRefItem->GetEffectiveShape( aRefLayer );
+
+        // A mask aperture reaches past the item's copper bounding box, so cover both
         BOX2I box = aRefItem->GetBoundingBox();
+        box.Merge( refShape->BBox() );
         box.Inflate( aClearance );
 
         int min[2] = { box.GetX(),     box.GetY() };
         int max[2] = { box.GetRight(), box.GetBottom() };
-
-        std::shared_ptr<SHAPE> refShape = aRefItem->GetEffectiveShape( aRefLayer );
 
         int count = 0;
 
@@ -335,7 +295,90 @@ public:
                 };
 
         if( auto it = m_tree.find( aTargetLayer ); it != m_tree.end() )
-            it->second->Search( min, max, visit );
+            it->second.Search( min, max, visit );
+
+        return count;
+    }
+
+    /**
+     * Same broad phase as QueryColliding(), but the caller supplies the reference shape and the
+     * visitor also receives the tree-owned effective shape of the colliding item's parent, so
+     * neither side has to be rebuilt for the narrow-phase test.
+     *
+     * Entry boxes were already inflated by the worst clearance passed to Insert(), so with
+     * @p aUsePaddingCredit the query box only has to make up the difference.  Opting in requires
+     * a side-effect-free @p aFilter and an @p aRefItem whose bounding box contains
+     * @p aRefShape's; callers must audit both, and neither holds for every item type.
+     */
+    int QueryCollidingPreparedCopper(
+            BOARD_ITEM* aRefItem, const std::shared_ptr<SHAPE>& aRefShape,
+            PCB_LAYER_ID aTargetLayer, std::function<bool( BOARD_ITEM* )> aFilter,
+            std::function<bool( BOARD_ITEM*, const std::shared_ptr<SHAPE>& )> aVisitor,
+            int aClearance = 0, bool aUsePaddingCredit = false ) const
+    {
+        // PAD::GetEffectiveShape() returns null when a layer has no cached shape
+        KI_CHECK( aRefShape, 0 );
+
+        std::unordered_set<BOARD_ITEM*>       collidingCompounds;
+        std::unordered_map<BOARD_ITEM*, bool> filterResults;
+        BOX2I                                 box = aRefItem->GetBoundingBox();
+        int                                   inflation = aClearance;
+
+        if( aUsePaddingCredit && aClearance >= 0 )
+        {
+            // Checked before the box grows, because the credit can leave inflation at 0.  A
+            // reference whose bounds do not contain its own shape would shrink the query past a
+            // real candidate and silently drop a clearance violation, so it pays full inflation
+            // instead of getting a wrong answer in a release build
+            bool contained = box.Contains( aRefShape->BBox() );
+
+            KI_ASSERT_MSG( contained, wxT( "Padding credit needs the item bbox to contain its own shape" ) );
+
+            auto paddingIt = m_minPadding.find( aTargetLayer );
+
+            if( contained && paddingIt != m_minPadding.end() && paddingIt->second >= 0 )
+                inflation = std::max( 0, aClearance - paddingIt->second );
+        }
+
+        box.Inflate( inflation );
+
+        int min[2] = { box.GetX(), box.GetY() };
+        int max[2] = { box.GetRight(), box.GetBottom() };
+        int count = 0;
+
+        auto visit =
+                [&]( ITEM_WITH_SHAPE* aItem ) -> bool
+                {
+                    if( aItem->parent == aRefItem
+                            || collidingCompounds.find( aItem->parent ) != collidingCompounds.end() )
+                    {
+                        return true;
+                    }
+
+                    auto [filterIt, inserted] = filterResults.emplace( aItem->parent, false );
+
+                    if( inserted )
+                        filterIt->second = aFilter && !aFilter( aItem->parent );
+
+                    if( filterIt->second )
+                        return true;
+
+                    KI_CHECK( aItem->shape, false );
+
+                    if( aRefShape->Collide( aItem->shape, aClearance ) )
+                    {
+                        collidingCompounds.insert( aItem->parent );
+                        count++;
+
+                        if( aVisitor )
+                            return aVisitor( aItem->parent, aItem->parentShape );
+                    }
+
+                    return true;
+                };
+
+        if( auto it = m_tree.find( aTargetLayer ); it != m_tree.end() )
+            it->second.Search( min, max, visit );
 
         return count;
     }
@@ -384,7 +427,7 @@ public:
                 };
 
         if( auto it = m_tree.find( aLayer ); it != m_tree.end() )
-            it->second->Search( min, max, visit );
+            it->second.Search( min, max, visit );
 
         if( collision )
         {
@@ -459,23 +502,26 @@ public:
 
                     return true;
                 };
+
         auto it = m_tree.find( aLayer );
 
         if( it == m_tree.end() )
             return false;
 
         if( poly && poly->OutlineCount() == 1 && poly->HoleCount( 0 ) == 0 )
-            it->second->Search( min, max, polyVisitor );
+            it->second.Search( min, max, polyVisitor );
         else
-            it->second->Search( min, max, visitor );
+            it->second.Search( min, max, visitor );
 
         return collision;
     }
 
     /**
-     * Gets the BOARD_ITEMs that overlap the specified point/layer
+     * Get the #BOARD_ITEM objects that overlap the specified point/layer.
+     *
      * @param aPt Position on the tree
      * @param aLayer Layer to search
+     * @param aClearance is any additional clearance to get objects.
      * @return vector of overlapping BOARD_ITEMS*
      */
     std::unordered_set<BOARD_ITEM*> GetObjectsAt( const VECTOR2I& aPt, PCB_LAYER_ID aLayer,
@@ -492,7 +538,10 @@ public:
                     return true;
                 };
 
-        m_tree[aLayer]->Search( min, max, visitor );
+        auto it = m_tree.find( aLayer );
+
+        if( it != m_tree.end() )
+            it->second.Search( min, max, visitor );
 
         return retval;
     }
@@ -547,7 +596,7 @@ public:
                 auto it = m_tree.find( targetLayer );
 
                 if( it != m_tree.end() )
-                    it->second->Search( min, max, visit );
+                    it->second.Search( min, max, visit );
             };
         }
 
@@ -602,8 +651,6 @@ public:
         return m_count == 0;
     }
 
-    using iterator = typename drc_rtree::Iterator;
-
     /**
      * The DRC_LAYER struct provides a layer-specific auto-range iterator to the RTree.  Using
      * this struct, one can write lines like:
@@ -614,55 +661,69 @@ public:
      */
     struct DRC_LAYER
     {
-        DRC_LAYER( drc_rtree* aTree ) : layer_tree( aTree )
-        {
-            m_rect = { { INT_MIN, INT_MIN }, { INT_MAX, INT_MAX } };
-        };
+        DRC_LAYER() = default;
 
-        DRC_LAYER( drc_rtree* aTree, const BOX2I& aRect ) : layer_tree( aTree )
+        DRC_LAYER( const drc_rtree& aTree )
         {
-            m_rect = { { aRect.GetX(), aRect.GetY() },
-                       { aRect.GetRight(), aRect.GetBottom() } };
-        };
-
-        drc_rtree::Rect m_rect;
-        drc_rtree*      layer_tree;
-
-        iterator begin()
-        {
-            return layer_tree->begin( m_rect );
+            for( ITEM_WITH_SHAPE* item : aTree )
+                m_items.push_back( item );
         }
 
-        iterator end()
+        DRC_LAYER( const drc_rtree& aTree, const BOX2I& aRect )
         {
-            return layer_tree->end( m_rect );
+            int min[2] = { aRect.GetX(), aRect.GetY() };
+            int max[2] = { aRect.GetRight(), aRect.GetBottom() };
+
+            auto collector = [this]( ITEM_WITH_SHAPE* aItem ) -> bool
+            {
+                m_items.push_back( aItem );
+                return true;
+            };
+
+            aTree.Search( min, max, collector );
         }
+
+        std::vector<ITEM_WITH_SHAPE*> m_items;
+
+        std::vector<ITEM_WITH_SHAPE*>::iterator begin() { return m_items.begin(); }
+        std::vector<ITEM_WITH_SHAPE*>::iterator end() { return m_items.end(); }
     };
 
     DRC_LAYER OnLayer( PCB_LAYER_ID aLayer ) const
     {
-        auto it = m_tree.find( int( aLayer ) );
-        return it == m_tree.end() ? DRC_LAYER( nullptr ) : DRC_LAYER( it->second );
+        auto it = m_tree.find( aLayer );
+        return it == m_tree.end() ? DRC_LAYER() : DRC_LAYER( it->second );
     }
 
     DRC_LAYER Overlapping( PCB_LAYER_ID aLayer, const VECTOR2I& aPoint, int aAccuracy = 0 ) const
     {
         BOX2I rect( aPoint, VECTOR2I( 0, 0 ) );
         rect.Inflate( aAccuracy );
-        auto it = m_tree.find( int( aLayer ) );
-        return it == m_tree.end() ? DRC_LAYER( nullptr ) : DRC_LAYER( it->second, rect );
+        auto it = m_tree.find( aLayer );
+        return it == m_tree.end() ? DRC_LAYER() : DRC_LAYER( it->second, rect );
     }
 
     DRC_LAYER Overlapping( PCB_LAYER_ID aLayer, const BOX2I& aRect ) const
     {
-        auto it = m_tree.find( int( aLayer ) );
-        return it == m_tree.end() ? DRC_LAYER( nullptr ) : DRC_LAYER( it->second, aRect );
+        auto it = m_tree.find( aLayer );
+        return it == m_tree.end() ? DRC_LAYER() : DRC_LAYER( it->second, aRect );
     }
 
 
 private:
-    std::map<int, drc_rtree*> m_tree;
-    size_t                    m_count;
+    void recordPadding( PCB_LAYER_ID aLayer, int aPadding )
+    {
+        auto [it, inserted] = m_minPadding.emplace( aLayer, aPadding );
+
+        if( !inserted )
+            it->second = std::min( it->second, aPadding );
+    }
+
+    std::map<int, drc_rtree>         m_tree;
+    std::map<int, drc_rtree_builder> m_builders;
+    std::map<int, int>               m_minPadding;
+    std::vector<ITEM_WITH_SHAPE*>    m_owned;
+    size_t                           m_count = 0;
 };
 
 

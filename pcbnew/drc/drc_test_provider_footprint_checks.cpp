@@ -14,18 +14,16 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <drc/drc_engine.h>
 #include <drc/drc_item.h>
 #include <drc/drc_test_provider.h>
 #include <footprint.h>
+#include <footprint_utils.h>
 #include <pad.h>
+#include <pad_utils.h>
 
 /*
     Footprint tests:
@@ -36,7 +34,8 @@
     - DRCE_PADSTACK,
     - DRCE_PADSTACK_INVALID,
     - DRCE_FOOTPRINT (unknown or duplicate pads in net-tie pad groups),
-    - DRCE_SHORTING_ITEMS
+    - DRCE_SHORTING_ITEMS,
+    - DRCE_FOOTPRINT_SCALED_WITH_PADS
 */
 
 class DRC_TEST_PROVIDER_FOOTPRINT_CHECKS : public DRC_TEST_PROVIDER
@@ -60,7 +59,7 @@ bool DRC_TEST_PROVIDER_FOOTPRINT_CHECKS::Run()
     if( !reportPhase( _( "Checking footprints..." ) ) )
         return false;   // DRC cancelled
 
-    auto errorHandler =
+    const auto errorHandler =
             [&]( const BOARD_ITEM* aItemA, const BOARD_ITEM* aItemB, const BOARD_ITEM* aItemC,
                  int aErrorCode, const wxString& aMsg, const VECTOR2I& aPt, PCB_LAYER_ID aLayer )
             {
@@ -77,7 +76,7 @@ bool DRC_TEST_PROVIDER_FOOTPRINT_CHECKS::Run()
     {
         if( !m_drcEngine->IsErrorLimitExceeded( DRCE_FOOTPRINT_TYPE_MISMATCH ) )
         {
-            footprint->CheckFootprintAttributes(
+            FOOTPRINT_UTILS::CheckFootprintAttributes( *footprint,
                     [&]( const wxString& aMsg )
                     {
                         errorHandler( footprint, nullptr, nullptr, DRCE_FOOTPRINT_TYPE_MISMATCH,
@@ -85,28 +84,48 @@ bool DRC_TEST_PROVIDER_FOOTPRINT_CHECKS::Run()
                     } );
         }
 
+        if( !m_drcEngine->IsErrorLimitExceeded( DRCE_FOOTPRINT_SCALED_WITH_PADS ) )
+        {
+            const TRANSFORM_TRS& xform = footprint->GetTransform();
+
+            if( !xform.HasUnitScale() )
+            {
+                if( !footprint->Pads().empty() )
+                {
+                    errorHandler( footprint, nullptr, nullptr, DRCE_FOOTPRINT_SCALED_WITH_PADS, wxEmptyString,
+                                  footprint->GetPosition(), footprint->GetLayer() );
+                }
+            }
+        }
+
         if( !m_drcEngine->IsErrorLimitExceeded( DRCE_PAD_TH_WITH_NO_HOLE )
                 || !m_drcEngine->IsErrorLimitExceeded( DRCE_PADSTACK ) )
         {
-            footprint->CheckPads( m_drcEngine,
-                    [&]( const PAD* aPad, int aErrorCode, const wxString& aMsg )
+            FOOTPRINT_UTILS::CheckPads( *footprint, *m_drcEngine,
+                    [&]( const PAD& aPad, const PAD_UTILS::PAD_CHECK_RESULT& aResult )
                     {
-                        if( !m_drcEngine->IsErrorLimitExceeded( aErrorCode ) )
+                        const int drcPadErrorCode = ConvertPadCheckToDrcCode( aResult.code );
+
+                        if( !m_drcEngine->IsErrorLimitExceeded( drcPadErrorCode ) )
                         {
-                            errorHandler( aPad, nullptr, nullptr, aErrorCode, aMsg,
-                                          aPad->GetPosition(), aPad->GetPrincipalLayer() );
+                            wxString detail;
+                            if( !aResult.message.IsEmpty() )
+                                detail = wxString::Format( wxT( "(%s)" ), aResult.message );
+
+                            errorHandler( &aPad, nullptr, nullptr, drcPadErrorCode, detail,
+                                          aPad.GetPosition(), aPad.GetPrincipalLayer() );
                         }
                     } );
         }
 
-        // Don't call footprint->CheckShortingPads().  At the board level we know about nets,
+        // Don't call FOOTPRINT_UTILS::CheckShortingPads().  At the board level we know about nets,
         // and the pads may have the same net even though they're distinct pads.
 
         if( footprint->IsNetTie() )
         {
             if( !m_drcEngine->IsErrorLimitExceeded( DRCE_SHORTING_ITEMS ) )
             {
-                footprint->CheckNetTies(
+                FOOTPRINT_UTILS::CheckNetTies( *footprint,
                         [&]( const BOARD_ITEM* aItemA, const BOARD_ITEM* aItemB,
                              const BOARD_ITEM* aItemC, const VECTOR2I& aPosition )
                         {
@@ -115,7 +134,7 @@ bool DRC_TEST_PROVIDER_FOOTPRINT_CHECKS::Run()
                         } );
             }
 
-            footprint->CheckNetTiePadGroups(
+            FOOTPRINT_UTILS::CheckNetTiePadGroups( *footprint,
                     [&]( const wxString& aMsg )
                     {
                         errorHandler( footprint, nullptr, nullptr, DRCE_FOOTPRINT, aMsg,

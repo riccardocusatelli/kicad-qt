@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
@@ -29,7 +25,7 @@
 
 
 /**
- * @file test_block_snippets.cpp
+ * @file test_block_additional.cpp
  *
  * This file contains additional tests for blocks (avoids having to have
  * a really complex JSON structure with keys and/or reflection for tons of block
@@ -76,7 +72,6 @@ struct hash<BLOCK_TEST_KEY>
 
 
 using BLOCK_TEST_FUNC = std::function<void( const BLOCK_BASE& )>;
-using DB_OBJ_TEST_FUNC = std::function<void( const DB_OBJ& )>;
 
 
 static void TestOlympus0x20( const BLOCK_BASE& aBlock )
@@ -270,6 +265,35 @@ static void TestMIMXRT1170_0x36_X05DefTable( const BLOCK_BASE& aBlock )
 
 
 /**
+ * The only 0x35 file reference record in this board. Seems to hold "terminator.log".
+ */
+static void TestRects0x35FileRef( const BLOCK_BASE& aBlock )
+{
+    BOOST_REQUIRE( aBlock.GetBlockType() == 0x35 );
+
+    const auto& blk = static_cast<const BLOCK<BLK_0x35_FILE_REF>&>( aBlock ).GetData();
+
+    BOOST_TEST( blk.m_T2 == 0x00 );
+    BOOST_TEST( blk.m_T3 == 0x01 );
+
+    // The header pair for this board is tail 0x77, head 0xa5
+    BOOST_TEST( blk.m_Next == 0x77 );
+    BOOST_TEST( blk.m_Key == 0xa5 );
+
+    BOOST_TEST( aBlock.GetNext() == 0x77 );
+    BOOST_TEST( aBlock.GetKey() == 0xa5 );
+
+
+    BOOST_TEST( std::string( blk.m_LogFile.data() ) == "terminator.log" );
+    BOOST_TEST( std::string( blk.m_EclReportFile.data() ) == "eclrpt.txt" );
+    BOOST_TEST( std::string( blk.m_EclLogFile.data() ) == "eclrep.log" );
+    BOOST_TEST( blk.m_UnusedFile[0] == '\0' );
+
+    BOOST_TEST( std::string( blk.m_Version.data() ) == "1.0" );
+}
+
+
+/**
  * The registry of additional block tests, keyed by board name and block offset.
  *
  * The test function takes the parsed block as an argument, and can perform any additional
@@ -295,20 +319,10 @@ static const std::unordered_map<BLOCK_TEST_KEY, BLOCK_TEST_FUNC> additionalBlock
 
     // 0x36 definition tables
     { { "MIMXRT1170_EVKB",            0x00cce25c }, TestMIMXRT1170_0x36_X05DefTable },
+
+    // 0x35 file reference records
+    { { "rects",                      0x00032410 }, TestRects0x35FileRef },
 };
-
-
-static const std::unordered_map<BLOCK_TEST_KEY, DB_OBJ_TEST_FUNC> additionalDbObjTests{
-    { { "Olympus_15061-1b_v165",      0x0131553c }, []( const DB_OBJ& obj )
-        {
-            BOOST_REQUIRE( obj.GetType() == BRD_x20 );
-
-            const auto& blk = static_cast<const UNKNOWN_0x20&>( obj );
-            BOOST_TEST( blk.m_Next.m_TargetKey == 0x824DF8F0 );
-        }
-    },
-};
-
 // clang-format on
 
 
@@ -327,24 +341,5 @@ void KI_TEST::RunAdditionalBlockTest( const std::string& aBoardName, size_t aBlo
     else
     {
         BOOST_TEST_FAIL( "No additional test defined for this block" );
-    }
-}
-
-
-void KI_TEST::RunAdditionalObjectTest( const std::string& aBoardName, size_t aBlockOffset, const DB_OBJ& obj )
-{
-    const BLOCK_TEST_KEY key{ aBoardName, aBlockOffset };
-
-    auto it = additionalDbObjTests.find( key );
-    if( it != additionalDbObjTests.end() )
-    {
-        const auto& testFunc = it->second;
-        BOOST_REQUIRE( testFunc );
-
-        testFunc( obj );
-    }
-    else
-    {
-        BOOST_TEST_FAIL( "No additional test defined for this DB_OBJ" );
     }
 }

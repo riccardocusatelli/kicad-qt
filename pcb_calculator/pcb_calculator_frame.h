@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PCB_CALCULATOR_FRAME_H_
@@ -63,6 +63,8 @@ public:
 
     void AddCalculator( CALCULATOR_PANEL *aPanel, const wxString& panelUIName );
 
+    void KiwayMailIn( KIWAY_MAIL_EVENT& aEvent ) override;
+
     void ShowChangedLanguage() override;
 
     // Config read-write, virtual from EDA_BASE_FRAME
@@ -88,6 +90,8 @@ private:
     void onThemeChanged( wxSysColourChangedEvent& aEvent );
 
     void loadPages();
+
+    void showCalculatorPage( wxWindow* aPage );
 
 private:
     wxBoxSizer* m_mainSizer;

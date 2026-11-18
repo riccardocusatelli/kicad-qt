@@ -19,11 +19,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef OPENGLGAL_H_
@@ -38,12 +34,14 @@
 #include <gal/opengl/vertex_manager.h>
 #include <gal/opengl/vertex_item.h>
 #include <gal/opengl/cached_container.h>
+#include <gal/opengl/gl_reset_budget.h>
 #include <gal/opengl/noncached_container.h>
 #include <gal/opengl/opengl_compositor.h>
 #include <gal/hidpi_gl_canvas.h>
 #include <kicad_gl/gl_context_mgr.h>
 #include <toolkit/toolkit_types.h>
 
+#include <set>
 #include <unordered_map>
 #include <memory>
 #include <vector>
@@ -51,9 +49,6 @@
 #ifndef CALLBACK
 #define CALLBACK
 #endif
-
-///< The default number of points for circle approximation
-#define SEG_PER_CIRCLE_COUNT  64
 
 class GLUtesselator;
 
@@ -94,7 +89,7 @@ public:
     ~OPENGL_GAL();
 
     /**
-     * Checks OpenGL features.
+     * Check OpenGL features.
      *
      * @param aOptions
      * @return wxEmptyString if OpenGL 2.1 or greater is available, otherwise returns error message
@@ -103,6 +98,8 @@ public:
 
     bool IsOpenGlEngine() override { return true; }
 
+    bool UsesPolygonTriangulationCache() const override { return true; }
+
     /// @copydoc GAL::IsInitialized()
     bool IsInitialized() const override
     {
@@ -110,10 +107,10 @@ public:
         return IsCanvasVisible();
     }
 
-    ///< @copydoc GAL::IsVisible()
     bool IsVisible() const override
     {
-        return IsCanvasVisible();
+        // VIEW skips cached item updates for invisible canvases, which a lost context cannot take
+        return GetContextLoss() == GAL_CONTEXT_LOSS::NONE && IsCanvasVisible();
     }
 
     void SetMinLineWidth( float aLineWidth ) override;
@@ -147,6 +144,15 @@ public:
     /// @copydoc GAL::DrawArcSegment()
     void DrawArcSegment( const VECTOR2D& aCenterPoint, double aRadius, const EDA_ANGLE& aStartAngle,
                          const EDA_ANGLE& aAngle, double aWidth, double aMaxError ) override;
+
+    /// @copydoc GAL::DrawEllipse()
+    void DrawEllipse( const VECTOR2D& aCenterPoint, double aMajorRadius, double aMinorRadius,
+                      const EDA_ANGLE& aRotation ) override;
+
+    /// @copydoc GAL::DrawEllipseArc()
+    void DrawEllipseArc( const VECTOR2D& aCenterPoint, double aMajorRadius, double aMinorRadius,
+                         const EDA_ANGLE& aRotation, const EDA_ANGLE& aStartAngle,
+                         const EDA_ANGLE& aEndAngle ) override;
 
     /// @copydoc GAL::DrawRectangle()
     void DrawRectangle( const VECTOR2D& aStartPoint, const VECTOR2D& aEndPoint ) override;
@@ -203,8 +209,7 @@ public:
     /// @copydoc GAL::Flush()
     void Flush() override;
 
-    /// @copydoc GAL::ClearScreen()
-    void ClearScreen( ) override;
+    void ClearScreen() override;
 
     // --------------
     // Transformation
@@ -284,7 +289,6 @@ public:
     // Cursor
     // -------
 
-    /// @copydoc GAL::SetNativeCursorStyle()
     bool SetNativeCursorStyle( KICURSOR aCursor, bool aHiDPI ) override;
 
     /// @copydoc GAL::DrawCursor()
@@ -301,6 +305,10 @@ public:
     {
         return m_isContextValid;
     }
+
+    GAL_CONTEXT_LOSS GetContextLoss() const override;
+
+    bool IsResetSettled() override;
 
     void LockContext( int aClientCookie ) override;
 
@@ -322,7 +330,7 @@ public:
      */
     bool GetScreenshot( std::vector<uint8_t>& aRGBA, VECTOR2I& aSize );
 
-    ///< Parameters passed to the GLU tesselator
+    /// Parameters passed to the GLU tesselator
     struct TessParams
     {
         /// Manager used for storing new vertices
@@ -340,6 +348,17 @@ private:
     KIGL_CONTEXT*           m_glPrivContext;    ///< Canvas-specific OpenGL context
     int                     m_swapInterval;     ///< Used to store swap interval information
     static int              m_instanceCounter;  ///< GL GAL instance counter
+    static int              m_contextGroupId;   ///< Changes each time a reset kills the shared group
+    static bool             m_resetBudgetExhausted; ///< Resets came too often to keep using OpenGL
+    static GL_RESET_BUDGET  m_resetBudget;      ///< Rate of resets tolerated before falling back
+    static bool             m_glLoaded;         ///< GL entry points are loaded, so resets can be queried
+    static std::set<OPENGL_GAL*> m_instances;   ///< Canvases to repaint after a reset
+    static bool             m_resetSettled;     ///< Driver finished the last reset
+
+    /// When the last reset was detected, to stop waiting on a driver that never reports completion
+    static GL_RESET_BUDGET::CLOCK::time_point m_resetDetectedAt;
+
+    int                     m_ownContextGroupId; ///< Group this canvas' contexts were created in
 
     static GLuint           g_fontTexture;      ///< Bitmap font texture handle (shared)
 
@@ -392,13 +411,11 @@ private:
     GLUtesselator*                        m_tesselator;
     std::deque<std::shared_ptr<GLdouble>> m_tessIntersects;
 
-    /// @copydoc GAL::BeginUpdate()
     void beginUpdate() override;
 
-    /// @copydoc GAL::EndUpdate()
     void endUpdate() override;
 
-    ///< Update handler for OpenGL settings
+    /// Update handler for OpenGL settings
     bool updatedGalDisplayOptions( const GAL_DISPLAY_OPTIONS& aOptions ) override;
 
     /**
@@ -457,6 +474,8 @@ private:
     /**
      * Internal method for circle drawing.
      *
+     * @param aCenterPoint is the circle center point.
+     * @param aRadius is the circle radius.
      * @param aReserve if set to false, reserve 3 vertices for each circle.
      */
     void drawCircle( const VECTOR2D& aCenterPoint, double aRadius, bool aReserve = true );
@@ -476,6 +495,7 @@ private:
      *
      * @param aPointGetter is a function to obtain coordinates of n-th vertex.
      * @param aPointCount is the number of points to be drawn.
+     * @param aWidth is the width of the segments.
      * @param aReserve if set to false, do not reserve vertices internally.
      */
     void drawSegmentChain( const std::function<VECTOR2D( int )>& aPointGetter, int aPointCount,
@@ -499,6 +519,7 @@ private:
     /**
      * Draw a set of polygons with a cached triangulation. Way faster than drawPolygon.
      *
+     * @param aPoly is the polygon to draw.
      * @param aStrokeTriangulation indicates the triangulation should be stroked rather than
      *                             filled.  Used for debugging.
      */
@@ -529,6 +550,14 @@ private:
     void drawBitmapOverbar( double aLength, double aHeight, bool aReserve = true );
 
     /**
+     * Render m_gridSources priority-descending; each writes its coverage into
+     * the stencil so lower-priority sources skip that area.  DrawGrid pushes
+     * the global grid as a priority-0 entry for the call so both paths share
+     * this routine.
+     */
+    void drawGridSources();
+
+    /**
      * Compute a size of text drawn using bitmap font with current text setting applied.
      *
      * @param aText is the text to be drawn.
@@ -550,15 +579,6 @@ private:
      */
     unsigned int getNewGroupNumber();
 
-    /**
-     * Compute the angle step when drawing arcs/circles approximated with lines.
-     */
-    double calcAngleStep( double aRadius ) const
-    {
-        // Bigger arcs need smaller alpha increment to make them look smooth
-        return std::min( 1e6 / aRadius, 2.0 * M_PI / SEG_PER_CIRCLE_COUNT );
-    }
-
     double getWorldPixelSize() const;
 
     VECTOR2D getScreenPixelSize() const;
@@ -576,6 +596,12 @@ private:
      * @throw std::runtime_error if any of the OpenGL feature checks failed
      */
     void init();
+
+    /// @return true if the current context reports a GPU reset.
+    bool detectContextReset();
+
+    /// Abandon the shared context group so the next canvas created starts a fresh one.
+    void orphanContextGroup();
 };
 } // namespace KIGFX
 

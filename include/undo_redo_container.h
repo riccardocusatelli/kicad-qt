@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef _CLASS_UNDOREDO_CONTAINER_H
@@ -30,6 +26,7 @@
 #include <eda_item_flags.h>
 #include <functional>
 #include <kiid.h>
+#include <unordered_set>
 #include <vector>
 #include <wx/string.h>
 
@@ -68,7 +65,8 @@ enum class UNDO_REDO {
     DRILLORIGIN,        // origin changed (like CHANGED, contains the origin and a copy)
     GRIDORIGIN,         // origin changed (like CHANGED, contains the origin and a copy)
     PAGESETTINGS,       // page settings or title block changes
-    REPEAT_ITEM         // storage entry for the editor's global repeatItems list
+    REPEAT_ITEM,        // storage entry for the editor's global repeatItems list
+    VARIANTS            // one or more variants were added, deleted, or changed
 };
 
 
@@ -92,7 +90,7 @@ public:
     EDA_ITEM* GetLink() const { return m_link; }
 
     KIID GetGroupId() const { return m_groupId; }
-    KIID_VECT_LIST GetGroupMembers() const { return m_groupMembers; }
+    std::vector<KIID> GetGroupMembers() const { return m_groupMembers; }
 
     BASE_SCREEN* GetScreen() const { return m_screen; }
 
@@ -112,7 +110,7 @@ private:
                                         * copy of an active item) and m_Link points the active
                                         * item in schematic */
     KIID           m_groupId;          /* Id of the parent group */
-    KIID_VECT_LIST m_groupMembers;     /* Ids of the members of a group */
+    std::vector<KIID> m_groupMembers;  /* Ids of the members of a group */
 
     BASE_SCREEN*   m_screen;           /* For new and deleted items the screen the item should
                                         * be added to/removed from. */
@@ -160,7 +158,7 @@ public:
     void ClearItemsList();
 
     /**
-     * Delete the list of pickers AND the data pointed by #m_PickedItem or #m_PickedItemLink
+     * Delete the list of pickers AND the data pointed by #ITEM_PICKER::m_pickedItem or #ITEM_PICKER::m_link.
      * according to the type of undo/redo command recorded.
      */
     void ClearListAndDeleteItems( std::function<void(EDA_ITEM*)> aItemDeleter );
@@ -302,6 +300,12 @@ public:
     PICKED_ITEMS_LIST* PopCommand();
 
     void ClearCommandList();
+
+    /**
+     * Drop every picker that refers to one of \a aItems, before they are freed outside the undo
+     * system.  Commands left with no pickers are removed.
+     */
+    void ForgetItems( const std::unordered_set<const EDA_ITEM*>& aItems );
 
     std::vector <PICKED_ITEMS_LIST*> m_CommandsList;   // the list of possible undo/redo commands
 };

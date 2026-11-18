@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -42,7 +38,7 @@ class PARAM_CFG;
  * * The parameter they are setting is of general interest and should be in the
  *   main application config, with UI provided.
  *
- * Options in this class are, in general, preferable to #defines, as they
+ * Options in this class are, in general, preferable to \#defines, as they
  * allow more flexible configuration by developers, and don't hide code from
  * the compiler on other configurations, which can result in broken builds.
  *
@@ -149,12 +145,22 @@ public:
     bool m_EnableCreepageSlot;
 
     /**
+     * Use the realtime (V2) creepage engine. Gates the live drag overlay and selects the V2
+     * engine in batch DRC. V2 is designed to produce results identical to the legacy solver.
+     *
+     * Setting name: "RealtimeCreepage"
+     * Valid values: 0 or 1
+     * Default value: false
+     */
+    bool m_RealtimeCreepage;
+
+    /**
      * Epsilon for DRC tests.
      *
-     * @note Fo zone tests this is essentially additive with #m_ExtraClearance.  Units are mm.
+     * @note For zone tests this is essentially additive with #m_ExtraClearance.  Units are mm.
      *
      * Setting name: "DRCEpsilon"
-     * Valid values: 0 to 1
+     * Valid values: 1e-6 to 0.01
      * Default value: 0.0005
      */
     double m_DRCEpsilon;
@@ -176,7 +182,7 @@ public:
      * Units are mm.
      *
      * Setting name: "DRCSliverMinimumLength"
-     * Valid values: 1e-9 to 10
+     * Valid values: 1e-6 to 10
      * Default value: 0.0008
      */
     double m_SliverMinimumLength;
@@ -274,7 +280,7 @@ public:
     /**
      * Enable drawing the triangulation outlines with a visible color.
      *
-     * @note This only affects the OpenGL GAL.
+     * @note This only affects screen rendering, not Cairo printing or plotting.
      *
      * Setting name: "StrokeTriangulation"
      * Valid values: 0 or 1
@@ -371,11 +377,12 @@ public:
     double m_PDFStrokeFontKerningFactor;
 
     /**
-     * Use legacy wxWidgets-based printing.
+     * Print by plotting to PDF and handing the PDF to the platform print system.
+     * Set to 0 to use the legacy wxWidgets printing.
      *
      * Setting name: "UsePdfPrint"
      * Valid values: 0 or 1
-     * Default value: 0
+     * Default value: 1
      */
     bool m_UsePdfPrint;
 
@@ -406,18 +413,6 @@ public:
      * Default value: 0
      */
     bool m_DrawBoundingBoxes;
-
-    /**
-     * Ask for an OpenGL pixel format that swaps by copying rather than by flipping.
-     *
-     * Some Intel drivers stop showing a flip-swapped canvas after a sibling OpenGL window is
-     * destroyed, although every swap succeeds.  Only used on Windows.
-     *
-     * Setting name: "GLSwapCopy"
-     * Valid values: 0 or 1
-     * Default value: 1
-     */
-    bool m_GLSwapCopy;
 
     /**
      * Enable exporting board editor netlist to a file for troubleshooting purposes.
@@ -536,6 +531,17 @@ public:
      * Default value: 1
      */
     bool m_IncrementalConnectivity;
+
+    /**
+     * Use the schematic connectivity engine instead of CONNECTION_GRAPH.
+     *
+     * See @ref schematic_connectivity.
+     *
+     * Setting name: "ConnectivityEngine"
+     * Valid values: 0 or 1
+     * Default value: 1
+     */
+    bool m_ConnectivityEngine;
 
     /**
      * The number of milliseconds to wait in a click before showing a disambiguation menu.
@@ -673,6 +679,27 @@ public:
      * Default value: 1
      */
     bool m_EnableCacheFriendlyFracture;
+
+    /**
+     * Index fracture edges by y stripe instead of rescanning every earlier edge for each hole.
+     * Disable to fall back on the linear scan when bisecting a suspected fracture fault.
+     *
+     * Setting name: "EnableFractureEdgeIndex"
+     * Valid values: 0 or 1
+     * Default value: 1
+     */
+    bool m_EnableFractureEdgeIndex;
+
+    /**
+     * Refine each triangulation toward the constrained Delaunay triangulation with a
+     * boundary-preserving edge-flip post-pass, trading a little triangulation time for far fewer
+     * sliver triangles.
+     *
+     * Setting name: "TriangulateDelaunayRefine"
+     * Valid values: 0 or 1
+     * Default value: 1
+     */
+    bool m_TriangulateDelaunayRefine;
 
     /**
      * Log IPC API requests and responses
@@ -1000,6 +1027,65 @@ public:
     bool m_ZoneFillIterativeRefill;
 
     /**
+     * Router test case directory.
+     *
+     * Directory where the router stores the test cases (the '0' key dump)
+     * Used to make creating test cases easier (a simple dialog instead of manually copying files)
+     *
+     * Setting name: "RouterTestCaseDirectory"
+     * Valid values: directory name
+     * Default value: ""
+     */
+    wxString m_RouterTestCaseDirectory;
+
+    /**
+     * The multiplier of underlying track size applied to the diff phase skew overlay
+     *
+     * Setting name: "DiffSkewOverlayTrackInflation"
+     * Valid values: 0.0 to 10.0
+     * Default value: 1.1
+     */
+    double m_DiffSkewOverlayTrackInflation;
+
+    /**
+     * The multiplier of constraint diff pair gap to allow identification of coupled track segments
+     * in the diff phase skew overlay tool
+     *
+     * Setting name: "DiffSkewTrackGapInflation"
+     * Valid values: 0.0 to 10.0
+     * Default value: 1.2
+     */
+    double m_DiffSkewTrackGapInflation;
+
+    /**
+     * The value of cos(theta) between two tracks used to test for parallelism in the diff phase skew
+     * overlay tool
+     *
+     * Setting name: "DiffSkewCosThetaParallelTestValue"
+     * Valid values: 0.0 1.0
+     * Default value: 0.9999
+     */
+    double m_DiffSkewCosThetaParallelTestValue;
+
+    /**
+     * The logarithmic weighting factor to apply to colour interpolation in the diff phase overlay tool
+     *
+     * Setting name: "DiffSkewColourInterpolationLogStrength"
+     * Valid values: 0.1 20.0
+     * Default value: 9.0
+     */
+    double m_DiffSkewColourInterpolationLogStrength;
+
+    /**
+     * The target size (in PCB IU) of diff phase skew gradient overlay segments
+     *
+     * Setting name: "DiffSkewTargetDiffSegmentSize"
+     * Valid values: 1.0 1e10
+     * Default value: 5e4
+     */
+    double m_DiffSkewTargetDiffSegmentSize;
+
+    /**
      * Default CanAutoplace value for fields imported from EAGLE files.
      *
      * Before this became configurable, all fields imported from EAGLE files had CanAutoplace
@@ -1011,6 +1097,34 @@ public:
      * Default value: true
      */
     bool m_EagleImportFieldsCanAutoplace;
+
+    /**
+     * Create OpenGL contexts that report GPU resets so the canvases can rebuild themselves
+     * instead of freezing.
+     *
+     * Setting name: "EnableGLResetRecovery"
+     * Valid values: true or false
+     * Default value: true
+     */
+    bool m_EnableGLResetRecovery;
+
+    /**
+     * Enable Vulkan validation layers for debugging.
+     *
+     * Setting name: "EnableVulkanValidation"
+     * Valid values: true or false
+     * Default value: false
+     */
+    bool m_EnableVulkanValidation;
+
+    /**
+     * Thread priority for the RHI render thread.
+     *
+     * Setting name: "RenderThreadPriority"
+     * Valid values: "low", "normal", "high"
+     * Default value: "normal"
+     */
+    wxString m_RenderThreadPriority;
 
     wxString m_traceMasks; ///< Trace masks for wxLogTrace, loaded from the config file.
     ///@}

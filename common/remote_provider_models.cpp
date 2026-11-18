@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <remote_provider_models.h>
@@ -52,18 +52,18 @@ REMOTE_PROVIDER_OAUTH_SERVER_METADATA::FromJson( const nlohmann::json& aJson, bo
     }
 
     if( !ValidateRemoteUrlSecurity( metadata.authorization_endpoint, aAllowInsecureLocalhost, aError,
-                              _( "authorization_endpoint" ) ) )
+                                    "authorization_endpoint" ) )
     {
         return std::nullopt;
     }
 
-    if( !ValidateRemoteUrlSecurity( metadata.token_endpoint, aAllowInsecureLocalhost, aError, _( "token_endpoint" ) ) )
+    if( !ValidateRemoteUrlSecurity( metadata.token_endpoint, aAllowInsecureLocalhost, aError, "token_endpoint" ) )
     {
         return std::nullopt;
     }
 
     if( !ValidateRemoteUrlSecurity( metadata.revocation_endpoint, aAllowInsecureLocalhost, aError,
-                              _( "revocation_endpoint" ) ) )
+                                    "revocation_endpoint" ) )
     {
         return std::nullopt;
     }
@@ -133,7 +133,7 @@ std::optional<REMOTE_PROVIDER_PART_MANIFEST> REMOTE_PROVIDER_PART_MANIFEST::From
             asset.required = assetJson.at( "required" ).get<bool>();
 
             if( !ValidateRemoteUrlSecurity( asset.download_url, aAllowInsecureLocalhost, aError,
-                                      _( "assets[].download_url" ) ) )
+                                            "assets[].download_url" ) )
             {
                 return std::nullopt;
             }

@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <kicad_gl/kiglad.h> // Must be included first
@@ -84,8 +80,7 @@ void RENDER_3D_RAYTRACE_GL::SetCurWindowSize( const wxSize& aSize )
 }
 
 
-bool RENDER_3D_RAYTRACE_GL::Redraw( bool aIsMoving, REPORTER* aStatusReporter,
-                                    REPORTER* aWarningReporter )
+bool RENDER_3D_RAYTRACE_GL::Redraw( bool aIsMoving )
 {
     bool requestRedraw = false;
 
@@ -108,12 +103,12 @@ bool RENDER_3D_RAYTRACE_GL::Redraw( bool aIsMoving, REPORTER* aStatusReporter,
     // Reload board if it was requested
     if( m_reloadRequested )
     {
-        if( aStatusReporter )
-            aStatusReporter->Report( _( "Loading..." ) );
+        if( m_activityReporter )
+            m_activityReporter->Report( _( "Loading..." ) );
 
         //aIsMoving = true;
         requestRedraw = true;
-        Reload( aStatusReporter, aWarningReporter, false );
+        Reload( false );
     }
 
 
@@ -188,7 +183,7 @@ bool RENDER_3D_RAYTRACE_GL::Redraw( bool aIsMoving, REPORTER* aStatusReporter,
 
             if( ptrPBO )
             {
-                render( ptrPBO, aStatusReporter );
+                render( ptrPBO );
 
                 if( m_renderState != RT_RENDER_STATE_FINISH )
                     requestRedraw = true;

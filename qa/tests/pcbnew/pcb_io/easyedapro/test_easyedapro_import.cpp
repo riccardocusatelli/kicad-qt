@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -32,8 +28,15 @@
 
 #include <pcbnew/pcb_io/easyedapro/pcb_io_easyedapro.h>
 
+#include <board.h>
 #include <footprint.h>
 #include <pad.h>
+#include <zone.h>
+
+#include <cstdlib>
+#include <filesystem>
+#include <map>
+#include <memory>
 
 
 struct EASYEDAPRO_IMPORT_FIXTURE
@@ -57,8 +60,8 @@ BOOST_AUTO_TEST_CASE( PolygonPadImport )
     std::string dataPath = KI_TEST::GetPcbnewTestDataDir()
                            + "plugins/easyedapro/PDFN-8_L3.2-W3.1-P0.65-LS3.4-BL-EP2.efoo";
 
-    wxString fpName = wxS( "PDFN-8_L3.2-W3.1-P0.65-LS3.4-BL-EP2" );
-    FOOTPRINT* fp = plugin.FootprintLoad( dataPath, fpName, false, nullptr );
+    wxString                   fpName = wxS( "PDFN-8_L3.2-W3.1-P0.65-LS3.4-BL-EP2" );
+    std::unique_ptr<FOOTPRINT> fp = plugin.FootprintLoad( dataPath, fpName, false, nullptr );
 
     BOOST_REQUIRE( fp );
 
@@ -81,8 +84,6 @@ BOOST_AUTO_TEST_CASE( PolygonPadImport )
     // Check that primitives were added to the custom pads
     BOOST_CHECK( !pad9->GetPrimitives( PADSTACK::ALL_LAYERS ).empty() );
     BOOST_CHECK( !pad10->GetPrimitives( PADSTACK::ALL_LAYERS ).empty() );
-
-    delete fp;
 }
 
 

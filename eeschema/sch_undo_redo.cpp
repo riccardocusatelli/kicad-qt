@@ -43,6 +43,7 @@
 #include <limits>
 
 #include <core/ki_assert.h>
+#include <advanced_config.h>
 #include <drawing_sheet/ds_proxy_undo_item.h>
 #include <sch_field.h>
 #include <sch_group.h>
@@ -51,6 +52,7 @@
 #include <sch_sheet.h>
 #include <sch_sheet_pin.h>
 #include <sch_symbol.h>
+#include <variant_proxy_undo_item.h>
 
 
 SCH_UNDO_REDO::RESULT SCH_UNDO_REDO::Apply( SCHEMATIC& aSchematic, PICKED_ITEMS_LIST& aEntry,
@@ -80,7 +82,7 @@ SCH_UNDO_REDO::RESULT SCH_UNDO_REDO::Apply( SCHEMATIC& aSchematic, PICKED_ITEMS_
 
         // Set connectable object connectivity status.
         auto propagateConnectivityDamage =
-                [&]( SCH_ITEM* schItem )
+                [&]( SCH_ITEM* schItem, bool fullSheetUpdate = true )
                 {
                     if( schItem->IsConnectable() )
                     {
@@ -108,8 +110,7 @@ SCH_UNDO_REDO::RESULT SCH_UNDO_REDO::Apply( SCHEMATIC& aSchematic, PICKED_ITEMS_
                         if( result.connectivityCleanUp == NO_CLEANUP )
                             result.connectivityCleanUp = LOCAL_CLEANUP;
 
-                        // Do a full rebauild of the connectivity if there is a sheet in the commit
-                        if( schItem->Type() == SCH_SHEET_T )
+                        if( schItem->Type() == SCH_SHEET_T && fullSheetUpdate )
                             result.connectivityCleanUp = GLOBAL_CLEANUP;
                     }
                     else if( schItem->Type() == SCH_RULE_AREA_T )
@@ -135,6 +136,10 @@ SCH_UNDO_REDO::RESULT SCH_UNDO_REDO::Apply( SCHEMATIC& aSchematic, PICKED_ITEMS_
             }
 
             aListener.RemoveFromScreen( eda_item, screen );
+
+            if( SCH_GROUP* group = dynamic_cast<SCH_GROUP*>( schItem ) )
+                group->RemoveAll();
+
             aEntry.SetPickedItemStatus( UNDO_REDO::DELETED, ii );
 
             bulkRemovedItems.emplace_back( schItem );
@@ -180,14 +185,49 @@ SCH_UNDO_REDO::RESULT SCH_UNDO_REDO::Apply( SCHEMATIC& aSchematic, PICKED_ITEMS_
                 }
             }
         }
+        else if( status == UNDO_REDO::VARIANTS )
+        {
+            // swap current settings with stored settings
+            VARIANT_PROXY_UNDO_ITEM  alt_item( &aSchematic );
+            VARIANT_PROXY_UNDO_ITEM* item = static_cast<VARIANT_PROXY_UNDO_ITEM*>( eda_item );
+            item->Restore( &aSchematic );
+            *item = std::move( alt_item );
+
+            result.variantsRestored = true;
+        }
         else if( schItem )
         {
             SCH_ITEM* itemCopy = dynamic_cast<SCH_ITEM*>( aEntry.GetPickedItemLink( ii ) );
 
             KI_CHECK2( itemCopy, continue );
 
-            if( schItem->HasConnectivityChanges( itemCopy, &aListener.CurrentSheet() ) )
-                propagateConnectivityDamage( schItem );
+            bool fullSheetUpdate = true;
+
+            if( status == UNDO_REDO::CHANGED && schItem->Type() == SCH_SHEET_T )
+            {
+                const auto* originalSheet = static_cast<const SCH_SHEET*>( schItem );
+                const auto* modifiedSheet = static_cast<const SCH_SHEET*>( itemCopy );
+                const bool  hierarchyChanged = originalSheet->HasHierarchyChanges( *modifiedSheet );
+
+                result.hierarchyChanged |= hierarchyChanged;
+                refreshHierarchy |= hierarchyChanged;
+
+                // The restored copy's screens are the ones the hierarchy keeps
+                if( hierarchyChanged && originalSheet->HasRefSuffixChanges( *modifiedSheet ) )
+                {
+                    static_cast<SCH_SHEET*>( itemCopy )->SetDescendantsModified();
+                    result.refSuffixChanged = true;
+                }
+
+                // Local undo cleanup only visits the displayed screen
+                fullSheetUpdate = !ADVANCED_CFG::GetCfg().m_ConnectivityEngine
+                                      || screen != aListener.CurrentSheet().LastScreen()
+                                      || hierarchyChanged
+                                      || originalSheet->HasPinIdentityChanges( *modifiedSheet );
+            }
+
+            if( schItem->HasConnectivityChanges( itemCopy, &undoSheet ) )
+                propagateConnectivityDamage( schItem, fullSheetUpdate );
 
             // The root sheet is a pseudo object that owns the root screen object but is not on
             // the root screen so do not attempt to remove it from the screen it owns.
@@ -197,31 +237,7 @@ SCH_UNDO_REDO::RESULT SCH_UNDO_REDO::Apply( SCHEMATIC& aSchematic, PICKED_ITEMS_
             switch( status )
             {
             case UNDO_REDO::CHANGED:
-                if( schItem->Type() == SCH_SHEET_T )
-                {
-                    const SCH_SHEET* origSheet = static_cast<const SCH_SHEET*>( schItem );
-                    const SCH_SHEET* copySheet = static_cast<const SCH_SHEET*>( itemCopy );
-
-                    KI_CHECK2( origSheet && copySheet, continue );
-
-                    if( origSheet->GetName() != copySheet->GetName()
-                            || origSheet->GetFileName() != copySheet->GetFileName()
-                            || origSheet->HasPageNumberChanges( *copySheet ) )
-                    {
-                        result.hierarchyChanged = true;
-                    }
-
-                    // Sheet name changes do not require rebuilding the hiearchy.
-                    if( origSheet->GetFileName() != copySheet->GetFileName()
-                            || origSheet->HasPageNumberChanges( *copySheet ) )
-                    {
-                        refreshHierarchy = true;
-                    }
-
-                    result.variantsChanged = true;
-                }
-
-                if( schItem->Type() == SCH_SYMBOL_T )
+                if( schItem->Type() == SCH_SHEET_T || schItem->Type() == SCH_SYMBOL_T )
                     result.variantsChanged = true;
 
                 schItem->SwapItemData( itemCopy );

@@ -16,19 +16,17 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-
 #include <wx/debug.h>
+
 #include <i18n_utility.h>
 #include <macros.h>
 #include <board.h>
+#include <board_item_index.h>
 #include <board_design_settings.h>
+#include <board_design_settings_defaults.h>
 #include <lset.h>
 #include <pcb_group.h>
 #include <pcb_generator.h>
@@ -36,8 +34,19 @@
 #include <font/font.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
+<<<<<<< ours
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
+||||||| base
+=======
+#include <view/view.h>
+
+
+bool BOARD_ITEM::FitsEnabledLayers( const LSET& aEnabledLayers, int aCopperLayerCount ) const
+{
+    return IsLayerAgnostic() || ( GetLayerSet() & aEnabledLayers ).any();
+}
+>>>>>>> theirs
 
 
 bool BOARD_ITEM::IsGroupableType() const
@@ -52,6 +61,9 @@ bool BOARD_ITEM::IsGroupableType() const
     case PCB_TEXT_T:
     case PCB_TEXTBOX_T:
     case PCB_TABLE_T:
+    case PCB_DRILL_CHART_T:
+    case PCB_STACKUP_TABLE_T:
+    case PCB_DRILL_MAP_T:
     case PCB_GROUP_T:
     case PCB_GENERATOR_T:
     case PCB_TRACE_T:
@@ -66,6 +78,7 @@ bool BOARD_ITEM::IsGroupableType() const
     case PCB_ZONE_T:
     case PCB_BARCODE_T:
     case PCB_POINT_T:
+    case PCB_GRID_ITEM_T:
         return true;
     default:
         return false;
@@ -101,8 +114,8 @@ BOARD* BOARD_ITEM::GetBoard()
 BOARD_ITEM::~BOARD_ITEM()
 {
     // Backup for code paths that skip ::Remove(). Do not use the parent chain, it may be freed.
-    if( m_boardCacheOwner )
-        m_boardCacheOwner->UncacheItemByPtr( this );
+    if( m_owningIndex )
+        m_owningIndex->UnbindItem( *this );
 }
 
 
@@ -117,10 +130,11 @@ void BOARD_ITEM::SetUuid( const KIID& aUuid )
     if( m_Uuid == aUuid )
         return;
 
-    // Use the owner, not GetBoard(). The parent chain may name a wrong or dead board.
-    if( BOARD* board = m_boardCacheOwner )
+    // Use the index that holds us, not GetBoard(). The parent chain may name a wrong or dead
+    // board.
+    if( BOARD_ITEM_INDEX* owningIndex = m_owningIndex )
     {
-        board->RebindItemUuid( this, aUuid );
+        owningIndex->Rebind( *this, aUuid );
         return;
     }
 
@@ -178,6 +192,25 @@ int BOARD_ITEM::GetMaxError() const
 }
 
 
+PCB_LAYER_ID BOARD_ITEM::GetLayer() const
+{
+    KI_ASSERT_MSG( IsSingleLayerType( Type() ),
+                  wxString::Format( wxT( "GetLayer() must be overridden for multi-layer types (%s)." ), GetClass() ) );
+
+    return m_layer;
+}
+
+
+PCB_LAYER_ID BOARD_ITEM::GetFlippedLayer( PCB_LAYER_ID aLayer ) const
+{
+    const BOARD* board = GetBoard();
+
+    if( board )
+        return board->FlipLayer( aLayer );
+
+    return ::FlipLayer( aLayer );
+}
+
 int BOARD_ITEM::BoardLayerCount() const
 {
     const BOARD* board = GetBoard();
@@ -213,11 +246,19 @@ LSET BOARD_ITEM::BoardLayerSet() const
 
 wxString BOARD_ITEM::GetLayerName() const
 {
-    if( const BOARD* board = GetBoard() )
-        return board->GetLayerName( m_layer );
+    return GetLayerName( m_layer );
+}
+
+
+wxString BOARD_ITEM::GetLayerName( PCB_LAYER_ID aLayer ) const
+{
+    const BOARD* board = GetBoard();
+
+    if( board )
+        return board->GetLayerName( aLayer );
 
     // If no parent, return standard name
-    return BOARD::GetStandardLayerName( m_layer );
+    return BOARD::GetStandardLayerName( aLayer );
 }
 
 
@@ -242,24 +283,29 @@ wxString BOARD_ITEM::LayerMaskDescribe() const
 {
     const BOARD* board = GetBoard();
     LSET         layers = GetLayerSet();
+    int          copperLayerCount = MAX_CU_LAYERS;
 
     if( board )
+    {
         layers &= board->GetEnabledLayers();
+        copperLayerCount = board->GetCopperLayerCount();
+    }
 
     LSET copperLayers = layers & LSET::AllCuMask();
     LSET techLayers = layers & LSET::AllTechMask();
 
     // Try to be smart and useful.  Check all copper first.
-    if( (int) copperLayers.count() == board->GetCopperLayerCount() )
+    if( (int) copperLayers.count() == copperLayerCount )
         return _( "all copper layers" );
 
     for( LSET testLayers : { copperLayers, techLayers, layers } )
     {
-        for( int bit = PCBNEW_LAYER_ID_START; bit < PCB_LAYER_ID_COUNT; ++bit )
+        for( int layer = PCBNEW_LAYER_ID_START; layer < PCB_LAYER_ID_COUNT; ++layer )
         {
-            if( testLayers[ bit ] )
+            if( testLayers[ layer ] )
             {
-                wxString layerInfo = board->GetLayerName( static_cast<PCB_LAYER_ID>( bit ) );
+                wxString layerInfo = board ? board->GetLayerName( ToLAYER_ID( layer ) )
+                                           : LayerName( ToLAYER_ID( layer ) );
 
                 if( testLayers.count() > 1 )
                     layerInfo << wxS( " " ) + _( "and others" );
@@ -316,7 +362,7 @@ void BOARD_ITEM::SwapItemData( BOARD_ITEM* aImage )
     // which would leave the cache holding dangling pointers to the destroyed children.
     if( board )
     {
-        board->UncacheChildrenById( this );
+        board->UncacheChildrenById( *this );
     }
 
     swapData( aImage );
@@ -328,7 +374,7 @@ void BOARD_ITEM::SwapItemData( BOARD_ITEM* aImage )
 
     if( board )
     {
-        board->CacheChildrenById( this );
+        board->CacheChildrenById( *this );
     }
 }
 
@@ -357,7 +403,45 @@ void BOARD_ITEM::TransformShapeToPolygon( SHAPE_POLY_SET& aBuffer, PCB_LAYER_ID 
                                           int aClearance, int aError, ERROR_LOC aErrorLoc,
                                           bool ignoreLineWidth ) const
 {
-    KI_LOG_DEBUG( wxT( "%s doesn't implement TransformShapeToPolygon()" ), GetClass() );
+    KI_CHECK_MSG( false, /* void */,
+                 wxString::Format( wxT( "%s doesn't implement TransformShapeToPolygon()" ), GetClass() ) );
+}
+
+
+double BOARD_ITEM::GetCoverageArea( int aTextMargin ) const
+{
+    SHAPE_POLY_SET poly;
+    TransformShapeToPolygon( poly, UNDEFINED_LAYER, 0, ARC_LOW_DEF, ERROR_OUTSIDE );
+    return polygonArea( poly );
+}
+
+
+LSET BOARD_ITEM::viewVisibleLayers( const KIGFX::VIEW* aView ) const
+{
+    const BOARD* board = GetBoard();
+    LSET         visible;
+
+    for( PCB_LAYER_ID layer : board ? board->GetEnabledLayers() : LSET::AllLayersMask() )
+    {
+        if( aView->IsLayerVisibleCached( layer ) )
+            visible.set( layer );
+    }
+
+    return visible;
+}
+
+
+double BOARD_ITEM::polygonArea( SHAPE_POLY_SET& aPolySet )
+{
+    for( int ii = 0; ii < aPolySet.OutlineCount(); ii++ )
+    {
+        aPolySet.Outline( ii ).SetClosed( true );
+
+        for( int jj = 0; jj < aPolySet.HoleCount( ii ); jj++ )
+            aPolySet.Hole( ii, jj ).SetClosed( true );
+    }
+
+    return aPolySet.Area();
 }
 
 
@@ -376,7 +460,7 @@ bool BOARD_ITEM::ptr_cmp::operator() ( const BOARD_ITEM* a, const BOARD_ITEM* b 
 }
 
 
-std::shared_ptr<SHAPE> BOARD_ITEM::GetEffectiveShape( PCB_LAYER_ID aLayer, FLASHING aFlash ) const
+std::shared_ptr<SHAPE> BOARD_ITEM::GetEffectiveShape( PCB_LAYER_ID, FLASHING, DRC_CONSTRAINT_T ) const
 {
     static std::shared_ptr<SHAPE> shape;
 
@@ -386,7 +470,7 @@ std::shared_ptr<SHAPE> BOARD_ITEM::GetEffectiveShape( PCB_LAYER_ID aLayer, FLASH
 }
 
 
-std::shared_ptr<SHAPE_SEGMENT> BOARD_ITEM::GetEffectiveHoleShape() const
+std::shared_ptr<SHAPE_SEGMENT> BOARD_ITEM::GetEffectiveHoleShape( PCB_LAYER_ID, DRC_CONSTRAINT_T ) const
 {
     static std::shared_ptr<SHAPE_SEGMENT> slot;
 
@@ -398,29 +482,19 @@ std::shared_ptr<SHAPE_SEGMENT> BOARD_ITEM::GetEffectiveHoleShape() const
 
 VECTOR2I BOARD_ITEM::GetFPRelativePosition() const
 {
-    VECTOR2I pos = GetPosition();
-
     if( FOOTPRINT* parentFP = GetParentFootprint() )
-    {
-        pos -= parentFP->GetPosition();
-        RotatePoint( pos, -parentFP->GetOrientation() );
-    }
+        return parentFP->GetTransform().InverseApply( GetPosition() );
 
-    return pos;
+    return GetPosition();
 }
 
 
 void BOARD_ITEM::SetFPRelativePosition( const VECTOR2I& aPos )
 {
-    VECTOR2I pos( aPos );
-
     if( FOOTPRINT* parentFP = GetParentFootprint() )
-    {
-        RotatePoint( pos, parentFP->GetOrientation() );
-        pos += parentFP->GetPosition();
-    }
-
-    SetPosition( pos );
+        SetPosition( parentFP->GetTransform().Apply( aPos ) );
+    else
+        SetPosition( aPos );
 }
 
 
@@ -439,6 +513,12 @@ void BOARD_ITEM::Flip( const VECTOR2I& aCentre, FLIP_DIRECTION aFlipDirection )
 void BOARD_ITEM::Mirror( const VECTOR2I& aCentre, FLIP_DIRECTION aFlipDirection )
 {
     KI_FAIL_MSG( wxT( "virtual BOARD_ITEM::Mirror used, should not occur: " ) + GetClass() );
+}
+
+
+void BOARD_ITEM::Mirror( const SEG& aAxis )
+{
+    wxMessageBox( wxT( "virtual BOARD_ITEM::Mirror used, should not occur" ), GetClass() );
 }
 
 
@@ -497,7 +577,8 @@ static struct BOARD_ITEM_DESC
                     &BOARD_ITEM::SetY, &BOARD_ITEM::GetY, PROPERTY_DISPLAY::PT_COORD,
                     ORIGIN_TRANSFORMS::ABS_Y_COORD ) );
         propMgr.AddProperty( new PROPERTY_ENUM<BOARD_ITEM, PCB_LAYER_ID>( _HKI( "Layer" ),
-                    &BOARD_ITEM::SetLayer, &BOARD_ITEM::GetLayer ) );
+                    &BOARD_ITEM::SetLayer, &BOARD_ITEM::GetLayer ) )
+                .SetIsCopyable();
         propMgr.AddProperty( new PROPERTY<BOARD_ITEM, bool>( _HKI( "Locked" ),
                     &BOARD_ITEM::SetLocked, &BOARD_ITEM::IsLocked ) )
                .SetAvailableFunc( isNotFootprintHolder );

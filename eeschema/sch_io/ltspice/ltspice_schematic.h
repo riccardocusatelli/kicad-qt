@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef LTSPICE_SCHEMATIC_LOADER_H
@@ -29,6 +29,7 @@
 #include <math/box2.h>
 #include <wx/filename.h>
 #include <wx/dir.h>
+#include <set>
 
 
 struct LTSPICE_FILE
@@ -289,6 +290,7 @@ public:
      * @param aSchematic is the schematic object.
      * @param aRootSheet is the root sheet referencing variable.
      * @param aLibraryFileName is the name of the library which gets created when the plugin runs.
+     * @param aReporter is an optional #REPORTER object to write load status information.
      */
     void Load( SCHEMATIC* aSchematic, SCH_SHEET* aRootSheet, const wxFileName& aLibraryFileName,
                REPORTER* aReporter );
@@ -306,8 +308,11 @@ public:
     /**
      * Used to get file path for Asc and Asy files.
      *
+     * @param aDir is the path to search.
+     * @param aRecursive recursively searches \a aDir if true.
      * @param aMapOfAscFiles map of string containing content from asc files.
      * @param aMapOfAsyFiles map of string containing content from asy files.
+     * @param aBaseDirs
      */
     void GetAscAndAsyFilePaths( const wxDir& aDir, bool aRecursive,
                                 std::map<wxString, wxString>& aMapOfAscFiles,
@@ -317,9 +322,7 @@ public:
     /**
      * Used to get symbols list present in asc file.
      *
-     * @param aFilePath path where file to be read is kept.
-     * @param aReadType specifies in which type the file is to be read eg.
-     *         r specifies file is use open for reading.
+     * @param aAscFile is the file to be read.
      */
     std::vector<LTSPICE_FILE> GetSchematicElements( const wxString& aAscFile );
 
@@ -334,8 +337,8 @@ public:
      * The function returns a map. This map has all the asy files in form of string. For asy files
      * the key will be symbol name.
      *
-     * @param aFilenames contains all the symbols for which we
-     * we have to load the .asy files
+     * @param aSourceFiles contains all the symbols for which we we have to load the .asy files.
+     * @param aAsyFileMap
      * @return a map of String having all .asy files
      */
     std::map<wxString, wxString> ReadAsyFiles( const std::vector<LTSPICE_FILE>& aSourceFiles,
@@ -435,8 +438,9 @@ private:
     static SYMBOLTYPE getSymbolType( const wxString& aValue );
 
 private:
-    REPORTER*  m_reporter;
-    wxFileName m_ltspiceDataDir;
+    REPORTER*          m_reporter;
+    std::set<wxString> m_missingSymbols;
+    wxFileName         m_ltspiceDataDir;
 
     std::map<wxString, wxString> m_ascFileCache;
     std::map<wxString, wxString> m_asyFileCache;

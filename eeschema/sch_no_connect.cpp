@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -36,6 +32,8 @@
 #include <default_values.h>    // For some default values
 #include <core/mirror.h>
 #include <trigo.h>
+#include <api/api_utils.h>
+#include <api/schematic/schematic_types.pb.h>
 #include <core/ki_assert.h>
 
 
@@ -52,6 +50,43 @@ SCH_NO_CONNECT::SCH_NO_CONNECT( const VECTOR2I& pos ) :
 EDA_ITEM* SCH_NO_CONNECT::Clone() const
 {
     return new SCH_NO_CONNECT( *this );
+}
+
+
+void SCH_NO_CONNECT::Serialize( google::protobuf::Any& aContainer ) const
+{
+    using namespace kiapi::common;
+
+    kiapi::schematic::types::NoConnectMarker marker;
+
+    marker.mutable_id()->set_value( m_Uuid.AsStdString() );
+    PackVector2( *marker.mutable_position(), m_pos, schIUScale );
+    PackDistance( *marker.mutable_size(), m_size, schIUScale );
+    marker.set_locked( IsLocked() ? types::LockedState::LS_LOCKED
+                                  : types::LockedState::LS_UNLOCKED );
+
+    kiapi::common::PackCustomProperties( marker.mutable_custom_properties(), *this );
+
+    if( !aContainer.PackFrom( marker ) )
+        KI_FAIL_MSG( wxT( "Failed to pack SCH_NO_CONNECT" ) );
+}
+
+
+bool SCH_NO_CONNECT::Deserialize( const google::protobuf::Any& aContainer )
+{
+    using namespace kiapi::common;
+
+    kiapi::schematic::types::NoConnectMarker marker;
+
+    if( !aContainer.UnpackTo( &marker ) )
+        return false;
+
+    const_cast<KIID&>( m_Uuid ) = KIID( marker.id().value() );
+    m_pos = UnpackVector2( marker.position(), schIUScale );
+    m_size = UnpackDistance( marker.size(), schIUScale );
+    SetLocked( marker.locked() == types::LockedState::LS_LOCKED );
+    kiapi::common::UnpackCustomProperties( marker.custom_properties(), *this );
+    return true;
 }
 
 

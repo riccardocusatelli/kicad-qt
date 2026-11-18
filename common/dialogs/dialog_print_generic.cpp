@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <dialogs/dialog_print_generic.h>
@@ -94,7 +94,7 @@ DIALOG_PRINT_GENERIC::DIALOG_PRINT_GENERIC( EDA_DRAW_FRAME* aParent, PRINTOUT_SE
         m_settings( aSettings )
 {
     // Show m_panelPrinters only if there are printers to list:
-    m_panelPrinters->Show( m_panelPrinters->AsPrintersAvailable() );
+    m_panelPrinters->Show( m_panelPrinters->HasPrintersAvailable() );
 
     SetupStandardButtons( { { wxID_OK,     _( "Print" )         },
                             { wxID_APPLY,  _( "Print Preview" ) },

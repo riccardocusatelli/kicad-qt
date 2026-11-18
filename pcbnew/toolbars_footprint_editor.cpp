@@ -16,8 +16,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <tool/actions.h>
@@ -35,6 +35,12 @@
 #include <wx/choice.h>
 #include <wx/wupdlock.h>
 #include <advanced_config.h>
+#include <api/api_plugin_manager.h>
+#include <api/api_utils.h>
+#include <pgm_base.h>
+#include <pgm_gui.h>
+#include <settings/common_settings.h>
+#include <wx/log.h>
 
 #include <toolbars_footprint_editor.h>
 
@@ -75,7 +81,8 @@ std::optional<TOOLBAR_CONFIGURATION> FOOTPRINT_EDIT_TOOLBAR_SETTINGS::DefaultToo
               .AppendGroup( TOOLBAR_GROUP_CONFIG( _( "Line modes" ) )
                             .AddAction( PCB_ACTIONS::lineModeFree )
                             .AddAction( PCB_ACTIONS::lineMode90 )
-                            .AddAction( PCB_ACTIONS::lineMode45 ) );
+                            .AddAction( PCB_ACTIONS::lineMode45 ) )
+              .AppendAction( PCB_ACTIONS::toggleAutoConstraints );
 
         config.AppendSeparator()
               .AppendAction( PCB_ACTIONS::padDisplayMode )
@@ -98,29 +105,62 @@ std::optional<TOOLBAR_CONFIGURATION> FOOTPRINT_EDIT_TOOLBAR_SETTINGS::DefaultToo
               .AddAction( ACTIONS::selectSetLasso ) );
 
         config.AppendSeparator()
-              .AppendAction( PCB_ACTIONS::placePad )
+              .AppendGroup( TOOLBAR_GROUP_CONFIG( _( "Pads" ) )
+                            .AddAction( PCB_ACTIONS::placePad )
+                            .AddAction( PCB_ACTIONS::placeThtPad )
+                            .AddAction( PCB_ACTIONS::placeSmdPad )
+                            .AddAction( PCB_ACTIONS::placeNpthPad )
+                            .AddAction( PCB_ACTIONS::placePasteAperturePad ) )
               .AppendAction( PCB_ACTIONS::drawRuleArea );
 
         config.AppendSeparator()
               .AppendAction( PCB_ACTIONS::drawLine )
-              .AppendAction( PCB_ACTIONS::drawArc )
-              .WithContextMenu(
-                      []( TOOL_MANAGER* aToolMgr )
-                      {
-                          PCB_SELECTION_TOOL* selTool = aToolMgr->GetTool<PCB_SELECTION_TOOL>();
-                          auto menu = std::make_unique<ACTION_MENU>( false, selTool );
-                          menu->Add( ACTIONS::pointEditorArcKeepCenter, ACTION_MENU::CHECK );
-                          menu->Add( ACTIONS::pointEditorArcKeepEndpoint, ACTION_MENU::CHECK );
-                          menu->Add( ACTIONS::pointEditorArcKeepRadius, ACTION_MENU::CHECK );
-                          return menu;
-                      } )
+              .AppendGroup( TOOLBAR_GROUP_CONFIG( _( "Arc" ) )
+                            .AddAction( PCB_ACTIONS::drawArcCenter )
+                            .AddAction( PCB_ACTIONS::drawArcStartEndMid )
+                            .AddAction( PCB_ACTIONS::drawArcStartEndCenter )
+                            .AddAction( PCB_ACTIONS::drawArcTangent )
+                            .AddAction( PCB_ACTIONS::drawArcStartDirEnd )
+                            .AddAction( PCB_ACTIONS::drawEllipseArc )
+                            .AddContextMenu(
+                                    []( TOOL_MANAGER* aToolMgr )
+                                    {
+                                        PCB_SELECTION_TOOL* selTool = aToolMgr->GetTool<PCB_SELECTION_TOOL>();
+                                        auto menu = std::make_unique<ACTION_MENU>( false, selTool );
+                                        menu->Add( ACTIONS::pointEditorArcKeepCenter, ACTION_MENU::CHECK );
+                                        menu->Add( ACTIONS::pointEditorArcKeepEndpoint, ACTION_MENU::CHECK );
+                                        menu->Add( ACTIONS::pointEditorArcKeepRadius, ACTION_MENU::CHECK );
+                                        return menu;
+                                    } ) )
               .AppendAction( PCB_ACTIONS::drawRectangle )
-              .AppendAction( PCB_ACTIONS::drawCircle )
+              .AppendGroup( TOOLBAR_GROUP_CONFIG( _( "Circle" ) )
+                            .AddAction( PCB_ACTIONS::drawCircle )
+                            .AddAction( PCB_ACTIONS::drawEllipse ) )
+              .AppendGroup( TOOLBAR_GROUP_CONFIG( _( "Constraints" ) )
+                            .AddAction( PCB_ACTIONS::addConstraintCoincident )
+                            .AddAction( PCB_ACTIONS::addConstraintPointOnLine )
+                            .AddAction( PCB_ACTIONS::addConstraintMidpoint )
+                            .AddAction( PCB_ACTIONS::addConstraintSymmetric )
+                            .AddAction( PCB_ACTIONS::addConstraintFixedPosition )
+                            .AddAction( PCB_ACTIONS::addConstraintParallel )
+                            .AddAction( PCB_ACTIONS::addConstraintPerpendicular )
+                            .AddAction( PCB_ACTIONS::addConstraintCollinear )
+                            .AddAction( PCB_ACTIONS::addConstraintHorizontal )
+                            .AddAction( PCB_ACTIONS::addConstraintVertical )
+                            .AddAction( PCB_ACTIONS::addConstraintTangent )
+                            .AddAction( PCB_ACTIONS::addConstraintEqualLength )
+                            .AddAction( PCB_ACTIONS::addConstraintEqualRadius )
+                            .AddAction( PCB_ACTIONS::addConstraintConcentric )
+                            .AddAction( PCB_ACTIONS::addConstraintFixedLength )
+                            .AddAction( PCB_ACTIONS::addConstraintFixedRadius )
+                            .AddAction( PCB_ACTIONS::addConstraintArcAngle )
+                            .AddAction( PCB_ACTIONS::addConstraintAngular ) )
               .AppendAction( PCB_ACTIONS::drawPolygon )
               .AppendAction( PCB_ACTIONS::drawBezier )
               .AppendAction( PCB_ACTIONS::placeReferenceImage )
-              .AppendAction( PCB_ACTIONS::placeText )
-              .AppendAction( PCB_ACTIONS::drawTextBox )
+              .AppendGroup( TOOLBAR_GROUP_CONFIG( _( "Text objects" ) )
+                            .AddAction( PCB_ACTIONS::placeText )
+                            .AddAction( PCB_ACTIONS::drawTextBox ) )
               .AppendAction( PCB_ACTIONS::drawTable )
               .AppendGroup( TOOLBAR_GROUP_CONFIG( _( "Dimension objects" ) )
                             .AddAction( PCB_ACTIONS::drawOrthogonalDimension )
@@ -128,6 +168,7 @@ std::optional<TOOLBAR_CONFIGURATION> FOOTPRINT_EDIT_TOOLBAR_SETTINGS::DefaultToo
                             .AddAction( PCB_ACTIONS::drawCenterDimension )
                             .AddAction( PCB_ACTIONS::drawRadialDimension )
                             .AddAction( PCB_ACTIONS::drawLeader ) )
+              .AppendAction( PCB_ACTIONS::placeBarcode )
               .AppendAction( ACTIONS::deleteTool );
 
         config.AppendSeparator()
@@ -167,7 +208,6 @@ std::optional<TOOLBAR_CONFIGURATION> FOOTPRINT_EDIT_TOOLBAR_SETTINGS::DefaultToo
         config.AppendSeparator()
               .AppendAction( PCB_ACTIONS::footprintProperties )
               .AppendAction( PCB_ACTIONS::padTable )
-              .AppendAction( PCB_ACTIONS::defaultPadProperties )
               .AppendAction( ACTIONS::showDatasheet )
               .AppendAction( PCB_ACTIONS::checkFootprint );
 
@@ -183,6 +223,9 @@ std::optional<TOOLBAR_CONFIGURATION> FOOTPRINT_EDIT_TOOLBAR_SETTINGS::DefaultToo
 
         config.AppendSeparator()
               .AppendControl( ACTION_TOOLBAR_CONTROLS::layerSelector );
+
+        config.AppendSeparator()
+              .AppendControl( ACTION_TOOLBAR_CONTROLS::ipcScripting );
         break;
     }
 
@@ -201,4 +244,36 @@ void FOOTPRINT_EDIT_FRAME::ReCreateLayerBox( bool aForceResizeToolbar )
 
     if( aForceResizeToolbar )
         UpdateToolbarControlSizes();
+}
+
+void FOOTPRINT_EDIT_FRAME::configureToolbars()
+{
+    PCB_BASE_EDIT_FRAME::configureToolbars();
+
+    // IPC/Scripting plugin control
+    // TODO (ISM): Clean this up to make IPC actions just normal tool actions to get rid of this
+    // entire control
+    auto pluginControlFactory =
+            [this]( ACTION_TOOLBAR* aToolbar )
+            {
+                bool haveApiPlugins = Pgm().GetCommonSettings()->m_Api.enable_server
+                                        && !PgmGui().GetPluginManager().GetActionsForScope( PluginActionScope() ).empty();
+
+                if( haveApiPlugins )
+                {
+                    aToolbar->AddScaledSeparator( aToolbar->GetParent() );
+                    AddApiPluginTools( aToolbar );
+                }
+            };
+
+    RegisterCustomToolbarControlFactory( ACTION_TOOLBAR_CONTROLS::ipcScripting, pluginControlFactory );
+}
+
+
+void FOOTPRINT_EDIT_FRAME::onPluginAvailabilityChanged( wxCommandEvent& aEvt )
+{
+    KI_LOG_TRACE( traceApi, "Footprint editor frame: EDA_EVT_PLUGIN_AVAILABILITY_CHANGED" );
+    RecreateToolbars();
+    ReCreateMenuBar();
+    aEvt.Skip();
 }

@@ -14,16 +14,20 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <kiplatform/ui.h>
 
+#include <algorithm>
+
 #include <wx/choice.h>
 #include <wx/dataview.h>
 #include <wx/dialog.h>
+#include <wx/display.h>
 #include <wx/nonownedwnd.h>
+#include <wx/popupwin.h>
 #include <wx/settings.h>
 #include <wx/window.h>
 #include <wx/log.h>
@@ -34,6 +38,8 @@
 
 #ifdef GDK_WINDOWING_X11
 #include <gdk/gdkx.h>
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
 #endif
 
 #ifdef GDK_WINDOWING_WAYLAND
@@ -46,6 +52,7 @@
 
 // Set WXTRACE=KICAD_WAYLAND to see logs
 const wxString traceWayland = wxS( "KICAD_WAYLAND" );
+static const wxChar traceRhi[] = wxT( "KICAD_RHI" );
 
 
 bool KIPLATFORM::UI::IsDarkTheme()
@@ -124,6 +131,84 @@ void KIPLATFORM::UI::GetInfoBarColours( wxColour& aFgColour, wxColour& aBgColour
 }
 
 
+#ifdef GDK_WINDOWING_WAYLAND
+// Holds widgets over a canvas whose OpenGL subsurface covers everything GTK draws in the frame
+// Subsurfaces stack in the order they are mapped, so this one is remapped after the canvas
+class CANVAS_OVERLAY : public wxPopupWindow
+{
+public:
+    CANVAS_OVERLAY( wxWindow* aCanvas ) :
+            wxPopupWindow( aCanvas )
+    {
+        // wx asks for a compositor popup, and GDK maps a popup with any other hint as a subsurface
+        gtk_window_set_type_hint( GTK_WINDOW( m_widget ), GDK_WINDOW_TYPE_HINT_NORMAL );
+
+        aCanvas->Bind( wxEVT_SIZE, &CANVAS_OVERLAY::onCanvasSize, this );
+        g_signal_connect( aCanvas->GetHandle(), "map", G_CALLBACK( onCanvasMap ), this );
+    }
+
+    ~CANVAS_OVERLAY() override
+    {
+        GetParent()->Unbind( wxEVT_SIZE, &CANVAS_OVERLAY::onCanvasSize, this );
+        g_signal_handlers_disconnect_by_data( GetParent()->GetHandle(), this );
+    }
+
+    void Raise() override
+    {
+        // The canvas maps its surface from a queued event, so wait for that
+        CallAfter( &CANVAS_OVERLAY::remap );
+    }
+
+    bool Show( bool aShow = true ) override
+    {
+        if( aShow )
+            follow();
+
+        return wxPopupWindow::Show( aShow );
+    }
+
+private:
+    static void onCanvasMap( GtkWidget* aWidget, gpointer aOverlay )
+    {
+        static_cast<CANVAS_OVERLAY*>( aOverlay )->Raise();
+    }
+
+    void onCanvasSize( wxSizeEvent& aEvent )
+    {
+        follow();
+        aEvent.Skip();
+    }
+
+    void follow()
+    {
+        // There is no position to follow until the frame is mapped
+        if( gtk_widget_get_mapped( GetParent()->GetHandle() ) )
+            Move( GetParent()->ClientToScreen( wxPoint( 0, 0 ) ) );
+    }
+
+    void remap()
+    {
+        if( !IsShown() )
+            return;
+
+        Hide();
+        Show();
+    }
+};
+#endif
+
+
+wxWindow* KIPLATFORM::UI::CreateCanvasOverlay( wxWindow* aCanvas )
+{
+#ifdef GDK_WINDOWING_WAYLAND
+    if( GDK_IS_WAYLAND_DISPLAY( gdk_display_get_default() ) )
+        return new CANVAS_OVERLAY( aCanvas );
+#endif
+
+    return nullptr;
+}
+
+
 void KIPLATFORM::UI::ForceFocus( wxWindow* aWindow )
 {
     aWindow->SetFocus();
@@ -161,9 +246,119 @@ bool KIPLATFORM::UI::IsWindowActive( wxWindow* aWindow )
 }
 
 
-void KIPLATFORM::UI::EnsureVisible( wxWindow* aWindow )
+void KIPLATFORM::UI::StabilizeWindowPosition( wxWindow* aWindow )
 {
-    // Not needed on this platform
+    if( !aWindow )
+        return;
+
+    GtkWidget* widget = static_cast<GtkWidget*>( aWindow->GetHandle() );
+
+    if( widget && GTK_IS_WINDOW( widget ) )
+        gtk_window_set_gravity( GTK_WINDOW( widget ), GDK_GRAVITY_STATIC );
+}
+
+
+wxPoint KIPLATFORM::UI::GetRestorablePosition( wxWindow* aWindow )
+{
+    GtkWidget* widget = static_cast<GtkWidget*>( aWindow->GetHandle() );
+
+    if( aWindow->IsShown() && widget && GTK_IS_WINDOW( widget )
+        && gtk_window_get_gravity( GTK_WINDOW( widget ) ) == GDK_GRAVITY_STATIC )
+    {
+        if( GdkWindow* gdkWindow = gtk_widget_get_window( widget ) )
+        {
+            wxPoint      origin;
+            GdkRectangle frame;
+            gdk_window_get_origin( gdkWindow, &origin.x, &origin.y );
+            gdk_window_get_frame_extents( gdkWindow, &frame );
+
+            // Heal a position that crept up before static gravity, so the title bar comes back on screen
+            int displayIdx = wxDisplay::GetFromWindow( aWindow );
+
+            if( displayIdx != wxNOT_FOUND )
+            {
+                wxRect workArea = wxDisplay( (unsigned int) displayIdx ).GetClientArea();
+                origin.x += std::max( 0, workArea.x - frame.x );
+                origin.y += std::max( 0, workArea.y - frame.y );
+            }
+
+            return origin;
+        }
+    }
+
+    return aWindow->GetPosition();
+}
+
+
+static const char* const WM_CLASS_DATA_KEY = "kicad-wm-class";
+
+
+// Re-assert our application id on the widget's window.  Bound to "realize" and "map" because GTK
+// writes WM_CLASS from the program class when it realizes the window, so ours must be applied
+// afterwards to survive; the Wayland application id additionally requires a mapped surface.  The
+// id is read from the widget's object data so its lifetime is not tied to the signal closures.
+static void setWindowClassHint( GtkWidget* aWidget, gpointer )
+{
+    const char* id = static_cast<const char*>( g_object_get_data( G_OBJECT( aWidget ),
+                                                                  WM_CLASS_DATA_KEY ) );
+
+    if( !id || !*id )
+        return;
+
+    GdkWindow* window = gtk_widget_get_window( aWidget );
+
+    if( !window )
+        return;
+
+#ifdef GDK_WINDOWING_X11
+    if( GDK_IS_X11_WINDOW( window ) )
+    {
+        // wxGTK sets res_class from the app display name; overwrite both WM_CLASS fields with
+        // the desktop id so the window manager matches us to our installed .desktop launcher.
+        if( XClassHint* hints = XAllocClassHint() )
+        {
+            hints->res_name  = const_cast<char*>( id );
+            hints->res_class = const_cast<char*>( id );
+
+            XSetClassHint( GDK_WINDOW_XDISPLAY( window ), GDK_WINDOW_XID( window ), hints );
+            XFree( hints );
+        }
+    }
+#endif
+
+#if defined( GDK_WINDOWING_WAYLAND ) && GTK_CHECK_VERSION( 3, 24, 22 )
+    // Covers wx < 3.3.1, which never propagates the class name to the Wayland application id.
+    if( GDK_IS_WAYLAND_WINDOW( window ) && gtk_check_version( 3, 24, 22 ) == nullptr )
+        gdk_wayland_window_set_application_id( window, id );
+#endif
+}
+
+
+void KIPLATFORM::UI::SetWMClass( wxWindow* aWindow, const wxString& aClass )
+{
+    if( !aWindow || aClass.IsEmpty() )
+        return;
+
+    GtkWidget* widget = static_cast<GtkWidget*>( aWindow->GetHandle() );
+
+    if( !widget )
+        return;
+
+    // Own a single copy of the id on the widget; it is freed when the widget is destroyed.  The
+    // signal handlers read it back from here rather than capturing it, so repeated calls stay safe.
+    g_object_set_data_full( G_OBJECT( widget ), WM_CLASS_DATA_KEY, g_strdup( aClass.utf8_str() ),
+                            g_free );
+
+    // Guard against stacking duplicate handlers if this is called more than once for a widget.
+    g_signal_handlers_disconnect_by_func( widget, reinterpret_cast<void*>( setWindowClassHint ),
+                                          nullptr );
+
+    g_signal_connect_after( widget, "realize", G_CALLBACK( setWindowClassHint ), nullptr );
+    g_signal_connect_after( widget, "map", G_CALLBACK( setWindowClassHint ), nullptr );
+
+    // Apply immediately for windows already realized when this is called.
+    if( gtk_widget_get_realized( widget ) )
+        setWindowClassHint( widget, nullptr );
 }
 
 
@@ -280,6 +475,25 @@ double KIPLATFORM::UI::GetContentScaleFactor( const wxWindow* aWindow )
 }
 
 
+double KIPLATFORM::UI::GetDisplayRefreshRate( const wxWindow* aWindow )
+{
+#if GTK_CHECK_VERSION( 3, 22, 0 )
+    GtkWidget* widget = static_cast<GtkWidget*>( aWindow->GetHandle() );
+    GdkWindow* window = widget ? gtk_widget_get_window( widget ) : nullptr;
+
+    if( !window )
+        return 0.0;
+
+    GdkMonitor* monitor = gdk_display_get_monitor_at_window( gdk_window_get_display( window ), window );
+
+    // GDK reports millihertz, and 0 when it does not know
+    return monitor ? gdk_monitor_get_refresh_rate( monitor ) / 1000.0 : 0.0;
+#else
+    return 0.0;
+#endif
+}
+
+
 wxSize KIPLATFORM::UI::GetUnobscuredSize( const wxWindow* aWindow )
 {
     return wxSize( aWindow->GetSize().GetX() - wxSystemSettings::GetMetric( wxSYS_VSCROLL_X ),
@@ -313,6 +527,78 @@ bool KIPLATFORM::UI::SupportsKeyState()
 #else
     return false;
 #endif
+}
+
+
+static gboolean onChoicePopupEvent( GtkWidget* aPopup, GdkEvent* aEvent, gpointer )
+{
+    if( aEvent->type == GDK_KEY_PRESS
+        && ( aEvent->key.keyval == GDK_KEY_Return || aEvent->key.keyval == GDK_KEY_KP_Enter )
+        && ( aEvent->key.state & GDK_SHIFT_MASK ) )
+    {
+        GtkWidget* selected = gtk_menu_shell_get_selected_item( GTK_MENU_SHELL( aPopup ) );
+
+        if( selected )
+        {
+            gtk_menu_shell_activate_item( GTK_MENU_SHELL( aPopup ), selected, TRUE );
+            return TRUE;
+        }
+    }
+
+    return FALSE;
+}
+
+
+static void onChoicePopupHidden( GtkWidget* aPopup, gpointer )
+{
+    g_signal_handlers_disconnect_by_func( aPopup, reinterpret_cast<gpointer>( onChoicePopupEvent ), nullptr );
+    g_signal_handlers_disconnect_by_func( aPopup, reinterpret_cast<gpointer>( onChoicePopupHidden ), nullptr );
+}
+
+
+bool KIPLATFORM::UI::PrepareChoicePopup( wxWindow* aControl )
+{
+    GtkWidget* popup = gtk_grab_get_current();
+
+    if( !GTK_IS_MENU( popup ) || gtk_menu_get_attach_widget( GTK_MENU( popup ) ) != aControl->GetHandle() )
+        return false;
+
+    g_signal_handlers_disconnect_by_func( popup, reinterpret_cast<gpointer>( onChoicePopupEvent ), nullptr );
+    g_signal_handlers_disconnect_by_func( popup, reinterpret_cast<gpointer>( onChoicePopupHidden ), nullptr );
+    g_signal_connect( popup, "event", G_CALLBACK( onChoicePopupEvent ), nullptr );
+    g_signal_connect( popup, "hide", G_CALLBACK( onChoicePopupHidden ), nullptr );
+    return true;
+}
+
+
+wxKeyEvent KIPLATFORM::UI::GetNativePopupDismissalEvent()
+{
+    wxKeyEvent key;
+    GdkEvent*  event = gtk_get_current_event();
+
+    if( event )
+    {
+        guint keyval = 0;
+
+        if( gdk_event_get_keyval( event, &keyval ) )
+        {
+            switch( keyval )
+            {
+            case GDK_KEY_Return: key.m_keyCode = WXK_RETURN; break;
+            case GDK_KEY_KP_Enter: key.m_keyCode = WXK_NUMPAD_ENTER; break;
+            case GDK_KEY_Escape: key.m_keyCode = WXK_ESCAPE; break;
+            }
+
+            key.SetShiftDown( event->key.state & GDK_SHIFT_MASK );
+            key.SetControlDown( event->key.state & GDK_CONTROL_MASK );
+            key.SetAltDown( event->key.state & GDK_MOD1_MASK );
+            key.SetMetaDown( event->key.state & GDK_META_MASK );
+        }
+
+        gdk_event_free( event );
+    }
+
+    return key;
 }
 
 
@@ -391,6 +677,13 @@ bool KIPLATFORM::UI::WarpPointer( wxWindow* aWindow, int aX, int aY )
         if( GDK_IS_X11_DISPLAY( disp ) )
         {
             GdkWindow* win = gdk_device_get_window_at_position( ptrdev, nullptr, nullptr );
+
+            if( !win )
+            {
+                aWindow->WarpPointer( aX, aY );
+                return true;
+            }
+
             GdkCursor* blank_cursor = gdk_cursor_new_for_display( disp, GDK_BLANK_CURSOR );
             GdkCursor* cur_cursor = gdk_window_get_cursor( win );
 
@@ -452,6 +745,15 @@ void KIPLATFORM::UI::AllowNetworkFileSystems( wxDialog* aDialog )
 
     if( widget && GTK_IS_FILE_CHOOSER( widget ) )
         gtk_file_chooser_set_local_only( GTK_FILE_CHOOSER( widget ), FALSE );
+}
+
+
+int KIPLATFORM::UI::GetColumnWidth( const wxDataViewColumn* aColumn )
+{
+    int requested = gtk_tree_view_column_get_fixed_width( GTK_TREE_VIEW_COLUMN( aColumn->GetGtkHandle() ) );
+
+    // A column never given a width has no request to report
+    return requested > 0 ? requested : aColumn->GetWidth();
 }
 
 
@@ -611,6 +913,9 @@ static void on_frame_clock_after_paint( GdkFrameClock* clock, GtkWidget* widget 
                     s_wl_pointer_constraints, wlsurf, wlptr, s_wl_confinement_region,
                     ZWP_POINTER_CONSTRAINTS_V1_LIFETIME_ONESHOT );
 
+            zwp_confined_pointer_v1_add_listener( s_wl_confined_pointer, &confined_pointer_listener,
+                                                  NULL );
+
             wl_display_roundtrip( wldisp );
         }
     }
@@ -688,10 +993,7 @@ bool KIPLATFORM::UI::InfiniteDragPrepareWindow( wxWindow* aWindow )
 
     if( GDK_IS_WAYLAND_DISPLAY( disp ) )
     {
-        if( s_wl_confined_pointer != NULL )
-        {
-            KIPLATFORM::UI::InfiniteDragReleaseWindow();
-        }
+        KIPLATFORM::UI::InfiniteDragReleaseWindow();
 
         GdkSeat*   seat = gdk_display_get_default_seat( disp );
         GdkDevice* ptrdev = gdk_seat_get_pointer( seat );
@@ -710,6 +1012,13 @@ bool KIPLATFORM::UI::InfiniteDragPrepareWindow( wxWindow* aWindow )
 
         s_wl_confinement_region = wl_compositor_create_region( s_wl_compositor );
         wl_region_add( s_wl_confinement_region, x, y, width, height );
+
+        // One constraint per surface, so after-paint confines once the lock is gone
+        if( s_wl_locked_pointer )
+        {
+            KI_LOG_TRACE( traceWayland, wxS( "Deferring confinement: warp lock pending" ) );
+            return true;
+        }
 
         s_wl_confined_pointer = zwp_pointer_constraints_v1_confine_pointer(
                 s_wl_pointer_constraints, wlsurf, wlptr, s_wl_confinement_region,
@@ -771,6 +1080,7 @@ wxPoint KIPLATFORM::UI::GetMousePosition()
 
 
 #endif
+<<<<<<< b2e17e0a
 
 
 void KIPLATFORM::UI::RemoveShutdownBlockReason( wxWindow* aWindow )
@@ -781,3 +1091,220 @@ void KIPLATFORM::UI::RemoveShutdownBlockReason( wxWindow* aWindow )
 void KIPLATFORM::UI::SetShutdownBlockReason( wxWindow* aWindow, const wxString& aReason )
 {
 }
+||||||| 1304b76aad
+=======
+
+
+void KIPLATFORM::UI::GetNativeWindowHandles( wxWindow* aWindow, void** aHandle, void** aDisplay,
+                                              int* aDisplayType )
+{
+    *aHandle = nullptr;
+    *aDisplay = nullptr;
+
+    if( aDisplayType )
+        *aDisplayType = NATIVE_DISPLAY_TYPE::DISPLAY_UNKNOWN;
+
+    if( !aWindow )
+        return;
+
+    GtkWidget* gtkWidget = static_cast<GtkWidget*>( aWindow->GetHandle() );
+
+    if( !gtkWidget )
+        return;
+
+    gtk_widget_realize( gtkWidget );
+    GdkWindow* gdkWindow = gtk_widget_get_window( gtkWidget );
+
+    if( !gdkWindow )
+        return;
+
+    if( !gdk_window_ensure_native( gdkWindow ) )
+    {
+        KI_LOG_TRACE( traceRhi, wxS( "GetNativeWindowHandles: gdk_window_ensure_native failed "
+                                    "widget=%p window=%p" ),
+                    static_cast<void*>( gtkWidget ),
+                    static_cast<void*>( gdkWindow ) );
+        return;
+    }
+
+    if( !gdk_window_is_viewable( gdkWindow ) )
+    {
+        // Hide() unmaps the GDK window, and mapping it anyway would put a hidden preview canvas back
+        // on screen over its replacement.
+        if( !gtk_widget_get_visible( gtkWidget ) )
+        {
+            KI_LOG_TRACE( traceRhi, wxS( "GetNativeWindowHandles: widget hidden, skipping "
+                                        "native window map widget=%p window=%p" ),
+                        static_cast<void*>( gtkWidget ),
+                        static_cast<void*>( gdkWindow ) );
+            return;
+        }
+
+        KI_LOG_TRACE( traceRhi, wxS( "GetNativeWindowHandles: mapping native window "
+                                    "widget=%p window=%p mapped=%s viewable=%s" ),
+                    static_cast<void*>( gtkWidget ),
+                    static_cast<void*>( gdkWindow ),
+                    gtk_widget_get_mapped( gtkWidget ) ? "yes" : "no",
+                    gdk_window_is_viewable( gdkWindow ) ? "yes" : "no" );
+
+        gdk_window_show_unraised( gdkWindow );
+
+        KI_LOG_TRACE( traceRhi, wxS( "GetNativeWindowHandles: native window map result "
+                                    "window=%p viewable=%s" ),
+                    static_cast<void*>( gdkWindow ),
+                    gdk_window_is_viewable( gdkWindow ) ? "yes" : "no" );
+    }
+
+    GdkDisplay* gdkDisplay = gtk_widget_get_display( gtkWidget );
+
+    // The render thread uses its own display connection and must see the window before creating a surface
+    gdk_display_flush( gdkDisplay );
+
+#ifdef GDK_WINDOWING_X11
+    if( GDK_IS_X11_DISPLAY( gdkDisplay ) )
+    {
+        *aHandle = reinterpret_cast<void*>( GDK_WINDOW_XID( gdkWindow ) );
+        *aDisplay = gdk_x11_display_get_xdisplay( gdkDisplay );
+
+        if( aDisplayType )
+            *aDisplayType = NATIVE_DISPLAY_TYPE::DISPLAY_X11;
+
+        KI_LOG_TRACE( traceRhi, wxS( "GetNativeWindowHandles: X11 widget=%p window=%p xid=0x%lx "
+                                    "display=%p" ),
+                    static_cast<void*>( gtkWidget ),
+                    static_cast<void*>( gdkWindow ),
+                    static_cast<unsigned long>( GDK_WINDOW_XID( gdkWindow ) ),
+                    *aDisplay );
+        return;
+    }
+#endif
+
+#ifdef GDK_WINDOWING_WAYLAND
+    if( GDK_IS_WAYLAND_DISPLAY( gdkDisplay ) )
+    {
+        *aHandle = gdk_wayland_window_get_wl_surface( gdkWindow );
+        *aDisplay = gdk_wayland_display_get_wl_display( gdkDisplay );
+
+        if( aDisplayType )
+            *aDisplayType = NATIVE_DISPLAY_TYPE::DISPLAY_WAYLAND;
+
+        KI_LOG_TRACE( traceRhi, wxS( "GetNativeWindowHandles: Wayland widget=%p window=%p "
+                                    "surface=%p display=%p" ),
+                    static_cast<void*>( gtkWidget ),
+                    static_cast<void*>( gdkWindow ),
+                    *aHandle,
+                    *aDisplay );
+        return;
+    }
+#endif
+}
+
+
+void KIPLATFORM::UI::PrepareForExternalRendering( wxWindow* aWindow )
+{
+    if( !aWindow )
+        return;
+
+    GtkWidget* gtkWidget = static_cast<GtkWidget*>( aWindow->GetHandle() );
+
+    if( !gtkWidget )
+    {
+        KI_LOG_TRACE( traceRhi, wxS( "PrepareForExternalRendering: no GtkWidget handle" ) );
+        return;
+    }
+
+    bool realized = gtk_widget_get_realized( gtkWidget );
+
+    KI_LOG_TRACE( traceRhi, wxS( "PrepareForExternalRendering: widget=%p realized=%s" ),
+                static_cast<void*>( gtkWidget ), realized ? "yes" : "no" );
+
+    // Do not realize here. Before layout that creates a 1x1 X11 window and poisons Vulkan's surface
+    // capabilities, so GetNativeWindowHandles() realizes it on the first paint instead.
+
+    // GTK3's cairo backing surface would otherwise blit over the GPU output after every draw
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    gtk_widget_set_double_buffered( gtkWidget, FALSE );
+    G_GNUC_END_IGNORE_DEPRECATIONS
+
+    // Otherwise GTK clears to the GDK background before every draw and flashes black between presents
+    gtk_widget_set_app_paintable( gtkWidget, TRUE );
+
+    KI_LOG_TRACE( traceRhi, wxS( "PrepareForExternalRendering: double-buffering disabled, "
+                                "app-paintable enabled" ) );
+
+    // Keep areas not yet presented from showing the GTK theme. This needs a realized widget.
+    if( realized )
+    {
+        GdkWindow* gdkWindow = gtk_widget_get_window( gtkWidget );
+
+        if( gdkWindow )
+        {
+#ifdef GDK_WINDOWING_X11
+            if( GDK_IS_X11_DISPLAY( gdk_display_get_default() ) )
+            {
+                // The X server repaints exposed regions with the BackgroundPixmap before the
+                // client presents, flashing black; None leaves the previous frame in place.
+                Display* xDisplay = GDK_DISPLAY_XDISPLAY( gdk_display_get_default() );
+                Window   xWindow  = GDK_WINDOW_XID( gdkWindow );
+                XSetWindowBackgroundPixmap( xDisplay, xWindow, None );
+
+                KI_LOG_TRACE( traceRhi, wxS( "PrepareForExternalRendering: X11 "
+                                            "BackgroundPixmap set to None" ) );
+            }
+            else
+#endif
+            {
+                GdkRGBA black = { 0.0, 0.0, 0.0, 1.0 };
+
+                G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+                gdk_window_set_background_rgba( gdkWindow, &black );
+                G_GNUC_END_IGNORE_DEPRECATIONS
+
+                KI_LOG_TRACE( traceRhi, wxS( "PrepareForExternalRendering: GDK background "
+                                            "set to black" ) );
+            }
+        }
+        else
+        {
+            KI_LOG_TRACE( traceRhi, wxS( "PrepareForExternalRendering: no GdkWindow" ) );
+        }
+
+    }
+
+    // Children shown earlier have been painting into the window the GPU now presents to
+    for( wxWindow* child : aWindow->GetChildren() )
+        KeepAboveExternalRendering( child );
+}
+
+
+void KIPLATFORM::UI::KeepAboveExternalRendering( wxWindow* aChild )
+{
+#ifdef GDK_WINDOWING_X11
+    if( !aChild || !aChild->GetParent() )
+        return;
+
+    GtkWidget* child = static_cast<GtkWidget*>( aChild->GetHandle() );
+    GtkWidget* parent = static_cast<GtkWidget*>( aChild->GetParent()->GetHandle() );
+
+    if( !child || !parent || !GDK_IS_X11_DISPLAY( gtk_widget_get_display( child ) ) )
+        return;
+
+    // PrepareForExternalRendering() is what turns double buffering off
+    G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+    const bool external = !gtk_widget_get_double_buffered( parent );
+    G_GNUC_END_IGNORE_DEPRECATIONS
+
+    if( !external )
+        return;
+
+    GdkWindow* window = gtk_widget_get_window( child );
+
+    // A widget without a window of its own reports its parent's
+    if( !window || window == gtk_widget_get_window( parent ) )
+        return;
+
+    if( !gdk_window_ensure_native( window ) )
+        KI_LOG_TRACE( traceRhi, wxS( "KeepAboveExternalRendering: gdk_window_ensure_native failed" ) );
+#endif
+}
+>>>>>>> ed8c16703e

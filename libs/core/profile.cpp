@@ -15,16 +15,15 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
 #include <config.h>
 #include <cstdint>
+#include <string>
+#include <sstream>
+#include <core/profile.h>
 
 #if defined( _WIN32 )
 
@@ -71,3 +70,27 @@ int64_t GetRunningMicroSecs()
 }
 
 #endif
+
+
+std::string LATENCY_PROBE::to_string() 
+{
+    std::stringstream ss;
+    TIME_POINT prev = m_start;
+    ss << "Probe stats for" << m_name << std::endl;
+    for (auto cp : m_checkpoints)
+    {
+        if( cp.isTimer )
+            ss << "tmr: " << std::left << std::setw(30) << cp.name << std::fixed << std::setprecision(3) << cp.timerDelta << std::endl;
+        else
+        {
+            ss << "chp: "<< std::left << std::setw(30) << cp.name;
+            ss << "since last : " << std::fixed << std::setprecision(3) << delta_ms( cp.timestamp, prev ) << " ";
+            ss << "accumulated: " << std::fixed << std::setprecision(3) << delta_ms( cp.timestamp, m_start ) << std::endl;
+
+            prev = cp.timestamp;
+        }
+    }
+
+    return ss.str();
+}
+

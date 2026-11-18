@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -23,6 +23,7 @@
 #include <widgets/search_pane.h>
 
 class SCH_EDIT_FRAME;
+class SCH_SEARCH_HANDLER;
 
 class SCH_SEARCH_PANE : public SEARCH_PANE, public SCHEMATIC_LISTENER
 {
@@ -35,6 +36,9 @@ public:
     virtual void OnSchItemsChanged( SCHEMATIC&  aBoard, std::vector<SCH_ITEM*>& aBoardItems ) override;
 
 private:
+    void queueSearchRefresh();
+    void invalidateSearchResults();
+
     void onUnitsChanged( wxCommandEvent& event );
     void onSchChanging( wxCommandEvent& event );
     void onSchChanged( wxCommandEvent& event );
@@ -42,4 +46,6 @@ private:
 private:
     SCH_EDIT_FRAME* m_schFrame;
     SCHEMATIC*      m_sch;
+    bool           m_refreshPending = false;
+    std::vector<std::shared_ptr<SCH_SEARCH_HANDLER>> m_searchHandlers;
 };

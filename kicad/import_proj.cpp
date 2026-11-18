@@ -14,12 +14,17 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "import_proj.h"
+
+#include <list>
+
 #include <import_proj_properties.h>
+#include <confirm.h>
+#include <kidialog.h>
 #include <wildcards_and_files_ext.h>
 #include <macros.h>
 #include <string_utils.h>
@@ -46,8 +51,11 @@
 
 #include <io/easyedapro/easyedapro_import_utils.h>
 #include <io/easyedapro/easyedapro_parser.h>
+#include <io/easyedapro/easyedapro_v3_parser.h>
 #include <io/common/plugin_common_choose_project.h>
 #include <io/pads/pads_common.h>
+#include <io/easypc/easypc_classes_project.h>
+#include <io/easypc/easypc_document.h>
 #include <dialogs/dialog_import_choose_project.h>
 
 #include <wx/log.h>
@@ -82,11 +90,23 @@ void IMPORT_PROJ_HELPER::FindEmptyTargetDir()
 
 class SCOPED_FILE_REMOVER
 {
-    wxString m_file;
-
 public:
-    SCOPED_FILE_REMOVER( const wxString& aFile ) : m_file( aFile ) {}
-    ~SCOPED_FILE_REMOVER() { wxRemoveFile( m_file ); }
+    SCOPED_FILE_REMOVER( const wxString& aFile ) :
+            m_file( aFile )
+    {
+    }
+
+    ~SCOPED_FILE_REMOVER()
+    {
+        wxRemoveFile( m_file );
+    }
+
+    // No copy operations allowed or the destructor might remove files multiple times.
+    SCOPED_FILE_REMOVER( SCOPED_FILE_REMOVER const& ) = delete;
+    SCOPED_FILE_REMOVER& operator=( SCOPED_FILE_REMOVER const& ) = delete;
+
+private:
+    wxString m_file;
 };
 
 
@@ -111,7 +131,7 @@ void IMPORT_PROJ_HELPER::ImportIndividualFile( KICAD_T aFT, int aImportedFileTyp
     default: return;
     }
 
-    std::vector<SCOPED_FILE_REMOVER> copiedFiles;
+    std::list<SCOPED_FILE_REMOVER> copiedFiles;
 
     for( wxString ext : neededExts )
     {
@@ -119,7 +139,12 @@ void IMPORT_PROJ_HELPER::ImportIndividualFile( KICAD_T aFT, int aImportedFileTyp
             ext = m_InputFile.GetExt();
 
         wxFileName candidate = m_InputFile;
-        candidate.SetExt( ext );
+
+        // Selected file often the one wanted (e.g. schematic in schematic-only
+        // import); keep on-disk name so uppercase ext still resolves on
+        // case-sensitive fs. Rewrite ext only when seeking differently-typed sibling
+        if( m_InputFile.GetExt().CmpNoCase( ext ) != 0 )
+            candidate.SetExt( ext );
 
         if( !candidate.FileExists() )
             continue;
@@ -162,6 +187,14 @@ void IMPORT_PROJ_HELPER::doImport( const wxString& aFile, FRAME_T aFrameType, in
         std::string packet = ss.str();
         frame->Kiway().ExpressMail( aFrameType, MAIL_IMPORT_FILE, packet, m_frame );
 
+        // Editors reply with an empty packet when the import fails
+        if( !packet.empty() )
+            m_importedFrames.insert( aFrameType );
+
+        if( aFrameType == FRAME_SCH && aImportedFileType == SCH_IO_MGR::SCH_ORCAD
+            && IMPORT_PROJ_PROPS::SplitNetNameMap( From_UTF8( packet ) ) )
+            m_properties[IMPORT_PROJ_PROPS::NET_NAME_MAP] = packet;
+
         if( !frame->IsShownOnScreen() )
             frame->Show( true );
 
@@ -174,32 +207,77 @@ void IMPORT_PROJ_HELPER::doImport( const wxString& aFile, FRAME_T aFrameType, in
 }
 
 
-void IMPORT_PROJ_HELPER::EasyEDAProProjectHandler()
+void IMPORT_PROJ_HELPER::SaveImportedFiles()
 {
-    wxFileName fname = m_InputFile;
-
-    if( fname.GetExt() == wxS( "epro" ) || fname.GetExt() == wxS( "zip" ) )
+    for( FRAME_T frameType : m_importedFrames )
     {
-        nlohmann::json project = EASYEDAPRO::ReadProjectOrDeviceFile( fname.GetFullPath() );
+        std::string payload;
+        MAIL_T      mail = frameType == FRAME_SCH ? MAIL_SCH_SAVE : MAIL_PCB_SAVE;
 
-        std::vector<IMPORT_PROJECT_DESC> toImport =
-                EASYEDAPRO::ProjectToSelectorDialog( project, false, false );
+        m_frame->Kiway().ExpressMail( frameType, mail, payload, m_frame );
+    }
+}
 
-        if( toImport.size() > 1 )
-            toImport = DIALOG_IMPORT_CHOOSE_PROJECT::RunModal( m_frame, toImport );
 
-        if( toImport.size() == 1 )
+void IMPORT_PROJ_HELPER::EasyEDAProProjectHandler( int aImportedSchFileType, int aImportedPcbFileType )
+{
+    const bool isV3 =
+            aImportedSchFileType == SCH_IO_MGR::SCH_EASYEDAPRO_V3 || aImportedPcbFileType == PCB_IO_MGR::EASYEDAPRO_V3;
+
+    // Sch/PCB importers both assign FPIDs under ShortenLibName( archive ); advertise that
+    // nickname as the source footprint lib so post-import reconciler keeps it (instead of
+    // rewriting schematic Footprint fields onto the generated *-import-fps cache).
+    wxArrayString sourceFpLibs;
+    sourceFpLibs.Add( EASYEDAPRO::ShortenLibName( m_InputFile.GetName() ) );
+    m_properties[IMPORT_PROJ_PROPS::SOURCE_FP_LIBS] = IMPORT_PROJ_PROPS::JoinList( sourceFpLibs );
+
+    nlohmann::json project;
+
+    if( isV3 )
+    {
+        // For v3, build a minimal legacy-format project from raw documents
+        EASYEDAPRO::V3_DOC_PARSER adapter( m_InputFile.GetFullPath() );
+        adapter.Load();
+        project = EASYEDAPRO::BuildV3ProjectIndexFromRawDocs( adapter, false );
+    }
+    else
+    {
+        project = EASYEDAPRO::ReadProjectOrDeviceFile( m_InputFile.GetFullPath() );
+    }
+
+    std::vector<IMPORT_PROJECT_DESC> toImport = EASYEDAPRO::ProjectToSelectorDialog( project, false, false );
+
+    if( toImport.size() > 1 )
+        toImport = DIALOG_IMPORT_CHOOSE_PROJECT::RunModal( m_frame, toImport );
+
+    if( toImport.size() == 1 )
+    {
+        const IMPORT_PROJECT_DESC& desc = toImport[0];
+        wxString                   pcbId = desc.PCBId;
+        wxString                   schId = desc.SchematicId;
+
+        if( pcbId.empty() && project.contains( "pcbs" ) && project.at( "pcbs" ).is_object()
+            && project.at( "pcbs" ).size() == 1 )
         {
-            const IMPORT_PROJECT_DESC& desc = toImport[0];
+            pcbId = wxString::FromUTF8( project.at( "pcbs" ).begin().key() );
+        }
 
-            m_properties["pcb_id"] = desc.PCBId;
-            m_properties["sch_id"] = desc.SchematicId;
-        }
-        else
+        if( schId.empty() && project.contains( "schematics" ) && project.at( "schematics" ).is_object()
+            && project.at( "schematics" ).size() == 1 )
         {
-            m_properties["pcb_id"] = "";
-            m_properties["sch_id"] = "";
+            schId = wxString::FromUTF8( project.at( "schematics" ).begin().key() );
         }
+
+        if( !pcbId.empty() )
+            m_properties["pcb_id"] = pcbId;
+
+        if( !schId.empty() )
+            m_properties["sch_id"] = schId;
+    }
+    else
+    {
+        m_properties["pcb_id"] = "";
+        m_properties["sch_id"] = "";
     }
 }
 
@@ -213,6 +291,7 @@ void IMPORT_PROJ_HELPER::setImportCacheNickname()
         stem = m_InputFile.GetName();
 
     m_properties[IMPORT_PROJ_PROPS::FP_CACHE_NICKNAME] = IMPORT_PROJ_PROPS::MakeCacheNickname( stem );
+    m_properties[IMPORT_PROJ_PROPS::SYM_CACHE_NICKNAME] = IMPORT_PROJ_PROPS::MakeSymbolCacheNickname( stem );
 }
 
 
@@ -235,6 +314,9 @@ wxString IMPORT_PROJ_HELPER::joinSourceLibNicknames( const std::set<wxString>& a
 void IMPORT_PROJ_HELPER::addLocalLibraries( const std::set<wxString>& aNames, FRAME_T aFrameType )
 {
     KIWAY_PLAYER* frame = m_frame->Kiway().Player( aFrameType, true );
+
+    if( !frame )
+        return;
 
     std::stringstream ss;
 
@@ -359,7 +441,7 @@ void IMPORT_PROJ_HELPER::ImportPadsFiles()
     if( !related.HasPcb() && !related.HasSchematic() )
         return;
 
-    std::vector<SCOPED_FILE_REMOVER> copiedFiles;
+    std::list<SCOPED_FILE_REMOVER> copiedFiles;
 
     auto copyAndImport = [&]( const wxString& sourceFile, FRAME_T frameType, int fileType )
     {
@@ -632,6 +714,129 @@ void IMPORT_PROJ_HELPER::GedaProjectHandler()
 }
 
 
+static wxFileName findSiblingByExt( const wxFileName& aBase, const wxString& aExt )
+{
+    wxDir dir( aBase.GetPath() );
+
+    if( dir.IsOpened() )
+    {
+        wxString found;
+
+        for( bool more = dir.GetFirst( &found, wxEmptyString, wxDIR_FILES ); more;
+             more = dir.GetNext( &found ) )
+        {
+            wxFileName fn( aBase.GetPath(), found );
+
+            if( fn.GetName().CmpNoCase( aBase.GetName() ) == 0 && fn.GetExt().CmpNoCase( aExt ) == 0 )
+                return fn;
+        }
+    }
+
+    return wxFileName();
+}
+
+
+void IMPORT_PROJ_HELPER::OrcadProjectHandler()
+{
+    m_properties.erase( IMPORT_PROJ_PROPS::NET_NAME_MAP );
+
+    // Import selected OrCAD Capture schematic (.dsn) first
+    ImportIndividualFile( SCHEMATIC_T, SCH_IO_MGR::SCH_ORCAD );
+
+    // Only a successful schematic import replies with a net-name map, even an empty one.
+    if( !m_properties.count( IMPORT_PROJ_PROPS::NET_NAME_MAP ) )
+        return;
+
+    // OrCAD designs pair w/ Cadence Allegro board; offer import, defaulting to
+    // sibling board (matched case-insensitively) next to schematic
+    wxFileName brdFile = findSiblingByExt( m_InputFile, wxS( "brd" ) );
+    bool       haveSibling = brdFile.FileExists();
+
+    wxString msg = haveSibling
+                           ? wxString::Format( _( "Import the associated Allegro board '%s'?" ),
+                                               brdFile.GetFullName() )
+                           : _( "Import an associated Allegro board file?" );
+
+    KIDIALOG dlg( m_frame, msg, _( "Import Allegro Board" ), wxOK | wxCANCEL | wxICON_QUESTION );
+    dlg.SetOKCancelLabels( _( "OK" ), _( "Skip" ) );
+
+    if( dlg.ShowModal() != wxID_OK )
+        return;
+
+    if( !haveSibling )
+    {
+        wxFileDialog fileDlg( m_frame, _( "Locate Allegro Board" ), m_InputFile.GetPath(),
+                              wxEmptyString, FILEEXT::AllegroPcbFilesWildcard(),
+                              wxFD_OPEN | wxFD_FILE_MUST_EXIST );
+
+        if( fileDlg.ShowModal() != wxID_OK )
+            return;
+
+        brdFile.Assign( fileDlg.GetPath() );
+    }
+
+    // ExpressMail dispatches synchronously and loaded target project sets generated
+    // board path, so import source board directly, no staging copy
+    if( brdFile.FileExists() )
+        doImport( brdFile.GetFullPath(), FRAME_PCB_EDITOR, PCB_IO_MGR::ALLEGRO );
+}
+
+
+void IMPORT_PROJ_HELPER::EasyPcProjectHandler()
+{
+    wxFileName schFile;
+    wxFileName pcbFile;
+    wxString   projectPcb;
+
+    if( m_InputFile.GetExt().CmpNoCase( wxS( "prj" ) ) == 0 )
+    {
+        schFile = m_InputFile;
+
+        try
+        {
+            std::unique_ptr<EASYPC::PROJECT_DOCUMENT> doc = EASYPC::LoadProject( m_InputFile.GetFullPath() );
+            const EASYPC::SOURCE_PROJECT&             project = *doc->Project;
+
+            if( !project.Boards.empty() )
+            {
+                projectPcb = project.Boards.front()->Name;
+                pcbFile.Assign( EASYPC::ResolveProjectItem( m_InputFile.GetFullPath(), projectPcb ) );
+            }
+        }
+        catch( const IO_ERROR& e )
+        {
+            DisplayErrorMessage( m_frame, _( "Cannot read the Easy-PC project." ), e.What() );
+            return;
+        }
+    }
+    else if( m_InputFile.GetExt().CmpNoCase( wxS( "pcb" ) ) == 0 )
+    {
+        pcbFile = m_InputFile;
+        schFile = findSiblingByExt( m_InputFile, wxS( "sch" ) );
+    }
+    else
+    {
+        schFile = m_InputFile;
+        pcbFile = findSiblingByExt( m_InputFile, wxS( "pcb" ) );
+    }
+
+    // Sources are imported in place: a project's sheets are found relative to the .prj
+    if( schFile.IsOk() && schFile.FileExists() )
+        doImport( schFile.GetFullPath(), FRAME_SCH, SCH_IO_MGR::SCH_EASYPC );
+
+    if( pcbFile.IsOk() && pcbFile.FileExists() )
+    {
+        doImport( pcbFile.GetFullPath(), FRAME_PCB_EDITOR, PCB_IO_MGR::EASYPC );
+    }
+    else if( !projectPcb.IsEmpty() )
+    {
+        DisplayErrorMessage( m_frame, wxString::Format( _( "The board '%s' named by the Easy-PC project was not "
+                                                           "found." ),
+                                                        projectPcb ) );
+    }
+}
+
+
 void IMPORT_PROJ_HELPER::ImportFiles( int aImportedSchFileType, int aImportedPcbFileType )
 {
     m_properties.clear();
@@ -639,15 +844,32 @@ void IMPORT_PROJ_HELPER::ImportFiles( int aImportedSchFileType, int aImportedPcb
     // both imports must agree on the cache nickname up front
     setImportCacheNickname();
 
-    if( aImportedSchFileType == SCH_IO_MGR::SCH_EASYEDAPRO
-        || aImportedPcbFileType == PCB_IO_MGR::EASYEDAPRO )
+    int importedSchFileType = aImportedSchFileType;
+    int importedPcbFileType = aImportedPcbFileType;
+
+    if( importedSchFileType == SCH_IO_MGR::SCH_EASYEDAPRO || importedSchFileType == SCH_IO_MGR::SCH_EASYEDAPRO_V3
+        || importedPcbFileType == PCB_IO_MGR::EASYEDAPRO || importedPcbFileType == PCB_IO_MGR::EASYEDAPRO_V3 )
     {
-        EasyEDAProProjectHandler();
+        bool isV3 = EASYEDAPRO::V3_DOC_PARSER::IsV3Archive( m_InputFile.GetFullPath() );
+
+        importedSchFileType = isV3 ? SCH_IO_MGR::SCH_EASYEDAPRO_V3 : SCH_IO_MGR::SCH_EASYEDAPRO;
+        importedPcbFileType = isV3 ? PCB_IO_MGR::EASYEDAPRO_V3 : PCB_IO_MGR::EASYEDAPRO;
+
+        EasyEDAProProjectHandler( importedSchFileType, importedPcbFileType );
     }
-    else if( aImportedSchFileType == SCH_IO_MGR::SCH_ALTIUM
-             || aImportedPcbFileType == PCB_IO_MGR::ALTIUM_DESIGNER )
+    else if( importedSchFileType == SCH_IO_MGR::SCH_ALTIUM || importedPcbFileType == PCB_IO_MGR::ALTIUM_DESIGNER )
     {
         AltiumProjectHandler();
+        return;
+    }
+    else if( aImportedSchFileType == SCH_IO_MGR::SCH_ORCAD )
+    {
+        OrcadProjectHandler();
+        return;
+    }
+    else if( aImportedSchFileType == SCH_IO_MGR::SCH_EASYPC )
+    {
+        EasyPcProjectHandler();
         return;
     }
     else if( aImportedSchFileType == SCH_IO_MGR::SCH_GEDA )
@@ -702,6 +924,6 @@ void IMPORT_PROJ_HELPER::ImportFiles( int aImportedSchFileType, int aImportedPcb
         return;
     }
 
-    ImportIndividualFile( SCHEMATIC_T, aImportedSchFileType );
-    ImportIndividualFile( PCB_T, aImportedPcbFileType );
+    ImportIndividualFile( SCHEMATIC_T, importedSchFileType );
+    ImportIndividualFile( PCB_T, importedPcbFileType );
 }

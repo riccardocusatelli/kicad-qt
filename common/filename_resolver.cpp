@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <fstream>
@@ -281,21 +277,20 @@ wxString FILENAME_RESOLVER::ResolvePath( const wxString& aFileName, const wxStri
 
         wxString path = tname.Mid( wxString( FILEEXT::KiCadUriPrefix + "://" ).length() );
 
-        wxFileName temp_file = aEmbeddedFilesStack[0]->GetTemporaryFileName( path );
-        int        ii = 1;
+        // It's a "stack" stored in a std::vector.  Search from the back.
+        int        ii = (int) aEmbeddedFilesStack.size() - 1;
+        wxFileName temp_file = aEmbeddedFilesStack[ii--]->GetTemporaryFileName( path );
 
-        while( !temp_file.IsOk() && ii < (int) aEmbeddedFilesStack.size() )
-            temp_file = aEmbeddedFilesStack[ii++]->GetTemporaryFileName( path );
+        while( !temp_file.IsOk() && ii >= 0 )
+            temp_file = aEmbeddedFilesStack[ii--]->GetTemporaryFileName( path );
 
         if( !temp_file.IsOk() )
         {
-            KI_LOG_TRACE( wxT( "KICAD_EMBED" ),
-                        wxT( "Failed to get temp file '%s' for kicad_embed URI" ), path );
+            KI_LOG_TRACE( wxT( "KICAD_EMBED" ), wxT( "Failed to get temp file '%s' for kicad_embed URI" ), path );
             return wxEmptyString;
         }
 
-        KI_LOG_TRACE( wxT( "KICAD_EMBED" ), wxT( "Opening embedded file '%s' as '%s'" ),
-                    tname, temp_file.GetFullPath() );
+        KI_LOG_TRACE( wxT( "KICAD_EMBED" ), wxT( "Opening embedded file '%s' as '%s'" ), tname, temp_file.GetFullPath() );
 
         return temp_file.GetFullPath();
     }

@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <kiface_base.h>
@@ -29,10 +25,9 @@
 #include <pcbnew_settings.h>
 #include <zone_settings.h>
 #include <widgets/unit_binder.h>
-#include <wx/statbox.h>
 #include <wx/statline.h>
-#include <wx/radiobut.h>
 #include <zones.h>
+#include <panel_zone_conversion.h>
 
 #include <dialog_non_copper_zones_properties_base.h>
 #include <magic_enum.hpp>
@@ -45,13 +40,10 @@ public:
     DIALOG_NON_COPPER_ZONES_EDITOR( PCB_BASE_FRAME* aParent, ZONE_SETTINGS* aSettings,
                                     CONVERT_SETTINGS* aConvertSettings );
 
-    ~DIALOG_NON_COPPER_ZONES_EDITOR()
-    { delete m_gap; }
-
-private:
     bool TransferDataToWindow() override;
     bool TransferDataFromWindow() override;
 
+protected:
     void OnStyleSelection( wxCommandEvent& event ) override;
     void OnLayerSelection( wxDataViewEvent& event ) override;
     void OnUpdateUI( wxUpdateUIEvent& ) override;
@@ -67,45 +59,29 @@ private:
     UNIT_BINDER       m_hatchGap;
     ZONE_SETTINGS::CORNER_SMOOTHING m_cornerSmoothingType;
     UNIT_BINDER       m_cornerRadius;
-    wxStaticText*     m_gapLabel;
-    wxTextCtrl*       m_gapCtrl;
-    wxStaticText*     m_gapUnits;
-    UNIT_BINDER*      m_gap;
-
-    CONVERT_SETTINGS* m_convertSettings;
-    wxRadioButton*    m_rbCenterline;
-    wxRadioButton*    m_rbEnvelope;
-    wxCheckBox*       m_cbDeleteOriginals;
+    PANEL_ZONE_CONVERSION* m_conversionControls = nullptr;
 };
 
 
-int InvokeNonCopperZonesEditor( PCB_BASE_FRAME* aParent, ZONE_SETTINGS* aSettings,
-                                CONVERT_SETTINGS* aConvertSettings )
+int InvokeNonCopperZonesEditor( PCB_BASE_FRAME* aParent, ZONE_SETTINGS* aSettings, CONVERT_SETTINGS* aConvertSettings )
 {
     DIALOG_NON_COPPER_ZONES_EDITOR  dlg( aParent, aSettings, aConvertSettings );
 
-    // TODO: why does this require QuasiModal?
-    return dlg.ShowQuasiModal();
+    return dlg.ShowModal();
 }
 
 #define MIN_THICKNESS 10*pcbIUScale.IU_PER_MILS
 
-DIALOG_NON_COPPER_ZONES_EDITOR::DIALOG_NON_COPPER_ZONES_EDITOR( PCB_BASE_FRAME* aParent,
-                                                                ZONE_SETTINGS* aSettings,
+DIALOG_NON_COPPER_ZONES_EDITOR::DIALOG_NON_COPPER_ZONES_EDITOR( PCB_BASE_FRAME* aParent, ZONE_SETTINGS* aSettings,
                                                                 CONVERT_SETTINGS* aConvertSettings ) :
     DIALOG_NONCOPPER_ZONES_PROPERTIES_BASE( aParent ),
-    m_outlineHatchPitch( aParent, m_stBorderHatchPitchText,
-                         m_outlineHatchPitchCtrl, m_outlineHatchUnits ),
+    m_outlineHatchPitch( aParent, m_stBorderHatchPitchText, m_outlineHatchPitchCtrl, m_outlineHatchUnits ),
     m_minWidth( aParent, m_MinWidthLabel, m_MinWidthCtrl, m_MinWidthUnits ),
     m_hatchRotation( aParent, m_hatchOrientLabel, m_hatchOrientCtrl, m_hatchOrientUnits ),
     m_hatchWidth( aParent, m_hatchWidthLabel, m_hatchWidthCtrl, m_hatchWidthUnits),
     m_hatchGap( aParent, m_hatchGapLabel, m_hatchGapCtrl, m_hatchGapUnits ),
     m_cornerSmoothingType( ZONE_SETTINGS::CORNER_SMOOTHING::NO_SMOOTHING ),
-    m_cornerRadius( aParent, m_cornerRadiusLabel, m_cornerRadiusCtrl, m_cornerRadiusUnits ),
-    m_convertSettings( aConvertSettings ),
-    m_rbCenterline( nullptr ),
-    m_rbEnvelope( nullptr ),
-    m_cbDeleteOriginals( nullptr )
+    m_cornerRadius( aParent, m_cornerRadiusLabel, m_cornerRadiusCtrl, m_cornerRadiusUnits )
 {
     m_parent = aParent;
 
@@ -114,48 +90,13 @@ DIALOG_NON_COPPER_ZONES_EDITOR::DIALOG_NON_COPPER_ZONES_EDITOR( PCB_BASE_FRAME* 
 
     if( aConvertSettings )
     {
-        wxStaticBox*      bConvertBox = new wxStaticBox( this, wxID_ANY, _( "Conversion Settings" ) );
-        wxStaticBoxSizer* bConvertSizer = new wxStaticBoxSizer( bConvertBox, wxVERTICAL  );
+        m_conversionControls = new PANEL_ZONE_CONVERSION( this, aParent, *aConvertSettings );
+        GetSizer()->Insert( 0, m_conversionControls, 0, wxALL|wxEXPAND, 10 );
 
-        m_rbCenterline = new wxRadioButton( this, wxID_ANY, _( "Use centerlines" ) );
-        bConvertSizer->Add( m_rbCenterline, 0, wxLEFT|wxRIGHT, 5 );
-
-        bConvertSizer->AddSpacer( 2 );
-        m_rbEnvelope = new wxRadioButton( this, wxID_ANY, _( "Create bounding hull" ) );
-        bConvertSizer->Add( m_rbEnvelope, 0, wxLEFT|wxRIGHT, 5 );
-
-        m_gapLabel = new wxStaticText( this, wxID_ANY, _( "Gap:" ) );
-        m_gapCtrl = new wxTextCtrl( this, wxID_ANY );
-        m_gapUnits = new wxStaticText( this, wxID_ANY, _( "mm" ) );
-        m_gap = new UNIT_BINDER( m_parent, m_gapLabel, m_gapCtrl, m_gapUnits );
-        m_gap->SetValue( m_convertSettings->m_Gap );
-
-        wxBoxSizer* hullParamsSizer = new wxBoxSizer( wxHORIZONTAL );
-        hullParamsSizer->Add( m_gapLabel, 0, wxALIGN_CENTRE_VERTICAL|wxRIGHT, 5 );
-        hullParamsSizer->Add( m_gapCtrl, 1, wxALIGN_CENTRE_VERTICAL|wxLEFT|wxRIGHT, 5 );
-        hullParamsSizer->Add( m_gapUnits, 0, wxALIGN_CENTRE_VERTICAL|wxLEFT, 5 );
-        bConvertSizer->AddSpacer( 2 );
-        bConvertSizer->Add( hullParamsSizer, 0, wxLEFT, 26 );
-
-        bConvertSizer->AddSpacer( 6 );
-        m_cbDeleteOriginals = new wxCheckBox( this, wxID_ANY,
-                                              _( "Delete source objects after conversion" ) );
-        bConvertSizer->Add( m_cbDeleteOriginals, 0, wxALL, 5 );
-
-        GetSizer()->Insert( 0, bConvertSizer, 0, wxALL|wxEXPAND, 10 );
-
-        wxStaticLine* line =  new wxStaticLine( this, wxID_ANY, wxDefaultPosition, wxDefaultSize,
-                                                wxLI_HORIZONTAL );
+        wxStaticLine* line =  new wxStaticLine( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxLI_HORIZONTAL );
         GetSizer()->Insert( 1, line, 0, wxLEFT|wxRIGHT|wxEXPAND, 10 );
 
         SetTitle( _( "Convert to Non Copper Zone" ) );
-    }
-    else
-    {
-        m_gapLabel = nullptr;
-        m_gapCtrl = nullptr;
-        m_gapUnits = nullptr;
-        m_gap = nullptr;
     }
 
     m_staticTextLayerSelection->SetFont( KIUI::GetStatusFont( this ) );
@@ -185,25 +126,13 @@ void DIALOG_NON_COPPER_ZONES_EDITOR::OnUpdateUI( wxUpdateUIEvent& )
     }
 
     m_cornerRadiusCtrl->Enable(m_cornerSmoothingType > ZONE_SETTINGS::CORNER_SMOOTHING::NO_SMOOTHING );
-
-    if( m_gap )
-        m_gap->Enable( m_rbEnvelope->GetValue() );
 }
 
 
 bool DIALOG_NON_COPPER_ZONES_EDITOR::TransferDataToWindow()
 {
-    if( m_convertSettings )
-    {
-        if( m_convertSettings->m_Strategy == BOUNDING_HULL )
-            m_rbEnvelope->SetValue( true );
-        else
-            m_rbCenterline->SetValue( true );
-
-        m_cbDeleteOriginals->SetValue( m_convertSettings->m_DeleteOriginals );
-
-        m_gap->Enable( m_rbEnvelope->GetValue() );
-    }
+    if( m_conversionControls )
+        m_conversionControls->TransferDataToWindow();
 
     m_cornerSmoothingChoice->SetSelection( static_cast<int>( m_settings.GetCornerSmoothingType() ) );
     m_cornerRadius.SetValue( m_settings.GetCornerRadius() );
@@ -213,10 +142,10 @@ bool DIALOG_NON_COPPER_ZONES_EDITOR::TransferDataToWindow()
 
     switch( m_settings.m_ZoneBorderDisplayStyle )
     {
-    case ZONE_BORDER_DISPLAY_STYLE::NO_HATCH:      m_OutlineDisplayCtrl->SetSelection( 0 ); break;
-    case ZONE_BORDER_DISPLAY_STYLE::DIAGONAL_EDGE: m_OutlineDisplayCtrl->SetSelection( 1 ); break;
-    case ZONE_BORDER_DISPLAY_STYLE::DIAGONAL_FULL: m_OutlineDisplayCtrl->SetSelection( 2 ); break;
-    case ZONE_BORDER_DISPLAY_STYLE::INVISIBLE_BORDER: break;    // Not used for standard zones
+    case ZONE_BORDER_DISPLAY_STYLE::NO_HATCH:         m_OutlineDisplayCtrl->SetSelection( 0 ); break;
+    case ZONE_BORDER_DISPLAY_STYLE::DIAGONAL_EDGE:    m_OutlineDisplayCtrl->SetSelection( 1 ); break;
+    case ZONE_BORDER_DISPLAY_STYLE::DIAGONAL_FULL:    m_OutlineDisplayCtrl->SetSelection( 2 ); break;
+    case ZONE_BORDER_DISPLAY_STYLE::INVISIBLE_BORDER:                                          break;  // Not used
     }
 
     m_outlineHatchPitch.SetValue( m_settings.m_BorderHatchPitch );
@@ -292,16 +221,8 @@ void DIALOG_NON_COPPER_ZONES_EDITOR::OnLayerSelection( wxDataViewEvent& event )
 
 bool DIALOG_NON_COPPER_ZONES_EDITOR::TransferDataFromWindow()
 {
-    if( m_convertSettings )
-    {
-        if( m_rbEnvelope->GetValue() )
-            m_convertSettings->m_Strategy = BOUNDING_HULL;
-        else
-            m_convertSettings->m_Strategy = CENTERLINE;
-
-        m_convertSettings->m_DeleteOriginals = m_cbDeleteOriginals->GetValue();
-        m_convertSettings->m_Gap = m_gap->GetIntValue();
-    }
+    if( m_conversionControls )
+        m_conversionControls->TransferDataFromWindow();
 
     ZONE_SETTINGS::CORNER_SMOOTHING smoothing =
             magic_enum::enum_cast<ZONE_SETTINGS::CORNER_SMOOTHING>( m_cornerSmoothingChoice->GetSelection() )
@@ -310,9 +231,9 @@ bool DIALOG_NON_COPPER_ZONES_EDITOR::TransferDataFromWindow()
     m_settings.SetCornerSmoothingType( smoothing );
 
     m_settings.SetCornerRadius( m_settings.GetCornerSmoothingType() == ZONE_SETTINGS::CORNER_SMOOTHING::NO_SMOOTHING
-                                ? 0 : m_cornerRadius.GetValue() );
+                                ? 0 : m_cornerRadius.GetIntValue() );
 
-    m_settings.m_ZoneMinThickness = m_minWidth.GetValue();
+    m_settings.m_ZoneMinThickness = m_minWidth.GetIntValue();
 
     switch( m_OutlineDisplayCtrl->GetSelection() )
     {
@@ -323,9 +244,11 @@ bool DIALOG_NON_COPPER_ZONES_EDITOR::TransferDataFromWindow()
 
     if( !m_outlineHatchPitch.Validate( pcbIUScale.mmToIU( ZONE_BORDER_HATCH_MINDIST_MM ),
                                        pcbIUScale.mmToIU( ZONE_BORDER_HATCH_MAXDIST_MM ) ) )
+    {
         return false;
+    }
 
-    m_settings.m_BorderHatchPitch = m_outlineHatchPitch.GetValue();
+    m_settings.m_BorderHatchPitch = m_outlineHatchPitch.GetIntValue();
 
     if( m_GridStyleCtrl->GetSelection() > 0 )
         m_settings.m_FillMode = ZONE_FILL_MODE::HATCH_PATTERN;
@@ -335,7 +258,7 @@ bool DIALOG_NON_COPPER_ZONES_EDITOR::TransferDataFromWindow()
 
     if( m_settings.m_FillMode == ZONE_FILL_MODE::HATCH_PATTERN )
     {
-        int minThickness = m_minWidth.GetValue();
+        int minThickness = m_minWidth.GetIntValue();
 
         if( !m_hatchWidth.Validate( minThickness, INT_MAX ) )
             return false;
@@ -344,10 +267,9 @@ bool DIALOG_NON_COPPER_ZONES_EDITOR::TransferDataFromWindow()
             return false;
     }
 
-
     m_settings.m_HatchOrientation = m_hatchRotation.GetAngleValue();
-    m_settings.m_HatchThickness = m_hatchWidth.GetValue();
-    m_settings.m_HatchGap = m_hatchGap.GetValue();
+    m_settings.m_HatchThickness = m_hatchWidth.GetIntValue();
+    m_settings.m_HatchGap = m_hatchGap.GetIntValue();
     m_settings.m_HatchSmoothingLevel = m_spinCtrlSmoothLevel->GetValue();
     m_settings.m_HatchSmoothingValue = m_spinCtrlSmoothValue->GetValue();
 
@@ -355,6 +277,7 @@ bool DIALOG_NON_COPPER_ZONES_EDITOR::TransferDataFromWindow()
 
     // Get the layer selection for this zone
     int layer = -1;
+
     for( int ii = 0; ii < m_layers->GetItemCount(); ++ii )
     {
         if( m_layers->GetToggleValue( (unsigned) ii, 0 ) )

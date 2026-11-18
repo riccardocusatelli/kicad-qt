@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "drc_re_rule_saver.h"
@@ -26,6 +22,7 @@
 #include <board.h>
 #include <kiplatform/io.h>
 #include <lset.h>
+#include <tuple>
 #include <string_utils.h>
 
 #include <drc_rules_lexer.h>
@@ -49,6 +46,30 @@ wxString formatLayerClause( const wxString& aLayerSource )
     return wxString::Format( wxS( "(layer \"%s\")" ), EscapeString( aLayerSource, CTX_QUOTED_STR ) );
 }
 
+
+std::pair<wxString, wxString> splitLeadingTrivia( const wxString& aTrivia )
+{
+    size_t blank = aTrivia.rfind( wxS( "\n\n" ) );
+
+    if( blank == wxString::npos )
+        return { wxEmptyString, aTrivia };
+
+    return { aTrivia.Left( blank + 2 ), aTrivia.Mid( blank + 2 ) };
+}
+
+
+wxString savedCondition( const DRC_RE_LOADED_PANEL_ENTRY& aEntry )
+{
+    wxString predicate = aEntry.constraintData ? aEntry.constraintData->GetConditionPredicate() : wxString();
+
+    if( predicate.IsEmpty() )
+        return aEntry.condition;
+
+    if( aEntry.condition.IsEmpty() )
+        return predicate;
+
+    return predicate + wxS( " && " ) + aEntry.condition;
+}
 }
 
 
@@ -59,9 +80,10 @@ DRC_RULE_SAVER::DRC_RULE_SAVER()
 
 bool DRC_RULE_SAVER::SaveFile( const wxString&                               aPath,
                                 const std::vector<DRC_RE_LOADED_PANEL_ENTRY>& aEntries,
-                                const BOARD*                                  aBoard )
+                                const BOARD*                                  aBoard,
+                                const DRC_RE_FILE_TRIVIA&                     aTrivia )
 {
-    wxString    content = GenerateRulesText( aEntries, aBoard );
+    wxString    content = GenerateRulesText( aEntries, aBoard, aTrivia );
     std::string utf8 = std::string( content.mb_str( wxConvUTF8 ) );
 
     return KIPLATFORM::IO::AtomicWriteFile( aPath, utf8.data(), utf8.size() );
@@ -69,14 +91,18 @@ bool DRC_RULE_SAVER::SaveFile( const wxString&                               aPa
 
 
 wxString DRC_RULE_SAVER::GenerateRulesText( const std::vector<DRC_RE_LOADED_PANEL_ENTRY>& aEntries,
-                                             const BOARD*                                  aBoard )
+                                             const BOARD*                                  aBoard,
+                                             const DRC_RE_FILE_TRIVIA&                     aTrivia )
 {
-    wxString result = "(version 1)\n";
+    wxString result = aTrivia.header;
 
-    // Group entries by (ruleName, condition, layerSource) for merging same-rule constraints.
-    // Including the layer source prevents rules with different layer scopes from being
-    // incorrectly merged (e.g. separate "outer" and "inner" rules must remain distinct).
-    using GroupKey = std::tuple<wxString, wxString, wxString>;
+    if( result.IsEmpty() )
+        result = wxS( "(version 2)" );
+
+    // Constraints with the same group came from one rule and go back into one. The layer
+    // source tells "outer" and "inner" of the same name apart.
+    // A predicate such as a via type narrows only its own part, so that part becomes its own rule
+    using GroupKey = std::tuple<int, wxString, wxString, wxString>;
 
     std::vector<std::pair<GroupKey, std::vector<const DRC_RE_LOADED_PANEL_ENTRY*>>>
             groupedEntries;
@@ -84,7 +110,7 @@ wxString DRC_RULE_SAVER::GenerateRulesText( const std::vector<DRC_RE_LOADED_PANE
 
     for( const DRC_RE_LOADED_PANEL_ENTRY& entry : aEntries )
     {
-        auto key = std::make_tuple( entry.ruleName, entry.condition, entry.layerSource );
+        auto key = std::make_tuple( entry.ruleGroupId, entry.ruleName, savedCondition( entry ), entry.layerSource );
         auto it = groupIndex.find( key );
 
         if( it == groupIndex.end() )
@@ -98,12 +124,56 @@ wxString DRC_RULE_SAVER::GenerateRulesText( const std::vector<DRC_RE_LOADED_PANE
         }
     }
 
-    // Generate rule text for each group
+    size_t                triviaCount = aTrivia.leadingTrivia.size();
+    std::vector<wxString> floating( triviaCount );
+    std::vector<wxString> attached( triviaCount );
+    std::vector<bool>     present( triviaCount, false );
+
+    for( size_t i = 0; i < triviaCount; ++i )
+        std::tie( floating[i], attached[i] ) = splitLeadingTrivia( aTrivia.leadingTrivia[i] );
+
+    // A group that generates nothing leaves its comment to the trivia, the way a deleted rule
+    // does, so every rule's text is known before any comment is placed.
+    std::vector<std::pair<int, wxString>> rules;
+
+    size_t nextTrivia = 0;
+
+    auto emitUpTo = [&]( size_t aLast )
+    {
+        while( nextTrivia <= aLast )
+        {
+            result += floating[nextTrivia];
+
+            if( !present[nextTrivia] )
+                result += attached[nextTrivia];
+
+            nextTrivia++;
+        }
+    };
+
     for( const auto& [key, entries] : groupedEntries )
     {
         wxString ruleText;
 
-        if( entries.size() == 1 )
+        // An untouched rule goes back exactly as it was read.
+        bool     anyEdited = false;
+        wxString originalText;
+
+        for( const DRC_RE_LOADED_PANEL_ENTRY* entry : entries )
+        {
+            if( entry->wasEdited )
+                anyEdited = true;
+
+            if( originalText.IsEmpty() )
+                originalText = entry->originalRuleText;
+        }
+
+        if( !anyEdited && !originalText.IsEmpty()
+            && static_cast<int>( entries.size() ) == entries[0]->originalEntryCount )
+        {
+            ruleText = originalText;
+        }
+        else if( entries.size() == 1 )
         {
             // Single entry, no merge needed
             ruleText = generateRuleText( *entries[0], aBoard );
@@ -114,9 +184,49 @@ wxString DRC_RULE_SAVER::GenerateRulesText( const std::vector<DRC_RE_LOADED_PANE
             ruleText = generateMergedRuleText( entries, aBoard );
         }
 
-        if( !ruleText.IsEmpty() )
-            result += ruleText + "\n";
+        if( ruleText.IsEmpty() )
+            continue;
+
+        rules.emplace_back( entries[0]->sourceRule, ruleText );
     }
+
+    for( const auto& [source, ruleText] : rules )
+    {
+        if( source >= 0 && static_cast<size_t>( source ) < triviaCount )
+            present[source] = true;
+    }
+
+    std::vector<bool> attachedWritten( triviaCount, false );
+
+    for( const auto& [source, ruleText] : rules )
+    {
+        bool known = source >= 0 && static_cast<size_t>( source ) < triviaCount;
+
+        if( known && static_cast<size_t>( source ) >= nextTrivia )
+            emitUpTo( source );
+        else
+            result += wxS( "\n" );
+
+        // Comments of deleted rules are kept, and a file rule split by an edit emits its own only once
+        if( known && !attachedWritten[source] )
+        {
+            if( !attached[source].StartsWith( wxS( "\n" ) ) && !result.EndsWith( wxS( "\n" ) ) )
+                result += wxS( "\n" );
+
+            result += attached[source];
+            attachedWritten[source] = true;
+        }
+
+        result += ruleText;
+    }
+
+    if( triviaCount > 0 )
+        emitUpTo( triviaCount - 1 );
+
+    if( aTrivia.header.IsEmpty() )
+        result += wxS( "\n" );
+    else
+        result += aTrivia.trailer;
 
     return result;
 }
@@ -125,12 +235,6 @@ wxString DRC_RULE_SAVER::GenerateRulesText( const std::vector<DRC_RE_LOADED_PANE
 wxString DRC_RULE_SAVER::generateRuleText( const DRC_RE_LOADED_PANEL_ENTRY& aEntry,
                                             const BOARD*                     aBoard )
 {
-    // Round-trip preservation: return original text if not edited. A rule that was split
-    // into several entries must be regenerated once any of them is gone.
-    if( !aEntry.wasEdited && !aEntry.originalRuleText.IsEmpty() && aEntry.originalEntryCount == 1 )
-        return aEntry.originalRuleText;
-
-    // Otherwise, regenerate from panel data
     if( !aEntry.constraintData )
         return wxEmptyString;
 
@@ -182,7 +286,7 @@ wxString DRC_RULE_SAVER::generateRuleText( const DRC_RE_LOADED_PANEL_ENTRY& aEnt
             if( !aEntry.layerSource.IsEmpty() )
                 ctx.layerClause = formatLayerClause( aEntry.layerSource );
             else
-                ctx.layerClause = generateLayerClause( aEntry.layerCondition, aBoard );
+                ctx.layerClause = generateLayerClause( aEntry.layerCondition );
         }
 
         ruleText = aEntry.constraintData->GenerateRule( ctx );
@@ -210,9 +314,10 @@ wxString DRC_RULE_SAVER::generateRuleText( const DRC_RE_LOADED_PANEL_ENTRY& aEnt
 }
 
 
-wxString DRC_RULE_SAVER::generateLayerClause( const LSET& aLayers, const BOARD* aBoard )
+wxString DRC_RULE_SAVER::generateLayerClause( const LSET& aLayers )
 {
-    if( !aBoard || !aLayers.any() )
+    // The parser gives a rule without a layer clause every layer
+    if( !aLayers.any() || aLayers == LSET::AllLayersMask() )
         return wxEmptyString;
 
     if( ( aLayers & LSET::AllCuMask() ) == LSET::ExternalCuMask() )
@@ -221,12 +326,14 @@ wxString DRC_RULE_SAVER::generateLayerClause( const LSET& aLayers, const BOARD* 
     if( ( aLayers & LSET::AllCuMask() ) == LSET::InternalCuMask() )
         return wxString::Format( wxS( "(layer %s)" ), DRC_RULES_LEXER::TokenName( DRCRULE_T::T_inner ) );
 
-    // The parser only accepts a single layer name, so emit the first matching layer.
-    // Multi-layer conditions should use "outer" or "inner" keywords above.
-    for( PCB_LAYER_ID layer : aLayers.Seq() )
-        return wxString::Format( wxS( "(layer \"%s\")" ), aBoard->GetLayerName( layer ) );
+    // The parser only accepts a single layer name, and a user name only where the board registered
+    // it, so emit the canonical name of the first layer. Multi-layer sets use outer or inner above
+    const LSEQ layers = aLayers.Seq();
 
-    return wxEmptyString;
+    if( layers.empty() )
+        return wxEmptyString;
+
+    return wxString::Format( wxS( "(layer \"%s\")" ), LSET::Name( layers.front() ) );
 }
 
 
@@ -250,31 +357,14 @@ wxString DRC_RULE_SAVER::generateMergedRuleText(
     if( aEntries.empty() )
         return wxEmptyString;
 
-    // Check if all entries are unedited and the first one has original text
-    // If so, we can use round-trip preservation
-    bool allUnedited = true;
-
-    for( const auto* entry : aEntries )
-    {
-        if( entry->wasEdited )
-        {
-            allUnedited = false;
-            break;
-        }
-    }
-
-    if( allUnedited && !aEntries[0]->originalRuleText.IsEmpty()
-        && static_cast<int>( aEntries.size() ) == aEntries[0]->originalEntryCount )
-    {
-        return aEntries[0]->originalRuleText;
-    }
-
-    // Otherwise, merge constraint clauses from all entries
     const DRC_RE_LOADED_PANEL_ENTRY* firstEntry = aEntries[0];
 
     RULE_GENERATION_CONTEXT ctx;
     ctx.ruleName = firstEntry->ruleName;
-    ctx.conditionExpression = firstEntry->condition;
+    ctx.conditionExpression = savedCondition( *firstEntry );
+
+    if( firstEntry->constraintData )
+        ctx.comment = firstEntry->constraintData->GetComment();
 
     // Generate layer clause from first entry with layer info (all entries in a
     // merged group share the same layerSource because it's part of the grouping key)
@@ -285,7 +375,7 @@ wxString DRC_RULE_SAVER::generateMergedRuleText(
             if( !entry->layerSource.IsEmpty() )
                 ctx.layerClause = formatLayerClause( entry->layerSource );
             else
-                ctx.layerClause = generateLayerClause( entry->layerCondition, aBoard );
+                ctx.layerClause = generateLayerClause( entry->layerCondition );
 
             break;
         }
@@ -317,6 +407,12 @@ wxString DRC_RULE_SAVER::generateMergedRuleText(
     wxString rule;
     rule << wxS( "(rule " ) << DRC_RE_BASE_CONSTRAINT_DATA::formatRuleName( ctx.ruleName )
          << wxS( "\n" );
+
+    for( const wxString& line : wxSplit( ctx.comment, '\n', '\0' ) )
+    {
+        if( !line.IsEmpty() )
+            rule << wxS( "\t# " ) << line << wxS( "\n" );
+    }
 
     if( !ctx.layerClause.IsEmpty() )
         rule << wxS( "\t" ) << ctx.layerClause << wxS( "\n" );

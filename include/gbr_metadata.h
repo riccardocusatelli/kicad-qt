@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -141,13 +137,13 @@ public:
         /// this is similar to GBR_APERTURE_ATTRIB_COMPONENTPAD with optional PressFit field
         GBR_APERTURE_ATTRIB_PRESSFITDRILL,
 
-        ///< Aperture used for via holes in drill files.
+        /// Aperture used for via holes in drill files.
         GBR_APERTURE_ATTRIB_VIADRILL,
 
-        ///< Aperture used for backdrill holes in drill files.
+        /// Aperture used for backdrill holes in drill files.
         GBR_APERTURE_ATTRIB_BACKDRILL,
 
-        ///< Aperture used for pad holes in drill files.
+        /// Aperture used for pad holes in drill files.
         GBR_APERTURE_ATTRIB_CMP_DRILL,
 
         /// Aperture used for pads oblong holes in drill files.
@@ -174,7 +170,7 @@ public:
         /// Aperture used to draw component outline courtyard in placement files.
         GBR_APERTURE_ATTRIB_CMP_COURTYARD,
 
-        ///< aperture used for other purposes. Requires a text description of this feature.
+        /// aperture used for other purposes. Requires a text description of this feature.
         GBR_APERTURE_ATTRIB_OTHER,
         GBR_APERTURE_ATTRIB_END ///< sentinel: max value
     };
@@ -192,11 +188,13 @@ public:
     }
 
     /**
+     * @param aAttribute
      * @param aUseX1StructuredComment false in X2 mode and true in X1 mode to add the net
      *                                attribute inside a compatible X1 structured comment
-     *                                starting by "G04 #@! "
+     *                                starting by "G04 \#\@\! "
+     * @param aCustomAttribute
      * @return the full command string corresponding to the aperture attribute
-     *         like "%TA.AperFunction,<function>*%"
+     *         like "\%TA.AperFunction,\<function\>\*\%"
      */
     static std::string FormatAttribute( GBR_APERTURE_ATTRIB aAttribute,
                                         bool                aUseX1StructuredComment,
@@ -340,7 +338,7 @@ wxString FormatStringFromGerber( const wxString& aString );
  *                                 from file before adding new attribute (happens when a previous
  *                                 attribute no longer exists).
  * @param aUseX1StructuredComment false in X2 mode and true in X1 mode to add the net attribute
- *                                in compatible X1 structured comment (i.e. prefixed by "G04 #@! ")
+ *                                in compatible X1 structured comment (i.e. prefixed by "G04 \#\@\! \")
  * @return false if nothing can be done (GBR_NETLIST_METADATA has GBR_APERTURE_ATTRIB_NONE,
  *         and true if OK. If the new attribute(s) is the same as current attribute(s),
  *         \a aPrintedText will be empty.

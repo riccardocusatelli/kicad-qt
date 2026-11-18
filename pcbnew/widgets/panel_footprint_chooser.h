@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #ifndef PANEL_FOOTPRINT_CHOOSER_H
 #define PANEL_FOOTPRINT_CHOOSER_H
@@ -49,8 +45,10 @@ public:
      *
      * @param aFrame  the parent frame (usually a PCB_EDIT_FRAME or FOOTPRINT_CHOOSER_FRAME)
      * @param aParent the parent window (usually a DIALOG_SHIM or FOOTPRINT_CHOOSER_FRAME)
+     * @param aFootprintHistoryList is the list of previously chosen footprints.
+     * @param aFilter is the footprint list filter.
      * @param aAcceptHandler a handler to be called on double-click of a footprint
-     * @param aEscapeHandler a handler to be called on <ESC>
+     * @param aEscapeHandler a handler to be called on \<ESC\>
      */
     PANEL_FOOTPRINT_CHOOSER( PCB_BASE_FRAME* aFrame, wxTopLevelWindow* aParent,
                              const wxArrayString& aFootprintHistoryList,

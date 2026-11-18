@@ -41,7 +41,8 @@ WX_PROGRESS_REPORTER::WX_PROGRESS_REPORTER( wxWidgetArgCompat aParent, const wxS
         PROGRESS_REPORTER_BASE( aNumPhases ),
         QProgressDialog( aParent ),
         m_updateThrottle( std::chrono::milliseconds( 100 ) ),
-        m_lastUpdateResult( true )
+        m_lastUpdateResult( true ),
+        m_indeterminate( false )
 {
     setWindowTitle( ToQString( aTitle ) );
     setRange( 0, 1000 );
@@ -108,13 +109,18 @@ bool WX_PROGRESS_REPORTER::updateUI()
         messageChanged = m_messageChanged.exchange( false );
     }
 
-    if( maximum() != 1000 )
-        setRange( 0, 1000 );
+    // A phase whose total is not known yet shows a busy bar, so that the work is still seen
+    // going on
+    const int maxValue = m_indeterminate.load() ? 0 : 1000;
+
+    if( maximum() != maxValue )
+        setRange( 0, maxValue );
 
     if( messageChanged )
         setLabelText( ToQString( message ) );
 
-    setValue( cur );
+    if( maxValue > 0 )
+        setValue( cur );
 
     // The input of the user goes to the dialog only (it is modal): the cancel button
     QCoreApplication::processEvents();

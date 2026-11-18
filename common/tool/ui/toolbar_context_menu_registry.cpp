@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <tool/ui/toolbar_context_menu_registry.h>
@@ -57,7 +53,7 @@ KICOMMON_API void TOOLBAR_CONTEXT_MENU_REGISTRY::RegisterGroupMenuFactory( const
 KICOMMON_API TOOLBAR_CONTEXT_MENU_REGISTRY::MENU_FACTORY
 TOOLBAR_CONTEXT_MENU_REGISTRY::GetMenuFactory( const std::string& aActionName )
 {
-    auto& menus = getActionMenus();
+    std::map<std::string, TOOLBAR_CONTEXT_MENU_REGISTRY::MENU_FACTORY>& menus = getActionMenus();
     auto it = menus.find( aActionName );
 
     if( it != menus.end() )
@@ -70,7 +66,7 @@ TOOLBAR_CONTEXT_MENU_REGISTRY::GetMenuFactory( const std::string& aActionName )
 KICOMMON_API TOOLBAR_CONTEXT_MENU_REGISTRY::MENU_FACTORY
 TOOLBAR_CONTEXT_MENU_REGISTRY::GetGroupMenuFactory( const std::string& aGroupName )
 {
-    auto& menus = getGroupMenus();
+    std::map<std::string, TOOLBAR_CONTEXT_MENU_REGISTRY::MENU_FACTORY>& menus = getGroupMenus();
     auto it = menus.find( aGroupName );
 
     if( it != menus.end() )

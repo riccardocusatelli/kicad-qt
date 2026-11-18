@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <advanced_config.h>
@@ -35,7 +31,7 @@
 #include <wx/tokenzr.h>
 #include <core/ki_log.h>
 
-/*
+/**
  * Flag to enable advanced config debugging
  *
  * Use "KICAD_ADVANCED_CONFIG" to enable.
@@ -64,10 +60,12 @@ static constexpr int max_stack = 4096 * 4096;
 namespace AC_KEYS
 {
 
+static const wxChar ConnectivityEngine[] = wxT( "ConnectivityEngine" );
 static const wxChar IncrementalConnectivity[] = wxT( "IncrementalConnectivity" );
 static const wxChar Use3DConnexionDriver[] = wxT( "3DConnexionDriver" );
 static const wxChar ExtraFillMargin[] = wxT( "ExtraFillMargin" );
 static const wxChar EnableCreepageSlot[] = wxT( "EnableCreepageSlot" );
+static const wxChar RealtimeCreepage[] = wxT( "RealtimeCreepage" );
 static const wxChar DRCEpsilon[] = wxT( "DRCEpsilon" );
 static const wxChar DRCSliverWidthTolerance[] = wxT( "DRCSliverWidthTolerance" );
 static const wxChar DRCSliverMinimumLength[] = wxT( "DRCSliverMinimumLength" );
@@ -96,12 +94,12 @@ static const wxChar UsePdfPrint[] = wxT( "UsePdfPrint" );
 static const wxChar SmallDrillMarkSize[] = wxT( "SmallDrillMarkSize" );
 static const wxChar HotkeysDumper[] = wxT( "HotkeysDumper" );
 static const wxChar DrawBoundingBoxes[] = wxT( "DrawBoundingBoxes" );
-static const wxChar GLSwapCopy[] = wxT( "GLSwapCopy" );
 static const wxChar ShowPcbnewExportNetlist[] = wxT( "ShowPcbnewExportNetlist" );
 static const wxChar Skip3DModelFileCache[] = wxT( "Skip3DModelFileCache" );
 static const wxChar Skip3DModelMemoryCache[] = wxT( "Skip3DModelMemoryCache" );
 static const wxChar HideVersionFromTitle[] = wxT( "HideVersionFromTitle" );
 static const wxChar TraceMasks[] = wxT( "TraceMasks" );
+static const wxChar RouterTestCaseDirectory[] = wxT( "RouterTestCaseDirectory" );
 static const wxChar ShowEventCounters[] = wxT( "ShowEventCounters" );
 static const wxChar AllowManualCanvasScale[] = wxT( "AllowManualCanvasScale" );
 static const wxChar UpdateUIEventInterval[] = wxT( "UpdateUIEventInterval" );
@@ -119,6 +117,8 @@ static const wxChar OcePluginAngularDeflection[] = wxT( "OcePluginAngularDeflect
 static const wxChar TriangulateSimplificationLevel[] = wxT( "TriangulateSimplificationLevel" );
 static const wxChar TriangulateMinimumArea[] = wxT( "TriangulateMinimumArea" );
 static const wxChar EnableCacheFriendlyFracture[] = wxT( "EnableCacheFriendlyFracture" );
+static const wxChar EnableFractureEdgeIndex[] = wxT( "EnableFractureEdgeIndex" );
+static const wxChar TriangulateDelaunayRefine[] = wxT( "TriangulateDelaunayRefine" );
 static const wxChar EnableAPILogging[] = wxT( "EnableAPILogging" );
 static const wxChar MaxFileSystemWatchers[] = wxT( "MaxFileSystemWatchers" );
 static const wxChar MinorSchematicGraphSize[] = wxT( "MinorSchematicGraphSize" );
@@ -153,8 +153,17 @@ static const wxChar PadsSchTextHeightScale[] = wxT( "PadsSchTextHeightScale" );
 static const wxChar PadsSchTextWidthScale[] = wxT( "PadsSchTextWidthScale" );
 static const wxChar PadsTextAnchorOffsetNm[] = wxT( "PadsTextAnchorOffsetNm" );
 static const wxChar PcbImportMinObjectSizeNm[] = wxT( "PcbImportMinObjectSizeNm" );
+static const wxChar DiffSkewOverlayTrackInflation[] = wxT( "DiffSkewOverlayTrackInflation" );
+static const wxChar DiffSkewTrackGapInflation[] = wxT( "DiffSkewTrackGapInflation" );
+static const wxChar DiffSkewCosThetaParallelTestValue[] = wxT( "DiffSkewCosThetaParallelTestValue" );
+static const wxChar DiffSkewColourInterpolationLogStrength[] = wxT( "DiffSkewColourInterpolationLogStrength" );
 static const wxChar DiffSkewTargetDiffSegmentSize[] = wxT( "DiffSkewTargetDiffSegmentSize" );
 static const wxChar EagleImportFieldsCanAutoplace[] = wxT( "EagleImportFieldsCanAutoplace" );
+static const wxChar EnableGLResetRecovery[] = wxT( "EnableGLResetRecovery" );
+
+
+static const wxChar EnableVulkanValidation[] = wxT( "EnableVulkanValidation" );
+static const wxChar RenderThreadPriority[] = wxT( "RenderThreadPriority" );
 
 } // namespace AC_KEYS
 
@@ -237,6 +246,8 @@ static void syncGeometryTuning( const ADVANCED_CFG& aCfg )
     s_geometryTuning.triangulateSimplificationLevel = aCfg.m_TriangulateSimplificationLevel;
     s_geometryTuning.triangulateMinimumArea = aCfg.m_TriangulateMinimumArea;
     s_geometryTuning.enableCacheFriendlyFracture = aCfg.m_EnableCacheFriendlyFracture;
+    s_geometryTuning.triangulateDelaunayRefine = aCfg.m_TriangulateDelaunayRefine;
+    s_geometryTuning.enableFractureEdgeIndex = aCfg.m_EnableFractureEdgeIndex;
 }
 
 
@@ -276,6 +287,7 @@ ADVANCED_CFG::ADVANCED_CFG()
 
     m_ExtraClearance = 0.0005;
     m_EnableCreepageSlot = false;
+    m_RealtimeCreepage = false;
     m_DRCEpsilon = 0.0005; // 0.5um is small enough not to materially violate
                            // any constraints.
     m_SliverWidthTolerance = 0.08;
@@ -295,11 +307,10 @@ ADVANCED_CFG::ADVANCED_CFG()
     m_PDFStrokeFontYOffset = 0.35;
     m_PDFStrokeFontBoldMultiplier = 1.8;
     m_PDFStrokeFontKerningFactor = 1.0;
-    m_UsePdfPrint = false;
+    m_UsePdfPrint = true;
     m_SmallDrillMarkSize = 0.35;
     m_HotkeysDumper = false;
     m_DrawBoundingBoxes = false;
-    m_GLSwapCopy = true;
     m_MsgPanelShowUuids = 0;
     m_ShowPcbnewExportNetlist = false;
     m_Skip3DModelFileCache = false;
@@ -322,6 +333,7 @@ ADVANCED_CFG::ADVANCED_CFG()
     m_Use3DConnexionDriver = true;
 
     m_IncrementalConnectivity = true;
+    m_ConnectivityEngine = true;
 
     m_DisambiguationMenuDelay = 500;
 
@@ -336,6 +348,10 @@ ADVANCED_CFG::ADVANCED_CFG()
     m_TriangulateMinimumArea = 1000;
 
     m_EnableCacheFriendlyFracture = true;
+    m_EnableFractureEdgeIndex = true;
+    m_TriangulateDelaunayRefine = true;
+
+    m_EnableGLResetRecovery = true;
 
     m_MaxFilesystemWatchers = 16384;
 
@@ -382,6 +398,14 @@ ADVANCED_CFG::ADVANCED_CFG()
     m_PadsSchTextWidthScale  = 0.46;
     m_PadsTextAnchorOffsetNm = 350000;
     m_PcbImportMinObjectSizeNm = 1000;
+
+    m_DiffSkewOverlayTrackInflation = 1.1;
+    m_DiffSkewTrackGapInflation = 1.2;
+    m_DiffSkewCosThetaParallelTestValue = 0.9999;
+    m_DiffSkewColourInterpolationLogStrength = 9.0;
+    m_DiffSkewTargetDiffSegmentSize = 5e4;
+    m_EnableVulkanValidation = false;
+    m_RenderThreadPriority = wxS( "normal" );
 
     m_EagleImportFieldsCanAutoplace = true;
 
@@ -441,298 +465,314 @@ void ADVANCED_CFG::loadSettings( wxConfigBase& aCfg )
 {
     m_entries.clear();
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::ExtraFillMargin, &m_ExtraClearance,
-                                                             m_ExtraClearance, 0.0, 1.0 ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::ExtraFillMargin,
+                &m_ExtraClearance, m_ExtraClearance, 0.0, 1.0 ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::EnableCreepageSlot, &m_EnableCreepageSlot,
-                                                           m_EnableCreepageSlot ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::EnableCreepageSlot,
+                &m_EnableCreepageSlot, m_EnableCreepageSlot ) );
 
-    m_entries.push_back(
-            std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::DRCEpsilon, &m_DRCEpsilon, m_DRCEpsilon, 0.0, 1.0 ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::RealtimeCreepage,
+                &m_RealtimeCreepage, m_RealtimeCreepage ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>(
-            true, AC_KEYS::DRCSliverWidthTolerance, &m_SliverWidthTolerance, m_SliverWidthTolerance, 0.01, 0.25 ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::DRCEpsilon,
+                &m_DRCEpsilon, m_DRCEpsilon, 1e-6, 1e-2 ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>(
-            true, AC_KEYS::DRCSliverMinimumLength, &m_SliverMinimumLength, m_SliverMinimumLength, 1e-9, 10 ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::DRCSliverWidthTolerance,
+                &m_SliverWidthTolerance, m_SliverWidthTolerance, 0.01, 0.25 ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>(
-            true, AC_KEYS::DRCSliverAngleTolerance, &m_SliverAngleTolerance, m_SliverAngleTolerance, 1.0, 90.0 ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::DRCSliverMinimumLength,
+                &m_SliverMinimumLength, m_SliverMinimumLength, 1e-6, 10 ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::HoleWallThickness, &m_HoleWallThickness,
-                                                             m_HoleWallThickness, 0.0, 1.0 ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::DRCSliverAngleTolerance,
+                &m_SliverAngleTolerance, m_SliverAngleTolerance, 1.0, 90.0 ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::CoroutineStackSize, &m_CoroutineStackSize,
-                                                          AC_STACK::default_stack, AC_STACK::min_stack,
-                                                          AC_STACK::max_stack ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::HoleWallThickness,
+                &m_HoleWallThickness, m_HoleWallThickness, 0.0, 1.0 ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_INT>(
-            true, AC_KEYS::UpdateUIEventInterval, &m_UpdateUIEventInterval, m_UpdateUIEventInterval, -1, 100000 ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::CoroutineStackSize,
+                &m_CoroutineStackSize, AC_STACK::default_stack, AC_STACK::min_stack, AC_STACK::max_stack ) );
+
+    m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::UpdateUIEventInterval,
+                &m_UpdateUIEventInterval, m_UpdateUIEventInterval, -1, 100000 ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::ShowRouterDebugGraphics,
-                                                           &m_ShowRouterDebugGraphics, m_ShowRouterDebugGraphics ) );
+                &m_ShowRouterDebugGraphics, m_ShowRouterDebugGraphics ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::EnableRouterDump, &m_EnableRouterDump,
-                                                           m_EnableRouterDump ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::EnableRouterDump,
+                &m_EnableRouterDump, m_EnableRouterDump ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::HyperZoom, &m_HyperZoom, m_HyperZoom ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::HyperZoom,
+                &m_HyperZoom, m_HyperZoom ) );
 
-    m_entries.push_back(
-            std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::CompactFileSave, &m_CompactSave, m_CompactSave ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::CompactFileSave,
+                &m_CompactSave, m_CompactSave ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::DrawArcAccuracy, &m_DrawArcAccuracy,
-                                                             m_DrawArcAccuracy, 0.0, 100000.0 ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::DrawArcAccuracy,
+                &m_DrawArcAccuracy, m_DrawArcAccuracy, 0.0, 100000.0 ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::DrawArcCenterStartEndMaxAngle,
-                                                             &m_DrawArcCenterMaxAngle, m_DrawArcCenterMaxAngle, 0.0,
-                                                             100000.0 ) );
+                &m_DrawArcCenterMaxAngle, m_DrawArcCenterMaxAngle, 0.0, 100000.0 ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::MaxTangentTrackAngleDeviation,
-                                                             &m_MaxTangentAngleDeviation, m_MaxTangentAngleDeviation,
-                                                             0.0, 90.0 ) );
+                &m_MaxTangentAngleDeviation, m_MaxTangentAngleDeviation, 0.0, 90.0 ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>(
-            true, AC_KEYS::MaxTrackLengthToKeep, &m_MaxTrackLengthToKeep, m_MaxTrackLengthToKeep, 0.0, 1.0 ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::MaxTrackLengthToKeep,
+                &m_MaxTrackLengthToKeep, m_MaxTrackLengthToKeep, 0.0, 1.0 ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::ExtraZoneDisplayModes,
-                                                           &m_ExtraZoneDisplayModes, m_ExtraZoneDisplayModes ) );
+                &m_ExtraZoneDisplayModes, m_ExtraZoneDisplayModes ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>(
-            true, AC_KEYS::StrokeTriangulation, &m_DrawTriangulationOutlines, m_DrawTriangulationOutlines ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::StrokeTriangulation,
+                &m_DrawTriangulationOutlines, m_DrawTriangulationOutlines ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::MinPlotPenWidth, &m_MinPlotPenWidth,
-                                                             m_MinPlotPenWidth, 0.0, 1.0 ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::MinPlotPenWidth,
+                &m_MinPlotPenWidth, m_MinPlotPenWidth, 0.0, 1.0 ) );
 
-    m_entries.push_back(
-            std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::DebugZoneFiller, &m_DebugZoneFiller, m_DebugZoneFiller ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::DebugZoneFiller,
+                &m_DebugZoneFiller, m_DebugZoneFiller ) );
 
-    m_entries.push_back(
-            std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::DebugPDFWriter, &m_DebugPDFWriter, m_DebugPDFWriter ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::DebugPDFWriter,
+                &m_DebugPDFWriter, m_DebugPDFWriter ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>(
-            true, AC_KEYS::PDFStrokeFontWidthFactor, &m_PDFStrokeFontWidthFactor, m_PDFStrokeFontWidthFactor ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::PDFStrokeFontWidthFactor,
+                &m_PDFStrokeFontWidthFactor, m_PDFStrokeFontWidthFactor ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::PDFStrokeFontXOffset,
-                                                             &m_PDFStrokeFontXOffset, m_PDFStrokeFontXOffset ) );
+                &m_PDFStrokeFontXOffset, m_PDFStrokeFontXOffset ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::PDFStrokeFontYOffset,
-                                                             &m_PDFStrokeFontYOffset, m_PDFStrokeFontYOffset ) );
+                &m_PDFStrokeFontYOffset, m_PDFStrokeFontYOffset ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::PDFStrokeFontBoldMultiplier,
-                                                             &m_PDFStrokeFontBoldMultiplier,
-                                                             m_PDFStrokeFontBoldMultiplier ) );
+                &m_PDFStrokeFontBoldMultiplier, m_PDFStrokeFontBoldMultiplier ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>(
-            true, AC_KEYS::PDFStrokeFontKerningFactor, &m_PDFStrokeFontKerningFactor, m_PDFStrokeFontKerningFactor ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::PDFStrokeFontKerningFactor,
+                &m_PDFStrokeFontKerningFactor, m_PDFStrokeFontKerningFactor ) );
 
-    m_entries.push_back(
-            std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::UsePdfPrint, &m_UsePdfPrint, m_UsePdfPrint ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::UsePdfPrint,
+                &m_UsePdfPrint, m_UsePdfPrint ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::SmallDrillMarkSize, &m_SmallDrillMarkSize,
-                                                             m_SmallDrillMarkSize, 0.0, 3.0 ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::SmallDrillMarkSize,
+                &m_SmallDrillMarkSize, m_SmallDrillMarkSize, 0.0, 3.0 ) );
 
-    m_entries.push_back(
-            std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::HotkeysDumper, &m_HotkeysDumper, m_HotkeysDumper ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::HotkeysDumper,
+                &m_HotkeysDumper, m_HotkeysDumper ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::DrawBoundingBoxes, &m_DrawBoundingBoxes,
-                                                           m_DrawBoundingBoxes ) );
-
-    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::GLSwapCopy, &m_GLSwapCopy,
-                                                           m_GLSwapCopy ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::DrawBoundingBoxes,
+                &m_DrawBoundingBoxes, m_DrawBoundingBoxes ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::ShowPcbnewExportNetlist,
-                                                           &m_ShowPcbnewExportNetlist, m_ShowPcbnewExportNetlist ) );
+                &m_ShowPcbnewExportNetlist, m_ShowPcbnewExportNetlist ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::Skip3DModelFileCache, &m_Skip3DModelFileCache,
-                                                           m_Skip3DModelFileCache ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::Skip3DModelFileCache,
+                &m_Skip3DModelFileCache, m_Skip3DModelFileCache ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::Skip3DModelMemoryCache,
-                                                           &m_Skip3DModelMemoryCache, m_Skip3DModelMemoryCache ) );
+                &m_Skip3DModelMemoryCache, m_Skip3DModelMemoryCache ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::HideVersionFromTitle, &m_HideVersionFromTitle,
-                                                           m_HideVersionFromTitle ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::HideVersionFromTitle,
+                &m_HideVersionFromTitle, m_HideVersionFromTitle ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::ShowEventCounters, &m_ShowEventCounters,
-                                                           m_ShowEventCounters ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::ShowEventCounters,
+                &m_ShowEventCounters, m_ShowEventCounters ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::AllowManualCanvasScale,
-                                                           &m_AllowManualCanvasScale, m_AllowManualCanvasScale ) );
+                &m_AllowManualCanvasScale, m_AllowManualCanvasScale ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::V3DRT_BevelHeight_um, &m_3DRT_BevelHeight_um,
-                                                          m_3DRT_BevelHeight_um, 0, std::numeric_limits<int>::max(),
-                                                          AC_GROUPS::V3D_RayTracing ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::V3DRT_BevelHeight_um,
+                &m_3DRT_BevelHeight_um, m_3DRT_BevelHeight_um, 0, std::numeric_limits<int>::max(),
+                AC_GROUPS::V3D_RayTracing ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::V3DRT_BevelExtentFactor,
-                                                             &m_3DRT_BevelExtentFactor, m_3DRT_BevelExtentFactor, 0.0,
-                                                             100.0, AC_GROUPS::V3D_RayTracing ) );
+                &m_3DRT_BevelExtentFactor, m_3DRT_BevelExtentFactor, 0.0, 100.0, AC_GROUPS::V3D_RayTracing ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::Use3DConnexionDriver, &m_Use3DConnexionDriver,
-                                                           m_Use3DConnexionDriver ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::Use3DConnexionDriver,
+                &m_Use3DConnexionDriver, m_Use3DConnexionDriver ) );
+
+    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::ConnectivityEngine,
+                &m_ConnectivityEngine, m_ConnectivityEngine ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::IncrementalConnectivity,
-                                                           &m_IncrementalConnectivity, m_IncrementalConnectivity ) );
+                &m_IncrementalConnectivity, m_IncrementalConnectivity ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::DisambiguationTime, &m_DisambiguationMenuDelay,
-                                                          m_DisambiguationMenuDelay, 50, 10000 ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::DisambiguationTime,
+                &m_DisambiguationMenuDelay, m_DisambiguationMenuDelay, 50, 10000 ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::EnablePcbDesignBlocks,
-                                                           &m_EnablePcbDesignBlocks, m_EnablePcbDesignBlocks ) );
+                &m_EnablePcbDesignBlocks, m_EnablePcbDesignBlocks ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::EnableGenerators, &m_EnableGenerators,
-                                                           m_EnableGenerators ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::EnableGenerators,
+                &m_EnableGenerators, m_EnableGenerators ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::EnableAPILogging, &m_EnableAPILogging,
-                                                           m_EnableAPILogging ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::EnableAPILogging,
+                &m_EnableAPILogging, m_EnableAPILogging ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::EnableLibWithText, &m_EnableLibWithText,
-                                                           m_EnableLibWithText ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::EnableLibWithText,
+                &m_EnableLibWithText, m_EnableLibWithText ) );
 
-    m_entries.push_back(
-            std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::EnableLibDir, &m_EnableLibDir, m_EnableLibDir ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::EnableLibDir,
+                &m_EnableLibDir, m_EnableLibDir ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::PcbSelectionVisibilityRatio,
-                                                             &m_PcbSelectionVisibilityRatio,
-                                                             m_PcbSelectionVisibilityRatio, 0.0, 1.0 ) );
+                &m_PcbSelectionVisibilityRatio, m_PcbSelectionVisibilityRatio, 0.0, 1.0 ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::FontErrorSize, &m_FontErrorSize,
-                                                             m_FontErrorSize, 0.01, 100 ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::FontErrorSize,
+                &m_FontErrorSize, m_FontErrorSize, 0.01, 100 ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::OcePluginLinearDeflection,
-                                                             &m_OcePluginLinearDeflection, m_OcePluginLinearDeflection,
-                                                             0.01, 1.0 ) );
+                &m_OcePluginLinearDeflection, m_OcePluginLinearDeflection, 0.01, 1.0 ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::OcePluginAngularDeflection,
-                                                             &m_OcePluginAngularDeflection,
-                                                             m_OcePluginAngularDeflection, 0.01, 360.0 ) );
+                &m_OcePluginAngularDeflection, m_OcePluginAngularDeflection, 0.01, 360.0 ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::TriangulateSimplificationLevel,
-                                                          &m_TriangulateSimplificationLevel,
-                                                          m_TriangulateSimplificationLevel, 5, 1000 ) );
+                &m_TriangulateSimplificationLevel, m_TriangulateSimplificationLevel, 5, 1000 ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_INT>(
-            true, AC_KEYS::TriangulateMinimumArea, &m_TriangulateMinimumArea, m_TriangulateMinimumArea, 25, 100000 ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::TriangulateMinimumArea,
+                &m_TriangulateMinimumArea, m_TriangulateMinimumArea, 25, 100000 ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::EnableCacheFriendlyFracture,
-                                                           &m_EnableCacheFriendlyFracture,
-                                                           m_EnableCacheFriendlyFracture ) );
+                &m_EnableCacheFriendlyFracture, m_EnableCacheFriendlyFracture ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_INT>(
-            true, AC_KEYS::MaxFileSystemWatchers, &m_MaxFilesystemWatchers, m_MaxFilesystemWatchers, 0, 2147483647 ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::EnableFractureEdgeIndex,
+                &m_EnableFractureEdgeIndex, m_EnableFractureEdgeIndex ) );
+
+    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::TriangulateDelaunayRefine,
+                &m_TriangulateDelaunayRefine, m_TriangulateDelaunayRefine ) );
+
+    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::EnableGLResetRecovery,
+                &m_EnableGLResetRecovery, m_EnableGLResetRecovery ) );
+
+    m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::MaxFileSystemWatchers,
+                &m_MaxFilesystemWatchers, m_MaxFilesystemWatchers, 0, 2147483647 ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::MinorSchematicGraphSize,
-                                                          &m_MinorSchematicGraphSize, m_MinorSchematicGraphSize, 0,
-                                                          2147483647 ) );
+                &m_MinorSchematicGraphSize, m_MinorSchematicGraphSize, 0, 2147483647 ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::ResolveTextRecursionDepth,
-                                                          &m_ResolveTextRecursionDepth, m_ResolveTextRecursionDepth, 0,
-                                                          10 ) );
+                &m_ResolveTextRecursionDepth, m_ResolveTextRecursionDepth, 0, 10 ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::EnableExtensionSnaps, &m_EnableExtensionSnaps,
-                                                           m_EnableExtensionSnaps ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::EnableExtensionSnaps,
+                &m_EnableExtensionSnaps, m_EnableExtensionSnaps ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::ExtensionSnapTimeoutMs,
-                                                          &m_ExtensionSnapTimeoutMs, m_ExtensionSnapTimeoutMs, 0 ) );
+                &m_ExtensionSnapTimeoutMs, m_ExtensionSnapTimeoutMs, 0 ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::ExtensionSnapActivateOnHover,
-                                                           &m_ExtensionSnapActivateOnHover,
-                                                           m_ExtensionSnapActivateOnHover ) );
+                &m_ExtensionSnapActivateOnHover, m_ExtensionSnapActivateOnHover ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::EnableSnapAnchorsDebug,
-                                                           &m_EnableSnapAnchorsDebug, m_EnableSnapAnchorsDebug ) );
+                &m_EnableSnapAnchorsDebug, m_EnableSnapAnchorsDebug ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::SnapHysteresis, &m_SnapHysteresis,
-                                                          m_SnapHysteresis, 0, 100 ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::SnapHysteresis,
+                &m_SnapHysteresis, m_SnapHysteresis, 0, 100 ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::SnapToAnchorMargin, &m_SnapToAnchorMargin,
-                                                             m_SnapToAnchorMargin, 1.0, 2.0 ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::SnapToAnchorMargin,
+                &m_SnapToAnchorMargin, m_SnapToAnchorMargin, 1.0, 2.0 ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::MinParallelAngle, &m_MinParallelAngle,
-                                                             m_MinParallelAngle, 0.0, 45.0 ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::MinParallelAngle,
+                &m_MinParallelAngle, m_MinParallelAngle, 0.0, 45.0 ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::HoleWallPaintingMultiplier,
-                                                             &m_HoleWallPaintingMultiplier,
-                                                             m_HoleWallPaintingMultiplier, 0.1, 100.0 ) );
+                &m_HoleWallPaintingMultiplier, m_HoleWallPaintingMultiplier, 0.1, 100.0 ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::MsgPanelShowUuids, &m_MsgPanelShowUuids,
-                                                          m_MsgPanelShowUuids ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::MsgPanelShowUuids,
+                &m_MsgPanelShowUuids, m_MsgPanelShowUuids ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::MaximumThreads, &m_MaximumThreads,
-                                                          m_MaximumThreads, 0, 500 ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::MaximumThreads,
+                &m_MaximumThreads, m_MaximumThreads, 0, 500 ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::NetInspectorBulkUpdateOptimisationThreshold,
-                                                          &m_NetInspectorBulkUpdateOptimisationThreshold,
-                                                          m_NetInspectorBulkUpdateOptimisationThreshold, 0, 1000 ) );
+                &m_NetInspectorBulkUpdateOptimisationThreshold, m_NetInspectorBulkUpdateOptimisationThreshold,
+                0, 1000 ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::ExcludeFromSimulationLineWidth,
-                                                          &m_ExcludeFromSimulationLineWidth,
-                                                          m_ExcludeFromSimulationLineWidth, 1, 100 ) );
+                &m_ExcludeFromSimulationLineWidth, m_ExcludeFromSimulationLineWidth, 1, 100 ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::SimulatorMultiRunCombinationLimit,
-                                                          &m_SimulatorMultiRunCombinationLimit,
-                                                          m_SimulatorMultiRunCombinationLimit, 1, 100 ) );
+                &m_SimulatorMultiRunCombinationLimit, m_SimulatorMultiRunCombinationLimit, 1, 100 ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::GitIconRefreshInterval,
-                                                          &m_GitIconRefreshInterval, m_GitIconRefreshInterval, 0, 100000 ) );
+                &m_GitIconRefreshInterval, m_GitIconRefreshInterval, 0, 100000 ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::MaxPastedTextLength, &m_MaxPastedTextLength,
-                                                          m_MaxPastedTextLength, 0, 100000 ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::MaxPastedTextLength,
+                &m_MaxPastedTextLength, m_MaxPastedTextLength, 0, 100000 ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::PNSProcessClusterTimeout,
-                                                          &m_PNSProcessClusterTimeout, 100, 10, 10000 ) );
+                &m_PNSProcessClusterTimeout, 100, 10, 10000 ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::FollowBranchTimeout,
-                                                          &m_FollowBranchTimeout, 500, 50, 5000 ) );
+                &m_FollowBranchTimeout, 500, 50, 5000 ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::ImportSkipComponentBodies,
-                                                           &m_ImportSkipComponentBodies, m_ImportSkipComponentBodies ) );
+                &m_ImportSkipComponentBodies, m_ImportSkipComponentBodies ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::ImportSkipLayerMapping,
-                                                           &m_ImportSkipLayerMapping, m_ImportSkipLayerMapping ) );
+                &m_ImportSkipLayerMapping, m_ImportSkipLayerMapping ) );
 
-    m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::ScreenDPI, &m_ScreenDPI, m_ScreenDPI, 50, 500 ) );
+    m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::ScreenDPI,
+                &m_ScreenDPI, m_ScreenDPI, 50, 500 ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::EnableUseAuiPerspective,
-                                                           &m_EnableUseAuiPerspective, m_EnableUseAuiPerspective ) );
+                &m_EnableUseAuiPerspective, m_EnableUseAuiPerspective ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::HistoryLockStaleTimeout,
-                                                          &m_HistoryLockStaleTimeout, m_HistoryLockStaleTimeout, 10,
-                                                          86400 ) ); // 10 seconds to 24 hours
+                &m_HistoryLockStaleTimeout, m_HistoryLockStaleTimeout, 10, 86400 ) ); // 10 seconds to 24 hours
 
     m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::ZoneFillIterativeRefill,
-                                                           &m_ZoneFillIterativeRefill, m_ZoneFillIterativeRefill ) );
+                &m_ZoneFillIterativeRefill, m_ZoneFillIterativeRefill ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::PadsPcbTextHeightScale,
-                                                             &m_PadsPcbTextHeightScale,
-                                                             m_PadsPcbTextHeightScale, 0.1, 1.0 ) );
+                &m_PadsPcbTextHeightScale, m_PadsPcbTextHeightScale, 0.1, 1.0 ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::PadsPcbTextWidthScale,
-                                                             &m_PadsPcbTextWidthScale,
-                                                             m_PadsPcbTextWidthScale, 0.1, 1.0 ) );
+                &m_PadsPcbTextWidthScale, m_PadsPcbTextWidthScale, 0.1, 1.0 ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::PadsSchTextHeightScale,
-                                                             &m_PadsSchTextHeightScale,
-                                                             m_PadsSchTextHeightScale, 0.1, 1.0 ) );
+                &m_PadsSchTextHeightScale, m_PadsSchTextHeightScale, 0.1, 1.0 ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::PadsSchTextWidthScale,
-                                                             &m_PadsSchTextWidthScale,
-                                                             m_PadsSchTextWidthScale, 0.1, 1.0 ) );
+                &m_PadsSchTextWidthScale, m_PadsSchTextWidthScale, 0.1, 1.0 ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::PadsTextAnchorOffsetNm,
-                                                          &m_PadsTextAnchorOffsetNm,
-                                                          m_PadsTextAnchorOffsetNm, 0, 1000000 ) );
+                &m_PadsTextAnchorOffsetNm, m_PadsTextAnchorOffsetNm, 0, 1000000 ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_INT>( true, AC_KEYS::PcbImportMinObjectSizeNm,
-                                                          &m_PcbImportMinObjectSizeNm,
-                                                          m_PcbImportMinObjectSizeNm, 100,
-                                                          1000000 ) );
+                &m_PcbImportMinObjectSizeNm, m_PcbImportMinObjectSizeNm, 100, 1000000 ) );
+
+    m_entries.push_back( std::make_unique<PARAM_CFG_WXSTRING>( true, AC_KEYS::RouterTestCaseDirectory,
+                &m_RouterTestCaseDirectory, wxS( "" ) ) );
+
+    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::DiffSkewOverlayTrackInflation,
+                &m_DiffSkewOverlayTrackInflation, m_DiffSkewOverlayTrackInflation, 0.0, 10.0 ) );
+
+    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::DiffSkewTrackGapInflation,
+                &m_DiffSkewTrackGapInflation, m_DiffSkewTrackGapInflation, 0.0, 10.0 ) );
+
+    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::DiffSkewCosThetaParallelTestValue,
+                &m_DiffSkewCosThetaParallelTestValue, m_DiffSkewCosThetaParallelTestValue, 0.0, 1.0 ) );
+
+    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::DiffSkewColourInterpolationLogStrength,
+                &m_DiffSkewColourInterpolationLogStrength, m_DiffSkewColourInterpolationLogStrength, 0.1, 20.0 ) );
+
+    m_entries.push_back( std::make_unique<PARAM_CFG_DOUBLE>( true, AC_KEYS::DiffSkewTargetDiffSegmentSize,
+                &m_DiffSkewTargetDiffSegmentSize, m_DiffSkewTargetDiffSegmentSize, 1.0, 1e10 ) );
 
     m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::EagleImportFieldsCanAutoplace,
-                                                           &m_EagleImportFieldsCanAutoplace,
-                                                           m_EagleImportFieldsCanAutoplace ) );
+                &m_EagleImportFieldsCanAutoplace, m_EagleImportFieldsCanAutoplace ) );
+
+    m_entries.push_back( std::make_unique<PARAM_CFG_BOOL>( true, AC_KEYS::EnableVulkanValidation,
+                                                           &m_EnableVulkanValidation,
+                                                           m_EnableVulkanValidation ) );
+
+    m_entries.push_back( std::make_unique<PARAM_CFG_WXSTRING>( true, AC_KEYS::RenderThreadPriority,
+                                                               &m_RenderThreadPriority,
+                                                               wxS( "normal" ) ) );
 
     // Special case for trace mask setting...we just grab them and set them immediately
     // Because we even use wxLogTrace inside of advanced config
     m_entries.push_back( std::make_unique<PARAM_CFG_WXSTRING>( true, AC_KEYS::TraceMasks, &m_traceMasks, wxS( "" ) ) );
+
 
     // Load the config from file
     wxConfigLoadSetups( &aCfg, m_entries );

@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -215,6 +211,8 @@ const std::string FILEEXT::XaoFileExtension( "xao" );
 const std::string FILEEXT::PlyFileExtension( "ply" );
 const std::string FILEEXT::StlFileExtension( "stl" );
 const std::string FILEEXT::U3DFileExtension( "u3d" );
+const std::string FILEEXT::IdfV3BoardFileExtension( "emn" );
+const std::string FILEEXT::IdfV3LibraryFileExtension( "emp" );
 
 const std::string FILEEXT::GencadFileExtension( "cad" );
 
@@ -307,6 +305,12 @@ wxString FILEEXT::EagleFilesWildcard()
 }
 
 
+wxString FILEEXT::PcadFilesWildcard()
+{
+    return _( "P-CAD ASCII files" ) + AddFileExtListToFilter( { "sch", "pcb" } );
+}
+
+
 wxString FILEEXT::PADSProjectFilesWildcard()
 {
     return _( "PADS ASCII files" ) + AddFileExtListToFilter( { "asc", "txt" } );
@@ -353,7 +357,37 @@ wxString FILEEXT::EasyEdaArchiveWildcard()
 
 wxString FILEEXT::EasyEdaProFileWildcard()
 {
-    return _( "EasyEDA (JLCEDA) Pro files" ) + AddFileExtListToFilter( { "epro", "zip" } );
+    return _( "EasyEDA (JLCEDA) Pro files" ) + AddFileExtListToFilter( { "epro", "epro2", "zip" } );
+}
+
+
+wxString FILEEXT::DipTraceFilesWildcard()
+{
+    return _( "DipTrace files" ) + AddFileExtListToFilter( { "dch", "dip" } );
+}
+
+
+wxString FILEEXT::EasyPcFilesWildcard()
+{
+    return _( "Easy-PC / DesignSpark PCB files" ) + AddFileExtListToFilter( { "prj", "sch", "pcb" } );
+}
+
+
+wxString FILEEXT::Target3001FilesWildcard()
+{
+    return _( "TARGET 3001! project files" ) + AddFileExtListToFilter( { "T3001" } );
+}
+
+
+wxString FILEEXT::OrCadSchematicFilesWildcard()
+{
+    return _( "OrCAD Capture schematic files" ) + AddFileExtListToFilter( { "dsn" } );
+}
+
+
+wxString FILEEXT::AllegroPcbFilesWildcard()
+{
+    return _( "Allegro PCB files" ) + AddFileExtListToFilter( { "brd" } );
 }
 
 
@@ -507,6 +541,12 @@ wxString FILEEXT::SpiceLibraryFileWildcard()
 wxString FILEEXT::SpiceNetlistFileWildcard()
 {
     return _( "SPICE netlist file" ) + AddFileExtListToFilter( { "cir" } );
+}
+
+
+wxString FILEEXT::SpiceSubcircuitFileWildcard()
+{
+    return _( "SPICE subcircuit model file" ) + AddFileExtListToFilter( { "sub", "mod" } );
 }
 
 

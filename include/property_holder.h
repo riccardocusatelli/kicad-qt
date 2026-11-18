@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.en.html
- * or you may search the http://www.gnu.org website for the version 32 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PROPERTY_HOLDER_H
@@ -146,7 +142,7 @@ public:
 
     /**
      * @brief Safely cast a void pointer to PROPERTY_HOLDER*
-     * @param ptr Pointer to validate and cast
+     * @param aPtr Pointer to validate and cast
      * @return PROPERTY_HOLDER* if valid, nullptr otherwise
      */
     static PROPERTY_HOLDER* SafeCast( void* aPtr ) noexcept
@@ -171,7 +167,7 @@ public:
 
     /**
      * @brief Safely cast a const void pointer to const PROPERTY_HOLDER*
-     * @param ptr Pointer to validate and cast
+     * @param aPtr Pointer to validate and cast
      * @return const PROPERTY_HOLDER* if valid, nullptr otherwise
      */
     static const PROPERTY_HOLDER* SafeCast( const void* aPtr ) noexcept
@@ -196,7 +192,7 @@ public:
 
     /**
      * @brief Safely delete a PROPERTY_HOLDER from client data
-     * @param ptr Pointer from client data to validate and delete
+     * @param aPtr Pointer from client data to validate and delete
      * @return true if successfully deleted, false if invalid pointer
      */
     static bool SafeDelete( void* aPtr ) noexcept
@@ -226,8 +222,8 @@ public:
     /**
      * @brief Set a property with the given key and value.
      * @tparam T The type of the value to store
-     * @param key The property key
-     * @param value The value to store
+     * @param aKey The property key
+     * @param aValue The value to store
      * @return true if property was set, false if object is invalid
      */
     template <typename T>
@@ -243,7 +239,7 @@ public:
     /**
      * @brief Get a property value with type checking.
      * @tparam T The expected type of the property
-     * @param key The property key
+     * @param aKey The property key
      * @return std::optional<T> containing the value if found and type matches, nullopt otherwise
      */
     template <typename T>
@@ -271,8 +267,8 @@ public:
     /**
      * @brief Get a property value with a default fallback.
      * @tparam T The expected type of the property
-     * @param key The property key
-     * @param defaultValue The value to return if property doesn't exist or type mismatch
+     * @param aKey The property key
+     * @param aDefaultValue The value to return if property doesn't exist or type mismatch
      * @return The property value or the default value
      */
     template<typename T>
@@ -286,7 +282,7 @@ public:
 
     /**
      * @brief Check if a property exists.
-     * @param key The property key
+     * @param aKey The property key
      * @return true if the property exists and object is valid, false otherwise
      */
     bool HasProperty( const std::string& aKey ) const
@@ -299,7 +295,7 @@ public:
 
     /**
      * @brief Remove a property.
-     * @param key The property key
+     * @param aKey The property key
      * @return true if the property was removed, false if it didn't exist or object is invalid
      */
     bool RemoveProperty( const std::string& aKey )
@@ -365,7 +361,7 @@ public:
 
     /**
      * @brief Get the type information for a property.
-     * @param key The property key
+     * @param aKey The property key
      * @return std::optional<std::type_info> containing type info if property exists and object is valid
      */
     std::optional<std::reference_wrapper<const std::type_info>> GetPropertyType( const std::string& aKey ) const
@@ -384,7 +380,7 @@ public:
     /**
      * @brief Check if a property exists and has the expected type.
      * @tparam T The expected type
-     * @param key The property key
+     * @param aKey The property key
      * @return true if property exists, has type T, and object is valid
      */
     template <typename T>
@@ -412,6 +408,7 @@ public:
 
 private:
     uint64_t m_magic; ///< Magic value for memory validation
+
     /**
      * @brief Internal storage for properties using string keys and any values.
      *

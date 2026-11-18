@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 // kicad_curl_easy.h must be included before wxWidgets because on Windows (msys2), there are
 // collision with wx headers and curl.h defs
@@ -44,6 +40,9 @@
 #include <kiface_base.h>
 #include <dialogs/dialog_configure_paths.h>
 #include <eda_doc.h>
+#include <launch_ext.h>
+#include <paths.h>
+#include <wx/filename.h>
 #include <wx/msgdlg.h>
 #include <executable_names.h>
 #include <gestfich.h>
@@ -193,8 +192,9 @@ int COMMON_CONTROL::ShowPlayer( const TOOL_EVENT& aEvent )
     FRAME_T       playerType = aEvent.Parameter<FRAME_T>();
     KIWAY_PLAYER* editor = m_frame->Kiway().Player( playerType, true );
 
-    // editor can be null if Player() fails:
-    KI_CHECK_MSG( editor != nullptr, 0, wxT( "Cannot open/create the editor frame" ) );
+    // Player() reports its own failure
+    if( !editor )
+        return 0;
 
     showFrame( editor );
 
@@ -233,8 +233,7 @@ int COMMON_CONTROL::Execute( const wxString& aExecutible, const wxString& aParam
 
     bool isKicadBinary = false;
 
-    if( aExecutible == GERBVIEW_EXE || aExecutible == BITMAPCONVERTER_EXE
-        || aExecutible == PCB_CALCULATOR_EXE || aExecutible == PL_EDITOR_EXE
+    if( aExecutible == GERBVIEW_EXE || aExecutible == PCB_CALCULATOR_EXE || aExecutible == PL_EDITOR_EXE
         || aExecutible == EESCHEMA_EXE || aExecutible == PCBNEW_EXE )
     {
         isKicadBinary = true;
@@ -470,7 +469,6 @@ int COMMON_CONTROL::ReportBug( const TOOL_EVENT& aEvent )
 
 int COMMON_CONTROL::ReloadPlugins( const TOOL_EVENT& aEvent )
 {
-#ifdef KICAD_IPC_API
     if( Pgm().GetCommonSettings()->m_Api.enable_server )
     {
         std::shared_ptr<REPORTER> reporter;
@@ -480,7 +478,30 @@ int COMMON_CONTROL::ReloadPlugins( const TOOL_EVENT& aEvent )
 
         PgmGui().GetPluginManager().ReloadPlugins( std::nullopt, reporter );
     }
-#endif
+    return 0;
+}
+
+
+int COMMON_CONTROL::ShowPluginFolder( const TOOL_EVENT& aEvent )
+{
+    wxString dir( PATHS::GetUserPluginsPath() );
+
+    if( !wxFileName::DirExists( dir ) )
+    {
+        if( !PATHS::EnsurePathExists( dir ) )
+        {
+            DisplayErrorMessage( m_frame,
+                                 wxString::Format( _( "Unable to create plugin directory '%s'." ),
+                                                   dir ) );
+            return 0;
+        }
+    }
+
+    if( !LaunchExternal( dir ) )
+        DisplayErrorMessage( m_frame,
+                             wxString::Format( _( "Unable to open plugin directory '%s'." ),
+                                               dir ) );
+
     return 0;
 }
 
@@ -509,6 +530,7 @@ void COMMON_CONTROL::setTransitions()
     Go( &COMMON_CONTROL::ReportBug,          ACTIONS::reportBug.MakeEvent() );
     Go( &COMMON_CONTROL::About,              ACTIONS::about.MakeEvent() );
     Go( &COMMON_CONTROL::ReloadPlugins,      ACTIONS::pluginsReload.MakeEvent() );
+    Go( &COMMON_CONTROL::ShowPluginFolder,   ACTIONS::pluginsShowFolder.MakeEvent() );
 }
 
 

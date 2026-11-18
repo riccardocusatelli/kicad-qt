@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
@@ -61,7 +57,7 @@ BOOST_FIXTURE_TEST_CASE( DRCIncorrectTextMirror, DRC_INCORRECT_TEXT_MIRROR_TEST_
 
         // Ensure that our desired errors are fired
         bds.m_DRCSeverities[DRCE_MIRRORED_TEXT_ON_FRONT_LAYER] = SEVERITY::RPT_SEVERITY_ERROR;
-        bds.m_DRCSeverities[DRCE_NONMIRRORED_TEXT_ON_BACK_LAYER] = SEVERITY::RPT_SEVERITY_ERROR;
+        bds.m_DRCSeverities[DRCE_UNMIRRORED_TEXT_ON_BACK_LAYER] = SEVERITY::RPT_SEVERITY_ERROR;
 
         bds.m_DRCEngine->SetViolationHandler(
                 [&]( const std::shared_ptr<DRC_ITEM>& aItem, const VECTOR2I& aPos, int aLayer,
@@ -82,13 +78,12 @@ BOOST_FIXTURE_TEST_CASE( DRCIncorrectTextMirror, DRC_INCORRECT_TEXT_MIRROR_TEST_
         {
             UNITS_PROVIDER unitsProvider( pcbIUScale, EDA_UNITS::INCH );
 
-            std::map<KIID, EDA_ITEM*> itemMap;
-            m_board->FillItemMap( itemMap );
+            BOARD_RC_ITEM_RESOLVER resolver( *m_board );
 
             for( const DRC_ITEM& item : violations )
             {
                 BOOST_TEST_MESSAGE( item.ShowReport( &unitsProvider, RPT_SEVERITY_ERROR,
-                                                     itemMap ) );
+                                                     resolver ) );
             }
 
             BOOST_ERROR( wxString::Format( "DRC incorrect text mirror test: %s, failed (violations found %d expected %d)",

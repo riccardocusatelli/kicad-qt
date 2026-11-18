@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef FRAME_T_H_
@@ -58,9 +54,12 @@ enum FRAME_T
 
     FRAME_PL_EDITOR,
 
-    FRAME_BM2CMP,
-
     FRAME_CALC,
+
+    /// Top-level host for the 3-way merge resolution dialog. Lives in the
+    /// kicad project-manager binary and is launched via the `--mergetool`
+    /// command-line argument so it can serve as a `git mergetool` driver.
+    FRAME_MERGETOOL,
 
     KIWAY_PLAYER_COUNT, // counts subset of FRAME_T's which are KIWAY_PLAYER derivatives
 
@@ -71,12 +70,14 @@ enum FRAME_T
 
     PANEL_SYM_DISP_OPTIONS = FRAME_T_COUNT,
     PANEL_SYM_EDIT_GRIDS,
+    PANEL_SYM_SNAPPING,
     PANEL_SYM_EDIT_OPTIONS,
     PANEL_SYM_COLORS,
     PANEL_SYM_TOOLBARS,
 
     PANEL_SCH_DISP_OPTIONS,
     PANEL_SCH_GRIDS,
+    PANEL_SCH_SNAPPING,
     PANEL_SCH_EDIT_OPTIONS,
     PANEL_SCH_COLORS,
     PANEL_SCH_TOOLBARS,
@@ -86,6 +87,7 @@ enum FRAME_T
 
     PANEL_FP_DISPLAY_OPTIONS,
     PANEL_FP_GRIDS,
+    PANEL_FP_SNAPPING,
     PANEL_FP_EDIT_OPTIONS,
     PANEL_FP_COLORS,
     PANEL_FP_TOOLBARS,
@@ -96,6 +98,7 @@ enum FRAME_T
 
     PANEL_PCB_DISPLAY_OPTS,
     PANEL_PCB_GRIDS,
+    PANEL_PCB_SNAPPING,
     PANEL_PCB_EDIT_OPTIONS,
     PANEL_PCB_COLORS,
     PANEL_PCB_TOOLBARS,
@@ -111,11 +114,13 @@ enum FRAME_T
     PANEL_GBR_EDIT_OPTIONS,
     PANEL_GBR_EXCELLON_OPTIONS,
     PANEL_GBR_GRIDS,
+    PANEL_GBR_SNAPPING,
     PANEL_GBR_COLORS,
     PANEL_GBR_TOOLBARS,
 
     PANEL_DS_DISPLAY_OPTIONS,
     PANEL_DS_GRIDS,
+    PANEL_DS_SNAPPING,
     PANEL_DS_COLORS,
     PANEL_DS_TOOLBARS,
 

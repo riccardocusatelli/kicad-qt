@@ -100,11 +100,11 @@ void SchFieldOnScintillaCharAdded( const SCH_FIELD* aField, SCINTILLA_TRICKS* aS
                     std::vector<EMBEDDED_FILES*> embeddedFilesStack;
                     embeddedFilesStack.push_back( schematic->GetEmbeddedFiles() );
 
-                    if( EMBEDDED_FILES* symbolEmbeddedFiles = symbol->GetEmbeddedFiles() )
-                    {
-                        embeddedFilesStack.push_back( symbolEmbeddedFiles );
+                    if( symbol->GetLibSymbolRef() )
                         symbol->GetLibSymbolRef()->AppendParentEmbeddedFiles( embeddedFilesStack );
-                    }
+
+                    if( EMBEDDED_FILES* symbolEmbeddedFiles = symbol->GetEmbeddedFiles() )
+                        embeddedFilesStack.push_back( symbolEmbeddedFiles );
 
                     mgr.SetFilesStack( std::move( embeddedFilesStack ) );
 
@@ -127,7 +127,7 @@ void SchFieldOnScintillaCharAdded( const SCH_FIELD* aField, SCINTILLA_TRICKS* aS
                 SCH_REFERENCE_LIST refs;
                 SCH_SYMBOL*        refSymbol = nullptr;
 
-                schematic->Hierarchy().GetSymbols( refs, SYMBOL_FILTER_ALL );
+                schematic->Hierarchy().GetSymbols( refs, SYMBOL_FILTER_NON_POWER );
 
                 for( size_t jj = 0; jj < refs.GetCount(); jj++ )
                 {

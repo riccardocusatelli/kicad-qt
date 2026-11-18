@@ -17,17 +17,18 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef __SPICE_SETTINGS_H__
 #define __SPICE_SETTINGS_H__
 
 #include <settings/nested_settings.h>
+
+#include <map>
+#include <optional>
+#include <string>
+#include <vector>
 
 
 /**
@@ -85,8 +86,37 @@ public:
     NGSPICE_COMPATIBILITY_MODE GetCompatibilityMode() const { return m_compatibilityMode; }
     void SetCompatibilityMode( NGSPICE_COMPATIBILITY_MODE aMode ) { m_compatibilityMode = aMode; }
 
+    /// Return the value set for a simulator option, or an empty string if it is unset.
+    wxString GetOption( const std::string& aName ) const;
+
+    /// Set the value for a simulator option.  A blank value clears it.
+    void SetOption( const std::string& aName, const wxString& aValue );
+
+    /**
+     * Return \a aValue in the form ngspice reads for option \a aName.
+     *
+     * A decimal comma becomes a point, the integration method is lower-cased and iteration
+     * limits must be positive integers.  A blank value normalizes to an empty string.
+     *
+     * @return the normalized value, or std::nullopt if \a aValue is not valid for \a aName.
+     */
+    static std::optional<wxString> NormalizeOption( const std::string& aName, const wxString& aValue );
+
+    /**
+     * Build a ".options ..." directive from the valid options that have a value set, or an
+     * empty string if there are none.
+     *
+     * This is emitted into the netlist ahead of the schematic directives so that any ".options"
+     * placed on the schematic override these (ngspice applies the last value seen for an option).
+     */
+    wxString GetOptionsDirective() const;
+
+    /// The ngspice option names exposed through the settings UI.
+    static const std::vector<std::string>& SupportedOptions();
+
 private:
-    NGSPICE_COMPATIBILITY_MODE m_compatibilityMode;
+    NGSPICE_COMPATIBILITY_MODE      m_compatibilityMode;
+    std::map<std::string, wxString> m_options;
 };
 
 

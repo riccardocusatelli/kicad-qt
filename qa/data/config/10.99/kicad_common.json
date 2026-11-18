@@ -31,14 +31,23 @@
     "update_check_prompt": false,
     "zone_fill_warning": false
   },
+  "embed_file_defaults": {
+    "datasheet": true,
+    "drawing_sheet": true,
+    "model_3d": false,
+    "sim_model": false
+  },
   "environment": {
-    "vars": null
+    "vars": {}
+  },
+  "fields": {
+    "template_field_names": ""
   },
   "git": {
     "authorEmail": "",
     "authorName": "",
     "enableGit": true,
-    "repositories": null,
+    "repositories": [],
     "updatInterval": 5,
     "useDefaultAuthor": true
   },
@@ -63,13 +72,14 @@
     "scroll_modifier_pan_h": 308,
     "scroll_modifier_pan_v": 306,
     "scroll_modifier_zoom": 0,
+    "touchpad_mode": 1,
     "warp_mouse_on_move": true,
     "zoom_acceleration": false,
     "zoom_speed": 1,
     "zoom_speed_auto": true
   },
   "meta": {
-    "version": 6
+    "version": 7
   },
   "package_manager": {
     "sash_pos": 380
@@ -98,6 +108,6 @@
     "pdf_viewer_name": "",
     "text_editor": "",
     "use_system_pdf_viewer": true,
-    "working_dir": "/home/seth/code/kicad/kicad-master/qa/tests"
+    "working_dir": "/Users/jon/src/kicad/qa/tests"
   }
 }

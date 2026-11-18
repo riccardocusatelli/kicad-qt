@@ -238,10 +238,13 @@ void PANEL_DESIGN_BLOCK_CHOOSER::onCloseTimer()
 void PANEL_DESIGN_BLOCK_CHOOSER::onOpenLibsTimer()
 {
     if( APP_SETTINGS_BASE* cfg = m_frame->config() )
-        m_adapter->OpenLibs( cfg->m_LibTree.open_libs );
+        m_adapter->OpenLibs( cfg->m_DesignBlockChooserPanel.tree.open_libs );
 
     // The selections show their design block from now on (not during the initial load)
     m_showSelection = true;
+
+    if( m_preselect.IsValid() )
+        SelectLibId( m_preselect );
 }
 
 

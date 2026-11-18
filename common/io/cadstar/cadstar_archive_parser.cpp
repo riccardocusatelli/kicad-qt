@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -36,6 +36,19 @@
 #include <string_utils.h>
 #include <trigo.h>
 #include <core/ki_assert.h>
+
+// Re-throw a child-node parse failure with the enclosing element added to the message. The
+// leaf error only names the offending node type (e.g. "PT"), which is ambiguous in a large
+// archive; prefixing the specific child and its parent section locates the failure.
+[[noreturn]] static void reThrowWithParentContext( const IO_ERROR& aError, XNODE* aChildNode,
+                                                   XNODE* aParentNode )
+{
+    // TRANSLATORS: %s are, in order, the underlying error message, the child XML node name,
+    // and the enclosing (parent) XML node name.
+    THROW_IO_ERROR( wxString::Format( _( "%s (whilst parsing '%s' in '%s')" ), aError.Problem(),
+                                      aChildNode->GetName(), aParentNode->GetName() ) );
+}
+
 
 // Ratio derived from CADSTAR default font. See doxygen comment in cadstar_archive_parser.h
 const double CADSTAR_ARCHIVE_PARSER::TXT_HEIGHT_RATIO = ( 24.0 - 5.0 ) / 24.0;
@@ -79,7 +92,9 @@ void CADSTAR_ARCHIVE_PARSER::TIMESTAMP::Parse( XNODE* aNode, PARSER_CONTEXT* aCo
             || !GetXmlAttributeIDString( aNode, 3 ).ToLong( &Hour )
             || !GetXmlAttributeIDString( aNode, 4 ).ToLong( &Minute )
             || !GetXmlAttributeIDString( aNode, 5 ).ToLong( &Second ) )
+    {
         THROW_PARSING_IO_ERROR( wxT( "TIMESTAMP" ), wxString::Format( "HEADER" ) );
+    }
 }
 
 
@@ -113,9 +128,10 @@ void CADSTAR_ARCHIVE_PARSER::HEADER::Parse( XNODE* aNode, PARSER_CONTEXT* aConte
         {
             XNODE* subNode = cNode->GetChildren();
 
-            if( ( subNode->GetName() == wxT( "METRIC" ) )
-                    && ( GetXmlAttributeIDString( subNode, 0 ) == wxT( "HUNDREDTH" ) )
-                    && ( GetXmlAttributeIDString( subNode, 1 ) == wxT( "MICRON" ) ) )
+            if( subNode
+                    && subNode->GetName() == wxT( "METRIC" )
+                    && GetXmlAttributeIDString( subNode, 0 ) == wxT( "HUNDREDTH" )
+                    && GetXmlAttributeIDString( subNode, 1 ) == wxT( "MICRON" ) )
             {
                 Resolution = RESOLUTION::HUNDREDTH_MICRON;
             }
@@ -1789,7 +1805,7 @@ void CADSTAR_ARCHIVE_PARSER::PART::DEFINITION::GATE::Parse( XNODE* aNode, PARSER
     ID        = GetXmlAttributeIDString( aNode, 0 );
     Name      = GetXmlAttributeIDString( aNode, 1 );
     Alternate = GetXmlAttributeIDString( aNode, 2 );
-    PinCount  = GetXmlAttributeIDLong( aNode, 3 );
+    PinCount  = GetXmlAttributeIDLong( aNode, 3, true /* is required */ );
 
     CheckNoChildNodes( aNode );
 }
@@ -2483,7 +2499,7 @@ XNODE* CADSTAR_ARCHIVE_PARSER::LoadArchiveFile( const wxString& aFileName,
     FILE* fp = wxFopen( aFileName, wxT( "rt" ) );
 
     if( !fp )
-        THROW_IO_ERROR( wxString::Format( _( "Cannot open file '%s'" ), aFileName ) );
+        THROW_IO_ERRORF( _( "Cannot open file '%s'" ), aFileName );
 
     fseek( fp, 0L, SEEK_END );
     long fileSize = ftell( fp );
@@ -2491,10 +2507,11 @@ XNODE* CADSTAR_ARCHIVE_PARSER::LoadArchiveFile( const wxString& aFileName,
 
     DSNLEXER lexer( emptyKeywords, 0, nullptr,  fp, aFileName );
 
-    auto currentProgress =  [&]() -> double
-                            {
-                                return static_cast<double>( ftell( fp ) ) / fileSize;
-                            };
+    auto currentProgress =
+            [&]() -> double
+            {
+                return static_cast<double>( ftell( fp ) ) / fileSize;
+            };
 
     double previousReportedProgress = -1.0;
 
@@ -2506,7 +2523,7 @@ XNODE* CADSTAR_ARCHIVE_PARSER::LoadArchiveFile( const wxString& aFileName,
             {
                 delete rootNode;
 
-                THROW_IO_ERROR( _( "File import canceled by user." ) );
+                THROW_IO_CANCELLED();
             }
 
             aProgressReporter->SetCurrentProgress( currentProgress() );
@@ -2623,8 +2640,7 @@ wxString CADSTAR_ARCHIVE_PARSER::GetXmlAttributeIDString( XNODE* aNode, unsigned
 }
 
 
-long CADSTAR_ARCHIVE_PARSER::GetXmlAttributeIDLong( XNODE* aNode, unsigned int aID,
-                                                    bool aIsRequired )
+long CADSTAR_ARCHIVE_PARSER::GetXmlAttributeIDLong( XNODE* aNode, unsigned int aID, bool aIsRequired )
 {
     long retVal;
     bool success = GetXmlAttributeIDString( aNode, aID, aIsRequired ).ToLong( &retVal );
@@ -2677,8 +2693,16 @@ std::vector<CADSTAR_ARCHIVE_PARSER::POINT> CADSTAR_ARCHIVE_PARSER::ParseAllChild
         if( cNode->GetName() == wxT( "PT" ) )
         {
             POINT pt;
-            //TODO try.. catch + throw again with more detailed error information
-            pt.Parse( cNode, aContext );
+
+            try
+            {
+                pt.Parse( cNode, aContext );
+            }
+            catch( const IO_ERROR& e )
+            {
+                reThrowWithParentContext( e, cNode, aNode );
+            }
+
             retVal.push_back( pt );
         }
         else if( aTestAllChildNodes )
@@ -2687,12 +2711,12 @@ std::vector<CADSTAR_ARCHIVE_PARSER::POINT> CADSTAR_ARCHIVE_PARSER::ParseAllChild
         }
     }
 
-    if( aExpectedNumPoints != UNDEFINED_VALUE
-            && retVal.size() != static_cast<size_t>( aExpectedNumPoints ) )
+    if( aExpectedNumPoints != UNDEFINED_VALUE && retVal.size() != static_cast<size_t>( aExpectedNumPoints ) )
     {
-        THROW_IO_ERROR( wxString::Format(
-                _( "Unexpected number of points in '%s'. Found %d but expected %d." ),
-                aNode->GetName(), retVal.size(), aExpectedNumPoints ) );
+        THROW_IO_ERRORF( _( "Unexpected number of points in '%s'. Found %d but expected %d." ),
+                         aNode->GetName(),
+                         retVal.size(),
+                         aExpectedNumPoints );
     }
 
     return retVal;
@@ -2711,8 +2735,16 @@ std::vector<CADSTAR_ARCHIVE_PARSER::VERTEX> CADSTAR_ARCHIVE_PARSER::ParseAllChil
         if( VERTEX::IsVertex( cNode ) )
         {
             VERTEX vertex;
-            //TODO try.. catch + throw again with more detailed error information
-            vertex.Parse( cNode, aContext );
+
+            try
+            {
+                vertex.Parse( cNode, aContext );
+            }
+            catch( const IO_ERROR& e )
+            {
+                reThrowWithParentContext( e, cNode, aNode );
+            }
+
             retVal.push_back( vertex );
         }
         else if( aTestAllChildNodes )
@@ -2737,8 +2769,16 @@ std::vector<CADSTAR_ARCHIVE_PARSER::CUTOUT> CADSTAR_ARCHIVE_PARSER::ParseAllChil
         if( cNode->GetName() == wxT( "CUTOUT" ) )
         {
             CUTOUT cutout;
-            //TODO try.. catch + throw again with more detailed error information
-            cutout.Parse( cNode, aContext );
+
+            try
+            {
+                cutout.Parse( cNode, aContext );
+            }
+            catch( const IO_ERROR& e )
+            {
+                reThrowWithParentContext( e, cNode, aNode );
+            }
+
             retVal.push_back( cutout );
         }
         else if( aTestAllChildNodes )
@@ -2830,7 +2870,6 @@ void CADSTAR_ARCHIVE_PARSER::checkPoint()
         m_progressReporter->AdvanceProgress();
 
         if( !m_progressReporter->KeepRefreshing() )
-            THROW_IO_ERROR( _( "File import canceled by user." ) );
+            THROW_IO_CANCELLED();
     }
 }
-

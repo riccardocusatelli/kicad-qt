@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <algorithm>
@@ -37,6 +33,9 @@
 #include <sch_screen.h>
 #include <sch_sheet_path.h>
 #include <geometry/shape_rect.h>
+#include <api/api_utils.h>
+#include <api/schematic/schematic_types.pb.h>
+#include <base_units.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
 #include <core/ki_assert.h>
@@ -69,7 +68,57 @@ wxString SCH_RULE_AREA::GetFriendlyName() const
 
 EDA_ITEM* SCH_RULE_AREA::Clone() const
 {
-    return new SCH_RULE_AREA( *this );
+    auto clone = new SCH_RULE_AREA( *this );
+
+    // A clone has no reciprocal links to the source schematic's items.
+    clone->resetCaches();
+    return clone;
+}
+
+
+void SCH_RULE_AREA::Serialize( google::protobuf::Any& aContainer ) const
+{
+    kiapi::schematic::types::SchematicRuleArea ruleArea;
+
+    ruleArea.mutable_id()->set_value( m_Uuid.AsStdString() );
+    ruleArea.set_locked( IsLocked() ? kiapi::common::types::LockedState::LS_LOCKED
+                                    : kiapi::common::types::LockedState::LS_UNLOCKED );
+    ruleArea.set_exclude_from_sim( m_excludedFromSim );
+    ruleArea.set_exclude_from_bom( m_excludedFromBOM );
+    ruleArea.set_exclude_from_board( m_excludedFromBoard );
+    ruleArea.set_dnp( m_DNP );
+
+    EDA_SHAPE::Serialize( *ruleArea.mutable_shape(), schIUScale );
+
+    kiapi::common::PackCustomProperties( ruleArea.mutable_custom_properties(), *this );
+
+    if( !aContainer.PackFrom( ruleArea ) )
+        KI_FAIL_MSG( wxT( "Failed to pack SCH_RULE_AREA" ) );
+}
+
+
+bool SCH_RULE_AREA::Deserialize( const google::protobuf::Any& aContainer )
+{
+    kiapi::schematic::types::SchematicRuleArea ruleArea;
+
+    if( !aContainer.UnpackTo( &ruleArea ) )
+        return false;
+
+    const_cast<KIID&>( m_Uuid ) = KIID( ruleArea.id().value() );
+    SetLocked( ruleArea.locked() == kiapi::common::types::LockedState::LS_LOCKED );
+    SetExcludedFromSim( ruleArea.exclude_from_sim() );
+    SetExcludedFromBOM( ruleArea.exclude_from_bom() );
+    SetExcludedFromBoard( ruleArea.exclude_from_board() );
+    SetDNP( ruleArea.dnp() );
+    kiapi::common::UnpackCustomProperties( ruleArea.custom_properties(), *this );
+
+    if( !EDA_SHAPE::Deserialize( ruleArea.shape(), schIUScale ) )
+        return false;
+
+    if( GetShape() != SHAPE_T::POLY )
+        return false;
+
+    return true;
 }
 
 
@@ -131,6 +180,9 @@ void SCH_RULE_AREA::Plot( PLOTTER* aPlotter, bool aBackground, const SCH_PLOT_OP
     static std::vector<VECTOR2I> ptList;
 
     ptList.clear();
+
+    if( GetPolyShape().IsEmpty() )
+        return;
 
     const std::vector<VECTOR2I>& polyPoints = GetPolyShape().Outline( 0 ).CPoints();
 
@@ -280,7 +332,7 @@ void SCH_RULE_AREA::RefreshContainedItemsAndDirectives( SCH_SCREEN* screen )
                 addContainedItem( areaItem );
 
                 // Add child pins which are within the rule area
-                for( SCH_PIN* pin : symbol->GetPins() )
+                for( SCH_PIN* pin : symbol->GetGraphicalPins( ALL_UNITS, ALL_BODY_STYLES ) )
                 {
                     if( GetPolyShape().Collide( pin->GetPosition() ) )
                         addContainedItem( pin );
@@ -309,16 +361,32 @@ SCH_RULE_AREA::UpdateRuleAreasInScreens( std::unordered_set<SCH_SCREEN*>& screen
     for( SCH_SCREEN* screen : screens )
     {
         // First reset all item caches - must be done first to ensure two rule areas
-        // on the same item don't overwrite each other's caches
+        // on the same item don't overwrite each other's caches.  Pins are owned by
+        // symbols and are not in the screen's item tree, so clear them through their parent.
         for( SCH_ITEM* item : screen->Items() )
         {
             if( item->Type() == SCH_RULE_AREA_T )
                 static_cast<SCH_RULE_AREA*>( item )->resetCaches();
 
-            if( item->Type() == SCH_DIRECTIVE_LABEL_T && view )
-                view->Update( item, KIGFX::REPAINT );
+            if( item->Type() == SCH_DIRECTIVE_LABEL_T )
+            {
+                static_cast<SCH_DIRECTIVE_LABEL*>( item )->ClearConnectedRuleAreas();
+
+                if( view )
+                    view->Update( item, KIGFX::REPAINT );
+            }
 
             item->ClearRuleAreasCache();
+
+            if( item->Type() == SCH_SYMBOL_T )
+            {
+                item->RunOnChildren(
+                        []( SCH_ITEM* aChild )
+                        {
+                            aChild->ClearRuleAreasCache();
+                        },
+                        RECURSE_MODE::NO_RECURSE );
+            }
         }
 
         // Secondly refresh the contained items
@@ -369,9 +437,9 @@ SCH_RULE_AREA::GetResolvedNetclasses( const SCH_SHEET_PATH* aSheetPath ) const
                     {
                         SCH_FIELD* field = static_cast<SCH_FIELD*>( aChild );
 
-                        if( field->GetCanonicalName() == wxT( "Netclass" ) )
+                        if( field->GetUntranslatedName() == wxT( "Netclass" ) )
                         {
-                            wxString netclass = field->GetShownText( aSheetPath, false );
+                            wxString netclass = field->GetShownText( aSheetPath, FOR_NETNAME );
 
                             if( netclass != wxEmptyString )
                                 resolvedNetclasses.push_back( { netclass, directive } );
@@ -391,8 +459,8 @@ void SCH_RULE_AREA::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MS
 {
     aList.emplace_back( _( "Rule Area" ), wxEmptyString );
 
-    wxString msg;
-    msg.Printf( wxS( "%d" ), GetPolyShape().Outline( 0 ).PointCount() );
+    wxString msg = wxString::Format( wxS( "%d" ),
+                                     GetPolyShape().IsEmpty() ? 0 : GetPolyShape().Outline( 0 ).PointCount() );
     aList.emplace_back( _( "Points" ), msg );
 
     m_stroke.GetMsgPanelInfo( aContext, aList );
@@ -453,22 +521,19 @@ static struct SCH_RULE_AREA_DESC
         const wxString groupAttributes = _HKI( "Attributes" );
 
         propMgr.AddProperty( new PROPERTY<SCH_RULE_AREA, bool>( _HKI( "Exclude From Board" ),
-                                                                &SCH_RULE_AREA::SetExcludedFromBoardProp,
-                                                                &SCH_RULE_AREA::GetExcludedFromBoardProp ),
-                             groupAttributes );
+                    &SCH_RULE_AREA::SetExcludedFromBoardProp, &SCH_RULE_AREA::GetExcludedFromBoardProp ),
+                    groupAttributes );
 
         propMgr.AddProperty( new PROPERTY<SCH_RULE_AREA, bool>( _HKI( "Exclude From Simulation" ),
-                                                                &SCH_RULE_AREA::SetExcludedFromSimProp,
-                                                                &SCH_RULE_AREA::GetExcludedFromSimProp ),
-                             groupAttributes );
+                    &SCH_RULE_AREA::SetExcludedFromSimProp, &SCH_RULE_AREA::GetExcludedFromSimProp ),
+                    groupAttributes );
 
         propMgr.AddProperty( new PROPERTY<SCH_RULE_AREA, bool>( _HKI( "Exclude From Bill of Materials" ),
-                                                                &SCH_RULE_AREA::SetExcludedFromBOMProp,
-                                                                &SCH_RULE_AREA::GetExcludedFromBOMProp ),
-                             groupAttributes );
+                    &SCH_RULE_AREA::SetExcludedFromBOMProp, &SCH_RULE_AREA::GetExcludedFromBOMProp ),
+                    groupAttributes );
 
-        propMgr.AddProperty( new PROPERTY<SCH_RULE_AREA, bool>( _HKI( "Do not Populate" ), &SCH_RULE_AREA::SetDNPProp,
-                                                                &SCH_RULE_AREA::GetDNPProp ),
-                             groupAttributes );
+        propMgr.AddProperty( new PROPERTY<SCH_RULE_AREA, bool>( _HKI( "Do not Populate" ),
+                    &SCH_RULE_AREA::SetDNPProp, &SCH_RULE_AREA::GetDNPProp ),
+                    groupAttributes );
     }
 } _SCH_RULE_AREA_DESC;

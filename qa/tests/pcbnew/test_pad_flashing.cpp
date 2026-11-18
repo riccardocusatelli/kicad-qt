@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
@@ -36,19 +32,21 @@ BOOST_AUTO_TEST_CASE( PadsInSameFootprintDoNotForceInnerLayerFlashing )
     BOARD board;
     board.SetBoardUse( BOARD_USE::FPHOLDER );
 
-    auto footprint = std::make_unique<FOOTPRINT>( &board );
+    std::unique_ptr<FOOTPRINT> footprint = std::make_unique<FOOTPRINT>( &board );
 
-    auto net = new NETINFO_ITEM( &board, "P1", 1 );
+    NETINFO_ITEM* net = new NETINFO_ITEM( &board, "P1", 1 );
     board.Add( net );
 
-    auto pad1 = new PAD( footprint.get() );
-    auto pad2 = new PAD( footprint.get() );
+    PAD* pad1 = new PAD( footprint.get() );
+    PAD* pad2 = new PAD( footprint.get() );
 
     const int diameter = pcbIUScale.mmToIU( 1.0 );
     const int drill    = pcbIUScale.mmToIU( 0.5 );
 
     pad1->SetAttribute( PAD_ATTRIB::PTH );
     pad2->SetAttribute( PAD_ATTRIB::PTH );
+    pad1->SetPadstackMode( PADSTACK::MODE::NORMAL );
+    pad2->SetPadstackMode( PADSTACK::MODE::NORMAL );
     pad1->SetLayerSet( LSET::AllCuMask() );
     pad2->SetLayerSet( LSET::AllCuMask() );
     pad1->SetSize( PADSTACK::ALL_LAYERS, VECTOR2I( diameter, diameter ) );
@@ -79,20 +77,22 @@ BOOST_AUTO_TEST_CASE( PadsInDifferentFootprintsDoNotForceInnerLayerFlashing )
     BOARD board;
     board.SetBoardUse( BOARD_USE::FPHOLDER );
 
-    auto footprint1 = std::make_unique<FOOTPRINT>( &board );
-    auto footprint2 = std::make_unique<FOOTPRINT>( &board );
+    std::unique_ptr<FOOTPRINT> footprint1 = std::make_unique<FOOTPRINT>( &board );
+    std::unique_ptr<FOOTPRINT> footprint2 = std::make_unique<FOOTPRINT>( &board );
 
-    auto net = new NETINFO_ITEM( &board, "P1", 1 );
+    NETINFO_ITEM* net = new NETINFO_ITEM( &board, "P1", 1 );
     board.Add( net );
 
-    auto pad1 = new PAD( footprint1.get() );
-    auto pad2 = new PAD( footprint2.get() );
+    PAD* pad1 = new PAD( footprint1.get() );
+    PAD* pad2 = new PAD( footprint2.get() );
 
     const int diameter = pcbIUScale.mmToIU( 1.0 );
     const int drill    = pcbIUScale.mmToIU( 0.5 );
 
     pad1->SetAttribute( PAD_ATTRIB::PTH );
     pad2->SetAttribute( PAD_ATTRIB::PTH );
+    pad1->SetPadstackMode( PADSTACK::MODE::NORMAL );
+    pad2->SetPadstackMode( PADSTACK::MODE::NORMAL );
     pad1->SetLayerSet( LSET::AllCuMask() );
     pad2->SetLayerSet( LSET::AllCuMask() );
     pad1->SetSize( PADSTACK::ALL_LAYERS, VECTOR2I( diameter, diameter ) );
@@ -125,12 +125,12 @@ BOOST_AUTO_TEST_CASE( TechLayersPullFromAppropriateSide )
     BOARD board;
     board.SetBoardUse( BOARD_USE::FPHOLDER );
 
-    auto footprint = std::make_unique<FOOTPRINT>( &board );
+    std::unique_ptr<FOOTPRINT> footprint = std::make_unique<FOOTPRINT>( &board );
 
-    auto net = new NETINFO_ITEM( &board, "P1", 1 );
+    NETINFO_ITEM* net = new NETINFO_ITEM( &board, "P1", 1 );
     board.Add( net );
 
-    auto pad = new PAD( footprint.get() );
+    PAD* pad = new PAD( footprint.get() );
 
     const int d1 = pcbIUScale.mmToIU( 1.0 );
     const int d2 = pcbIUScale.mmToIU( 2.0 );

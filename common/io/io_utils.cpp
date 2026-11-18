@@ -14,17 +14,16 @@
 * GNU General Public License for more details.
 *
 * You should have received a copy of the GNU General Public License
-* along with this program; if not, you may find one here:
-* http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-* or you may search the http://www.gnu.org website for the version 2 license,
-* or you may write to the Free Software Foundation, Inc.,
-* 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+* along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include "io_utils.h"
 
+#include <wx/log.h>
 #include <wx/wfstream.h>
 #include <wx/txtstrm.h>
+
+#include <mmh3_hash.h>
 
 namespace IO_UTILS
 {
@@ -34,6 +33,8 @@ namespace IO_UTILS
 bool fileStartsWithPrefix( const wxString& aFilePath, const wxString& aPrefix,
                            bool aIgnoreWhitespace )
 {
+    // A probe answers false for a missing or unreadable file rather than logging an error
+    wxLogNull          noLog;
     wxFFileInputStream input( aFilePath );
 
     if( input.IsOk() && !input.Eof() )
@@ -59,6 +60,8 @@ bool fileStartsWithPrefix( const wxString& aFilePath, const wxString& aPrefix,
 bool fileHasBinaryHeader( const wxString& aFilePath, const std::vector<uint8_t>& aHeader,
     size_t aOffset )
 {
+    // A probe answers false for a missing or unreadable file rather than logging an error
+    wxLogNull          noLog;
     wxFFileInputStream input( aFilePath );
 
     if( input.IsOk() && !input.Eof() )
@@ -83,5 +86,36 @@ bool fileHasBinaryHeader( const wxString& aFilePath, const std::vector<uint8_t>&
 
     return false;
 }
+
+
+std::optional<wxString> fileHashMMH3( const wxString& aFilePath )
+{
+    constexpr size_t c_BufSize = 1024;
+    wxFFileInputStream input( aFilePath );
+    MMH3_HASH hash( 0x68AF835D ); // Arbitrary seed
+
+    if( input.IsOk() )
+    {
+        uint8_t buf[ c_BufSize ];
+        while ( !input.Eof() )
+        {
+            input.Read( buf, c_BufSize);
+            size_t byteCount = input.LastRead();
+            if( byteCount > 0 )
+            {
+                hash.addData( buf, byteCount );
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        return hash.digest().ToString();
+    }
+
+    return std::optional<wxString>();
+}
+
 
 }

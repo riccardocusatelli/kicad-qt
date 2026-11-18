@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "dialog_sync_sheet_pins.h"
@@ -68,7 +64,7 @@ DIALOG_SYNC_SHEET_PINS::DIALOG_SYNC_SHEET_PINS(
         PANEL_SYNC_SHEET_PINS* page = new PANEL_SYNC_SHEET_PINS( m_notebook, sheet, m_notebook,
                                                                  ++count, *m_agent, sheet_path );
         bool hasUndefined = page->HasUndefinedSheetPing();
-        m_notebook->AddPage( page, sheet->GetShownName( true ), {}, hasUndefined );
+        m_notebook->AddPage( page, sheet->GetShownName( FOR_GUI ), {}, hasUndefined );
         page->UpdateForms();
 
         if( aInitialSheet && sheet == aInitialSheet )

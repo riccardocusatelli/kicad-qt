@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -89,8 +85,6 @@ public:
     /**
      * Parse one block from the stream, returning a BLOCK_BASE representing the raw data of the block.
      *
-     * @param aStream The stream to read from, positioned at the start of the block
-     *                (i.e. the next byte to read is the block type).
      * @param aEndOfObjectsMarker This is set to true if we encounter the end of objects marker.
      */
     std::unique_ptr<BLOCK_BASE> ParseBlock( bool& aEndOfObjectsMarker );
@@ -108,7 +102,7 @@ private:
 
 
 /**
- * Class that parses a single FILE_STREAM into a RAW_BOARD,
+ * Class that parses a single FILE_STREAM into a BRD_DB,
  * and handles any state involved in that parsing
  *
  * This only handles converting rawfile stream data into

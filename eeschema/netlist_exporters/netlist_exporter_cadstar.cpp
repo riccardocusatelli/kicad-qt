@@ -16,16 +16,11 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <build_version.h>
 
-#include <connection_graph.h>
 #include <string_utils.h>
 #include <sch_reference_list.h>
 #include <fmt.h>
@@ -37,8 +32,7 @@
 /* Generate CADSTAR net list. */
 static wxString StartLine( wxT( "." ) );
 
-bool NETLIST_EXPORTER_CADSTAR::WriteNetlist( const wxString& aOutFileName,
-                                             unsigned /* aNetlistOptions */,
+bool NETLIST_EXPORTER_CADSTAR::writeNetlist( const wxString& aOutFileName, unsigned /* aNetlistOptions */,
                                              REPORTER& aReporter )
 {
     int ret = 0;
@@ -68,7 +62,9 @@ bool NETLIST_EXPORTER_CADSTAR::WriteNetlist( const wxString& aOutFileName,
         // Create netlist footprints section
         m_referencesAlreadyFound.Clear();
 
-        for( const SCH_SHEET_PATH& sheet : m_schematic->Hierarchy() )
+        const EXPORT_EXCLUSION excluded = boardExclusion();
+
+        for( const SCH_SHEET_PATH& sheet : m_exportSheets )
         {
             // The rtree returns items in a non-deterministic order (platform-dependent)
             // Therefore we need to sort them before outputting to ensure file stability for version
@@ -78,25 +74,23 @@ bool NETLIST_EXPORTER_CADSTAR::WriteNetlist( const wxString& aOutFileName,
             for( EDA_ITEM* item : sheet.LastScreen()->Items().OfType( SCH_SYMBOL_T ) )
                 sheetItems.push_back( item );
 
-            auto pred = []( const EDA_ITEM* item1, const EDA_ITEM* item2 )
-            {
-                return item1->m_Uuid < item2->m_Uuid;
-            };
+            auto pred =
+                    []( const EDA_ITEM* item1, const EDA_ITEM* item2 )
+                    {
+                        return item1->m_Uuid < item2->m_Uuid;
+                    };
 
             std::sort( sheetItems.begin(), sheetItems.end(), pred );
 
             // Process symbol attributes
             for( EDA_ITEM* item : sheetItems )
             {
-                symbol = findNextSymbol( item, sheet );
+                symbol = findNextSymbol( item, sheet, excluded );
 
                 if( !symbol )
                     continue;
 
-                if( symbol->GetExcludedFromBoard() )
-                    continue;
-
-                footprint = symbol->GetFootprintFieldText( true, &sheet, false );
+                footprint = symbol->GetFootprintFieldText( &sheet, RESOLVED, m_exportVariant );
 
                 if( footprint.IsEmpty() )
                     footprint = "$noname";
@@ -105,7 +99,7 @@ bool NETLIST_EXPORTER_CADSTAR::WriteNetlist( const wxString& aOutFileName,
                 fmt::print( f, "{}     ", TO_UTF8( StartCmpDesc ) );
                 fmt::print( f, "{}", TO_UTF8( msg ) );
 
-                msg = symbol->GetValue( true, &sheet, false );
+                msg = symbol->GetValue( &sheet, RESOLVED, m_exportVariant );
                 msg.Replace( wxT( " " ), wxT( "_" ) );
                 fmt::print( f, "     \"{}\"", TO_UTF8( msg ) );
                 fmt::print( f, "     \"{}\"", TO_UTF8( footprint ) );
@@ -131,7 +125,8 @@ bool NETLIST_EXPORTER_CADSTAR::WriteNetlist( const wxString& aOutFileName,
     }
     catch( const fmt::format_error& e )
     {
-        aReporter.Report( wxString::Format( _( "Formatting error writing netlist: %s" ), e.what() ), RPT_SEVERITY_ERROR );
+        aReporter.Report( wxString::Format( _( "Formatting error writing netlist: %s" ), e.what() ),
+                          RPT_SEVERITY_ERROR );
         ret = -1;
     }
 
@@ -153,25 +148,11 @@ bool NETLIST_EXPORTER_CADSTAR::writeListOfNets( FILE* f )
 
         std::vector<std::pair<wxString, std::vector<std::pair<SCH_PIN*, SCH_SHEET_PATH>>>> all_nets;
 
-        for( const auto& [ key, subgraphs ] : m_schematic->ConnectionGraph()->GetNetMap() )
+        for( const EXPORT_NET& net : m_exportNets )
+            all_nets.emplace_back( wxString::Format( "\"%s\"", net.name ), net.pins );
+
+        for( auto& [netName, sorted_items] : all_nets )
         {
-            wxString netName;
-            netName.Printf( wxT( "\"%s\"" ), key.Name );
-
-            all_nets.emplace_back( netName, std::vector<std::pair<SCH_PIN*, SCH_SHEET_PATH>>{} );
-            std::vector<std::pair<SCH_PIN*, SCH_SHEET_PATH>>& sorted_items = all_nets.back().second;
-
-            for( CONNECTION_SUBGRAPH* subgraph : subgraphs )
-            {
-                SCH_SHEET_PATH sheet = subgraph->GetSheet();
-
-                for( SCH_ITEM* item : subgraph->GetItems() )
-                {
-                    if( item->Type() == SCH_PIN_T )
-                        sorted_items.emplace_back( static_cast<SCH_PIN*>( item ), sheet );
-                }
-            }
-
             // Intra-net ordering: Ref des, then pin name
             std::sort( sorted_items.begin(), sorted_items.end(),
                     []( const std::pair<SCH_PIN*, SCH_SHEET_PATH>& a, const std::pair<SCH_PIN*, SCH_SHEET_PATH>& b )

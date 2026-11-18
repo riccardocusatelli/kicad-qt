@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <board.h>
@@ -37,7 +33,6 @@
 #include <i18n_utility.h>
 #include <netinfo.h>
 #include <api/board/board_types.pb.h>
-#include <shared_mutex>
 #include <core/ki_assert.h>
 
 using namespace std::placeholders;
@@ -70,13 +65,13 @@ void BOARD_CONNECTED_ITEM::UnpackNet( const kiapi::board::types::Net& aProto )
 
         if( NETINFO_ITEM* net = board->FindNet( name ) )
         {
-            m_netinfo = net;
+            SetNet( net );
         }
         else
         {
             NETINFO_ITEM* newnet = new NETINFO_ITEM( board, name, 0 );
             board->Add( newnet );
-            m_netinfo = newnet;
+            SetNet( newnet );
         }
     }
 }
@@ -106,14 +101,8 @@ bool BOARD_CONNECTED_ITEM::SetNetCode( int aNetCode, bool aNoAssert )
     if( !aNoAssert )
         KI_ASSERT( m_netinfo );
 
-    if( board )
-    {
-        if( !( GetFlags() & ROUTER_TRANSIENT ) )
-            board->InvalidateClearanceCache( m_Uuid );
-
-        std::unique_lock<std::shared_mutex> writeLock( board->m_CachesMutex );
-        board->m_ItemNetclassCache.erase( this );
-    }
+    if( board && !( GetFlags() & ROUTER_TRANSIENT ) )
+        board->InvalidateClearanceCache( m_Uuid );
 
     return ( m_netinfo != nullptr );
 }
@@ -123,7 +112,7 @@ int BOARD_CONNECTED_ITEM::GetOwnClearance( PCB_LAYER_ID aLayer, wxString* aSourc
 {
     if( GetBoard() && GetBoard()->GetDesignSettings().m_DRCEngine )
     {
-        BOARD_DESIGN_SETTINGS& bds = GetBoard()->GetDesignSettings();
+        const BOARD_DESIGN_SETTINGS& bds = GetBoard()->GetDesignSettings();
         return bds.m_DRCEngine->GetCachedOwnClearance( this, aLayer, aSource );
     }
 
@@ -231,15 +220,14 @@ static struct BOARD_CONNECTED_ITEM_DESC
 
         // Replace layer property as the properties panel will set a restriction for copper layers
         // only for BOARD_CONNECTED_ITEM that we don't want to apply to BOARD_ITEM
-        auto layer = new PROPERTY_ENUM<BOARD_CONNECTED_ITEM, PCB_LAYER_ID>(
-                _HKI( "Layer" ),
-                &BOARD_CONNECTED_ITEM::SetLayer, &BOARD_CONNECTED_ITEM::GetLayer );
-        layer->SetChoices( layerEnum.Choices() );
-        propMgr.ReplaceProperty( TYPE_HASH( BOARD_ITEM ), _HKI( "Layer" ), layer );
+        propMgr.ReplaceProperty( TYPE_HASH( BOARD_ITEM ), _HKI( "Layer" ),
+                    new PROPERTY_ENUM<BOARD_CONNECTED_ITEM, PCB_LAYER_ID>( _HKI( "Layer" ),
+                                &BOARD_CONNECTED_ITEM::SetLayer, &BOARD_CONNECTED_ITEM::GetLayer ) )
+                            .SetIsCopyable()
+                            .SetChoices( layerEnum.Choices() );
 
         propMgr.AddProperty( new PROPERTY_ENUM<BOARD_CONNECTED_ITEM, int>( _HKI( "Net" ),
-                             &BOARD_CONNECTED_ITEM::SetNetCode,
-                             &BOARD_CONNECTED_ITEM::GetNetCode, PT_NET ) )
+                    &BOARD_CONNECTED_ITEM::SetNetCode, &BOARD_CONNECTED_ITEM::GetNetCode, PT_NET ) )
                 .SetIsHiddenFromRulesEditor()
                 .SetIsHiddenFromLibraryEditors();
 
@@ -251,23 +239,20 @@ static struct BOARD_CONNECTED_ITEM_DESC
          * connected item, and showing it makes users think they can change it.
          */
         propMgr.AddProperty( new PROPERTY<BOARD_CONNECTED_ITEM, wxString>( _HKI( "Net Class" ),
-                             NO_SETTER( BOARD_CONNECTED_ITEM, wxString ),
-                             &BOARD_CONNECTED_ITEM::GetNetClassName ) )
+                    NO_SETTER( BOARD_CONNECTED_ITEM, wxString ), &BOARD_CONNECTED_ITEM::GetNetClassName ) )
                 .SetIsHiddenFromRulesEditor()
                 .SetIsHiddenFromPropertiesManager()
                 .SetIsHiddenFromLibraryEditors();
 
         // Compatibility alias for DRC engine
         propMgr.AddProperty( new PROPERTY<BOARD_CONNECTED_ITEM, wxString>( _HKI( "NetClass" ),
-                             NO_SETTER( BOARD_CONNECTED_ITEM, wxString ),
-                             &BOARD_CONNECTED_ITEM::GetNetClassName ) )
+                    NO_SETTER( BOARD_CONNECTED_ITEM, wxString ), &BOARD_CONNECTED_ITEM::GetNetClassName ) )
                 .SetIsHiddenFromPropertiesManager()
                 .SetIsHiddenFromLibraryEditors();
 
         // Used only in DRC engine
         propMgr.AddProperty( new PROPERTY<BOARD_CONNECTED_ITEM, wxString>( _HKI( "NetName" ),
-                             NO_SETTER( BOARD_CONNECTED_ITEM, wxString ),
-                             &BOARD_CONNECTED_ITEM::GetNetname ) )
+                    NO_SETTER( BOARD_CONNECTED_ITEM, wxString ), &BOARD_CONNECTED_ITEM::GetNetname ) )
                 .SetIsHiddenFromPropertiesManager()
                 .SetIsHiddenFromLibraryEditors();
 
@@ -301,60 +286,57 @@ static struct BOARD_CONNECTED_ITEM_DESC
 
         const wxString groupTeardrops = _HKI( "Teardrops" );
 
-        auto enableTeardrops = new PROPERTY<BOARD_CONNECTED_ITEM, bool>( _HKI( "Enable Teardrops" ),
-                         &BOARD_CONNECTED_ITEM::SetTeardropsEnabled,
-                         &BOARD_CONNECTED_ITEM::GetTeardropsEnabled );
-        enableTeardrops->SetAvailableFunc( supportsTeardrops );
-        propMgr.AddProperty( enableTeardrops, groupTeardrops );
+        propMgr.AddProperty( new PROPERTY<BOARD_CONNECTED_ITEM, bool>( _HKI( "Enable Teardrops" ),
+                    &BOARD_CONNECTED_ITEM::SetTeardropsEnabled, &BOARD_CONNECTED_ITEM::GetTeardropsEnabled ),
+                    groupTeardrops )
+                .SetAvailableFunc( supportsTeardrops );
 
-        auto bestLength = new PROPERTY<BOARD_CONNECTED_ITEM, double>( _HKI( "Best Length Ratio" ),
-                         &BOARD_CONNECTED_ITEM::SetTeardropBestLengthRatio,
-                         &BOARD_CONNECTED_ITEM::GetTeardropBestLengthRatio );
-        bestLength->SetAvailableFunc( supportsTeardrops );
-        bestLength->SetValidator( PROPERTY_VALIDATORS::PositiveRatioValidator );
-        propMgr.AddProperty( bestLength, groupTeardrops );
+        propMgr.AddProperty( new PROPERTY<BOARD_CONNECTED_ITEM, double>( _HKI( "Best Length Ratio" ),
+                    &BOARD_CONNECTED_ITEM::SetTeardropBestLengthRatio,
+                    &BOARD_CONNECTED_ITEM::GetTeardropBestLengthRatio ),
+                    groupTeardrops )
+                .SetAvailableFunc( supportsTeardrops )
+                .SetValidator( PROPERTY_VALIDATORS::PositiveRatioValidator );
 
-        auto maxLength = new PROPERTY<BOARD_CONNECTED_ITEM, int>( _HKI( "Max Length" ),
-                         &BOARD_CONNECTED_ITEM::SetTeardropMaxLength,
-                         &BOARD_CONNECTED_ITEM::GetTeardropMaxLength, PROPERTY_DISPLAY::PT_SIZE );
-        maxLength->SetAvailableFunc( supportsTeardrops );
-        propMgr.AddProperty( maxLength, groupTeardrops );
+        propMgr.AddProperty( new PROPERTY<BOARD_CONNECTED_ITEM, int>( _HKI( "Max Length" ),
+                    &BOARD_CONNECTED_ITEM::SetTeardropMaxLength, &BOARD_CONNECTED_ITEM::GetTeardropMaxLength,
+                    PROPERTY_DISPLAY::PT_SIZE ),
+                    groupTeardrops )
+                .SetAvailableFunc( supportsTeardrops );
 
-        auto bestWidth = new PROPERTY<BOARD_CONNECTED_ITEM, double>( _HKI( "Best Width Ratio" ),
-                         &BOARD_CONNECTED_ITEM::SetTeardropBestWidthRatio,
-                         &BOARD_CONNECTED_ITEM::GetTeardropBestWidthRatio );
-        bestWidth->SetAvailableFunc( supportsTeardrops );
-        bestWidth->SetValidator( PROPERTY_VALIDATORS::PositiveRatioValidator );
-        propMgr.AddProperty( bestWidth, groupTeardrops );
+        propMgr.AddProperty( new PROPERTY<BOARD_CONNECTED_ITEM, double>( _HKI( "Best Width Ratio" ),
+                     &BOARD_CONNECTED_ITEM::SetTeardropBestWidthRatio,
+                     &BOARD_CONNECTED_ITEM::GetTeardropBestWidthRatio ),
+                     groupTeardrops )
+                .SetAvailableFunc( supportsTeardrops )
+                .SetValidator( PROPERTY_VALIDATORS::PositiveRatioValidator );
 
-        auto maxWidth = new PROPERTY<BOARD_CONNECTED_ITEM, int>( _HKI( "Max Width" ),
-                         &BOARD_CONNECTED_ITEM::SetTeardropMaxWidth,
-                         &BOARD_CONNECTED_ITEM::GetTeardropMaxWidth, PROPERTY_DISPLAY::PT_SIZE );
-        maxWidth->SetAvailableFunc( supportsTeardrops );
-        propMgr.AddProperty( maxWidth, groupTeardrops );
+        propMgr.AddProperty( new PROPERTY<BOARD_CONNECTED_ITEM, int>( _HKI( "Max Width" ),
+                    &BOARD_CONNECTED_ITEM::SetTeardropMaxWidth, &BOARD_CONNECTED_ITEM::GetTeardropMaxWidth,
+                    PROPERTY_DISPLAY::PT_SIZE ),
+                    groupTeardrops )
+                .SetAvailableFunc( supportsTeardrops );
 
-        auto curvePts = new PROPERTY<BOARD_CONNECTED_ITEM, bool>( _HKI( "Curved Teardrops" ),
-                         &BOARD_CONNECTED_ITEM::SetTeardropCurved,
-                         &BOARD_CONNECTED_ITEM::GetTeardropCurved );
-        curvePts->SetAvailableFunc( supportsTeardrops );
-        propMgr.AddProperty( curvePts, groupTeardrops );
+        propMgr.AddProperty( new PROPERTY<BOARD_CONNECTED_ITEM, bool>( _HKI( "Curved Teardrops" ),
+                    &BOARD_CONNECTED_ITEM::SetTeardropCurved, &BOARD_CONNECTED_ITEM::GetTeardropCurved ),
+                    groupTeardrops )
+                .SetAvailableFunc( supportsTeardrops );
 
-        auto preferZones = new PROPERTY<BOARD_CONNECTED_ITEM, bool>( _HKI( "Prefer Zone Connections" ),
-                         &BOARD_CONNECTED_ITEM::SetTeardropPreferZoneConnections,
-                         &BOARD_CONNECTED_ITEM::GetTeardropPreferZoneConnections );
-        preferZones->SetAvailableFunc( supportsTeardropPreferZoneSetting );
-        propMgr.AddProperty( preferZones, groupTeardrops );
+        propMgr.AddProperty( new PROPERTY<BOARD_CONNECTED_ITEM, bool>( _HKI( "Prefer Zone Connections" ),
+                    &BOARD_CONNECTED_ITEM::SetTeardropPreferZoneConnections,
+                    &BOARD_CONNECTED_ITEM::GetTeardropPreferZoneConnections ),
+                    groupTeardrops )
+                .SetAvailableFunc( supportsTeardropPreferZoneSetting );
 
-        auto twoTracks = new PROPERTY<BOARD_CONNECTED_ITEM, bool>( _HKI( "Allow Teardrops To Span Two Tracks" ),
-                         &BOARD_CONNECTED_ITEM::SetTeardropAllowSpanTwoTracks,
-                         &BOARD_CONNECTED_ITEM::GetTeardropAllowSpanTwoTracks );
-        twoTracks->SetAvailableFunc( supportsTeardrops );
-        propMgr.AddProperty( twoTracks, groupTeardrops );
+        propMgr.AddProperty( new PROPERTY<BOARD_CONNECTED_ITEM, bool>( _HKI( "Allow Teardrops To Span Two Tracks" ),
+                    &BOARD_CONNECTED_ITEM::SetTeardropAllowSpanTwoTracks,
+                    &BOARD_CONNECTED_ITEM::GetTeardropAllowSpanTwoTracks ),
+                    groupTeardrops )
+                .SetAvailableFunc( supportsTeardrops );
 
-        auto maxTrackWidth = new PROPERTY<BOARD_CONNECTED_ITEM, double>( _HKI( "Max Width Ratio" ),
-                         &BOARD_CONNECTED_ITEM::SetTeardropMaxTrackWidth,
-                         &BOARD_CONNECTED_ITEM::GetTeardropMaxTrackWidth );
-        maxTrackWidth->SetAvailableFunc( supportsTeardrops );
-        propMgr.AddProperty( maxTrackWidth, groupTeardrops );
+        propMgr.AddProperty( new PROPERTY<BOARD_CONNECTED_ITEM, double>( _HKI( "Max Width Ratio" ),
+                    &BOARD_CONNECTED_ITEM::SetTeardropMaxTrackWidth, &BOARD_CONNECTED_ITEM::GetTeardropMaxTrackWidth ),
+                    groupTeardrops )
+                .SetAvailableFunc( supportsTeardrops );
     }
 } _BOARD_CONNECTED_ITEM_DESC;

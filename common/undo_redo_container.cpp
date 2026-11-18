@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <eda_item.h>
@@ -315,10 +311,44 @@ UNDO_REDO_CONTAINER::~UNDO_REDO_CONTAINER()
 
 void UNDO_REDO_CONTAINER::ClearCommandList()
 {
-    for( unsigned ii = 0; ii < m_CommandsList.size(); ii++ )
-        delete m_CommandsList[ii];
+    for( PICKED_ITEMS_LIST* cmd : m_CommandsList )
+    {
+        cmd->ClearListAndDeleteItems(
+                []( EDA_ITEM* item )
+                {
+                    delete item;
+                } );
+
+        delete cmd;
+    }
 
     m_CommandsList.clear();
+}
+
+
+void UNDO_REDO_CONTAINER::ForgetItems( const std::unordered_set<const EDA_ITEM*>& aItems )
+{
+    for( PICKED_ITEMS_LIST* cmd : m_CommandsList )
+    {
+        for( unsigned ii = cmd->GetCount(); ii-- > 0; )
+        {
+            if( !aItems.contains( cmd->GetPickedItem( ii ) ) )
+                continue;
+
+            delete cmd->GetPickedItemLink( ii );
+            cmd->RemovePicker( ii );
+        }
+    }
+
+    std::erase_if( m_CommandsList,
+                   []( PICKED_ITEMS_LIST* cmd )
+                   {
+                       if( cmd->GetCount() > 0 )
+                           return false;
+
+                       delete cmd;
+                       return true;
+                   } );
 }
 
 

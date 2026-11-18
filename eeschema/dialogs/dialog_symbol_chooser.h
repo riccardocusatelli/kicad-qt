@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #ifndef DIALOG_SYMBOL_CHOOSER_H
 #define DIALOG_SYMBOL_CHOOSER_H
@@ -44,10 +40,15 @@ public:
      * Create dialog to choose symbol.
      *
      * @param aParent   a SCH_BASE_FRAME parent window.
+     * @param aPreselect is the library ID of the symbol to select.
+     * @param aFilter is the filter to apply to the dialog.
+     * @param aHistoryList is the list of previously chosen symbols.
+     * @param aAlreadyPlaced is a list of already placed symbols.
      * @param aAllowFieldEdits  if false, all functions that allow the user to edit fields
      *                          (currently just footprint selection) will not be available.
      * @param aShowFootprints   if false, all footprint preview and selection features are
      *                          disabled. This forces aAllowFieldEdits false too.
+     * @param[out] aCancelled is the cancel status of the dialog close.
      */
     DIALOG_SYMBOL_CHOOSER( SCH_BASE_FRAME* aParent, const LIB_ID* aPreselect,
                            const SYMBOL_LIBRARY_FILTER* aFilter,
@@ -66,9 +67,10 @@ public:
      * default is desired (usually 1).
      *
      * @param aUnit if not NULL, the selected unit is filled in here.
+     * @param aBodyStyle
      * @return the #LIB_ID of the symbol that has been selected.
      */
-    LIB_ID GetSelectedLibId( int* aUnit = nullptr ) const;
+    LIB_ID GetSelectedLibId( int* aUnit = nullptr, int* aBodyStyle = nullptr ) const;
 
     /**
      * Get a list of fields edited by the user.
@@ -79,6 +81,10 @@ public:
 
     bool GetKeepSymbol() { return m_keepSymbol->GetValue(); }
     bool GetPlaceAllUnits() { return m_useUnits->GetValue(); }
+
+    PANEL_SYMBOL_CHOOSER* GetChooserPanel() const { return m_chooserPanel; }
+
+    bool TransferDataToWindow() override;
 
 public:
     static std::mutex         g_Mutex;

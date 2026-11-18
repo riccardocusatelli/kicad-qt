@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef SPECCTRA_H_
@@ -40,10 +36,14 @@
 #include <core/typeinfo.h>
 #include <geometry/shape_poly_set.h>
 #include <layer_ids.h>
+#include <reporter.h>
+
+#include <wx/log.h>
 #include <core/ki_assert.h>
 
 // all outside the DSN namespace:
 class BOARD;
+class COMMIT;
 class PAD;
 class PCB_TRACK;
 class PCB_ARC;
@@ -84,11 +84,26 @@ class SPECCTRA_DB;
 
 
 /**
+ * Report a warning through the given reporter when available, otherwise fall back to the
+ * legacy wxLogWarning channel so callers without a reporter behave as before.
+ */
+inline void ReportWarning( REPORTER* aReporter, const wxString& aMessage )
+{
+    if( aReporter )
+        aReporter->Report( aMessage, RPT_SEVERITY_WARNING );
+    else
+        wxLogWarning( aMessage );
+}
+
+
+/**
  * @brief Helper method to export board to DSN file
  * @param aBoard board object
  * @param aFullFilename specctra file name
+ * @param aReporter optional reporter for warnings; wxLogWarning is used when null
  */
-void ExportBoardToSpecctraFile( BOARD* aBoard, const wxString& aFullFilename );
+void ExportBoardToSpecctraFile( BOARD* aBoard, const wxString& aFullFilename,
+                                REPORTER* aReporter = nullptr );
 
 
 /**
@@ -448,7 +463,7 @@ public:
     {
     }
 
-    void SetLayerId( std::string& aLayerId )
+    void SetLayerId( const std::string& aLayerId )
     {
         layer_id = aLayerId;
     }
@@ -800,7 +815,7 @@ public:
         out->Print( 0, ")%s", newline );
     }
 
-    void SetLayerId( std::string& aLayerId )
+    void SetLayerId( const std::string& aLayerId )
     {
         layer_id = aLayerId;
     }
@@ -1272,7 +1287,7 @@ private:
     DSN_T                    layer_type; ///< one of: T_signal, T_power, T_mixed, T_jumper
     int                      direction;
 
-    ///< [forbidden | high | medium | low | free | \<positive_integer\> | -1]
+    /// [forbidden | high | medium | low | free | \<positive_integer\> | -1]
     int                      cost;
     int                      cost_type;  ///< T_length | T_way
     RULE*                    rules;
@@ -2871,6 +2886,12 @@ public:
         }
     }
 
+    void AddWindow( WINDOW* aWindow )
+    {
+        aWindow->SetParent( this );
+        m_windows.push_back( aWindow );
+    }
+
     void Format( OUTPUTFORMATTER* out, int nestLevel ) override
     {
         out->Print( nestLevel, "(%s ", Name() );
@@ -2905,6 +2926,8 @@ public:
 
             for( WINDOW& window : m_windows )
                 window.Format( out, nestLevel + 1 );
+
+            out->Indent( nestLevel );
         }
 
         if( m_connect )
@@ -3355,6 +3378,7 @@ public:
     {
         rules = nullptr;
         net_number = -1;
+        m_unassigned = false;
     }
 
     ~NET_OUT()
@@ -3368,6 +3392,9 @@ public:
 
         // cannot use Type() here, it is T_net_out and we need "(net "
         out->Print( nestLevel, "(net %s%s%s\n", quote, net_id.c_str(), quote );
+
+        if( m_unassigned )
+            out->Print( nestLevel + 1, "(unassigned)\n" );
 
         if( net_number>= 0 )
             out->Print( nestLevel+1, "(net_number %d)\n", net_number );
@@ -3392,6 +3419,7 @@ private:
 
     std::string                   net_id;
     int                           net_number;
+    bool                          m_unassigned;
     RULE*                         rules;
     boost::ptr_vector<WIRE>       wires;
     boost::ptr_vector<WIRE_VIA>   wire_vias;
@@ -3613,7 +3641,12 @@ public:
         m_sessionBoard = nullptr;
         m_top_via_layer = 0;
         m_bot_via_layer = 0;
+        m_reporter = nullptr;
+        m_skippedCount = 0;
     }
+
+    void SetReporter( REPORTER* aReporter ) { m_reporter = aReporter; }
+
 
     virtual ~SPECCTRA_DB()
     {
@@ -3696,17 +3729,25 @@ public:
     void FromBOARD( BOARD* aBoard );
 
     /**
+     * Return the number of session items skipped during the last FromSESSION() call due to
+     * unresolved reference, layer, or padstack.
+     */
+    int GetSkippedCount() const { return m_skippedCount; }
+
+    /**
      * Add the entire #SESSION info to a #BOARD but does not write it out.
      *
      * The #BOARD given to this function will have all its tracks and via's replaced, and all
      * its components are subject to being moved.
      *
      * @param aBoard The #BOARD to merge the #SESSION information into.
+     * @param aCommit Commit used to stage removals, footprint moves, and new tracks for
+     *                undo/redo and view updates. The caller is responsible for Push().
      */
-    void FromSESSION( BOARD* aBoard );
+    void FromSESSION( BOARD* aBoard, COMMIT& aCommit );
 
     /**
-     * Write the internal #SESSION instance out as a #SPECTRA DSN format file.
+     * Write the internal #SESSION instance out as a SPECCTRA DSN format file.
      *
      * @param aFilename The file to save to.
      */
@@ -3882,7 +3923,7 @@ private:
      * @param aVia The #VIA to build the padstack from.
      * @return The padstack, which is on the heap only, user must save or delete it.
      */
-    PADSTACK* makeVia( const ::PCB_VIA* aVia );
+    PADSTACK* makeVia( const PCB_VIA* aVia );
 
     /**
      * Delete all the NETs that may be in here.
@@ -3928,6 +3969,8 @@ private:
 
     PCB*              m_pcb;
     SHAPE_POLY_SET    m_brd_outlines;       // the board outlines for DSN export
+    REPORTER*         m_reporter;
+
     SESSION*          m_session;
     wxString          m_filename;
     std::string       m_quote_char;
@@ -3943,6 +3986,9 @@ private:
 
     /// used during FromSESSION() only, memory for it is not owned here.
     UNIT_RES*                m_routeResolution;
+
+    /// count of session items skipped during the last FromSESSION() call.
+    int                      m_skippedCount;
 
     /// a copy to avoid passing as an argument, memory for it is not owned here.
     BOARD*                   m_sessionBoard;
@@ -3962,11 +4008,17 @@ private:
 /**
  * @brief Helper method to import SES file to a board
  *
+ * Stages board changes into \a aCommit. The caller must Push() the commit.
+ *
  * @param aBoard board object
- * @param aFullFilename specctra file name
+ * @param fullFileName specctra session file name
+ * @param aCommit commit for undo/redo and view updates
+ * @param aReporter optional reporter for warnings
+ * @param aSkippedCount optional output for the number of session items skipped
  */
+bool ImportSpecctraSession( BOARD* aBoard, const wxString& fullFileName, COMMIT& aCommit,
+                            REPORTER* aReporter = nullptr, int* aSkippedCount = nullptr );
 
-bool ImportSpecctraSession( BOARD* aBoard, const wxString& fullFileName );
 
 }           // namespace DSN
 

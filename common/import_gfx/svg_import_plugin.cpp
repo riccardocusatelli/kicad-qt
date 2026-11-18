@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "svg_import_plugin.h"
@@ -483,6 +479,13 @@ static float distanceFromPointToLine( const VECTOR2D& aPoint, const VECTOR2D& aL
                                       const VECTOR2D& aLineEnd )
 {
     auto lineDirection = aLineEnd - aLineStart;
+
+    // When start and end coincide (e.g. a single-node closed bezier), the line degenerates to a
+    // point.  Perpendicular().Resize(1) on a zero vector returns (0,0), which makes the dot
+    // product always zero and prevents bezier subdivision.  Fall back to point-to-point distance.
+    if( lineDirection.x == 0.0 && lineDirection.y == 0.0 )
+        return ( aPoint - aLineStart ).EuclideanNorm();
+
     auto lineNormal = lineDirection.Perpendicular().Resize( 1.f );
     auto lineStartToPoint = aPoint - aLineStart;
 

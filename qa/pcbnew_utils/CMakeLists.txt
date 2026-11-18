@@ -13,11 +13,7 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, you may find one here:
-# http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-# or you may search the http://www.gnu.org website for the version 2 license,
-# or you may write to the Free Software Foundation, Inc.,
-# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 # Pcbnew-related auxiliary functions that are useful for QA purposes
 # (both unit tests and utility programs)
@@ -73,11 +69,9 @@ target_link_libraries( qa_pcbnew_utils PUBLIC
 #     gal
 #     qa_utils
 #     lib_dxf
-#     idf3
 #     unit_test_utils
 #     ${PCBNEW_IO_LIBRARIES}
 #     ${wxWidgets_LIBRARIES}
-#     ${PYTHON_LIBRARIES}
 #     ${PCBNEW_EXTRA_LIBS}    # -lrt must follow Boost
 #)
 

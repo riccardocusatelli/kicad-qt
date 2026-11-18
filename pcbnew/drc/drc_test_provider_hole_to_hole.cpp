@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <common.h>
@@ -27,7 +23,6 @@
 #include <pad.h>
 #include <pcb_track.h>
 #include <geometry/shape_segment.h>
-#include <geometry/shape_circle.h>
 #include <drc/drc_engine.h>
 #include <drc/drc_item.h>
 #include <drc/drc_rule.h>
@@ -57,29 +52,12 @@ public:
     virtual const wxString GetName() const override { return wxT( "hole_to_hole_clearance" ); };
 
 private:
-    bool testHoleAgainstHole( BOARD_ITEM* aItem, SHAPE_CIRCLE* aHole, BOARD_ITEM* aOther );
+    bool testHoleAgainstHole( BOARD_ITEM* aItem, SHAPE_SEGMENT* aHole, BOARD_ITEM* aOther );
 
     BOARD*    m_board;
     DRC_RTREE m_holeTree;
     int       m_largestHoleToHoleClearance;
 };
-
-
-static std::shared_ptr<SHAPE_CIRCLE> getHoleShape( BOARD_ITEM* aItem )
-{
-    if( aItem->Type() == PCB_VIA_T )
-    {
-        PCB_VIA* via = static_cast<PCB_VIA*>( aItem );
-        return std::make_shared<SHAPE_CIRCLE>( via->GetCenter(), via->GetDrillValue() / 2 );
-    }
-    else if( aItem->Type() == PCB_PAD_T )
-    {
-        PAD* pad = static_cast<PAD*>( aItem );
-        return std::make_shared<SHAPE_CIRCLE>( pad->GetPosition(), pad->GetDrillSize().x / 2 );
-    }
-
-    return std::make_shared<SHAPE_CIRCLE>( VECTOR2I( 0, 0 ), 0 );
-}
 
 
 bool DRC_TEST_PROVIDER_HOLE_TO_HOLE::Run()
@@ -133,19 +111,22 @@ bool DRC_TEST_PROVIDER_HOLE_TO_HOLE::Run()
                 {
                     PAD* pad = static_cast<PAD*>( item );
 
-                    // Slots are generally milled _after_ drilling, so we ignore them.
-                    if( pad->GetDrillSize().x && pad->GetDrillSize().x == pad->GetDrillSize().y )
-                        m_holeTree.Insert( item, Edge_Cuts, m_largestHoleToHoleClearance );
+                    // Index every drilled or milled hole, including oval (slotted) holes.  A
+                    // slot too close to another hole or slot is still a manufacturing defect.
+                    if( pad->HasHole() )
+                        m_holeTree.Insert( item, Edge_Cuts, HOLE_CLEARANCE_CONSTRAINT, m_largestHoleToHoleClearance );
                 }
                 else if( item->Type() == PCB_VIA_T )
                 {
                     // Blind/buried/microvias will be drilled/burned _prior_ to lamination, so
                     // subsequently drilled holes need to avoid them.
-                    m_holeTree.Insert( item, Edge_Cuts, m_largestHoleToHoleClearance );
+                    m_holeTree.Insert( item, Edge_Cuts, HOLE_CLEARANCE_CONSTRAINT, m_largestHoleToHoleClearance );
                 }
 
                 return true;
             } );
+
+    m_holeTree.Build();
 
     std::unordered_map<PTR_PTR_CACHE_KEY, int> checkedPairs;
 
@@ -164,7 +145,8 @@ bool DRC_TEST_PROVIDER_HOLE_TO_HOLE::Run()
         // holes (which are generally drilled post laminataion).
         if( via->GetViaType() != VIATYPE::MICROVIA )
         {
-            std::shared_ptr<SHAPE_CIRCLE> holeShape = getHoleShape( via );
+            std::shared_ptr<SHAPE_SEGMENT> holeShape = via->GetEffectiveHoleShape( UNDEFINED_LAYER,
+                                                                                   HOLE_TO_HOLE_CONSTRAINT );
 
             m_holeTree.QueryColliding( via, Edge_Cuts, Edge_Cuts,
                     // Filter:
@@ -197,7 +179,8 @@ bool DRC_TEST_PROVIDER_HOLE_TO_HOLE::Run()
         }
     }
 
-    checkedPairs.clear();
+    // Keep the same checkedPairs across both passes so a via/pad pair tested in the via pass
+    // above is not reported a second time when the pad queries the via below.
 
     for( FOOTPRINT* footprint : m_board->Footprints() )
     {
@@ -206,10 +189,11 @@ bool DRC_TEST_PROVIDER_HOLE_TO_HOLE::Run()
             if( !reportProgress( ii++, count, progressDelta ) )
                 return false;   // DRC cancelled
 
-            // We only care about drilled (ie: round) pad holes
-            if( pad->HasDrilledHole() )
+            // Test every drilled or milled hole, including oval (slotted) holes
+            if( pad->HasHole() )
             {
-                std::shared_ptr<SHAPE_CIRCLE> holeShape = getHoleShape( pad );
+                std::shared_ptr<SHAPE_SEGMENT> holeShape = pad->GetEffectiveHoleShape( UNDEFINED_LAYER,
+                                                                                       HOLE_TO_HOLE_CONSTRAINT );
 
                 m_holeTree.QueryColliding( pad, Edge_Cuts, Edge_Cuts,
                         // Filter:
@@ -250,7 +234,7 @@ bool DRC_TEST_PROVIDER_HOLE_TO_HOLE::Run()
 }
 
 
-bool DRC_TEST_PROVIDER_HOLE_TO_HOLE::testHoleAgainstHole( BOARD_ITEM* aItem, SHAPE_CIRCLE* aHole,
+bool DRC_TEST_PROVIDER_HOLE_TO_HOLE::testHoleAgainstHole( BOARD_ITEM* aItem, SHAPE_SEGMENT* aHole,
                                                           BOARD_ITEM* aOther )
 {
     bool reportCoLocation = !m_drcEngine->IsErrorLimitExceeded( DRCE_DRILLED_HOLES_COLOCATED );
@@ -259,9 +243,10 @@ bool DRC_TEST_PROVIDER_HOLE_TO_HOLE::testHoleAgainstHole( BOARD_ITEM* aItem, SHA
     if( !reportCoLocation && !reportHole2Hole )
         return false;
 
-    std::shared_ptr<SHAPE_CIRCLE> otherHole = getHoleShape( aOther );
-    int                           epsilon = m_board->GetDesignSettings().GetDRCEpsilon();
-    SEG::ecoord                   epsilon_sq = SEG::Square( epsilon );
+    std::shared_ptr<SHAPE_SEGMENT> otherHole = aOther->GetEffectiveHoleShape( UNDEFINED_LAYER,
+                                                                              HOLE_TO_HOLE_CONSTRAINT );
+    int                            epsilon = m_board->GetDesignSettings().GetDRCEpsilon();
+    SEG::ecoord                    epsilon_sq = SEG::Square( epsilon );
 
     // Blind-buried vias are drilled prior to stackup; they're only an issue if they share layers
     if( aItem->Type() == PCB_VIA_T && aOther->Type() == PCB_VIA_T )
@@ -290,8 +275,12 @@ bool DRC_TEST_PROVIDER_HOLE_TO_HOLE::testHoleAgainstHole( BOARD_ITEM* aItem, SHA
     }
     else if( reportHole2Hole )
     {
-        int actual = ( aHole->GetCenter() - otherHole->GetCenter() ).EuclideanNorm();
-        actual = std::max( 0, actual - aHole->GetRadius() - otherHole->GetRadius() );
+        // Measure between the hole axes, then back off the two half-widths.  For a round hole
+        // the segment is zero-length and its width is the drill diameter, so this reduces to
+        // the centre-to-centre distance less the two radii; for a slot it follows the milled
+        // oval correctly.
+        int actual = aHole->GetSeg().Distance( otherHole->GetSeg() );
+        actual = std::max( 0, actual - aHole->GetWidth() / 2 - otherHole->GetWidth() / 2 );
 
         auto constraint = m_drcEngine->EvalRules( HOLE_TO_HOLE_CONSTRAINT, aItem, aOther,
                                                   UNDEFINED_LAYER /* holes pierce all layers */ );

@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <zone_settings.h>
@@ -54,6 +50,16 @@ ZONE_SETTINGS::ZONE_SETTINGS()
     m_HatchSmoothingValue = 0.1;    // Grid pattern chamfer value relative to the gap value
     m_HatchHoleMinArea = 0.15;      // Min size before holes are dropped (ratio of hole size)
     m_HatchBorderAlgorithm = 1;     // 0 = use zone min thickness; 1 = use hatch width
+
+    // Provisional defaults for copper thieving stamps.  Gap is the edge-to-edge
+    // spacing between adjacent stamps, so the grid stride is element_size + gap.
+    m_ThievingSettings.pattern      = THIEVING_PATTERN::DOTS;
+    m_ThievingSettings.element_size = pcbIUScale.mmToIU( 0.5 );
+    m_ThievingSettings.gap          = pcbIUScale.mmToIU( 1.0 );
+    m_ThievingSettings.line_width   = std::max( m_ZoneMinThickness, pcbIUScale.mmToIU( 0.3 ) );
+    m_ThievingSettings.stagger      = false;
+    m_ThievingSettings.orientation  = ANGLE_0;
+
     m_Netcode = 0;                  // Net code for the current zone
     m_ZoneBorderDisplayStyle = ZONE_BORDER_DISPLAY_STYLE::DIAGONAL_EDGE; // Option to show the zone
                                                                          // outlines only, short
@@ -104,6 +110,7 @@ bool ZONE_SETTINGS::operator==( const ZONE_SETTINGS& aOther ) const
     if( m_HatchSmoothingValue         != aOther.m_HatchSmoothingValue ) return false;
     if( m_HatchBorderAlgorithm        != aOther.m_HatchBorderAlgorithm ) return false;
     if( m_HatchHoleMinArea            != aOther.m_HatchHoleMinArea ) return false;
+    if( m_ThievingSettings            != aOther.m_ThievingSettings ) return false;
     if( m_Netcode                     != aOther.m_Netcode ) return false;
     if( m_Name                        != aOther.m_Name ) return false;
     if( m_ZoneBorderDisplayStyle      != aOther.m_ZoneBorderDisplayStyle ) return false;
@@ -154,6 +161,7 @@ ZONE_SETTINGS& ZONE_SETTINGS::operator << ( const ZONE& aSource )
     m_HatchSmoothingValue         = aSource.GetHatchSmoothingValue();
     m_HatchBorderAlgorithm        = aSource.GetHatchBorderAlgorithm();
     m_HatchHoleMinArea            = aSource.GetHatchHoleMinArea();
+    m_ThievingSettings            = aSource.GetThievingSettings();
     m_Netcode                     = aSource.GetNetCode();
     m_Name                        = aSource.GetZoneName();
     m_ZoneBorderDisplayStyle      = aSource.GetHatchStyle();
@@ -200,9 +208,17 @@ void ZONE_SETTINGS::ExportSetting( ZONE& aTarget, bool aFullExport ) const
     aTarget.SetHatchSmoothingValue( m_HatchSmoothingValue );
     aTarget.SetHatchBorderAlgorithm( m_HatchBorderAlgorithm );
     aTarget.SetHatchHoleMinArea( m_HatchHoleMinArea );
+    aTarget.SetThievingSettings( m_ThievingSettings );
     aTarget.SetThermalReliefGap( m_ThermalReliefGap );
     aTarget.SetThermalReliefSpokeWidth( m_ThermalReliefSpokeWidth );
-    aTarget.SetPadConnection( m_padConnection );
+
+    // Thieving zones are non-electrical and must never produce thermal reliefs.
+    // Force ZONE_CONNECTION::NONE so the filler skips thermal-spoke generation.
+    if( m_FillMode == ZONE_FILL_MODE::COPPER_THIEVING )
+        aTarget.SetPadConnection( ZONE_CONNECTION::NONE );
+    else
+        aTarget.SetPadConnection( m_padConnection );
+
     aTarget.SetCornerSmoothingType( m_cornerSmoothingType );
     aTarget.SetCornerRadius( m_cornerRadius );
     aTarget.SetIsRuleArea( GetIsRuleArea() );
@@ -217,12 +233,12 @@ void ZONE_SETTINGS::ExportSetting( ZONE& aTarget, bool aFullExport ) const
     aTarget.SetLocked( m_Locked );
     aTarget.SetIslandRemovalMode( GetIslandRemovalMode() );
     aTarget.SetMinIslandArea( GetMinIslandArea() );
+
     // Currently, the teardrop area type is not imported from a ZONE_SETTINGS, because
     // it is not really a ZONE_SETTINGS parameter, but a ZONE parameter only
 #if 0
     aTarget.SetTeardropAreaType( m_TeardropType );
 #endif
-
 
     if( aFullExport )
     {
@@ -233,59 +249,16 @@ void ZONE_SETTINGS::ExportSetting( ZONE& aTarget, bool aFullExport ) const
 
         aTarget.SetZoneName( m_Name );
 
-        if( !m_isRuleArea )
+        if( m_FillMode == ZONE_FILL_MODE::COPPER_THIEVING )
+            aTarget.SetNetCode( 0 );
+        else if( !m_isRuleArea )
             aTarget.SetNetCode( m_Netcode );
     }
 
     // call SetBorderDisplayStyle last, because hatch lines will be rebuilt,
     // using new parameters values
-    aTarget.SetBorderDisplayStyle( m_ZoneBorderDisplayStyle,
-                                   m_BorderHatchPitch, true );
+    aTarget.SetBorderDisplayStyle( m_ZoneBorderDisplayStyle, m_BorderHatchPitch, true );
 }
-
-void ZONE_SETTINGS::CopyFrom( const ZONE_SETTINGS& aOther, bool aCopyFull )
-{
-    m_ZonePriority                = aOther.m_ZonePriority;
-    m_FillMode                    = aOther.m_FillMode;
-    m_ZoneClearance               = aOther.m_ZoneClearance;
-    m_ZoneMinThickness            = aOther.m_ZoneMinThickness;
-    m_HatchThickness              = aOther.m_HatchThickness;
-    m_HatchGap                    = aOther.m_HatchGap;
-    m_HatchOrientation            = aOther.m_HatchOrientation;
-    m_HatchSmoothingLevel         = aOther.m_HatchSmoothingLevel;
-    m_HatchSmoothingValue         = aOther.m_HatchSmoothingValue;
-    m_HatchBorderAlgorithm        = aOther.m_HatchBorderAlgorithm;
-    m_HatchHoleMinArea            = aOther.m_HatchHoleMinArea;
-    m_Netcode                     = aOther.m_Netcode;
-    m_Name                        = aOther.m_Name;
-    m_ZoneBorderDisplayStyle      = aOther.m_ZoneBorderDisplayStyle;
-    m_BorderHatchPitch            = aOther.m_BorderHatchPitch;
-    m_ThermalReliefGap            = aOther.m_ThermalReliefGap;
-    m_ThermalReliefSpokeWidth     = aOther.m_ThermalReliefSpokeWidth;
-    m_padConnection               = aOther.m_padConnection;
-    m_cornerSmoothingType         = aOther.m_cornerSmoothingType;
-    m_cornerRadius                = aOther.m_cornerRadius;
-    m_isRuleArea                  = aOther.m_isRuleArea;
-    m_placementAreaEnabled        = aOther.m_placementAreaEnabled;
-    m_placementAreaSourceType     = aOther.m_placementAreaSourceType;
-    m_placementAreaSource         = aOther.m_placementAreaSource;
-    m_keepoutDoNotAllowZoneFills  = aOther.m_keepoutDoNotAllowZoneFills;
-    m_keepoutDoNotAllowVias       = aOther.m_keepoutDoNotAllowVias;
-    m_keepoutDoNotAllowTracks     = aOther.m_keepoutDoNotAllowTracks;
-    m_keepoutDoNotAllowPads       = aOther.m_keepoutDoNotAllowPads;
-    m_keepoutDoNotAllowFootprints = aOther.m_keepoutDoNotAllowFootprints;
-    m_Locked                      = aOther.m_Locked;
-    m_removeIslands               = aOther.m_removeIslands;
-    m_minIslandArea               = aOther.m_minIslandArea;
-    m_LayerProperties             = aOther.m_LayerProperties;
-
-    if( aCopyFull )
-    {
-        m_TeardropType    = aOther.m_TeardropType;
-        m_Layers          = aOther.m_Layers;
-    }
-}
-
 
 void ZONE_SETTINGS::SetCornerRadius( int aRadius )
 {

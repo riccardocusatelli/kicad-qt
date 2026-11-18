@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <macros.h>
@@ -58,7 +54,7 @@ public:
 bool DRC_TEST_PROVIDER_TEXT_MIRRORING::Run()
 {
     if( m_drcEngine->IsErrorLimitExceeded( DRCE_MIRRORED_TEXT_ON_FRONT_LAYER )
-            && m_drcEngine->IsErrorLimitExceeded( DRCE_NONMIRRORED_TEXT_ON_BACK_LAYER ) )
+            && m_drcEngine->IsErrorLimitExceeded( DRCE_UNMIRRORED_TEXT_ON_BACK_LAYER ) )
     {
         REPORT_AUX( wxT( "Text mirroring violations ignored. Tests not run." ) );
         return true;        // continue with other tests
@@ -121,7 +117,7 @@ bool DRC_TEST_PROVIDER_TEXT_MIRRORING::Run()
                     }
 
                     checkTextMirroring( item, text, true, DRCE_MIRRORED_TEXT_ON_FRONT_LAYER );
-                    checkTextMirroring( item, text, false, DRCE_NONMIRRORED_TEXT_ON_BACK_LAYER );
+                    checkTextMirroring( item, text, false, DRCE_UNMIRRORED_TEXT_ON_BACK_LAYER );
                 }
 
                 return true;

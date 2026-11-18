@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
@@ -82,8 +78,7 @@ BOOST_FIXTURE_TEST_CASE( DRCIssue23469_ReferenceReducesEdgeClearance, DRC_ISSUE2
 
     bds.m_DRCEngine->RunTests( EDA_UNITS::MM, true, false );
 
-    std::map<KIID, EDA_ITEM*> itemMap;
-    m_board->FillItemMap( itemMap );
+    BOARD_RC_ITEM_RESOLVER resolver( *m_board );
 
     // Count violations where at least one (or both) of the affected items belong to a
     // footprint whose reference designator matches aRef.  aRequireBothItems is used to
@@ -102,12 +97,12 @@ BOOST_FIXTURE_TEST_CASE( DRCIssue23469_ReferenceReducesEdgeClearance, DRC_ISSUE2
                         if( uuid == niluuid )
                             continue;
 
-                        auto it = itemMap.find( uuid );
+                        const EDA_ITEM* resolved = resolver.ResolveItemById( uuid );
 
-                        if( it == itemMap.end() )
+                        if( !resolved )
                             continue;
 
-                        BOARD_ITEM* boardItem = dynamic_cast<BOARD_ITEM*>( it->second );
+                        const BOARD_ITEM* boardItem = dynamic_cast<const BOARD_ITEM*>( resolved );
 
                         if( !boardItem )
                             continue;
@@ -125,12 +120,6 @@ BOOST_FIXTURE_TEST_CASE( DRCIssue23469_ReferenceReducesEdgeClearance, DRC_ISSUE2
                 return count;
             };
 
-    // Positive control: the reproduction board has an NPTH mounting hole on SW1 whose
-    // drilled opening crosses the board edge.  SW1 is not covered by any custom rule, so
-    // these violations must still be reported.  A regression that silenced edge-clearance
-    // DRC entirely would otherwise hide the fix.
-    BOOST_REQUIRE_GT( countViolationsForRef( edgeViolations, wxString( "SW1" ), false ), 0 );
-
     // Primary assertion: the custom rule "(condition "A.Reference == 'J1'")" must reduce
     // the default edge clearance so that J1 pads no longer violate.
     BOOST_CHECK_EQUAL( countViolationsForRef( edgeViolations, wxString( "J1" ), false ), 0 );
@@ -146,9 +135,20 @@ BOOST_FIXTURE_TEST_CASE( DRCIssue23469_ReferenceReducesEdgeClearance, DRC_ISSUE2
         UNITS_PROVIDER unitsProvider( pcbIUScale, EDA_UNITS::MM );
 
         for( const DRC_ITEM& item : edgeViolations )
-            BOOST_TEST_MESSAGE( item.ShowReport( &unitsProvider, RPT_SEVERITY_ERROR, itemMap ) );
+            BOOST_TEST_MESSAGE( item.ShowReport( &unitsProvider, RPT_SEVERITY_ERROR, resolver ) );
 
         for( const DRC_ITEM& item : holeViolations )
-            BOOST_TEST_MESSAGE( item.ShowReport( &unitsProvider, RPT_SEVERITY_ERROR, itemMap ) );
+            BOOST_TEST_MESSAGE( item.ShowReport( &unitsProvider, RPT_SEVERITY_ERROR, resolver ) );
     }
+
+    // Without the custom rules J1 violates the board defaults, so the clean
+    // results above came from the rules matching and not from DRC being silent.
+    edgeViolations.clear();
+    holeViolations.clear();
+
+    bds.m_DRCEngine->InitEngine( wxFileName() );
+    bds.m_DRCEngine->RunTests( EDA_UNITS::MM, true, false );
+
+    BOOST_REQUIRE_GT( countViolationsForRef( edgeViolations, wxString( "J1" ), false ), 0 );
+    BOOST_REQUIRE_GT( countViolationsForRef( holeViolations, wxString( "J1" ), true ), 0 );
 }

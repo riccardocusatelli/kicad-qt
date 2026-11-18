@@ -15,17 +15,14 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef _SCH_LINE_H_
 #define _SCH_LINE_H_
 
 #include <sch_item.h>
+#include <line_ending.h>
 #include <list>         // for std::list
 #include <geometry/seg.h>
 #include <math/vector3.h>
@@ -185,12 +182,12 @@ public:
     WIRE_STYLE GetWireStyle() const { return (WIRE_STYLE) GetLineStyle(); }
 
 
-    void SetLineColor( const COLOR4D& aColor );
+    void SetLineColor( const KIGFX::COLOR4D& aColor );
 
     void SetLineColor( const double r, const double g, const double b, const double a );
 
     /// Return #COLOR4D::UNSPECIFIED if a custom color hasn't been set for this line.
-    COLOR4D GetLineColor() const;
+    KIGFX::COLOR4D GetLineColor() const;
 
     void SetLineWidth( const int aSize );
     int GetLineWidth() const { return m_stroke.GetWidth(); }
@@ -198,6 +195,33 @@ public:
     virtual bool HasLineStroke() const override { return true; }
     virtual STROKE_PARAMS GetStroke() const override { return m_stroke; }
     virtual void SetStroke( const STROKE_PARAMS& aStroke ) override { m_stroke = aStroke; }
+
+    const LINE_ENDING& GetStartEnding() const { return m_startEnding; }
+    void               SetStartEnding( const LINE_ENDING& aEnding ) { m_startEnding = aEnding; }
+
+    const LINE_ENDING& GetEndEnding() const { return m_endEnding; }
+    void               SetEndEnding( const LINE_ENDING& aEnding ) { m_endEnding = aEnding; }
+
+    LINE_ENDING_STYLE GetStartEndingStyle() const { return m_startEnding.GetStyle(); }
+    void              SetStartEndingStyle( LINE_ENDING_STYLE aStyle ) { m_startEnding.SetStyle( aStyle ); }
+
+    LINE_ENDING_STYLE GetEndEndingStyle() const { return m_endEnding.GetStyle(); }
+    void              SetEndEndingStyle( LINE_ENDING_STYLE aStyle ) { m_endEnding.SetStyle( aStyle ); }
+
+    int  GetStartEndingLength() const { return m_startEnding.GetLength(); }
+    void SetStartEndingLength( int aLength ) { m_startEnding.SetLength( aLength ); }
+    int  GetStartEndingWidth() const { return m_startEnding.GetWidth(); }
+    void SetStartEndingWidth( int aWidth ) { m_startEnding.SetWidth( aWidth ); }
+
+    int  GetEndEndingLength() const { return m_endEnding.GetLength(); }
+    void SetEndEndingLength( int aLength ) { m_endEnding.SetLength( aLength ); }
+    int  GetEndEndingWidth() const { return m_endEnding.GetWidth(); }
+    void SetEndEndingWidth( int aWidth ) { m_endEnding.SetWidth( aWidth ); }
+
+    int  GetStartEndingStrokeWidth() const { return m_startEnding.GetStrokeWidth(); }
+    void SetStartEndingStrokeWidth( int aWidth ) { m_startEnding.SetStrokeWidth( aWidth ); }
+    int  GetEndEndingStrokeWidth() const { return m_endEnding.GetStrokeWidth(); }
+    void SetEndEndingStrokeWidth( int aWidth ) { m_endEnding.SetStrokeWidth( aWidth ); }
 
     bool IsStrokeEquivalent( const SCH_LINE* aLine )
     {
@@ -261,6 +285,7 @@ public:
      * @note It is the responsibility of the caller to add the newly created segment
      * to the screen.
      *
+     * @param aCommit is the #SCH_COMMIT object to handle undo/redo actions.
      * @param aPoint Point at which to break the segment
      * @return The newly created segment.
      */
@@ -297,6 +322,12 @@ public:
     bool UpdateDanglingState( std::vector<DANGLING_END_ITEM>& aItemListByType,
                               std::vector<DANGLING_END_ITEM>& aItemListByPos,
                               const SCH_SHEET_PATH*           aPath = nullptr ) override;
+
+    void SetDanglingState( bool aStart, bool aEnd )
+    {
+        m_startIsDangling = aStart;
+        m_endIsDangling = aEnd;
+    }
 
     bool IsStartDangling() const { return m_startIsDangling; }
     bool IsEndDangling() const { return m_endIsDangling; }
@@ -387,21 +418,21 @@ private:
     VECTOR2I           m_end;              ///< Line end point
     EDA_ANGLE          m_storedAngle;      ///< Stored angle
     STROKE_PARAMS      m_stroke;           ///< Line stroke properties.
+    LINE_ENDING        m_startEnding;      ///< Line ending at start point.
+    LINE_ENDING        m_endEnding;        ///< Line ending at end point.
 
     // If real-time connectivity gets disabled (due to being too slow on a particular
     // design), we can no longer rely on getting the NetClass to find netclass-specific
     // linestyles, linewidths and colors.
     mutable LINE_STYLE m_lastResolvedLineStyle;
     mutable int        m_lastResolvedWidth;
-    mutable COLOR4D    m_lastResolvedColor;
+    mutable KIGFX::COLOR4D    m_lastResolvedColor;
 
     wxString           m_operatingPoint;
 };
 
 
-#ifndef SWIG
 DECLARE_ENUM_TO_WXANY( WIRE_STYLE );
-#endif
 
 
 #endif    // _SCH_LINE_H_

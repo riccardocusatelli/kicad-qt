@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include "convert_tool.h"
 
@@ -44,6 +40,7 @@
 #include <footprint_edit_frame.h>
 #include <geometry/roundrect.h>
 #include <geometry/shape_compound.h>
+#include <geometry/shape_ellipse.h>
 #include <pcb_edit_frame.h>
 #include <pcb_shape.h>
 #include <pcb_track.h>
@@ -281,9 +278,8 @@ bool CONVERT_TOOL::Init()
                                                        PCB_VIA_T };
     static const std::vector<KICAD_T> toTrackTypes = { PCB_SHAPE_LOCATE_SEGMENT_T,
                                                        PCB_SHAPE_LOCATE_ARC_T };
-    static const std::vector<KICAD_T> polyTypes =   { PCB_ZONE_T,
-                                                      PCB_SHAPE_LOCATE_POLY_T,
-                                                      PCB_SHAPE_LOCATE_RECT_T };
+    static const std::vector<KICAD_T> polyTypes = { PCB_ZONE_T, PCB_SHAPE_LOCATE_POLY_T, PCB_SHAPE_LOCATE_RECT_T,
+                                                    PCB_SHAPE_LOCATE_ELLIPSE_T, PCB_SHAPE_LOCATE_ELLIPSE_ARC_T };
     static const std::vector<KICAD_T> outsetTypes = { PCB_PAD_T, PCB_SHAPE_T };
 
     auto shapes          = S_C::OnlyTypes( shapeTypes ) && P_S_C::SameLayer();
@@ -592,9 +588,11 @@ int CONVERT_TOOL::CreatePolys( const TOOL_EVENT& aEvent )
 SHAPE_POLY_SET CONVERT_TOOL::makePolysFromChainedSegs( const std::deque<EDA_ITEM*>& aItems,
                                                        CONVERT_STRATEGY aStrategy )
 {
-    // TODO: This code has a somewhat-similar purpose to ConvertOutlineToPolygon but is slightly
-    // different, so this remains a separate algorithm.  It might be nice to analyze the dfiferences
-    // in requirements and refactor this.
+    // This intentionally does not delegate to ConvertOutlineToPolygon.  That routine accepts only
+    // PCB_SHAPEs, so the tracks in this tool's heterogeneous selection would need throwaway shapes
+    // built for them.  It also fails the whole conversion on any unclosed contour and resolves an
+    // outline/hole hierarchy, whereas this tool is best-effort, silently dropping chains that fail
+    // to close and emitting only flat top-level outlines.
 
     // Using a large epsilon here to allow for sloppy drawing can cause the algorithm to miss very
     // short segments in a converted bezier.  So use an epsilon only large enough to cover for
@@ -1031,18 +1029,16 @@ int CONVERT_TOOL::CreateLines( const TOOL_EVENT& aEvent )
         }
         else if( graphic->GetShape() == SHAPE_T::ARC )
         {
-            PCB_ARC* arc = new PCB_ARC( parent );
+            std::unique_ptr<PCB_TRACK> arc = PCB_ARC::CreateFromThreePoints( parent, graphic->GetStart(),
+                                                                             graphic->GetArcMid(), graphic->GetEnd() );
 
             arc->SetLayer( targetLayer );
-            arc->SetStart( graphic->GetStart() );
-            arc->SetEnd( graphic->GetEnd() );
-            arc->SetMid( graphic->GetArcMid() );
             arc->SetWidth( graphic->GetWidth() );
 
             if( aNet )
                 arc->SetNet( aNet );
 
-            commit.Add( arc );
+            commit.Add( arc.release() );
 
             return true;
         }
@@ -1129,12 +1125,10 @@ int CONVERT_TOOL::CreateLines( const TOOL_EVENT& aEvent )
             if( arc.GetP0() == arc.GetP1() )
                 continue;
 
-            PCB_ARC* trackArc = new PCB_ARC( parent );
+            std::unique_ptr<PCB_TRACK> trackArc =
+                    PCB_ARC::CreateFromThreePoints( parent, arc.GetP0(), arc.GetArcMid(), arc.GetP1() );
 
             trackArc->SetLayer( targetLayer );
-            trackArc->SetStart( arc.GetP0() );
-            trackArc->SetEnd( arc.GetP1() );
-            trackArc->SetMid( arc.GetArcMid() );
 
             if( aWidth && *aWidth > 0 )
                 trackArc->SetWidth( *aWidth );
@@ -1142,7 +1136,7 @@ int CONVERT_TOOL::CreateLines( const TOOL_EVENT& aEvent )
             if( aNet )
                 trackArc->SetNet( aNet );
 
-            commit.Add( trackArc );
+            commit.Add( trackArc.release() );
         }
     };
 
@@ -1226,6 +1220,24 @@ int CONVERT_TOOL::CreateLines( const TOOL_EVENT& aEvent )
             }
 
             case SHAPE_T::POLY: processPolySet( graphic->GetPolyShape(), itemWidth, sourceNet ); break;
+
+            case SHAPE_T::ELLIPSE:
+            case SHAPE_T::ELLIPSE_ARC:
+            {
+                SHAPE_ELLIPSE e =
+                        graphic->GetShape() == SHAPE_T::ELLIPSE_ARC
+                                ? SHAPE_ELLIPSE( graphic->GetEllipseCenter(), graphic->GetEllipseMajorRadius(),
+                                                 graphic->GetEllipseMinorRadius(), graphic->GetEllipseRotation(),
+                                                 graphic->GetEllipseStartAngle(), graphic->GetEllipseEndAngle() )
+                                : SHAPE_ELLIPSE( graphic->GetEllipseCenter(), graphic->GetEllipseMajorRadius(),
+                                                 graphic->GetEllipseMinorRadius(), graphic->GetEllipseRotation() );
+
+                SHAPE_LINE_CHAIN chain = e.ConvertToPolyline( graphic->GetMaxError() );
+                SHAPE_POLY_SET   poly;
+                poly.AddOutline( chain );
+                processPolySet( poly, itemWidth, sourceNet );
+                break;
+            }
 
             default:
                 KI_FAIL_MSG( wxT( "Unhandled graphic shape type in PolyToLines" ) );
@@ -1319,29 +1331,23 @@ int CONVERT_TOOL::SegmentToArc( const TOOL_EVENT& aEvent )
     else if( source->Type() == PCB_SHAPE_T && static_cast<PCB_SHAPE*>( source )->GetShape() == SHAPE_T::ARC )
     {
         PCB_SHAPE* source_arc = static_cast<PCB_SHAPE*>( source );
-        PCB_ARC*   arc  = new PCB_ARC( parent );
+        std::unique_ptr<PCB_TRACK> arc = PCB_ARC::CreateFromThreePoints( parent, start, source_arc->GetArcMid(), end );
 
         arc->SetLayer( layer );
         arc->SetWidth( source_arc->GetWidth() );
-        arc->SetStart( start );
-        arc->SetMid( source_arc->GetArcMid() );
-        arc->SetEnd( end );
 
-        commit.Add( arc );
+        commit.Add( arc.release() );
     }
     else if( source->Type() == PCB_TRACE_T )
     {
         PCB_TRACK* line = static_cast<PCB_TRACK*>( source );
-        PCB_ARC*   arc  = new PCB_ARC( parent );
+        std::unique_ptr<PCB_TRACK> arc = PCB_ARC::CreateFromThreePoints( parent, start, mid, end );
 
         arc->SetLayer( layer );
         arc->SetWidth( line->GetWidth() );
         arc->SetNet( line->GetNet() );
-        arc->SetStart( start );
-        arc->SetMid( mid );
-        arc->SetEnd( end );
 
-        commit.Add( arc );
+        commit.Add( arc.release() );
     }
     else if( source->Type() == PCB_ARC_T )
     {

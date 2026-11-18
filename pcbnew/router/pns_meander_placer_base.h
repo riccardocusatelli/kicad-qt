@@ -16,8 +16,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef __PNS_MEANDER_PLACER_BASE_H
@@ -45,7 +45,7 @@ class OPTIMIZER;
 class MEANDER_PLACER_BASE : public PLACEMENT_ALGO
 {
 public:
-    ///< Result of the length tuning operation
+    /// Result of the length tuning operation
     enum TUNING_STATUS {
         TOO_SHORT = 0,
         TOO_LONG,
@@ -64,6 +64,16 @@ public:
      * Return the resultant delay or skew of the tuned traces.
      */
     virtual int64_t TuningDelayResult() const { return 0; };
+
+    bool HasBaseline() const { return m_hasBaseline; }
+
+    /**
+     * Return true if the last Move() emitted at least one meander into the tuned path.
+     */
+    bool HasMeanders() const { return m_hasMeanders; }
+
+    long long int TuningLengthDelta() const { return TuningLengthResult() - m_baselineLength; }
+    int64_t TuningDelayDelta() const { return TuningDelayResult() - m_baselineDelay; }
 
     /**
      * Return the tuning status (too short, too long, etc.) of the trace(s) being tuned.
@@ -126,32 +136,72 @@ protected:
      */
     void tuneLineLength( MEANDERED_LINE& aTuned, long long int aElongation );
 
-    VECTOR2I getSnappedStartPoint( LINKED_ITEM* aStartItem, VECTOR2I aStartPoint );
-
     /**
      * Calculate the total length of the line represented by an item set (tracks and vias)
-     * @param aLine
-     * @return
+     *
+     * @param aLine is the set of segments of the line.
+     * @param aStartPad is the starting pad of the line.
+     * @param aEndPad is the ending pad of the line.
+     *
+     * @return the line length.
      */
     long long int lineLength( const ITEM_SET& aLine, const SOLID* aStartPad, const SOLID* aEndPad ) const;
 
     /**
      * Calculate the total delay of the line represented by an item set (tracks and vias)
-     * @param aLine
-     * @return
+     *
+     * @param aLine is the set of segments of the line.
+     * @param aStartPad is the starting pad of the line.
+     * @param aEndPad is the ending pad of the line.
+     *
+     * @return the line delay (in what units?).
      */
     int64_t lineDelay( const ITEM_SET& aLine, const SOLID* aStartPad, const SOLID* aEndPad ) const;
 
-    ///< Pointer to world to search colliding items.
+    /**
+     * Cache the per-session chain-extras length/delay (other nets in the same chain) so per-Move
+     * use does not re-walk the live BOARD. Called from Start() of each derived placer.
+     */
+    void initChainExtras();
+
+    /**
+     * Return the length offset to subtract when converting a user-facing total signal length
+     * target into a meander-only doMove target. The offset combines the chain-extras aggregate
+     * (other nets in the same chain) with any unmeasured stub on the actively-tuned net that
+     * lives outside the PNS-measured baseline.
+     *
+     * Single-ended and skew tuning both rely on this so the meander does not over-correct by
+     * the chain budget already absorbed by sibling nets.
+     */
+    long long int chainNarrowingOffset() const;
+
+    /// The tuning results as they were at Start(). The deltas measure change from these.
+    long long int m_baselineLength = 0;
+    int64_t       m_baselineDelay = 0;
+    bool          m_hasBaseline = false;
+
+    bool          m_hasMeanders = false;
+
+    /// Active path length at Start().
+    long long int m_startPathLength = 0;
+
+    /// Aggregate length/delay of other nets in the same chain, cached at Start().
+    /// The non-edited members of a chain don't change during a tuning session, so we avoid
+    /// walking the live BOARD on every Move event.
+    long long int m_chainExtrasLength = 0;
+    long long int m_chainExtrasDelay = 0;
+    bool          m_chainExtrasValid = false;
+
+    /// Pointer to world to search colliding items.
     NODE* m_world;
 
-    ///< Width of the meandered trace(s).
+    /// Width of the meandered trace(s).
     int m_currentWidth;
 
-    ///< Meander settings.
+    /// Meander settings.
     MEANDER_SETTINGS m_settings;
 
-    ///< The current end point.
+    /// The current end point.
     VECTOR2I m_currentEnd;
 
     SOLID*   m_startPad_p;

@@ -20,11 +20,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef KICAD_CLIPBOARD_H
@@ -64,7 +60,7 @@ public:
     /*
      * Saves the entire board to the clipboard formatted using the PCB_IO_KICAD_SEXPR formatting
      */
-    void SaveBoard( const wxString& aFileName, BOARD* aBoard,
+    void SaveBoard( const wxString& aFileName, BOARD& aBoard,
                     const std::map<std::string, UTF8>* aProperties = nullptr ) override;
 
     /**
@@ -79,10 +75,13 @@ public:
     /// SaveItems() for the items of a selection, from its reference point (kicad_clipboard_gui.cpp).
     void SaveSelection( const PCB_SELECTION& selected, bool isFootprintEditor );
 
-    BOARD_ITEM* Parse();
+    /**
+     * The items a copy of \a aSelection carries, which is what its reference point has to be
+     * picked from. A generated table is copied whole, so its selected cells stand for the table.
+     */
+    static std::vector<BOARD_ITEM*> CopiedItems( const PCB_SELECTION& aSelection );
 
-    BOARD* LoadBoard( const wxString& aFileName, BOARD* aAppendToMe,
-                      const std::map<std::string, UTF8>* aProperties = nullptr, PROJECT* aProject = nullptr ) override;
+    BOARD_ITEM* Parse();
 
     void SetBoard( BOARD* aBoard );
 

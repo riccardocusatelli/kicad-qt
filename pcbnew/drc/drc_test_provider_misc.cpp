@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <board_design_settings.h>
@@ -39,7 +35,11 @@
 #include <thread_pool.h>
 
 #include <atomic>
+#include <set>
 #include <limits>
+#include <libeval_compiler/libeval_compiler.h>
+#include <netclass.h>
+#include <project/net_settings.h>
 #include <project/project_file.h>
 #include <project/tuning_profiles.h>
 
@@ -50,7 +50,7 @@
     - DRCE_INVALID_OUTLINE,                   ///< invalid board outline
     - DRCE_UNRESOLVED_VARIABLE,
     - DRCE_ASSERTION_FAILURE,                 ///< user-defined assertions
-    - DRCE_GENERIC_WARNING                    ///< user-defined warnings
+    - DRCE_GENERIC_WARNING                    ///< user-defined warnings, net classes that rules cannot name
     - DRCE_GENERIC_ERROR                      ///< user-defined errors
     - DRCE_MISSING_TUNING_PROFILES            ///< tuning profile for netc lass not defined
 */
@@ -134,6 +134,7 @@ private:
     void testTextVars();
     void testAssertions();
     void testMissingTuningProfiles();
+    void testUnquotableNetclasses();
 
     BOARD* m_board;
 };
@@ -166,8 +167,15 @@ void DRC_TEST_PROVIDER_MISC::testOutline()
             shapeA = static_cast<PCB_SHAPE*>( itemA );
             shapeB = static_cast<PCB_SHAPE*>( itemB );
         }
+        else if( itemA && !itemB && itemA->Type() == PCB_SHAPE_T )
+        {
+            // A single item was flagged (e.g. a degenerate shape).  Keep the marker
+            // at that item so the user can locate the bad geometry.
+            shapeA = static_cast<PCB_SHAPE*>( itemA );
+        }
         else
         {
+            // No usable item pair identified.  Look for the most likely culprits.
             findClosestOutlineGap( m_board, shapeA, shapeB, markerPos, gap );
             itemA = shapeA;
             itemB = shapeB;
@@ -300,9 +308,10 @@ void DRC_TEST_PROVIDER_MISC::testDisabledLayers()
                     PAD* pad = static_cast<PAD*>( item );
 
                     if( pad->GetAttribute() == PAD_ATTRIB::SMD
-                            || pad->GetAttribute() == PAD_ATTRIB::CONN )
+                            || pad->GetAttribute() == PAD_ATTRIB::CONN
+                            || pad->GetAttribute() == PAD_ATTRIB::NON_COMPONENT )
                     {
-                        if( disabledLayers.test( pad->GetPrincipalLayer() ) )
+                        if( disabledLayers.Contains( pad->GetPrincipalLayer() ) )
                             badLayer = item->GetLayer();
                     }
                     else
@@ -424,6 +433,10 @@ void DRC_TEST_PROVIDER_MISC::testTextVars()
         PCB_DIMENSION_T
     };
 
+    // The leading "(^|[^\\\\])" group requires the marker to start the string or follow a non-backslash,
+    // so `\${ERC_ERROR ...}` stays inert.  (The group is just to make it easier for a human to parse.)
+    static wxRegEx varRefRegEx( wxT( "(^|[^\\\\])\\$\\{.*\\}.*" ) );
+
     auto testAssertion =
             [&]( BOARD_ITEM* item, const wxString& text, const VECTOR2I& pos, int layer )
             {
@@ -455,8 +468,7 @@ void DRC_TEST_PROVIDER_MISC::testTextVars()
                                 {
                                     wxString drcText = aExpr.GetMatch( remaining, 2 );
 
-                                    std::shared_ptr<DRC_ITEM> drcItem =
-                                            DRC_ITEM::Create( aErrorCode );
+                                    std::shared_ptr<DRC_ITEM> drcItem = DRC_ITEM::Create( aErrorCode );
 
                                     if( item )
                                         drcItem->SetItems( item );
@@ -507,16 +519,17 @@ void DRC_TEST_PROVIDER_MISC::testTextVars()
                     // A matched ${DRC_ERROR}/${DRC_WARNING} is the intended signal; the resolved
                     // text still carries a literal ${...}, so flag the unresolved variable only
                     // when no marker fired (matching the drawing-sheet path below).
-                    if( testAssertion( item, textItem->GetText(), item->GetPosition(),
-                                       item->GetLayer() ) )
+                    if( testAssertion( item, textItem->GetText(), item->GetPosition(), item->GetLayer() ) )
                     {
-                        // Don't run unresolved test
+                        // Skip unresolved-variable test.
+                        // Yes, the assertion message could have an unresolved variable in it, but it's
+                        // going to end up in the DRC window anyway, so there's not much sense in double-
+                        // reporting it.
                     }
-                    else if( ExpandEnvVarSubstitutions( textItem->GetShownText( true ),
-                                                        nullptr /*project already done*/ )
-                                     .Matches( wxT( "*${*}*" ) ) )
+                    else if( varRefRegEx.Matches( ExpandEnvVarSubstitutions( textItem->GetShownText( FOR_ERC_DRC ),
+                                                                             nullptr /*project already done*/ ) ) )
                     {
-                        auto drcItem = DRC_ITEM::Create( DRCE_UNRESOLVED_VARIABLE );
+                        std::shared_ptr<DRC_ITEM> drcItem = DRC_ITEM::Create( DRCE_UNRESOLVED_VARIABLE );
                         drcItem->SetItems( item );
 
                         reportViolation( drcItem, item->GetPosition(), item->GetLayer() );
@@ -554,7 +567,7 @@ void DRC_TEST_PROVIDER_MISC::testTextVars()
             {
                 // Don't run unresolved test
             }
-            else if( text->GetShownText( true ).Matches( wxT( "*${*}*" ) ) )
+            else if( varRefRegEx.Matches( text->GetShownText( FOR_ERC_DRC ) ) )
             {
                 std::shared_ptr<DRC_ITEM> drcItem = DRC_ITEM::Create( DRCE_UNRESOLVED_VARIABLE );
                 drcItem->SetItems( drawingSheet );
@@ -603,9 +616,55 @@ void DRC_TEST_PROVIDER_MISC::testMissingTuningProfiles()
 }
 
 
+void DRC_TEST_PROVIDER_MISC::testUnquotableNetclasses()
+{
+    std::shared_ptr<NET_SETTINGS> netSettings = m_board->GetDesignSettings().m_NetSettings;
+    std::set<wxString>            names = { netSettings->GetDefaultNetclass()->GetName() };
+
+    for( const auto& [name, netclass] : netSettings->GetNetclasses() )
+        names.insert( netclass->GetName() );
+
+    // A label can assign a class nobody declared, so name the parts of a composite DRC_ENGINE dropped
+    for( const auto& [name, netclass] : netSettings->GetCompositeNetclasses() )
+    {
+        if( LIBEVAL::EscapeStringLiteral( netclass->GetName() ) )
+            continue;
+
+        for( const NETCLASS* constituent : netclass->GetConstituentNetclasses() )
+            names.insert( constituent->GetName() );
+    }
+
+    for( const wxString& name : names )
+    {
+        if( m_drcEngine->IsErrorLimitExceeded( DRCE_GENERIC_WARNING ) )
+            return;
+
+        // DRC_ENGINE drops the implicit rules of such a class, so its limits would go unchecked without a word
+        if( !LIBEVAL::EscapeStringLiteral( name ) )
+        {
+            std::shared_ptr<DRC_ITEM> drcItem = DRC_ITEM::Create( DRCE_GENERIC_WARNING );
+            drcItem->SetErrorMessage( wxString::Format( _( "Net class '%s' cannot be used in rules; its clearance "
+                                                           "and width are not checked" ),
+                                                        name ) );
+
+            reportViolation( drcItem, VECTOR2I(), UNDEFINED_LAYER );
+        }
+    }
+}
+
+
 bool DRC_TEST_PROVIDER_MISC::Run()
 {
     m_board = m_drcEngine->GetBoard();
+
+    // Ahead of the text variable checks, which share the generic warning limit
+    if( !m_drcEngine->IsErrorLimitExceeded( DRCE_GENERIC_WARNING ) )
+    {
+        if( !reportPhase( _( "Checking net class names..." ) ) )
+            return false; // DRC cancelled
+
+        testUnquotableNetclasses();
+    }
 
     if( !m_drcEngine->IsErrorLimitExceeded( DRCE_INVALID_OUTLINE ) )
     {

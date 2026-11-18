@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "layer_triangles.h"
@@ -462,10 +458,10 @@ void OPENGL_RENDER_LIST::DrawAll( bool aDrawMiddle ) const
 
 
 void OPENGL_RENDER_LIST::DrawCulled( bool aDrawMiddle,
-                                     const OPENGL_RENDER_LIST* aSubtractList,
-                                     const OPENGL_RENDER_LIST* bSubtractList,
-                                     const OPENGL_RENDER_LIST* cSubtractList,
-                                     const OPENGL_RENDER_LIST* dSubtractList ) const
+                                     const std::shared_ptr<OPENGL_RENDER_LIST> aSubtractList,
+                                     const std::shared_ptr<OPENGL_RENDER_LIST> bSubtractList,
+                                     const std::shared_ptr<OPENGL_RENDER_LIST> cSubtractList,
+                                     const std::shared_ptr<OPENGL_RENDER_LIST> dSubtractList ) const
 {
     glClearStencil( 0x00 );
     glClear( GL_STENCIL_BUFFER_BIT );
@@ -559,7 +555,7 @@ void OPENGL_RENDER_LIST::ApplyScalePosition( float aZposition, float aZscale )
 }
 
 
-void OPENGL_RENDER_LIST::ApplyScalePosition( OPENGL_RENDER_LIST* aOtherList )
+void OPENGL_RENDER_LIST::ApplyScalePosition( std::shared_ptr<OPENGL_RENDER_LIST> aOtherList )
 {
     ApplyScalePosition( aOtherList->GetZBot(), aOtherList->GetZTop() - aOtherList->GetZBot() );
 }

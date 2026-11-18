@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <eda_item.h>
@@ -95,11 +91,11 @@ void EMBEDDED_FILES_GRID_TRICKS::doPopupSelection( wxCommandEvent& event )
 
 
 PANEL_EMBEDDED_FILES::PANEL_EMBEDDED_FILES( wxWindow* aParent, EMBEDDED_FILES* aFiles, int aFlags,
-                                            std::vector<const EMBEDDED_FILES*> aInheritedFiles ) :
+                                            const std::vector<EMBEDDED_FILES*>& aInheritedFiles ) :
         PANEL_EMBEDDED_FILES_BASE( aParent ),
         m_files( aFiles ),
         m_localFiles( new EMBEDDED_FILES() ),
-        m_inheritedFiles( std::move( aInheritedFiles ) )
+        m_inheritedFiles( aInheritedFiles )
 {
     m_files_grid->SetUseNativeColLabels();
 

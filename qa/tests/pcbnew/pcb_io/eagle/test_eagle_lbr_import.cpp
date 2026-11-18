@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -86,18 +82,18 @@ BOOST_AUTO_TEST_CASE( EagleLbrLibImport )
             BOOST_TEST_CONTEXT( wxString::Format( wxT( "Import '%s' from '%s'" ), footprintName,
                                                   libName.first ) )
             {
-                FOOTPRINT* eagleFp = eaglePlugin.FootprintLoad( eagleLibraryPath, footprintName,
-                                                                false, nullptr );
+                std::unique_ptr<FOOTPRINT> eagleFp =
+                        eaglePlugin.FootprintLoad( eagleLibraryPath, footprintName, false, nullptr );
                 BOOST_CHECK( eagleFp );
 
                 BOOST_CHECK_EQUAL( "REF**", eagleFp->GetReference() );
                 BOOST_CHECK_EQUAL( footprintName, eagleFp->GetValue() );
 
-                FOOTPRINT* kicadFp = kicadPlugin.FootprintLoad( kicadLibraryPath, footprintName,
-                                                                true, nullptr );
+                std::unique_ptr<FOOTPRINT> kicadFp =
+                        kicadPlugin.FootprintLoad( kicadLibraryPath, footprintName, true, nullptr );
                 BOOST_CHECK( kicadFp );
 
-                KI_TEST::CheckFootprint( kicadFp, eagleFp );
+                KI_TEST::CheckFootprint( kicadFp.get(), eagleFp.get() );
             }
         }
     }

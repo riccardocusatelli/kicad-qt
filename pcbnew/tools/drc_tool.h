@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef DRC_TOOL_H
@@ -34,9 +30,11 @@
 #include <tools/pcb_tool_base.h>
 
 
+#define DRC_TOOL_NAME "pcbnew.DRCTool"
+
+
 class PCB_EDIT_FRAME;
 class DIALOG_DRC;
-class DIALOG_DRC_RULE_EDITOR;
 class DRC_ITEM;
 class WX_PROGRESS_REPORTER;
 class DRC_ENGINE;
@@ -78,12 +76,6 @@ public:
      */
     void DestroyDRCDialog();
 
-    void ShowDesignRuleEditorDialog( wxWindow* aParent );
-
-    int ShowDesignRuleEditorDialog( const TOOL_EVENT& aEvent );
-
-    void DestroyDesignRuleEditorDialog();
-
     std::shared_ptr<DRC_ENGINE> GetDRCEngine() { return m_drcEngine; }
 
     /**
@@ -108,7 +100,7 @@ public:
     void FixDRCError( const std::shared_ptr<RC_ITEM>& aDRCItem );
 
 private:
-    ///< Set up handlers for various events.
+    /// Set up handlers for various events.
     void setTransitions() override;
 
     /**
@@ -122,7 +114,6 @@ private:
     PCB_EDIT_FRAME*             m_editFrame;
     BOARD*                      m_pcb;
     DIALOG_DRC*                 m_drcDialog;
-    DIALOG_DRC_RULE_EDITOR*     m_designRuleEditorDlg;
     bool                        m_drcRunning;
     std::shared_ptr<DRC_ENGINE> m_drcEngine;
 };

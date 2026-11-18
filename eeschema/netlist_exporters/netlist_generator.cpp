@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <advanced_config.h>
@@ -51,15 +47,10 @@
 bool SCH_EDIT_FRAME::WriteNetListFile( int aFormat, const wxString& aFullFileName,
                                        unsigned aNetlistOptions, REPORTER* aReporter )
 {
-    // Ensure all power symbols have a valid reference
-    Schematic().Hierarchy().AnnotatePowerSymbols();
-
     if( !ReadyToNetlist( _( "Exporting netlist requires a fully annotated schematic." ) ) )
         return false;
 
-    // If we are using the new connectivity, make sure that we do a full-rebuild
-    if( ADVANCED_CFG::GetCfg().m_IncrementalConnectivity )
-        RecalculateConnections( nullptr, GLOBAL_CLEANUP );
+    PrepareForNetlist();
 
     bool res = true;
     bool executeCommandLine = false;
@@ -73,31 +64,31 @@ bool SCH_EDIT_FRAME::WriteNetListFile( int aFormat, const wxString& aFullFileNam
     switch( aFormat )
     {
     case NET_TYPE_PCBNEW:
-        helper = new NETLIST_EXPORTER_KICAD( sch );
+        helper = new NETLIST_EXPORTER_KICAD( sch, &Kiway() );
         break;
 
     case NET_TYPE_ORCADPCB2:
-        helper = new NETLIST_EXPORTER_ORCADPCB2( sch );
+        helper = new NETLIST_EXPORTER_ORCADPCB2( sch, &Kiway() );
         break;
 
     case NET_TYPE_CADSTAR:
-        helper = new NETLIST_EXPORTER_CADSTAR( sch );
+        helper = new NETLIST_EXPORTER_CADSTAR( sch, &Kiway() );
         break;
 
     case NET_TYPE_SPICE:
-        helper = new NETLIST_EXPORTER_SPICE( sch );
+        helper = new NETLIST_EXPORTER_SPICE( sch, &Kiway() );
         break;
 
     case NET_TYPE_SPICE_MODEL:
-        helper = new NETLIST_EXPORTER_SPICE_MODEL( sch );
+        helper = new NETLIST_EXPORTER_SPICE_MODEL( sch, &Kiway() );
         break;
 
     case NET_TYPE_ALLEGRO:
-        helper = new NETLIST_EXPORTER_ALLEGRO( sch );
+        helper = new NETLIST_EXPORTER_ALLEGRO( sch, &Kiway() );
         break;
 
     case NET_TYPE_PADS:
-        helper = new NETLIST_EXPORTER_PADS( sch );
+        helper = new NETLIST_EXPORTER_PADS( sch, &Kiway() );
         break;
 
     case NET_TYPE_BOM:
@@ -105,7 +96,7 @@ bool SCH_EDIT_FRAME::WriteNetListFile( int aFormat, const wxString& aFullFileNam
         // the extension or you might string a '.' from the middle of the filename
         fileName += wxT( "." GENERIC_INTERMEDIATE_NETLIST_EXT );
 
-        helper = new NETLIST_EXPORTER_XML( sch );
+        helper = new NETLIST_EXPORTER_XML( sch, &Kiway() );
         executeCommandLine = true;
         break;
 
@@ -115,7 +106,7 @@ bool SCH_EDIT_FRAME::WriteNetListFile( int aFormat, const wxString& aFullFileNam
         tmpFile.SetExt( GENERIC_INTERMEDIATE_NETLIST_EXT );
         fileName = tmpFile.GetFullPath();
 
-        helper = new NETLIST_EXPORTER_XML( sch );
+        helper = new NETLIST_EXPORTER_XML( sch, &Kiway() );
         executeCommandLine = true;
     }
         break;
@@ -130,6 +121,9 @@ bool SCH_EDIT_FRAME::WriteNetListFile( int aFormat, const wxString& aFullFileNam
 
     delete helper;
 
+    if( !ADVANCED_CFG::GetCfg().m_ConnectivityEngine || !res )
+        RefreshConnectivity( true );
+
     // If user provided a plugin command line, execute it.
     if( executeCommandLine && res && !m_netListerCommand.IsEmpty() )
     {
@@ -142,9 +136,8 @@ bool SCH_EDIT_FRAME::WriteNetListFile( int aFormat, const wxString& aFullFileNam
         // For instance, "xsltproc -o %O /usr/local/lib/kicad/plugins/netlist_form_pads-pcb.xsl %I"
         // becomes, after the user selects /tmp/s1.net as the output file from the file dialog:
         // "xsltproc -o /tmp/s1.net /usr/local/lib/kicad/plugins/netlist_form_pads-pcb.xsl /tmp/s1.xml"
-        wxString commandLine = NETLIST_EXPORTER_BASE::MakeCommandLine( m_netListerCommand,
-                                                                       fileName, aFullFileName,
-                                                                       prj_dir );
+        wxString commandLine = NETLIST_EXPORTER_BASE::MakeCommandLine( m_netListerCommand, fileName,
+                                                                       aFullFileName, prj_dir );
 
         // Clear AppImage / embedded Python env so system interpreters used by BOM
         // generators (e.g. /usr/bin/python3) do not inherit PYTHONHOME/PYTHONPATH
@@ -199,21 +192,25 @@ bool SCH_EDIT_FRAME::WriteNetListFile( int aFormat, const wxString& aFullFileNam
 }
 
 
-bool SCH_EDIT_FRAME::ReadyToNetlist( const wxString& aAnnotateMessage )
+bool SCH_EDIT_FRAME::ReadyToNetlist( const wxString& aAnnotateMessage, bool* aUserCancelled )
 {
-    // Ensure all power symbols have a valid reference
-    Schematic().Hierarchy().AnnotatePowerSymbols();
+    if( aUserCancelled )
+        *aUserCancelled = false;
 
     // Symbols must be annotated
-    if( CheckAnnotate( []( ERCE_T, const wxString&, SCH_REFERENCE*, SCH_REFERENCE* ) {},
-                       ANNOTATE_ALL, true, SYMBOL_FILTER_NON_POWER ) )
+    if( CheckAnnotate( []( ERCE_T, const wxString&, SCH_REFERENCE*, SCH_REFERENCE* )
+                       {},
+                       ANNOTATE_ALL, true ) )
     {
         // Schematic must be annotated: call Annotate dialog and tell the user why.
         ModalAnnotate( aAnnotateMessage );
 
-        if( CheckAnnotate( []( ERCE_T, const wxString&, SCH_REFERENCE*, SCH_REFERENCE* ) {},
-                           ANNOTATE_ALL, true, SYMBOL_FILTER_NON_POWER ) )
+        if( CheckAnnotate( []( ERCE_T, const wxString&, SCH_REFERENCE*, SCH_REFERENCE* )
+                           {},
+                           ANNOTATE_ALL, true ) )
+        {
             return false;
+        }
     }
 
     // Test duplicate sheet names:
@@ -222,7 +219,12 @@ bool SCH_EDIT_FRAME::ReadyToNetlist( const wxString& aAnnotateMessage )
     if( erc.TestDuplicateSheetNames( false ) > 0 )
     {
         if( !IsOK( this, _( "Error: duplicate sheet names. Continue?" ) ) )
+        {
+            if( aUserCancelled )
+                *aUserCancelled = true;
+
             return false;
+        }
     }
 
     return true;
@@ -231,10 +233,11 @@ bool SCH_EDIT_FRAME::ReadyToNetlist( const wxString& aAnnotateMessage )
 
 void SCH_EDIT_FRAME::sendNetlistToCvpcb()
 {
+    PrepareForNetlist();
     std::string packet;
 
     {
-        NETLIST_EXPORTER_KICAD exporter( &Schematic() );
+        NETLIST_EXPORTER_KICAD exporter( &Schematic(), &Kiway() );
         STRING_FORMATTER       formatter;
 
         // @todo : trim GNL_ALL down to minimum for CVPCB
@@ -245,6 +248,9 @@ void SCH_EDIT_FRAME::sendNetlistToCvpcb()
         // NETLIST_EXPORTER_KICAD must go out of scope so it can clean up things like the
         // current sheet setting before sending expressmail
     }
+
+    if( !ADVANCED_CFG::GetCfg().m_ConnectivityEngine )
+        RefreshConnectivity( true );
 
     Kiway().ExpressMail( FRAME_CVPCB, MAIL_EESCHEMA_NETLIST, packet, this );
 }

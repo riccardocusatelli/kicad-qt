@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -36,6 +32,7 @@
 #include <widgets/panel_design_block_chooser.h>
 #include <widgets/design_block_preview_widget.h>
 #include <eda_draw_frame.h>
+#include <class_draw_panel_gal.h>
 #include <widgets/lib_tree.h>
 
 
@@ -58,15 +55,20 @@ void PANEL_DESIGN_BLOCK_CHOOSER::RefreshLibs( bool aProgress )
 
     DESIGN_BLOCK_TREE_MODEL_ADAPTER* adapter = static_cast<DESIGN_BLOCK_TREE_MODEL_ADAPTER*>( m_adapter.get() );
 
-    // Clear all existing libraries then re-add
-    adapter->ClearLibraries();
+    {
+        // ClearLibraries frees nodes the tree control still holds rows for, and the repopulate
+        // reads from disk, so the view stays detached across both
+        LIB_TREE_MODEL_ADAPTER::ResetTreeView resetGuard( *adapter );
 
-    rebuildHistoryNode();
+        adapter->ClearLibraries();
 
-    if( !m_historyList.empty() )
-        adapter->SetPreselectNode( m_historyList[0], 0 );
+        rebuildHistoryNode();
 
-    adapter->AddLibraries( m_frame );
+        if( !m_historyList.empty() )
+            adapter->SetPreselectNode( m_historyList[0], 0 );
+
+        adapter->AddLibraries( m_frame );
+    }
 
     m_tree->Regenerate( true );
 
@@ -79,7 +81,11 @@ void PANEL_DESIGN_BLOCK_CHOOSER::RefreshLibs( bool aProgress )
 
 void PANEL_DESIGN_BLOCK_CHOOSER::SetPreselect( const LIB_ID& aPreselect )
 {
+    m_preselect = aPreselect;
     m_adapter->SetPreselectNode( aPreselect, 0 );
+
+    if( m_tree && aPreselect.IsValid() )
+        m_tree->SelectLibId( aPreselect );
 }
 
 
@@ -98,12 +104,18 @@ void PANEL_DESIGN_BLOCK_CHOOSER::SelectLibId( const LIB_ID& aLibId )
 
 void PANEL_DESIGN_BLOCK_CHOOSER::showSelectedDesignBlock()
 {
+    displaySelectedDesignBlock();
+}
+
+
+void PANEL_DESIGN_BLOCK_CHOOSER::displaySelectedDesignBlock()
+{
     if( !m_preview || !m_preview->IsInitialized() )
         return;
 
     if( GetSelectedLibId().IsValid() )
     {
-        std::unique_ptr<DESIGN_BLOCK> designBlock( m_parent->GetDesignBlock( GetSelectedLibId(), true, true ) );
+        std::unique_ptr<DESIGN_BLOCK> designBlock( m_parent->GetDesignBlock( GetSelectedLibId(), true, false ) );
         m_preview->DisplayDesignBlock( designBlock.get() );
     }
 }
@@ -129,8 +141,19 @@ void PANEL_DESIGN_BLOCK_CHOOSER::addDesignBlockToHistory( const LIB_ID& aLibId )
     while( m_historyList.size() >= 8 )
         m_historyList.pop_back();
 
-    rebuildHistoryNode();
+    // Detaching the view collapses it, and Regenerate() can only save state it can still read,
+    // so carry the open libraries across by nickname
+    std::vector<wxString> openLibs = m_adapter->GetOpenLibs();
+
+    {
+        // rebuildHistoryNode frees the recently-used nodes the tree control still holds rows for
+        LIB_TREE_MODEL_ADAPTER::ResetTreeView resetGuard( *m_adapter );
+
+        rebuildHistoryNode();
+    }
+
     m_tree->Regenerate( true );
+    m_adapter->OpenLibs( openLibs );
 
     SelectLibId( savedId );
 }

@@ -14,16 +14,15 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "dialog_tablecell_properties.h"
 #include <dialogs/pcb_text_syntax_help.h>
+
 #include <wx/hyperlink.h>
 
+#include <bitmaps.h>
 #include <widgets/bitmap_button.h>
 #include <widgets/font_choice.h>
 #include <dialogs/html_message_box.h>
@@ -41,8 +40,8 @@
 #include <tool/tool_manager.h>
 #include <tools/pcb_actions.h>
 #include <scintilla_tricks.h>
-#include "dialog_tablecell_properties.h"
 #include <core/ki_assert.h>
+
 
 DIALOG_TABLECELL_PROPERTIES::DIALOG_TABLECELL_PROPERTIES( PCB_BASE_EDIT_FRAME*        aFrame,
                                                           std::vector<PCB_TABLECELL*> aCells ) :
@@ -58,6 +57,7 @@ DIALOG_TABLECELL_PROPERTIES::DIALOG_TABLECELL_PROPERTIES( PCB_BASE_EDIT_FRAME*  
         m_marginRight( aFrame, nullptr, m_marginRightCtrl, nullptr ),
         m_marginBottom( aFrame, nullptr, m_marginBottomCtrl, nullptr ),
         m_cellText( m_cellTextCtrl ),
+        m_cellTextIsGenerated( false ),
         m_returnValue( TABLECELL_PROPS_CANCEL )
 {
     KI_ASSERT( m_cells.size() > 0 && m_cells[0] );
@@ -103,6 +103,15 @@ DIALOG_TABLECELL_PROPERTIES::DIALOG_TABLECELL_PROPERTIES( PCB_BASE_EDIT_FRAME*  
 
     m_table = static_cast<PCB_TABLE*>( m_cells[0]->GetParent() );
 
+    // A generated table reports the board. Its text is generated, so only the formatting on
+    // this page is the user's to change
+    if( m_table->IsGenerated() )
+    {
+        m_cellTextIsGenerated = true;
+        m_cellText->SetReadOnly( true );
+        SetInitialFocus( m_SizeXCtrl );
+    }
+
     m_hAlignLeft->SetIsRadioButton();
     m_hAlignLeft->SetBitmap( KiBitmapBundle( BITMAPS::text_align_left ) );
     m_hAlignCenter->SetIsRadioButton();
@@ -127,7 +136,7 @@ DIALOG_TABLECELL_PROPERTIES::DIALOG_TABLECELL_PROPERTIES( PCB_BASE_EDIT_FRAME*  
     m_italic->SetBitmap( KiBitmapBundle( BITMAPS::text_italic ) );
 
     m_autoTextThickness->SetIsCheckButton();
-    m_autoTextThickness->SetBitmap( KiBitmapBundle( BITMAPS::edit_cmp_symb_links ) );
+    m_autoTextThickness->SetBitmap( KiBitmapBundle( BITMAPS::link ) );
 
     SetupStandardButtons();
     Layout();
@@ -164,23 +173,33 @@ bool DIALOG_TABLECELL_PROPERTIES::TransferDataToWindow()
     if( !wxDialog::TransferDataToWindow() )
         return false;
 
+    // Scintilla drops every write while it is read-only, so generated text would arrive here
+    // as an empty control and be written back over the cell on OK
+    m_cellText->SetReadOnly( false );
+
     bool              firstCell = true;
     GR_TEXT_H_ALIGN_T hAlign = GR_TEXT_H_ALIGN_INDETERMINATE;
     GR_TEXT_V_ALIGN_T vAlign = GR_TEXT_V_ALIGN_INDETERMINATE;
     int               textThickness = 0;
-    int               effectivePenWidth = 0;
+    int               basePenWidth = 0;
 
     for( PCB_TABLECELL* cell : m_cells )
     {
         if( firstCell )
         {
-            m_cellTextCtrl->SetValue( cell->GetText() );
+            wxString text = cell->GetText();
+
+            // show text variable cross-references in a human-readable format
+            if( BOARD* board = cell->GetBoard() )
+                text = board->ConvertKIIDsToCrossReferences( text );
+
+            m_cellTextCtrl->SetValue( text );
 
             m_fontCtrl->SetFontSelection( cell->GetFont() );
             m_textWidth.SetValue( cell->GetTextWidth() );
             m_textHeight.SetValue( cell->GetTextHeight() );
             textThickness = cell->GetTextThickness();
-            effectivePenWidth = cell->GetEffectiveTextPenWidth();
+            basePenWidth = GetPenSizeForNormal( cell->GetTextWidth() );
 
             hAlign = cell->GetHorizJustify();
             vAlign = cell->GetVertJustify();
@@ -190,17 +209,25 @@ bool DIALOG_TABLECELL_PROPERTIES::TransferDataToWindow()
             m_marginRight.SetValue( cell->GetMarginRight() );
             m_marginBottom.SetValue( cell->GetMarginBottom() );
 
-            // wxCheckBoxState bold = cell->IsBold() ? wxCHK_CHECKED : wxCHK_UNCHECKED;
             m_bold->Check( cell->IsBold() );
+            m_mixedBoldSetting = false;
 
-            // wxCheckBoxState italic = cell->IsItalic() ? wxCHK_CHECKED : wxCHK_UNCHECKED;
             m_italic->Check( cell->IsItalic() );
+            m_mixedItalicSetting = false;
+
+            m_cbKnockout->SetValue( cell->IsKnockout() );
 
             firstCell = false;
         }
         else
         {
-            if( cell->GetText() != m_cellTextCtrl->GetValue() )
+            wxString text = cell->GetText();
+
+            // show text variable cross-references in a human-readable format
+            if( BOARD* board = cell->GetBoard() )
+                text = board->ConvertKIIDsToCrossReferences( text );
+
+            if( text != m_cellTextCtrl->GetValue() )
                 m_cellTextCtrl->SetValue( INDETERMINATE_STATE );
 
             if( cell->GetFont() != m_fontCtrl->GetFontSelection( cell->IsBold(), cell->IsItalic() ) )
@@ -215,8 +242,20 @@ bool DIALOG_TABLECELL_PROPERTIES::TransferDataToWindow()
             if( cell->GetTextThickness() != textThickness )
                 textThickness = -1;
 
-            if( cell->GetEffectiveTextPenWidth() != effectivePenWidth )
-                effectivePenWidth = -1;
+            if( GetPenSizeForNormal( cell->GetTextWidth() ) != basePenWidth )
+                basePenWidth = -1;
+
+            if( cell->IsBold() != m_bold->IsChecked() )
+            {
+                m_mixedBoldSetting = true;
+                m_bold->Check( false );
+            }
+
+            if( cell->IsItalic() != m_italic->IsChecked() )
+            {
+                m_mixedItalicSetting = true;
+                m_italic->Check( false );
+            }
 
             if( cell->GetHorizJustify() != hAlign )
                 hAlign = GR_TEXT_H_ALIGN_INDETERMINATE;
@@ -235,22 +274,33 @@ bool DIALOG_TABLECELL_PROPERTIES::TransferDataToWindow()
 
             if( cell->GetMarginBottom() != m_marginBottom.GetIntValue() )
                 m_marginBottom.SetValue( INDETERMINATE_STATE );
+
+            if( cell->IsKnockout() != m_cbKnockout->GetValue() )
+                m_cbKnockout->Set3StateValue( wxCHK_UNDETERMINED );
         }
+
+        m_hAlignLeft->Check( false );
+        m_hAlignCenter->Check( false );
+        m_hAlignRight->Check( false );
 
         switch( hAlign )
         {
-        case GR_TEXT_H_ALIGN_LEFT: m_hAlignLeft->Check(); break;
-        case GR_TEXT_H_ALIGN_CENTER: m_hAlignCenter->Check(); break;
-        case GR_TEXT_H_ALIGN_RIGHT: m_hAlignRight->Check(); break;
-        case GR_TEXT_H_ALIGN_INDETERMINATE: break;
+        case GR_TEXT_H_ALIGN_LEFT:          m_hAlignLeft->Check();   break;
+        case GR_TEXT_H_ALIGN_CENTER:        m_hAlignCenter->Check(); break;
+        case GR_TEXT_H_ALIGN_RIGHT:         m_hAlignRight->Check();  break;
+        case GR_TEXT_H_ALIGN_INDETERMINATE:                          break;
         }
+
+        m_vAlignTop->Check( false );
+        m_vAlignCenter->Check( false );
+        m_vAlignBottom->Check( false );
 
         switch( vAlign )
         {
-        case GR_TEXT_V_ALIGN_TOP: m_vAlignTop->Check(); break;
-        case GR_TEXT_V_ALIGN_CENTER: m_vAlignCenter->Check(); break;
-        case GR_TEXT_V_ALIGN_BOTTOM: m_vAlignBottom->Check(); break;
-        case GR_TEXT_V_ALIGN_INDETERMINATE: break;
+        case GR_TEXT_V_ALIGN_TOP:           m_vAlignTop->Check();    break;
+        case GR_TEXT_V_ALIGN_CENTER:        m_vAlignCenter->Check(); break;
+        case GR_TEXT_V_ALIGN_BOTTOM:        m_vAlignBottom->Check(); break;
+        case GR_TEXT_V_ALIGN_INDETERMINATE:                          break;
         }
     }
 
@@ -259,8 +309,9 @@ bool DIALOG_TABLECELL_PROPERTIES::TransferDataToWindow()
 
     if( textThickness == 0 )
     {
-        if( effectivePenWidth > 0 )
-            m_textThickness.SetValue( effectivePenWidth );
+        // Show the base width (frozen if auto is unchecked); Bold scales it at render time.
+        if( basePenWidth > 0 )
+            m_textThickness.SetValue( basePenWidth );
 
         m_autoTextThickness->Check( true );
         m_textThickness.Enable( false );
@@ -270,36 +321,15 @@ bool DIALOG_TABLECELL_PROPERTIES::TransferDataToWindow()
         m_textThickness.SetValue( textThickness );
     }
 
+    m_cellText->SetReadOnly( m_cellTextIsGenerated );
+
     return true;
-}
-
-void DIALOG_TABLECELL_PROPERTIES::onBoldToggle( wxCommandEvent& aEvent )
-{
-    int textSize = std::min( m_textWidth.GetValue(), m_textHeight.GetValue() );
-
-    if( aEvent.IsChecked() )
-        m_textThickness.ChangeValue( GetPenSizeForBold( textSize ) );
-    else
-        m_textThickness.ChangeValue( GetPenSizeForNormal( textSize ) );
-
-    aEvent.Skip();
 }
 
 void DIALOG_TABLECELL_PROPERTIES::onTextSize( wxCommandEvent& aEvent )
 {
     if( m_autoTextThickness->IsChecked() )
-    {
-        int textSize = std::min( m_textWidth.GetValue(), m_textHeight.GetValue() );
-        int thickness;
-
-        // Calculate the "best" thickness from text size and bold option:
-        if( m_bold->IsChecked() )
-            thickness = GetPenSizeForBold( textSize );
-        else
-            thickness = GetPenSizeForNormal( textSize );
-
-        m_textThickness.SetValue( thickness );
-    }
+        m_textThickness.SetValue( GetPenSizeForNormal( m_textWidth.GetIntValue() ) );
 }
 
 
@@ -321,6 +351,20 @@ void DIALOG_TABLECELL_PROPERTIES::onAutoTextThickness( wxCommandEvent& aEvent )
     {
         m_textThickness.Enable( true );
     }
+}
+
+
+void DIALOG_TABLECELL_PROPERTIES::onBold(wxCommandEvent& aEvent)
+{
+    m_mixedBoldSetting = false;
+    aEvent.Skip();
+}
+
+
+void DIALOG_TABLECELL_PROPERTIES::onItalic(wxCommandEvent& aEvent)
+{
+    m_mixedItalicSetting = false;
+    aEvent.Skip();
 }
 
 
@@ -363,9 +407,13 @@ bool DIALOG_TABLECELL_PROPERTIES::TransferDataFromWindow()
 
     for( PCB_TABLECELL* cell : m_cells )
     {
-        if( m_cellTextCtrl->GetValue() != INDETERMINATE_STATE )
+        if( !m_cellTextIsGenerated && m_cellTextCtrl->GetValue() != INDETERMINATE_STATE )
         {
             wxString txt = m_cellTextCtrl->GetValue();
+
+            // convert any text variable cross-references to their UUIDs
+            if( BOARD* board = cell->GetBoard() )
+                txt = board->ConvertCrossReferencesToKIIDs( txt );
 
 #ifdef __WXMAC__
             // On macOS CTRL+Enter produces '\r' instead of '\n' regardless of EOL setting.
@@ -380,8 +428,16 @@ bool DIALOG_TABLECELL_PROPERTIES::TransferDataFromWindow()
             cell->SetText( txt );
         }
 
-        cell->SetBold( m_bold->IsChecked() );
-        cell->SetItalic( m_italic->IsChecked() );
+        if( !m_mixedBoldSetting )
+            cell->SetBold( m_bold->IsChecked() );
+
+        if( !m_mixedItalicSetting )
+            cell->SetItalic( m_italic->IsChecked() );
+
+        if( m_cbKnockout->Get3StateValue() == wxCHK_CHECKED )
+            cell->SetIsKnockout( true );
+        else if( m_cbKnockout->Get3StateValue() == wxCHK_UNCHECKED )
+            cell->SetIsKnockout( false );
 
         if( m_fontCtrl->HaveFontSelection() )
             cell->SetFont( m_fontCtrl->GetFontSelection( cell->IsBold(), cell->IsItalic() ) );

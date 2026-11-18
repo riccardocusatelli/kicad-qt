@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -39,6 +35,8 @@ class SCH_SHEET_PATH;
 class TOOL_MANAGER;
 class SCH_EDIT_FRAME;
 class SCH_BASE_FRAME;
+class SCH_ITEM;
+class SCH_SCREEN;
 class EDA_DRAW_FRAME;
 class TOOL_BASE;
 
@@ -48,6 +46,9 @@ class SCH_TOOL_BASE;
 #define SKIP_UNDO          0x0001
 #define APPEND_UNDO        0x0002
 #define SKIP_SET_DIRTY     0x0004
+#define SKIP_CONNECTIVITY  0x0008
+// With SKIP_UNDO (implicit headless), transfer ownership of removed items to the commit.
+#define DELETE_REMOVED_ITEMS 0x0010
 
 
 /**
@@ -101,6 +102,16 @@ public:
     /// The sheet hierarchy has changed.
     virtual void HierarchyChanged() = 0;
 
+    /// A sheet reference suffix has changed: the references shown must be composed again.
+    virtual void RefSuffixChanged() {}
+
+    /**
+     * @return true if the listener is an editor, which takes the undo entries and recalculates
+     *         the connections in Pushed(); false (a headless tool manager) to leave both to the
+     *         commit.
+     */
+    virtual bool HasEditor() const { return true; }
+
     /**
      * The changes have been applied to the schematic.
      * @param aUndoList the undo entries (empty with SKIP_UNDO); the listener takes them.
@@ -134,6 +145,15 @@ public:
 };
 
 
+
+/**
+ * Commit for the schematic and symbol editors.
+ *
+ * Outside the symbol editor, Stage() bumps the connectivity revision of the staged item's screen,
+ * and the connectivity facade stops serving that screen until the next recalculation.  A commit
+ * that staged an item must therefore end in Push() or Revert().  A caller that drops such a commit
+ * on purpose must request the recalculation itself.
+ */
 class SCH_COMMIT : public COMMIT
 {
 public:
@@ -148,20 +168,28 @@ public:
 
     /// Commits in an editor (sch_commit_gui.cpp).
     SCH_COMMIT( TOOL_MANAGER* aToolMgr );
+    SCH_COMMIT( TOOL_MANAGER* aToolMgr, bool aIsLibEditor );
     SCH_COMMIT( EDA_DRAW_FRAME* aFrame );
     SCH_COMMIT( SCH_TOOL_BASE<SCH_BASE_FRAME>* aFrame );
 
     virtual ~SCH_COMMIT();
 
-    virtual void Push( const wxString& aMessage = wxT( "A commit" ), int aCommitFlags = 0 ) override;
+    void Push( const wxString& aMessage = wxEmptyString, int aCommitFlags = 0 ) override;
 
-    virtual void Revert() override;
+    void Revert() override;
+    void RevertToCheckpoint( int aCheckpoint ) override;
+
     COMMIT& Stage( EDA_ITEM *aItem, CHANGE_TYPE aChangeType, BASE_SCREEN *aScreen = nullptr,
                    RECURSE_MODE aRecurse = RECURSE_MODE::NO_RECURSE ) override;
     COMMIT& Stage( std::vector<EDA_ITEM*> &container, CHANGE_TYPE aChangeType,
                    BASE_SCREEN *aScreen = nullptr ) override;
 
-private:
+    EDA_ITEM* ResolveItem( KIID& aID ) override;
+
+    /** Retain the pre-edit state of an item already removed from its screen by cleanup. */
+    void RemovedForCleanup( SCH_ITEM* aItem, SCH_SCREEN* aScreen );
+
+protected:
     EDA_ITEM* undoLevelItem( EDA_ITEM* aItem ) const override;
 
     EDA_ITEM* makeImage( EDA_ITEM* aItem ) const override;

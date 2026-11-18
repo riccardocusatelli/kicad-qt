@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <algorithm>
@@ -50,6 +46,8 @@
 #include <board.h>
 #include <board_design_settings.h>
 #include <footprint.h>
+#include <3d_rendering/3d_placeholder_utils.h>
+#include <pcb_3d_body.h>
 #include <pad.h>
 #include <pcb_track.h>
 #include <kiplatform/io.h>
@@ -79,18 +77,20 @@
 #include <STEPCAFControl_Reader.hxx>
 #include <STEPCAFControl_Writer.hxx>
 #include <APIHeaderSection_MakeHeader.hxx>
-#include <Standard_Failure.hxx>
+#include <occ_failure_message.h>
 #include <Standard_Handle.hxx>
 #include <Standard_Version.hxx>
+#include <TCollection_AsciiString.hxx>
 #include <TCollection_ExtendedString.hxx>
 #include <TDocStd_Document.hxx>
 #include <TDataStd_Name.hxx>
 #include <TDataStd_TreeNode.hxx>
 #include <TDF_ChildIterator.hxx>
+#include <NCollection_IndexedDataMap.hxx>
+#include <NCollection_IndexedMap.hxx>
 #include <NCollection_Sequence.hxx>
-#include <TColStd_IndexedDataMapOfStringString.hxx>
 #include <TDF_Tool.hxx>
-#include <TopTools_IndexedMapOfShape.hxx>
+#include <TopTools_ShapeMapHasher.hxx>
 #include <TopExp_Explorer.hxx>
 #include <TopoDS.hxx>
 #include <XCAFApp_Application.hxx>
@@ -128,7 +128,13 @@
 
 #include <BRepBndLib.hxx>
 #include <Bnd_BoundSortBox.hxx>
+
+#if OCC_VERSION_HEX >= 0x080000
+#include <NCollection_HArray1.hxx>
+#else
 #include <Bnd_HArray1OfBox.hxx>
+#endif
+
 #include <GProp_GProps.hxx>
 #include <BRepGProp.hxx>
 
@@ -143,6 +149,10 @@
 
 #include <RWGltf_CafWriter.hxx>
 #include <StlAPI_Writer.hxx>
+
+#if OCC_VERSION_HEX < 0x080000
+#include <TColStd_IndexedDataMapOfStringString.hxx>
+#endif
 
 #include "glb_utils.h"
 #include <core/ki_log.h>
@@ -719,7 +729,7 @@ static bool fuseShapes( auto& aInputShapes, TopoDS_Shape& aOutShape, REPORTER* a
         aReporter->Report( wxString::Format( _( "OpenCASCADE error while fusing shapes: %s\n"
                                                 "This may indicate insufficient memory. Consider "
                                                 "disabling shape fusing or reducing board complexity." ),
-                                             e.GetMessageString() ),
+                                             OccFailureMessage( e ) ),
                           RPT_SEVERITY_ERROR );
         return false;
     }
@@ -785,7 +795,7 @@ static bool fuseShapes( auto& aInputShapes, TopoDS_Shape& aOutShape, REPORTER* a
         catch( const Standard_Failure& e )
         {
             aReporter->Report( wxString::Format( _( "OpenCASCADE error while unifying shapes: %s" ),
-                                                 e.GetMessageString() ),
+                                                 OccFailureMessage( e ) ),
                               RPT_SEVERITY_ERROR );
             return false;
         }
@@ -1302,9 +1312,9 @@ bool STEP_PCB_MODEL::AddCounterbore( const VECTOR2I& aPosition, int aDiameter, i
     }
     catch( const Standard_Failure& e )
     {
-        KI_LOG_TRACE( traceKiCad2Step, wxT( "AddCounterbore: EXCEPTION - %s" ), e.GetMessageString() );
+        KI_LOG_TRACE( traceKiCad2Step, wxT( "AddCounterbore: EXCEPTION - %s" ), OccFailureMessage( e ) );
         m_reporter->Report( wxString::Format( _( "OCC exception creating counterbore: %s" ),
-                                              e.GetMessageString() ),
+                                              OccFailureMessage( e ) ),
                             RPT_SEVERITY_ERROR );
         return false;
     }
@@ -1457,9 +1467,9 @@ bool STEP_PCB_MODEL::AddCountersink( const VECTOR2I& aPosition, int aDiameter, i
     }
     catch( const Standard_Failure& e )
     {
-        KI_LOG_TRACE( traceKiCad2Step, wxT( "AddCountersink: EXCEPTION - %s" ), e.GetMessageString() );
+        KI_LOG_TRACE( traceKiCad2Step, wxT( "AddCountersink: EXCEPTION - %s" ), OccFailureMessage( e ) );
         m_reporter->Report( wxString::Format( _( "OCC exception creating countersink: %s" ),
-                                              e.GetMessageString() ),
+                                              OccFailureMessage( e ) ),
                             RPT_SEVERITY_ERROR );
         return false;
     }
@@ -1758,6 +1768,97 @@ void STEP_PCB_MODEL::getBoardBodyZPlacement( double& aZPos, double& aThickness )
 }
 
 
+bool STEP_PCB_MODEL::AddExtrudedBody( const SHAPE_POLY_SET& aOutline, bool aBottom, double aStandoff, double aHeight,
+                                      const VECTOR2D& aOrigin, uint32_t aColor, EXTRUSION_MATERIAL aMaterial,
+                                      const wxString& aRefDes )
+{
+    double f_pos, f_thickness;
+    double b_pos, b_thickness;
+    getLayerZPlacement( F_Cu, f_pos, f_thickness );
+    getLayerZPlacement( B_Cu, b_pos, b_thickness );
+
+    double boardSurfaceZ;
+
+    if( !aBottom )
+        boardSurfaceZ = std::max( f_pos, f_pos + f_thickness );
+    else
+        boardSurfaceZ = std::min( b_pos, b_pos + b_thickness );
+
+    double bodyThickness = aHeight - aStandoff;
+    double zBot;
+
+    if( !aBottom )
+        zBot = boardSurfaceZ + aStandoff;
+    else
+        zBot = boardSurfaceZ - aHeight;
+
+    m_extruded_bodies.push_back( { {}, {}, aRefDes, aColor, aMaterial } );
+    return MakeShapes( m_extruded_bodies.back().bodyShapes, aOutline, m_simplifyShapes, bodyThickness, zBot, aOrigin );
+}
+
+
+bool STEP_PCB_MODEL::AddExtrudedPins( const FOOTPRINT* aFootprint, const EXTRUDED_3D_BODY* aBody, bool aBottom,
+                                      double aStandoff, const VECTOR2D& aOrigin )
+{
+    if( aStandoff <= 0.0 )
+        return false;
+
+    SHAPE_POLY_SET pinPoly;
+    SHAPE_POLY_SET pegPoly;
+
+    if( !GetExtrusionPinOutlines( aFootprint, pinPoly, pegPoly ) )
+        return false;
+
+    if( aBody )
+    {
+        VECTOR2I fpPos = aFootprint->GetPosition();
+        ApplyExtrusionTransform( pinPoly, aBody, fpPos );
+        ApplyExtrusionTransform( pegPoly, aBody, fpPos );
+    }
+
+    double f_pos, f_thickness;
+    double b_pos, b_thickness;
+    getLayerZPlacement( F_Cu, f_pos, f_thickness );
+    getLayerZPlacement( B_Cu, b_pos, b_thickness );
+
+    double boardTopZ = std::max( f_pos, f_pos + f_thickness );
+    double boardBotZ = std::min( b_pos, b_pos + b_thickness );
+
+    static const double c_protrusion = 1.0; // 1mm below opposite side
+
+    double zOffset = aBody ? aBody->m_offset.z : 0.0;
+
+    double pinZBot, pinHeight;
+
+    if( !aBottom )
+    {
+        pinZBot = boardBotZ - c_protrusion + zOffset;
+        pinHeight = ( boardTopZ + aStandoff ) - pinZBot;
+    }
+    else
+    {
+        double pinZTop = boardTopZ + c_protrusion - zOffset;
+        pinZBot = boardBotZ - aStandoff;
+        pinHeight = pinZTop - pinZBot;
+    }
+
+    if( m_extruded_bodies.empty() )
+        return false;
+
+    bool success = true;
+
+    if( pinPoly.OutlineCount() > 0 )
+        success &= MakeShapes( m_extruded_bodies.back().pinShapes, pinPoly, m_simplifyShapes, pinHeight, pinZBot,
+                               aOrigin );
+
+    if( pegPoly.OutlineCount() > 0 )
+        success &= MakeShapes( m_extruded_bodies.back().bodyShapes, pegPoly, m_simplifyShapes, pinHeight, pinZBot,
+                               aOrigin );
+
+    return success;
+}
+
+
 bool STEP_PCB_MODEL::AddPolygonShapes( const SHAPE_POLY_SET* aPolyShapes, PCB_LAYER_ID aLayer,
                                        const VECTOR2D& aOrigin, const wxString& aNetname )
 {
@@ -2034,7 +2135,7 @@ bool STEP_PCB_MODEL::MakeShapeAsThickSegment( TopoDS_Shape& aShape, const VECTOR
     catch( const Standard_Failure& e )
     {
         m_reporter->Report( wxString::Format( _( "OCC exception building shape segment: %s" ),
-                                              e.GetMessageString() ),
+                                              OccFailureMessage( e ) ),
                             RPT_SEVERITY_ERROR );
         return false;
     }
@@ -2049,7 +2150,7 @@ bool STEP_PCB_MODEL::MakeShapeAsThickSegment( TopoDS_Shape& aShape, const VECTOR
     catch( const Standard_Failure& e )
     {
         m_reporter->Report( wxString::Format( _( "OCC exception building face: %s" ),
-                                              e.GetMessageString() ),
+                                              OccFailureMessage( e ) ),
                             RPT_SEVERITY_ERROR );
         return false;
     }
@@ -2267,7 +2368,7 @@ static bool makeWireFromChain( BRepLib_MakeWire& aMkWire, const SHAPE_LINE_CHAIN
     catch( const Standard_Failure& e )
     {
         aReporter->Report( wxString::Format( _( "OCC exception creating wire: %s" ),
-                                             e.GetMessageString() ),
+                                             OccFailureMessage( e ) ),
                            RPT_SEVERITY_ERROR );
         return false;
     }
@@ -2350,6 +2451,7 @@ bool STEP_PCB_MODEL::MakeShapes( std::vector<TopoDS_Shape>& aShapes, const SHAPE
                                              "z: %g; bounding box: %s" ),
                                           static_cast<int>( aContour.PointCount() ),
                                           static_cast<int>( mkWire.Error() ),
+                                          aZposition,
                                           formatBBox( aContour.BBox() ) ),
                         RPT_SEVERITY_WARNING );
             }
@@ -2437,7 +2539,7 @@ bool STEP_PCB_MODEL::MakeShapes( std::vector<TopoDS_Shape>& aShapes, const SHAPE
             {
                 m_reporter->Report( wxString::Format( _( "OCC exception creating contour %d: %s" ),
                                                       static_cast<int>( contId ),
-                                                      e.GetMessageString() ),
+                                                      OccFailureMessage( e ) ),
                                     RPT_SEVERITY_ERROR );
                 return false;
             }
@@ -2608,7 +2710,12 @@ bool STEP_PCB_MODEL::CreatePCB( SHAPE_POLY_SET& aOutline, const VECTOR2D& aOrigi
                 // otherwise Bnd_BoundSortBox doesn't work near the boundaries.
                 Bnd_Box brdWithHolesBndBox = brdBndBox;
 
+#if OCC_VERSION_HEX >= 0x080000
+                Handle( NCollection_HArray1<Bnd_Box> ) holeBoxSet =
+                        new NCollection_HArray1<Bnd_Box>( 0, input.size() - 1 );
+#else
                 Handle( Bnd_HArray1OfBox ) holeBoxSet = new Bnd_HArray1OfBox( 0, input.size() - 1 );
+#endif
                 holeBoxes.resize( input.size() );
 
                 for( size_t i = 0; i < input.size(); i++ )
@@ -2727,33 +2834,18 @@ bool STEP_PCB_MODEL::CreatePCB( SHAPE_POLY_SET& aOutline, const VECTOR2D& aOrigi
                         shape = cut.Shape();
                     };
 
-                    // submit_loop() drops its multi_future if a later submission throws, leaving
-                    // queued blocks that outlive the captured mutex with no future to wait on.
+                    // submit_loop can throw mid-submission after queueing some blocks.  Drain the
+                    // pool before unwinding so no queued block outlives the captured mutex and
+                    // vector.  get() then re-raises any worker exception.
                     BS::multi_future<void> cutFutures;
 
                     try
                     {
-                        const size_t count = vec.size();
-                        const size_t blocks = std::min( count, tp.get_thread_count() );
-
-                        cutFutures.reserve( blocks );
-
-                        for( size_t blk = 0; blk < blocks; ++blk )
-                        {
-                            size_t first = ( count * blk ) / blocks;
-                            size_t last = ( count * ( blk + 1 ) ) / blocks;
-
-                            cutFutures.push_back( tp.submit_task(
-                                    [&subtractLoopFn, first, last]()
-                                    {
-                                        for( size_t idx = first; idx < last; ++idx )
-                                            subtractLoopFn( static_cast<int>( idx ) );
-                                    } ) );
-                        }
+                        cutFutures = tp.submit_loop( 0, vec.size(), subtractLoopFn );
                     }
                     catch( ... )
                     {
-                        cutFutures.wait();
+                        tp.wait();
                         throw;
                     }
 
@@ -2858,8 +2950,7 @@ bool STEP_PCB_MODEL::CreatePCB( SHAPE_POLY_SET& aOutline, const VECTOR2D& aOrigi
         }
         catch( ... )
         {
-            // The queued tasks hold the mutex by reference and must finish before it dies.
-            mf.wait();
+            tp.wait();
             throw;
         }
 
@@ -3045,6 +3136,93 @@ bool STEP_PCB_MODEL::CreatePCB( SHAPE_POLY_SET& aOutline, const VECTOR2D& aOrigi
 
     if( aPushBoardBody )
         pushToAssembly( m_board_outlines, board_mat, "PCB", false, "Body" );
+
+    Quantity_ColorRGBA pinClr( Quantity_Color( 0.75, 0.75, 0.75, Quantity_TOC_RGB ), 1.0 );
+    TDF_Label          pin_mat = makeMaterial( "extruded_pin", pinClr, 0.6, 0.3 );
+
+    for( auto& entry : m_extruded_bodies )
+    {
+        if( entry.bodyShapes.empty() && entry.pinShapes.empty() )
+            continue;
+
+        TopoDS_Compound asmCompound;
+        BRep_Builder    asmBuilder;
+        asmBuilder.MakeCompound( asmCompound );
+        TDF_Label fpLabel = m_assy->AddShape( asmCompound, true );
+        TDataStd_Name::Set( fpLabel, TCollection_ExtendedString( ( entry.refDes + " (extruded)" ).ToUTF8().data() ) );
+
+        if( !entry.bodyShapes.empty() )
+        {
+            double r = ( ( entry.colorKey >> 24 ) & 0xFF ) / 255.0;
+            double g = ( ( entry.colorKey >> 16 ) & 0xFF ) / 255.0;
+            double b = ( ( entry.colorKey >> 8 ) & 0xFF ) / 255.0;
+            double a = ( entry.colorKey & 0xFF ) / 255.0;
+
+            double metallic, roughness;
+
+            switch( entry.material )
+            {
+            default:
+            case EXTRUSION_MATERIAL::PLASTIC:
+                metallic = 0.0;
+                roughness = 0.6;
+                break;
+            case EXTRUSION_MATERIAL::MATTE:
+                metallic = 0.0;
+                roughness = 0.9;
+                break;
+            case EXTRUSION_MATERIAL::METAL:
+                metallic = 0.8;
+                roughness = 0.3;
+                break;
+            case EXTRUSION_MATERIAL::COPPER:
+                metallic = 1.0;
+                roughness = 0.4;
+                break;
+            }
+
+            Quantity_ColorRGBA bodyClr( Quantity_Color( r, g, b, Quantity_TOC_RGB ), a );
+            TDF_Label          body_mat = makeMaterial( "extruded_body", bodyClr, metallic, roughness );
+
+            TopoDS_Shape bodyCompound = makeCompound( entry.bodyShapes );
+            TDF_Label    bodyLbl = m_assy->AddComponent( fpLabel, bodyCompound, false );
+
+            Handle( TDataStd_TreeNode ) bodyNode;
+            bodyLbl.FindAttribute( XCAFDoc::ShapeRefGUID(), bodyNode );
+            TDF_Label bodyShpLbl = bodyNode->Father()->Label();
+
+            if( !bodyShpLbl.IsNull() )
+            {
+                visMatTool->SetShapeMaterial( bodyShpLbl, body_mat );
+                TDataStd_Name::Set( bodyShpLbl,
+                                    TCollection_ExtendedString( ( entry.refDes + "_body" ).ToUTF8().data() ) );
+            }
+        }
+
+        int pinIdx = 1;
+
+        for( TopoDS_Shape& pinShape : entry.pinShapes )
+        {
+            TDF_Label pinLbl = m_assy->AddComponent( fpLabel, pinShape, false );
+
+            Handle( TDataStd_TreeNode ) pinNode;
+            pinLbl.FindAttribute( XCAFDoc::ShapeRefGUID(), pinNode );
+            TDF_Label pinShpLbl = pinNode->Father()->Label();
+
+            if( !pinShpLbl.IsNull() )
+            {
+                visMatTool->SetShapeMaterial( pinShpLbl, pin_mat );
+                wxString pinName = wxString::Format( "%s_pin_%d", entry.refDes, pinIdx++ );
+                TDataStd_Name::Set( pinShpLbl, TCollection_ExtendedString( pinName.ToUTF8().data() ) );
+            }
+        }
+
+        TopLoc_Location loc;
+        TDF_Label       fpCompLbl = m_assy->AddComponent( m_assy_label, fpLabel, loc );
+        TDataStd_Name::Set( fpCompLbl, TCollection_ExtendedString( entry.refDes.ToUTF8().data() ) );
+        KICAD3D_INFO::Set( fpCompLbl, KICAD3D_MODEL_TYPE::BOARD, entry.refDes.ToStdString() );
+        m_pcb_labels.push_back( fpCompLbl );
+    }
 
 #if( defined OCC_VERSION_HEX ) && ( OCC_VERSION_HEX > 0x070101 )
     m_assy->UpdateAssemblies();
@@ -3342,7 +3520,7 @@ bool STEP_PCB_MODEL::WriteXAO( const wxString& aFileName )
     file << "]]></shape>" << std::endl;
     file << "    <topology>" << std::endl;
 
-    TopTools_IndexedMapOfShape mainMap;
+    NCollection_IndexedMap<TopoDS_Shape, TopTools_ShapeMapHasher> mainMap;
     TopExp::MapShapes( shape, mainMap );
     std::set<int> topo[4];
 
@@ -3976,7 +4154,12 @@ bool STEP_PCB_MODEL::WriteGLTF( const wxString& aFileName )
 #if OCC_VERSION_HEX >= 0x070700
     cafWriter.SetParallel( true );
 #endif
+
+#if OCC_VERSION_HEX >= 0x080000
+    NCollection_IndexedDataMap<TCollection_AsciiString, TCollection_AsciiString> metadata;
+#else
     TColStd_IndexedDataMapOfStringString metadata;
+#endif
 
     metadata.Add( TCollection_AsciiString( "pcb_name" ),
                   TCollection_ExtendedString( fn.GetName().wc_str() ) );
@@ -4057,7 +4240,11 @@ bool STEP_PCB_MODEL::WritePLY( const wxString& aFileName )
     cafWriter.ChangeCoordinateSystemConverter().SetInputLengthUnit( 0.001 );
     cafWriter.ChangeCoordinateSystemConverter().SetInputCoordinateSystem( RWMesh_CoordinateSystem_Zup );
 
+#if OCC_VERSION_HEX >= 0x080000
+    NCollection_IndexedDataMap<TCollection_AsciiString, TCollection_AsciiString> metadata;
+#else
     TColStd_IndexedDataMapOfStringString metadata;
+#endif
 
     metadata.Add( TCollection_AsciiString( "pcb_name" ),
                   TCollection_ExtendedString( fn.GetName().wc_str() ) );
@@ -4225,7 +4412,7 @@ bool STEP_PCB_MODEL::WritePDF( const wxString& aFileName )
 
     plotter->SetColorMode( true );
     plotter->Set3DExport( true );
-    plotter->SetCreator( wxT( "Mark's awesome 3d exporter" ) );
+    plotter->SetCreator( wxString::Format( "KiCad %s", GetMajorMinorPatchVersion() ) );
     KIGFX::PCB_RENDER_SETTINGS renderSettings;
     plotter->SetRenderSettings( &renderSettings );
 

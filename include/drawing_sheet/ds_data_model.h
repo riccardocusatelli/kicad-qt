@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef  DS_DATA_MODEL_H
@@ -31,6 +27,8 @@
 
 class DS_DATA_ITEM;
 class PAGE_INFO;
+class PROJECT;
+class EMBEDDED_FILES;
 
 /**
  * Handle the graphic items list to draw/plot the frame and title block.
@@ -59,6 +57,9 @@ public:
 
     int GetFileFormatVersionAtLoad() { return m_fileFormatVersionAtLoad; }
     void SetFileFormatVersionAtLoad( int aVersion ) { m_fileFormatVersionAtLoad = aVersion; }
+
+    const wxString& GetGenerator() const { return m_generator; }
+    void SetGenerator( const wxString& aGenerator ) { m_generator = aGenerator; }
 
     double GetLeftMargin() { return m_leftMargin; }
     void SetLeftMargin( double aMargin ) { m_leftMargin = aMargin; }
@@ -134,6 +135,29 @@ public:
     void SetEmptyLayout();
 
     /**
+     * Return the reserved drawing-sheet name that marks a design as deliberately having no
+     * sheet, as opposed to one that failed to resolve. It names no file on disk.
+     */
+    static const wxString& EmptyLayoutName();
+
+    /**
+     * Populate the list from @p aSheetName, which is either @ref EmptyLayoutName, an embedded
+     * file reference or a path resolved against @p aBasePath.
+     *
+     * Callers store an unresolved sheet name, so this owns the whole decision rather than
+     * leaving each of them to recognize the reserved name before resolving.
+     *
+     * @param aSheetName
+     * @param aBasePath
+     * @param aProject
+     * @param aEmbeddedFilesStack
+     * @param aMsg [optional] if non-null, is filled with any error message.
+     * @return false only when a real drawing sheet failed to load.
+     */
+    bool LoadFromName( const wxString& aSheetName, const wxString& aBasePath, PROJECT* aProject,
+                       std::vector<const EMBEDDED_FILES*> aEmbeddedFilesStack, wxString* aMsg );
+
+    /**
      * Return a string containing the empty layout shape.
      */
     static wxString EmptyLayout();
@@ -190,6 +214,7 @@ private:
                                       // first time DS_DRAW_ITEM_LIST::BuildDrawItemsList is run
                                       // (useful mainly for drawing sheet editor)
     int      m_fileFormatVersionAtLoad;
+    wxString m_generator;             // Tool name written in the generator field
     double   m_leftMargin;            // the left page margin in mm
     double   m_rightMargin;           // the right page margin in mm
     double   m_topMargin;             // the top page margin in mm

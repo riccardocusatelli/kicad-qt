@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <lset.h>
@@ -27,14 +27,13 @@
 #include <settings/parameters.h>
 #include <core/ki_assert.h>
 
-const int projectLocalSettingsVersion = 5;
+const int projectLocalSettingsVersion = 7;
 
 
 PROJECT_LOCAL_SETTINGS::PROJECT_LOCAL_SETTINGS( PROJECT* aProject, const wxString& aFilename ) :
         JSON_SETTINGS( aFilename, SETTINGS_LOC::PROJECT, projectLocalSettingsVersion,
                        /* aCreateIfMissing = */ true, /* aCreateIfDefault = */ false,
                        /* aWriteFile = */ true ),
-        // clang-format off: suggestion is less readable.
         m_ActiveLayer( UNDEFINED_LAYER ),
         m_ContrastModeDisplay( HIGH_CONTRAST_MODE::NORMAL ),
         m_NetColorMode( NET_COLOR_MODE::RATSNEST ),
@@ -47,11 +46,11 @@ PROJECT_LOCAL_SETTINGS::PROJECT_LOCAL_SETTINGS( PROJECT* aProject, const wxStrin
         m_ZoneOpacity( 0.6 ),
         m_ShapeOpacity( 1.0 ),
         m_ImageOpacity( 0.6 ),
+        m_OutsideGroupOpacity( 1.0 ),
         m_PcbSelectionFilter(),
         m_GitIntegrationDisabled( false ),
         m_project( aProject ),
         m_wasMigrated( false )
-// clang-format on: suggestion is less readable.
 {
     // Keep old files around
     m_deleteLegacyAfterMigration = false;
@@ -137,6 +136,7 @@ PROJECT_LOCAL_SETTINGS::PROJECT_LOCAL_SETTINGS( PROJECT* aProject, const wxStrin
                 ret["zones"]       = m_PcbSelectionFilter.zones;
                 ret["keepouts"]    = m_PcbSelectionFilter.keepouts;
                 ret["dimensions"]  = m_PcbSelectionFilter.dimensions;
+                ret["gridItems"]   = m_PcbSelectionFilter.gridItems;
                 ret["otherItems"]  = m_PcbSelectionFilter.otherItems;
 
                 return ret;
@@ -156,6 +156,7 @@ PROJECT_LOCAL_SETTINGS::PROJECT_LOCAL_SETTINGS( PROJECT* aProject, const wxStrin
                 SetIfPresent( aVal, "zones", m_PcbSelectionFilter.zones );
                 SetIfPresent( aVal, "keepouts", m_PcbSelectionFilter.keepouts );
                 SetIfPresent( aVal, "dimensions", m_PcbSelectionFilter.dimensions );
+                SetIfPresent( aVal, "gridItems", m_PcbSelectionFilter.gridItems );
                 SetIfPresent( aVal, "otherItems", m_PcbSelectionFilter.otherItems );
             },
             {
@@ -169,6 +170,7 @@ PROJECT_LOCAL_SETTINGS::PROJECT_LOCAL_SETTINGS( PROJECT* aProject, const wxStrin
                 { "zones", true },
                 { "keepouts", true },
                 { "dimensions", true },
+                { "gridItems", true },
                 { "otherItems", true }
             } ) );
 
@@ -188,6 +190,7 @@ PROJECT_LOCAL_SETTINGS::PROJECT_LOCAL_SETTINGS( PROJECT* aProject, const wxStrin
     m_params.emplace_back( new PARAM<double>( "board.opacity.zones", &m_ZoneOpacity, 0.6 ) );
     m_params.emplace_back( new PARAM<double>( "board.opacity.images", &m_ImageOpacity, 0.6 ) );
     m_params.emplace_back( new PARAM<double>( "board.opacity.shapes", &m_ShapeOpacity, 1.0 ) );
+    m_params.emplace_back( new PARAM<double>( "board.opacity.outside_group", &m_OutsideGroupOpacity, 1.0 ) );
 
     m_params.emplace_back( new PARAM_LIST<wxString>( "board.hidden_nets", &m_HiddenNets, {} ) );
 
@@ -224,6 +227,8 @@ PROJECT_LOCAL_SETTINGS::PROJECT_LOCAL_SETTINGS( PROJECT* aProject, const wxStrin
                                             &m_NetInspectorPanel.filter_by_netclass, true ) );
     m_params.emplace_back( new PARAM<bool>( "net_inspector_panel.group_by_netclass",
                                             &m_NetInspectorPanel.group_by_netclass, false ) );
+    m_params.emplace_back( new PARAM<bool>( "net_inspector_panel.group_by_net_chain",
+                                            &m_NetInspectorPanel.group_by_net_chain, false ) );
     m_params.emplace_back( new PARAM<bool>( "net_inspector_panel.group_by_constraint",
                                             &m_NetInspectorPanel.group_by_constraint, false ) );
     m_params.emplace_back( new PARAM_LIST<wxString>( "net_inspector_panel.custom_group_rules",
@@ -521,6 +526,46 @@ PROJECT_LOCAL_SETTINGS::PROJECT_LOCAL_SETTINGS( PROJECT* aProject, const wxStrin
 
                 return true;
             } );
+
+    registerMigration( 5, 6,
+            [&]()
+            {
+                // Schema version 5 to 6: LAYER_GRID_ITEMS added to visibility controls
+
+                std::string ptr( "board.visible_items" );
+
+                if( Contains( ptr ) )
+                {
+                    if( At( ptr ).is_array() && !At( ptr ).empty() )
+                        At( ptr ).push_back( VisibilityLayerToString( VISIBILITY_LAYER::SUBGRIDS ) );
+                    else
+                        At( "board" ).erase( "visible_items" );
+
+                    m_wasMigrated = true;
+                }
+
+                return true;
+            } );
+
+    registerMigration( 6, 7,
+            [&]()
+            {
+                // Schema version 6 to 7: LAYER_VIA_STITCHING added to visibility controls
+
+                std::string ptr( "board.visible_items" );
+
+                if( Contains( ptr ) )
+                {
+                    if( At( ptr ).is_array() && !At( ptr ).empty() )
+                        At( ptr ).push_back( VisibilityLayerToString( VISIBILITY_LAYER::VIA_STITCHING ) );
+                    else
+                        At( "board" ).erase( "visible_items" );
+
+                    m_wasMigrated = true;
+                }
+
+                return true;
+            } );
 }
 
 
@@ -539,8 +584,7 @@ bool PROJECT_LOCAL_SETTINGS::SaveToFile( const wxString& aDirectory, bool aForce
 {
     KI_ASSERT( m_project );
 
-    Set( "meta.filename",
-         m_project->GetProjectName() + "." + FILEEXT::ProjectLocalSettingsFileExtension );
+    Set( "meta.filename", m_project->GetProjectName() + "." + FILEEXT::ProjectLocalSettingsFileExtension );
 
     // Even if parameters were not modified, we should resave after migration
     bool force = aForce || m_wasMigrated;
@@ -557,6 +601,7 @@ bool PROJECT_LOCAL_SETTINGS::SaveAs( const wxString& aDirectory, const wxString&
 {
     Set( "meta.filename", aFile + "." + FILEEXT::ProjectLocalSettingsFileExtension );
     SetFilename( aFile );
+    SetReadOnly( false );
 
     // If we're actually going ahead and doing the save, the flag that keeps code from doing the
     // save should be cleared at this point.
@@ -575,16 +620,14 @@ const PROJECT_FILE_STATE* PROJECT_LOCAL_SETTINGS::GetFileState( const wxString& 
                             } );
 
     if( it != m_files.end() )
-    {
         return &( *it );
-    }
 
     return nullptr;
 }
 
 
-void PROJECT_LOCAL_SETTINGS::SaveFileState( const wxString& aFileName,
-                                            const WINDOW_SETTINGS* aWindowCfg, bool aOpen )
+void PROJECT_LOCAL_SETTINGS::SaveFileState( const wxString& aFileName, const WINDOW_SETTINGS* aWindowCfg,
+                                            bool aOpen )
 {
     auto it = std::find_if( m_files.begin(), m_files.end(),
                             [&aFileName]( const PROJECT_FILE_STATE& a )

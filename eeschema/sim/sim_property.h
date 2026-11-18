@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef SIM_PROPERTY_H
@@ -96,8 +92,12 @@ public:
 
     wxValidator* DoGetValidator() const override;
 
-    bool StringToValue( wxVariant& aVariant, const wxString& aText, int aArgFlags = 0 )
-        const override;
+#if wxCHECK_VERSION( 3, 3, 0 )
+    bool StringToValue( wxVariant& aVariant, const wxString& aText,
+                        wxPGPropValFormatFlags aArgFlags = wxPGPropValFormatFlags::Null ) const override;
+#else
+    bool StringToValue( wxVariant& aVariant, const wxString& aText, int aArgFlags = 0 ) const override;
+#endif
 
     bool OnEvent( wxPropertyGrid* propgrid, wxWindow* wnd_primary, wxEvent& event ) override;
 

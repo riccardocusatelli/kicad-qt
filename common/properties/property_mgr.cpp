@@ -16,8 +16,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <inspectable.h>
@@ -37,9 +37,7 @@ static const std::map<PROPERTY_BASE*, int> EMPTY_PROP_DISPLAY_ORDER;
 std::vector<wxString>                      EMPTY_GROUP_DISPLAY_ORDER;
 
 
-PROPERTY_MANAGER::~PROPERTY_MANAGER()
-{
-}
+PROPERTY_MANAGER::~PROPERTY_MANAGER() noexcept = default;
 
 
 void PROPERTY_MANAGER::RegisterType( TYPE_ID aType, const wxString& aName )
@@ -71,6 +69,21 @@ PROPERTY_BASE* PROPERTY_MANAGER::GetProperty( TYPE_ID aType, const wxString& aPr
 }
 
 
+PROPERTY_BASE* PROPERTY_MANAGER::GetProperty( const INSPECTABLE* aObject, const wxString& aProperty ) const
+{
+    if( PROPERTY_BASE* prop = GetProperty( TYPE_HASH( *aObject ), aProperty ) )
+        return prop;
+
+    for( PROPERTY_BASE* dynamicProp : aObject->GetDynamicProperties() )
+    {
+        if( !aProperty.CmpNoCase( dynamicProp->Name() ) )
+            return dynamicProp;
+    }
+
+    return nullptr;
+}
+
+
 const std::vector<PROPERTY_BASE*>& PROPERTY_MANAGER::GetProperties( TYPE_ID aType ) const
 {
     if( m_dirty )
@@ -82,6 +95,43 @@ const std::vector<PROPERTY_BASE*>& PROPERTY_MANAGER::GetProperties( TYPE_ID aTyp
         return EMPTY_PROP_LIST;
 
     return it->second.m_allProperties;
+}
+
+
+std::vector<PROPERTY_BASE*> PROPERTY_MANAGER::GetProperties( const INSPECTABLE* aObject ) const
+{
+    std::vector<PROPERTY_BASE*> result = GetProperties( TYPE_HASH( *aObject ) );
+
+    for( PROPERTY_BASE* prop : aObject->GetDynamicProperties() )
+        result.push_back( prop );
+
+    return result;
+}
+
+
+std::vector<PROPERTY_BASE*>
+PROPERTY_MANAGER::GetCommonDynamicProperties( const std::vector<const INSPECTABLE*>& aObjects ) const
+{
+    if( aObjects.empty() )
+        return {};
+
+    std::vector<PROPERTY_BASE*> common = aObjects.front()->GetDynamicProperties();
+
+    for( size_t ii = 1; ii < aObjects.size() && !common.empty(); ++ii )
+    {
+        std::set<wxString> names;
+
+        for( PROPERTY_BASE* prop : aObjects[ii]->GetDynamicProperties() )
+            names.insert( prop->Name() );
+
+        std::erase_if( common,
+                       [&]( PROPERTY_BASE* aProp )
+                       {
+                           return !names.contains( aProp->Name() );
+                       } );
+    }
+
+    return common;
 }
 
 
@@ -298,9 +348,16 @@ PROPERTY_MANAGER::CLASS_DESC& PROPERTY_MANAGER::getClass( TYPE_ID aTypeId )
 }
 
 
-PROPERTY_MANAGER::CLASS_DESC::~CLASS_DESC()
+PROPERTY_MANAGER::CLASS_DESC::CLASS_DESC( TYPE_ID aId ) :
+        m_id( aId )
 {
+    m_groupDisplayOrder.emplace_back( wxEmptyString );
+    m_groups.insert( wxEmptyString );
 }
+
+
+PROPERTY_MANAGER::CLASS_DESC::~CLASS_DESC() noexcept = default;
+PROPERTY_MANAGER::CLASS_DESC::CLASS_DESC( CLASS_DESC&& ) noexcept = default;
 
 
 void PROPERTY_MANAGER::CLASS_DESC::rebuild()
@@ -400,9 +457,9 @@ void PROPERTY_MANAGER::CLASS_DESC::collectPropsRecur( std::vector<PROPERTY_BASE*
 }
 
 
-PROPERTY_MANAGER::CLASSES_INFO PROPERTY_MANAGER::GetAllClasses()
+std::vector<PROPERTY_MANAGER::CLASS_INFO> PROPERTY_MANAGER::GetAllClasses()
 {
-    CLASSES_INFO rv;
+    std::vector<CLASS_INFO> rv;
 
     for( std::pair<const TYPE_ID, CLASS_DESC>& classEntry : m_classes )
     {
@@ -430,7 +487,7 @@ void PROPERTY_MANAGER::PropertyChanged( INSPECTABLE* aObject, PROPERTY_BASE* aPr
 
                 if( listeners != m_listeners.end() )
                 {
-                    for( const PROPERTY_LISTENER& listener : listeners->second )
+                    for( const auto& [ handle, listener ] : listeners->second )
                         listener( aObject, aProperty, m_managedCommit );
                 }
             };
@@ -439,17 +496,19 @@ void PROPERTY_MANAGER::PropertyChanged( INSPECTABLE* aObject, PROPERTY_BASE* aPr
 
     callListeners( objectClass.m_id );
 
-    for( CLASS_DESC& superClass : objectClass.m_bases )
-        callListeners( superClass.m_id );
+    for( const std::reference_wrapper<CLASS_DESC>& superClass : objectClass.m_bases )
+        callListeners( superClass.get().m_id );
 }
 
 
 PROPERTY_COMMIT_HANDLER::PROPERTY_COMMIT_HANDLER( COMMIT* aCommit )
 {
-    KI_CHECK2_MSG( PROPERTY_MANAGER::Instance().m_managedCommit == nullptr,
-                  return, wxT( "Can't have more than one managed commit at a time!" ) );
+    // This is a hard failure.  KI_CHECK2() will just allow us to crash later in a less-pertinent place
+    if( PROPERTY_MANAGER::Instance().m_managedCommit != nullptr )
+        throw std::runtime_error( "Can't have more than one managed commit at a time!" );
 
     PROPERTY_MANAGER::Instance().m_managedCommit = aCommit;
+    m_ownsCommit = true;
 }
 
 
@@ -458,5 +517,63 @@ PROPERTY_COMMIT_HANDLER::~PROPERTY_COMMIT_HANDLER()
     KI_ASSERT_MSG( PROPERTY_MANAGER::Instance().m_managedCommit != nullptr,
                   wxT( "Something went wrong: m_managedCommit already null!" ) );
 
-    PROPERTY_MANAGER::Instance().m_managedCommit = nullptr;
+    if( m_ownsCommit )
+        PROPERTY_MANAGER::Instance().m_managedCommit = nullptr;
+}
+
+
+PROPERTY_LISTENER_SUBSCRIPTION
+PROPERTY_MANAGER::RegisterListener( TYPE_ID aType, PROPERTY_LISTENER aListenerFunc )
+{
+    PROPERTY_LISTENER_HANDLE handle = ++m_nextListenerHandle;
+    m_listeners[aType].emplace_back( handle, std::move( aListenerFunc ) );
+    return { aType, handle };
+}
+
+
+void PROPERTY_MANAGER::UnregisterListener( TYPE_ID aType, PROPERTY_LISTENER_HANDLE aHandle )
+{
+    auto it = m_listeners.find( aType );
+
+    if( it == m_listeners.end() )
+        return;
+
+    auto& vec = it->second;
+    vec.erase( std::remove_if( vec.begin(), vec.end(),
+                               [aHandle]( const auto& aPair )
+                               {
+                                   return aPair.first == aHandle;
+                               } ),
+               vec.end() );
+}
+
+
+PROPERTY_LISTENER_SUBSCRIPTION::~PROPERTY_LISTENER_SUBSCRIPTION()
+{
+    reset();
+}
+
+
+PROPERTY_LISTENER_SUBSCRIPTION&
+PROPERTY_LISTENER_SUBSCRIPTION::operator=( PROPERTY_LISTENER_SUBSCRIPTION&& aOther ) noexcept
+{
+    if( this != &aOther )
+    {
+        reset();
+        m_type          = aOther.m_type;
+        m_handle        = aOther.m_handle;
+        aOther.m_handle = 0;
+    }
+
+    return *this;
+}
+
+
+void PROPERTY_LISTENER_SUBSCRIPTION::reset()
+{
+    if( m_handle )
+    {
+        PROPERTY_MANAGER::Instance().UnregisterListener( m_type, m_handle );
+        m_handle = 0;
+    }
 }

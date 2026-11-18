@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "preview_items/construction_geom.h"
@@ -41,6 +37,29 @@ CONSTRUCTION_GEOM::CONSTRUCTION_GEOM() :
 }
 
 
+std::array<SEG, 3> CONSTRUCTION_GEOM::DimensionBracketSegments( const SEG& aSpan, int aTickLength, int aOffset )
+{
+    const int halfTick = aTickLength / 2;
+    VECTOR2I  tickOffset;
+    VECTOR2I  bracketOffset;
+
+    if( std::abs( aSpan.B.x - aSpan.A.x ) >= std::abs( aSpan.B.y - aSpan.A.y ) )
+    {
+        tickOffset.y = halfTick;
+        bracketOffset.y = aOffset;
+    }
+    else
+    {
+        tickOffset.x = halfTick;
+        bracketOffset.x = aOffset;
+    }
+
+    SEG bracket( aSpan.A + bracketOffset, aSpan.B + bracketOffset );
+    return { bracket, SEG( bracket.A - tickOffset, bracket.A + tickOffset ),
+             SEG( bracket.B - tickOffset, bracket.B + tickOffset ) };
+}
+
+
 void CONSTRUCTION_GEOM::AddDrawable( const DRAWABLE& aItem, bool aPersistent, int aLineWidth )
 {
     m_drawables.push_back( { aItem, aPersistent, aLineWidth } );
@@ -50,6 +69,12 @@ void CONSTRUCTION_GEOM::AddDrawable( const DRAWABLE& aItem, bool aPersistent, in
 void CONSTRUCTION_GEOM::SetSnapGuides( std::vector<SNAP_GUIDE> aGuides )
 {
     m_snapGuides = std::move( aGuides );
+}
+
+
+void CONSTRUCTION_GEOM::SetDimensionBrackets( std::vector<SEG> aBrackets )
+{
+    m_dimensionBrackets = std::move( aBrackets );
 }
 
 
@@ -165,6 +190,21 @@ void CONSTRUCTION_GEOM::ViewDraw( int aLayer, VIEW* aView ) const
         gal.SetStrokeColor( guide.Color );
         gal.SetLineWidth( guide.LineWidth );
         KIGFX::DrawDashedLine( gal, *clipped, dashSize );
+    }
+
+    gal.SetStrokeColor( m_persistentColor );
+    gal.SetLineWidth( 2.0 / gal.GetWorldScale() );
+
+    const int tickLength = aView->ToWorld( 10 );
+    const int edgeOffset = aView->ToWorld( 8 );
+
+    for( const SEG& bracket : m_dimensionBrackets )
+    {
+        if( bracket.A == bracket.B )
+            continue;
+
+        for( const SEG& segment : DimensionBracketSegments( bracket, tickLength, edgeOffset ) )
+            gal.DrawLine( segment.A, segment.B );
     }
 
     if( haveSnapLine )

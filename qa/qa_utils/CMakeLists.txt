@@ -13,11 +13,7 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, you may find one here:
-# http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-# or you may search the http://www.gnu.org website for the version 2 license,
-# or you may write to the Free Software Foundation, Inc.,
-# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 set( QA_UTIL_COMMON_SRC
     stdstream_line_reader.cpp
@@ -26,6 +22,7 @@ set( QA_UTIL_COMMON_SRC
 
     env_var_utils.cpp
     file_utils.cpp
+    mock_utils.cpp
     uuid_test_utils.cpp
 
     geometry/geometry.cpp
@@ -35,6 +32,17 @@ set( QA_UTIL_COMMON_SRC
 
     wx_utils/unit_test_utils.cpp
     wx_utils/wx_assert.cpp
+<<<<<<< b2e17e0a
+||||||| 1304b76aad
+
+    # PDF testing helpers
+    pdf_test_utils.cpp
+=======
+
+    # Format testing helpers
+    pdf_test_utils.cpp
+    svg_test_utils.cpp
+>>>>>>> ed8c16703e
 )
 
 # PDF testing helpers (they decode images with wxImage, so not without wxWidgets)
@@ -62,7 +70,6 @@ target_link_libraries( qa_utils
     Boost::unit_test_framework
     ${wxWidgets_LIBRARIES}
     ${LIBBOOST_UNIT_TEST_LIB}
-    ZLIB::ZLIB
 )
 
 # Pass in the default data location
@@ -77,3 +84,15 @@ target_include_directories( qa_utils PUBLIC
 target_compile_definitions( qa_utils PUBLIC
     BOOST_TEST_DYN_LINK
 )
+
+# Some tests need to reach into the native Gtk/Gdk headers on GTK builds.
+# Examples:
+#  - test_print_to_file.cpp reaches into GtkPrintSettings to reset the print-to-file setting
+#  - CanDoDisplayTests needs GdkDisplay
+if( KICAD_WX_PORT STREQUAL "gtk" )
+    find_package( PkgConfig REQUIRED )
+    pkg_check_modules( GTK3 REQUIRED gtk+-3.0 )
+    target_include_directories( qa_utils
+        SYSTEM PUBLIC ${GTK3_INCLUDE_DIRS}
+    )
+endif()

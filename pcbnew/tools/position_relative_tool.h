@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef __POSITION_RELATIVE_TOOL_H
@@ -27,6 +23,7 @@
 #include <math/vector2d.h>
 #include <tools/pcb_tool_base.h>
 #include <tools/pcb_selection_tool.h>
+#include <wx/weakref.h>
 
 class BOARD_COMMIT;
 class BOARD_ITEM;
@@ -77,7 +74,7 @@ public:
     void setTransitions() override;
 
 private:
-    DIALOG_POSITION_RELATIVE*     m_dialog;
+    wxWeakRef<DIALOG_POSITION_RELATIVE> m_dialog;
 
     PCB_SELECTION_TOOL*           m_selectionTool;
     PCB_SELECTION                 m_selection;

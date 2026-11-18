@@ -15,30 +15,28 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef KI_EXCEPTION_H_
 #define KI_EXCEPTION_H_
 
 #include <kicommon.h>
+
+#include <string>
+
 #include <wx/string.h>
 
 
 /**
- * @ingroup exception_types
+ * @defgroup exception_types Custom KiCad Exception Objects
  * @{
  */
 
-
 /// macro which captures the "call site" values of __FILE_, __FUNCTION__ & __LINE__
 #define THROW_IO_ERROR( msg )   throw IO_ERROR( msg, __FILE__, __FUNCTION__, __LINE__ )
-#define THROW_IO_ERRORF( msg, ... )                                                                                    \
-    throw IO_ERROR( wxString::Format( msg, __VA_ARGS__ ), __FILE__, __FUNCTION__, __LINE__ )
+#define THROW_IO_ERRORF( msg, ... )   throw IO_ERROR( wxString::Format( msg, __VA_ARGS__ ), \
+                                                      __FILE__, __FUNCTION__, __LINE__ )
 
 /**
  * Hold a translatable error message and may be used when throwing exceptions containing a
@@ -106,9 +104,35 @@ public:
     virtual const wxString What() const;            ///< A composite of Problem() and Where()
 
 protected:
+    void updateWhat();
+
     wxString    problem;
     wxString    where;
+    std::string whatMessage;
 };
+
+
+/**
+ * An exception saying that the user cancelled an interactive part of a load,
+ * import, or export, such as declining a query dialog or dismissing a progress
+ * dialog, rather than an error in the input.
+ */
+class KICOMMON_API IO_CANCELLED : public IO_ERROR
+{
+public:
+    /**
+     * Normally thrown via the macro #THROW_IO_CANCELLED(), which supplies the call-site
+     * file, function, and line.  An optional problem message can be given as the last
+     * argument. When omitted or empty, a default is used.
+     */
+    IO_CANCELLED( const char* aThrowersFile, const char* aThrowersFunction, int aThrowersLineNumber,
+                  const wxString& aProblem = wxEmptyString );
+};
+
+
+#define THROW_IO_CANCELLED() throw IO_CANCELLED( __FILE__, __FUNCTION__, __LINE__ )
+
+#define THROW_IO_CANCELLED_MSG( msg ) throw IO_CANCELLED( __FILE__, __FUNCTION__, __LINE__, msg )
 
 
 /**
@@ -189,6 +213,6 @@ struct KICOMMON_API FUTURE_FORMAT_ERROR : public PARSE_ERROR
                const wxString& aRequiredGenerator = wxEmptyString );
 };
 
-/** @} exception_types */
+/** @} */
 
 #endif // KI_EXCEPTION_H_

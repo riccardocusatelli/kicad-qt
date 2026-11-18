@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "ki_exception.h"
@@ -57,9 +53,17 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111 USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+static bool startsWithCoordinate( const char* aText )
+{
+    if( *aText == '+' || *aText == '-' )
+        ++aText;
+
+    return isdigit( *aText ) || ( *aText == '.' && isdigit( aText[1] ) );
+}
+
+
 bool GERBER_FILE_IMAGE::TestFileIsRS274( const wxString& aFullFileName )
 {
     char* letter    = nullptr;
@@ -115,13 +119,13 @@ bool GERBER_FILE_IMAGE::TestFileIsRS274( const wxString& aFullFileName )
             /* look for X<number> or Y<number> */
             if( ( letter = strstr( line, "X" ) ) != nullptr )
             {
-                if( isdigit( letter[1] ) )
+                if( startsWithCoordinate( letter + 1 ) )
                     foundX = true;
             }
 
             if( ( letter = strstr( line, "Y" ) ) != nullptr )
             {
-                if( isdigit( letter[1] ) )
+                if( startsWithCoordinate( letter + 1 ) )
                     foundY = true;
             }
         }

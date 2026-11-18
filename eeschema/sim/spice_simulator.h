@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef SPICE_SIMULATOR_H
@@ -31,6 +27,7 @@
 #include "spice_settings.h"
 #include "simulator.h"
 
+#include <atomic>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -94,18 +91,28 @@ public:
      */
     virtual bool Command( const std::string& aCmd ) = 0;
 
-    ///< Return X axis name for a given simulation type
+    /// Return X axis name for a given simulation type
     virtual wxString GetXAxis( SIM_TYPE aType ) const = 0;
 
-    ///< Set a #REPORTER object to receive the simulation log.
+    /**
+     * Set a #REPORTER object to receive the simulation log.
+     *
+     * The reporter is accessed from ngspice background threads via atomic snapshot.
+     * Callers must ensure the reporter outlives any running simulation, or call
+     * SetReporter(nullptr) and stop the simulation before destroying the reporter.
+     * SetReporter blocks until any in-flight reporter callback has returned, so the
+     * caller can safely destroy the reporter once SetReporter(nullptr) has returned.
+     */
     virtual void SetReporter( REPORTER* aReporter )
     {
-        m_reporter = aReporter;
+        std::lock_guard<std::mutex> lock( m_reporterMutex );
+        m_reporter.store( aReporter, std::memory_order_release );
     }
 
-    ///< Set a #SIM_STATE_LISTENER object to receive simulation state transitions.
+    /// Set a #SIM_STATE_LISTENER object to receive simulation state transitions.
     virtual void SetSimStateListener( SIM_STATE_LISTENER* aListener )
     {
+        std::lock_guard<std::mutex> lock( m_reporterMutex );
         m_stateListener = aListener;
     }
 
@@ -204,11 +211,16 @@ public:
     static wxString TypeToName( SIM_TYPE aType, bool aShortName );
 
 protected:
-    ///< Reporter object to receive simulation log.
-    REPORTER* m_reporter;
-    SIM_STATE_LISTENER* m_stateListener;
+    /// Reporter object to receive simulation log (not owned, accessed from BG threads).
+    std::atomic<REPORTER*>           m_reporter;
+    std::atomic<SIM_STATE_LISTENER*> m_stateListener;
 
-    ///< We don't own this.  We are just borrowing it from the #SCHEMATIC_SETTINGS.
+    /// Held by BG threads while invoking the reporter and by SetReporter while
+    /// swapping the pointer, so SetReporter(nullptr) can serve as a barrier
+    /// before the caller destroys the reporter.
+    std::mutex m_reporterMutex;
+
+    /// We don't own this.  We are just borrowing it from the #SCHEMATIC_SETTINGS.
     std::shared_ptr<SPICE_SETTINGS> m_settings;
 };
 

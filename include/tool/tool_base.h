@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef TOOL_BASE_H
@@ -164,9 +160,9 @@ protected:
     void attachManager( TOOL_MANAGER* aManager );
 
     /**
-     * Returns the instance of #VIEW object used in the application. It allows tools to draw.
+     * Return the instance of #KIGFX::VIEW object used in the application. It allows tools to draw.
      *
-     * @return The instance of VIEW.
+     * @return The instance of #KIGFX::VIEW.
      */
     KIGFX::VIEW* getView() const;
 
@@ -189,6 +185,7 @@ protected:
 #if !defined( QA_TEST )   // Dynamic casts give the linker a seizure in the test framework
         KI_ASSERT( dynamic_cast<T*>( getToolHolderInternal() ) );
 #endif
+
         return static_cast<T*>( getToolHolderInternal() );
     }
 
@@ -199,9 +196,12 @@ protected:
     T* getModel() const
     {
         EDA_ITEM* m = getModelInternal();
+
 #if !defined( QA_TEST )   // Dynamic casts give the linker a seizure in the test framework
-        KI_ASSERT( dynamic_cast<T*>( m ) );
+        if( m )
+            KI_ASSERT( dynamic_cast<T*>( m ) );
 #endif
+
         return static_cast<T*>( m );
     }
 

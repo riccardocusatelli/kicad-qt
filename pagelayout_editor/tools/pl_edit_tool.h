@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PL_EDIT_TOOL_H
@@ -62,31 +58,31 @@ public:
      */
     int DoDelete( const TOOL_EVENT& aEvent );
 
-    ///< Run the deletion tool.
+    /// Run the deletion tool.
     int InteractiveDelete( const TOOL_EVENT& aEvent );
 
 private:
     void moveItem( DS_DATA_ITEM* aItem, const VECTOR2I& aDelta );
 
-    ///< Return the right modification point (e.g. for rotation), depending on the number of
-    ///< selected items.
+    /// Return the right modification point (e.g. for rotation), depending on the number of
+    /// selected items.
     bool updateModificationPoint( PL_SELECTION& aSelection );
 
-    ///< Set up handlers for various events.
+    /// Set up handlers for various events.
     void setTransitions() override;
 
 private:
     PL_EDITOR_FRAME*   m_frame;
     PL_SELECTION_TOOL* m_selectionTool;
 
-    ///< Flag determining if anything is being dragged right now.
+    /// Flag determining if anything is being dragged right now.
     bool               m_moveInProgress;
 
-    ///< Used for chaining commands.
+    /// Used for chaining commands.
     VECTOR2I           m_moveOffset;
 
-    ///< Last cursor position (needed for getModificationPoint() to avoid changes
-    ///< of edit reference point).
+    /// Last cursor position (needed for getModificationPoint() to avoid changes
+    /// of edit reference point).
     VECTOR2I           m_cursor;
 
     EDA_ITEM*          m_pickerItem;

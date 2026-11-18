@@ -14,19 +14,13 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <dialogs/panel_gal_options.h>
 #include <settings/app_settings.h>
 #include <gal/gal_display_options.h>
 #include <eda_draw_frame.h>
-
-#include <config_map.h>
 
 /*
  * Spin control parameters
@@ -38,23 +32,6 @@ static const double gridThicknessStep = 0.5;
 static const int gridMinSpacingMin = 5;
 static const int gridMinSpacingMax = 200;
 static const int gridMinSpacingStep = 5;
-
-
-///TODO: These are duplicated in gal_display_options - Unify!
-static const UTIL::CFG_MAP<KIGFX::GRID_STYLE> gridStyleSelectMap =
-{
-    { KIGFX::GRID_STYLE::DOTS,        0 },  // Default
-    { KIGFX::GRID_STYLE::LINES,       1 },
-    { KIGFX::GRID_STYLE::SMALL_CROSS, 2 },
-};
-
-
-static const UTIL::CFG_MAP<KIGFX::GRID_SNAPPING> gridSnapConfigVals =
-{
-    { KIGFX::GRID_SNAPPING::ALWAYS,     0 },
-    { KIGFX::GRID_SNAPPING::WITH_GRID,  1 },
-    { KIGFX::GRID_SNAPPING::NEVER,      2 }
-};
 
 
 PANEL_GAL_OPTIONS::PANEL_GAL_OPTIONS( wxWindow* aParent, APP_SETTINGS_BASE* aAppSettings ) :
@@ -82,16 +59,16 @@ PANEL_GAL_OPTIONS::PANEL_GAL_OPTIONS( wxWindow* aParent, APP_SETTINGS_BASE* aApp
 
 bool PANEL_GAL_OPTIONS::TransferDataToWindow()
 {
-    m_gridSnapOptions->SetSelection( m_cfg->m_Window.grid.snap );
-
-    if( m_cfg->m_Window.grid.style == 0 )
+    if( m_cfg->m_Window.grid.style == KIGFX::GRID_STYLE::DOTS )
         m_rbDots->SetValue( true );
-    else if( m_cfg->m_Window.grid.style == 1 )
+    else if( m_cfg->m_Window.grid.style == KIGFX::GRID_STYLE::LINES )
         m_rbLines->SetValue( true );
     else
         m_rbCrosses->SetValue( true );
 
     m_gridMinSpacing->SetValue( m_cfg->m_Window.grid.min_spacing );
+
+    m_cbShowMajor->SetValue( m_cfg->m_Window.grid.show_major );
 
     if( m_cfg->m_Window.cursor.cross_hair_mode == KIGFX::CROSS_HAIR_MODE::SMALL_CROSS )
         m_rbSmallCrosshairs->SetValue( true );
@@ -108,19 +85,19 @@ bool PANEL_GAL_OPTIONS::TransferDataToWindow()
 
 bool PANEL_GAL_OPTIONS::TransferDataFromWindow()
 {
-    m_cfg->m_Window.grid.snap = m_gridSnapOptions->GetSelection();
-
     if( m_rbDots->GetValue() )
-        m_cfg->m_Window.grid.style = 0;
+        m_cfg->m_Window.grid.style = KIGFX::GRID_STYLE::DOTS;
     else if( m_rbLines->GetValue() )
-        m_cfg->m_Window.grid.style = 1;
+        m_cfg->m_Window.grid.style = KIGFX::GRID_STYLE::LINES;
     else
-        m_cfg->m_Window.grid.style = 2;
+        m_cfg->m_Window.grid.style = KIGFX::GRID_STYLE::SMALL_CROSS;
 
     if( m_gridLineWidth->GetSelection() >= 0 )
         m_cfg->m_Window.grid.line_width = m_gridThicknessList[ m_gridLineWidth->GetSelection() ];
 
     m_cfg->m_Window.grid.min_spacing = m_gridMinSpacing->GetValue();
+
+    m_cfg->m_Window.grid.show_major = m_cbShowMajor->GetValue();
 
     if( m_rbFullWindowCrosshairs->GetValue() )
         m_cfg->m_Window.cursor.cross_hair_mode = KIGFX::CROSS_HAIR_MODE::FULLSCREEN_CROSS;
@@ -144,5 +121,3 @@ bool PANEL_GAL_OPTIONS::ResetPanel( APP_SETTINGS_BASE* aAppSettings )
 
     return true;
 }
-
-

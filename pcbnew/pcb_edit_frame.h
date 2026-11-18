@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef  __PCB_EDIT_FRAME_H__
@@ -23,13 +23,13 @@
 
 #include "pcb_base_edit_frame.h"
 #include "zones.h"
+#include <board.h>
 #include <mail_type.h>
 #include <settings/app_settings.h>
 #include <toolkit/gui_timer.h>
 #include <toolkit/toolkit_types.h>
 #include <variant>
 
-class ACTION_PLUGIN;
 class PCB_SCREEN;
 class BOARD;
 class BOARD_COMMIT;
@@ -46,6 +46,7 @@ class PCB_GROUP;
 class PCB_DIMENSION_BASE;
 class DRC;
 class DIALOG_FIND;
+class DIALOG_FIND_BY_PROPERTIES;
 class DIALOG_PLOT;
 class ZONE;
 class GENERAL_COLLECTOR;
@@ -62,30 +63,34 @@ class BOARD_NETLIST_UPDATER;
 class ACTION_MENU;
 class TOOL_ACTION;
 class DIALOG_BOARD_SETUP;
+class DIALOG_FOOTPRINT_FIELDS_TABLE;
 class PCB_DESIGN_BLOCK_PANE;
+class PANEL_CONSTRAINTS;
 class WX_INFOBAR;
 struct PLUGIN_ACTION;
 
-#ifdef KICAD_IPC_API
 class KICAD_API_SERVER;
 class API_HANDLER_PCB;
 class API_HANDLER_COMMON;
-#endif
+class API_HANDLER_LIBRARIES;
 
 enum LAST_PATH_TYPE : unsigned int;
 
 namespace PCB { struct IFACE; }     // KIFACE is in pcbnew.cpp
+
+wxDECLARE_EVENT( EDA_EVT_PCB_LAST_SCH_SHEET_CHANGED, wxCommandEvent );
 
 /**
  * The main frame for Pcbnew.
  *
  * See also class PCB_BASE_FRAME(): Basic class for Pcbnew and GerbView.
  */
-class PCB_EDIT_FRAME : public PCB_BASE_EDIT_FRAME
+class PCB_EDIT_FRAME : public PCB_BASE_EDIT_FRAME, public BOARD_LISTENER
 {
 public:
     virtual ~PCB_EDIT_FRAME();
 
+<<<<<<< b2e17e0a
     /**
      * Load the footprints for each #SCH_COMPONENT in \a aNetlist from the list of libraries.
      *
@@ -98,6 +103,21 @@ public:
 
     /// Close the frame (@a aCommandId wxID_CLOSE) or quit KiCad (wxID_EXIT).
     void OnQuit( int aCommandId );
+||||||| 1304b76aad
+    /**
+     * Load the footprints for each #SCH_COMPONENT in \a aNetlist from the list of libraries.
+     *
+     * @param aNetlist is the netlist of components to load the footprints into.
+     * @param aReporter is the #REPORTER object to report to.
+     * @throw IO_ERROR if an I/O error occurs or a #PARSE_ERROR if a file parsing error
+     *           occurs while reading footprint library files.
+     */
+    void LoadFootprints( NETLIST& aNetlist, REPORTER& aReporter );
+
+    void OnQuit( wxCommandEvent& event );
+=======
+    void OnQuit( wxCommandEvent& event );
+>>>>>>> ed8c16703e
 
     /**
      * Get if the current board has been modified but not saved.
@@ -107,27 +127,12 @@ public:
     bool IsContentModified() const override;
 
     /**
-     * Synchronize the environment variables from KiCad's environment into the Python interpreter.
-     */
-    void PythonSyncEnvironmentVariables();
-
-    /**
-     * Synchronize the project name from KiCad's environment into the Python interpreter.
-     */
-    void PythonSyncProjectName();
-
-    /**
      * Update the layer manager and other widgets from the board setup
      * (layer and items visibility, colors ...)
      */
     void UpdateUserInterface();
 
     void HardRedraw() override;
-
-    /**
-     * Rebuilds board connectivity, refreshes canvas.
-     */
-    void RebuildAndRefresh();
 
     /**
      * Execute a remote command send by Eeschema via a socket, port KICAD_PCB_PORT_SERVICE_NUMBER
@@ -139,22 +144,39 @@ public:
      */
     void ExecuteRemoteCommand( const char* cmdline ) override;
 
+    void HandleRemoteNetHighlight( const std::vector<wxString>& aNetNames );
+
     void KiwayMailIn( KIWAY_MAIL_EVENT& aEvent ) override;
 
-    /**
-     * Used to find items by selection synchronization spec string.
-     */
-    std::vector<BOARD_ITEM*> FindItemsFromSyncSelection( std::string syncStr );
+    void      SetLastSchematicSheetPath( const KIID_PATH& aPath );
+    KIID_PATH GetLastSchematicSheetPath() const { return m_lastSchematicSheetPath; }
 
     /**
      * @return the name of the wxAuiPaneInfo managing the Search panel
      */
     static const wxString SearchPaneName() { return wxT( "Search" ); }
+    static const wxString ConstraintsPaneName() { return wxT( "Constraints" ); }
+
+    /// Show/hide the dockable geometric-constraint list pane, refreshing it when shown (#2329).
+    void ToggleConstraintsPanel();
+
+    /// The dockable geometric-constraint list pane (#2329), or nullptr.
+    PANEL_CONSTRAINTS* GetConstraintsPanel() const { return m_constraintsPanel; }
 
     /**
      * Show the Find dialog.
      */
     void ShowFindDialog();
+
+    /**
+     * Show the Find by Properties dialog.
+     */
+    void ShowFindByPropertiesDialog();
+
+    /**
+     * Notify the Find by Properties dialog that the selection has changed.
+     */
+    void NotifyFindByPropertiesDialog();
 
     /**
      * Find the next item using our existing search parameters.
@@ -173,6 +195,11 @@ public:
                                     bool aShowEdit );
     void UpdateViaSizeSelectBox( TOOLKIT_CHOICE* aViaSizeSelectBox, bool aShowNetclass,
                                  bool aShowEdit );
+
+    /**
+     * Fill the via stack preset selector with the board's defined presets plus an edit entry.
+     */
+    void UpdateViaStackSelectBox( wxChoice* aViaStackSelectBox );
 
     /**
      * Update the variant selection dropdown with the current board's variant names.
@@ -212,13 +239,13 @@ public:
      * Return true if button visibility action plugin setting was set to true
      * or it is unset and plugin defaults to true.
      */
-    static bool GetActionPluginButtonVisible( const wxString& aPluginPath, bool aPluginDefault );
+    static bool GetPluginActionButtonVisible( const wxString& aPluginPath, bool aPluginDefault );
 
     /**
      * Return ordered list of plugins in sequence in which they should appear on toolbar or
-     * in settings.  Handles both legacy (SWIG) and API plugins, so returns a heterogenous list.
+     * in settings.
      */
-    static std::vector<std::variant<ACTION_PLUGIN*, const PLUGIN_ACTION*>> GetOrderedActionPlugins();
+    static std::vector<const PLUGIN_ACTION*> GetOrderedPluginActions();
 
     void SaveProjectLocalSettings() override;
 
@@ -229,6 +256,20 @@ public:
      * @return always returns true.
      */
     bool LoadProjectSettings();
+
+    /// Apply what the project file sets and this frame caches, leaving the local settings alone.
+    void ApplyProjectFileSettings();
+
+    /**
+     * Bring the frame in line with a project file that was reread from disk.
+     *
+     * Every value this frame copies out of the project file and writes back on save or close must be
+     * refreshed here; a copy left stale silently undoes the new file on the next save.
+     */
+    void ReloadProjectFileSettings();
+
+    /// Update what depends on the board's project settings after they changed in memory.
+    void RefreshProjectSettings();
 
     void LoadSettings( APP_SETTINGS_BASE* aCfg ) override;
 
@@ -255,7 +296,8 @@ public:
      *       the project file.  The advantage of relative paths is that is more likely to
      *       work when opening the same project from both Windows and Linux.
      *
-     * @param aLastPath - The last file with full path successfully read.
+     * @param aType
+     * @param aLastPath is the last file with full path successfully read.
      */
     void SetLastPath( LAST_PATH_TYPE aType, const wxString& aLastPath );
 
@@ -271,6 +313,10 @@ public:
     /// box of the toolbar).
     void Tracks_and_Vias_Size_Event( int aCommandId );
 
+    /**
+     * Handle the via stack preset selector on the auxiliary toolbar.
+     */
+    void SelectViaStack_Event( wxCommandEvent& event );
 
 
     /**
@@ -291,6 +337,11 @@ public:
      * to update auxiliary information.
      */
     void OnModify() override;
+
+    /**
+     * Keep the selection and view in step with generated tables rebuilt outside a commit.
+     */
+    void OnBoardItemsChanged( BOARD& aBoard, std::vector<BOARD_ITEM*>& aItems ) override;
 
     /**
      * Change the currently active layer to \a aLayer and also update the #APPEARANCE_CONTROLS.
@@ -327,8 +378,16 @@ public:
      */
     void SetElementVisibility( GAL_LAYER_ID aElement, bool aNewState );
 
-    ///< @copydoc EDA_DRAW_FRAME::UseGalCanvas()
+    /// @copydoc EDA_DRAW_FRAME::ActivateGalCanvas()
     void ActivateGalCanvas() override;
+
+    /**
+     * Tell every hole to redraw its drill symbol.
+     *
+     * A cached GAL group replays until its own item is updated, so changing a map or a
+     * symbol assignment is invisible until the holes themselves are refreshed.
+     */
+    void RefreshDrillSymbols( int aUpdateFlags ) override;
 
     void ShowBoardSetupDialog( const wxString& aInitialPage = wxEmptyString, wxWindow* aParent = nullptr );
 
@@ -389,6 +448,14 @@ public:
     bool OpenProjectFiles( const std::vector<wxString>& aFileSet, int aCtl = 0 ) override;
 
     /**
+     * Reload the board from disk.
+     * The caller handles confirmation before unsaved edits are discarded.
+     *
+     * @return false when there is no filename or the reload fails.
+     */
+    bool ReloadFromDisk();
+
+    /**
      * Write the board data structures to \a a aFileName.
      *
      * Create a backup when requested and update flags (modified and saved flags).
@@ -426,7 +493,7 @@ public:
      */
     bool Clear_Pcb( bool doAskAboutUnsavedChanges, bool aFinal = false );
 
-    ///< @copydoc PCB_BASE_FRAME::SetBoard()
+    /// @copydoc PCB_BASE_FRAME::SetBoard()
     void SetBoard( BOARD* aBoard, PROGRESS_REPORTER* aReporter = nullptr ) override
     {
         SetBoard( aBoard, true, aReporter );
@@ -434,12 +501,12 @@ public:
 
     void SetBoard( BOARD* aBoard, bool aBuildConnectivity, PROGRESS_REPORTER* aReporter = nullptr );
 
-    ///< @copydoc PCB_BASE_FRAME::GetModel()
+    /// @copydoc PCB_BASE_FRAME::GetModel()
     BOARD_ITEM_CONTAINER* GetModel() const override;
 
     std::unique_ptr<GRID_HELPER> MakeGridHelper() override;
 
-    ///< @copydoc PCB_BASE_FRAME::SetPageSettings()
+    /// @copydoc PCB_BASE_FRAME::SetPageSettings()
     void SetPageSettings( const PAGE_INFO& aPageSettings ) override;
 
     bool SaveBoardAsDesignBlock( const wxString& aLibraryName );
@@ -459,12 +526,11 @@ public:
      *                       will be kept or updated.  This library should be in fp lib table,
      *                       and is type is .pretty. False to save footprints in a new library.
      *                       If it is an existing lib, previous footprints will be removed.
-     *
      * @param aLibName optional library name to create, stops dialog call. Must be called with
      *                 \a aStoreInNewLib as true.
+     * @param aLibPath is the path to export the library to.
      */
-    void ExportFootprintsToLibrary( bool aStoreInNewLib, const wxString& aLibName = wxEmptyString,
-                                    wxString* aLibPath = nullptr );
+    void ExportFootprintsToLibrary( bool aStoreInNewLib );
 
     /**
      * Create the file(s) exporting current BOARD to a VRML file.
@@ -481,6 +547,8 @@ public:
      *
      * @param aFullFileName the full filename of the file to create
      * @param aMMtoWRMLunit the VRML scaling factor: 1.0 to export in mm. 0.001 for meters
+     * @param aIncludeUnspecified
+     * @param aIncludeDNP include DNP footprint models on export.
      * @param aExport3DFiles true to copy 3D shapes in the subir a3D_Subdir
      * @param aUseRelativePaths set to true to use relative paths instead of absolute paths
      *                          in the board VRML file URLs.
@@ -496,32 +564,6 @@ public:
                           const wxString& a3D_Subdir, double aXRef, double aYRef );
 
     /**
-     * Export the current BOARD to a Hyperlynx HYP file.
-     */
-    void OnExportHyperlynx();
-
-    /**
-     * Create an IDF3 compliant BOARD (*.emn) and LIBRARY (*.emp) file.
-     *
-     * @param aPcb a pointer to the board to be exported to IDF.
-     * @param aFullFileName the full filename of the export file.
-     * @param aUseThou set to true if the desired IDF unit is thou (mil).
-     * @param aXRef the board Reference Point in mm, X value.
-     * @param aYRef the board Reference Point in mm, Y value.
-     * @param aIncludeUnspecified true to include unspecified-type footprint models
-     * @param aIncludeDNP true to include DNP footprint models
-     * @return true if OK.
-     */
-    bool Export_IDF3( BOARD* aPcb, const wxString& aFullFileName,
-                      bool aUseThou, double aXRef, double aYRef,
-                      bool aIncludeUnspecified, bool aIncludeDNP );
-
-    /**
-     * Export the current BOARD to a STEP assembly.
-     */
-    void OnExportSTEP();
-
-    /**
      * Export the current BOARD to a specctra dsn file.
      *
      * See http://www.autotraxeda.com/docs/SPECCTRA/SPECCTRA.pdf for the specification.
@@ -531,8 +573,11 @@ public:
     bool ExportSpecctraFile( const wxString& aFullFilename );
 
     /**
-     * Import a specctra *.ses file and use it to relocate MODULEs and to replace all vias and
+     * Import a specctra *.ses file and use it to relocate footprints and to replace all vias and
      * tracks in an existing and loaded #BOARD.
+     *
+     * Changes are committed through #BOARD_COMMIT so they participate in undo/redo and refresh
+     * the canvas view (including moved footprints).
      *
      * See http://www.autotraxeda.com/docs/SPECCTRA/SPECCTRA.pdf for the specification.
      */
@@ -544,30 +589,8 @@ public:
     int ShowExchangeFootprintsDialog( FOOTPRINT* aFootprint, bool aUpdateMode, bool aSelectedMode );
 
     /**
-     * Replace \a aExisting footprint by \a aNew footprint using the \a Existing footprint
-     * settings (position, orientation, pad netnames ...).
-     *
-     * The \a aExisting footprint is deleted or put in undo list.
-     *
-     * @param aExisting footprint to replace.
-     * @param aNew footprint to put.
-     * @param aCommit commit that should store the changes.
-     */
-    void ExchangeFootprint( FOOTPRINT* aExisting, FOOTPRINT* aNew, BOARD_COMMIT& aCommit,
-                            bool deleteExtraTexts = true,
-                            bool resetTextLayers = true,
-                            bool resetTextEffects = true,
-                            bool resetTextPositions = true,
-                            bool resetTextContent = true,
-                            bool resetFabricationAttrs = true,
-                            bool resetClearanceOverrides = true,
-                            bool reset3DModels = true,
-                            bool* aUpdated = nullptr );
-
-    /**
      * Install the corresponding dialog editor for the given item.
      *
-     * @param aDC the current device context.
      * @param aItem a pointer to the BOARD_ITEM to edit.
      */
     void OnEditItemRequest( BOARD_ITEM* aItem ) override;
@@ -635,7 +658,7 @@ public:
      * Called after netlist is updated.
      *
      * @param aUpdater is the updater object that was run.
-     * @param aRunDragCommand is set to true if the drag command was invoked by this call.
+     * @param aRunDragCommand [out] is set to true if a drag command should be run following this call.
      */
     void OnNetlistChanged( BOARD_NETLIST_UPDATER& aUpdater, bool* aRunDragCommand );
 
@@ -712,6 +735,9 @@ public:
 
     DIALOG_BOOK_REPORTER* GetFootprintDiffDialog();
 
+    DIALOG_FOOTPRINT_FIELDS_TABLE* GetFootprintFieldsTableDialog();
+    bool                           CloseFootprintFieldsTableDialog();
+
     /**
      * Perform auto save when the board has been modified and not saved within the
      * auto save interval.
@@ -761,6 +787,7 @@ protected:
      */
     void SwitchCanvas( EDA_DRAW_PANEL_GAL::GAL_TYPE aCanvasType ) override;
 
+<<<<<<< b2e17e0a
     /**
      * Fill action menu with all registered action plugins
      */
@@ -792,6 +819,40 @@ protected:
      */
     void OnActionPluginButton( int aId );
 
+||||||| 1304b76aad
+    /**
+     * Fill action menu with all registered action plugins
+     */
+    void buildActionPluginMenus( ACTION_MENU* aActionMenu );
+
+    /**
+     * Append action plugin buttons to given toolbar
+     */
+    void addActionPluginTools( ACTION_TOOLBAR* aToolbar );
+
+    /**
+     * Execute action plugin's Run() method and updates undo buffer.
+     *
+     * @param aActionPlugin action plugin
+     */
+    void RunActionPlugin( ACTION_PLUGIN* aActionPlugin );
+
+    /**
+     * Launched by the menu when an action is called.
+     *
+     * @param aEvent sent by wx
+     */
+    void OnActionPluginMenu( wxCommandEvent& aEvent);
+
+    /**
+     * Launched by the button when an action is called.
+     *
+     * @param aEvent sent by wx
+     */
+    void OnActionPluginButton( wxCommandEvent& aEvent );
+
+=======
+>>>>>>> ed8c16703e
     PLUGIN_ACTION_SCOPE PluginActionScope() const override { return PLUGIN_ACTION_SCOPE::PCB; }
 
     /**
@@ -814,8 +875,9 @@ protected:
     /**
      * Load the given filename but sets the path to the current project path.
      *
-     * @param full file path of file to be imported.
-     * @param aFileType PCB_FILE_T value for file type
+     * @param aFileName full file path of file to be imported.
+     * @param aFileType PCB_FILE_T value for file type.
+     * @param aProperties is a list of import properties.
      */
     bool importFile( const wxString& aFileName, int aFileType,
                      const std::map<std::string, UTF8>* aProperties = nullptr );
@@ -828,6 +890,7 @@ protected:
      *
      * @param aDefinitions are the importer's caller-owned cached library footprints, captured
      *                     during load before the plugin was destroyed.
+     * @param aBoardPath
      */
     void reconcileImportedFootprintLibraries(
             std::vector<std::unique_ptr<FOOTPRINT>> aDefinitions, const wxString& aBoardPath );
@@ -841,7 +904,7 @@ protected:
      *
      * @return
      */
-    bool saveBoardAsFile( BOARD* aBoard, const wxString& aFileName, bool aHeadless = false );
+    bool saveBoardAsFile( BOARD& aBoard, const wxString& aFileName, bool aHeadless = false );
 
     bool saveSelectionToDesignBlock( const wxString& aNickname, PCB_SELECTION& aSelection, DESIGN_BLOCK& aBlock );
 
@@ -852,9 +915,15 @@ protected:
     // protected so that PCB::IFACE::CreateWindow() is the only factory.
     PCB_EDIT_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent );
 
+<<<<<<< b2e17e0a
     /// Zoom to fit the board once the frame has its final size (shown on screen).
     void onSize();
 
+||||||| 1304b76aad
+    void onSize( wxSizeEvent& aEvent );
+
+=======
+>>>>>>> ed8c16703e
     int inferLegacyEdgeClearance( BOARD* aBoard, bool aShowUserMsg = true );
 
     void redrawNetnames();
@@ -868,16 +937,31 @@ protected:
 
     void saveProjectSettings() override;
 
+<<<<<<< b2e17e0a
     /**
      * A modeless report dialog was closed (with the button @a aId).
      *
      * @param aDialogName is the name of the dialog.
      */
     void onCloseModelessBookReporterDialogs( const wxString& aDialogName, int aId );
+||||||| 1304b76aad
+    void onCloseModelessBookReporterDialogs( wxCommandEvent& aEvent );
+=======
+    void onCloseModelessBookReporterDialogs( wxCommandEvent& aEvent );
+    void onCloseFootprintFieldsTableDialog( wxCommandEvent& aEvent );
+>>>>>>> ed8c16703e
 
+<<<<<<< b2e17e0a
 #ifdef KICAD_IPC_API
     void onPluginAvailabilityChanged();
 #endif
+||||||| 1304b76aad
+#ifdef KICAD_IPC_API
+    void onPluginAvailabilityChanged( wxCommandEvent& aEvt );
+#endif
+=======
+    void onPluginAvailabilityChanged( wxCommandEvent& aEvt );
+>>>>>>> ed8c16703e
 
 private:
     /// Dock the panels of the frame around the canvas (shown as in the settings).
@@ -906,9 +990,20 @@ private:
     void onViaSizeChoice();
 
 public:
+<<<<<<< b2e17e0a
     TOOLKIT_CHOICE* m_SelTrackWidthBox;    // a choice box to display and select current track width
     TOOLKIT_CHOICE* m_SelViaSizeBox;       // a choice box to display and select current via diameter
     TOOLKIT_CHOICE* m_CurrentVariantCtrl;  // a choice box to display and select current variant
+||||||| 1304b76aad
+    wxChoice* m_SelTrackWidthBox;        // a choice box to display and select current track width
+    wxChoice* m_SelViaSizeBox;           // a choice box to display and select current via diameter
+    wxChoice* m_CurrentVariantCtrl;      // a choice box to display and select current variant
+=======
+    wxChoice* m_SelTrackWidthBox;        // a choice box to display and select current track width
+    wxChoice* m_SelViaSizeBox;           // a choice box to display and select current via diameter
+    wxChoice* m_SelViaStackBox;          // a choice box to display and select current via stack preset
+    wxChoice* m_CurrentVariantCtrl;      // a choice box to display and select current variant
+>>>>>>> ed8c16703e
 
     bool      m_ShowLayerManagerTools;
     bool      m_ShowSearch;
@@ -918,10 +1013,38 @@ public:
 
     bool      m_ProbingSchToPcb;         // Recursion guard when synchronizing selection from schematic
 
+    /// Reactive text-var invalidation listener state. The handle alone is
+    /// ambiguous across board/project swaps — the tracker it belongs to must
+    /// be remembered so the destructor (and tracker-change detection)
+    /// removes from the correct tracker, not whatever GetBoard() points at
+    /// post-swap. Handle == 0 means not installed.
+    std::size_t             m_textVarListenerHandle = 0;
+    class TEXT_VAR_TRACKER* m_textVarListenerTracker = nullptr;
+
+    /**
+     * Drop every cached reference into the current BOARD's text-var tracker.
+     * Must run before the BOARD is freed (SetBoard replacement or frame
+     * teardown).
+     */
+    void detachTextVarTracker();
+
     void StartCrossProbeFlash( const std::vector<BOARD_ITEM*>& aItems );
+<<<<<<< b2e17e0a
     void OnCrossProbeFlashTimer();
+||||||| 1304b76aad
+    void OnCrossProbeFlashTimer( wxTimerEvent& aEvent );
+=======
+    void OnCrossProbeFlashTimer( wxTimerEvent& aEvent );
+    void UpdateProperties() override;
+>>>>>>> ed8c16703e
 
 private:
+    /// Recompile the design rules, reporting a parse error in the infobar.
+    void recompileDesignRules();
+
+    /// Add the markers a resolve created for exclusions and redraw every excluded marker.
+    void addExclusionMarkers( const std::vector<PCB_MARKER*>& aMarkers );
+
     friend struct PCB::IFACE;
     friend class APPEARANCE_CONTROLS;
 
@@ -932,17 +1055,21 @@ private:
      * the list of assignable hot keys since it's only available as an advanced configuration
      * option.
      */
-    TOOL_ACTION*           m_exportNetlistAction;
+    TOOL_ACTION* m_exportNetlistAction;
 
-    DIALOG_FIND*           m_findDialog;
-    DIALOG_BOOK_REPORTER*  m_inspectDrcErrorDlg;
-    DIALOG_BOOK_REPORTER*  m_inspectClearanceDlg;
-    DIALOG_BOOK_REPORTER*  m_inspectConstraintsDlg;
-    DIALOG_BOOK_REPORTER*  m_footprintDiffDlg;
-    DIALOG_BOARD_SETUP*    m_boardSetupDlg;
+    DIALOG_FIND*               m_findDialog;
+    DIALOG_FIND_BY_PROPERTIES* m_findByPropertiesDialog;
+    DIALOG_BOOK_REPORTER*      m_inspectDrcErrorDlg;
+    DIALOG_BOOK_REPORTER*      m_inspectClearanceDlg;
+    DIALOG_BOOK_REPORTER*      m_inspectConstraintsDlg;
+    DIALOG_BOOK_REPORTER*      m_footprintDiffDlg;
+    DIALOG_BOARD_SETUP*        m_boardSetupDlg;
+    DIALOG_FOOTPRINT_FIELDS_TABLE* m_footprintFieldsTableDialog;
 
     std::vector<LIB_ID>    m_designBlockHistoryList;
     PCB_DESIGN_BLOCK_PANE* m_designBlocksPane;
+    // Tool Reset() reads this before the ctor creates the panel.
+    PANEL_CONSTRAINTS* m_constraintsPanel = nullptr; ///< Dockable geometric-constraint list (#2329).
 
     /// Secondary infobar that stacks above the main one; reserved for load-time
     /// notices (currently the WRL -> STEP migration prompt) that must not be
@@ -956,6 +1083,7 @@ private:
      * Keep track of viewport so that track net labels can be adjusted when it changes.
      */
     BOX2D             m_lastNetnamesViewport;
+    double            m_lastNetnamesScale = 0.0;
 
     std::unique_ptr<GUI_TIMER> m_eventCounterTimer;
 
@@ -965,13 +1093,22 @@ private:
     std::vector<KIID> m_crossProbeFlashItems;          ///< Items to flash (by UUID)
     bool              m_crossProbeFlashing = false;    ///< Currently flashing guard
 
-#ifdef KICAD_IPC_API
+    // Most recent schematic path (default to root), used in the footprint fields
+    // table to enable the same schematic scope limiting as the symbol fields table
+    KIID_PATH         m_lastSchematicSheetPath;
+
     std::unique_ptr<API_HANDLER_PCB>    m_apiHandler;
     std::unique_ptr<API_HANDLER_COMMON> m_apiHandlerCommon;
+<<<<<<< b2e17e0a
 
     /// The id of the listener of the plugin availability (-1 for none)
     int m_pluginAvailabilityListener = -1;
 #endif
+||||||| 1304b76aad
+#endif
+=======
+    std::unique_ptr<API_HANDLER_LIBRARIES> m_apiLibrariesHandler;
+>>>>>>> ed8c16703e
 };
 
 #endif  // __PCB_EDIT_FRAME_H__

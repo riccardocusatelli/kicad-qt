@@ -15,19 +15,26 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+<<<<<<< b2e17e0a
 #include <bitmaps/bitmaps_list.h>
 #include <i18n_utility.h>
 #include <eda_item.h>
 #include <pcb_generator.h>
 #include <pcb_track.h>
 #include <board.h>
+||||||| 1304b76aad
+#include <eda_item.h>
+=======
+#pragma once
+
+#include <bitmaps.h>
+#include <board.h>
+#include <pcb_generator.h>
+#include <pcb_track.h>
+>>>>>>> ed8c16703e
 #include <geometry/geometry_utils.h>
 #include <math/vector2d.h>
 #include <router/pns_meander.h>
@@ -70,8 +77,10 @@ public:
     void     SetPosition( const VECTOR2I& aPos ) override;
 
     void SetMinMax( const double aMin, const double aMax );
+    void SetChainMinMax( const double aMin, const double aMax );
 
     void ClearMinMax();
+    void ClearChainMinMax();
 
     void SetCurrent( const double aCurrent, const wxString& aLabel );
 
@@ -89,11 +98,27 @@ protected:
     double          m_min;
     double          m_max;
     double          m_current;
-    wxString        m_currentLabel;
-    wxString        m_currentText;
+    wxString        m_currentLabel;   // Header line label ("current length" etc.)
+    wxString        m_currentText;    // (unused now for dual-line layout but kept for compatibility)
     wxString        m_minText;
     wxString        m_maxText;
+    double          m_chainMin = 0.0;
+    double          m_chainMax = 0.0;
+    wxString        m_chainMinText;
+    wxString        m_chainMaxText;
     bool            m_isTimeDomain;
+    wxString        m_scopeLine;
+    wxString        m_netValue;
+    wxString        m_chainValue;
+    bool            m_hasSignalValue = false;
+public:
+    void SetScopeLine( const wxString& aLine ) { m_scopeLine = aLine; }
+    void SetNetAndSignalValues( const wxString& aNetVal, const wxString& aSignalVal, bool aHasSignal )
+    {
+        m_netValue = aNetVal;
+        m_chainValue = aSignalVal;
+        m_hasSignalValue = aHasSignal;
+    }
 };
 
 
@@ -106,7 +131,7 @@ public:
     PCB_TUNING_PATTERN( BOARD_ITEM* aParent = nullptr, PCB_LAYER_ID aLayer = F_Cu,
                         LENGTH_TUNING_MODE aMode = LENGTH_TUNING_MODE::SINGLE );
 
-    wxString GetGeneratorType() const override { return wxS( "tuning_pattern" ); }
+    wxString GetGeneratorType() const override { return GENERATOR_TYPE; }
 
     wxString GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool aFull ) const override
     {
@@ -201,11 +226,16 @@ public:
 
     void Mirror( const VECTOR2I& aCentre, FLIP_DIRECTION aFlipDirection ) override
     {
+        Mirror( MIRROR_AXIS( aCentre, aFlipDirection ) );
+    }
+
+    void Mirror( const SEG& aAxis ) override
+    {
         if( !this->HasFlag( IN_EDIT ) )
         {
-            PCB_GENERATOR::Mirror( aCentre, aFlipDirection );
+            PCB_GENERATOR::Mirror( aAxis );
 
-            baseMirror( aCentre, aFlipDirection );
+            baseMirror( aAxis );
         }
     }
 
@@ -333,6 +363,12 @@ public:
 
     void ViewDraw( int aLayer, KIGFX::VIEW* aView ) const override final;
 
+    /**
+     * Indicates that the tuning pattern can be selected as a connected entity:
+     * when the selection crosses one, it is included as part of the connected selection.
+     */
+    bool IsSelectableAsConnected() const override { return true; }
+
     const VECTOR2I& GetEnd() const { return m_end; }
     void            SetEnd( const VECTOR2I& aValue ) { m_end = aValue; }
 
@@ -345,8 +381,8 @@ public:
     int GetWidth() const
     {
         for( BOARD_ITEM* item : GetBoardItems() )
-            if( PCB_TRACK* track = dynamic_cast<PCB_TRACK*>( item ) )
-                return track->GetWidth();
+            if( item->IsType( { PCB_TRACE_T, PCB_ARC_T } ) )
+                return static_cast<PCB_TRACK*>( item )->GetWidth();
 
         return m_trackWidth;
     }
@@ -440,6 +476,34 @@ public:
     }
 
     PNS::MEANDER_SETTINGS& GetSettings() { return m_settings; }
+    const PNS::MEANDER_SETTINGS& GetSettings() const { return m_settings; }
+
+    const wxString& GetTuningInfo() const { return m_tuningInfo; }
+
+    /// True when CreateNew() took the targets from a DRC length, chain length or skew rule.
+    bool HasRuleTarget() const { return m_hasRuleTarget; }
+
+    /// True when any member track leaves the baseline between its end caps, or there is no baseline.
+    bool HasMeanders() const;
+
+    /**
+     * Adopt the tuning tool's working settings.  A rule-derived target is kept unless the tool settings
+     * override custom rules.  Otherwise the tool's manual target applies.
+     */
+    void ApplyToolSettings( const PNS::MEANDER_SETTINGS& aToolSettings );
+
+    /// The per-mode tool defaults stored on the board.
+    static PNS::MEANDER_SETTINGS& DefaultSettings( BOARD_DESIGN_SETTINGS& aBds, LENGTH_TUNING_MODE aMode );
+
+    /**
+     * Remember the tool's settings as the per-mode default for the next activation.
+     *
+     * The override flag is never stored, so a rule always wins on a fresh activation.
+     *
+     * @param aIncludeTargets stores the manual targets too.  False when the targets came from a rule.
+     */
+    static void StoreDefaults( BOARD_DESIGN_SETTINGS& aBds, LENGTH_TUNING_MODE aMode,
+                               const PNS::MEANDER_SETTINGS& aSettings, bool aIncludeTargets );
 
     int  GetMinAmplitude() const { return m_settings.m_minAmplitude; }
     void SetMinAmplitude( int aValue )
@@ -538,6 +602,14 @@ public:
     const STRING_ANY_MAP GetProperties() const override;
     void SetProperties( const STRING_ANY_MAP& aProps ) override;
 
+    void Serialize( google::protobuf::Any& aContainer ) const override;
+    bool Deserialize( const google::protobuf::Any& aContainer ) override;
+
+    void rebuildTuningInfo();
+
+    // @return the user-facing status string for a tuning result ("too long", "tuned", ...)
+    static wxString StatusMessage( PNS::MEANDER_PLACER_BASE::TUNING_STATUS aStatus );
+
     void ShowPropertiesDialog( PCB_BASE_EDIT_FRAME* aEditFrame ) override;
 
     std::vector<EDA_ITEM*> GetPreviewItems( GENERATOR_TOOL* aTool, PCB_BASE_EDIT_FRAME* aFrame,
@@ -572,17 +644,22 @@ protected:
 
     void baseMirror( const VECTOR2I& aCentre, FLIP_DIRECTION aFlipDirection )
     {
-        PCB_GENERATOR::baseMirror( aCentre, aFlipDirection );
+        baseMirror( MIRROR_AXIS( aCentre, aFlipDirection ) );
+    }
+
+    void baseMirror( const SEG& aAxis )
+    {
+        PCB_GENERATOR::baseMirror( aAxis );
 
         if( m_baseLine )
         {
-            m_baseLine->Mirror( aCentre, aFlipDirection );
+            m_baseLine->Mirror( aAxis );
             m_origin = m_baseLine->CPoint( 0 );
             m_end = m_baseLine->CLastPoint();
         }
 
         if( m_baseLineCoupled )
-            m_baseLineCoupled->Mirror( aCentre, aFlipDirection );
+            m_baseLineCoupled->Mirror( aAxis );
 
         if( m_settings.m_initialSide == PNS::MEANDER_SIDE_RIGHT )
             m_settings.m_initialSide = PNS::MEANDER_SIDE_LEFT;
@@ -611,4 +688,17 @@ protected:
     PNS::MEANDER_PLACER_BASE::TUNING_STATUS m_tuningStatus;
 
     bool                  m_updateSideFromEnd;
+
+    bool                  m_hasRuleTarget = false;
+
+    // Bridging cache (pad-to-pad gaps across 2-net series components in a chain)
+public:
+    long long GetCachedBridgingLength( BOARD* aBoard, const wxString& aNetChain, double* aDelayIUOut );
+
+private:
+    long long    m_cachedBridgingLen;
+    double       m_cachedBridgingDelayIU;
+    wxString     m_cachedBridgingSignal;
+    const BOARD* m_cachedBridgingBoardPtr = nullptr;
+    size_t       m_cachedBridgingPadCount;
 };

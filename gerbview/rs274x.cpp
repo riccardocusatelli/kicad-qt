@@ -15,13 +15,12 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+
+#include <cmath>
+#include <limits>
 
 #include <base_units.h>
 #include <math/util.h>      // for KiROUND
@@ -712,7 +711,9 @@ bool GERBER_FILE_IMAGE::ExecuteRS274XCommand( int aCommand, char* aBuff,
     case AP_MACRO:  // lines like %AMMYMACRO*
                     // 5,1,8,0,0,1.08239X$1,22.5*
                     // %
-        /*ok = */ReadApertureMacro( aBuff, aBuffSize, aText, m_Current_File );
+        // A malformed macro is reported and skipped. Only a macro cut off at the end of the file
+        // stops the command, through GetEndOfBlock below.
+        ReadApertureMacro( aBuff, aBuffSize, aText, m_Current_File );
         break;
 
     case AP_DEFINITION:
@@ -943,6 +944,11 @@ bool GERBER_FILE_IMAGE::ExecuteRS274XCommand( int aCommand, char* aBuff,
 
 bool GERBER_FILE_IMAGE::GetEndOfBlock( char* aBuff, unsigned int aBuffSize, char*& aText, FILE* gerber_file )
 {
+    // aText is null at end of file, even if syntactically invalid.
+    // For example, in the aperture-macro reader when the macro is truncated.
+    if( aText == nullptr )
+        return false;
+
     for( ; ; )
     {
         while( (aText < aBuff + aBuffSize) && *aText )
@@ -1122,17 +1128,18 @@ bool GERBER_FILE_IMAGE::ReadApertureMacro( char *aBuff, unsigned int aBuffSize, 
         prim.m_Primitive_id = (AM_PRIMITIVE_ID) primitive_type;
         int ii;
 
-        for( ii = 0; ii < paramCount && *aText && *aText != '*'; ++ii )
+        for( ii = 0; ii < paramCount; ++ii )
         {
-            prim.m_Params.push_back( AM_PARAM() );
-
-            AM_PARAM& param = prim.m_Params.back();
-
             aText = GetNextLine( aBuff, aBuffSize, aText, gerber_file );
 
             if( aText == nullptr)   // End of File
                 return false;
 
+            if( *aText == '*' || *aText == '%' )
+                break;
+
+            prim.m_Params.push_back( AM_PARAM() );
+            AM_PARAM& param = prim.m_Params.back();
             param.ReadParamFromAmDef( aText );
         }
 
@@ -1143,6 +1150,7 @@ bool GERBER_FILE_IMAGE::ReadApertureMacro( char *aBuff, unsigned int aBuffSize, 
                              "parameters\n" ),
                         prim.m_Primitive_id, ii );
             AddMessageToList( msg );
+            return false;
         }
 
         // there are more parameters to read if this is an AMP_OUTLINE
@@ -1153,22 +1161,44 @@ bool GERBER_FILE_IMAGE::ReadApertureMacro( char *aBuff, unsigned int aBuffSize, 
 
             // m_Params[1] is a count of polygon points, so it must be given
             // in advance, i.e. be immediate.
-            KI_ASSERT( prim.m_Params[1].IsImmediate() );
-
-            paramCount = (int) prim.m_Params[1].GetValueFromMacro( nullptr ) * 2 + 1;
-
-            for( int jj = 0; jj < paramCount && *aText != '*'; ++jj )
+            if( !prim.m_Params[1].IsImmediate() )
             {
-                prim.m_Params.push_back( AM_PARAM() );
+                AddMessageToList( wxT( "RS274X: aperture macro outline count must be immediate" ) );
+                return false;
+            }
 
-                AM_PARAM& param = prim.m_Params.back();
+            double pointCount = prim.m_Params[1].GetValueFromMacro( nullptr );
 
+            if( !std::isfinite( pointCount ) || pointCount < 1
+                || pointCount > ( std::numeric_limits<int>::max() - 5 ) / 2
+                || std::floor( pointCount ) != pointCount )
+            {
+                AddMessageToList( wxT( "RS274X: invalid aperture macro outline count" ) );
+                return false;
+            }
+
+            paramCount = static_cast<int>( pointCount ) * 2 + 1;
+            int jj;
+
+            for( jj = 0; jj < paramCount; ++jj )
+            {
                 aText = GetNextLine( aBuff, aBuffSize, aText, gerber_file );
 
                 if( aText == nullptr )  // End of File
                     return false;
 
+                if( *aText == '*' || *aText == '%' )
+                    break;
+
+                prim.m_Params.push_back( AM_PARAM() );
+                AM_PARAM& param = prim.m_Params.back();
                 param.ReadParamFromAmDef( aText );
+            }
+
+            if( jj < paramCount )
+            {
+                AddMessageToList( wxT( "RS274X: insufficient aperture macro outline parameters" ) );
+                return false;
             }
         }
 

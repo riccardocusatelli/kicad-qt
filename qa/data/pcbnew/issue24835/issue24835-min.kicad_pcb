@@ -1,5 +1,5 @@
 (kicad_pcb
-	(version 20260206)
+	(version 20260623)
 	(generator "pcbnew")
 	(generator_version "10.99")
 	(general
@@ -56,6 +56,8 @@
 				(material "FR4")
 				(epsilon_r 4.29)
 				(loss_tangent 0.02)
+				(spec_frequency 1000000000)
+				(dielectric_model constant)
 			)
 			(layer "In1.Cu"
 				(type "copper")
@@ -67,6 +69,8 @@
 				(material "FR4")
 				(epsilon_r 4.5)
 				(loss_tangent 0.02)
+				(spec_frequency 1000000000)
+				(dielectric_model constant)
 			)
 			(layer "In2.Cu"
 				(type "copper")
@@ -78,6 +82,8 @@
 				(material "FR4")
 				(epsilon_r 4.29)
 				(loss_tangent 0.02)
+				(spec_frequency 1000000000)
+				(dielectric_model constant)
 			)
 			(layer "In3.Cu"
 				(type "copper")
@@ -89,6 +95,8 @@
 				(material "FR4")
 				(epsilon_r 4.5)
 				(loss_tangent 0.02)
+				(spec_frequency 1000000000)
+				(dielectric_model constant)
 			)
 			(layer "In4.Cu"
 				(type "copper")
@@ -100,6 +108,8 @@
 				(material "FR4")
 				(epsilon_r 4.29)
 				(loss_tangent 0.02)
+				(spec_frequency 1000000000)
+				(dielectric_model constant)
 			)
 			(layer "B.Cu"
 				(type "copper")
@@ -178,7 +188,11 @@
 	(footprint "Mylibs6:XC70x0_BGA484C80P22X22"
 		(layer "F.Cu")
 		(uuid "ad2ac15f-4a11-456b-9c5a-d76f15bea611")
-		(at 97.76 96.85867 180)
+		(transform
+			(translate 97.76 96.85867)
+			(rotate 180)
+			(scale 1 1)
+		)
 		(descr "CLG484 - Wire-Bond Chip-Scale BGA (0.8 mm Pitch)")
 		(tags "Integrated Circuit")
 		(property "Reference" "U1"

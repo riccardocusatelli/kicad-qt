@@ -4,7 +4,6 @@ RUN dnf install -y --setopt=install_weak_deps=False \
     cmake \
     ninja-build \
     gcc-c++ \
-    swig \
     boost-devel \
     glm-devel \
     gtk3-devel \
@@ -19,10 +18,10 @@ RUN dnf install -y --setopt=install_weak_deps=False \
     protobuf-compiler \
     protobuf-devel \
     unixODBC-devel \
+    sqlite-devel \
     wxGTK-devel \
     zlib-devel \
     python3-devel \
-    python3-wxpython4 \
     cairo-devel \
     pixman-devel \
     harfbuzz-devel \

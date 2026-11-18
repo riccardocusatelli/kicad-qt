@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef STD_OPTIONAL_VARIANT_H
@@ -45,7 +45,7 @@ public:
         return true;
     }
 
-    std::optional<int> Value() const
+    std::optional<int> OptValue() const
     {
         return m_value;
     }
@@ -77,7 +77,7 @@ public:
         return true;
     }
 
-    std::optional<double> Value() const
+    std::optional<double> OptValue() const
     {
         return m_value;
     }

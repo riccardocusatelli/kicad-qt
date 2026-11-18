@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef ERC_H
@@ -48,33 +44,49 @@ extern const wxString CommentERC_H[];
 extern const wxString CommentERC_V[];
 
 
+namespace SCH_CONNECTIVITY
+{
+struct MULTI_UNIT_GROUP;
+}
+
+/**
+ * Runs the electrical rules checks and adds a SCH_MARKER for each violation.
+ *
+ * With ADVANCED_CFG::m_ConnectivityEngine on, most checks read the published connectivity through
+ * SCHEMATIC::Connectivity() and the SCH_CONNECTIVITY::ENGINE diagnostic accessors, and some still read
+ * the live model. Otherwise the checks read CONNECTION_GRAPH and the live model.
+ */
 class ERC_TESTER
 {
 public:
 
-    ERC_TESTER( SCHEMATIC* aSchematic, bool aShowAllErrors = false ) :
-            m_schematic( aSchematic ),
-            m_settings( aSchematic->ErcSettings() ),
-            m_sheetList( aSchematic->BuildSheetListSortedByPageNumbers() ),
-            m_screens( aSchematic->Root() ),
-            m_nets( aSchematic->ConnectionGraph()->GetNetMap() ),
-            m_showAllErrors( aShowAllErrors )
-    {
-        m_sheetList.GetMultiUnitSymbols( m_refMap, SYMBOL_FILTER_ALL );
-    }
+    ERC_TESTER( SCHEMATIC* aSchematic, bool aShowAllErrors = false );
 
     /**
      * Inside a given sheet, one cannot have sheets with duplicate names (file
      * names can be duplicated).
      *
      * @return the error count
-     * @param aCreateMarker: true = create error markers in schematic,
-     *                       false = calculate error count only
+     * @param aCreateMarker True creates markers from captured connectivity when the new
+     * engine is enabled; call after rebuilding. False checks fresh model state without
+     * rebuilding, for export and highlight preflight. The legacy engine always reads live state.
      */
     int TestDuplicateSheetNames( bool aCreateMarker );
 
     /**
+     * Check pin-to-pad maps (issue #2282): stale pin references, duplicate pad targets, bad pads
+     * and unmapped connected pins.  Footprint pad numbers come from the cvpcb kiface (aCvPcb), so
+     * the footprint-dependent checks (bad-pad, unmapped-connected-pin) run here when it is
+     * available.  Drops a SCH_MARKER at the symbol body per violation.
+     *
+     * @return the number of violations found.
+     */
+    int TestPinMap( KIFACE* aCvPcb, PROJECT* aProject );
+
+    /**
      * Check for any unresolved text variable references.
+     * With the connectivity engine, aDrawingSheet enables drawing checks; page/title data comes from
+     * captured instances.
      */
     void TestTextVars( DS_PROXY_VIEW_ITEM* aDrawingSheet );
 
@@ -83,6 +95,16 @@ public:
      * @return warning count
      */
     int TestFieldNameWhitespace();
+
+    /**
+     * Check for labels with empty or whitespace-only names.
+     */
+    int TestEmptyLabelNames();
+
+    /**
+     * Check for power symbols whose value resolves to nothing, leaving their net unnamed.
+     */
+    int TestEmptyPowerValues();
 
     /**
      * Test if all units of each multiunit symbol have the same footprint assigned.
@@ -116,6 +138,9 @@ public:
      * @return the error count
      */
     int TestDuplicatePinNets();
+
+    // Report enabled checks over owned published connectivity without preparing symbol checks.
+    static int TestConnectivity( SCHEMATIC& aSchematic );
 
     /**
      * Checks for ground-labeled pins not on a ground net while another pin is.
@@ -192,9 +217,28 @@ public:
     int TestMissingNetclasses();
 
     /**
-     * Tests for rule area ERC issues
+     * Test all variant symbol overrides for resolution and pin compatibility.
+     *
+     * Creates ERCE_VARIANT_SYMBOL_INVALID markers when a variant's symbol override
+     * LIB_ID cannot be resolved, and ERCE_VARIANT_SYMBOL_INCOMPATIBLE markers when the
+     * alternate symbol fails pin compatibility validation against the base symbol.
      */
-    int RunRuleAreaERC();
+    int TestVariantSymbols();
+
+    /**
+     * Test the annotation of every symbol: unannotated, duplicate and mismatched units.
+     */
+    int TestAnnotation();
+
+    /**
+     * Test that the instances of each reused sheet compose distinct reference suffixes.
+     */
+    int TestDuplicateSheetSuffixes();
+
+    /**
+     * Report symbols whose saved reference lacked the reference suffix of their sheet instance.
+     */
+    int TestRefSuffixMismatch();
 
     /**
      * Run the enabled tests.
@@ -208,6 +252,8 @@ public:
                    KIFACE* aCvPcb, PROJECT* aProject, PROGRESS_REPORTER* aProgressReporter );
 
 private:
+    std::vector<SCH_CONNECTIVITY::MULTI_UNIT_GROUP> multiUnitSources() const;
+
     SCHEMATIC*                   m_schematic;
     ERC_SETTINGS&                m_settings;
     SCH_SHEET_LIST               m_sheetList;

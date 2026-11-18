@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "sch_io_lib_cache.h"
@@ -183,7 +183,7 @@ LIB_SYMBOL* SCH_IO_LIB_CACHE::removeSymbol( LIB_SYMBOL* aSymbol )
                 {
                     SCH_FIELD& field = static_cast<SCH_FIELD&>( drawItem );
 
-                    if( firstChild->GetField( field.GetCanonicalName() ) )
+                    if( firstChild->GetField( field.GetUntranslatedName() ) )
                         continue;
                 }
 
@@ -212,9 +212,8 @@ LIB_SYMBOL* SCH_IO_LIB_CACHE::removeSymbol( LIB_SYMBOL* aSymbol )
 }
 
 
-void SCH_IO_LIB_CACHE::AddSymbol( const LIB_SYMBOL* aSymbol )
+void SCH_IO_LIB_CACHE::AddSymbol( std::unique_ptr<LIB_SYMBOL> aSymbol )
 {
-    // aSymbol is cloned in SYMBOL_LIB::AddSymbol().  The cache takes ownership of aSymbol.
     wxString name = aSymbol->GetName();
     LIB_SYMBOL_MAP::iterator it = m_symbols.find( name );
 
@@ -223,7 +222,7 @@ void SCH_IO_LIB_CACHE::AddSymbol( const LIB_SYMBOL* aSymbol )
         removeSymbol( it->second );
     }
 
-    m_symbols[ name ] = const_cast< LIB_SYMBOL* >( aSymbol );
+    m_symbols[name] = aSymbol.release();
     m_isModified = true;
     IncrementModifyHash();
 }

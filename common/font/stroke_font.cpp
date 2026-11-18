@@ -17,18 +17,14 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <gal/graphics_abstraction_layer.h>
 #include <wx/string.h>
 #include <wx/textfile.h>
 #include <newstroke_font.h>
-#include <font/glyph.h>
+#include <font/glyph_types.h>
 #include <font/stroke_font.h>
 #include <geometry/shape_line_chain.h>
 #include <trigo.h>
@@ -230,7 +226,8 @@ VECTOR2I STROKE_FONT::GetTextAsGlyphs( BOX2I* aBBox, std::vector<std::unique_ptr
             int new_cursor = aPosition.x + aSize.x * char_count
                     + aSize.x * space_width;
 
-            while( new_cursor <= cursor.x )
+            // A zero-width tab never advances, so it cannot pass the cursor
+            while( aSize.x > 0 && new_cursor <= cursor.x )
             {
                 char_count += TAB_WIDTH;
                 new_cursor += aSize.x * TAB_WIDTH;

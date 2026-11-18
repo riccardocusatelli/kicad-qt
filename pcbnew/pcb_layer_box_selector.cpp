@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "pcb_layer_box_selector.h"
@@ -55,6 +51,26 @@ void PCB_LAYER_BOX_SELECTOR::SetBoardFrame( PCB_BASE_FRAME* aFrame )
 
 wxString PCB_LAYER_BOX_SELECTOR::layerItemName( PCB_LAYER_ID aLayer, bool aActivated ) const
 {
+<<<<<<< b2e17e0a
+||||||| 1304b76aad
+    wxWindowUpdateLocker updateLock( this );
+
+    Clear();
+
+    const int size = 14;
+
+    LSET show = ( LSET::AllCuMask() | LSET::AllNonCuMask() ) & ~m_layerMaskDisable;
+    LSET activated = getEnabledLayers() & ~m_layerMaskDisable;
+=======
+    wxWindowUpdateLocker updateLock( this );
+
+    Clear();
+
+    const int size = 14;
+
+    LSET     show = LSET::AllLayersMask() & ~m_layerMaskDisable;
+    LSET     activated = getEnabledLayers() & ~m_layerMaskDisable;
+>>>>>>> ed8c16703e
     wxString layerstatus;
 
     if( !aActivated )
@@ -70,7 +86,51 @@ wxString PCB_LAYER_BOX_SELECTOR::layerItemName( PCB_LAYER_ID aLayer, bool aActiv
             layername = AddHotkeyName( layername, action->GetHotKey(), IS_COMMENT );
     }
 
+<<<<<<< b2e17e0a
     return layername;
+||||||| 1304b76aad
+    if( !m_undefinedLayerName.IsEmpty() )
+        Append( m_undefinedLayerName, wxNullBitmap, (void*)(intptr_t)UNDEFINED_LAYER );
+
+    // Ensure the size of the widget is enough to show the text and the icon
+    // We have to have a selected item when doing this, because otherwise GTK
+    // will just choose a random size that might not fit the actual data
+    // (such as in cases where the font size is very large). So we select
+    // the first item, get the size of the control and make that the minimum size,
+    // then remove the selection (which was the initial state).
+    SetSelection( 0 );
+
+    SetMinSize( wxSize( -1, -1 ) );
+    wxSize bestSize = GetBestSize();
+
+    bestSize.x = GetBestSize().x + size + 10;
+    SetMinSize( bestSize );
+
+    SetSelection( wxNOT_FOUND );
+    Fit();
+=======
+    if( !m_undefinedLayerName.IsEmpty() )
+        Append( m_undefinedLayerName, wxNullBitmap, (void*)(intptr_t)UNDEFINED_LAYER );
+
+    // Ensure the size of the widget is enough to show the text and the icon
+    // We have to have a selected item when doing this, because otherwise GTK
+    // will just choose a random size that might not fit the actual data
+    // (such as in cases where the font size is very large). So we select
+    // the first item, get the size of the control and make that the minimum size,
+    // then remove the selection (which was the initial state).
+    SetSelection( 0 );
+
+    SetMinSize( wxSize( -1, -1 ) );
+    wxSize bestSize = GetBestSize();
+
+#ifdef __WX_MAC__  // Mac widget GetBestSize() already includes icon width
+    bestSize.x = GetBestSize().x + size + 10;
+#endif
+    SetMinSize( bestSize );
+
+    SetSelection( wxNOT_FOUND );
+    Fit();
+>>>>>>> ed8c16703e
 }
 
 

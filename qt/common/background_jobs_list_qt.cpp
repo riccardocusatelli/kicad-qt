@@ -73,7 +73,7 @@ public:
         m_stName->setFont( bold );
         mainSizer->addWidget( m_stName );
 
-        m_stStatus = new QLabel( ToQString( aJob->m_status ), this );
+        m_stStatus = new QLabel( ToQString( aJob->GetStatus() ), this );
         mainSizer->addWidget( m_stStatus );
 
         m_progress = new QProgressBar( this );
@@ -85,7 +85,7 @@ public:
 
     void UpdateFromJob()
     {
-        m_stStatus->setText( ToQString( m_job->m_status ) );
+        m_stStatus->setText( ToQString( m_job->GetStatus() ) );
         m_progress->setRange( 0, m_job->m_maxProgress );
         m_progress->setValue( m_job->m_currentProgress );
     }

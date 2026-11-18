@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef DRC_RE_BITMAP_OVERLAY_PANEL_H
@@ -26,6 +22,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include <wx/bitmap.h>
@@ -84,8 +81,9 @@ public:
      * Show an error indicator on the specified field.
      *
      * @param aFieldId The string identifier of the field to highlight.
+     * @param aMessage The reason the field is invalid, shown as the icon's tooltip.
      */
-    void ShowFieldError( const wxString& aFieldId );
+    void ShowFieldError( const wxString& aFieldId, const wxString& aMessage );
 
 protected:
     /**
@@ -149,6 +147,12 @@ protected:
     void PositionFields();
 
     /**
+     * Asks for a panel taller than its illustration.  The height is kept in DIP so it follows
+     * the display the panel is shown on.
+     */
+    void SetMinimumHeightDIP( int aHeight ) { m_minHeightDIP = aHeight; }
+
+    /**
      * Apply transparent styling to a field control.
      *
      * @param aControl The control to style.
@@ -159,6 +163,10 @@ private:
     void OnPaint( wxPaintEvent& aEvent );
     void OnDPIChanged( wxDPIChangedEvent& aEvent );
     void OnThemeChange( wxSysColourChangedEvent& aEvent );
+
+    wxColour pageBackground() const;
+
+    std::optional<int> roomBeforeNextField( const DRC_RE_OVERLAY_FIELD* aField ) const;
     void OnFieldFocus( wxFocusEvent& aEvent );
     void OnFieldBlur( wxFocusEvent& aEvent );
 
@@ -180,6 +188,8 @@ protected:
     wxBitmap                                        m_bitmap;       ///< Current background bitmap
     BITMAPS                                         m_bitmapId;     ///< BITMAPS enum value
     wxSize                                          m_logicalBitmapSize; ///< Bitmap size in logical pixels
+    int                                             m_minHeightDIP = 0;  ///< Height a subclass asks for, in DIP
+
     std::vector<std::unique_ptr<DRC_RE_OVERLAY_FIELD>> m_fields;    ///< All overlay fields
     std::map<wxString, DRC_RE_OVERLAY_FIELD*>       m_fieldIdMap;   ///< Field ID to field lookup
 };
@@ -195,6 +205,9 @@ DRC_RE_OVERLAY_FIELD* DRC_RE_BITMAP_OVERLAY_PANEL::AddControl( const wxString&  
 
     // Set up styling
     SetupFieldStyling( aControl );
+
+    if( !aPosition.tooltipText.IsEmpty() )
+        aControl->SetToolTip( aPosition.tooltipText );
 
     // Position the field (yCenter is vertical mid-point of the control)
     int     height = aControl->GetBestSize().GetHeight();

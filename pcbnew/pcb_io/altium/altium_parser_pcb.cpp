@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <cmath>
@@ -36,6 +32,7 @@
 #include "altium_parser_pcb.h"
 #include "io/altium/altium_binary_parser.h"
 #include "io/altium/altium_props_utils.h"
+#include <trace_helpers.h>
 #include <core/ki_log.h>
 
 
@@ -238,7 +235,7 @@ ALTIUM_LAYER altium_layer_from_name( const wxString& aName )
             return static_cast<ALTIUM_LAYER>( static_cast<int>( ALTIUM_LAYER::V7_MECHANICAL_BASE ) + val );
     }
 
-    wxLogError( _( "Unknown mapping of the Altium layer '%s'." ), aName );
+    KI_LOG_TRACE( traceAltiumIo, wxT( "Unknown mapping of the Altium layer '%s'." ), aName );
     return ALTIUM_LAYER::UNKNOWN;
 }
 
@@ -300,7 +297,7 @@ ALTIUM_MECHKIND altium_mechkind_from_name( const wxString& aName )
     }
     else
     {
-        wxLogError( _( "Unknown mapping of the Altium layer kind '%s'." ), aName );
+        KI_LOG_TRACE( traceAltiumIo, wxT( "Unknown mapping of the Altium layer kind '%s'." ), aName );
         return ALTIUM_MECHKIND::UNKNOWN;
     }
 }
@@ -367,7 +364,7 @@ static ALTIUM_MODE ReadAltiumModeFromProperties( const std::map<wxString, wxStri
     else if( mode == wxT( "Manual" ) )
         return ALTIUM_MODE::MANUAL;
 
-    wxLogError( _( "Unknown Mode string: '%s'." ), mode );
+    KI_LOG_TRACE( traceAltiumIo, wxT( "Unknown Mode string: '%s'." ), mode );
     return ALTIUM_MODE::UNKNOWN;
 }
 
@@ -394,7 +391,7 @@ static ALTIUM_RECORD ReadAltiumRecordFromProperties( const std::map<wxString, wx
     else if( record == wxT( "Model" ) )
         return ALTIUM_RECORD::MODEL;
 
-    wxLogError( _( "Unknown Record name string: '%s'." ), record );
+    KI_LOG_TRACE( traceAltiumIo, wxT( "Unknown Record name string: '%s'." ), record );
     return ALTIUM_RECORD::UNKNOWN;
 }
 
@@ -408,7 +405,7 @@ ReadAltiumExtendedPrimitiveInformationTypeFromProperties(
     if( parsedType == wxT( "Mask" ) )
         return AEXTENDED_PRIMITIVE_INFORMATION_TYPE::MASK;
 
-    wxLogError( _( "Unknown Extended Primitive Information type: '%s'." ), parsedType );
+    KI_LOG_TRACE( traceAltiumIo, wxT( "Unknown Extended Primitive Information type: '%s'." ), parsedType );
     return AEXTENDED_PRIMITIVE_INFORMATION_TYPE::UNKNOWN;
 }
 
@@ -427,10 +424,11 @@ static void ExpectSubrecordLengthAtLeast( const std::string& aStreamType,
 {
     if( aActualLength < aExpectedLength )
     {
-        THROW_IO_ERROR( wxString::Format( "%s stream %s has length %d, "
-                                          "which is unexpected (expected at least %d)",
-                                          aStreamType, aSubrecordName, aActualLength,
-                                          aExpectedLength ) );
+        THROW_IO_ERRORF( wxT( "%s stream %s has length %d, which is unexpected (expected at least %d)" ),
+                         aStreamType,
+                         aSubrecordName,
+                         aActualLength,
+                         aExpectedLength );
     }
 }
 
@@ -447,12 +445,11 @@ AEXTENDED_PRIMITIVE_INFORMATION::AEXTENDED_PRIMITIVE_INFORMATION( ALTIUM_BINARY_
     type = ReadAltiumExtendedPrimitiveInformationTypeFromProperties( props, wxT( "TYPE" ) );
 
     pastemaskexpansionmode = ReadAltiumModeFromProperties( props, wxT( "PASTEMASKEXPANSIONMODE" ) );
-    pastemaskexpansionmanual = ALTIUM_PROPS_UTILS::ReadKicadUnit(
-            props, wxT( "PASTEMASKEXPANSION_MANUAL" ), wxT( "0mil" ) );
-    soldermaskexpansionmode =
-            ReadAltiumModeFromProperties( props, wxT( "SOLDERMASKEXPANSIONMODE" ) );
-    soldermaskexpansionmanual = ALTIUM_PROPS_UTILS::ReadKicadUnit(
-            props, wxT( "SOLDERMASKEXPANSION_MANUAL" ), wxT( "0mil" ) );
+    pastemaskexpansionmanual = ALTIUM_PROPS_UTILS::ReadKicadUnit( props, wxT( "PASTEMASKEXPANSION_MANUAL" ),
+                                                                  wxT( "0mil" ) );
+    soldermaskexpansionmode = ReadAltiumModeFromProperties( props, wxT( "SOLDERMASKEXPANSIONMODE" ) );
+    soldermaskexpansionmanual = ALTIUM_PROPS_UTILS::ReadKicadUnit( props, wxT( "SOLDERMASKEXPANSION_MANUAL" ),
+                                                                   wxT( "0mil" ) );
 }
 
 
@@ -698,6 +695,7 @@ ACOMPONENT6::ACOMPONENT6( ALTIUM_BINARY_PARSER& aReader )
     locked           = ALTIUM_PROPS_UTILS::ReadBool( props, wxT( "LOCKED" ), false );
     nameon           = ALTIUM_PROPS_UTILS::ReadBool( props, wxT( "NAMEON" ), true );
     commenton        = ALTIUM_PROPS_UTILS::ReadBool( props, wxT( "COMMENTON" ), false );
+    height           = ALTIUM_PROPS_UTILS::ReadKicadUnit( props, wxT( "HEIGHT" ), wxT( "0mil" ) );
     sourcedesignator = ALTIUM_PROPS_UTILS::ReadString( props, wxT( "SOURCEDESIGNATOR" ), wxT( "" ) );
 
     sourceUniqueID = ALTIUM_PROPS_UTILS::ReadString( props, wxT( "SOURCEUNIQUEID" ), wxT( "" ) );
@@ -752,8 +750,6 @@ ADIMENSION6::ADIMENSION6( ALTIUM_BINARY_PARSER& aReader )
     textgap        = ALTIUM_PROPS_UTILS::ReadKicadUnit( props, wxT( "TEXTGAP" ), wxT( "10mil" ) );
 
     arrowsize = ALTIUM_PROPS_UTILS::ReadKicadUnit( props, wxT( "ARROWSIZE" ), wxT( "60mil" ) );
-
-    wxString text_position_raw = ALTIUM_PROPS_UTILS::ReadString( props, wxT( "TEXTPOSITION" ), wxT( "" ) );
 
     xy1 = VECTOR2I( ALTIUM_PROPS_UTILS::ReadKicadUnit( props, wxT( "X1" ), wxT( "0mil" ) ),
                     -ALTIUM_PROPS_UTILS::ReadKicadUnit( props, wxT( "Y1" ), wxT( "0mil" ) ) );
@@ -1209,10 +1205,8 @@ APAD6::APAD6( ALTIUM_BINARY_PARSER& aReader )
         const uint32_t unknown = aReader.ReadKicadUnit(); // to 110
 
         if( unknown != 0 )
-        {
-            THROW_IO_ERROR( wxString::Format( "Pads6 stream subrecord5 + 106 has value %d, which is unexpected",
-                                              unknown ) );
-        }
+            THROW_IO_ERRORF( wxT( "Pads6 stream subrecord5 + 106 has value %d, which is unexpected" ), unknown );
+
         holerotation = 0;
     }
     else
@@ -1282,7 +1276,7 @@ APAD6::APAD6( ALTIUM_BINARY_PARSER& aReader )
     }
     else if( subrecord6 != 0 )
     {
-        wxLogError( _( "Pads6 stream has unexpected length for subrecord 6: %d." ), subrecord6 );
+        KI_LOG_TRACE( traceAltiumIo, wxT( "Pads6 stream has unexpected length for subrecord 6: %d." ), subrecord6 );
     }
 
     layer = altium_versioned_layer( layer_v6, layer_v7 );

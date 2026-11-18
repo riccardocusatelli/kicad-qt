@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef RAII_H
@@ -33,7 +29,7 @@
  */
 
 
-// Exception-safe method for nulling a pointer
+// Exception-safe method for nulling a pointer on destruction
 class NULLER
 {
 public:
@@ -46,6 +42,10 @@ public:
         m_what = nullptr;
     }
 
+    // No copying or it can lead to double-nulling of the pointer.
+    NULLER( const NULLER& ) = delete;
+    NULLER& operator=( const NULLER& ) = delete;
+
 private:
     void*&  m_what;
 };
@@ -55,11 +55,9 @@ private:
 class WINDOW_THAWER
 {
 public:
-    WINDOW_THAWER( wxWindow* aWindow )
+    WINDOW_THAWER( wxWindow* aWindow ) :
+            m_window( aWindow )
     {
-        m_window = aWindow;
-        m_freezeCount = 0;
-
         while( m_window->IsFrozen() )
         {
             m_window->Thaw();
@@ -76,9 +74,13 @@ public:
         }
     }
 
+    // No copying or it can lead to double-re-freezing of the window.
+    WINDOW_THAWER( const WINDOW_THAWER& ) = delete;
+    WINDOW_THAWER& operator=( const WINDOW_THAWER& ) = delete;
+
 protected:
     wxWindow* m_window;
-    int       m_freezeCount;
+    int       m_freezeCount = 0;
 };
 
 
@@ -101,6 +103,10 @@ public:
             m_win->Raise(); // let's focus back on the parent window
         }
     }
+
+    // No copying or it can lead to double-re-enabling of the window.
+    WINDOW_DISABLER( const WINDOW_DISABLER& ) = delete;
+    WINDOW_DISABLER& operator=( const WINDOW_DISABLER& ) = delete;
 
     void SuspendForTrueModal()
     {

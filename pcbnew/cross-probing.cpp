@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -31,7 +27,11 @@
  * Note: these ports must be enabled for firewall protection
  */
 
+#include <api/api_handler_pcb.h>
 #include <wx/tokenzr.h>
+#include <api/api_utils.h>
+#include <api/common/commands/cross_probe_commands.pb.h>
+#include <api/cross_probe_client.h>
 #include <board.h>
 #include <board_design_settings.h>
 #include <fmt.h>
@@ -41,13 +41,14 @@
 #include <pcb_group.h>
 #include <zone.h>
 #include <collectors.h>
-#include <eda_dde.h>
 #include <kiface_base.h>
 #include <kiway_mail.h>
 #include <string_utils.h>
+#include <netlist_reader/netlist_reader.h>
 #include <netlist_reader/pcb_netlist.h>
 #include <netlist_reader/board_netlist_updater.h>
 #include <gal/painter.h>
+#include <pcb_painter.h>
 #include <pcb_edit_frame.h>
 #include <pcbnew_settings.h>
 #include <render_settings.h>
@@ -60,16 +61,32 @@
 #include <widgets/pcb_design_block_pane.h>
 #include <widgets/kistatusbar.h>
 #include <project_pcb.h>
+#include <footprint_import_reconciler.h>
+#include <import_local_footprint_libs.h>
+#include <import_net_reconciler.h>
+#include <import_proj_properties.h>
+#include <netlist_reader/pcb_netlist.h>
+#include <reporter.h>
 #include <footprint_library_adapter.h>
 #include <pcb_io/pcb_io_mgr.h>
 #include <pgm_base.h>
 #include <libraries/library_manager.h>
 #include <libraries/library_table.h>
+#include <unordered_set>
+
 #include <wx/filename.h>
 #include <wx/log.h>
+<<<<<<< b2e17e0a
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
 #include <kiway.h>
+||||||| 1304b76aad
+=======
+#include <wx/msgdlg.h>
+
+
+using namespace kiapi::common::commands;
+>>>>>>> ed8c16703e
 
 /* Execute a remote command sent via a socket on port KICAD_PCB_PORT_SERVICE_NUMBER
  *
@@ -123,11 +140,19 @@ void PCB_EDIT_FRAME::ExecuteRemoteCommand( const char* cmdline )
     }
     else if( strcmp( idcmd, "$CLEAR" ) == 0 )
     {
-        if( renderSettings->IsHighlightEnabled() )
-        {
+        auto* pcbRender = dynamic_cast<KIGFX::PCB_RENDER_SETTINGS*>( renderSettings );
+
+        bool hadHighlight = renderSettings->IsHighlightEnabled();
+        bool hadChain = pcbRender && !pcbRender->GetHighlightedNetChain().IsEmpty();
+
+        if( hadHighlight )
             renderSettings->SetHighlight( false );
+
+        if( hadChain )
+            pcbRender->SetHighlightedNetChain( wxString() );
+
+        if( hadHighlight || hadChain )
             view->UpdateAllLayersColor();
-        }
 
         if( pcb->IsHighLightNetON() )
         {
@@ -154,6 +179,35 @@ void PCB_EDIT_FRAME::ExecuteRemoteCommand( const char* cmdline )
             std::vector<MSG_PANEL_ITEM> items;
             netinfo->GetMsgPanelInfo( GetMsgPanelContext(), items );
             SetMsgPanel( items );
+
+            // If the incoming net belongs to a net chain, promote the single-net
+            // highlight into a multi-net highlight covering every chain member so
+            // the PCB mirrors the chain highlight happening on the schematic side.
+            const wxString& chainName = netinfo->GetNetChain();
+
+            if( !chainName.IsEmpty() )
+            {
+                pcb->SetHighLightNet( netcode );
+                renderSettings->SetHighlight( true, netcode );
+                multiHighlight = true;
+
+                for( NETINFO_ITEM* candidate : pcb->GetNetInfo() )
+                {
+                    if( !candidate || candidate == netinfo )
+                        continue;
+
+                    if( candidate->GetNetChain() == chainName )
+                    {
+                        pcb->SetHighLightNet( candidate->GetNetCode(), true );
+                        renderSettings->SetHighlight( true, candidate->GetNetCode(), true );
+                    }
+                }
+
+                if( auto* pcbRender = dynamic_cast<KIGFX::PCB_RENDER_SETTINGS*>( renderSettings ) )
+                    pcbRender->SetHighlightedNetChain( chainName );
+
+                netcode = -1;
+            }
         }
 
         // fall through to highlighting section
@@ -258,278 +312,350 @@ void PCB_EDIT_FRAME::ExecuteRemoteCommand( const char* cmdline )
 }
 
 
-std::string FormatProbeItem( BOARD_ITEM* aItem )
+void PCB_EDIT_FRAME::HandleRemoteNetHighlight( const std::vector<wxString>& aNetNames )
 {
-    if( !aItem )
-        return "$CLEAR: \"HIGHLIGHTED\""; // message to clear highlight state
+    NETINFO_ITEM* netinfo;
+    int    netcode = -1;
+    bool   multiHighlight = false;
+    BOARD* pcb = GetBoard();
 
+    CROSS_PROBING_SETTINGS& crossProbingSettings = GetPcbNewSettings()->m_CrossProbing;
+    KIGFX::VIEW*            view = m_toolManager->GetView();
+    KIGFX::RENDER_SETTINGS* renderSettings = view->GetPainter()->GetSettings();
+
+    if( aNetNames.empty() || ( aNetNames.size() == 1 && aNetNames[0].empty() ) )
+    {
+        auto* pcbRender = dynamic_cast<KIGFX::PCB_RENDER_SETTINGS*>( renderSettings );
+
+        bool hadHighlight = renderSettings->IsHighlightEnabled();
+        bool hadChain = pcbRender && !pcbRender->GetHighlightedNetChain().IsEmpty();
+
+        if( hadHighlight )
+            renderSettings->SetHighlight( false );
+
+        if( hadChain )
+            pcbRender->SetHighlightedNetChain( wxString() );
+
+        if( hadHighlight || hadChain )
+            view->UpdateAllLayersColor();
+
+        if( pcb->IsHighLightNetON() )
+        {
+            pcb->ResetNetHighLight();
+            SetMsgPanel( pcb );
+        }
+
+        GetCanvas()->Refresh();
+        return;
+    }
+
+    if( aNetNames.size() == 1 && ( netinfo = pcb->FindNet( aNetNames[0] ) ) != nullptr )
+    {
+        netcode = netinfo->GetNetCode();
+
+        std::vector<MSG_PANEL_ITEM> items;
+        netinfo->GetMsgPanelInfo( this, items );
+        SetMsgPanel( items );
+
+        // If the incoming net belongs to a net chain, promote the single-net
+        // highlight into a multi-net highlight covering every chain member so
+        // the PCB mirrors the chain highlight happening on the schematic side.
+        const wxString& chainName = netinfo->GetNetChain();
+
+        if( !chainName.IsEmpty() )
+        {
+            pcb->SetHighLightNet( netcode );
+            renderSettings->SetHighlight( true, netcode );
+            multiHighlight = true;
+
+            for( NETINFO_ITEM* candidate : pcb->GetNetInfo() )
+            {
+                if( !candidate || candidate == netinfo )
+                    continue;
+
+                if( candidate->GetNetChain() == chainName )
+                {
+                    pcb->SetHighLightNet( candidate->GetNetCode(), true );
+                    renderSettings->SetHighlight( true, candidate->GetNetCode(), true );
+                }
+            }
+
+            if( auto* pcbRender = dynamic_cast<KIGFX::PCB_RENDER_SETTINGS*>( renderSettings ) )
+                pcbRender->SetHighlightedNetChain( chainName );
+
+            netcode = -1;
+        }
+    }
+    else
+    {
+        bool first = true;
+
+        for( const wxString& netName : aNetNames )
+        {
+            netinfo = pcb->FindNet( netName );
+
+            if( netinfo )
+            {
+                if( first )
+                {
+                    // TODO: Once buses are included in netlist, show bus name
+                    std::vector<MSG_PANEL_ITEM> items;
+                    netinfo->GetMsgPanelInfo( this, items );
+                    SetMsgPanel( items );
+                    first = false;
+
+                    pcb->SetHighLightNet( netinfo->GetNetCode() );
+                    renderSettings->SetHighlight( true, netinfo->GetNetCode() );
+                    multiHighlight = true;
+                }
+                else
+                {
+                    pcb->SetHighLightNet( netinfo->GetNetCode(), true );
+                    renderSettings->SetHighlight( true, netinfo->GetNetCode(), true );
+                }
+            }
+        }
+
+        netcode = -1;
+    }
+
+    BOX2I bbox;
+
+    if( netcode > 0 || multiHighlight )
+    {
+        if( !multiHighlight )
+        {
+            renderSettings->SetHighlight( ( netcode >= 0 ), netcode );
+            pcb->SetHighLightNet( netcode );
+        }
+        else
+        {
+            // Just pick the first one for area calculation
+            netcode = *pcb->GetHighLightNetCodes().begin();
+        }
+
+        pcb->HighLightON();
+
+        auto merge_area =
+                [netcode, &bbox]( BOARD_CONNECTED_ITEM* aItem )
+                {
+                    if( aItem->GetNetCode() == netcode )
+                        bbox.Merge( aItem->GetBoundingBox() );
+                };
+
+        if( crossProbingSettings.center_on_items )
+        {
+            for( ZONE* zone : pcb->Zones() )
+                merge_area( zone );
+
+            for( PCB_TRACK* track : pcb->Tracks() )
+                merge_area( track );
+
+            for( FOOTPRINT* fp : pcb->Footprints() )
+            {
+                for( PAD* p : fp->Pads() )
+                    merge_area( p );
+            }
+        }
+    }
+    else
+    {
+        renderSettings->SetHighlight( false );
+    }
+
+    if( crossProbingSettings.center_on_items && bbox.GetWidth() != 0 && bbox.GetHeight() != 0 )
+    {
+        if( crossProbingSettings.zoom_to_fit )
+            GetToolManager()->GetTool<PCB_SELECTION_TOOL>()->ZoomFitCrossProbeBBox( bbox );
+
+        FocusOnLocation( bbox.Centre() );
+    }
+
+    view->UpdateAllLayersColor();
+
+    // Ensure the display is refreshed, because in some installs the refresh is done only
+    // when the gal canvas has the focus, and that is not the case when crossprobing from
+    // Eeschema:
+    GetCanvas()->Refresh();
+}
+
+
+static bool selectionSpecFromItem( const EDA_ITEM* aItem, SelectionSpec& aSpec )
+{
     switch( aItem->Type() )
     {
     case PCB_FOOTPRINT_T:
     {
-        FOOTPRINT* footprint = static_cast<FOOTPRINT*>( aItem );
-        return fmt::format( "$PART: \"{}\"", TO_UTF8( footprint->GetReference() ) );
+        const FOOTPRINT* footprint = static_cast<const FOOTPRINT*>( aItem );
+        aSpec.mutable_footprint()->set_reference( footprint->GetReference().ToUTF8() );
+        return true;
     }
 
     case PCB_PAD_T:
     {
-        PAD*       pad = static_cast<PAD*>( aItem );
-        FOOTPRINT* footprint = pad->GetParentFootprint();
+        const PAD* pad = static_cast<const PAD*>( aItem );
 
-        return fmt::format( "$PART: \"{}\" $PAD: \"{}\"",
-                            TO_UTF8( footprint->GetReference() ),
-                            TO_UTF8( pad->GetNumber() ) );
-    }
+        if( const FOOTPRINT* footprint = pad->GetParentFootprint() )
+        {
+            aSpec.mutable_pad()->set_reference( footprint->GetReference().ToUTF8() );
+            aSpec.mutable_pad()->set_number( pad->GetNumber().ToUTF8() );
+            return true;
+        }
 
-    case PCB_FIELD_T:
-    {
-        PCB_FIELD*  field = static_cast<PCB_FIELD*>( aItem );
-        FOOTPRINT*  footprint = field->GetParentFootprint();
-        const char* text_key;
-
-        /* This can't be a switch since the break need to pull out
-         * from the outer switch! */
-        if( field->IsReference() )
-            text_key = "$REF:";
-        else if( field->IsValue() )
-            text_key = "$VAL:";
-        else
-            break;
-
-        return fmt::format( "$PART: \"{}\" {} \"{}\"",
-                            TO_UTF8( footprint->GetReference() ),
-                            text_key,
-                            TO_UTF8( field->GetText() ) );
+        break;
     }
 
     default:
         break;
     }
 
-    return "";
+    return false;
 }
 
 
-template <typename ItemContainer>
-void collectItemsForSyncParts( ItemContainer& aItems, std::set<wxString>& parts )
+void PCB_EDIT_FRAME::SendSelectItemsToSch( const std::deque<EDA_ITEM*>& aItems, EDA_ITEM* aFocusItem, bool aForce )
 {
-    for( EDA_ITEM* item : aItems )
-    {
-        switch( item->Type() )
-        {
-        case PCB_GROUP_T:
-        {
-            PCB_GROUP* group = static_cast<PCB_GROUP*>( item );
-
-            collectItemsForSyncParts( group->GetItems(), parts );
-            break;
-        }
-        case PCB_FOOTPRINT_T:
-        {
-            FOOTPRINT* footprint = static_cast<FOOTPRINT*>( item );
-            wxString   ref = footprint->GetReference();
-
-            parts.emplace( wxT( "F" ) + EscapeString( ref, CTX_IPC ) );
-            break;
-        }
-
-        case PCB_PAD_T:
-        {
-            PAD*      pad = static_cast<PAD*>( item );
-            wxString  ref = pad->GetParentFootprint()->GetReference();
-
-            parts.emplace( wxT( "P" ) + EscapeString( ref, CTX_IPC ) + wxT( "/" )
-                           + EscapeString( pad->GetNumber(), CTX_IPC ) );
-            break;
-        }
-
-        default: break;
-        }
-    }
-}
-
-
-void PCB_EDIT_FRAME::SendSelectItemsToSch( const std::deque<EDA_ITEM*>& aItems,
-                                           EDA_ITEM* aFocusItem, bool aForce )
-{
-    std::string command = "$SELECT: ";
+    SyncSelection sync;
 
     if( aFocusItem )
     {
-        std::deque<EDA_ITEM*> focusItems = { aFocusItem };
-        std::set<wxString>    focusParts;
-        collectItemsForSyncParts( focusItems, focusParts );
+        SelectionSpec focusSpec;
 
-        if( focusParts.size() > 0 )
+        if( selectionSpecFromItem( aFocusItem, focusSpec ) )
         {
-            command += "1,";
-            command += *focusParts.begin();
-            command += ",";
-        }
-        else
-        {
-            command += "0,";
+            sync.set_mode( SyncSelectionMode::SSM_ITEMS_AND_NETS );
+            sync.mutable_focus_item()->CopyFrom( focusSpec );
+            sync.mutable_items()->Add()->CopyFrom( focusSpec );
         }
     }
-    else
+
+    std::vector<EDA_ITEM*> collectedItems;
+
+    for( EDA_ITEM* item : aItems )
     {
-        command += "0,";
+        if( item->Type() == PCB_GROUP_T )
+        {
+            static_cast<const PCB_GROUP*>( item )->RunOnChildren(
+                    [&]( BOARD_ITEM* aChild )
+                    {
+                        if( aChild->Type() == PCB_FOOTPRINT_T || aChild->Type() == PCB_PAD_T )
+                            collectedItems.push_back( aChild );
+                    }, RECURSE_MODE::RECURSE );
+        }
+        else if( item->Type() == PCB_FOOTPRINT_T || item->Type() == PCB_PAD_T )
+        {
+            collectedItems.push_back( item );
+        }
     }
 
-    std::set<wxString> parts;
-    collectItemsForSyncParts( aItems, parts );
+    for( EDA_ITEM* item : collectedItems )
+        selectionSpecFromItem( item, *sync.add_items() );
 
-    if( parts.empty() )
+    if( sync.items_size() == 0 )
         return;
 
-    for( wxString part : parts )
-    {
-        command += part;
-        command += ",";
-    }
-
-    command.pop_back();
+    sync.set_context( aForce ? SyncSelectionContext::SSC_EXPLICIT : SyncSelectionContext::SSC_IMPLICIT );
 
     if( Kiface().IsSingle() )
     {
-        SendCommand( MSG_TO_SCH, command );
+        CROSS_PROBE_CLIENT::SendToFrame( FRAME_SCH, sync );
     }
     else
     {
-        // Typically ExpressMail is going to be s-expression packets, but since
-        // we have existing interpreter of the selection packet on the other
-        // side in place, we use that here.
-        Kiway().ExpressMail( FRAME_SCH, aForce ? MAIL_SELECTION_FORCE : MAIL_SELECTION, command,
-                             this );
+        std::string payload;
+
+        if( kiapi::common::PackKiwayApiMessage( sync, payload ) )
+            Kiway().ExpressMail( FRAME_SCH, MAIL_SELECTION, payload, this );
     }
 }
 
 
 void PCB_EDIT_FRAME::SendCrossProbeNetName( const wxString& aNetName )
 {
-    std::string packet = fmt::format( "$NET: \"{}\"", TO_UTF8( aNetName ) );
+    kiapi::common::commands::HighlightNets message;
 
-    if( !packet.empty() )
+    message.add_net_name( aNetName.ToUTF8() );
+
+    if( Kiface().IsSingle() )
     {
-        if( Kiface().IsSingle() )
-        {
-            SendCommand( MSG_TO_SCH, packet );
-        }
-        else
-        {
-            // Typically ExpressMail is going to be s-expression packets, but since
-            // we have existing interpreter of the cross probe packet on the other
-            // side in place, we use that here.
-            Kiway().ExpressMail( FRAME_SCH, MAIL_CROSS_PROBE, packet, this );
-        }
+        CROSS_PROBE_CLIENT::SendToFrame( FRAME_SCH, message );
+    }
+    else
+    {
+        std::string payload;
+
+        if( kiapi::common::PackKiwayApiMessage( message, payload ) )
+            Kiway().ExpressMail( FRAME_SCH, MAIL_CROSS_PROBE, payload, this );
     }
 }
 
 
 void PCB_EDIT_FRAME::SendCrossProbeItem( BOARD_ITEM* aSyncItem )
 {
-    std::string packet = FormatProbeItem( aSyncItem );
-
-    if( !packet.empty() )
+    if( !aSyncItem )
     {
-        if( Kiface().IsSingle() )
-        {
-            SendCommand( MSG_TO_SCH, packet );
-        }
-        else
-        {
-            // Typically ExpressMail is going to be s-expression packets, but since
-            // we have existing interpreter of the cross probe packet on the other
-            // side in place, we use that here.
-            Kiway().ExpressMail( FRAME_SCH, MAIL_CROSS_PROBE, packet, this );
-        }
+        SendCrossProbeNetName( wxEmptyString );
+        return;
+    }
+
+    kiapi::common::commands::FocusOnItem message;
+    SelectionSpec* spec = message.mutable_focus_item();
+
+    switch( aSyncItem->Type() )
+    {
+    case PCB_FOOTPRINT_T:
+    {
+        FOOTPRINT* footprint = static_cast<FOOTPRINT*>( aSyncItem );
+        spec->mutable_footprint()->set_reference( footprint->GetReference().ToUTF8() );
+        break;
+    }
+
+    case PCB_PAD_T:
+    {
+        PAD*       pad = static_cast<PAD*>( aSyncItem );
+        FOOTPRINT* footprint = pad->GetParentFootprint();
+
+        spec->mutable_pad()->set_reference( footprint->GetReference().ToUTF8() );
+        spec->mutable_pad()->set_number( pad->GetNumber().ToUTF8() );
+        break;
+    }
+
+    case PCB_FIELD_T:
+    {
+        PCB_FIELD*  field = static_cast<PCB_FIELD*>( aSyncItem );
+        FOOTPRINT*  footprint = field->GetParentFootprint();
+        spec->mutable_footprint()->set_reference( footprint->GetReference().ToUTF8() );
+        break;
+    }
+
+    default:
+        break;
+    }
+
+    if( Kiface().IsSingle() )
+    {
+        CROSS_PROBE_CLIENT::SendToFrame( FRAME_SCH, message );
+    }
+    else
+    {
+        std::string payload;
+
+        if( kiapi::common::PackKiwayApiMessage( message, payload ) )
+            Kiway().ExpressMail( FRAME_SCH, MAIL_CROSS_PROBE, payload, this );
     }
 }
 
 
-std::vector<BOARD_ITEM*> PCB_EDIT_FRAME::FindItemsFromSyncSelection( std::string syncStr )
+void PCB_EDIT_FRAME::SetLastSchematicSheetPath( const KIID_PATH& aPath )
 {
-    wxArrayString syncArray = wxStringTokenize( syncStr, "," );
+    if( m_lastSchematicSheetPath == aPath )
+        return;
 
-    std::vector<std::pair<int, BOARD_ITEM*>> orderPairs;
+    m_lastSchematicSheetPath = aPath;
 
-    for( FOOTPRINT* footprint : GetBoard()->Footprints() )
-    {
-        if( footprint == nullptr )
-            continue;
-
-        wxString fpSheetPath = footprint->GetPath().AsString().BeforeLast( '/' );
-        wxString fpUUID = footprint->m_Uuid.AsString();
-
-        if( fpSheetPath.IsEmpty() )
-            fpSheetPath += '/';
-
-        if( fpUUID.empty() )
-            continue;
-
-        wxString fpRefEscaped = EscapeString( footprint->GetReference(), CTX_IPC );
-
-        for( unsigned index = 0; index < syncArray.size(); ++index )
-        {
-            wxString syncEntry = syncArray[index];
-
-            if( syncEntry.empty() )
-                continue;
-
-            wxString syncData = syncEntry.substr( 1 );
-
-            switch( syncEntry.GetChar( 0 ).GetValue() )
-            {
-            case 'S': // Select sheet with subsheets: S<Sheet path>
-                if( fpSheetPath.StartsWith( syncData ) )
-                {
-                    orderPairs.emplace_back( index, footprint );
-                }
-                break;
-            case 'F': // Select footprint: F<Reference>
-                if( syncData == fpRefEscaped )
-                {
-                    orderPairs.emplace_back( index, footprint );
-                }
-                break;
-            case 'P': // Select pad: P<Footprint reference>/<Pad number>
-            {
-                if( syncData.StartsWith( fpRefEscaped ) )
-                {
-                    wxString selectPadNumberEscaped =
-                            syncData.substr( fpRefEscaped.size() + 1 ); // Skips the slash
-
-                    wxString selectPadNumber = UnescapeString( selectPadNumberEscaped );
-
-                    for( PAD* pad : footprint->Pads() )
-                    {
-                        if( selectPadNumber == pad->GetNumber() )
-                        {
-                            orderPairs.emplace_back( index, pad );
-                        }
-                    }
-                }
-                break;
-            }
-            default: break;
-            }
-        }
-    }
-
-    std::sort(
-            orderPairs.begin(), orderPairs.end(),
-            []( const std::pair<int, BOARD_ITEM*>& a, const std::pair<int, BOARD_ITEM*>& b ) -> bool
-            {
-                return a.first < b.first;
-            } );
-
-    std::vector<BOARD_ITEM*> items;
-    items.reserve( orderPairs.size() );
-
-    for( const std::pair<int, BOARD_ITEM*>& pair : orderPairs )
-        items.push_back( pair.second );
-
-    return items;
+    wxCommandEvent event( EDA_EVT_PCB_LAST_SCH_SHEET_CHANGED, GetId() );
+    event.SetEventObject( this );
+    wxPostEvent( this, event );
 }
 
 
@@ -539,6 +665,10 @@ void PCB_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
 
     switch( mail.Command() )
     {
+    case MAIL_SCH_SHEET_CHANGED:
+        SetLastSchematicSheetPath( KIID_PATH( wxString::FromUTF8( payload.c_str() ) ) );
+        break;
+
     case MAIL_PCB_GET_NETLIST:
     {
         NETLIST          netlist;
@@ -557,10 +687,7 @@ void PCB_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
                 const wxString& netname = pad->GetShortNetname();
 
                 if( !netname.IsEmpty() )
-                {
-                    component->AddNet( pad->GetNumber(), netname, pad->GetPinFunction(),
-                                       pad->GetPinType() );
-                }
+                    component->AddNet( pad->GetNumber(), netname, pad->GetPinFunction(), pad->GetPinType() );
             }
 
             nlohmann::ordered_map<wxString, wxString> fields;
@@ -569,12 +696,12 @@ void PCB_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
             {
                 KI_CHECK2( field, continue );
 
-                fields[field->GetCanonicalName()] = field->GetText();
+                fields[field->GetUntranslatedName()] = field->GetText();
             }
 
             component->SetFields( fields );
 
-            // Add DNP, Exclude from BOM, and Exclude from Position Files properties
+            // Add DNP and exclusion properties
             std::map<wxString, wxString> properties;
 
             if( footprint->GetAttributes() & FP_DNP )
@@ -582,6 +709,9 @@ void PCB_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
 
             if( footprint->GetAttributes() & FP_EXCLUDE_FROM_BOM )
                 properties.emplace( "exclude_from_bom", "" );
+
+            if( footprint->GetAttributes() & FP_EXCLUDE_FROM_SIM )
+                properties.emplace( "exclude_from_sim", "" );
 
             if( footprint->GetAttributes() & FP_EXCLUDE_FROM_POS_FILES )
                 properties.emplace( "exclude_from_pos_files", "" );
@@ -603,6 +733,7 @@ void PCB_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
             FetchNetlistFromSchematic( netlist, wxEmptyString );
 
             BOARD_NETLIST_UPDATER updater( this, GetBoard() );
+            updater.SetWillDrag( false );
             updater.SetLookupByTimestamp( false );
             updater.SetDeleteUnusedFootprints( false );
             updater.SetReplaceFootprints( false );
@@ -625,101 +756,17 @@ void PCB_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
         std::stringstream ss( payload );
         std::string       file;
 
-        LIBRARY_MANAGER&              manager = Pgm().GetLibraryManager();
-        FOOTPRINT_LIBRARY_ADAPTER*    adapter = PROJECT_PCB::FootprintLibAdapter( &Prj() );
-        std::optional<LIBRARY_TABLE*> optTable = manager.Table( LIBRARY_TABLE_TYPE::FOOTPRINT,
-                                                                LIBRARY_TABLE_SCOPE::PROJECT );
-
-        KI_CHECK_RET( optTable.has_value(), "Could not load footprint lib table." );
-        LIBRARY_TABLE* table = optTable.value();
-
-        wxString projectPath = Prj().GetProjectPath();
-
         // First line of payload is the source project directory.
         std::string srcProjDir;
         std::getline( ss, srcProjDir, '\n' );
 
-        wxString              srcProjectPath = wxString::FromUTF8( srcProjDir );
-        std::vector<wxString> toLoad;
+        std::vector<wxString> libraries;
 
         while( std::getline( ss, file, '\n' ) )
-        {
-            if( file.empty() )
-                continue;
+            libraries.push_back( wxString::FromUTF8( file ) );
 
-            wxFileName             fn( wxString::FromUTF8( file ) );
-            PCB_IO_MGR::PCB_FILE_T type = PCB_IO_MGR::GuessPluginTypeFromLibPath( fn.GetFullPath() );
-
-            if( type == PCB_IO_MGR::FILE_TYPE_NONE )
-            {
-                KI_LOG_TRACE( "KIWAY", "Unknown file type: %s", fn.GetFullPath() );
-                continue;
-            }
-
-            // Only libraries that live under the source project are relocated; a plain path
-            // prefix would also match a sibling directory sharing the project name's stem.
-            wxFileName relFn( fn );
-            bool       isProjectLocal =
-                    !srcProjectPath.IsEmpty() && relFn.MakeRelativeTo( srcProjectPath )
-                    && !relFn.IsAbsolute()
-                    && !relFn.GetFullPath().StartsWith( wxS( ".." ) );
-
-            wxString libTableUri;
-
-            if( isProjectLocal )
-            {
-                // Copy a project-local library into the KiCad project directory and reference it
-                // with a project-relative path so the fp-lib-table stays portable.
-                if( !fn.FileExists() )
-                    continue;
-
-                wxFileName projectFn( projectPath, fn.GetFullName() );
-
-                if( fn.GetFullPath() != projectFn.GetFullPath() && !projectFn.FileExists()
-                    && !wxCopyFile( fn.GetFullPath(), projectFn.GetFullPath(), false ) )
-                {
-                    wxLogError( _( "Error copying footprint library '%s'." ), fn.GetFullPath() );
-                    continue;
-                }
-
-                libTableUri = wxS( "${KIPRJMOD}/" ) + fn.GetFullName();
-            }
-            else
-            {
-                // External library referenced by absolute path. Preserve the original path.
-                libTableUri = fn.GetFullPath();
-            }
-
-            if( !table->HasRow( fn.GetName() ) )
-            {
-                LIBRARY_TABLE_ROW& row = table->InsertRow();
-                row.SetNickname( fn.GetName() );
-                row.SetURI( libTableUri );
-                row.SetType( PCB_IO_MGR::ShowType( type ) );
-                toLoad.emplace_back( fn.GetName() );
-            }
-        }
-
-        if( !toLoad.empty() )
-        {
-            bool success = true;
-
-            table->Save().map_error(
-                        [&]( const LIBRARY_ERROR& aError )
-                        {
-                            wxLogError( wxT( "Error saving project library table:\n\n" ) + aError.message );
-                            success = false;
-                        } );
-
-            if( success )
-            {
-                manager.AbortAsyncLoads();
-                manager.LoadProjectTables( { LIBRARY_TABLE_TYPE::FOOTPRINT } );
-
-                for( const wxString& nick : toLoad )
-                    adapter->LoadOne( nick );
-            }
-        }
+        RegisterLocalFootprintLibraries( Prj(), wxString::FromUTF8( srcProjDir ), libraries,
+                                         WXLOG_REPORTER::GetInstance() );
 
         Kiway().ExpressMail( FRAME_CVPCB, MAIL_RELOAD_LIB, payload );
         Kiway().ExpressMail( FRAME_FOOTPRINT_EDITOR, MAIL_RELOAD_LIB, payload );
@@ -728,79 +775,75 @@ void PCB_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
         break;
     }
 
+    // Handled as API messages
     case MAIL_CROSS_PROBE:
-        ExecuteRemoteCommand( payload.c_str() );
+    case MAIL_SELECTION:
+        if( ApiRequest request; request.ParseFromString( payload ) )
+            m_apiHandler->Handle( request );
+
         break;
 
+    case MAIL_PCB_UPDATE:
+        m_toolManager->RunAction( ACTIONS::updatePcbFromSchematic );
+        break;
 
-    case MAIL_SELECTION:
-        if( !GetPcbNewSettings()->m_CrossProbing.on_selection )
-            break;
-
-        KI_FALLTHROUGH;
-
-    case MAIL_SELECTION_FORCE:
+    case MAIL_PCB_RECONCILE_NETS:
     {
-        // $SELECT: <mode 0 - only footprints, 1 - with connections>,<spec1>,<spec2>,<spec3>
-        std::string prefix = "$SELECT: ";
+        // an empty payload skips the schematic's annotation prompt, and reading the reply here avoids the
+        // dialogs of the update command, so an import never waits on the user
+        std::string netlistText;
 
-        if( !payload.compare( 0, prefix.size(), prefix ) )
+        Kiway().ExpressMail( FRAME_SCH, MAIL_SCH_GET_NETLIST, netlistText, this );
+
+        if( netlistText.empty() )
         {
-            std::string del = ",";
-            std::string paramStr = payload.substr( prefix.size() );
-            size_t      modeEnd = paramStr.find( del );
-            bool        selectConnections = false;
+            WXLOG_REPORTER::GetInstance().Report( _( "The schematic gave no netlist, so the board nets keep their "
+                                                     "names.\n" ),
+                                                  RPT_SEVERITY_INFO );
+            break;
+        }
 
-            try
-            {
-                if( std::stoi( paramStr.substr( 0, modeEnd ) ) == 1 )
-                    selectConnections = true;
-            }
-            catch( std::invalid_argument& )
-            {
-                KI_FAIL();
-            }
+        NETLIST netlist;
 
-            std::vector<BOARD_ITEM*> items =
-                    FindItemsFromSyncSelection( paramStr.substr( modeEnd + 1 ) );
+        try
+        {
+            KICAD_NETLIST_READER reader( new STRING_LINE_READER( netlistText, _( "Eeschema netlist" ) ), &netlist );
+            reader.LoadNetlist();
+        }
+        catch( const IO_ERROR& ioe )
+        {
+            WXLOG_REPORTER::GetInstance().Report( wxString::Format( _( "The schematic netlist could not be read, so "
+                                                                        "the board nets keep their names: %s\n" ),
+                                                                     ioe.What() ),
+                                                  RPT_SEVERITY_INFO );
+            break;
+        }
 
-            m_ProbingSchToPcb = true; // recursion guard
+        int renamed = ReconcileImportedReferences( *GetBoard(), netlist );
 
-            if( selectConnections )
-                GetToolManager()->RunAction( PCB_ACTIONS::syncSelectionWithNets, &items );
-            else
-                GetToolManager()->RunAction( PCB_ACTIONS::syncSelection, &items );
+        NET_RECONCILE_RESULT result = ReconcileImportedNetNames( *GetBoard(), netlist, WXLOG_REPORTER::GetInstance() );
 
-            // Update 3D viewer highlighting
-            Update3DView( false, GetPcbNewSettings()->m_Display.m_Live3DRefresh );
+        int filled = FillImportedFootprintFields( *GetBoard(), netlist );
 
-            m_ProbingSchToPcb = false;
+        if( renamed > 0 || result.m_renamed > 0 || result.m_unconnectedAssigned > 0 || filled > 0 )
+            OnModify();
 
-            if( GetPcbNewSettings()->m_CrossProbing.flash_selection )
-            {
-                KI_LOG_TRACE( traceCrossProbeFlash, "MAIL_SELECTION(_FORCE) PCB: flash enabled, items=%zu", items.size() );
-                if( items.empty() )
-                {
-                    KI_LOG_TRACE( traceCrossProbeFlash, "MAIL_SELECTION(_FORCE) PCB: nothing to flash" );
-                }
-                else
-                {
-                    std::vector<BOARD_ITEM*> boardItems;
-                    std::copy( items.begin(), items.end(), std::back_inserter( boardItems ) );
-                    StartCrossProbeFlash( boardItems );
-                }
-            }
-            else
-            {
-                KI_LOG_TRACE( traceCrossProbeFlash, "MAIL_SELECTION(_FORCE) PCB: flash disabled" );
-            }
+        // the fields were changed behind the view's back, so it is rebuilt from the board
+        if( filled > 0 )
+        {
+            for( FOOTPRINT* footprint : GetBoard()->Footprints() )
+                footprint->InvalidateGeometryCaches();
+
+            GetCanvas()->DisplayBoard( GetBoard() );
+            GetCanvas()->Refresh();
         }
 
         break;
     }
 
-    case MAIL_PCB_UPDATE:
-        m_toolManager->RunAction( ACTIONS::updatePcbFromSchematic );
+    case MAIL_PCB_GET_FOOTPRINT_IDS:
+        payload = TO_UTF8( IMPORT_PROJ_PROPS::JoinTaggedMap( IMPORT_PROJ_PROPS::FOOTPRINT_ID_MAP_TAG,
+                                                             ImportedFootprintIds( *GetBoard() ) ) );
         break;
 
     case MAIL_IMPORT_FILE:
@@ -831,6 +874,7 @@ void PCB_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
         std::map<std::string, UTF8> props;
 
         std::string key, value;
+
         do
         {
             if( !std::getline( ss, key, delim ) )
@@ -843,8 +887,10 @@ void PCB_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
 
         } while( true );
 
-        if( importFormat >= 0 )
-            importFile( fnameStr, importFormat, props.empty() ? nullptr : &props );
+        payload.clear();
+
+        if( importFormat >= 0 && importFile( fnameStr, importFormat, props.empty() ? nullptr : &props ) )
+            payload = "success";
 
         break;
     }
@@ -859,6 +905,60 @@ void PCB_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
 
         break;
 
+    case MAIL_PCB_RELOAD:
+    {
+        // A git operation rewrote files on disk. Reload the board so the editor matches.
+        wxString file = Prj().AbsolutePath( GetBoard()->GetFileName() );
+
+        if( file.IsEmpty() )
+            break;
+
+        // A non-empty payload lists the files the operation changed. When the board is not
+        // among them, there is nothing to reload.
+        if( !payload.empty() )
+        {
+            wxArrayString changed = wxSplit( wxString::FromUTF8( payload.c_str() ), '\n' );
+            bool          mine = false;
+            wxString      boardFile = wxFileName( file ).GetFullPath();
+
+            for( const wxString& changedFile : changed )
+            {
+                if( !changedFile.IsEmpty() && boardFile == wxFileName( changedFile ).GetFullPath() )
+                {
+                    mine = true;
+                    break;
+                }
+            }
+
+            if( !mine )
+                break;
+        }
+
+        // Neither choice is safe without asking: reloading discards the unsaved edits, keeping
+        // them means the next save overwrites what arrived.
+        if( IsContentModified() )
+        {
+            wxMessageDialog dlg( this,
+                                 _( "The board changed on disk while you were editing it.\n\n"
+                                    "Reloading loses your unsaved edits. Keeping them means your "
+                                    "next save overwrites the changes that just arrived. To get those "
+                                    "back later, use Discard Changes on the file in the Version Control "
+                                    "panel, which drops your edits to it." ),
+                                 _( "Board Changed on Disk" ), wxYES_NO | wxNO_DEFAULT | wxICON_WARNING | wxCENTER );
+            dlg.SetYesNoLabels( _( "&Reload" ), _( "&Keep My Edits" ) );
+
+            if( dlg.ShowModal() != wxID_YES )
+                break;
+        }
+
+        ReloadFromDisk();
+        break;
+    }
+
+    case MAIL_PCB_PROJECT_SETTINGS_CHANGED:
+        ReloadProjectFileSettings();
+        break;
+
     case MAIL_RELOAD_LIB:
     {
         m_designBlocksPane->RefreshLibs();
@@ -867,10 +967,7 @@ void PCB_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
         if( KISTATUSBAR* statusBar = dynamic_cast<KISTATUSBAR*>( GetStatusBar() ) )
         {
             FOOTPRINT_LIBRARY_ADAPTER* adapter = PROJECT_PCB::FootprintLibAdapter( &Prj() );
-            wxString errors = adapter->GetLibraryLoadErrors();
-
-            if( !errors.IsEmpty() )
-                statusBar->AddWarningMessages( "load", errors );
+            statusBar->AddWarningMessages( "load", adapter->GetLibraryLoadErrors() );
         }
 
         break;
@@ -881,4 +978,3 @@ void PCB_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
         ;
     }
 }
-

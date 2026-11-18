@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -34,9 +30,11 @@
 
 #include <typeinfo>
 #include <string_utils.h>
+#include <wx/app.h>
 #include <wx/filename.h>
+#include <wx/init.h>
+#include <wx/log.h>
 #include <wx/stdpaths.h>
-#include <wx/snglinst.h>
 #include <wx/html/htmlwin.h>
 #include <pgm_base.h>
 #include <pgm_gui.h>
@@ -99,11 +97,9 @@ static struct PGM_TEST_FRAME : public PGM_BASE
 
     void OnPgmExit()
     {
-        printf("Destroy\n");
         Kiway.OnKiwayEnd();
 
-        // Destroy everything in PGM_BASE, especially wxSingleInstanceCheckerImpl
-        // earlier than wxApp and earlier than static destruction would.
+        // Destroy PGM_BASE earlier than wxApp and static destruction would
         PGM_BASE::Destroy();
     }
 
@@ -238,9 +234,9 @@ int main( int argc, char** argv )
     wxInitialize( argc, argv );
 
 #ifdef TEST_APP_GUI
-    Pgm().InitPgm( false, true );
+    Pgm().InitPgm( false );
 #else
-    Pgm().InitPgm( true, true );
+    Pgm().InitPgm( true );
 #endif
 
     auto ret = wxEntry( argc, argv );

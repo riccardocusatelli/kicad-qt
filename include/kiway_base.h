@@ -79,12 +79,15 @@ public:
 
 protected:
     /// Get the [path &] name of the DSO holding the requested FACE_T.
-    const wxString dso_search_path( FACE_T aFaceId );
+    virtual const wxString dso_search_path( FACE_T aFaceId );
 
     /// Register a KIFACE that is linked in the program (single_top).
     bool set_kiface( FACE_T aFaceType, KIFACE* aKiface );
 
     int m_ctl;
+
+    /// A DSO that failed to load is reported once, then not loaded again.
+    std::array<bool, KIWAY_FACE_COUNT> m_kifaceLoadFailed = {};
 
 private:
     static std::array<KIFACE*, KIWAY_FACE_COUNT> m_kiface;

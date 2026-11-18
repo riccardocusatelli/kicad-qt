@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -150,6 +150,12 @@ private:
      */
     std::map<SYMDEF_ID, std::unique_ptr<const LIB_SYMBOL>> m_symDefMap;
 
+    /**
+     * Owns every #LIB_SYMBOL the loader allocates while loading a design. The raw pointers held
+     * by m_partMap, m_powerSymLibMap and m_loadedSymbols all alias into this.
+     */
+    std::vector<std::unique_ptr<LIB_SYMBOL>> m_ownedSymbols;
+
     std::vector<LIB_SYMBOL*> m_loadedSymbols; ///< Loaded symbols so far
     std::map<PART_GATE_ID, SYMDEF_ID> m_partSymbolsMap; ///< Map holding the symbols loaded so far
                                                         ///  for a particular PART_ID and GATE_ID
@@ -167,8 +173,7 @@ private:
 
     std::unique_ptr<LIB_SYMBOL> loadLibPart( const CADSTAR_PART_ENTRY& aPart );
 
-    void copySymbolItems( std::unique_ptr<LIB_SYMBOL>& aSourceSym,
-                          std::unique_ptr<LIB_SYMBOL>& aDestSym, int aDestUnit,
+    void copySymbolItems( LIB_SYMBOL* aSourceSym, LIB_SYMBOL* aDestSym, int aDestUnit,
                           bool aOverrideFields = true );
 
     //Helper Functions for loading sheets
@@ -189,13 +194,13 @@ private:
     void loadSymbolGateAndPartFields( const SYMDEF_ID& aSymdefID, const PART& aCadstarPart,
                                       const GATE_ID& aGateID, LIB_SYMBOL* aSymbol );
 
-    void setFootprintOnSymbol( std::unique_ptr<LIB_SYMBOL>& aKiCadSymbol,
+    void setFootprintOnSymbol( LIB_SYMBOL*                  aKiCadSymbol,
                                const wxString&              aFootprintName,
                                const wxString&              aFootprintAlternate );
 
     void loadLibrarySymbolShapeVertices( const std::vector<VERTEX>& aCadstarVertices,
                                          const VECTOR2I& aSymbolOrigin, LIB_SYMBOL* aSymbol,
-                                         int aGateNumber, int aLineThickness );
+                                         int aGateNumber, int aLineThickness, LINE_STYLE aLineStyle );
 
     void applyToLibraryFieldAttribute( const ATTRIBUTE_LOCATION& aCadstarAttrLoc,
                                        const VECTOR2I& aSymbolOrigin, SCH_FIELD* aKiCadField );
@@ -289,8 +294,11 @@ private:
 
     void checkDesignLimits();
 
-    int getKiCadLength( long long aCadstarLength )
+    int getKiCadLength( long long aCadstarLength, double aDefaultInMils )
     {
+        if( aCadstarLength == UNDEFINED_VALUE )
+            return schIUScale.MilsToIU( aDefaultInMils );
+
         int mod = aCadstarLength % KiCadUnitDivider;
         int absmod = sign( mod ) * mod;
         int offset = 0;
@@ -300,6 +308,19 @@ private:
             offset = sign( aCadstarLength );
 
         return ( aCadstarLength / KiCadUnitDivider ) + offset;
+    }
+
+    int getKiCadOffset( long long aCadstarOffset )
+    {
+        int mod = aCadstarOffset % KiCadUnitDivider;
+        int absmod = sign( mod ) * mod;
+        int offset = 0;
+
+        // Round half-way cases away from zero
+        if( absmod >= KiCadUnitDivider / 2 )
+            offset = sign( aCadstarOffset );
+
+        return ( aCadstarOffset / KiCadUnitDivider ) + offset;
     }
 
     EDA_ANGLE getAngle( const long long& aCadstarAngle )
@@ -340,8 +361,8 @@ private:
     double getPolarRadius( const VECTOR2I& aPoint );
 
 
-    static SCH_FIELD* addNewFieldToSymbol( const wxString&              aFieldName,
-                                           std::unique_ptr<LIB_SYMBOL>& aKiCadSymbol );
+    static SCH_FIELD* addNewFieldToSymbol( const wxString& aFieldName,
+                                           LIB_SYMBOL*     aKiCadSymbol );
 
 }; // CADSTAR_SCH_ARCHIVE_LOADER
 

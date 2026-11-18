@@ -15,18 +15,16 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 #include <unordered_set>
 
@@ -35,6 +33,7 @@
 
 #include <board.h>
 #include <geometry/shape_line_chain.h>
+#include <geometry/transform_trs.h>
 #include <reporter.h>
 #include <progress_reporter.h>
 #include <pcb_io/common/plugin_common_layer_mapping.h>
@@ -69,9 +68,17 @@ private:
     VECTOR2I scaleSize( const VECTOR2I& aSize ) const;
     int scale( int aVal ) const;
 
-    template <typename T>
-    const T* expectBlockByKey( uint32_t aKey, uint8_t aType ) const
+    /**
+     * Get a block by its key, and check that it is of the expected type.
+     *
+     * @tparam T must be a BLOCK_DATA struct with a BLOCK_TYPE_CODE member
+     */
+    template <ALLEGRO_BLOCK_DATA T>
+    const T* expectBlockByKey( uint32_t aKey ) const
     {
+        // The type code trait
+        constexpr uint8_t kType = T::BLOCK_TYPE_CODE;
+
         if( aKey == 0 )
             return nullptr;
 
@@ -79,13 +86,13 @@ private:
 
         if( !block )
         {
-            reportMissingBlock( aKey, aType );
+            reportMissingBlock( aKey, kType );
             return nullptr;
         }
 
-        if( block->GetBlockType() != aType )
+        if( block->GetBlockType() != kType )
         {
-            reportUnexpectedBlockType( block->GetBlockType(), aType, aKey, block->GetOffset() );
+            reportUnexpectedBlockType( block->GetBlockType(), kType, aKey, block->GetOffset() );
             return nullptr;
         }
 
@@ -97,6 +104,54 @@ private:
                                     const wxString& aName = wxEmptyString ) const;
 
     PCB_LAYER_ID getLayer( const LAYER_INFO& aLayerInfo ) const;
+
+    struct GRAPHIC_KEY_HASH
+    {
+        size_t operator()( const BOARD_ITEM* aItem ) const;
+    };
+
+    struct GRAPHIC_KEY_EQ
+    {
+        bool operator()( const BOARD_ITEM* aFirst, const BOARD_ITEM* aSecond ) const;
+    };
+
+    /**
+     * Rejects graphics that repeat one already accepted into the same container.
+     *
+     * Allegro stacks coincident graphics on documentation layers, up to a third of the items on
+     * some designs.  They are indistinguishable once drawn, so keeping them only inflates the
+     * board.  Scope one of these per container: footprint graphics are in footprint-relative
+     * coordinates, so identical shapes in different instances are not duplicates.
+     */
+    class GRAPHIC_DEDUP
+    {
+    public:
+        /// True when this graphic has not been seen before, and records it
+        bool IsFirst( const BOARD_ITEM* aItem );
+
+    private:
+        std::unordered_set<const BOARD_ITEM*, GRAPHIC_KEY_HASH, GRAPHIC_KEY_EQ> m_seen;
+    };
+
+    /// Coincidence filter for everything added straight to the board, which is one container
+    GRAPHIC_DEDUP m_boardGraphics;
+
+
+    /**
+     * Give @a aItem and its children ids derived from the Allegro block they came from.
+     *
+     * @param aItem
+     * @param aKey
+     * @param aSeq is advanced once per item stamped, so several items sharing one source block
+     *             still get distinct ids.
+     */
+    static void stampIds( BOARD_ITEM& aItem, uint32_t aKey, uint32_t& aSeq );
+
+    static void stampIds( BOARD_ITEM& aItem, uint32_t aKey )
+    {
+        uint32_t seq = 0;
+        stampIds( aItem, aKey, seq );
+    }
 
     /**
      * Get just the string value from a 0x31 STRING WRAPPER -> 0x30 STRING GRAPHIC pair
@@ -117,8 +172,19 @@ private:
     /**
      * Build the shapes from an 0x14 shape list
      */
-    std::vector<std::unique_ptr<PCB_SHAPE>> buildShapes( const BLK_0x14_GRAPHIC& aGraphicList, BOARD_ITEM_CONTAINER& aParent );
+    std::vector<std::unique_ptr<PCB_SHAPE>> buildShapes( const BLK_0x14_GRAPHIC& aGraphicList,
+                                                         BOARD_ITEM_CONTAINER& aParent );
     std::unique_ptr<PCB_TEXT>  buildPcbText( const BLK_0x30_STR_WRAPPER& aStrWrapper, BOARD_ITEM_CONTAINER& aParent );
+
+    /**
+     * Add a 0x30 text object to a footprint, either as one of the built-in fields or as a
+     * graphic, depending on the Allegro class it is on.
+     *
+     * @param aValueFieldSet tracks whether the VALUE field has been filled already, so only
+     *                       the first candidate replaces it.
+     */
+    void addFootprintText( FOOTPRINT& aFp, GRAPHIC_DEDUP& aGraphics, const BLK_0x30_STR_WRAPPER& aStrWrapper,
+                           bool& aValueFieldSet );
 
     /**
      * Build a rectangular shape from a 0x24 RECT block.
@@ -156,9 +222,11 @@ private:
 
     /**
      * Construct "pad" items for a given 0x1C PADSTACK block.
+     *
+     * @param aBackSide is true when the footprint is flipped to the bottom after its pads are built.
      */
     std::vector<std::unique_ptr<BOARD_ITEM>> buildPadItems( const BLK_0x1C_PADSTACK& aPadstack, FOOTPRINT& aFp,
-                                                            const wxString& aPadName, int aNetcode );
+                                                            const wxString& aPadName, int aNetcode, bool aBackSide );
     std::unique_ptr<FOOTPRINT>               buildFootprint( const BLK_0x2D_FOOTPRINT_INST& aFpInstance );
     std::vector<std::unique_ptr<BOARD_ITEM>> buildTrack( const BLK_0x05_TRACK& aBlock, int aNetcode );
     std::unique_ptr<BOARD_ITEM>              buildVia( const BLK_0x33_VIA& aBlock, int aNetcode );
@@ -168,29 +236,34 @@ private:
     /**
      * Build a ZONE from an 0x0E, 0x24 or 0x28 block.
      *
+     * @param aBoundaryBlock
      * @param aRelatedBlocks are blocks to get net (0x1B) and fill (0x28) info from
      * @param aZoneFillHandler is a management object for efficiently dealing with filled zones
+     * @param aParent
      */
     std::unique_ptr<ZONE> buildZone( const BLOCK_BASE&                     aBoundaryBlock,
                                      const std::vector<const BLOCK_BASE*>& aRelatedBlocks,
-                                     ZONE_FILL_HANDLER&                    aZoneFillHandler );
+                                     ZONE_FILL_HANDLER& aZoneFillHandler, BOARD_ITEM_CONTAINER& aParent );
 
-    SHAPE_LINE_CHAIN buildOutline( const BLK_0x0E_RECT& aRect ) const;
-    SHAPE_LINE_CHAIN buildOutline( const BLK_0x24_RECT& aRect ) const;
-    SHAPE_LINE_CHAIN buildOutline( const BLK_0x28_SHAPE& aShape ) const;
+    SHAPE_LINE_CHAIN buildOutline( const BLK_0x0E_RECT& aRect, const TRANSFORM_TRS& aXform = TRANSFORM_TRS() ) const;
+    SHAPE_LINE_CHAIN buildOutline( const BLK_0x24_RECT& aRect, const TRANSFORM_TRS& aXform = TRANSFORM_TRS() ) const;
+    SHAPE_LINE_CHAIN buildOutline( const BLK_0x28_SHAPE& aShape, const TRANSFORM_TRS& aXform = TRANSFORM_TRS() ) const;
 
-    SHAPE_POLY_SET shapeToPolySet( const BLK_0x28_SHAPE& aShape ) const;
+    SHAPE_POLY_SET shapeToPolySet( const BLK_0x28_SHAPE& aShape, const TRANSFORM_TRS& aXform = TRANSFORM_TRS() ) const;
 
     /**
      * Try to build a zone shape for the given block, with holes.
      */
-    SHAPE_POLY_SET tryBuildZoneShape( const BLOCK_BASE& aBlock );
+    SHAPE_POLY_SET tryBuildZoneShape( const BLOCK_BASE& aBlock,
+                                      const TRANSFORM_TRS& aXform = TRANSFORM_TRS() ) const;
 
     /**
      * Walk a geometry chain (0x01 arcs and 0x15-17 segments) starting from the given key,
      * following m_Next links. Used for building hole outlines from 0x34 KEEPOUT blocks.
+     * Identity transforms are cached by start key; non-identity transforms are built fresh.
      */
-    const SHAPE_LINE_CHAIN& buildSegmentChain( uint32_t aStartKey ) const;
+    SHAPE_LINE_CHAIN buildSegmentChain( uint32_t aStartKey,
+                                        const TRANSFORM_TRS& aXform = TRANSFORM_TRS() ) const;
 
     /**
      * Get blocks that are related to the BOUNDARY shape, i.e. NET and SHAPE (fill) info.
@@ -209,6 +282,13 @@ private:
     wxString resolveMatchGroupName( const BLK_0x1B_NET& aNet ) const;
 
     /**
+     * Follow a net's match group pointer to its 0x2C TABLE.
+     *
+     * @return the table, or nullptr if the net is in no match group
+     */
+    const BLK_0x2C_TABLE* resolveMatchGroupTable( const BLK_0x1B_NET& aNet ) const;
+
+    /**
      * Extract constraint set name from a 0x03 FIELD block pointer.
      *
      * Some boards store the constraint set name in a FIELD block referenced by m_FieldPtr in
@@ -225,6 +305,7 @@ private:
     void createBoardText();
     void createZones();
     void createTables();
+    void createPlaneVoidAreas();
     void applyZoneFills();
     void enablePadTeardrops();
     void applyConstraintSets();
@@ -267,6 +348,9 @@ private:
 
     // Keys that have been used as zone fills already
     std::unordered_set<uint32_t> m_usedZoneFillShapes;
+
+    // Void geometry drawn on negative plane layers, which the plane fill must keep clear
+    std::map<PCB_LAYER_ID, SHAPE_POLY_SET> m_planeVoids;
 
     std::unique_ptr<LAYER_MAPPER> m_layerMapper;
 

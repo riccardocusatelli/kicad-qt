@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /******************************************************************************
@@ -128,7 +124,7 @@ public:
         m_fbox_size = computeFBoxSize( /* aDynamic */ true );
 
         if( SCH_SYMBOL* schSymbol = dynamic_cast<SCH_SYMBOL*>( m_symbol ) )
-            m_is_power_symbol = !schSymbol->IsInNetlist();
+            m_is_power_symbol = !schSymbol->DoNetList();
 
         if( aScreen )
             getPossibleCollisions( m_colliders );
@@ -136,8 +132,7 @@ public:
 
     /**
      * Do the actual autoplacement.
-     * @param aManual - if true, use extra heuristics for smarter placement when manually
-     * called up.
+     * @param aAlgo is the heuristics for smarter placement.
      */
     void DoAutoplace( AUTOPLACE_ALGO aAlgo )
     {
@@ -258,7 +253,7 @@ protected:
     {
         unsigned pin_count = 0;
 
-        for( SCH_PIN* each_pin : m_symbol->GetPins() )
+        for( SCH_PIN* each_pin : m_symbol->GetGraphicalPins( ALL_UNITS, ALL_BODY_STYLES ) )
         {
             if( !each_pin->IsVisible() && !m_is_power_symbol )
                 continue;
@@ -594,7 +589,7 @@ protected:
                 {
                     BOX2I pinsBox;
 
-                    for( SCH_PIN* each_pin : m_symbol->GetPins() )
+                    for( SCH_PIN* each_pin : m_symbol->GetGraphicalPins( ALL_UNITS, ALL_BODY_STYLES ) )
                     {
                         if( !each_pin->IsVisible() && !m_is_power_symbol )
                             continue;

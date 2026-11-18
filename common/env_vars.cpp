@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <build_version.h>
@@ -43,6 +43,7 @@ static const std::vector<wxString> predefinedEnvVars = {
     ENV_VAR::GetVersionedEnvVarName( wxS( "TEMPLATE_DIR" ) ),
     wxS( "KICAD_USER_TEMPLATE_DIR" ),
     wxS( "KICAD_PTEMPLATES" ),
+    wxS( "KICAD_LTSPICE_LIB" ),
     ENV_VAR::GetVersionedEnvVarName( wxS( "3RD_PARTY" ) ),
 };
 
@@ -136,6 +137,10 @@ static void initialiseEnvVarHelp( std::map<wxString, wxString>& aMap )
 
     aMap[wxS( "KICAD_USER_TEMPLATE_DIR" )] =
         _( "Optional. Can be defined if you want to create your own project templates folder." );
+
+    aMap[wxS( "KICAD_LTSPICE_LIB" )] =
+        _( "Optional. The LTspice library folder, which holds the sub and sym folders, used when importing "
+           "LTspice schematics." );
 
     aMap[ENV_VAR::GetVersionedEnvVarName( wxS( "3RD_PARTY" ) )] =
         _( "A directory containing 3rd party plugins, libraries and other downloadable content." );

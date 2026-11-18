@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <widgets/grid_icon_text_helpers.h>
@@ -291,6 +287,21 @@ void GRID_CELL_ICON_TEXT_POPUP::Create( wxWindow* aParent, wxWindowID aId,
             Combo()->Append( m_names[ i ] );
     }
 
+#if defined( __WXMAC__ )
+    // A click in the generic popup takes focus from the combo, so stay open until the popup closes
+    Combo()->Bind( wxEVT_COMBOBOX_CLOSEUP,
+                   [this]( wxCommandEvent& aEvent )
+                   {
+                       wxEvtHandler* handler = m_control->GetEventHandler();
+
+                       // Destroying an open combo closes its popup after the grid handler is popped
+                       if( handler != m_control )
+                           static_cast<wxGridCellEditorEvtHandler*>( handler )->SetInSetFocus( false );
+
+                       aEvent.Skip();
+                   } );
+#endif
+
     wxGridCellEditor::Create(aParent, aId, aEventHandler);
 }
 
@@ -341,7 +352,7 @@ void GRID_CELL_ICON_TEXT_POPUP::BeginEdit( int aRow, int aCol, wxGrid* aGrid )
 
     // When dropping down the menu, a kill focus event
     // happens after this point, so we can't reset the flag yet.
-#if !defined(__WXGTK__)
+#if !defined( __WXGTK__ ) && !defined( __WXMAC__ )
     evtHandler->SetInSetFocus( false );
 #endif
 }

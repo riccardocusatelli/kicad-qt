@@ -55,8 +55,7 @@ public:
         COMMENT
     };
 
-    RC_TREE_NODE( RC_TREE_NODE* aParent, const std::shared_ptr<RC_ITEM>& aRcItem,
-                  NODE_TYPE aType ) :
+    RC_TREE_NODE( RC_TREE_NODE* aParent, const std::shared_ptr<RC_ITEM>& aRcItem, NODE_TYPE aType ) :
             m_Type( aType ),
             m_RcItem( aRcItem ),
             m_Parent( aParent )
@@ -73,13 +72,14 @@ public:
     RC_TREE_NODE( const RC_TREE_NODE& ) = delete;
     RC_TREE_NODE& operator=( const RC_TREE_NODE& ) = delete;
 
-    NODE_TYPE                  m_Type;
-    std::shared_ptr<RC_ITEM>   m_RcItem;
-
     struct HANDLE
     {
         RC_TREE_NODE* m_Node = nullptr;
     };
+
+public:
+    NODE_TYPE                  m_Type;
+    std::shared_ptr<RC_ITEM>   m_RcItem;
 
     HANDLE*                    m_Handle = nullptr;
     RC_TREE_NODE*              m_Parent;
@@ -116,6 +116,10 @@ public:
 
     void Update( std::shared_ptr<RC_ITEMS_PROVIDER> aProvider, int aSeverities );
 
+    /// Render [label](url) markup as clickable links.  Must be called before
+    /// any rows are added.
+    void EnableHyperlinks( bool aEnable );
+
     void ExpandAll();
 
     void PrevMarker();
@@ -127,8 +131,7 @@ public:
 
     wxDataViewItem GetParent( wxDataViewItem const& aItem ) const override;
 
-    unsigned int GetChildren( wxDataViewItem const& aItem,
-                              wxDataViewItemArray&  aChildren ) const override;
+    unsigned int GetChildren( wxDataViewItem const& aItem, wxDataViewItemArray&  aChildren ) const override;
 
     bool HasContainerColumns( wxDataViewItem const& aItem ) const override { return true; }
 
@@ -143,14 +146,12 @@ public:
     /**
      * Called by the wxDataView to fetch an item's value.
      */
-    void GetValue( wxVariant& aVariant, wxDataViewItem const& aItem,
-                   unsigned int aCol ) const override;
+    void GetValue( wxVariant& aVariant, wxDataViewItem const& aItem, unsigned int aCol ) const override;
 
     /**
      * Called by the wxDataView to edit an item's content.
      */
-    bool SetValue( wxVariant const& aVariant, wxDataViewItem const& aItem,
-                   unsigned int aCol ) override
+    bool SetValue( wxVariant const& aVariant, wxDataViewItem const& aItem, unsigned int aCol ) override
     {
         // Editing not supported
         return false;
@@ -160,8 +161,7 @@ public:
      * Called by the wxDataView to fetch an item's formatting.  Return true if the
      * item has non-default attributes.
      */
-    bool GetAttr( wxDataViewItem const& aItem, unsigned int aCol,
-                  wxDataViewItemAttr& aAttr ) const override;
+    bool GetAttr( wxDataViewItem const& aItem, unsigned int aCol, wxDataViewItemAttr& aAttr ) const override;
 
     void ValueChanged( RC_TREE_NODE* aNode );
 
@@ -177,26 +177,31 @@ public:
 protected:
     RC_TREE_NODE* createNode( RC_TREE_NODE* aParent, const std::shared_ptr<RC_ITEM>& aRcItem,
                               RC_TREE_NODE::NODE_TYPE aType );
-    void          retireNodeTree( RC_TREE_NODE* aNode );
-    void          deleteNodeTree( RC_TREE_NODE* aNode );
+    void retireNodeTree( RC_TREE_NODE* aNode );
+    void deleteNodeTree( RC_TREE_NODE* aNode );
 
     /**
      * Retire and destroy every node in the tree.
      *
      * Retired handles are kept alive so that stale wxDataViewItems resolve to nullptr.
      */
-    void          clearTree();
+    void clearTree();
 
     /**
      * Repopulate the node tree from \a aProvider.  Touches no wxWidgets state.
      */
-    void          rebuildTree( std::shared_ptr<RC_ITEMS_PROVIDER> aProvider, int aSeverities );
+    void rebuildTree( std::shared_ptr<RC_ITEMS_PROVIDER> aProvider, int aSeverities );
 
-    void     rebuildModel( std::shared_ptr<RC_ITEMS_PROVIDER> aProvider, int aSeverities );
+    void rebuildModel( std::shared_ptr<RC_ITEMS_PROVIDER> aProvider, int aSeverities );
 
+    void onViewSize( wxSizeEvent& aEvent );
+
+protected:
     EDA_DRAW_FRAME*                    m_editFrame;
     wxDataViewCtrl*                    m_view;
     int                                m_severities;
+    bool                               m_enableHyperlinks = false;
+    wxDataViewColumn*                  m_hyperlinkColumn = nullptr;
     std::shared_ptr<RC_ITEMS_PROVIDER> m_rcItemsProvider;
 
     /// Stable wx item IDs.  Handles are retired but never freed before the model dies because

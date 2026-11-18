@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <fmt/format.h>
@@ -102,7 +102,30 @@ struct LIBRARY_TABLE_PARSER_ACTION<QUOTED_TEXT>
     {
         KI_CHECK2( s.target_string, return );
         KI_CHECK2( in.string().size() >= 2, return );
-        *s.target_string = in.string().substr( 1, in.string().size() - 2 );
+        std::string inner = in.string().substr( 1, in.string().size() - 2 );
+        std::string unescaped;
+        unescaped.reserve( inner.size() );
+
+        for( size_t ii = 0; ii < inner.size(); ++ii )
+        {
+            if( inner[ii] != '\\' || ii + 1 == inner.size() )
+            {
+                unescaped += inner[ii];
+            }
+            else
+            {
+                switch( inner[++ii] )
+                {
+                case 'n':  unescaped += '\n';  break;
+                case 'r':  unescaped += '\r';  break;
+                case '\\': unescaped += '\\';  break;
+                case '"':  unescaped += '"';   break;
+                default:   unescaped += '\\'; unescaped += inner[ii]; break;
+                }
+            }
+        }
+
+        *s.target_string = std::move( unescaped );
     }
 };
 

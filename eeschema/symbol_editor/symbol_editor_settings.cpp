@@ -14,11 +14,7 @@
 * GNU General Public License for more details.
 *
 * You should have received a copy of the GNU General Public License
-* along with this program; if not, you may find one here:
-* http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-* or you may search the http://www.gnu.org website for the version 2 license,
-* or you may write to the Free Software Foundation, Inc.,
-* 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+* along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <json_common.h>
@@ -26,6 +22,7 @@
 #include <settings/common_settings.h>
 #include <settings/parameters.h>
 #include <settings/settings_manager.h>
+#include <settings/snap_settings_params.h>
 #include "symbol_editor_settings.h"
 #include <default_values.h>
 
@@ -90,6 +87,9 @@ SYMBOL_EDITOR_SETTINGS::SYMBOL_EDITOR_SETTINGS() :
     m_params.emplace_back( new PARAM<bool>( "show_hidden_lib_pins",
             &m_ShowHiddenPins, true ) );
 
+    m_params.emplace_back( new PARAM<bool>( "synchronized_pins_mode",
+            &m_SyncPinEdit, true ) );
+
     m_params.emplace_back( new PARAM<bool>( "drag_pins_along_with_edges",
             &m_dragPinsAlongWithEdges, true ) );
 
@@ -106,14 +106,35 @@ SYMBOL_EDITOR_SETTINGS::SYMBOL_EDITOR_SETTINGS() :
             reinterpret_cast<int*>( &m_ArcEditMode ),
             static_cast<int>( ARC_EDIT_MODE::KEEP_CENTER_ADJUST_ANGLE_RADIUS ) ) );
 
+    AddSnapInferenceParams( m_params, m_SnapInference );
+
     m_params.emplace_back( new PARAM_MAP<int>( "lib_field_editor.field_widths",
             &m_LibFieldEditor.field_widths, {} ) );
+
+    m_params.emplace_back( new PARAM<int>( "lib_field_editor.selection_mode",
+            &m_LibFieldEditor.selection_mode, 0 ) );
 
     m_params.emplace_back( new PARAM<int>( "lib_field_editor.sash_pos",
             &m_LibFieldEditor.sash_pos, 400 ) );
 
+    m_params.emplace_back( new PARAM<int>( "lib_field_editor.variant_sash_pos",
+            &m_LibFieldEditor.variant_sash_pos, 500 ) );
+
     m_params.emplace_back( new PARAM<bool>( "lib_field_editor.sidebar_collapsed",
             &m_LibFieldEditor.sidebar_collapsed, false ) );
+
+    m_params.emplace_back( new PARAM<wxString>( "lib_field_editor.bom_export_filename",
+            &m_LibFieldEditorBom.m_BomExportFileName, "${PROJECTNAME}.csv" ) );
+
+    m_params.emplace_back( new PARAM<BOM_PRESET>( "lib_field_editor.bom_settings",
+            &m_LibFieldEditorBom.m_BomSettings, {} ) );
+    m_params.emplace_back( new PARAM_LIST<BOM_PRESET>( "lib_field_editor.bom_presets",
+            &m_LibFieldEditorBom.m_BomPresets, {} ) );
+
+    m_params.emplace_back( new PARAM<BOM_FMT_PRESET>( "lib_field_editor.bom_fmt_settings",
+            &m_LibFieldEditorBom.m_BomFmtSettings, BOM_FMT_PRESET::CSV() ) );
+    m_params.emplace_back( new PARAM_LIST<BOM_FMT_PRESET>( "lib_field_editor.bom_fmt_presets",
+            &m_LibFieldEditorBom.m_BomFmtPresets, {} ) );
 
     m_params.emplace_back( new PARAM<bool>( "pin_table.crossprobe_on_selection",
             &m_PinTable.crossprobe_on_selection, true ) );
@@ -161,6 +182,59 @@ SYMBOL_EDITOR_SETTINGS::SYMBOL_EDITOR_SETTINGS() :
                 { "images", true },
                 { "otherItems", true }
             } ) );
+
+    m_params.emplace_back( new PARAM_LAMBDA<nlohmann::json>( "open_tabs",
+            [&]() -> nlohmann::json
+            {
+                nlohmann::json ret = nlohmann::json::array();
+
+                for( const OPEN_TAB& tab : m_OpenTabs )
+                {
+                    nlohmann::json entry;
+
+                    entry["lib"]        = tab.lib.ToUTF8();
+                    entry["name"]       = tab.name.ToUTF8();
+                    entry["unit"]       = tab.unit;
+                    entry["body_style"] = tab.bodyStyle;
+                    entry["preview"] = tab.preview;
+
+                    ret.push_back( entry );
+                }
+
+                return ret;
+            },
+            [&]( const nlohmann::json& aVal )
+            {
+                m_OpenTabs.clear();
+
+                if( !aVal.is_array() )
+                    return;
+
+                for( const nlohmann::json& entry : aVal )
+                {
+                    if( !entry.is_object() || !entry.contains( "lib" ) || !entry.contains( "name" ) )
+                        continue;
+
+                    OPEN_TAB tab;
+
+                    tab.lib  = wxString::FromUTF8( entry["lib"].get<std::string>() );
+                    tab.name = wxString::FromUTF8( entry["name"].get<std::string>() );
+
+                    if( entry.contains( "unit" ) )
+                        tab.unit = entry["unit"].get<int>();
+
+                    if( entry.contains( "body_style" ) )
+                        tab.bodyStyle = entry["body_style"].get<int>();
+
+                    if( entry.contains( "preview" ) )
+                        tab.preview = entry["preview"].get<bool>();
+
+                    m_OpenTabs.push_back( tab );
+                }
+            },
+            nlohmann::json::array() ) );
+
+    m_params.emplace_back( new PARAM<wxString>( "active_tab", &m_ActiveTabKey, wxEmptyString ) );
 
     registerMigration( 0, 1,
                        [&]() -> bool

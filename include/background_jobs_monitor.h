@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef BACKGROUND_JOBS_MONITOR_H
@@ -32,6 +28,7 @@
 #include <atomic>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <shared_mutex>
 #include <vector>
 
@@ -76,12 +73,30 @@ private:
 struct KIQT_COMMON_API BACKGROUND_JOB
 {
 public:
+    /**
+     * Worker threads write the status and the UI reads it so it needs a lock
+     */
+    wxString GetStatus() const
+    {
+        std::lock_guard<std::mutex> lock( m_statusMutex );
+        return m_status;
+    }
+
+    void SetStatus( const wxString& aStatus )
+    {
+        std::lock_guard<std::mutex> lock( m_statusMutex );
+        m_status = aStatus;
+    }
+
     wxString m_name;
-    wxString m_status;
     std::shared_ptr<BACKGROUND_JOB_REPORTER> m_reporter;
 
     std::atomic<int> m_maxProgress;
     std::atomic<int> m_currentProgress;
+
+private:
+    mutable std::mutex m_statusMutex;
+    wxString           m_status;
 };
 
 
@@ -149,7 +164,7 @@ private:
 
     std::vector<KISTATUSBAR*> m_statusBars;
 
-    /// Mutex to protect access to the m_jobs vector
+    /// Mutex to protect access to m_jobs, m_shownDialogs and m_statusBars
     mutable std::shared_mutex m_mutex;
 };
 

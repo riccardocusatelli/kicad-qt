@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef COMMAND_EXPORT_PCB_BASE_H
@@ -23,13 +23,18 @@
 
 #include "command.h"
 
+class JOB_EXPORT_PCB_FAB;
+
 namespace CLI
 {
 #define ARG_BLACKANDWHITE "--black-and-white"
 #define ARG_BLACKANDWHITE_DESC "Black and white only"
 
 #define ARG_SKETCH_PADS_ON_FAB_LAYERS "--sketch-pads-on-fab-layers"
-#define ARG_SKETCH_PADS_ON_FAB_LAYERS_DESC "Draw pad outlines and their numbers on front and back fab layers"
+#define ARG_SKETCH_PADS_ON_FAB_LAYERS_DESC "Draw pad outlines on front and back fab layers"
+
+#define ARG_SKETCH_PAD_NUMBERS "--sketch-pad-numbers"
+#define ARG_SKETCH_PAD_NUMBERS_DESC "Plot pad numbers on top of sketched pads on fab layers"
 
 #define ARG_HIDE_DNP_FPS_ON_FAB_LAYERS "--hide-DNP-footprints-on-fab-layers"
 #define ARG_HIDE_DNP_FPS_ON_FAB_LAYERS_DESC "Don't plot text & graphics of DNP footprints on fab layers"
@@ -67,8 +72,17 @@ namespace CLI
 #define ARG_BACKGROUND_COLOR "--bg-color"
 #define ARG_BACKGROUND_COLOR_DESC "Background color, can be in hex #rrggbb, #rrggbbaa; or css rgb(r,g,b), rgba(r,g,b,a) format"
 
+#define ARG_USE_THEME_BACKGROUND "--use-theme-background"
+#define ARG_USE_THEME_BACKGROUND_DESC "Use the color theme background color instead of a transparent background."
+
 #define ARG_CHECK_ZONES "--check-zones"
 #define ARG_CHECK_ZONES_DESC "Check and refill zones if required"
+#define ARG_FAB_UNITS "--units"
+#define ARG_PRECISION "--precision"
+#define ARG_BOM_COL_MFG_PN "--bom-col-mfg-pn"
+#define ARG_DATA_SET "--data-set"
+#define ARG_SECTIONS "--sections"
+#define ARG_NET_NAMES "--net-names"
 
 struct PCB_EXPORT_BASE_COMMAND : public COMMAND
 {
@@ -78,6 +92,9 @@ struct PCB_EXPORT_BASE_COMMAND : public COMMAND
 protected:
     void addLayerArg();
     void addCommonLayersArg();
+    /// aJob says which data sets the format supports  aDataSetAlias is a second name for the flag
+    void addFabExportArgs( const JOB_EXPORT_PCB_FAB& aJob, const std::string& aDataSetAlias = {} );
+    void applyFabExportArgs( JOB_EXPORT_PCB_FAB& aJob );
 };
 } // namespace CLI
 

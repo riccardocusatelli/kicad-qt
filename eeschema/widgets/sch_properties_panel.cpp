@@ -15,12 +15,13 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "sch_properties_panel.h"
 
+#include <dialog_symbol_properties.h>
 #include <font/fontconfig.h>
 #include <pgm_base.h>
 #include <common.h>
@@ -36,191 +37,55 @@
 #include <symbol_viewer_frame.h>
 #include <schematic.h>
 #include <sch_symbol.h>
+#include <lib_symbol.h>
+#include <sch_line.h>
+#include <sch_junction.h>
 #include <sch_field.h>
+#include <validators.h>
+#include <pin_map.h>
 #include <template_fieldnames.h>
 #include <settings/color_settings.h>
 #include <string_utils.h>
 #include <tool/tool_manager.h>
+#include <tools/sch_actions.h>
 #include <tools/sch_selection_tool.h>
 #include <wildcards_and_files_ext.h>
 #include <wx_filename.h>
-#include <set>
 #include <core/ki_assert.h>
 
-static const wxString MISSING_FIELD_SENTINEL = wxS( "\uE000" );
 
-class SCH_SYMBOL_FIELD_PROPERTY : public PROPERTY_BASE
-{
-public:
-    SCH_SYMBOL_FIELD_PROPERTY( const wxString& aName ) :
-            PROPERTY_BASE( aName ),
-            m_name( aName )
-    { }
-
-    size_t OwnerHash() const override { return TYPE_HASH( SCH_SYMBOL ); }
-    size_t BaseHash() const override { return TYPE_HASH( SCH_SYMBOL ); }
-    size_t TypeHash() const override { return TYPE_HASH( wxString ); }
-
-    bool Writeable( INSPECTABLE* aObject ) const override
-    {
-        return PROPERTY_BASE::Writeable( aObject );
-    }
-
-    void setter( void* obj, wxAny& v ) override
-    {
-        wxString value;
-
-        if( !v.GetAs( &value ) )
-            return;
-
-        SCH_SYMBOL* symbol = reinterpret_cast<SCH_SYMBOL*>( obj );
-        SCH_FIELD*  field = symbol->GetField( m_name );
-
-        wxString variantName;
-        const SCH_SHEET_PATH* sheetPath = nullptr;
-
-        if( symbol->Schematic() )
-        {
-            variantName = symbol->Schematic()->GetCurrentVariant();
-            sheetPath = &symbol->Schematic()->CurrentSheet();
-        }
-
-        if( !field )
-        {
-            SCH_FIELD newField( symbol, FIELD_T::USER, m_name );
-            newField.SetText( value, sheetPath, variantName );
-            symbol->AddField( newField );
-        }
-        else
-        {
-            field->SetText( value, sheetPath, variantName );
-        }
-    }
-
-    wxAny getter( const void* obj ) const override
-    {
-        const SCH_SYMBOL* symbol = reinterpret_cast<const SCH_SYMBOL*>( obj );
-        const SCH_FIELD*  field = symbol->GetField( m_name );
-
-        if( field )
-        {
-            wxString variantName;
-            const SCH_SHEET_PATH* sheetPath = nullptr;
-
-            if( symbol->Schematic() )
-            {
-                variantName = symbol->Schematic()->GetCurrentVariant();
-                sheetPath = &symbol->Schematic()->CurrentSheet();
-            }
-
-            wxString text;
-
-            if( !variantName.IsEmpty() && sheetPath )
-                text = field->GetText( sheetPath, variantName );
-            else
-                text = field->GetText();
-
-            return wxAny( text );
-        }
-        else
-        {
-            return wxAny( MISSING_FIELD_SENTINEL );
-        }
-    }
-
-private:
-    wxString m_name;
-};
-
-class SCH_SHEET_FIELD_PROPERTY : public PROPERTY_BASE
-{
-public:
-    SCH_SHEET_FIELD_PROPERTY( const wxString& aName ) :
-            PROPERTY_BASE( aName ),
-            m_name( aName )
-    {
-    }
-
-    size_t OwnerHash() const override { return TYPE_HASH( SCH_SHEET ); }
-    size_t BaseHash() const override { return TYPE_HASH( SCH_SHEET ); }
-    size_t TypeHash() const override { return TYPE_HASH( wxString ); }
-
-    bool Writeable( INSPECTABLE* aObject ) const override { return PROPERTY_BASE::Writeable( aObject ); }
-
-    void setter( void* obj, wxAny& v ) override
-    {
-        wxString value;
-
-        if( !v.GetAs( &value ) )
-            return;
-
-        SCH_SHEET* sheet = reinterpret_cast<SCH_SHEET*>( obj );
-        SCH_FIELD* field = sheet->GetField( m_name );
-
-        wxString              variantName;
-        const SCH_SHEET_PATH* sheetPath = nullptr;
-
-        if( sheet->Schematic() )
-        {
-            variantName = sheet->Schematic()->GetCurrentVariant();
-            sheetPath = &sheet->Schematic()->CurrentSheet();
-        }
-
-        if( !field )
-        {
-            SCH_FIELD newField( sheet, FIELD_T::USER, m_name );
-            newField.SetText( value, sheetPath, variantName );
-            sheet->AddField( newField );
-        }
-        else
-        {
-            field->SetText( value, sheetPath, variantName );
-        }
-    }
-
-    wxAny getter( const void* obj ) const override
-    {
-        const SCH_SHEET* sheet = reinterpret_cast<const SCH_SHEET*>( obj );
-        const SCH_FIELD* field = sheet->GetField( m_name );
-
-        if( field )
-        {
-            wxString              variantName;
-            const SCH_SHEET_PATH* sheetPath = nullptr;
-
-            if( sheet->Schematic() )
-            {
-                variantName = sheet->Schematic()->GetCurrentVariant();
-                sheetPath = &sheet->Schematic()->CurrentSheet();
-            }
-
-            wxString text;
-
-            if( !variantName.IsEmpty() && sheetPath )
-                text = field->GetText( sheetPath, variantName );
-            else
-                text = field->GetText();
-
-            return wxAny( text );
-        }
-        else
-        {
-            return wxAny( MISSING_FIELD_SENTINEL );
-        }
-    }
-
-private:
-    wxString m_name;
-};
-
-std::set<wxString> SCH_PROPERTIES_PANEL::m_currentSymbolFieldNames;
-std::set<wxString> SCH_PROPERTIES_PANEL::m_currentSheetFieldNames;
+bool SCH_PROPERTIES_PANEL::m_selContainsJunctions;
+bool SCH_PROPERTIES_PANEL::m_selContainsWiresOrBuses;
 
 SCH_PROPERTIES_PANEL::SCH_PROPERTIES_PANEL( TOOLKIT_WINDOW* aParent, SCH_BASE_FRAME* aFrame ) :
         PROPERTIES_PANEL( aParent, aFrame ),
         m_frame( aFrame ),
         m_propMgr( PROPERTY_MANAGER::Instance() )
 {
+    addCategoryButton( _HKI( "Fields" ), _( "Add Field" ), BITMAPS::small_plus,
+                       [this]()
+                       {
+                           addBlankField();
+                       } );
+
+    addCategoryButton( _HKI( "Custom Properties" ), _( "Add Custom Property" ), BITMAPS::small_plus,
+                       [this]()
+                       {
+                           addBlankCustomProperty();
+                       } );
+
+    addCategoryButton(
+            _HKI( "Pin Map" ), _( "Edit Pin Map..." ), BITMAPS::small_edit,
+            [this]()
+            {
+                onEditPinMap();
+            },
+            [this]()
+            {
+                return m_frame->IsType( FRAME_SCH ) && getSinglePinMappedSymbol() != nullptr;
+            },
+            /* aForceCategory */ true );
+
     m_propMgr.Rebuild();
 
     registerEditors();
@@ -327,66 +192,92 @@ void SCH_PROPERTIES_PANEL::AfterCommit()
 
 void SCH_PROPERTIES_PANEL::rebuildProperties( const SELECTION& aSelection )
 {
-    m_currentSymbolFieldNames.clear();
-    m_currentSheetFieldNames.clear();
+    m_selContainsJunctions = false;
+    m_selContainsWiresOrBuses = false;
 
     for( EDA_ITEM* item : aSelection )
     {
-        if( item->Type() == SCH_SYMBOL_T )
+        if( item->Type() == SCH_JUNCTION_T )
         {
-            SCH_SYMBOL* symbol = static_cast<SCH_SYMBOL*>( item );
+            m_selContainsJunctions = true;
 
-            for( const SCH_FIELD& field : symbol->GetFields() )
-            {
-                if( field.IsPrivate() )
-                    continue;
-
-                m_currentSymbolFieldNames.insert( field.GetCanonicalName() );
-            }
-        }
-        else if( item->Type() == SCH_SHEET_T )
-        {
-            SCH_SHEET* sheet = static_cast<SCH_SHEET*>( item );
-
-            for( const SCH_FIELD& field : sheet->GetFields() )
-            {
-                if( field.IsPrivate() )
-                    continue;
-
-                m_currentSheetFieldNames.insert( field.GetCanonicalName() );
-            }
-        }
-    }
-
-    const wxString groupFields = _HKI( "Fields" );
-
-    for( const wxString& name : m_currentSymbolFieldNames )
-    {
-        if( !m_propMgr.GetProperty( TYPE_HASH( SCH_SYMBOL ), name ) )
-        {
-            m_propMgr.AddProperty( new SCH_SYMBOL_FIELD_PROPERTY( name ), groupFields )
+            // Dummy property which allows concurrently-selected wires to be edited
+            m_propMgr.AddProperty( new DUMMY_PROPERTY<SCH_JUNCTION, WIRE_STYLE>( _HKI( "Wire Style" ) ) )
                     .SetAvailableFunc(
-                            [name]( INSPECTABLE* )
+                            []( INSPECTABLE* )
                             {
-                                return SCH_PROPERTIES_PANEL::m_currentSymbolFieldNames.count( name );
+                                return m_selContainsWiresOrBuses;
+                            } );
+
+            // Dummy property which allows concurrently-selected wires to be edited
+            m_propMgr.AddProperty( new DUMMY_PROPERTY<SCH_JUNCTION, int>( _HKI( "Line Width" ) ) )
+                    .SetAvailableFunc(
+                            []( INSPECTABLE* )
+                            {
+                                return m_selContainsWiresOrBuses;
                             } );
         }
-    }
-
-    for( const wxString& name : m_currentSheetFieldNames )
-    {
-        if( !m_propMgr.GetProperty( TYPE_HASH( SCH_SHEET ), name ) )
+        else if( item->IsType( { SCH_ITEM_LOCATE_WIRE_T, SCH_ITEM_LOCATE_BUS_T } ) )
         {
-            m_propMgr.AddProperty( new SCH_SHEET_FIELD_PROPERTY( name ), groupFields )
+            m_selContainsWiresOrBuses = true;
+
+            // Dummy property which allows concurrently-selected junctions to be edited
+            m_propMgr.AddProperty( new DUMMY_PROPERTY<SCH_LINE, int>( _HKI( "Diameter" ) ) )
                     .SetAvailableFunc(
-                            [name]( INSPECTABLE* )
+                            []( INSPECTABLE* )
                             {
-                                return SCH_PROPERTIES_PANEL::m_currentSheetFieldNames.count( name );
+                                return m_selContainsJunctions;
                             } );
         }
     }
 
     PROPERTIES_PANEL::rebuildProperties( aSelection );
+}
+
+
+SCH_SYMBOL* SCH_PROPERTIES_PANEL::getSinglePinMappedSymbol()
+{
+    SELECTION        fallbackSelection;
+    const SELECTION& selection = getSelection( fallbackSelection );
+
+    if( selection.Size() != 1 || selection.Front()->Type() != SCH_SYMBOL_T )
+        return nullptr;
+
+    SCH_SYMBOL* symbol = static_cast<SCH_SYMBOL*>( selection.Front() );
+
+    return symbol->HasEffectiveAssociatedFootprint() ? symbol : nullptr;
+}
+
+
+void SCH_PROPERTIES_PANEL::onEditPinMap()
+{
+    SCH_SYMBOL* symbol = getSinglePinMappedSymbol();
+
+    if( !symbol || !m_frame->IsType( FRAME_SCH ) )
+        return;
+
+    SCH_EDIT_FRAME* editFrame = static_cast<SCH_EDIT_FRAME*>( m_frame );
+
+    DIALOG_SYMBOL_PROPERTIES dlg( editFrame, symbol );
+    dlg.SelectPinMapPage();
+
+    // The dialog can subsequently invoke a KIWAY_PLAYER as a quasimodal frame, so it must run
+    // quasimodally to keep that support working.
+    int retval = dlg.ShowQuasiModal();
+
+    if( retval == SYMBOL_PROPS_EDIT_OK )
+    {
+        editFrame->OnModify();
+        AfterCommit();
+    }
+    else if( retval == SYMBOL_PROPS_WANT_SET_VARIANT_SYMBOL )
+    {
+        editFrame->GetToolManager()->RunAction( SCH_ACTIONS::setVariantSymbol );
+    }
+    else if( retval == SYMBOL_PROPS_WANT_CLEAR_VARIANT_SYMBOL )
+    {
+        editFrame->GetToolManager()->RunAction( SCH_ACTIONS::clearVariantSymbol );
+    }
 }
 
 
@@ -397,9 +288,9 @@ TOOLKIT_PG_PROPERTY* SCH_PROPERTIES_PANEL::createPGProperty( const PROPERTY_BASE
     COLOR4D bg = m_frame->GetColorSettings()->GetColor( LAYER_SCHEMATIC_BACKGROUND );
     PGSetColorBackground( prop, bg );
 
-    if( aProperty->Name() == GetCanonicalFieldName( FIELD_T::FOOTPRINT ) )
+    if( aProperty->Name() == GetDefaultFieldName( FIELD_T::FOOTPRINT, UNTRANSLATED ) )
         PGSetEditor( prop, PG_EDITOR::FPID, m_frame );
-    else if( aProperty->Name() == GetCanonicalFieldName( FIELD_T::DATASHEET ) )
+    else if( aProperty->Name() == GetDefaultFieldName( FIELD_T::DATASHEET, UNTRANSLATED ) )
         PGSetEditor( prop, PG_EDITOR::URL, m_frame );
 
     return prop;
@@ -417,7 +308,7 @@ PROPERTY_BASE* SCH_PROPERTIES_PANEL::getPropertyByName( const wxString& aName ) 
 
     KI_CHECK_MSG( firstItem, nullptr, wxT( "getPropertyByName for a property with nothing selected!") );
 
-    PROPERTY_BASE* property = m_propMgr.GetProperty( TYPE_HASH( *firstItem ), aName );
+    PROPERTY_BASE* property = m_propMgr.GetProperty( firstItem, aName );
     KI_CHECK_MSG( property, nullptr, wxT( "getPropertyByName for a property not found on the selected item!" ) );
 
     return property;
@@ -429,20 +320,46 @@ bool SCH_PROPERTIES_PANEL::valueChanging( const wxString& aName, const wxVariant
     if( m_SuppressGridChangeEvents )
         return true;
 
-    EDA_ITEM* frontItem = getFrontItem();
-
-    if( !frontItem )
+    if( !getFrontItem() || !getPropertyByName( aName ) )
         return true;
 
-    if( PROPERTY_BASE* property = getPropertyByName( aName ) )
-    {
-        wxVariant newValue = aValue;
+    SELECTION        fallbackSelection;
+    const SELECTION& selection = getSelection( fallbackSelection );
+    wxVariant        newValue = aValue;
 
-        if( VALIDATOR_RESULT validationFailure = property->Validate( newValue.GetAny(), frontItem ) )
+    // valueChanged() writes every selected item, so a mixed selection must be valid for each of them
+    for( EDA_ITEM* item : selection )
+    {
+        PROPERTY_BASE* property = m_propMgr.GetProperty( item, aName );
+
+        if( !property )
+            continue;
+
+        wxString errorMsg;
+
+        if( VALIDATOR_RESULT validationFailure = property->Validate( newValue.GetAny(), item ) )
         {
-            wxString errorMsg = wxString::Format( wxS( "%s: %s" ), wxGetTranslation( property->Name() ),
-                                                  validationFailure->get()->Format( m_frame ) );
+            errorMsg = wxString::Format( wxS( "%s: %s" ), wxGetTranslation( property->Name() ),
+                                         validationFailure->get()->Format( m_frame ) );
+        }
+        else if( SCH_FIELD* field = dynamic_cast<SCH_FIELD*>( item );
+                 field && field->GetId() == FIELD_T::SHEET_REF_SUFFIX && property->Name() == wxS( "Text" ) )
+        {
+            // The suffix field's own Text property is generic and carries no field rules
+            errorMsg = GetFieldValidationErrorMessage( FIELD_T::SHEET_REF_SUFFIX, newValue.GetString() );
+        }
+        else if( SCH_SYMBOL* symbol = field ? dynamic_cast<SCH_SYMBOL*>( field->GetParentSymbol() ) : nullptr;
+                 symbol && symbol->Schematic() && field->GetId() == FIELD_T::REFERENCE
+                 && property->Name() == wxS( "Text" ) )
+        {
+            wxString base;
+            errorMsg = symbol->BaseRefFromUser( symbol->Schematic()->CurrentSheet(), newValue.GetString(), base );
+        }
+
+        if( !errorMsg.IsEmpty() )
+        {
             m_frame->ShowInfoBarError( errorMsg );
+            m_ValueChangeVetoed = true;
             return false;
         }
     }
@@ -473,7 +390,7 @@ void SCH_PROPERTIES_PANEL::valueChanged( const wxString& aName, const wxVariant&
             continue;
 
         SCH_ITEM* item = static_cast<SCH_ITEM*>( edaItem );
-        PROPERTY_BASE* property = m_propMgr.GetProperty( TYPE_HASH( *item ), aName );
+        PROPERTY_BASE* property = m_propMgr.GetProperty( item, aName );
         KI_CHECK2( property, continue );
 
         // Editing reference text in the schematic must go through the parent symbol in order to handle
@@ -591,6 +508,309 @@ bool SCH_PROPERTIES_PANEL::handleSheetFilenameChange( SCH_EDIT_FRAME* aFrame, SC
     aSheet->SetFileName( newFilename );
 
     return true;
+}
+
+
+bool SCH_PROPERTIES_PANEL::isKeyNameInUse( const wxString& aName ) const
+{
+    EDA_ITEM* item = const_cast<SCH_PROPERTIES_PANEL*>( this )->getFrontItem();
+
+    if( !item )
+        return false;
+
+    return m_propMgr.GetProperty( item, aName ) != nullptr;
+}
+
+
+void SCH_PROPERTIES_PANEL::onKeyRenamed( const wxString& aOldName, const wxString& aNewName )
+{
+    SELECTION fallbackSelection;
+    const SELECTION& selection = getSelection( fallbackSelection );
+
+    // Renaming to the suffix name retypes the field, so its existing text must already be a valid suffix
+    if( aNewName == GetDefaultFieldName( FIELD_T::SHEET_REF_SUFFIX, UNTRANSLATED ) )
+    {
+        for( EDA_ITEM* edaItem : selection )
+        {
+            if( edaItem->Type() != SCH_SHEET_T )
+                continue;
+
+            const SCH_FIELD* field = std::as_const( *static_cast<SCH_SHEET*>( edaItem ) ).GetField( aOldName );
+
+            if( !field )
+                continue;
+
+            wxString msg = GetFieldValidationErrorMessage( FIELD_T::SHEET_REF_SUFFIX, field->GetText() );
+
+            if( !msg.IsEmpty() )
+            {
+                m_frame->ShowInfoBarError( msg );
+                UpdateData();
+                return;
+            }
+        }
+    }
+
+    SCH_COMMIT  changes( m_frame );
+    SCH_SCREEN* screen = m_frame->GetScreen();
+    PROPERTY_COMMIT_HANDLER handler( &changes );
+
+    for( EDA_ITEM* edaItem : selection )
+    {
+        if( !edaItem->IsSCH_ITEM() )
+            continue;
+
+        SCH_ITEM* item = static_cast<SCH_ITEM*>( edaItem );
+        bool      renamed = false;
+
+        if( item->Type() == SCH_SYMBOL_T )
+        {
+            SCH_SYMBOL* symbol = static_cast<SCH_SYMBOL*>( item );
+            SCH_FIELD*  field  = symbol->GetField( aOldName );
+
+            if( field && !field->IsMandatory() )
+            {
+                changes.Modify( symbol, screen, RECURSE_MODE::NO_RECURSE );
+                field->SetName( aNewName );
+                renamed = true;
+            }
+        }
+        else if( item->Type() == SCH_SHEET_T )
+        {
+            SCH_SHEET* sheet = static_cast<SCH_SHEET*>( item );
+            SCH_FIELD* field = sheet->GetField( aOldName );
+
+            if( field && !field->IsMandatory() )
+            {
+                changes.Modify( sheet, screen, RECURSE_MODE::NO_RECURSE );
+                field->SetName( aNewName );
+                renamed = true;
+            }
+        }
+
+        if( !renamed )
+        {
+            if( wxString value; item->GetCustomProperty( aOldName, value ) )
+            {
+                changes.Modify( item, screen, RECURSE_MODE::NO_RECURSE );
+                item->RemoveCustomProperty( aOldName );
+                item->SetCustomProperty( aNewName, value );
+            }
+        }
+    }
+
+    changes.Push( _( "Rename Property" ) );
+
+    AfterCommit();
+}
+
+
+void SCH_PROPERTIES_PANEL::addBlankField()
+{
+    SELECTION fallbackSelection;
+    const SELECTION& selection = getSelection( fallbackSelection );
+
+    settlePendingLabelEdit();
+
+    if( selection.Empty() )
+        return;
+
+    wxString name;
+
+    for( int n = 0; ; ++n )
+    {
+        name   = GetUserFieldName( n, UNTRANSLATED );
+        bool used = false;
+
+        for( EDA_ITEM* item : selection )
+        {
+            if( item->Type() == SCH_SYMBOL_T && static_cast<SCH_SYMBOL*>( item )->GetField( name ) )
+                used = true;
+            else if( item->Type() == SCH_SHEET_T && static_cast<SCH_SHEET*>( item )->GetField( name ) )
+                used = true;
+        }
+
+        if( !used )
+            break;
+    }
+
+    SCH_COMMIT  changes( m_frame );
+    SCH_SCREEN* screen = m_frame->GetScreen();
+    PROPERTY_COMMIT_HANDLER handler( &changes );
+
+    for( EDA_ITEM* edaItem : selection )
+    {
+        if( !edaItem->IsSCH_ITEM() )
+            continue;
+
+        SCH_ITEM* item = static_cast<SCH_ITEM*>( edaItem );
+
+        if( item->Type() == SCH_SYMBOL_T )
+        {
+            SCH_SYMBOL* symbol = static_cast<SCH_SYMBOL*>( item );
+
+            changes.Modify( symbol, screen, RECURSE_MODE::NO_RECURSE );
+            symbol->AddField( SCH_FIELD( symbol, FIELD_T::USER, name ) )->SetVisible( false );
+        }
+        else if( item->Type() == SCH_SHEET_T )
+        {
+            SCH_SHEET* sheet = static_cast<SCH_SHEET*>( item );
+
+            changes.Modify( sheet, screen, RECURSE_MODE::NO_RECURSE );
+            sheet->AddField( SCH_FIELD( sheet, FIELD_T::SHEET_USER, name ) )->SetVisible( false );
+        }
+    }
+
+    changes.Push( _( "Add Field" ) );
+    AfterCommit();
+
+    m_pendingNewKey = name;
+
+    beginLabelEdit( name, true );
+}
+
+
+void SCH_PROPERTIES_PANEL::addBlankCustomProperty()
+{
+    SELECTION fallbackSelection;
+    const SELECTION& selection = getSelection( fallbackSelection );
+
+    settlePendingLabelEdit();
+
+    if( selection.Empty() )
+        return;
+
+    wxString name;
+
+    for( int n = 0; ; ++n )
+    {
+        name   = wxString::Format( wxS( "Property%d" ), n );
+        bool used = false;
+
+        for( EDA_ITEM* item : selection )
+        {
+            if( wxString dummy; item->GetCustomProperty( name, dummy ) )
+            {
+                used = true;
+                break;
+            }
+        }
+
+        if( !used )
+            break;
+    }
+
+    SCH_COMMIT  changes( m_frame );
+    SCH_SCREEN* screen = m_frame->GetScreen();
+    PROPERTY_COMMIT_HANDLER handler( &changes );
+
+    for( EDA_ITEM* edaItem : selection )
+    {
+        if( !edaItem->IsSCH_ITEM() )
+            continue;
+
+        SCH_ITEM* item = static_cast<SCH_ITEM*>( edaItem );
+
+        changes.Modify( item, screen, RECURSE_MODE::NO_RECURSE );
+        item->SetCustomProperty( name, wxEmptyString );
+    }
+
+    changes.Push( _( "Add Custom Property" ) );
+    AfterCommit();
+
+    m_pendingNewKey = name;
+
+    beginLabelEdit( name, true );
+}
+
+
+void SCH_PROPERTIES_PANEL::removeField( const wxString& aName )
+{
+    SELECTION fallbackSelection;
+    const SELECTION& selection = getSelection( fallbackSelection );
+
+    SCH_COMMIT  changes( m_frame );
+    SCH_SCREEN* screen = m_frame->GetScreen();
+    PROPERTY_COMMIT_HANDLER handler( &changes );
+
+    for( EDA_ITEM* edaItem : selection )
+    {
+        if( !edaItem->IsSCH_ITEM() )
+            continue;
+
+        SCH_ITEM* item = static_cast<SCH_ITEM*>( edaItem );
+
+        if( item->Type() == SCH_SYMBOL_T )
+        {
+            SCH_SYMBOL* symbol = static_cast<SCH_SYMBOL*>( item );
+            SCH_FIELD*  field  = symbol->GetField( aName );
+
+            if( field && !field->IsMandatory() )
+            {
+                changes.Modify( symbol, screen, RECURSE_MODE::NO_RECURSE );
+                symbol->RemoveField( aName );
+            }
+        }
+        else if( item->Type() == SCH_SHEET_T )
+        {
+            SCH_SHEET* sheet = static_cast<SCH_SHEET*>( item );
+            auto&      fields = sheet->GetFields();
+
+            for( auto it = fields.begin(); it != fields.end(); ++it )
+            {
+                if( !it->IsMandatory() && it->GetName() == aName )
+                {
+                    changes.Modify( sheet, screen, RECURSE_MODE::NO_RECURSE );
+                    fields.erase( it );
+                    break;
+                }
+            }
+        }
+    }
+
+    changes.Push( _( "Remove Field" ) );
+    AfterCommit();
+}
+
+
+void SCH_PROPERTIES_PANEL::removeCustomProperty( const wxString& aName )
+{
+    SELECTION fallbackSelection;
+    const SELECTION& selection = getSelection( fallbackSelection );
+
+    SCH_COMMIT  changes( m_frame );
+    SCH_SCREEN* screen = m_frame->GetScreen();
+    PROPERTY_COMMIT_HANDLER handler( &changes );
+
+    for( EDA_ITEM* edaItem : selection )
+    {
+        if( !edaItem->IsSCH_ITEM() )
+            continue;
+
+        SCH_ITEM* item = static_cast<SCH_ITEM*>( edaItem );
+
+        changes.Modify( item, screen, RECURSE_MODE::NO_RECURSE );
+        item->RemoveCustomProperty( aName );
+    }
+
+    changes.Push( _( "Remove Custom Property" ) );
+    AfterCommit();
+}
+
+
+void SCH_PROPERTIES_PANEL::onNewItemLeftBlank( const wxString& aKey )
+{
+    // Note: currently assuming that any newly-created item from the panel is either a field or
+    // a custom property because those are the types we currently support.
+    if( EDA_ITEM* item = getFrontItem() )
+    {
+        if( item->Type() == SCH_SYMBOL_T && static_cast<SCH_SYMBOL*>( item )->GetField( aKey ) )
+            removeField( aKey );
+        else if( item->Type() == SCH_SHEET_T && static_cast<SCH_SHEET*>( item )->GetField( aKey ) )
+            removeField( aKey );
+        else
+            removeCustomProperty( aKey );
+    }
 }
 
 

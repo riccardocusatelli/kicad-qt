@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef KICAD_PROJECT_FILE_H
@@ -27,6 +27,7 @@
 #include <project/board_project_settings.h>
 #include <settings/json_settings.h>
 #include <settings/nested_settings.h>
+#include <template_fieldnames.h>
 
 class BOARD_DESIGN_SETTINGS;
 class ERC_SETTINGS;
@@ -35,7 +36,6 @@ class COMPONENT_CLASS_SETTINGS;
 class TUNING_PROFILES;
 class LAYER_PAIR_SETTINGS;
 class SCHEMATIC_SETTINGS;
-class TEMPLATES;
 
 /**
  * For files like sheets and boards, a pair of that object KIID and display name
@@ -106,6 +106,8 @@ public:
 
     bool LoadFromFile( const wxString& aDirectory = "" ) override;
 
+    bool Store() override;
+
     bool SaveToFile( const wxString& aDirectory = "", bool aForce = false ) override;
 
     /**
@@ -145,6 +147,12 @@ public:
     {
         return m_topLevelSheets;
     }
+
+    /// True when the last read of the file replaced a top-level sheet list held from before it
+    bool TopLevelSheetsChangedOnLoad() const { return m_topLevelSheetsChanged; }
+
+    /// Settle a changed list once the schematic has been loaded from it
+    void AcknowledgeTopLevelSheetChange() { m_topLevelSheetsChanged = false; }
 
     std::shared_ptr<NET_SETTINGS>& NetSettings()
     {
@@ -187,6 +195,9 @@ public:
 
     std::map<wxString, wxString> m_TextVars;
 
+    /// Project and global field name templates shared by project editors.
+    TEMPLATES m_TemplateFieldNames;
+
     /**
      * Eeschema params
      */
@@ -205,6 +216,9 @@ public:
     /// Bus alias definitions for the schematic project
     std::map<wxString, std::vector<wxString>> m_BusAliases;
 
+    /// An explicit alias table was loaded or set, including a deliberately empty table.
+    bool m_BusAliasesDefined = false;
+
     /**
      * CvPcb params
      */
@@ -219,15 +233,18 @@ public:
     /// Drawing sheet file
     wxString m_BoardDrawingSheetFile;
 
+    /// Recent queries for Find by Properties dialog
+    std::vector<wxString> m_FindByPropertiesQueries;
+
     /// MRU path storage
     wxString m_PcbLastPath[LAST_PATH_SIZE];
 
     /**
      * Board design settings for this project's board.  This will be initialized by PcbNew after
      * loading a board so that BOARD_DESIGN_SETTINGS doesn't need to live in common for now.
-     * Owned by the BOARD; may be null if a board isn't loaded: be careful
+     * May be null if a board isn't loaded: be careful.
      */
-    BOARD_DESIGN_SETTINGS* m_BoardSettings;
+    std::shared_ptr<BOARD_DESIGN_SETTINGS> m_BoardSettings;
 
     /**
      * Net settings for this project (owned here)
@@ -257,6 +274,8 @@ public:
 
     struct IP2581_BOM             m_IP2581Bom;      /// IPC-2581 BOM settings
 
+    IDF_EXPORT_SETTINGS           m_IdfExportSettings;
+
 private:
     /**
      * Schema version 2: Bump for KiCad 9 layer numbering changes.
@@ -269,6 +288,9 @@ private:
      * Schema version 3: move layer presets to use named render layers.
      */
     bool migrateSchema2To3();
+
+    /// Schema version 4 distinguishes explicit empty alias tables from older default writes.
+    bool migrateSchema3To4();
 
     /// An list of schematic sheets in this project
     std::vector<FILE_INFO_PAIR> m_sheets;
@@ -283,6 +305,7 @@ private:
     PROJECT* m_project;
 
     bool m_wasMigrated;
+    bool m_topLevelSheetsChanged;
 };
 
 // Specializations to allow directly reading/writing FILE_INFO_PAIRs from JSON

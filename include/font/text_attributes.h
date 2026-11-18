@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef TEXT_ATTRIBUTES_H
@@ -129,7 +129,7 @@ public:
     KIFONT::FONT*     m_Font;
     GR_TEXT_H_ALIGN_T m_Halign;
     GR_TEXT_V_ALIGN_T m_Valign;
-    EDA_ANGLE         m_Angle;
+    EDA_ORIENTATION   m_Angle;
     double            m_LineSpacing;
     int               m_StrokeWidth;
     bool              m_Italic;
@@ -143,7 +143,6 @@ public:
 
     // If true, keep rotation angle between -90...90 degrees for readability
     bool              m_KeepUpright;
-    int               m_StoredStrokeWidth;
 };
 
 
@@ -157,7 +156,7 @@ struct std::hash<TEXT_ATTRIBUTES>
     std::size_t operator()( const TEXT_ATTRIBUTES& aAttributes ) const
     {
         return hash_val( aAttributes.m_Font, aAttributes.m_Halign, aAttributes.m_Valign,
-                         aAttributes.m_Angle.AsDegrees(), aAttributes.m_LineSpacing,
+                         aAttributes.m_Angle.GetAngle().AsDegrees(), aAttributes.m_LineSpacing,
                          aAttributes.m_StrokeWidth, aAttributes.m_Italic, aAttributes.m_Bold,
                          aAttributes.m_Underlined, aAttributes.m_Color, aAttributes.m_Mirrored,
                          aAttributes.m_Multiline, aAttributes.m_Size.x, aAttributes.m_Size.y );

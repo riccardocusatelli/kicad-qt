@@ -34,17 +34,14 @@
 
 #include <future>
 #include <project.h>
-#include <python_scripting.h>
 #include <settings/common_settings.h>
 #include <thread_pool.h>
 #include <trace_helpers.h>
 #include <widgets/kistatusbar.h>
 
-#ifdef KICAD_IPC_API
 #include <api/api_plugin_manager.h>
 #include <api/api_server.h>
-#include <python_manager.h>
-#endif
+#include <api/python_manager.h>
 
 
 PGM_GUI::PGM_GUI() :
@@ -67,8 +64,6 @@ PGM_GUI::~PGM_GUI()
 
 void PGM_GUI::Destroy()
 {
-    m_pgm_checker.reset();
-
     PGM_BASE::Destroy();
 
     if( m_glContextManager )
@@ -86,7 +81,7 @@ void PGM_GUI::reportInitError( const wxString& aMessage )
 }
 
 
-bool PGM_GUI::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+bool PGM_GUI::InitPgm( bool aHeadless, bool aIsUnitTest )
 {
     initGuiToolkit();
 
@@ -94,54 +89,24 @@ bool PGM_GUI::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
     m_background_jobs_monitor = std::make_unique<BACKGROUND_JOBS_MONITOR>();
     m_notifications_manager = std::make_unique<NOTIFICATIONS_MANAGER>();
 
-#ifdef KICAD_IPC_API
     m_plugin_manager = std::make_unique<API_PLUGIN_MANAGER>();
-#endif
 
-    if( !PGM_BASE::InitPgm( aHeadless, aSkipPyInit, aIsUnitTest ) )
+    if( !PGM_BASE::InitPgm( aHeadless, aIsUnitTest ) )
         return false;
-
-    wxString pgm_name = programName();
-
-    // Ensure the instance checker directory exists
-    // It should be globally writable because it is shared between all users on Linux, and so on a
-    // multi-user machine, other need to be able to access it to check for the lock files or make
-    // their own lock files.
-    wxString instanceCheckerDir = PATHS::GetInstanceCheckerPath();
-    PATHS::EnsurePathExists( instanceCheckerDir );
-    wxChmod( instanceCheckerDir,
-             wxPOSIX_USER_READ | wxPOSIX_USER_WRITE | wxPOSIX_USER_EXECUTE |
-             wxPOSIX_GROUP_READ | wxPOSIX_GROUP_WRITE | wxPOSIX_GROUP_EXECUTE |
-             wxPOSIX_OTHERS_READ | wxPOSIX_OTHERS_WRITE | wxPOSIX_OTHERS_EXECUTE );
-
-    wxString instanceCheckerName = wxString::Format( wxS( "%s-%s" ), pgm_name,
-                                                     GetMajorMinorVersion() );
-
-    m_pgm_checker = std::make_unique<SINGLE_INSTANCE_CHECKER>();
-    m_pgm_checker->Create( instanceCheckerName, instanceCheckerDir );
 
     COMMON_SETTINGS* commonSettings = GetCommonSettings();
 
-#ifdef KICAD_IPC_API
     // If user doesn't have a saved Python interpreter, try (potentially again) to find one
     if( commonSettings->m_Api.python_interpreter.IsEmpty() )
         commonSettings->m_Api.python_interpreter = PYTHON_MANAGER::FindPythonInterpreter();
-#endif
 
     // Now that translations are available, inform the user if the OS is unsupported
     WarnUserIfOperatingSystemUnsupported();
 
     GetNotificationsManager().Load();
 
-    // Create the python scripting stuff
-    // Skip it for applications that do not use it
-    if( !aSkipPyInit )
-        m_python_scripting = std::make_unique<SCRIPTING>();
-
-#ifdef KICAD_IPC_API
     if( commonSettings->m_Api.enable_server )
         m_plugin_manager->ReloadPlugins();
-#endif
 
     configureGuiToolkit( aHeadless );
 
@@ -191,10 +156,6 @@ const wxString& PGM_GUI::GetTextEditor( bool aCanShowFileChooser )
 
 void PGM_GUI::PreloadDesignBlockLibraries( KIWAY* aKiway )
 {
-    // TODO(JE) much of this code can be shared across the 3 preloads
-    constexpr static int interval = 150;
-    constexpr static int timeLimit = 120000;
-
     if( m_libraryPreloadInProgress.load() )
         return;
 
@@ -204,56 +165,23 @@ void PGM_GUI::PreloadDesignBlockLibraries( KIWAY* aKiway )
     auto preload =
         [this, aKiway]() -> void
         {
+            // A task that starts after its cancel must not reach the project that is going away
+            if( m_libraryPreloadAbort.load() )
+            {
+                m_libraryPreloadAbort.store( false );
+                GetBackgroundJobMonitor().Remove( m_libraryPreloadBackgroundJob );
+                m_libraryPreloadBackgroundJob.reset();
+                m_libraryPreloadInProgress.store( false );
+                return;
+            }
+
             std::shared_ptr<BACKGROUND_JOB_REPORTER> reporter =
                     m_libraryPreloadBackgroundJob->m_reporter;
 
             DESIGN_BLOCK_LIBRARY_ADAPTER* adapter = aKiway->Prj().DesignBlockLibs();
 
-            int elapsed = 0;
-            bool aborted = false;
-
             reporter->Report( _( "Loading Design Block Libraries" ) );
-            adapter->AsyncLoad();
-
-            while( true )
-            {
-                if( m_libraryPreloadAbort.load() )
-                {
-                    m_libraryPreloadAbort.store( false );
-                    aborted = true;
-                    break;
-                }
-
-                std::this_thread::sleep_for( std::chrono::milliseconds( interval ) );
-
-                if( std::optional<float> loadStatus = adapter->AsyncLoadProgress() )
-                {
-                    float progress = *loadStatus;
-                    reporter->SetCurrentProgress( progress );
-
-                    if( progress >= 1 )
-                        break;
-                }
-                else
-                {
-                    reporter->SetCurrentProgress( 1 );
-                    break;
-                }
-
-                elapsed += interval;
-
-                if( elapsed > timeLimit )
-                    break;
-            }
-
-            // AbortAsyncLoad() sets the adapter's worker abort flag and then blocks,
-            // so workers exit at their next checkpoint. BlockUntilLoaded() alone just
-            // waits for each future to complete naturally, which can hang indefinitely
-            // if a worker is stuck on a stalled network or filesystem operation.
-            if( aborted )
-                adapter->AbortAsyncLoad();
-            else
-                adapter->BlockUntilLoaded();
+            adapter->RunPreload( *reporter, m_libraryPreloadAbort );
 
             GetBackgroundJobMonitor().Remove( m_libraryPreloadBackgroundJob );
             m_libraryPreloadBackgroundJob.reset();
@@ -264,8 +192,7 @@ void PGM_GUI::PreloadDesignBlockLibraries( KIWAY* aKiway )
             aKiway->ExpressMail( FRAME_PCB_EDITOR, MAIL_RELOAD_LIB, payload, nullptr, true );
         };
 
-    // The coordinator blocks on futures that AsyncLoad() submits to the shared pool, so
-    // running it in that pool deadlocks whenever no worker is left free to start them.
+    // The preload waits on loads it queues on the pool, so it must not hold a pool thread itself
     m_libraryPreloadInProgress.store( true );
     m_libraryPreloadReturn = std::async( std::launch::async, preload );
 }
@@ -273,10 +200,18 @@ void PGM_GUI::PreloadDesignBlockLibraries( KIWAY* aKiway )
 
 void PGM_GUI::CancelDesignBlockPreload()
 {
-    m_libraryPreloadAbort.store( true );
+    if( m_libraryPreloadReturn.valid() )
+        m_libraryPreloadAbort.store( true );
+}
 
+
+void PGM_GUI::WaitForDesignBlockPreload()
+{
     if( m_libraryPreloadReturn.valid() )
         m_libraryPreloadReturn.wait();
+
+    // The preload has ended, so a flag it never read can only stop the next one
+    m_libraryPreloadAbort.store( false );
 }
 
 
@@ -315,7 +250,7 @@ void PGM_GUI::UnregisterLibraryLoadStatusBar( KISTATUSBAR* aStatusBar )
 }
 
 
-void PGM_GUI::AddLibraryLoadMessages( const std::vector<LOAD_MESSAGE>& aMessages )
+void PGM_GUI::AddLibraryLoadMessages( const std::vector<KI_ERROR>& aMessages )
 {
     KI_LOG_TRACE( traceLibraries, "AddLibraryLoadMessages: message_count=%zu", aMessages.size() );
 

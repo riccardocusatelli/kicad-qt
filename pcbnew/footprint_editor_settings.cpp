@@ -14,12 +14,13 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "footprint_editor_settings.h"
 
+#include <board_design_settings_defaults.h>
 #include <project/board_project_settings_params.h>
 #include <settings/color_settings.h>
 #include <common.h>
@@ -32,6 +33,7 @@
 #include <settings/json_settings_internals.h>
 #include <settings/parameters.h>
 #include <settings/settings_manager.h>
+#include <settings/snap_settings_params.h>
 #include <base_units.h>
 
 #include <wx/config.h>
@@ -54,10 +56,13 @@ FOOTPRINT_EDITOR_SETTINGS::FOOTPRINT_EDITOR_SETTINGS() :
         m_DisplayInvertYAxis( false ),
         m_RotationAngle( ANGLE_90 ),
         m_AngleSnapMode( LEADER_MODE::DEG45 ),
+        m_AutoConstraints( true ),
         m_ArcEditMode( ARC_EDIT_MODE::KEEP_CENTER_ADJUST_ANGLE_RADIUS ),
         m_LibWidth( 250 ),
         m_LastExportPath()
 {
+    addMatchPropertiesParam();
+
     m_MagneticItems.pads      = MAGNETIC_OPTIONS::CAPTURE_ALWAYS;
     m_MagneticItems.tracks    = MAGNETIC_OPTIONS::NO_EFFECT;
     m_MagneticItems.graphics  = true;
@@ -116,6 +121,38 @@ FOOTPRINT_EDITOR_SETTINGS::FOOTPRINT_EDITOR_SETTINGS() :
     m_params.emplace_back( new PARAM<bool>( "editing.magnetic_all_layers",
             &m_MagneticItems.allLayers, false ) );
 
+    AddSnapInferenceParams( m_params, m_SnapInference );
+
+    m_params.emplace_back( new PARAM_MAP<int>( "lib_field_editor.field_widths",
+            &m_LibFieldEditor.field_widths, {} ) );
+
+    m_params.emplace_back( new PARAM<int>( "lib_field_editor.selection_mode",
+            &m_LibFieldEditor.selection_mode, 0 ) );
+
+    m_params.emplace_back( new PARAM<int>( "lib_field_editor.sash_pos",
+            &m_LibFieldEditor.sash_pos, 400 ) );
+
+    m_params.emplace_back( new PARAM<int>( "lib_field_editor.variant_sash_pos",
+            &m_LibFieldEditor.variant_sash_pos, 500 ) );
+
+    m_params.emplace_back( new PARAM<bool>( "lib_field_editor.sidebar_collapsed",
+            &m_LibFieldEditor.sidebar_collapsed, false ) );
+
+    m_params.emplace_back( new PARAM<wxString>( "lib_field_editor.bom_export_filename",
+            &m_LibFieldEditorBom.m_BomExportFileName, "${PROJECTNAME}.csv" ) );
+
+    m_params.emplace_back( new PARAM<BOM_PRESET>( "lib_field_editor.bom_settings",
+            &m_LibFieldEditorBom.m_BomSettings, {} ) );
+
+    m_params.emplace_back( new PARAM_LIST<BOM_PRESET>( "lib_field_editor.bom_presets",
+            &m_LibFieldEditorBom.m_BomPresets, {} ) );
+
+    m_params.emplace_back( new PARAM<BOM_FMT_PRESET>( "lib_field_editor.bom_fmt_settings",
+            &m_LibFieldEditorBom.m_BomFmtSettings, BOM_FMT_PRESET::CSV() ) );
+
+    m_params.emplace_back( new PARAM_LIST<BOM_FMT_PRESET>( "lib_field_editor.bom_fmt_presets",
+            &m_LibFieldEditorBom.m_BomFmtPresets, {} ) );
+
     m_params.emplace_back( new PARAM<bool>( "editing.polar_coords",
             &m_PolarCoords, false ) );
 
@@ -141,10 +178,54 @@ FOOTPRINT_EDITOR_SETTINGS::FOOTPRINT_EDITOR_SETTINGS() :
             reinterpret_cast<int*>( &m_AngleSnapMode ),
             static_cast<int>( LEADER_MODE::DEG45 ) ) );
 
+    m_params.emplace_back( new PARAM<bool>( "editing.auto_constraints", &m_AutoConstraints, true ) );
+
     m_params.emplace_back( new PARAM_LAYER_PRESET( "pcb_display.layer_presets", &m_LayerPresets ) );
 
     m_params.emplace_back( new PARAM<wxString>( "pcb_display.active_layer_preset",
             &m_ActiveLayerPreset, "" ) );
+
+    m_params.emplace_back( new PARAM_LAMBDA<nlohmann::json>( "tabs.open",
+            [&]() -> nlohmann::json
+            {
+                nlohmann::json js = nlohmann::json::array();
+
+                for( const OPEN_TAB& tab : m_OpenTabs )
+                {
+                    js.push_back( nlohmann::json( { { "lib", tab.m_lib.ToUTF8() },
+                                                    { "fp_name", tab.m_fpName.ToUTF8() },
+                                                    { "preview", tab.m_preview } } ) );
+                }
+
+                return js;
+            },
+            [&]( const nlohmann::json& aObj )
+            {
+                m_OpenTabs.clear();
+
+                if( !aObj.is_array() )
+                    return;
+
+                for( const nlohmann::json& entry : aObj )
+                {
+                    if( !entry.is_object() || !entry.contains( "lib" ) || !entry.contains( "fp_name" ) )
+                        continue;
+
+                    OPEN_TAB tab;
+                    tab.m_lib = entry.at( "lib" ).get<wxString>();
+                    tab.m_fpName = entry.at( "fp_name" ).get<wxString>();
+
+                    // Older configs predate the preview flag and default to a permanent tab.
+                    if( entry.contains( "preview" ) )
+                        tab.m_preview = entry.at( "preview" ).get<bool>();
+
+                    m_OpenTabs.push_back( std::move( tab ) );
+                }
+            },
+            nlohmann::json::array() ) );
+
+    m_params.emplace_back( new PARAM<wxString>( "tabs.active",
+            &m_ActiveTab, "" ) );
 
     m_params.emplace_back( new PARAM_LAMBDA<nlohmann::json>(
             "design_settings.default_footprint_text_items",

@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef _MODEL_3D_H_
@@ -28,6 +24,8 @@
 
 #include <kicad_gl/kiglad.h> // Must be included first
 
+#include <memory>
+#include <mutex>
 #include <vector>
 #include <plugins/3dapi/c3dmodel.h>
 #include "../raytracing/shapes3D/bbox_3d.h"
@@ -173,6 +171,52 @@ private:
 
     static void MakeBbox( const BBOX_3D& aBox, unsigned int aIdxOffset, VERTEX* aVtxOut,
                           GLuint* aIdxOut, const glm::vec4& aColor );
+};
+
+
+/**
+ * Allows to defer the creation of the 3D model until it is needed and in the GL context.
+ */
+class MODEL_3D_DEFERRED
+{
+public:
+    MODEL_3D_DEFERRED( const S3DMODEL& a3DModel, MATERIAL_MODE aMaterialMode ) :
+            m_s3dModel( std::make_shared<S3DMODEL>( a3DModel ) ),
+            m_materialNode( aMaterialMode )
+    {
+    }
+
+    ~MODEL_3D_DEFERRED() {}
+
+    void Reset()
+    {
+        std::lock_guard<std::recursive_mutex> lock( m_mutex );
+
+        m_openglModel3D.reset();
+        m_s3dModel.reset();
+    }
+
+    std::shared_ptr<MODEL_3D> MakeOrGet()
+    {
+        std::lock_guard<std::recursive_mutex> lock( m_mutex );
+
+        if( !m_openglModel3D && !m_s3dModel )
+            throw std::runtime_error( "Both OpenGL model and S3D model are null" );
+
+        if( !m_openglModel3D )
+            m_openglModel3D = std::make_shared<MODEL_3D>( *m_s3dModel, m_materialNode );
+
+        m_s3dModel.reset();
+
+        return m_openglModel3D;
+    }
+
+private:
+    std::shared_ptr<MODEL_3D> m_openglModel3D;
+    std::recursive_mutex      m_mutex;
+
+    std::shared_ptr<S3DMODEL> m_s3dModel;
+    MATERIAL_MODE             m_materialNode;
 };
 
 #endif // _MODEL_3D_H_

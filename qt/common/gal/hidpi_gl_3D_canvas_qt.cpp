@@ -139,6 +139,10 @@ HIDPI_GL_3D_CANVAS::HIDPI_GL_3D_CANVAS( const KIGFX::VC_SETTINGS& aVcSettings, C
                     return true;
                 }
 
+                case QEvent::Leave:
+                    onMouseLeave();
+                    return false;
+
                 case QEvent::MouseMove:
                     if( !toTools() )
                         onMouseMove( mouseState( static_cast<QMouseEvent*>( aEvent ) ) );

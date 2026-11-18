@@ -14,12 +14,16 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+
+#include <algorithm>
+#include <ranges>
 
 #include <api/api_pcb_utils.h>
 #include <api/api_enums.h>
+#include <api/board/board.pb.h>
 #include <api/api_utils.h>
 #include <board.h>
 #include <embedded_files.h>
@@ -29,30 +33,56 @@
 #include <lset.h>
 #include <pad.h>
 #include <pcb_group.h>
+#include <pcb_generator.h>
+#include <generators_mgr.h>
+#include <constraints/pcb_constraint.h>
+#include <mmh3_hash.h>
 #include <pcb_barcode.h>
+#include <pcb_grid_item.h>
 #include <pcb_reference_image.h>
 #include <pcb_shape.h>
+#include <pcb_3d_body.h>
 #include <pcb_point.h>
 #include <pcb_track.h>
 #include <pcb_field.h>
 #include <pcb_text.h>
 #include <pcb_textbox.h>
+#include <pcb_drill_chart.h>
+#include <pcb_drill_map.h>
+#include <pcb_stackup_table.h>
 #include <pcb_table.h>
 #include <pcb_dimension.h>
 #include <zone.h>
 #include <core/ki_assert.h>
 
 
+std::unique_ptr<BOARD_ITEM> CreateGeneratorForType( const wxString& aGeneratorType, BOARD_ITEM_CONTAINER* aContainer )
+{
+    PCB_GENERATOR* generator = GENERATORS_MGR::Instance().CreateFromType( aGeneratorType );
+
+    if( !generator )
+        return nullptr;
+
+    if( aContainer )
+        generator->SetParent( aContainer );
+
+    return std::unique_ptr<BOARD_ITEM>( generator );
+}
+
+
 std::unique_ptr<BOARD_ITEM> CreateItemForType( KICAD_T aType, BOARD_ITEM_CONTAINER* aContainer )
 {
     switch( aType )
     {
-    case PCB_TRACE_T:   return std::make_unique<PCB_TRACK>( aContainer );
-    case PCB_ARC_T:     return std::make_unique<PCB_ARC>( aContainer );
-    case PCB_VIA_T:     return std::make_unique<PCB_VIA>( aContainer );
-    case PCB_TEXT_T:    return std::make_unique<PCB_TEXT>( aContainer );
-    case PCB_TEXTBOX_T: return std::make_unique<PCB_TEXTBOX>( aContainer );
-    case PCB_TABLE_T:   return std::make_unique<PCB_TABLE>( aContainer );
+    case PCB_TRACE_T:           return std::make_unique<PCB_TRACK>( aContainer );
+    case PCB_ARC_T:             return std::make_unique<PCB_ARC>( aContainer );
+    case PCB_VIA_T:             return std::make_unique<PCB_VIA>( aContainer );
+    case PCB_TEXT_T:            return std::make_unique<PCB_TEXT>( aContainer );
+    case PCB_TEXTBOX_T:         return std::make_unique<PCB_TEXTBOX>( aContainer );
+    case PCB_TABLE_T:           return std::make_unique<PCB_TABLE>( aContainer );
+    case PCB_DRILL_CHART_T:     return std::make_unique<PCB_DRILL_CHART>( aContainer );
+    case PCB_DRILL_MAP_T:       return std::make_unique<PCB_DRILL_MAP>( aContainer );
+    case PCB_STACKUP_TABLE_T:   return std::make_unique<PCB_STACKUP_TABLE>( aContainer );
     case PCB_TABLECELL_T:
     {
         PCB_TABLE* table = dynamic_cast<PCB_TABLE*>( aContainer );
@@ -62,12 +92,15 @@ std::unique_ptr<BOARD_ITEM> CreateItemForType( KICAD_T aType, BOARD_ITEM_CONTAIN
 
         return std::make_unique<PCB_TABLECELL>( aContainer );
     }
-    case PCB_SHAPE_T:   return std::make_unique<PCB_SHAPE>( aContainer );
-    case PCB_POINT_T:   return std::make_unique<PCB_POINT>( aContainer );
-    case PCB_BARCODE_T: return std::make_unique<PCB_BARCODE>( aContainer );
-    case PCB_ZONE_T:    return std::make_unique<ZONE>( aContainer );
-    case PCB_GROUP_T:   return std::make_unique<PCB_GROUP>( aContainer );
+    case PCB_SHAPE_T:           return std::make_unique<PCB_SHAPE>( aContainer );
+    case PCB_POINT_T:           return std::make_unique<PCB_POINT>( aContainer );
+    case PCB_BARCODE_T:         return std::make_unique<PCB_BARCODE>( aContainer );
+    case PCB_ZONE_T:            return std::make_unique<ZONE>( aContainer );
+    case PCB_GROUP_T:           return std::make_unique<PCB_GROUP>( aContainer );
+    case PCB_GENERATOR_T:       return nullptr;  // must be created via CreateGeneratorForType
+    case PCB_CONSTRAINT_T:      return std::make_unique<PCB_CONSTRAINT>( aContainer );
     case PCB_REFERENCE_IMAGE_T: return std::make_unique<PCB_REFERENCE_IMAGE>( aContainer );
+    case PCB_GRID_ITEM_T:        return std::make_unique<PCB_GRID_ITEM>( aContainer );
 
     case PCB_PAD_T:
     {
@@ -77,6 +110,16 @@ std::unique_ptr<BOARD_ITEM> CreateItemForType( KICAD_T aType, BOARD_ITEM_CONTAIN
             return nullptr;
 
         return std::make_unique<PAD>( footprint );
+    }
+
+    case PCB_3D_BODY_T:
+    {
+        FOOTPRINT* footprint = dynamic_cast<FOOTPRINT*>( aContainer );
+
+        if( !footprint )
+            return nullptr;
+
+        return std::make_unique<PCB_3D_BODY>( footprint );
     }
 
     case PCB_FIELD_T:
@@ -99,11 +142,11 @@ std::unique_ptr<BOARD_ITEM> CreateItemForType( KICAD_T aType, BOARD_ITEM_CONTAIN
         return std::make_unique<FOOTPRINT>( board );
     }
 
-    case PCB_DIM_ALIGNED_T: return std::make_unique<PCB_DIM_ALIGNED>( aContainer );
-    case PCB_DIM_ORTHOGONAL_T: return std::make_unique<PCB_DIM_ORTHOGONAL>( aContainer );
-    case PCB_DIM_RADIAL_T: return std::make_unique<PCB_DIM_RADIAL>( aContainer );
-    case PCB_DIM_LEADER_T: return std::make_unique<PCB_DIM_LEADER>( aContainer );
-    case PCB_DIM_CENTER_T: return std::make_unique<PCB_DIM_CENTER>( aContainer );
+    case PCB_DIM_ALIGNED_T:     return std::make_unique<PCB_DIM_ALIGNED>( aContainer );
+    case PCB_DIM_ORTHOGONAL_T:  return std::make_unique<PCB_DIM_ORTHOGONAL>( aContainer );
+    case PCB_DIM_RADIAL_T:      return std::make_unique<PCB_DIM_RADIAL>( aContainer );
+    case PCB_DIM_LEADER_T:      return std::make_unique<PCB_DIM_LEADER>( aContainer );
+    case PCB_DIM_CENTER_T:      return std::make_unique<PCB_DIM_CENTER>( aContainer );
 
     default:
         return nullptr;
@@ -135,6 +178,22 @@ LSET UnpackLayerSet( const google::protobuf::RepeatedField<int>& aProtoLayerSet 
     }
 
     return set;
+}
+
+
+void PackBoardStackup( const BOARD& aBoard, BoardStackup& aOut )
+{
+    aBoard.GetStackupOrDefault().Serialize( aOut );
+
+    for( BoardStackupLayer& layer : *aOut.mutable_layers() )
+    {
+        if( layer.type() == BoardStackupLayerType::BSLT_DIELECTRIC )
+            continue;
+
+        PCB_LAYER_ID id = FromProtoEnum<PCB_LAYER_ID>( layer.layer() );
+
+        layer.set_user_name( aBoard.GetLayerName( id ) );
+    }
 }
 
 
@@ -252,10 +311,93 @@ bool UnpackEmbeddedFiles( EMBEDDED_FILES& aOutput, const common::types::Embedded
         files.AddFile( file );
     }
 
+    bool embedFonts = aOutput.GetAreFontsEmbedded();
     aOutput.ClearEmbeddedFiles();
     aOutput = files;
+    aOutput.SetAreFontsEmbedded( embedFonts );
 
     return true;
+}
+
+
+std::vector<BOARD_ITEM*> FindItemsFromSyncSelection(
+        const BOARD* aBoard,
+        const google::protobuf::RepeatedPtrField<kiapi::common::commands::SelectionSpec>& aItems )
+{
+    using kiapi::common::commands::SelectionSpec;
+
+    std::vector<std::pair<int, BOARD_ITEM*>> orderPairs;
+    KI_CHECK( aBoard, {} );
+
+    // Unpacking rebuilds a KIID per path element, so do it once rather than per footprint
+    std::vector<KIID_PATH> sheetPaths( aItems.size() );
+
+    for( int index = 0; index < aItems.size(); ++index )
+    {
+        if( aItems[index].spec_case() == SelectionSpec::SpecCase::kSheetPath )
+            sheetPaths[index] = kiapi::common::UnpackSheetPath( aItems[index].sheet_path() );
+    }
+
+    for( FOOTPRINT* footprint : aBoard->Footprints() )
+    {
+        wxString fpRef = footprint->GetReference();
+
+        for( int index = 0; index < aItems.size(); ++index )
+        {
+            const SelectionSpec& spec = aItems[index];
+
+            switch( spec.spec_case() )
+            {
+            case SelectionSpec::SpecCase::kFootprint:
+            {
+                if( fpRef == wxString::FromUTF8( spec.footprint().reference() ) )
+                    orderPairs.emplace_back( index, footprint );
+
+                break;
+            }
+
+            case SelectionSpec::SpecCase::kPad:
+            {
+                if( fpRef == wxString::FromUTF8( spec.pad().reference() ) )
+                {
+                    wxString padNumber = wxString::FromUTF8( spec.pad().number() );
+
+                    for( PAD* pad : footprint->Pads() )
+                    {
+                        if( padNumber == pad->GetNumber() )
+                            orderPairs.emplace_back( index, pad );
+                    }
+                }
+
+                break;
+            }
+
+            case SelectionSpec::SpecCase::kSheetPath:
+            {
+                if( footprint->IsWithinSchematicSheet( sheetPaths[index] ) )
+                    orderPairs.emplace_back( index, footprint );
+
+                break;
+            }
+
+            default: break;
+            }
+        }
+    }
+
+    std::ranges::sort( orderPairs,
+                       []( const std::pair<int, BOARD_ITEM*>& a, const std::pair<int, BOARD_ITEM*>& b ) -> bool
+                       {
+                           return a.first < b.first;
+                       } );
+
+    std::vector<BOARD_ITEM*> items;
+    items.reserve( orderPairs.size() );
+
+    for( BOARD_ITEM* val : orderPairs | std::views::values )
+        items.push_back( val );
+
+    return items;
 }
 
 }   // namespace kiapi::board

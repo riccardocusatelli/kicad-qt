@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <netlist_lexer.h>  // netlist_lexer is common to Eeschema and Pcbnew
@@ -332,8 +328,8 @@ void KICAD_NETLIST_PARSER::parseComponent()
     nlohmann::ordered_map<wxString, wxString> fields;
     std::unordered_set<wxString>              componentClasses;
 
-    bool duplicatePinsAreJumpers = false;
-    std::vector<std::set<wxString>> jumperPinGroups;
+    bool             duplicatePinsAreJumpers = false;
+    JUMPER_GROUP_SET jumperPinGroups;
 
     std::vector<COMPONENT::UNIT_INFO> parsedUnits;
 
@@ -608,9 +604,10 @@ void KICAD_NETLIST_PARSER::parseComponent()
 
         case T_jumper_pin_groups:
         {
-            std::set<wxString>* currentGroup = nullptr;
+            std::set<wxString> currentNames;
+            bool               inGroup = false;
 
-            for( token = NextTok(); currentGroup || token != T_RIGHT; token = NextTok() )
+            for( token = NextTok(); inGroup || token != T_RIGHT; token = NextTok() )
             {
                 if( token == T_LEFT )
                     token = NextTok();
@@ -618,7 +615,7 @@ void KICAD_NETLIST_PARSER::parseComponent()
                 switch( token )
                 {
                 case T_group:
-                    currentGroup = &jumperPinGroups.emplace_back();
+                    inGroup = true;
                     break;
 
                 case T_pin:
@@ -626,13 +623,17 @@ void KICAD_NETLIST_PARSER::parseComponent()
                     NeedSYMBOLorNUMBER();
                     wxString padName = From_UTF8( CurText() );
                     NeedRIGHT();
-                    KI_CHECK2( currentGroup, continue );
-                    currentGroup->insert( padName );
+                    KI_CHECK2( inGroup, continue );
+                    currentNames.insert( padName );
                     break;
                 }
 
                 case T_RIGHT:
-                    currentGroup = nullptr;
+                    if( std::optional<JUMPER_GROUP> group = JUMPER_GROUP::Make( std::move( currentNames ) ) )
+                        jumperPinGroups.Add( std::move( *group ) );
+
+                    currentNames.clear();
+                    inGroup = false;
                     break;
 
                 default:
@@ -652,11 +653,8 @@ void KICAD_NETLIST_PARSER::parseComponent()
 
     if( !footprint.IsEmpty() && fpid.Parse( footprint, true ) >= 0 )
     {
-        wxString error;
-        error.Printf( _( "Invalid footprint ID in\nfile: '%s'\nline: %d\noffset: %d" ),
-                      CurSource(), CurLineNumber(), CurOffset() );
-
-        THROW_IO_ERROR( error );
+        THROW_IO_ERRORF( _( "Invalid footprint ID in\nfile: '%s'\nline: %d\noffset: %d" ),
+                         CurSource(), CurLineNumber(), CurOffset() );
     }
 
     COMPONENT* component = new COMPONENT( fpid, ref, value, path, uuids );
@@ -667,8 +665,7 @@ void KICAD_NETLIST_PARSER::parseComponent()
     component->SetHumanReadablePath( humanSheetPath );
     component->SetComponentClassNames( componentClasses );
     component->SetDuplicatePadNumbersAreJumpers( duplicatePinsAreJumpers );
-    std::ranges::copy( jumperPinGroups, std::inserter( component->JumperPadGroups(),
-                                                       component->JumperPadGroups().end() ) );
+    component->JumperPadGroups() = std::move( jumperPinGroups );
     component->SetUnitInfo( parsedUnits );
     m_netlist->AddComponent( component );
 }
@@ -763,11 +760,8 @@ void KICAD_NETLIST_PARSER::parseGroup()
 
     if( !libId.IsEmpty() && groupLibId.Parse( libId, true ) >= 0 )
     {
-        wxString error;
-        error.Printf( _( "Invalid lib_id ID in\nfile: '%s'\nline: %d\noffset: %d" ), CurSource(), CurLineNumber(),
-                      CurOffset() );
-
-        THROW_IO_ERROR( error );
+        THROW_IO_ERRORF( _( "Invalid lib_id ID in\nfile: '%s'\nline: %d\noffset: %d" ),
+                         CurSource(), CurLineNumber(), CurOffset() );
     }
 
     NETLIST_GROUP* group = new NETLIST_GROUP{ std::move( name ), std::move( uuid ), std::move( groupLibId ),

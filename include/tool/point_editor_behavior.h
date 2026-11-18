@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -34,6 +30,7 @@
 #include <core/ki_assert.h>
 
 class COMMIT;
+class REFERENCE_IMAGE;
 class SHAPE_POLY_SET;
 
 /**
@@ -100,6 +97,14 @@ public:
      */
     virtual void UpdateItem( const EDIT_POINT& aEditedPoint, EDIT_POINTS& aPoints, COMMIT& aCommit,
                              std::vector<EDA_ITEM*>& aUpdatedItems ) = 0;
+
+    /**
+     * Whether UpdateItem() writes every point back, so one call applies all of them.
+     *
+     * A caller holding several moved points can then call it once instead of once per point.
+     * A behavior whose branches each handle one point must leave this false.
+     */
+    virtual bool UpdateItemAppliesAllPoints() const { return false; }
 
     /**
      * Get the 45-degree constrainer for the item, when the given point is moved.
@@ -188,6 +193,8 @@ public:
         UpdateOutlineFromPoints( m_polygon, aEditedPoint, aPoints );
     }
 
+    bool UpdateItemAppliesAllPoints() const override { return true; }
+
     void FinalizeItem( EDIT_POINTS& aPoints, COMMIT& aCommit ) override;
 
 private:
@@ -218,6 +225,10 @@ public:
 
     bool UpdatePoints( EDIT_POINTS& aPoints ) override
     {
+        // Normalize can fold the polygon into a rectangle, which needs a different editor
+        if( m_shape.GetShape() != SHAPE_T::POLY )
+            return false;
+
         POLYGON_POINT_EDIT_BEHAVIOR::UpdatePointsFromOutline( m_shape.GetPolyShape(), aPoints );
         return true;
     }
@@ -228,6 +239,8 @@ public:
         POLYGON_POINT_EDIT_BEHAVIOR::UpdateOutlineFromPoints(
                 m_shape.GetPolyShape(), aEditedPoint, aPoints );
     }
+
+    bool UpdateItemAppliesAllPoints() const override { return true; }
 
     void FinalizeItem( EDIT_POINTS& aPoints, COMMIT& aCommit ) override
     {
@@ -345,6 +358,109 @@ protected:
 private:
     EDA_SHAPE& m_bezier;
     int        m_maxError;
+};
+
+
+/**
+ * Edit behavior for ELLIPSE and ELLIPSE_ARC shapes.
+ *
+ * Closed ellipse: 3 handles (center, major-axis endpoint, minor-axis endpoint).
+ * Elliptical arc: 5 handles (the above + arc start + arc end).
+ *
+ * Drag semantics:
+ *  - Center: translate the whole ellipse.
+ *  - Major-end: set major radius + rotation (rotation follows the drag vector's world angle).
+ *  - Minor-end: set minor radius only (rotation preserved; drag is projected onto the minor axis).
+ *  - Arc start/end: set the respective parametric angles.
+ */
+class EDA_ELLIPSE_POINT_EDIT_BEHAVIOR : public POINT_EDIT_BEHAVIOR
+{
+public:
+    EDA_ELLIPSE_POINT_EDIT_BEHAVIOR( EDA_SHAPE& aEllipse ) :
+            m_ellipse( aEllipse )
+    {
+        KI_ASSERT( aEllipse.GetShape() == SHAPE_T::ELLIPSE || aEllipse.GetShape() == SHAPE_T::ELLIPSE_ARC );
+    }
+
+    void MakePoints( EDIT_POINTS& aPoints ) override;
+
+    bool UpdatePoints( EDIT_POINTS& aPoints ) override;
+
+    void UpdateItem( const EDIT_POINT& aEditedPoint, EDIT_POINTS& aPoints, COMMIT& aCommit,
+                     std::vector<EDA_ITEM*>& aUpdatedItems ) override;
+
+protected:
+    enum ELLIPSE_POINTS
+    {
+        ELLIPSE_CENTER = 0,
+        ELLIPSE_MAJOR_END,
+        ELLIPSE_MINOR_END,
+        ELLIPSE_ARC_START, // only for ELLIPSE_ARC
+        ELLIPSE_ARC_END,   // only for ELLIPSE_ARC
+
+        ELLIPSE_CLOSED_POINTS = 3,
+        ELLIPSE_ARC_POINTS = 5,
+    };
+
+private:
+    EDA_SHAPE& m_ellipse;
+
+    /// World-space point on the ellipse at the given parametric angle.
+    VECTOR2I evaluateAt( const EDA_ANGLE& aTheta ) const;
+
+    /// Inverse: the parametric angle of a world-space point relative to this ellipse.
+    EDA_ANGLE parametricAngleOf( const VECTOR2I& aWorldPt ) const;
+};
+
+
+/**
+ * "Standard" reference image editing behavior.
+ *
+ * Works over the #REFERENCE_IMAGE basis of #PCB_REFERENCE_IMAGE and #SCH_BITMAP.
+ *
+ * The corner handles sit on the image's bounding box, because the raster is stored upright and
+ * only turned when it is drawn.  A cardinal rotation puts the box corners on the image corners;
+ * any other angle leaves them on the drawn extent.
+ *
+ * Drag semantics:
+ *  - Corner handles: resize the image.
+ *  - Origin handle: move the transform origin.
+ */
+class REFERENCE_IMAGE_POINT_EDIT_BEHAVIOR : public POINT_EDIT_BEHAVIOR
+{
+    enum REFIMG_POINTS
+    {
+        REFIMG_TOP_LEFT,
+        REFIMG_TOP_RIGHT,
+        REFIMG_BOT_RIGHT,
+        REFIMG_BOT_LEFT,
+        REFIMG_ORIGIN,
+        REFIMG_ROTATION,
+
+        REFIMG_MAX_POINTS,
+    };
+
+public:
+    /**
+     * @param aImage the image to edit.
+     * @param aMinSize the smallest width and height the image may be scaled to, in IU.
+     */
+    REFERENCE_IMAGE_POINT_EDIT_BEHAVIOR( REFERENCE_IMAGE& aImage, int aMinSize ) :
+            m_image( aImage ),
+            m_minSize( aMinSize )
+    {
+    }
+
+    void MakePoints( EDIT_POINTS& aPoints ) override;
+
+    bool UpdatePoints( EDIT_POINTS& aPoints ) override;
+
+    void UpdateItem( const EDIT_POINT& aEditedPoint, EDIT_POINTS& aPoints, COMMIT& aCommit,
+                     std::vector<EDA_ITEM*>& aUpdatedItems ) override;
+
+private:
+    REFERENCE_IMAGE& m_image;
+    int              m_minSize;
 };
 
 

@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <base_units.h>
@@ -638,11 +634,16 @@ void GERBER_DRAW_ITEM::ConvertSegmentToPolygon()
 void GERBER_DRAW_ITEM::PrintGerberPoly( wxDC* aDC, const COLOR4D& aColor, const VECTOR2I& aOffset,
                                         bool aFilledShape )
 {
-    std::vector<VECTOR2I> points;
+    if( m_ShapeAsPolygon.OutlineCount() == 0 )
+        return;
+
     SHAPE_LINE_CHAIN& poly = m_ShapeAsPolygon.Outline( 0 );
     int pointCount = poly.PointCount() - 1;
 
-    points.reserve( pointCount );
+    if( pointCount <= 0 )
+        return;
+
+    std::vector<VECTOR2I> points( pointCount );
 
     for( int ii = 0; ii < pointCount; ii++ )
     {

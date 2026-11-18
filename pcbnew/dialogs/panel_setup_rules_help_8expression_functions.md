@@ -2,6 +2,10 @@
 
 All function parameters support simple wildcards (`*` and `?`).
 
+Arguments can also be expressions. For example,
+`A.intersectsFrontCourtyard(B.Parent)` tests whether `A` intersects the front
+courtyard of `B`'s parent footprint.
+
 
 ```
     A.enclosedByArea('<zone_name>')
@@ -63,6 +67,31 @@ For example, `inDiffPair('/CLK')` matches items in the `/CLK_P` and `/CLK_N` net
 
 
 ```
+    A.inNetChain('<chain_name>')
+```
+> True if `A`'s net is a member of the named chain.  `<chain_name>`
+accepts wildcards: `inNetChain('DDR_*')` matches every chain whose
+name starts with `DDR_`.
+
+
+
+```
+    A.hasNetChain()
+```
+> True if `A`'s net belongs to any chain.
+
+
+
+```
+    A.inNetChainClass('<class_name>')
+```
+> True if `A`'s net belongs to a chain whose assigned chain class
+matches `<class_name>`.  Class assignments live in the project's
+`net_chain_classes` map.  `<class_name>` accepts wildcards.
+
+
+
+```
     A.intersectsArea('<zone_name>')
 ```
 > True if any part of `A` lies within the given zone's outline.
@@ -118,6 +147,14 @@ For example, `inDiffPair('/CLK')` matches items in the `/CLK_P` and `/CLK_N` net
     A.isBuriedVia()
 ```
 > True if `A` is a buried via.
+
+
+```
+    A.isStackedVia()
+```
+> True if `A` is a microvia that lands on another microvia, or is landed on by one.
+
+> The test is hole overlap, so a staggered pair counts whenever the holes touch.
 
 
 ```

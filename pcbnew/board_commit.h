@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -144,9 +140,11 @@ public:
 
     BOARD* GetBoard() const;
 
-    virtual void Push( const wxString& aMessage = wxEmptyString, int aCommitFlags = 0 ) override;
+    void Push( const wxString& aMessage = wxEmptyString, int aCommitFlags = 0 ) override;
 
-    virtual void Revert() override;
+    void Revert() override;
+    void RevertToCheckpoint(int aCheckpoint) override;
+
     COMMIT&      Stage( EDA_ITEM* aItem, CHANGE_TYPE aChangeType,
                         BASE_SCREEN* aScreen = nullptr,
                         RECURSE_MODE aRecurse = RECURSE_MODE::NO_RECURSE ) override;
@@ -156,13 +154,26 @@ public:
                         UNDO_REDO aModFlag = UNDO_REDO::UNSPECIFIED,
                         BASE_SCREEN* aScreen = nullptr ) override;
 
+    /**
+     * Remove \a aItem, or free it if it was added earlier in this commit and never reached the board.
+     *
+     * Remove() cancels such an add without freeing the item, because some callers (tuning patterns) re-add
+     * the same pointer later in the commit.  Callers that rebuild their children use this instead.
+     *
+     * @return true if the item was freed and must not be used again.
+     */
+    bool RemoveOrDiscard( BOARD_ITEM* aItem );
+
+    virtual EDA_ITEM* ResolveItem( KIID& aID ) override;
+
     static EDA_ITEM* MakeImage( EDA_ITEM* aItem );
 
-private:
+protected:
     EDA_ITEM* undoLevelItem( EDA_ITEM* aItem ) const override;
 
     EDA_ITEM* makeImage( EDA_ITEM* aItem ) const override;
 
+private:
     void propagateDamage( BOARD_ITEM* aItem, std::vector<ZONE*>* aStaleZones,
                           std::vector<BOX2I>& aStaleRuleAreas );
 

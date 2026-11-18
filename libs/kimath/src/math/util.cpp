@@ -17,20 +17,16 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <cmath>
 #include <cstdlib>
 #include <limits>
 #include <math/util.h>
+#include <math/wide_int.h>
 #include <core/ki_assert.h>
 #include <core/ki_log.h>
-
 #include <cstdarg>
 #include <cstdio>
 #include <string>
@@ -69,6 +65,25 @@ void kimathLogDebug( const char* aFormatString, ... )
 void kimathLogOverflow( double v, const char* aTypeName )
 {
     KI_FAIL_MSG( KiStrFormat( "\n\nOverflow converting value %f to %s.", v, aTypeName ) );
+}
+
+
+uint64_t RoundedHypotWide( uint64_t aX, uint64_t aY )
+{
+    const KI_UINT128 n = KI_UINT128( aX ) * KI_UINT128( aX ) + KI_UINT128( aY ) * KI_UINT128( aY );
+    uint64_t         f = 0;
+
+    // n <= 2^127 keeps the floor root below 2^64
+    for( int bit = 63; bit >= 0; bit-- )
+    {
+        const uint64_t candidate = f | ( uint64_t( 1 ) << bit );
+
+        if( KI_UINT128( candidate ) * KI_UINT128( candidate ) <= n )
+            f = candidate;
+    }
+
+    // Round up when n - f^2 > f, the same test as the narrow path
+    return f + ( n - KI_UINT128( f ) * KI_UINT128( f ) > KI_UINT128( f ) );
 }
 
 

@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef DRC_RE_ALLOWED_ORIENTATION_CONSTRAINT_DATA_H_
@@ -38,11 +34,10 @@ public:
     {
     }
 
-    explicit DRC_RE_ALLOWED_ORIENTATION_CONSTRAINT_DATA( int aId, int aParentId, bool aAllowZeroDegrees,
-                                                         bool aAllowNinetyDegrees, bool aAllowOneEightyDegrees,
-                                                         bool aAllowTwoSeventyDegrees, bool aAllowAllDegrees,
-                                                         const wxString& aRuleName ) :
-            DRC_RE_BASE_CONSTRAINT_DATA( aId, aParentId, aRuleName ),
+    explicit DRC_RE_ALLOWED_ORIENTATION_CONSTRAINT_DATA( int aId, bool aAllowZeroDegrees, bool aAllowNinetyDegrees,
+                                                         bool aAllowOneEightyDegrees, bool aAllowTwoSeventyDegrees,
+                                                         bool aAllowAllDegrees, const wxString& aRuleName ) :
+            DRC_RE_BASE_CONSTRAINT_DATA( aId, aRuleName ),
             m_allowZeroDegrees( aAllowZeroDegrees || aAllowAllDegrees ),
             m_allowNinetyDegrees( aAllowNinetyDegrees || aAllowAllDegrees ),
             m_allowOneEightyDegrees( aAllowOneEightyDegrees || aAllowAllDegrees ),
@@ -58,14 +53,19 @@ public:
     std::vector<DRC_RE_FIELD_POSITION> GetFieldPositions() const override
     {
         // Positions measured from constraint_allowed_orientation.png (~280x180)
-        // Format: { xStart, xEnd, yCenter, tabOrder }
+        // Format: { xStart, xEnd, yCenter }
         // Checkboxes stacked vertically on the right side
         return {
-            { 400, 615, 52, 1, _( "Allow 0°" ), LABEL_POSITION::RIGHT },    // 0 degrees checkbox
-            { 400, 615, 92, 2, _( "Allow 90°" ), LABEL_POSITION::RIGHT },   // 90 degrees checkbox
-            { 400, 615, 132, 3, _( "Allow 180°" ), LABEL_POSITION::RIGHT }, // 180 degrees checkbox
-            { 400, 615, 172, 4, _( "Allow 270°" ), LABEL_POSITION::RIGHT }, // 270 degrees checkbox
-            { 400, 615, 212, 5, _( "Allow All" ), LABEL_POSITION::RIGHT },  // all degrees checkbox
+            { 400, 615, 52, _( "Allow 0°" ), LABEL_POSITION::RIGHT,
+              _( "Allow footprints placed at 0 degrees" ) }, // 0 degrees checkbox
+            { 400, 615, 92, _( "Allow 90°" ), LABEL_POSITION::RIGHT,
+              _( "Allow footprints placed at 90 degrees" ) }, // 90 degrees checkbox
+            { 400, 615, 132, _( "Allow 180°" ), LABEL_POSITION::RIGHT,
+              _( "Allow footprints placed at 180 degrees" ) }, // 180 degrees checkbox
+            { 400, 615, 172, _( "Allow 270°" ), LABEL_POSITION::RIGHT,
+              _( "Allow footprints placed at 270 degrees" ) }, // 270 degrees checkbox
+            { 400, 615, 212, _( "Allow All" ), LABEL_POSITION::RIGHT,
+              _( "Allow footprints at any orientation" ) }, // all degrees checkbox
         };
     }
 

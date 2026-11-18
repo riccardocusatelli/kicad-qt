@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef __SCH_DRAW_PANEL_H
@@ -38,7 +34,7 @@ class SCH_DRAW_PANEL : public EDA_DRAW_PANEL_GAL
 public:
     SCH_DRAW_PANEL( TOOLKIT_WINDOW_ARG aParentWindow, wxWindowID aWindowId, const wxPoint& aPosition,
                     const wxSize& aSize, KIGFX::GAL_DISPLAY_OPTIONS& aOptions,
-                    GAL_TYPE aGalType = GAL_TYPE_OPENGL );
+                    GAL_TYPE aGalType = GAL_TYPE_MODERN );
 
     ~SCH_DRAW_PANEL();
 
@@ -51,8 +47,6 @@ public:
 
 protected:
     virtual void onPaint( wxPaintEvent& WXUNUSED( aEvent ) ) override;
-
-    void OnShow() override;
 
     void setDefaultLayerOrder();    ///< Reassign layer order to the initial settings.
     void setDefaultLayerDeps();     ///< Set rendering targets & dependencies for layers.

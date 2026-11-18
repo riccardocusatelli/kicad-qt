@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PCB_TEXTBOX_H
@@ -80,6 +76,21 @@ public:
     VECTOR2I GetTopLeft() const override;
     VECTOR2I GetBotRight() const override;
 
+    std::vector<VECTOR2I> GetCorners() const override;
+
+    /*
+     * @return a PCB_SHAPE type POLYGON of the box of the TEXTBOX, according to the box shape
+     * and the textbox rotation
+     * The base PCB_SHAPE of a textbox is a RECTANGLE, so creating some issues when orientation
+     * is not 0 is some draw functions
+     */
+    PCB_SHAPE GetPolygonalBoxShape() const;
+
+    std::vector<VECTOR2I> GetCornersInSequence( EDA_ANGLE angle ) const override;
+
+    // Keep the lib shape as RECTANGLE even if a runtime polygon conversion happens.
+    void SetShape( SHAPE_T aShape ) override;
+
     /**
      * Return the minimum height needed to contain the textbox's wrapped text content
      * plus margins. Width is unconstrained (returns 0) so text freely rewraps.
@@ -92,7 +103,7 @@ public:
     void SetRight( int aVal ) override;
     void SetBottom( int aVal ) override;
 
-    void StyleFromSettings( const BOARD_DESIGN_SETTINGS& settings, bool aCheckSide ) override;
+    void StyleFromSettings( const BOARD_DESIGN_SETTINGS& aSettings, bool aCheckSide ) override;
 
     int GetLegacyTextMargin() const;
 
@@ -109,9 +120,17 @@ public:
     VECTOR2I GetDrawPos() const override;
     VECTOR2I GetDrawPos( bool aIsFlipped ) const;
 
-    void SetTextAngle( const EDA_ANGLE& aAngle ) override;
+    EDA_ANGLE GetTextAngle() const override;
+    void      SetTextAngle( const EDA_ANGLE& aAngle ) override;
 
-    wxString GetShownText( bool aAllowExtraText, int aDepth = 0 ) const override;
+    /**
+     * Text angle in the parent footprint's lib frame, or absolute when not
+     * in a footprint.
+     */
+    EDA_ANGLE GetLibTextAngle() const { return m_libTextAngle.GetAngle(); }
+    void      SetLibTextAngle( const EDA_ANGLE& aAngle ) { m_libTextAngle = aAngle; }
+
+    wxString GetShownText( RESOLUTION_CONTEXT aContext, int aDepth = 0 ) const override;
 
     bool Matches( const EDA_SEARCH_DATA& aSearchData, void* aAuxData ) const override;
 
@@ -121,9 +140,30 @@ public:
 
     void Mirror( const VECTOR2I& aCentre, FLIP_DIRECTION aFlipDirection ) override;
 
+    void Mirror( const SEG& aAxis ) override;
+
     void Flip( const VECTOR2I& aCentre, FLIP_DIRECTION aFlipDirection ) override;
 
+<<<<<<< b2e17e0a
     void GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList ) override;
+||||||| 1304b76aad
+    void GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList ) override;
+=======
+    void OnFootprintTransformed() override;
+
+    void OnFootprintRescaled( double aRatioX, double aRatioY, double aLinearFactor, const VECTOR2I& aAnchor,
+                              const EDA_ANGLE& aParentRotate ) override;
+
+    VECTOR2I GetTextSize() const override;
+    void     SetTextSize( VECTOR2I aNewSize, bool aEnforceMinTextSize = true ) override;
+
+    int  GetTextThickness() const override;
+    void SetTextThickness( int aWidth ) override;
+
+    void GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList ) override;
+>>>>>>> ed8c16703e
+
+    const BOX2I GetBoundingBox() const override;
 
     bool HitTest( const VECTOR2I& aPosition, int aAccuracy ) const override;
 
@@ -137,24 +177,27 @@ public:
     }
 
     /**
-     * Function TransformTextToPolySet
      * Convert the text to a polygonSet describing the actual character strokes (one per segment).
      * Used in 3D viewer
      * Circles and arcs are approximated by segments
      * @param aBuffer = SHAPE_POLY_SET to store the polygon corners
      * @param aClearance = the clearance around the text
-     * @param aError = the maximum error to allow when approximating curves
+     * @param aMaxError = the maximum error to allow when approximating curves
+     * @param aErrorLoc
      */
     void TransformTextToPolySet( SHAPE_POLY_SET& aBuffer, int aClearance, int aMaxError,
                                  ERROR_LOC aErrorLoc ) const;
+
+    double GetCoverageArea( int aTextMargin ) const override;
 
     void TransformShapeToPolygon( SHAPE_POLY_SET& aBuffer, PCB_LAYER_ID aLayer, int aClearance,
                                   int aMaxError, ERROR_LOC aErrorLoc,
                                   bool aIgnoreLineWidth = false ) const override;
 
-    // @copydoc BOARD_ITEM::GetEffectiveShape
+    /// @copydoc BOARD_ITEM::GetEffectiveShape()
     std::shared_ptr<SHAPE> GetEffectiveShape( PCB_LAYER_ID aLayer = UNDEFINED_LAYER,
-                                              FLASHING aFlash = FLASHING::DEFAULT ) const override;
+                                              FLASHING aFlash = FLASHING::DEFAULT,
+                                              DRC_CONSTRAINT_T aUsage = NULL_CONSTRAINT ) const override;
 
     wxString GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool aFull ) const override;
 
@@ -166,10 +209,10 @@ public:
 
     EDA_ITEM* Clone() const override;
 
-    ///< Tests whether the border is disabled, as configured by the stroke
+    /// Tests whether the border is disabled, as configured by the stroke
     bool IsBorderEnabled() const;
 
-    ///< Disables the border, this is done by changing the stroke internally
+    /// Disables the border, this is done by changing the stroke internally
     void SetBorderEnabled( bool enabled );
 
     void SetBorderWidth( const int aSize );
@@ -185,16 +228,21 @@ protected:
 
     virtual void swapData( BOARD_ITEM* aImage ) override;
 
+    // Inverse of OnFootprintTransformed (move center, scale half-extents, keep
+    // the box axis-aligned). A true inverse at any angle.
+    void syncLibCoords() override;
+
     const KIFONT::METRICS& getFontMetrics() const override { return GetFontMetrics(); }
 
 protected:
     bool m_borderEnabled; ///< Controls drawing the border (as defined by the stroke members)
 
 private:
-    int  m_marginLeft;
-    int  m_marginTop;
-    int  m_marginRight;
-    int  m_marginBottom;
+    int             m_marginLeft;
+    int             m_marginTop;
+    int             m_marginRight;
+    int             m_marginBottom;
+    EDA_ORIENTATION m_libTextAngle; // Text angle in parent footprint's lib frame
 };
 
 #endif  // #define PCB_TEXTBOX_H

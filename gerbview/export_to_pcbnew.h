@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <geometry/shape_poly_set.h>
@@ -118,7 +114,7 @@ private:
     /**
      * Convert every clear polarity item of an image to a polygon, in file order.
      */
-    void collect_clear_shapes( GERBER_FILE_IMAGE* aImage );
+    void collect_clear_shapes( const GERBER_FILE_IMAGE* aImage );
 
     /**
      * Write a dark region to the board file, minus the clear items drawn after it.
@@ -143,7 +139,9 @@ private:
     /**
      * Write a non-copper polygon to the board file.
      *
+     * @param aPolys are the polygons to write.
      * @param aLayer is the technical layer to use.
+     * @param aOffset is the optional polygon offset.
      */
     void writePcbPolygon( const SHAPE_POLY_SET& aPolys, int aLayer,
                           const VECTOR2I& aOffset = { 0, 0 } );
@@ -152,7 +150,7 @@ private:
      * Write a filled circle to the board file (with line thickness = 0).
      *
      * @param aCenterPosition is the actual position of the filled circle,
-     *  given by <round_flashed_shape>->GetABPosition()
+     *  given by \<round_flashed_shape\> GetABPosition().
      * @param aRadius is the circle radius.
      * @param aLayer is the layer to use.
      */
@@ -185,6 +183,7 @@ private:
      * the pad.
      *
      * @param aGbrItem is the flashed Gerber item to export.
+     * @param aLayer is the layer ID to export.
      */
     void export_flashed_copper_item( const GERBER_DRAW_ITEM* aGbrItem, int aLayer );
 

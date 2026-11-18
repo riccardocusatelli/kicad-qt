@@ -19,11 +19,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <kicad_gl/kiglu.h> // Must be included first
@@ -32,10 +28,12 @@
 #include <advanced_config.h>
 #include <build_version.h>
 #include <gal/opengl/opengl_gal.h>
+#include <gal/bitmap_texture.h>
 #include <gal/opengl/utils.h>
 #include <gal/definitions.h>
 #include <kicad_gl/gl_context_mgr.h>
 #include <geometry/shape_poly_set.h>
+#include <font/glyph_types.h>
 #include <bitmap_base.h>
 #include <raster_image.h>
 #include <bezier_curves.h>
@@ -76,6 +74,17 @@ static void InitTesselatorCallbacks( GLUtesselator* aTesselator );
 // Trace mask for XOR/difference mode debugging
 static const wxChar* const traceGalXorMode = wxT( "KICAD_GAL_XOR_MODE" );
 
+// Stencil bit allocation used by OPENGL_GAL.  Each independent use of the stencil
+// buffer claims a distinct bit so they can coexist within one frame.
+namespace
+{
+constexpr GLuint STENCIL_DOTS_MARKER = 0x01;   // Set at every dot position by the
+                                               // display-grid DOTS rendering pass.
+constexpr GLuint STENCIL_GRID_COVERAGE = 0x80; // Set inside a PCB_GRIDITEM's coverage
+                                               // area to cut the display grid (and
+                                               // lower-priority grid-items) out.
+} // namespace
+
 /// A time in milliseconds, for the accesses to the bitmap cache.
 static long long cacheTimeMillis()
 {
@@ -87,6 +96,15 @@ KIGL_CONTEXT* OPENGL_GAL::m_glMainContext = nullptr;
 int          OPENGL_GAL::m_instanceCounter = 0;
 GLuint       OPENGL_GAL::g_fontTexture = 0;
 bool         OPENGL_GAL::m_isBitmapFontLoaded = false;
+
+int                   OPENGL_GAL::m_contextGroupId = 0;
+bool                  OPENGL_GAL::m_resetBudgetExhausted = false;
+bool                  OPENGL_GAL::m_glLoaded = false;
+GL_RESET_BUDGET       OPENGL_GAL::m_resetBudget( 3, std::chrono::seconds( 60 ) );
+std::set<OPENGL_GAL*> OPENGL_GAL::m_instances;
+bool                  OPENGL_GAL::m_resetSettled = true;
+
+GL_RESET_BUDGET::CLOCK::time_point OPENGL_GAL::m_resetDetectedAt;
 
 namespace KIGFX
 {
@@ -116,7 +134,6 @@ private:
     GLuint cacheBitmap( const BITMAP_BASE* aBitmap );
 
     const size_t m_cacheMaxElements = 50;
-    const size_t m_cacheMaxSize     = 256 * 1024 * 1024;
 
     std::map<const KIID, CACHED_BITMAP> m_bitmaps;
     std::list<KIID>                     m_cacheLru;
@@ -180,31 +197,13 @@ GLuint GL_BITMAP_CACHE::cacheBitmap( const BITMAP_BASE* aBitmap )
     if( !imgPtr )
         return std::numeric_limits< GLuint >::max();
 
-    RASTER_IMAGE imgData = *imgPtr;
-
-    // Check if the image exceeds the maximum texture size supported by the GPU
     GLint maxTextureSize;
     glGetIntegerv( GL_MAX_TEXTURE_SIZE, &maxTextureSize );
 
-    int imgWidth = imgData.GetWidth();
-    int imgHeight = imgData.GetHeight();
+    RASTER_IMAGE imgData = FitImageToTexture( *imgPtr, maxTextureSize );
 
-    if( imgWidth > maxTextureSize || imgHeight > maxTextureSize )
-    {
-        // Scale down the image to fit within the maximum texture size while preserving
-        // the aspect ratio
-        double scaleX = static_cast<double>( maxTextureSize ) / imgWidth;
-        double scaleY = static_cast<double>( maxTextureSize ) / imgHeight;
-        double scale = std::min( scaleX, scaleY );
-
-        int newWidth = std::clamp( KiROUND( imgWidth * scale ), 1, maxTextureSize );
-        int newHeight = std::clamp( KiROUND( imgHeight * scale ), 1, maxTextureSize );
-
-        imgData = imgData.Rescale( newWidth, newHeight );
-
-        if( !imgData.IsOk() )
-            return std::numeric_limits< GLuint >::max();
-    }
+    if( !imgData.IsOk() )
+        return std::numeric_limits< GLuint >::max();
 
     bmp.w = imgData.GetWidth();
     bmp.h = imgData.GetHeight();
@@ -226,51 +225,12 @@ GLuint GL_BITMAP_CACHE::cacheBitmap( const BITMAP_BASE* aBitmap )
     if( imgData.HasAlpha() || imgData.HasMask() )
     {
         bmp.size = static_cast<size_t>( bmp.w ) * bmp.h * 4;
-        auto buf = std::make_unique<uint8_t[]>( bmp.size );
 
-        uint8_t* dstP = buf.get();
-        uint8_t* srcP = imgData.GetData();
-
-        long long pxCount = static_cast<long long>( bmp.w ) * bmp.h;
-
-        if( imgData.HasAlpha() )
-        {
-            uint8_t* srcAlpha = imgData.GetAlpha();
-
-            for( long long px = 0; px < pxCount; px++ )
-            {
-                memcpy( dstP, srcP, 3 );
-                dstP[3] = *srcAlpha;
-
-                srcAlpha += 1;
-                srcP += 3;
-                dstP += 4;
-            }
-        }
-        else if( imgData.HasMask() )
-        {
-            uint8_t maskRed = imgData.GetMaskRed();
-            uint8_t maskGreen = imgData.GetMaskGreen();
-            uint8_t maskBlue = imgData.GetMaskBlue();
-
-            for( long long px = 0; px < pxCount; px++ )
-            {
-                memcpy( dstP, srcP, 3 );
-
-                // Transparent or opaque
-                if( srcP[0] == maskRed && srcP[1] == maskGreen && srcP[2] == maskBlue )
-                    dstP[3] = 0;
-                else
-                    dstP[3] = 255;
-
-                srcP += 3;
-                dstP += 4;
-            }
-        }
+        const std::vector<uint8_t> rgba = ImageToRgba( imgData );
 
         glBindTexture( GL_TEXTURE_2D, textureID );
         glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, bmp.w, bmp.h, 0, GL_RGBA, GL_UNSIGNED_BYTE,
-                      buf.get() );
+                      rgba.data() );
     }
     else
     {
@@ -293,7 +253,7 @@ GLuint GL_BITMAP_CACHE::cacheBitmap( const BITMAP_BASE* aBitmap )
 #ifndef DISABLE_BITMAP_CACHE
     // A single oversized bitmap can exceed the whole cache budget, so evict until it fits or the
     // cache is drained
-    while( ( m_cacheLru.size() + 1 > m_cacheMaxElements || m_cacheSize + bmp.size > m_cacheMaxSize )
+    while( ( m_cacheLru.size() + 1 > m_cacheMaxElements || m_cacheSize + bmp.size > BITMAP_CACHE_MAX_BYTES )
            && !m_cacheLru.empty() )
     {
         KIID toRemove( 0 );
@@ -346,6 +306,7 @@ OPENGL_GAL::OPENGL_GAL( const KIGFX::VC_SETTINGS& aVcSettings, GAL_DISPLAY_OPTIO
                         const wxString& aName ) :
         GAL( aDisplayOptions ),
         HIDPI_GL_CANVAS( aVcSettings, aParent, aName ),
+        m_ownContextGroupId( m_contextGroupId ),
         m_currentManager( nullptr ),
         m_cachedManager( nullptr ),
         m_nonCachedManager( nullptr ),
@@ -358,19 +319,6 @@ OPENGL_GAL::OPENGL_GAL( const KIGFX::VC_SETTINGS& aVcSettings, GAL_DISPLAY_OPTIO
         m_isContextValid( false ),
         m_lockClientCookie( 0 )
 {
-#ifdef __WXMSW__
-    if( wxLog::IsAllowedTraceMask( traceGalContext ) )
-    {
-        PIXELFORMATDESCRIPTOR pfd = {};
-        int                   pixelFormat = ::GetPixelFormat( GetHDC() );
-
-        ::DescribePixelFormat( GetHDC(), pixelFormat, sizeof( pfd ), &pfd );
-
-        KI_LOG_TRACE( traceGalContext, wxS( "OPENGL_GAL %p pixel format %d, swap copy %d, swap exchange %d" ), this,
-                    pixelFormat, ( pfd.dwFlags & PFD_SWAP_COPY ) != 0, ( pfd.dwFlags & PFD_SWAP_EXCHANGE ) != 0 );
-    }
-#endif
-
     if( m_glMainContext == nullptr )
     {
         m_glMainContext = GL_CONTEXT_MANAGER::Get()->CreateCtx( this );
@@ -390,9 +338,7 @@ OPENGL_GAL::OPENGL_GAL( const KIGFX::VC_SETTINGS& aVcSettings, GAL_DISPLAY_OPTIO
 
     m_shader = new SHADER();
     ++m_instanceCounter;
-
-    KI_LOG_TRACE( traceGalContext, wxS( "OPENGL_GAL %p created, context %p, main %p, instances %d" ), this,
-                m_glPrivContext, m_glMainContext, m_instanceCounter );
+    m_instances.insert( this );
 
     m_bitmapCache = std::make_unique<GL_BITMAP_CACHE>();
 
@@ -447,11 +393,12 @@ OPENGL_GAL::~OPENGL_GAL()
         // can already be gone and the teardown below would run against a sibling's context
         m_isContextValid = gl_mgr->LockCtx( m_glPrivContext, this );
 
-        --m_instanceCounter;
+        // A reset already destroyed our objects, and some drivers report every call as out of memory
+        if( GetContextLoss() != GAL_CONTEXT_LOSS::NONE )
+            m_isContextValid = false;
 
-        KI_LOG_TRACE( traceGalContext, wxS( "OPENGL_GAL %p destroyed, context %p valid %d initialized %d, "
-                                          "instances left %d" ),
-                    this, m_glPrivContext, m_isContextValid, m_isInitialized, m_instanceCounter );
+        --m_instanceCounter;
+        m_instances.erase( this );
 
         if( !m_isContextValid )
         {
@@ -479,6 +426,9 @@ OPENGL_GAL::~OPENGL_GAL()
         if( m_isContextValid )
             ClearCache();
 
+        // Groups free their vertices through the cached manager, so they must go before it does
+        m_groups.clear();
+
         delete m_compositor;
 
         if( m_isInitialized )
@@ -489,6 +439,10 @@ OPENGL_GAL::~OPENGL_GAL()
             delete m_tempManager;
         }
 
+        // The program lives in the share group, so it outlives this canvas unless it is deleted
+        // while the context is still current
+        delete m_shader;
+
         gl_mgr->UnlockCtx( m_glPrivContext );
 
         // If it was the main context, then it will be deleted
@@ -496,20 +450,14 @@ OPENGL_GAL::~OPENGL_GAL()
         if( m_glPrivContext != m_glMainContext )
             gl_mgr->DestroyCtx( m_glPrivContext );
 
-        delete m_shader;
-
         // Are we destroying the last GAL instance?
-        if( m_instanceCounter == 0 )
+        if( m_instanceCounter == 0 && m_glMainContext )
         {
             if( gl_mgr->LockCtx( m_glMainContext, this ) && m_isBitmapFontLoaded )
                 glDeleteTextures( 1, &g_fontTexture );
 
             gl_mgr->UnlockCtx( m_glMainContext );
             gl_mgr->DestroyCtx( m_glMainContext );
-
-            KI_LOG_TRACE( traceGalContext, wxS( "Main GL context %p destroyed with the last OPENGL_GAL" ),
-                        m_glMainContext );
-
             m_glMainContext = nullptr;
 
             // The texture dies with the context even when it could not be made current to delete it
@@ -795,15 +743,18 @@ void OPENGL_GAL::EndDrawing()
 
     cntTotal.Stop();
 
-    KI_TRACE( traceGalProfile, "Timing: %s %s %s %s %s %s\n", cntTotal.to_string(),
+#ifdef KICAD_GAL_PROFILE
+    KI_LOG_TRACE( traceGalProfile, "Timing: %s %s %s %s %s %s", cntTotal.to_string(),
               cntEndCached.to_string(), cntEndNoncached.to_string(), cntEndOverlay.to_string(),
               cntComposite.to_string(), cntSwap.to_string() );
+#endif
 }
 
 
 bool OPENGL_GAL::GetScreenshot( std::vector<uint8_t>& aRGBA, VECTOR2I& aSize )
 {
-    if( !IsInitialized() || !m_compositor )
+    // A canvas that has never drawn has no compositor buffers to read
+    if( !IsInitialized() || !m_isInitialized || !m_compositor )
         return false;
 
     GAL_CONTEXT_LOCKER locker( this );
@@ -865,6 +816,107 @@ void OPENGL_GAL::LockContext( int aClientCookie )
         return;
 
     m_isContextValid = mgr->LockCtx( m_glPrivContext, this );
+
+    // Entry points are process wide, so a canvas that has not drawn yet can still be polled
+    if( m_isContextValid && m_glLoaded && GetContextLoss() == GAL_CONTEXT_LOSS::NONE && detectContextReset() )
+    {
+        orphanContextGroup();
+    }
+
+    // A lost context accepts commands but ignores them, so treat it as unusable
+    if( GetContextLoss() != GAL_CONTEXT_LOSS::NONE )
+        m_isContextValid = false;
+}
+
+
+GAL_CONTEXT_LOSS OPENGL_GAL::GetContextLoss() const
+{
+    if( m_ownContextGroupId == m_contextGroupId )
+        return GAL_CONTEXT_LOSS::NONE;
+
+    return m_resetBudgetExhausted ? GAL_CONTEXT_LOSS::REPEATED : GAL_CONTEXT_LOSS::RECOVERABLE;
+}
+
+
+static GLenum queryResetStatus()
+{
+    if( glGetGraphicsResetStatus )
+        return glGetGraphicsResetStatus();
+
+    if( glGetGraphicsResetStatusARB )
+        return glGetGraphicsResetStatusARB();
+
+    return GL_NO_ERROR;
+}
+
+
+bool OPENGL_GAL::detectContextReset()
+{
+    // Only contexts created with the lose-on-reset strategy ever report a reset
+    GLenum status = queryResetStatus();
+
+    if( status != GL_NO_ERROR )
+        KI_LOG_TRACE( traceGalContext, wxS( "GL context %p reset, status 0x%x" ), m_glPrivContext, status );
+
+    return status != GL_NO_ERROR;
+}
+
+
+void OPENGL_GAL::orphanContextGroup()
+{
+    ++m_contextGroupId;
+    m_resetDetectedAt = GL_RESET_BUDGET::CLOCK::now();
+    m_resetSettled = false;
+    m_resetBudgetExhausted = !m_resetBudget.RecordReset( m_resetDetectedAt );
+
+    KI_LOG_TRACE( traceGalContext, wxS( "Orphaned GL context group, now %d, budget exhausted %d" ), m_contextGroupId,
+                m_resetBudgetExhausted ? 1 : 0 );
+
+    bool mainOwned = false;
+
+    for( OPENGL_GAL* gal : m_instances )
+    {
+        if( gal->m_glPrivContext == m_glMainContext )
+            mainOwned = true;
+    }
+
+    // A live owner destroys the old main context itself; an ownerless one would otherwise leak
+    if( !mainOwned && m_glMainContext )
+        Pgm().GetGLContextManager()->DestroyCtx( m_glMainContext );
+
+    // The dead group still owns these; the next canvas created starts a new group
+    m_glMainContext = nullptr;
+    g_fontTexture = 0;
+    m_isBitmapFontLoaded = false;
+
+    for( OPENGL_GAL* gal : m_instances )
+        gal->Refresh();
+}
+
+
+bool OPENGL_GAL::IsResetSettled()
+{
+    GL_CONTEXT_MANAGER* mgr = Pgm().GetGLContextManager();
+
+    if( m_resetSettled || !mgr )
+        return true;
+
+    if( GL_RESET_BUDGET::CLOCK::now() - m_resetDetectedAt >= std::chrono::seconds( 2 ) )
+    {
+        KI_LOG_TRACE( traceGalContext, wxS( "GL reset did not report completion, rebuilding anyway" ) );
+        m_resetSettled = true;
+        return true;
+    }
+
+    // The lost context keeps reporting the reset until the hardware has finished it
+    if( mgr->LockCtx( m_glPrivContext, this ) && queryResetStatus() == GL_NO_ERROR )
+    {
+        KI_LOG_TRACE( traceGalContext, wxS( "GL reset completed" ) );
+        m_resetSettled = true;
+    }
+
+    mgr->UnlockCtx( m_glPrivContext );
+    return m_resetSettled;
 }
 
 
@@ -1296,6 +1348,179 @@ void OPENGL_GAL::DrawArcSegment( const VECTOR2D& aCenterPoint, double aRadius,
 }
 
 
+void OPENGL_GAL::DrawEllipse( const VECTOR2D& aCenterPoint, double aMajorRadius, double aMinorRadius,
+                              const EDA_ANGLE& aRotation )
+{
+    if( aMajorRadius <= 0 || aMinorRadius <= 0 )
+        return;
+
+    const double alphaIncrement = calcAngleStep( aMajorRadius );
+    const double cosPhi = std::cos( aRotation.AsRadians() );
+    const double sinPhi = std::sin( aRotation.AsRadians() );
+
+    auto eval = [&]( double theta ) -> VECTOR2D
+    {
+        const double lx = aMajorRadius * std::cos( theta );
+        const double ly = aMinorRadius * std::sin( theta );
+        return VECTOR2D( lx * cosPhi - ly * sinPhi, lx * sinPhi + ly * cosPhi );
+    };
+
+    Save();
+    m_currentManager->Translate( aCenterPoint.x, aCenterPoint.y, 0.0 );
+
+    if( m_isFillEnabled )
+    {
+        m_currentManager->Color( m_fillColor.r, m_fillColor.g, m_fillColor.b, m_fillColor.a );
+        m_currentManager->Shader( SHADER_NONE );
+
+        // Triangle fan from origin out to the ellipse boundary
+        double alpha;
+        for( alpha = 0.0; ( alpha + alphaIncrement ) < 2.0 * M_PI; )
+        {
+            const VECTOR2D p1 = eval( alpha );
+            alpha += alphaIncrement;
+            const VECTOR2D p2 = eval( alpha );
+
+            m_currentManager->Reserve( 3 );
+            m_currentManager->Vertex( 0.0, 0.0, m_layerDepth );
+            m_currentManager->Vertex( p1.x, p1.y, m_layerDepth );
+            m_currentManager->Vertex( p2.x, p2.y, m_layerDepth );
+        }
+
+        // Last wedge back to the start.
+        const VECTOR2D p1 = eval( alpha );
+        const VECTOR2D p2 = eval( 0.0 );
+
+        m_currentManager->Reserve( 3 );
+        m_currentManager->Vertex( 0.0, 0.0, m_layerDepth );
+        m_currentManager->Vertex( p1.x, p1.y, m_layerDepth );
+        m_currentManager->Vertex( p2.x, p2.y, m_layerDepth );
+    }
+
+    if( m_isStrokeEnabled )
+    {
+        m_currentManager->Color( m_strokeColor.r, m_strokeColor.g, m_strokeColor.b, m_strokeColor.a );
+
+        // Count quads for reservation.
+        unsigned int lineCount = 0;
+        double       countAlpha;
+
+        for( countAlpha = alphaIncrement; countAlpha < 2.0 * M_PI; countAlpha += alphaIncrement )
+            lineCount++;
+
+        lineCount++; // closing segment back to alpha = 0
+
+        reserveLineQuads( lineCount );
+
+        VECTOR2D p = eval( 0.0 );
+        double   alpha;
+
+        for( alpha = alphaIncrement; alpha < 2.0 * M_PI; alpha += alphaIncrement )
+        {
+            const VECTOR2D p_next = eval( alpha );
+            drawLineQuad( p, p_next, false );
+            p = p_next;
+        }
+
+        // Closing segment
+        drawLineQuad( p, eval( 0.0 ), false );
+    }
+
+    Restore();
+}
+
+
+void OPENGL_GAL::DrawEllipseArc( const VECTOR2D& aCenterPoint, double aMajorRadius, double aMinorRadius,
+                                 const EDA_ANGLE& aRotation, const EDA_ANGLE& aStartAngle, const EDA_ANGLE& aEndAngle )
+{
+    if( aMajorRadius <= 0 || aMinorRadius <= 0 )
+        return;
+
+    double startAngle = aStartAngle.AsRadians();
+    double endAngle = aEndAngle.AsRadians();
+    normalize( startAngle, endAngle );
+
+    const double alphaIncrement = calcAngleStep( aMajorRadius );
+    const double cosPhi = std::cos( aRotation.AsRadians() );
+    const double sinPhi = std::sin( aRotation.AsRadians() );
+
+    auto eval = [&]( double theta ) -> VECTOR2D
+    {
+        const double lx = aMajorRadius * std::cos( theta );
+        const double ly = aMinorRadius * std::sin( theta );
+        return VECTOR2D( lx * cosPhi - ly * sinPhi, lx * sinPhi + ly * cosPhi );
+    };
+
+    Save();
+    m_currentManager->Translate( aCenterPoint.x, aCenterPoint.y, 0.0 );
+
+    if( m_isFillEnabled )
+    {
+        m_currentManager->Color( m_fillColor.r, m_fillColor.g, m_fillColor.b, m_fillColor.a );
+        m_currentManager->Shader( SHADER_NONE );
+
+        // Pie slice fan from origin out to the arc curve.
+        double alpha;
+
+        for( alpha = startAngle; ( alpha + alphaIncrement ) < endAngle; )
+        {
+            const VECTOR2D p1 = eval( alpha );
+            alpha += alphaIncrement;
+            const VECTOR2D p2 = eval( alpha );
+
+            m_currentManager->Reserve( 3 );
+            m_currentManager->Vertex( 0.0, 0.0, m_layerDepth );
+            m_currentManager->Vertex( p1.x, p1.y, m_layerDepth );
+            m_currentManager->Vertex( p2.x, p2.y, m_layerDepth );
+        }
+
+        // Last wedge to endAngle.
+        const VECTOR2D p1 = eval( alpha );
+        const VECTOR2D p2 = eval( endAngle );
+
+        m_currentManager->Reserve( 3 );
+        m_currentManager->Vertex( 0.0, 0.0, m_layerDepth );
+        m_currentManager->Vertex( p1.x, p1.y, m_layerDepth );
+        m_currentManager->Vertex( p2.x, p2.y, m_layerDepth );
+    }
+
+    if( m_isStrokeEnabled )
+    {
+        m_currentManager->Color( m_strokeColor.r, m_strokeColor.g, m_strokeColor.b, m_strokeColor.a );
+
+        unsigned int lineCount = 0;
+        double       countAlpha;
+
+        for( countAlpha = startAngle + alphaIncrement; countAlpha <= endAngle; countAlpha += alphaIncrement )
+            lineCount++;
+
+        if( countAlpha != endAngle )
+            lineCount++; // trailing partial segment
+
+        reserveLineQuads( lineCount );
+
+        VECTOR2D p = eval( startAngle );
+        double   alpha;
+
+        for( alpha = startAngle + alphaIncrement; alpha <= endAngle; alpha += alphaIncrement )
+        {
+            const VECTOR2D p_next = eval( alpha );
+            drawLineQuad( p, p_next, false );
+            p = p_next;
+        }
+
+        // Trailing partial segment, if any
+        if( alpha != endAngle )
+        {
+            const VECTOR2D p_last = eval( endAngle );
+            drawLineQuad( p, p_last, false );
+        }
+    }
+
+    Restore();
+}
+
+
 void OPENGL_GAL::DrawRectangle( const VECTOR2D& aStartPoint, const VECTOR2D& aEndPoint )
 {
     // Compute the diagonal points of the rectangle
@@ -1625,7 +1850,9 @@ void OPENGL_GAL::DrawBitmap( const BITMAP_BASE& aBitmap, double alphaBlend )
     auto xform = m_currentManager->GetTransformation();
 
     glm::vec4 v0 = xform * glm::vec4( -w / 2, -h / 2, 0.0, 0.0 );
-    glm::vec4 v1 = xform * glm::vec4( w / 2, h / 2, 0.0, 0.0 );
+    glm::vec4 v1 = xform * glm::vec4( w / 2, -h / 2, 0.0, 0.0 );
+    glm::vec4 v2 = xform * glm::vec4( w / 2, h / 2, 0.0, 0.0 );
+    glm::vec4 v3 = xform * glm::vec4( -w / 2, h / 2, 0.0, 0.0 );
     glm::vec4 trans = xform[3];
 
     auto texture_id = m_bitmapCache->RequestBitmap( &aBitmap );
@@ -1669,13 +1896,13 @@ void OPENGL_GAL::DrawBitmap( const BITMAP_BASE& aBitmap, double alphaBlend )
     glVertex3f( v0.x, v0.y, m_layerDepth );
     glColor4f( 1.0, 1.0, 1.0, alpha );
     glTexCoord2f( texEndX,  texStartY);
-    glVertex3f( v1.x, v0.y, m_layerDepth );
-    glColor4f( 1.0, 1.0, 1.0, alpha );
-    glTexCoord2f( texEndX, texEndY);
     glVertex3f( v1.x, v1.y, m_layerDepth );
     glColor4f( 1.0, 1.0, 1.0, alpha );
+    glTexCoord2f( texEndX, texEndY);
+    glVertex3f( v2.x, v2.y, m_layerDepth );
+    glColor4f( 1.0, 1.0, 1.0, alpha );
     glTexCoord2f( texStartX, texEndY);
-    glVertex3f( v0.x, v1.y, m_layerDepth );
+    glVertex3f( v3.x, v3.y, m_layerDepth );
     glEnd();
 
     glBindTexture( GL_TEXTURE_2D, 0 );
@@ -1871,144 +2098,363 @@ void OPENGL_GAL::DrawGrid()
 {
     SetTarget( TARGET_NONCACHED );
     m_compositor->SetBuffer( m_mainBuffer );
-
     m_nonCachedManager->EnableDepthTest( false );
 
-    // sub-pixel lines all render the same
-    float minorLineWidth = std::fmax( 1.0f,
-                                      m_gridLineWidth ) * getWorldPixelSize() / GetScaleFactor();
-    float majorLineWidth = minorLineWidth * 2.0f;
+    const float minorLineWidth = gridMinorLineWidth( getWorldPixelSize(), GetScaleFactor() );
 
-    // Draw the axis and grid
-    // For the drawing the start points, end points and increments have
-    // to be calculated in world coordinates
-    VECTOR2D worldStartPoint = m_screenWorldMatrix * VECTOR2D( 0.0, 0.0 );
-    VECTOR2D worldEndPoint = m_screenWorldMatrix * VECTOR2D( m_screenSize );
-
-    // Draw axes if desired
+    // Axes drawn first so grid lines at x/y=0 can skip on top of them.
     if( m_axesEnabled )
     {
+        const VECTOR2D worldStartPoint = m_screenWorldMatrix * VECTOR2D( 0.0, 0.0 );
+        const VECTOR2D worldEndPoint = m_screenWorldMatrix * VECTOR2D( m_screenSize );
+
         SetLineWidth( minorLineWidth );
         SetStrokeColor( m_axesColor );
-
         DrawLine( VECTOR2D( worldStartPoint.x, 0 ), VECTOR2D( worldEndPoint.x, 0 ) );
         DrawLine( VECTOR2D( 0, worldStartPoint.y ), VECTOR2D( 0, worldEndPoint.y ) );
+        m_nonCachedManager->EndDrawing();
     }
 
-    // force flush
-    m_nonCachedManager->EndDrawing();
+    const bool renderGlobalGrid = m_gridVisibility && m_gridSize.x != 0 && m_gridSize.y != 0;
 
-    if( !m_gridVisibility || m_gridSize.x == 0 || m_gridSize.y == 0 )
+    if( renderGlobalGrid )
+    {
+        GRID_SOURCE globalGrid;
+        globalGrid.unbounded = true;
+        globalGrid.axesEnabled = m_axesEnabled;
+        globalGrid.kind = GRID_SOURCE::KIND::CARTESIAN;
+        globalGrid.origin = m_gridOrigin;
+        globalGrid.pitch = GetVisibleGridSize();
+        globalGrid.tick = static_cast<unsigned>( m_gridTick );
+        globalGrid.style = m_gridStyle;
+        globalGrid.color = m_gridColor;
+        globalGrid.priority = 0;
+
+        // Appending keeps the precedence order SetGridSources established: every grid
+        // item is bounded, and bounded beats unbounded, so the background grid belongs
+        // last whatever its priority.
+        m_gridSources.push_back( globalGrid );
+    }
+
+    if( !m_gridSources.empty() )
+        drawGridSources();
+
+    if( renderGlobalGrid )
+        m_gridSources.pop_back();
+}
+
+
+void OPENGL_GAL::drawGridSources()
+{
+    if( m_gridSources.empty() )
         return;
 
-    VECTOR2D gridScreenSize = GetVisibleGridSize();
+    // Pre-sorted by precedence; each bounded source stencils its coverage, so first drawn
+    // wins.  Selected grids go last: they ignore the stencil and draw over everything.
+    std::vector<const GRID_SOURCE*> ordered;
+    ordered.reserve( m_gridSources.size() );
 
-    // Compute grid starting and ending indexes to draw grid points on the
-    // visible screen area
-    // Note: later any point coordinate will be offset by m_gridOrigin
-    int gridStartX = KiROUND( ( worldStartPoint.x - m_gridOrigin.x ) / gridScreenSize.x );
-    int gridEndX = KiROUND( ( worldEndPoint.x - m_gridOrigin.x ) / gridScreenSize.x );
-    int gridStartY = KiROUND( ( worldStartPoint.y - m_gridOrigin.y ) / gridScreenSize.y );
-    int gridEndY = KiROUND( ( worldEndPoint.y - m_gridOrigin.y ) / gridScreenSize.y );
+    for( const GRID_SOURCE& src : m_gridSources )
+    {
+        if( !src.highlighted )
+            ordered.push_back( &src );
+    }
 
-    // Ensure start coordinate < end coordinate
-    normalize( gridStartX, gridEndX );
-    normalize( gridStartY, gridEndY );
+    for( const GRID_SOURCE& src : m_gridSources )
+    {
+        if( src.highlighted )
+            ordered.push_back( &src );
+    }
 
-    // Ensure the grid fills the screen
-    --gridStartX;
-    ++gridEndX;
-    --gridStartY;
-    ++gridEndY;
+    const float minorLineWidth = gridMinorLineWidth( getWorldPixelSize(), GetScaleFactor() );
+    const float majorLineWidth = minorLineWidth * 2.0f;
+    const float hairLineWidth = getWorldPixelSize() / GetScaleFactor();
 
     glDisable( GL_DEPTH_TEST );
     glDisable( GL_TEXTURE_2D );
+    m_nonCachedManager->EnableDepthTest( false );
 
-    if( m_gridStyle == GRID_STYLE::DOTS )
-    {
-        glEnable( GL_STENCIL_TEST );
-        glStencilFunc( GL_ALWAYS, 1, 1 );
-        glStencilOp( GL_KEEP, GL_KEEP, GL_INCR );
-        glColor4d( 0.0, 0.0, 0.0, 0.0 );
-        SetStrokeColor( COLOR4D( 0.0, 0.0, 0.0, 0.0 ) );
-    }
-    else
-    {
-        glColor4d( m_gridColor.r, m_gridColor.g, m_gridColor.b, m_gridColor.a );
-        SetStrokeColor( m_gridColor );
-    }
+    glEnable( GL_STENCIL_TEST );
+    glStencilMask( 0xFF );
+    glClear( GL_STENCIL_BUFFER_BIT );
 
-    if( m_gridStyle == GRID_STYLE::SMALL_CROSS )
+    for( const GRID_SOURCE* srcPtr : ordered )
     {
-        // Vertical positions
-        for( int j = gridStartY; j <= gridEndY; j++ )
+        const GRID_SOURCE& src = *srcPtr;
+
+        // Selected grids let you see the dimmed grid below and do not get stamped out.
+        const GLuint coverageMask = src.highlighted ? 0 : STENCIL_GRID_COVERAGE;
+
+        glStencilMask( 0x00 );
+        glStencilFunc( GL_EQUAL, 0, coverageMask );
+        glStencilOp( GL_KEEP, GL_KEEP, GL_KEEP );
+
+        if( src.highlighted )
         {
-            bool         tickY = ( j % m_gridTick == 0 );
-            const double posY = j * gridScreenSize.y + m_gridOrigin.y;
+            COLOR4D dimming = m_clearColor;
+            dimming.a = GRID_DIM_ALPHA;
 
-            // Horizontal positions
-            for( int i = gridStartX; i <= gridEndX; i++ )
+            SetIsFill( true );
+            SetIsStroke( false );
+            SetFillColor( dimming );
+            drawGridCoverageShape( src );
+            m_nonCachedManager->EndDrawing();
+        }
+
+        const COLOR4D      color = gridSourceColor( src );
+        const GRID_LATTICE lattice = gridLattice( src );
+
+        glColor4d( color.r, color.g, color.b, color.a );
+        SetStrokeColor( color );
+
+        Save();
+        Translate( src.origin );
+        // GAL Rotate is math-convention; grid orientation is screen-convention.
+        Rotate( -src.orientation );
+
+        // SMALL_CROSS marker.
+        auto drawCrossAt = [&]( const VECTOR2D& pos, bool aMajor, double aArmAngle )
+        {
+            const float    w = aMajor ? majorLineWidth : minorLineWidth;
+            const double   len = 2.0 * w;
+            const double   c = std::cos( aArmAngle );
+            const double   s = std::sin( aArmAngle );
+            const VECTOR2D arm1( c * len, s * len );
+            const VECTOR2D arm2( -s * len, c * len );
+
+            SetIsFill( false );
+            SetIsStroke( true );
+            SetLineWidth( w );
+            DrawLine( pos - arm1, pos + arm1 );
+            DrawLine( pos - arm2, pos + arm2 );
+        };
+
+        // LINES stroke setup.
+        auto beginLines = [&]()
+        {
+            SetIsFill( false );
+            SetIsStroke( true );
+        };
+
+        // DOTS via stencil intersection.
+        auto drawDotsViaStencil = [&]( auto&& aMarkAxis, auto&& aRenderAxis )
+        {
+            // Drop the previous source's markers, keeping its coverage claim.
+            glStencilMask( STENCIL_DOTS_MARKER );
+            glClear( GL_STENCIL_BUFFER_BIT );
+
+            // Mark pass: set marker where claim is clear.
+            glColorMask( GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE );
+            glStencilFunc( GL_EQUAL, STENCIL_DOTS_MARKER, coverageMask );
+            glStencilOp( GL_KEEP, GL_KEEP, GL_REPLACE );
+            SetIsFill( false );
+            SetIsStroke( true );
+            aMarkAxis();
+            m_nonCachedManager->EndDrawing();
+
+            // Render pass: stroke where marker set and claim clear.
+            glColorMask( GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE );
+            glStencilMask( 0x00 );
+            glStencilFunc( GL_EQUAL, STENCIL_DOTS_MARKER, STENCIL_DOTS_MARKER | coverageMask );
+            glStencilOp( GL_KEEP, GL_KEEP, GL_KEEP );
+            aRenderAxis();
+            m_nonCachedManager->EndDrawing();
+        };
+
+        switch( src.kind )
+        {
+        case GRID_SOURCE::KIND::POLAR:
+        {
+            const double rMax = lattice.extent.x;
+            const double phiMax = lattice.extent.y;
+            const double dr = lattice.pitch.x;
+            const double dPhi = lattice.pitch.y;
+
+            KI_ASSERT( dr > 0.0 && dPhi > 0.0 );
+
+            auto drawArcs = [&]()
             {
-                bool tickX = ( i % m_gridTick == 0 );
-                SetLineWidth( ( ( tickX && tickY ) ? majorLineWidth : minorLineWidth ) );
-                auto lineLen = 2.0 * GetLineWidth();
-                auto posX = i * gridScreenSize.x + m_gridOrigin.x;
+                int rIdx = 0;
+                for( double r = 0; r <= rMax + 1e-6; r += dr, ++rIdx )
+                {
+                    if( r == 0.0 )
+                        continue;
 
-                DrawLine( VECTOR2D( posX - lineLen, posY ), VECTOR2D( posX + lineLen, posY ) );
-                DrawLine( VECTOR2D( posX, posY - lineLen ), VECTOR2D( posX, posY + lineLen ) );
+                    SetLineWidth( lattice.IsMajor( rIdx ) ? majorLineWidth : minorLineWidth );
+                    DrawArc( VECTOR2D( 0, 0 ), r, EDA_ANGLE( 0, RADIANS_T ), EDA_ANGLE( phiMax, RADIANS_T ) );
+                }
+            };
+
+            auto drawSpokes = [&]()
+            {
+                int pIdx = 0;
+                for( double phi = 0; phi <= phiMax + 1e-6; phi += dPhi, ++pIdx )
+                {
+                    SetLineWidth( lattice.IsMajor( pIdx ) ? majorLineWidth : minorLineWidth );
+                    const double cx = std::cos( phi );
+                    const double cy = std::sin( phi );
+                    DrawLine( VECTOR2D( 0, 0 ), VECTOR2D( rMax * cx, rMax * cy ) );
+                }
+            };
+
+            if( src.style == GRID_STYLE::LINES )
+            {
+                beginLines();
+                drawArcs();
+                drawSpokes();
             }
+            else if( src.style == GRID_STYLE::DOTS )
+            {
+                drawDotsViaStencil( drawArcs, drawSpokes );
+            }
+            else // SMALL_CROSS
+            {
+                int rIdx = 0;
+                for( double r = 0; r <= rMax + 1e-6; r += dr, ++rIdx )
+                {
+                    int pIdx = 0;
+                    for( double phi = 0; phi <= phiMax + 1e-6; phi += dPhi, ++pIdx )
+                    {
+                        const bool     major = lattice.IsMajor( rIdx ) && lattice.IsMajor( pIdx );
+                        const VECTOR2D pos( r * std::cos( phi ), r * std::sin( phi ) );
+                        drawCrossAt( pos, major, phi );
+                    }
+                }
+            }
+            break;
         }
 
+        case GRID_SOURCE::KIND::CARTESIAN:
+        {
+            const double dx = lattice.pitch.x;
+            const double dy = lattice.pitch.y;
+
+            KI_ASSERT( dx > 0.0 && dy > 0.0 );
+
+            double xMin, xMax, yMin, yMax;
+            int    ixMin, ixMax, iyMin, iyMax;
+
+            BOX2D localBBox = gridScreenBBox( src );
+
+            // One-pitch bleed so off-screen grid lines still paint.
+            localBBox.Inflate( dx, dy );
+
+            if( src.unbounded )
+            {
+                xMin = localBBox.GetLeft();
+                xMax = localBBox.GetRight();
+                yMin = localBBox.GetTop();
+                yMax = localBBox.GetBottom();
+
+                ixMin = (int) std::floor( xMin / dx );
+                ixMax = (int) std::ceil( xMax / dx );
+                iyMin = (int) std::floor( yMin / dy );
+                iyMax = (int) std::ceil( yMax / dy );
+            }
+            else
+            {
+                xMin = std::max( localBBox.GetLeft(), -src.extent.x );
+                xMax = std::min( localBBox.GetRight(), src.extent.x );
+                yMin = std::max( localBBox.GetTop(), -src.extent.y );
+                yMax = std::min( localBBox.GetBottom(), src.extent.y );
+                ixMin = (int) -( src.extent.x / dx );
+                ixMax = (int) ( src.extent.x / dx );
+                iyMin = (int) -( src.extent.y / dy );
+                iyMax = (int) ( src.extent.y / dy );
+            }
+
+            auto drawVerticals = [&]()
+            {
+                for( int ix = ixMin; ix <= ixMax; ++ix )
+                {
+                    const double x = ix * dx;
+
+                    // Skip line coincident with world Y axis when axes are drawn.
+                    if( src.axesEnabled && x + src.origin.x == 0.0 )
+                        continue;
+
+                    SetLineWidth( lattice.IsMajor( ix ) ? majorLineWidth : minorLineWidth );
+                    DrawLine( VECTOR2D( x, yMin ), VECTOR2D( x, yMax ) );
+                }
+            };
+
+            auto drawHorizontals = [&]()
+            {
+                for( int iy = iyMin; iy <= iyMax; ++iy )
+                {
+                    const double y = iy * dy;
+
+                    if( src.axesEnabled && y + src.origin.y == 0.0 )
+                        continue;
+
+                    SetLineWidth( lattice.IsMajor( iy ) ? majorLineWidth : minorLineWidth );
+                    DrawLine( VECTOR2D( xMin, y ), VECTOR2D( xMax, y ) );
+                }
+            };
+
+            if( src.style == GRID_STYLE::LINES )
+            {
+                beginLines();
+                drawVerticals();
+                drawHorizontals();
+            }
+            else if( src.style == GRID_STYLE::DOTS )
+            {
+                drawDotsViaStencil( drawVerticals, drawHorizontals );
+            }
+            else // SMALL_CROSS
+            {
+                for( int ix = ixMin; ix <= ixMax; ++ix )
+                {
+                    for( int iy = iyMin; iy <= iyMax; ++iy )
+                    {
+                        const bool major = lattice.IsMajor( ix ) && lattice.IsMajor( iy );
+                        drawCrossAt( VECTOR2D( ix * dx, iy * dy ), major, 0.0 );
+                    }
+                }
+            }
+            break;
+        }
+
+        default: KI_FAIL_MSG( wxT( "drawGridSources: unhandled GRID_SOURCE::KIND" ) ); break;
+        }
+
+        Restore();
         m_nonCachedManager->EndDrawing();
+
+        // outline the coverage, so grids don't get lost no matter the pitch
+        if( !src.unbounded )
+        {
+            glStencilMask( 0x00 );
+            glStencilFunc( GL_EQUAL, 0, coverageMask );
+            glStencilOp( GL_KEEP, GL_KEEP, GL_KEEP );
+
+            SetIsFill( false );
+            SetIsStroke( true );
+            SetStrokeColor( color.Darkened( GRID_EDGE_DARKEN ) );
+            SetLineWidth( hairLineWidth );
+            drawGridCoverageShape( src );
+            m_nonCachedManager->EndDrawing();
+        }
+
+        // mask out the coverage unless unbounded (background) or highlighted (dimmed fill)
+        if( !src.unbounded && !src.highlighted )
+        {
+            glColorMask( GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE );
+            glStencilMask( STENCIL_GRID_COVERAGE );
+            glStencilFunc( GL_ALWAYS, STENCIL_GRID_COVERAGE, STENCIL_GRID_COVERAGE );
+            glStencilOp( GL_KEEP, GL_KEEP, GL_REPLACE );
+
+            SetIsFill( true );
+            SetIsStroke( false );
+            drawGridCoverageShape( src );
+            m_nonCachedManager->EndDrawing();
+
+            glColorMask( GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE );
+        }
     }
-    else
-    {
-        // Vertical lines
-        for( int j = gridStartY; j <= gridEndY; j++ )
-        {
-            const double y = j * gridScreenSize.y + m_gridOrigin.y;
 
-            // If axes are drawn, skip the lines that would cover them
-            if( m_axesEnabled && y == 0.0 )
-                continue;
-
-            SetLineWidth( ( j % m_gridTick == 0 ) ? majorLineWidth : minorLineWidth );
-            VECTOR2D a( gridStartX * gridScreenSize.x + m_gridOrigin.x, y );
-            VECTOR2D b( gridEndX * gridScreenSize.x + m_gridOrigin.x, y );
-
-            DrawLine( a, b );
-        }
-
-        m_nonCachedManager->EndDrawing();
-
-        if( m_gridStyle == GRID_STYLE::DOTS )
-        {
-            glStencilFunc( GL_NOTEQUAL, 0, 1 );
-            glColor4d( m_gridColor.r, m_gridColor.g, m_gridColor.b, m_gridColor.a );
-            SetStrokeColor( m_gridColor );
-        }
-
-        // Horizontal lines
-        for( int i = gridStartX; i <= gridEndX; i++ )
-        {
-            const double x = i * gridScreenSize.x + m_gridOrigin.x;
-
-            // If axes are drawn, skip the lines that would cover them
-            if( m_axesEnabled && x == 0.0 )
-                continue;
-
-            SetLineWidth( ( i % m_gridTick == 0 ) ? majorLineWidth : minorLineWidth );
-            VECTOR2D a( x, gridStartY * gridScreenSize.y + m_gridOrigin.y );
-            VECTOR2D b( x, gridEndY * gridScreenSize.y + m_gridOrigin.y );
-            DrawLine( a, b );
-        }
-
-        m_nonCachedManager->EndDrawing();
-
-        if( m_gridStyle == GRID_STYLE::DOTS )
-            glDisable( GL_STENCIL_TEST );
-    }
-
+    glDisable( GL_STENCIL_TEST );
     m_nonCachedManager->EnableDepthTest( true );
     glEnable( GL_DEPTH_TEST );
     glEnable( GL_TEXTURE_2D );
@@ -2156,6 +2602,10 @@ void OPENGL_GAL::DeleteGroup( int aGroupNumber )
 
 void OPENGL_GAL::ClearCache()
 {
+    // Runs unlocked from VIEW::Clear, so deleting a lost group's texture names could hit another group's
+    if( GetContextLoss() != GAL_CONTEXT_LOSS::NONE )
+        m_bitmapCache->Abandon();
+
     m_bitmapCache = std::make_unique<GL_BITMAP_CACHE>();
 
     m_groups.clear();
@@ -2585,11 +3035,7 @@ int OPENGL_GAL::drawBitmapChar( unsigned long aChar, bool aReserve )
     // handle space
     if( aChar == ' ' )
     {
-        const FONT_GLYPH_TYPE* g = LookupGlyph( 'x' );
-        KI_CHECK( g, 0 );
-
-        // Match stroke font as well as possible
-        double spaceWidth = g->advance * 0.74;
+        const double spaceWidth = SpaceAdvance();
 
         Translate( VECTOR2D( spaceWidth, 0 ) );
         return KiROUND( spaceWidth );
@@ -2605,18 +3051,14 @@ int OPENGL_GAL::drawBitmapChar( unsigned long aChar, bool aReserve )
     if( !glyph ) // Should not happen.
         return 0;
 
-    const float X = glyph->atlas_x + font_information.smooth_pixels;
-    const float Y = glyph->atlas_y + font_information.smooth_pixels;
-    const float XOFF = glyph->minx;
-
-    // adjust for height rounding
-    const float round_adjust = ( glyph->maxy - glyph->miny )
-                               - float( glyph->atlas_h - font_information.smooth_pixels * 2 );
-    const float top_adjust = font_information.max_y - glyph->maxy;
-    const float YOFF = round_adjust + top_adjust;
-    const float W = glyph->atlas_w - font_information.smooth_pixels * 2;
-    const float H = glyph->atlas_h - font_information.smooth_pixels * 2;
-    const float B = 0;
+    const GLYPH_BOX box = ComputeGlyphBox( *glyph );
+    const float     X = box.atlasX;
+    const float     Y = box.atlasY;
+    const float     XOFF = box.x;
+    const float     YOFF = box.y;
+    const float     W = box.w;
+    const float     H = box.h;
+    const float     B = 0;
 
     if( aReserve )
         m_currentManager->Reserve( 6 );
@@ -2689,61 +3131,7 @@ void OPENGL_GAL::drawBitmapOverbar( double aLength, double aHeight, bool aReserv
 
 std::pair<VECTOR2D, float> OPENGL_GAL::computeBitmapTextSize( const UTF8& aText ) const
 {
-    static const FONT_GLYPH_TYPE* defaultGlyph = LookupGlyph( '(' ); // for strange chars
-
-    VECTOR2D textSize( 0, 0 );
-    float    commonOffset = std::numeric_limits<float>::max();
-    float    charHeight = font_information.max_y - defaultGlyph->miny;
-    int      overbarDepth = -1;
-    int braceNesting = 0;
-
-    for( UTF8::uni_iter chIt = aText.ubegin(), end = aText.uend(); chIt < end; ++chIt )
-    {
-        if( *chIt == '~' && overbarDepth == -1 )
-        {
-            UTF8::uni_iter lookahead = chIt;
-
-            if( ++lookahead != end && *lookahead == '{' )
-            {
-                chIt = lookahead;
-                overbarDepth = braceNesting;
-                braceNesting++;
-                continue;
-            }
-        }
-        else if( *chIt == '{' )
-        {
-            braceNesting++;
-        }
-        else if( *chIt == '}' )
-        {
-            if( braceNesting > 0 )
-                braceNesting--;
-
-            if( braceNesting == overbarDepth )
-            {
-                overbarDepth = -1;
-                continue;
-            }
-        }
-
-        const FONT_GLYPH_TYPE* glyph = LookupGlyph( *chIt );
-
-        if( !glyph                            // Not coded in font
-            || *chIt == '-' || *chIt == '_' ) // Strange size of these 2 chars
-        {
-            glyph = defaultGlyph;
-        }
-
-        if( glyph )
-            textSize.x += glyph->advance;
-    }
-
-    textSize.y = std::max<float>( textSize.y, charHeight );
-    commonOffset = std::min<float>( font_information.max_y - defaultGlyph->maxy, commonOffset );
-    textSize.y -= commonOffset;
-
-    return std::make_pair( textSize, commonOffset );
+    return BUILTIN_FONT::ComputeBitmapTextSize( aText );
 }
 
 
@@ -2864,6 +3252,8 @@ void OPENGL_GAL::init()
     if( glVersion == 0 )
         throw std::runtime_error( "Failed to load OpenGL via loader" );
 
+    m_glLoaded = true;
+
     const char* vendor = (const char*) glGetString( GL_VENDOR );
     const char* renderer = (const char*) glGetString( GL_RENDERER );
     const char* version = (const char*) glGetString( GL_VERSION );
@@ -2876,6 +3266,13 @@ void OPENGL_GAL::init()
     KI_LOG_TRACE( traceGalContext, wxS( "GL context %p ready on canvas %p: %s | %s | %s" ),
                 m_glPrivContext, this, wxString::FromUTF8( vendor ),
                 wxString::FromUTF8( renderer ), wxString::FromUTF8( version ) );
+
+    GLint resetStrategy = 0;
+
+    if( GLAD_GL_VERSION_4_5 || GLAD_GL_ARB_robustness || GLAD_GL_KHR_robustness )
+        glGetIntegerv( GL_RESET_NOTIFICATION_STRATEGY, &resetStrategy );
+
+    KI_LOG_TRACE( traceGalContext, wxS( "GL context %p reset strategy 0x%x" ), m_glPrivContext, resetStrategy );
 
     // Check the OpenGL version (minimum 2.1 is required)
     if( !GLAD_GL_VERSION_2_1 )
@@ -3002,10 +3399,10 @@ void CALLBACK ErrorCallback( GLenum aErrorCode )
 
 static void InitTesselatorCallbacks( GLUtesselator* aTesselator )
 {
-    gluTessCallback( aTesselator, GLU_TESS_VERTEX_DATA, (void( CALLBACK* )()) VertexCallback );
-    gluTessCallback( aTesselator, GLU_TESS_COMBINE_DATA, (void( CALLBACK* )()) CombineCallback );
-    gluTessCallback( aTesselator, GLU_TESS_EDGE_FLAG, (void( CALLBACK* )()) EdgeCallback );
-    gluTessCallback( aTesselator, GLU_TESS_ERROR, (void( CALLBACK* )()) ErrorCallback );
+    gluTessCallback( aTesselator, GLU_TESS_VERTEX_DATA, ToGluCallback( VertexCallback ) );
+    gluTessCallback( aTesselator, GLU_TESS_COMBINE_DATA, ToGluCallback( CombineCallback ) );
+    gluTessCallback( aTesselator, GLU_TESS_EDGE_FLAG, ToGluCallback( EdgeCallback ) );
+    gluTessCallback( aTesselator, GLU_TESS_ERROR, ToGluCallback( ErrorCallback ) );
 }
 
 

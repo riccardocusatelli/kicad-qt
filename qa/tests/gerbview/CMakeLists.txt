@@ -13,11 +13,7 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, you may find one here:
-# http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-# or you may search the http://www.gnu.org website for the version 2 license,
-# or you may write to the Free Software Foundation, Inc.,
-# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
 set( QA_GERBVIEW_SRCS
@@ -25,14 +21,13 @@ set( QA_GERBVIEW_SRCS
     test_module.cpp
 
     test_aperture_macro.cpp
+    test_coordinates.cpp
+    test_dcode.cpp
     test_excellon_repeat.cpp
 
     # Gerbview-specific tests
     test_step_and_repeat.cpp
     test_export_clear_polarity.cpp
-
-    # Shared between programs, but dependent on the BIU
-    ${CMAKE_SOURCE_DIR}/qa/tests/common/test_format_units.cpp
 )
 
 if( WIN32 )
@@ -77,7 +72,6 @@ target_link_libraries( qa_gerbview
     qa_utils
     ${wxWidgets_LIBRARIES}
     ${GDI_PLUS_LIBRARIES}
-    ${PYTHON_LIBRARIES}
     Boost::headers
     Boost::unit_test_framework
     ${PCBNEW_EXTRA_LIBS}    # -lrt must follow Boost

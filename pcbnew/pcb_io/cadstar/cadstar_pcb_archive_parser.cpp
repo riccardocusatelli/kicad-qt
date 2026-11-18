@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -82,15 +82,13 @@ void CADSTAR_PCB_ARCHIVE_PARSER::Parse( bool aLibrary )
             {
                 if( Header.Format.Type == wxT( "LIBRARY" ) )
                 {
-                    THROW_IO_ERROR(
-                            wxT( "The selected file is a CADSTAR library file (as opposed "
-                                 "to a layout file). You can import this library by adding it "
-                                 "to the library table." ) );
+                    THROW_IO_ERROR( wxT( "The selected file is a CADSTAR library file (as opposed to a layout file). "
+                                         "You can import this library by adding it to the library table." ) );
                 }
                 else
                 {
-                    THROW_IO_ERROR( wxT( "The selected file is an unknown CADSTAR format so "
-                                         "cannot be imported into KiCad." ) );
+                    THROW_IO_ERROR( wxT( "The selected file is an unknown CADSTAR format so cannot be imported into "
+                                         "KiCad." ) );
                 }
             }
         }

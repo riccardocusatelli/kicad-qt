@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <env_paths.h>
@@ -41,6 +41,7 @@
 #include <string_utils.h>
 #include <widgets/std_bitmap_button.h>
 #include <widgets/filedlg_hook_embed_file.h>
+#include <widgets/filedlg_hook_relative_path.h>
 #include <wx/valgen.h>
 #include <wx/tokenzr.h>
 #include <wx/filedlg.h>
@@ -440,6 +441,7 @@ void DIALOG_PAGES_SETTINGS::OnComment9TextUpdated( wxCommandEvent& event )
 void DIALOG_PAGES_SETTINGS::OnDateApplyClick( wxCommandEvent& event )
 {
     wxDateTime datetime = m_PickDate->GetValue();
+
     wxString date =
     // We can choose different formats. Should probably be kept in sync with CURRENT_DATE
     // formatting in TITLE_BLOCK.
@@ -521,6 +523,25 @@ bool DIALOG_PAGES_SETTINGS::SavePageSettings()
     m_tb.SetComment( 8, m_TextComment9->GetValue() );
 
     m_parent->SetTitleBlock( m_tb );
+
+    // The dialog is being accepted, so it is now safe to drop the embedded worksheets the user
+    // approved removing while switching sheets. Skip the one that ended up selected.
+    if( m_embeddedFiles && !m_embeddedSheetsToRemove.empty() )
+    {
+        wxString embeddedPrefix = wxString::FromUTF8( FILEEXT::KiCadUriPrefix ) + wxT( "://" );
+        wxString finalEmbeddedName;
+
+        if( fileName.StartsWith( embeddedPrefix ) )
+            finalEmbeddedName = fileName.Mid( embeddedPrefix.length() );
+
+        for( const wxString& name : m_embeddedSheetsToRemove )
+        {
+            if( name != finalEmbeddedName )
+                m_embeddedFiles->RemoveFile( name );
+        }
+
+        m_embeddedSheetsToRemove.clear();
+    }
 
     return onSavePageSettings();
 }
@@ -691,6 +712,15 @@ void DIALOG_PAGES_SETTINGS::OnWksFileSelection( wxCommandEvent& event )
     wxString   path = m_projectPath;
     wxString   msg;
 
+    // Check if the current worksheet is embedded so we can offer to remove it later
+    wxString currentWksFileName = GetWksFileName();
+    wxString embeddedPrefix = wxString::FromUTF8( FILEEXT::KiCadUriPrefix ) + wxT( "://" );
+    bool     currentIsEmbedded = currentWksFileName.StartsWith( embeddedPrefix );
+    wxString currentEmbeddedName;
+
+    if( currentIsEmbedded )
+        currentEmbeddedName = currentWksFileName.Mid( embeddedPrefix.length() );
+
     if( fn.IsAbsolute() )
     {
         path = fn.GetPath();
@@ -698,17 +728,27 @@ void DIALOG_PAGES_SETTINGS::OnWksFileSelection( wxCommandEvent& event )
     else
     {
         wxFileName expanded( ExpandEnvVarSubstitutions( GetWksFileName(), &m_parentFrame->Prj() ) );
+        wxFileName inProject( expanded );
 
         if( expanded.IsAbsolute() )
         {
             path = expanded.GetPath();
         }
+        else if( !m_projectPath.IsEmpty()
+                    && inProject.HasName()
+                    && inProject.MakeAbsolute( m_projectPath )
+                    && inProject.FileExists() )
+        {
+            path = inProject.GetPath();
+        }
         else
         {
             ENV_VAR_MAP_CITER itUser = Pgm().GetLocalEnvVariables().find( "KICAD_USER_TEMPLATE_DIR" );
+
             if( itUser != Pgm().GetLocalEnvVariables().end() && itUser->second.GetValue() != wxEmptyString )
             {
                 wxString resolved = ExpandEnvVarSubstitutions( itUser->second.GetValue(), &m_parentFrame->Prj() );
+
                 if( !resolved.Contains( wxT( "${" ) ) && !resolved.Contains( wxT( "$(" ) ) )
                 {
                     wxFileName resolvedFn;
@@ -721,12 +761,16 @@ void DIALOG_PAGES_SETTINGS::OnWksFileSelection( wxCommandEvent& event )
     }
 
     // Display a file picker dialog
-    FILEDLG_HOOK_EMBED_FILE customize( true, EMBED_FILE_CONTEXT::DRAWING_SHEET );
+    FILEDLG_HOOK_EMBED_FILE    embedHook( true, EMBED_FILE_CONTEXT::DRAWING_SHEET );
+    FILEDLG_HOOK_RELATIVE_PATH relativeHook( RELATIVE_PATH_CONTEXT::DRAWING_SHEET,
+                                             m_embeddedFiles ? &embedHook : nullptr );
     wxFileDialog fileDialog( this, _( "Drawing Sheet File" ), path, name, FILEEXT::DrawingSheetFileWildcard(),
                              wxFD_DEFAULT_STYLE | wxFD_FILE_MUST_EXIST );
 
-    if( m_embeddedFiles )
-        fileDialog.SetCustomizeHook( customize );
+    if( !m_projectPath.IsEmpty() )
+        fileDialog.SetCustomizeHook( relativeHook );
+    else if( m_embeddedFiles )
+        fileDialog.SetCustomizeHook( embedHook );
 
     KIPLATFORM::UI::AllowNetworkFileSystems( &fileDialog );
 
@@ -735,25 +779,23 @@ void DIALOG_PAGES_SETTINGS::OnWksFileSelection( wxCommandEvent& event )
 
     wxString fileName = fileDialog.GetPath();
     wxString shortFileName;
+    wxString newEmbeddedName;
 
-    if( m_embeddedFiles && customize.GetEmbed() )
+    if( m_embeddedFiles && embedHook.GetEmbed() )
     {
         fn.Assign( fileName );
         EMBEDDED_FILES::EMBEDDED_FILE* result = m_embeddedFiles->AddFile( fn, true );
         shortFileName = result->GetLink();
+        newEmbeddedName = result->name;
         fileName = m_embeddedFiles->GetTemporaryFileName( result->name ).GetFullPath();
-    }
-    else if( !m_projectPath.IsEmpty() && fileName.StartsWith( m_projectPath ) )
-    {
-        // Try to use a project-relative path
-        fn = wxFileName( fileName );
-        fn.MakeRelativeTo( m_projectPath );
-        shortFileName = fn.GetFullPath();
+
+        // Re-embedding a file that was queued for removal cancels that removal
+        m_embeddedSheetsToRemove.erase( newEmbeddedName );
     }
     else
     {
-        // Failing that see if we can shorten it with env vars:
-        shortFileName = NormalizePath( fileName, &Pgm().GetLocalEnvVariables(), nullptr );
+        shortFileName = NormalizePathForProject( fileName, &Pgm().GetLocalEnvVariables(), m_projectPath,
+                                                 !m_projectPath.IsEmpty() && relativeHook.GetUseRelativePath() );
     }
 
     std::unique_ptr<DS_DATA_MODEL> ws = std::make_unique<DS_DATA_MODEL>();
@@ -765,6 +807,20 @@ void DIALOG_PAGES_SETTINGS::OnWksFileSelection( wxCommandEvent& event )
                                                fileName ),
                              msg );
         return;
+    }
+
+    // Now that the new sheet has loaded, offer to remove the previously embedded worksheet
+    // if we are switching to a different file. The removal is deferred until the dialog is
+    // accepted so that cancelling does not orphan the still-referenced worksheet.
+    if( m_embeddedFiles && currentIsEmbedded && !currentEmbeddedName.IsEmpty()
+        && currentEmbeddedName != newEmbeddedName )
+    {
+        if( IsOK( this, wxString::Format(
+                            _( "Remove the previously embedded drawing sheet file '%s'?" ),
+                            currentEmbeddedName ) ) )
+        {
+            m_embeddedSheetsToRemove.insert( currentEmbeddedName );
+        }
     }
 
     delete m_drawingSheet;

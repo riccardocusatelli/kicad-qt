@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -26,7 +26,1104 @@
 #ifndef PCB_NET_INSPECTOR_PANEL_DATA_MODEL
 #define PCB_NET_INSPECTOR_PANEL_DATA_MODEL
 
+<<<<<<< b2e17e0a
 #include <widgets/pcb_net_inspector_list_item.h>
+||||||| 1304b76aad
+#include <eda_pattern_match.h>
+#include <string_utils.h>
+
+
+/**
+ * Primary data item for entries in the Net Inspector list.
+ *
+ * This class tracks all data for a given net entry in the net inspector list.
+ */
+class PCB_NET_INSPECTOR_PANEL::LIST_ITEM
+{
+public:
+    enum class GROUP_TYPE
+    {
+        NONE,
+        USER_DEFINED,
+        NETCLASS
+    };
+
+    LIST_ITEM( unsigned int aGroupNumber, const wxString& aGroupName, GROUP_TYPE aGroupType ) :
+            m_group_type( aGroupType ),
+            m_group_number( aGroupNumber ),
+            m_net_name( aGroupName )
+    {
+        m_group_name = aGroupName;
+        m_column_changed.resize( COLUMN_LAST_STATIC_COL + 1 + 2, 0 ); // 2 for default layer count
+    }
+
+    LIST_ITEM( NETINFO_ITEM* aNet ) :
+            m_group_type( GROUP_TYPE::NONE ),
+            m_net( aNet )
+    {
+        KI_ASSERT( aNet );
+        m_net_name = UnescapeString( aNet->GetNetname() );
+        m_net_class = UnescapeString( aNet->GetNetClass()->GetHumanReadableName() );
+        m_column_changed.resize( COLUMN_LAST_STATIC_COL + 1 + 2, 0 );
+    }
+
+    LIST_ITEM()
+    {
+        m_column_changed.resize( COLUMN_LAST_STATIC_COL + 1 + 2, 0 );
+    }
+
+    LIST_ITEM& operator=( const LIST_ITEM& ) = delete;
+
+    bool            GetIsGroup() const { return m_group_type != GROUP_TYPE::NONE; }
+    const wxString& GetGroupName() const { return m_group_name; }
+    GROUP_TYPE      GetGroupType() const { return m_group_type; }
+    int             GetGroupNumber() const { return m_group_number; }
+
+    auto         ChildrenBegin() const { return m_children.begin(); }
+    auto         ChildrenEnd() const { return m_children.end(); }
+    unsigned int ChildrenCount() const { return m_children.size(); }
+
+    void SetLayerCount( unsigned int aValue )
+    {
+        m_column_changed.resize( COLUMN_LAST_STATIC_COL + 1 + aValue, 0 );
+    }
+
+    NETINFO_ITEM* GetNet() const { return m_net; }
+
+    int GetNetCode() const
+    {
+        return GetIsGroup() ? ( 0 - int( m_group_number ) - 1 ) : m_net->GetNetCode();
+    }
+
+    const wxString& GetNetName() const { return m_net_name; }
+    const wxString& GetNetclassName() const { return m_net_class; }
+
+    void ResetColumnChangedBits()
+    {
+        std::fill( m_column_changed.begin(), m_column_changed.end(), 0 );
+    }
+
+    unsigned int GetPadCount() const { return m_pad_count; }
+
+    bool PadCountChanged() const { return m_column_changed[COLUMN_PAD_COUNT]; }
+
+    void SetPadCount( unsigned int aValue )
+    {
+        if( m_parent )
+            m_parent->SetPadCount( m_parent->GetPadCount() - m_pad_count + aValue );
+
+        m_column_changed[COLUMN_PAD_COUNT] |= ( m_pad_count != aValue );
+        m_pad_count = aValue;
+    }
+
+    void AddPadCount( unsigned int aValue )
+    {
+        if( m_parent )
+            m_parent->AddPadCount( aValue );
+
+        m_column_changed[COLUMN_PAD_COUNT] |= ( aValue != 0 );
+        m_pad_count += aValue;
+    }
+
+    void SubPadCount( unsigned int aValue )
+    {
+        if( m_parent )
+            m_parent->SubPadCount( aValue );
+
+        m_column_changed[COLUMN_PAD_COUNT] |= ( aValue != 0 );
+        m_pad_count -= aValue;
+    }
+
+    unsigned GetViaCount() const { return m_via_count; }
+
+    bool ViaCountChanged() const { return m_column_changed[COLUMN_VIA_COUNT]; }
+
+    void SetViaCount( unsigned int aValue )
+    {
+        if( m_parent )
+            m_parent->SetViaCount( m_parent->GetViaCount() - m_via_count + aValue );
+
+        m_column_changed[COLUMN_VIA_COUNT] |= ( m_via_count != aValue );
+        m_via_count = aValue;
+    }
+
+    void AddViaCount( unsigned int aValue )
+    {
+        if( m_parent )
+            m_parent->AddViaCount( aValue );
+
+        m_column_changed[COLUMN_VIA_COUNT] |= ( aValue != 0 );
+        m_via_count += aValue;
+    }
+
+    void SubViaCount( unsigned int aValue )
+    {
+        if( m_parent )
+            m_parent->SubViaCount( aValue );
+
+        m_column_changed[COLUMN_VIA_COUNT] |= ( aValue != 0 );
+        m_via_count -= aValue;
+    }
+
+    int64_t GetViaLength() const { return m_via_length; }
+
+    bool ViaLengthChanged() const { return m_column_changed[COLUMN_VIA_LENGTH]; }
+
+    void SetViaLength( unsigned int aValue )
+    {
+        if( m_parent )
+            m_parent->SetViaLength( m_parent->GetViaLength() - m_via_length + aValue );
+
+        m_column_changed[COLUMN_VIA_LENGTH] |= ( m_via_length != aValue );
+        m_via_length = aValue;
+    }
+
+    void AddViaLength( unsigned int aValue )
+    {
+        if( m_parent )
+            m_parent->AddViaLength( aValue );
+
+        m_column_changed[COLUMN_VIA_LENGTH] |= ( aValue != 0 );
+        m_via_length += aValue;
+    }
+
+    void SubViaLength( int64_t aValue )
+    {
+        if( m_parent )
+            m_parent->SubViaLength( aValue );
+
+        m_column_changed[COLUMN_VIA_LENGTH] |= ( aValue != 0 );
+        m_via_length -= aValue;
+    }
+
+    int64_t GetViaDelay() const { return m_via_delay; }
+
+    void SetViaDelay( unsigned int aValue )
+    {
+        if( m_parent )
+            m_parent->SetViaDelay( m_parent->GetViaDelay() - m_via_delay + aValue );
+
+        m_column_changed[COLUMN_VIA_LENGTH] |= ( m_via_delay != aValue );
+        m_via_delay = aValue;
+    }
+
+    void AddViaDelay( unsigned int aValue )
+    {
+        if( m_parent )
+            m_parent->AddViaDelay( aValue );
+
+        m_column_changed[COLUMN_VIA_LENGTH] |= ( aValue != 0 );
+        m_via_delay += aValue;
+    }
+
+    void SubViaDelay( int64_t aValue )
+    {
+        if( m_parent )
+            m_parent->SubViaDelay( aValue );
+
+        m_column_changed[COLUMN_VIA_LENGTH] |= ( aValue != 0 );
+        m_via_delay -= aValue;
+    }
+
+    int64_t GetBoardWireLength() const
+    {
+        int64_t retval = 0;
+
+        for( auto& [layer, length] : m_layer_wire_length )
+            retval += length;
+
+        return retval;
+    }
+
+    int64_t GetBoardWireDelay() const
+    {
+        int64_t retval = 0;
+
+        for( auto& [layer, delay] : m_layer_wire_delay )
+            retval += delay;
+
+        return retval;
+    }
+
+    int64_t GetLayerWireLength( PCB_LAYER_ID aLayer ) const
+    {
+        auto it = m_layer_wire_length.find( aLayer );
+        return it != m_layer_wire_length.end() ? it->second : 0;
+    }
+
+    int64_t GetLayerWireDelay( PCB_LAYER_ID aLayer ) const
+    {
+        auto it = m_layer_wire_delay.find( aLayer );
+        return it != m_layer_wire_delay.end() ? it->second : 0;
+    }
+
+    bool BoardWireLengthChanged() const { return m_column_changed[COLUMN_BOARD_LENGTH]; }
+
+    void SetLayerWireLength( const int64_t aValue, PCB_LAYER_ID aLayer )
+    {
+        auto it = m_layer_wire_length.find( aLayer );
+
+        KI_CHECK_RET( it != m_layer_wire_length.end(), wxT( "Invalid layer specified" ) );
+
+        auto& [_, length] = *it;
+
+        if( m_parent )
+        {
+            m_parent->SetLayerWireLength( m_parent->GetBoardWireLength() - length + aValue,
+                                           aLayer );
+        }
+
+        m_column_changed[COLUMN_BOARD_LENGTH] |= ( length != aValue );
+        length = aValue;
+    }
+
+    std::map<PCB_LAYER_ID, int64_t> GetLayerWireLengths() const { return m_layer_wire_length; }
+
+    std::map<PCB_LAYER_ID, int64_t> GetLayerWireDelays() const { return m_layer_wire_delay; }
+
+    void SetLayerWireLengths( const std::map<PCB_LAYER_ID, int64_t>& aValue )
+    {
+        if( m_parent )
+        {
+            for( auto& [oldLayer, oldLength] : m_layer_wire_length )
+                m_parent->SubLayerWireLength( oldLength, oldLayer );
+
+            for( auto& [newLayer, newLength] : aValue )
+                m_parent->AddLayerWireLength( newLength, newLayer );
+        }
+
+        m_layer_wire_length = aValue;
+    }
+
+    void AddLayerWireLength( const int64_t aValue, PCB_LAYER_ID aLayer )
+    {
+        if( m_parent )
+            m_parent->AddLayerWireLength( aValue, aLayer );
+
+        m_column_changed[COLUMN_BOARD_LENGTH] |= ( m_layer_wire_length[aLayer] != 0 );
+        m_layer_wire_length[aLayer] += aValue;
+    }
+
+    void SubLayerWireLength( const int64_t aValue, PCB_LAYER_ID aLayer )
+    {
+        if( m_parent )
+            m_parent->SubLayerWireLength( aValue, aLayer );
+
+        m_column_changed[COLUMN_BOARD_LENGTH] |= ( m_layer_wire_length[aLayer] != 0 );
+        m_layer_wire_length[aLayer] -= aValue;
+    }
+
+    void SetLayerWireDelays( const std::map<PCB_LAYER_ID, int64_t>& aValue )
+    {
+        if( m_parent )
+        {
+            for( auto& [oldLayer, oldLength] : m_layer_wire_delay )
+                m_parent->SubLayerWireDelay( oldLength, oldLayer );
+
+            for( auto& [newLayer, newLength] : aValue )
+                m_parent->AddLayerWireDelay( newLength, newLayer );
+        }
+
+        m_layer_wire_delay = aValue;
+    }
+
+    void AddLayerWireDelay( const int64_t aValue, PCB_LAYER_ID aLayer )
+    {
+        if( m_parent )
+            m_parent->AddLayerWireDelay( aValue, aLayer );
+
+        m_column_changed[COLUMN_BOARD_LENGTH] |= ( m_layer_wire_delay[aLayer] != 0 );
+        m_layer_wire_delay[aLayer] += aValue;
+    }
+
+    void SubLayerWireDelay( const int64_t aValue, PCB_LAYER_ID aLayer )
+    {
+        if( m_parent )
+            m_parent->SubLayerWireDelay( aValue, aLayer );
+
+        m_column_changed[COLUMN_BOARD_LENGTH] |= ( m_layer_wire_delay[aLayer] != 0 );
+        m_layer_wire_delay[aLayer] -= aValue;
+    }
+
+    int64_t GetPadDieLength() const { return m_pad_die_length; }
+
+    bool PadDieLengthChanged() const { return m_column_changed[COLUMN_PAD_DIE_LENGTH]; }
+
+    void SetPadDieLength( int64_t aValue )
+    {
+        if( m_parent )
+            m_parent->SetPadDieLength( m_parent->GetPadDieLength() - m_pad_die_length + aValue );
+
+        m_column_changed[COLUMN_PAD_DIE_LENGTH] |= ( m_pad_die_length != aValue );
+        m_pad_die_length = aValue;
+    }
+
+    void AddPadDieLength( int64_t aValue )
+    {
+        if( m_parent )
+            m_parent->AddPadDieLength( aValue );
+
+        m_column_changed[COLUMN_PAD_DIE_LENGTH] |= ( aValue != 0 );
+        m_pad_die_length += aValue;
+    }
+
+    void SubPadDieLength( int64_t aValue )
+    {
+        if( m_parent )
+            m_parent->SubPadDieLength( aValue );
+
+        m_column_changed[COLUMN_PAD_DIE_LENGTH] |= ( aValue != 0 );
+        m_pad_die_length -= aValue;
+    }
+
+    int64_t GetPadDieDelay() const { return m_pad_die_delay; }
+
+    void SetPadDieDelay( int64_t aValue )
+    {
+        if( m_parent )
+            m_parent->SetPadDieDelay( m_parent->GetPadDieDelay() - m_pad_die_delay + aValue );
+
+        m_column_changed[COLUMN_PAD_DIE_LENGTH] |= ( m_pad_die_delay != aValue );
+        m_pad_die_delay = aValue;
+    }
+
+    void AddPadDieDelay( int64_t aValue )
+    {
+        if( m_parent )
+            m_parent->AddPadDieDelay( aValue );
+
+        m_column_changed[COLUMN_PAD_DIE_LENGTH] |= ( aValue != 0 );
+        m_pad_die_delay += aValue;
+    }
+
+    void SubPadDieDelay( int64_t aValue )
+    {
+        if( m_parent )
+            m_parent->SubPadDieDelay( aValue );
+
+        m_column_changed[COLUMN_PAD_DIE_LENGTH] |= ( aValue != 0 );
+        m_pad_die_delay -= aValue;
+    }
+
+    // the total length column is always computed, never stored.
+    unsigned long long int GetTotalLength() const
+    {
+        return GetBoardWireLength() + GetViaLength() + GetPadDieLength();
+    }
+
+    unsigned long long int GetTotalDelay() const { return GetBoardWireDelay() + GetViaDelay() + GetPadDieDelay(); }
+
+    bool TotalLengthChanged() const
+    {
+        return BoardWireLengthChanged() || ViaLengthChanged() || PadDieLengthChanged();
+    }
+
+    LIST_ITEM* Parent() const { return m_parent; }
+
+    void SetParent( LIST_ITEM* aParent )
+    {
+        if( m_parent == aParent )
+            return;
+
+        if( m_parent != nullptr )
+        {
+            m_parent->SubPadCount( GetPadCount() );
+            m_parent->SubViaCount( GetViaCount() );
+            m_parent->SubViaLength( GetViaLength() );
+            m_parent->SubViaDelay( GetViaDelay() );
+
+            for( auto& [layer, length] : m_layer_wire_length )
+                m_parent->SubLayerWireLength( length, layer );
+
+            for( auto& [layer, delay] : m_layer_wire_delay )
+                m_parent->SubLayerWireDelay( delay, layer );
+
+            m_parent->SubPadDieLength( GetPadDieLength() );
+            m_parent->SubPadDieDelay( GetPadDieDelay() );
+
+            m_parent->m_children.erase( std::find( m_parent->m_children.begin(),
+                                                   m_parent->m_children.end(), this ) );
+        }
+
+        m_parent = aParent;
+
+        if( m_parent != nullptr )
+        {
+            m_parent->AddPadCount( GetPadCount() );
+            m_parent->AddViaCount( GetViaCount() );
+            m_parent->AddViaLength( GetViaLength() );
+            m_parent->AddViaDelay( GetViaDelay() );
+
+            for( auto& [layer, length] : m_layer_wire_length )
+                m_parent->AddLayerWireLength( length, layer );
+
+            for( auto& [layer, delay] : m_layer_wire_delay )
+                m_parent->AddLayerWireDelay( delay, layer );
+
+            m_parent->AddPadDieLength( GetPadDieLength() );
+            m_parent->AddPadDieDelay( GetPadDieDelay() );
+
+            m_parent->m_children.push_back( this );
+        }
+    }
+
+private:
+    LIST_ITEM*              m_parent = nullptr;
+    std::vector<LIST_ITEM*> m_children;
+
+    GROUP_TYPE    m_group_type = GROUP_TYPE::NONE;
+    unsigned int  m_group_number = 0;
+    NETINFO_ITEM* m_net = nullptr;
+    unsigned int  m_pad_count = 0;
+    unsigned int  m_via_count = 0;
+    int64_t       m_via_length = 0;
+    int64_t       m_via_delay = 0;
+    int64_t       m_pad_die_length = 0;
+    int64_t       m_pad_die_delay = 0;
+
+    std::map<PCB_LAYER_ID, int64_t> m_layer_wire_length{};
+    std::map<PCB_LAYER_ID, int64_t> m_layer_wire_delay{};
+
+    // Dirty bits to record when some attribute has changed, in order to avoid unnecessary sort
+    // operations.
+    // The values are semantically bools, but STL auto-promotes a std::vector<bool> to a bitset,
+    // and then operator|= doesn't work.
+    std::vector<int> m_column_changed;
+
+    // cached formatted names for faster display sorting
+    wxString m_net_name;
+    wxString m_net_class;
+    wxString m_group_name;
+};
+
+
+struct PCB_NET_INSPECTOR_PANEL::LIST_ITEM_NETCODE_CMP_LESS
+{
+    template <typename T>
+    bool operator()( const T& a, const T& b ) const
+    {
+        return a->GetNetCode() < b->GetNetCode();
+    }
+
+    template <typename T>
+    bool operator()( const T& a, int b ) const
+    {
+        return a->GetNetCode() < b;
+    }
+
+    template <typename T>
+    bool operator()( int a, const T& b ) const
+    {
+        return a < b->GetNetCode();
+    }
+};
+
+
+struct PCB_NET_INSPECTOR_PANEL::LIST_ITEM_GROUP_NUMBER_CMP_LESS
+{
+    template <typename T>
+    bool operator()( const T& a, const T& b ) const
+    {
+        return a->GetGroupNumber() < b->GetGroupNumber();
+    }
+
+    template <typename T>
+    bool operator()( const T& a, int b ) const
+    {
+        return a->GetGroupNumber() < b;
+    }
+
+    template <typename T>
+    bool operator()( int a, const T& b ) const
+    {
+        return a < b->GetGroupNumber();
+    }
+};
+=======
+#include "widgets/pcb_net_inspector_panel.h"
+
+#include <wx/settings.h>
+
+#include <eda_pattern_match.h>
+#include <string_utils.h>
+#include <board.h>
+#include <board_design_settings.h>
+#include <project/net_settings.h>
+
+
+/**
+ * Primary data item for entries in the Net Inspector list.
+ *
+ * This class tracks all data for a given net entry in the net inspector list.
+ */
+class PCB_NET_INSPECTOR_PANEL::LIST_ITEM
+{
+public:
+    enum class GROUP_TYPE
+    {
+        NONE,
+        USER_DEFINED,
+        NETCLASS,
+        NET_CHAIN
+    };
+
+    LIST_ITEM( unsigned int aGroupNumber, const wxString& aGroupName, GROUP_TYPE aGroupType ) :
+            m_group_type( aGroupType ),
+            m_group_number( aGroupNumber ),
+            m_net_name( aGroupName )
+    {
+        m_group_name = aGroupName;
+        m_column_changed.resize( COLUMN_LAST_STATIC_COL + 1 + 2, 0 ); // 2 for default layer count
+    }
+
+    LIST_ITEM( NETINFO_ITEM* aNet ) :
+            m_group_type( GROUP_TYPE::NONE ),
+            m_net( aNet )
+    {
+        KI_ASSERT( aNet );
+        m_net_name = UnescapeString( aNet->GetNetname() );
+        m_net_class = UnescapeString( aNet->GetNetClass()->GetHumanReadableName() );
+        m_netChainName = UnescapeString( aNet->GetNetChain() );
+        m_column_changed.resize( COLUMN_LAST_STATIC_COL + 1 + 2, 0 );
+    }
+
+    LIST_ITEM()
+    {
+        m_column_changed.resize( COLUMN_LAST_STATIC_COL + 1 + 2, 0 );
+    }
+
+    LIST_ITEM& operator=( const LIST_ITEM& ) = delete;
+
+    bool            GetIsGroup() const { return m_group_type != GROUP_TYPE::NONE; }
+    const wxString& GetGroupName() const { return m_group_name; }
+    GROUP_TYPE      GetGroupType() const { return m_group_type; }
+    int             GetGroupNumber() const { return m_group_number; }
+
+    auto         ChildrenBegin() const { return m_children.begin(); }
+    auto         ChildrenEnd() const { return m_children.end(); }
+    unsigned int ChildrenCount() const { return m_children.size(); }
+
+    void SetLayerCount( unsigned int aValue )
+    {
+        m_column_changed.resize( COLUMN_LAST_STATIC_COL + 1 + aValue, 0 );
+    }
+
+    NETINFO_ITEM* GetNet() const { return m_net; }
+
+    int GetNetCode() const
+    {
+        return GetIsGroup() ? ( 0 - int( m_group_number ) - 1 ) : m_net->GetNetCode();
+    }
+
+    const wxString& GetNetName() const { return m_net_name; }
+    const wxString& GetNetclassName() const { return m_net_class; }
+    const wxString& GetNetChainName() const { return m_netChainName; }
+
+    void ResetColumnChangedBits()
+    {
+        std::fill( m_column_changed.begin(), m_column_changed.end(), 0 );
+    }
+
+    unsigned int GetPadCount() const { return m_pad_count; }
+
+    bool PadCountChanged() const { return m_column_changed[COLUMN_PAD_COUNT]; }
+
+    void SetPadCount( unsigned int aValue )
+    {
+        if( m_parent )
+            m_parent->SetPadCount( m_parent->GetPadCount() - m_pad_count + aValue );
+
+        m_column_changed[COLUMN_PAD_COUNT] |= ( m_pad_count != aValue );
+        m_pad_count = aValue;
+    }
+
+    bool NetChainNameChanged() const { return m_column_changed[COLUMN_NET_CHAIN]; }
+
+    void SetNetChainName( const wxString& aValue )
+    {
+        m_column_changed[COLUMN_NET_CHAIN] |= static_cast<int>( m_netChainName != aValue );
+        m_netChainName = aValue;
+    }
+
+    void AddPadCount( unsigned int aValue )
+    {
+        if( m_parent )
+            m_parent->AddPadCount( aValue );
+
+        m_column_changed[COLUMN_PAD_COUNT] |= ( aValue != 0 );
+        m_pad_count += aValue;
+    }
+
+    void SubPadCount( unsigned int aValue )
+    {
+        if( m_parent )
+            m_parent->SubPadCount( aValue );
+
+        m_column_changed[COLUMN_PAD_COUNT] |= ( aValue != 0 );
+        m_pad_count -= aValue;
+    }
+
+    unsigned GetViaCount() const { return m_via_count; }
+
+    bool ViaCountChanged() const { return m_column_changed[COLUMN_VIA_COUNT]; }
+
+    void SetViaCount( unsigned int aValue )
+    {
+        if( m_parent )
+            m_parent->SetViaCount( m_parent->GetViaCount() - m_via_count + aValue );
+
+        m_column_changed[COLUMN_VIA_COUNT] |= ( m_via_count != aValue );
+        m_via_count = aValue;
+    }
+
+    void AddViaCount( unsigned int aValue )
+    {
+        if( m_parent )
+            m_parent->AddViaCount( aValue );
+
+        m_column_changed[COLUMN_VIA_COUNT] |= ( aValue != 0 );
+        m_via_count += aValue;
+    }
+
+    void SubViaCount( unsigned int aValue )
+    {
+        if( m_parent )
+            m_parent->SubViaCount( aValue );
+
+        m_column_changed[COLUMN_VIA_COUNT] |= ( aValue != 0 );
+        m_via_count -= aValue;
+    }
+
+    int64_t GetViaLength() const { return m_via_length; }
+
+    bool ViaLengthChanged() const { return m_column_changed[COLUMN_VIA_LENGTH]; }
+
+    void SetViaLength( unsigned int aValue )
+    {
+        if( m_parent )
+            m_parent->SetViaLength( m_parent->GetViaLength() - m_via_length + aValue );
+
+        m_column_changed[COLUMN_VIA_LENGTH] |= ( m_via_length != aValue );
+        m_via_length = aValue;
+    }
+
+    void AddViaLength( unsigned int aValue )
+    {
+        if( m_parent )
+            m_parent->AddViaLength( aValue );
+
+        m_column_changed[COLUMN_VIA_LENGTH] |= ( aValue != 0 );
+        m_via_length += aValue;
+    }
+
+    void SubViaLength( int64_t aValue )
+    {
+        if( m_parent )
+            m_parent->SubViaLength( aValue );
+
+        m_column_changed[COLUMN_VIA_LENGTH] |= ( aValue != 0 );
+        m_via_length -= aValue;
+    }
+
+    int64_t GetViaDelay() const { return m_via_delay; }
+
+    void SetViaDelay( unsigned int aValue )
+    {
+        if( m_parent )
+            m_parent->SetViaDelay( m_parent->GetViaDelay() - m_via_delay + aValue );
+
+        m_column_changed[COLUMN_VIA_LENGTH] |= ( m_via_delay != aValue );
+        m_via_delay = aValue;
+    }
+
+    void AddViaDelay( unsigned int aValue )
+    {
+        if( m_parent )
+            m_parent->AddViaDelay( aValue );
+
+        m_column_changed[COLUMN_VIA_LENGTH] |= ( aValue != 0 );
+        m_via_delay += aValue;
+    }
+
+    void SubViaDelay( int64_t aValue )
+    {
+        if( m_parent )
+            m_parent->SubViaDelay( aValue );
+
+        m_column_changed[COLUMN_VIA_LENGTH] |= ( aValue != 0 );
+        m_via_delay -= aValue;
+    }
+
+    int64_t GetBoardWireLength() const
+    {
+        int64_t retval = 0;
+
+        for( auto& [layer, length] : m_layer_wire_length )
+            retval += length;
+
+        return retval;
+    }
+
+    int64_t GetBoardWireDelay() const
+    {
+        int64_t retval = 0;
+
+        for( auto& [layer, delay] : m_layer_wire_delay )
+            retval += delay;
+
+        return retval;
+    }
+
+    int64_t GetLayerWireLength( PCB_LAYER_ID aLayer ) const
+    {
+        auto it = m_layer_wire_length.find( aLayer );
+        return it != m_layer_wire_length.end() ? it->second : 0;
+    }
+
+    int64_t GetLayerWireDelay( PCB_LAYER_ID aLayer ) const
+    {
+        auto it = m_layer_wire_delay.find( aLayer );
+        return it != m_layer_wire_delay.end() ? it->second : 0;
+    }
+
+    bool BoardWireLengthChanged() const { return m_column_changed[COLUMN_BOARD_LENGTH]; }
+
+    void SetLayerWireLength( const int64_t aValue, PCB_LAYER_ID aLayer )
+    {
+        auto it = m_layer_wire_length.find( aLayer );
+
+        KI_CHECK_RET( it != m_layer_wire_length.end(), wxT( "Invalid layer specified" ) );
+
+        auto& [_, length] = *it;
+
+        if( m_parent )
+        {
+            m_parent->SetLayerWireLength( m_parent->GetBoardWireLength() - length + aValue,
+                                           aLayer );
+        }
+
+        m_column_changed[COLUMN_BOARD_LENGTH] |= ( length != aValue );
+        length = aValue;
+    }
+
+    std::map<PCB_LAYER_ID, int64_t> GetLayerWireLengths() const { return m_layer_wire_length; }
+
+    std::map<PCB_LAYER_ID, int64_t> GetLayerWireDelays() const { return m_layer_wire_delay; }
+
+    void SetLayerWireLengths( const std::map<PCB_LAYER_ID, int64_t>& aValue )
+    {
+        if( m_parent )
+        {
+            for( auto& [oldLayer, oldLength] : m_layer_wire_length )
+                m_parent->SubLayerWireLength( oldLength, oldLayer );
+
+            for( auto& [newLayer, newLength] : aValue )
+                m_parent->AddLayerWireLength( newLength, newLayer );
+        }
+
+        m_layer_wire_length = aValue;
+    }
+
+    void AddLayerWireLength( const int64_t aValue, PCB_LAYER_ID aLayer )
+    {
+        if( m_parent )
+            m_parent->AddLayerWireLength( aValue, aLayer );
+
+        m_column_changed[COLUMN_BOARD_LENGTH] |= ( m_layer_wire_length[aLayer] != 0 );
+        m_layer_wire_length[aLayer] += aValue;
+    }
+
+    void SubLayerWireLength( const int64_t aValue, PCB_LAYER_ID aLayer )
+    {
+        if( m_parent )
+            m_parent->SubLayerWireLength( aValue, aLayer );
+
+        m_column_changed[COLUMN_BOARD_LENGTH] |= ( m_layer_wire_length[aLayer] != 0 );
+        m_layer_wire_length[aLayer] -= aValue;
+    }
+
+    void SetLayerWireDelays( const std::map<PCB_LAYER_ID, int64_t>& aValue )
+    {
+        if( m_parent )
+        {
+            for( auto& [oldLayer, oldLength] : m_layer_wire_delay )
+                m_parent->SubLayerWireDelay( oldLength, oldLayer );
+
+            for( auto& [newLayer, newLength] : aValue )
+                m_parent->AddLayerWireDelay( newLength, newLayer );
+        }
+
+        m_layer_wire_delay = aValue;
+    }
+
+    void AddLayerWireDelay( const int64_t aValue, PCB_LAYER_ID aLayer )
+    {
+        if( m_parent )
+            m_parent->AddLayerWireDelay( aValue, aLayer );
+
+        m_column_changed[COLUMN_BOARD_LENGTH] |= ( m_layer_wire_delay[aLayer] != 0 );
+        m_layer_wire_delay[aLayer] += aValue;
+    }
+
+    void SubLayerWireDelay( const int64_t aValue, PCB_LAYER_ID aLayer )
+    {
+        if( m_parent )
+            m_parent->SubLayerWireDelay( aValue, aLayer );
+
+        m_column_changed[COLUMN_BOARD_LENGTH] |= ( m_layer_wire_delay[aLayer] != 0 );
+        m_layer_wire_delay[aLayer] -= aValue;
+    }
+
+    int64_t GetPadDieLength() const { return m_pad_die_length; }
+
+    bool PadDieLengthChanged() const { return m_column_changed[COLUMN_PAD_DIE_LENGTH]; }
+
+    void SetPadDieLength( int64_t aValue )
+    {
+        if( m_parent )
+            m_parent->SetPadDieLength( m_parent->GetPadDieLength() - m_pad_die_length + aValue );
+
+        m_column_changed[COLUMN_PAD_DIE_LENGTH] |= ( m_pad_die_length != aValue );
+        m_pad_die_length = aValue;
+    }
+
+    void AddPadDieLength( int64_t aValue )
+    {
+        if( m_parent )
+            m_parent->AddPadDieLength( aValue );
+
+        m_column_changed[COLUMN_PAD_DIE_LENGTH] |= ( aValue != 0 );
+        m_pad_die_length += aValue;
+    }
+
+    void SubPadDieLength( int64_t aValue )
+    {
+        if( m_parent )
+            m_parent->SubPadDieLength( aValue );
+
+        m_column_changed[COLUMN_PAD_DIE_LENGTH] |= ( aValue != 0 );
+        m_pad_die_length -= aValue;
+    }
+
+    int64_t GetNetChainLength() const { return m_netChainLength; }
+
+    bool NetChainLengthChanged() const { return m_column_changed[COLUMN_NET_CHAIN_LENGTH]; }
+
+    void SetNetChainLength( int64_t aValue )
+    {
+        m_column_changed[COLUMN_NET_CHAIN_LENGTH] |= ( m_netChainLength != aValue );
+        m_netChainLength = aValue;
+    }
+
+    int64_t GetNetChainDelay() const { return m_netChainDelay; }
+
+    void SetNetChainDelay( int64_t aValue )
+    {
+        m_column_changed[COLUMN_NET_CHAIN_LENGTH] |= ( m_netChainDelay != aValue );
+        m_netChainDelay = aValue;
+    }
+
+    int64_t GetPadDieDelay() const { return m_pad_die_delay; }
+
+    void SetPadDieDelay( int64_t aValue )
+    {
+        if( m_parent )
+            m_parent->SetPadDieDelay( m_parent->GetPadDieDelay() - m_pad_die_delay + aValue );
+
+        m_column_changed[COLUMN_PAD_DIE_LENGTH] |= ( m_pad_die_delay != aValue );
+        m_pad_die_delay = aValue;
+    }
+
+    void AddPadDieDelay( int64_t aValue )
+    {
+        if( m_parent )
+            m_parent->AddPadDieDelay( aValue );
+
+        m_column_changed[COLUMN_PAD_DIE_LENGTH] |= ( aValue != 0 );
+        m_pad_die_delay += aValue;
+    }
+
+    void SubPadDieDelay( int64_t aValue )
+    {
+        if( m_parent )
+            m_parent->SubPadDieDelay( aValue );
+
+        m_column_changed[COLUMN_PAD_DIE_LENGTH] |= ( aValue != 0 );
+        m_pad_die_delay -= aValue;
+    }
+
+    int64_t GetUnroutedLength() const { return m_unrouted_length; }
+
+    bool UnroutedLengthChanged() const { return m_column_changed[COLUMN_UNROUTED_LENGTH]; }
+
+    void SetUnroutedLength( int64_t aValue )
+    {
+        if( m_parent )
+            m_parent->SetUnroutedLength( m_parent->GetUnroutedLength() - m_unrouted_length + aValue );
+
+        m_column_changed[COLUMN_UNROUTED_LENGTH] |= ( m_unrouted_length != aValue );
+        m_unrouted_length = aValue;
+    }
+
+    void AddUnroutedLength( int64_t aValue )
+    {
+        if( m_parent )
+            m_parent->AddUnroutedLength( aValue );
+
+        m_column_changed[COLUMN_UNROUTED_LENGTH] |= ( aValue != 0 );
+        m_unrouted_length += aValue;
+    }
+
+    void SubUnroutedLength( int64_t aValue )
+    {
+        if( m_parent )
+            m_parent->SubUnroutedLength( aValue );
+
+        m_column_changed[COLUMN_UNROUTED_LENGTH] |= ( aValue != 0 );
+        m_unrouted_length -= aValue;
+    }
+
+    // the total length column is always computed, never stored.
+    unsigned long long int GetTotalLength() const
+    {
+        return GetBoardWireLength() + GetViaLength() + GetPadDieLength();
+    }
+
+    unsigned long long int GetTotalDelay() const { return GetBoardWireDelay() + GetViaDelay() + GetPadDieDelay(); }
+
+    bool TotalLengthChanged() const
+    {
+        return BoardWireLengthChanged() || ViaLengthChanged() || PadDieLengthChanged();
+    }
+
+    LIST_ITEM* Parent() const { return m_parent; }
+
+    void SetParent( LIST_ITEM* aParent )
+    {
+        if( m_parent == aParent )
+            return;
+
+        if( m_parent != nullptr )
+        {
+            m_parent->SubPadCount( GetPadCount() );
+            m_parent->SubViaCount( GetViaCount() );
+            m_parent->SubViaLength( GetViaLength() );
+            m_parent->SubViaDelay( GetViaDelay() );
+
+            for( auto& [layer, length] : m_layer_wire_length )
+                m_parent->SubLayerWireLength( length, layer );
+
+            for( auto& [layer, delay] : m_layer_wire_delay )
+                m_parent->SubLayerWireDelay( delay, layer );
+
+            m_parent->SubPadDieLength( GetPadDieLength() );
+            m_parent->SubPadDieDelay( GetPadDieDelay() );
+            m_parent->SubUnroutedLength( GetUnroutedLength() );
+
+            m_parent->m_children.erase( std::find( m_parent->m_children.begin(),
+                                                   m_parent->m_children.end(), this ) );
+        }
+
+        m_parent = aParent;
+
+        if( m_parent != nullptr )
+        {
+            m_parent->AddPadCount( GetPadCount() );
+            m_parent->AddViaCount( GetViaCount() );
+            m_parent->AddViaLength( GetViaLength() );
+            m_parent->AddViaDelay( GetViaDelay() );
+
+            for( auto& [layer, length] : m_layer_wire_length )
+                m_parent->AddLayerWireLength( length, layer );
+
+            for( auto& [layer, delay] : m_layer_wire_delay )
+                m_parent->AddLayerWireDelay( delay, layer );
+
+            m_parent->AddPadDieLength( GetPadDieLength() );
+            m_parent->AddPadDieDelay( GetPadDieDelay() );
+            m_parent->AddUnroutedLength( GetUnroutedLength() );
+
+            m_parent->m_children.push_back( this );
+        }
+    }
+
+private:
+    LIST_ITEM*              m_parent = nullptr;
+    std::vector<LIST_ITEM*> m_children;
+
+    GROUP_TYPE    m_group_type = GROUP_TYPE::NONE;
+    unsigned int  m_group_number = 0;
+    NETINFO_ITEM* m_net = nullptr;
+    unsigned int  m_pad_count = 0;
+    unsigned int  m_via_count = 0;
+    int64_t       m_via_length = 0;
+    int64_t       m_via_delay = 0;
+    int64_t       m_pad_die_length = 0;
+    int64_t       m_pad_die_delay = 0;
+    int64_t       m_netChainLength = 0;
+    int64_t       m_netChainDelay = 0;
+    int64_t       m_unrouted_length = 0;
+
+    std::map<PCB_LAYER_ID, int64_t> m_layer_wire_length{};
+    std::map<PCB_LAYER_ID, int64_t> m_layer_wire_delay{};
+
+    // Dirty bits to record when some attribute has changed, in order to avoid unnecessary sort
+    // operations.
+    // The values are semantically bools, but STL auto-promotes a std::vector<bool> to a bitset,
+    // and then operator|= doesn't work.
+    std::vector<int> m_column_changed;
+
+    // cached formatted names for faster display sorting
+    wxString m_net_name;
+    wxString m_net_class;
+    wxString m_netChainName;
+    wxString m_group_name;
+};
+
+
+struct PCB_NET_INSPECTOR_PANEL::LIST_ITEM_NETCODE_CMP_LESS
+{
+    template <typename T>
+    bool operator()( const T& a, const T& b ) const
+    {
+        return a->GetNetCode() < b->GetNetCode();
+    }
+
+    template <typename T>
+    bool operator()( const T& a, int b ) const
+    {
+        return a->GetNetCode() < b;
+    }
+
+    template <typename T>
+    bool operator()( int a, const T& b ) const
+    {
+        return a < b->GetNetCode();
+    }
+};
+
+
+struct PCB_NET_INSPECTOR_PANEL::LIST_ITEM_GROUP_NUMBER_CMP_LESS
+{
+    template <typename T>
+    bool operator()( const T& a, const T& b ) const
+    {
+        return a->GetGroupNumber() < b->GetGroupNumber();
+    }
+
+    template <typename T>
+    bool operator()( const T& a, int b ) const
+    {
+        return a->GetGroupNumber() < b;
+    }
+
+    template <typename T>
+    bool operator()( int a, const T& b ) const
+    {
+        return a < b->GetGroupNumber();
+    }
+};
+>>>>>>> ed8c16703e
 
 
 /**
@@ -147,6 +1244,23 @@ public:
             }
         }
 
+        // Then add any chain groups required by this item
+        if( m_parent.m_groupByNetChain && !groupMatched )
+        {
+            LIST_ITEM_ITER groups_begin = m_items.begin();
+            LIST_ITEM_ITER groups_end = std::find_if_not( m_items.begin(), m_items.end(),
+                                                          []( const std::unique_ptr<LIST_ITEM>& x )
+                                                          {
+                                                              return x->GetIsGroup();
+                                                          } );
+
+            wxString match_str = aItem->GetNetChainName();
+            LIST_ITEM* group = addGroup( groups_begin, groups_end, match_str,
+                                         LIST_ITEM::GROUP_TYPE::NET_CHAIN );
+            aItem->SetParent( group );
+            groupMatched = true;
+        }
+
         // Then add any netclass groups required by this item
         if( m_parent.m_groupByNetclass && !groupMatched )
         {
@@ -160,6 +1274,7 @@ public:
             wxString match_str = aItem->GetNetclassName();
             LIST_ITEM* group = addGroup( groups_begin, groups_end, match_str, LIST_ITEM::GROUP_TYPE::NETCLASS );
             aItem->SetParent( group );
+            groupMatched = true;
         }
 
         // Now add the item itself. Usually when new nets are added,
@@ -202,7 +1317,9 @@ public:
         {
             ItemChanged( wxDataViewItem( parent ) );
 
-            if( m_parent.m_groupByNetclass && parent != nullptr && parent->ChildrenCount() == 0 )
+            if( parent != nullptr && parent->ChildrenCount() == 0
+                && ( ( m_parent.m_groupByNetclass && parent->GetGroupType() == LIST_ITEM::GROUP_TYPE::NETCLASS )
+                     || ( m_parent.m_groupByNetChain && parent->GetGroupType() == LIST_ITEM::GROUP_TYPE::NET_CHAIN ) ) )
             {
                 auto p = std::find_if( m_items.begin(), m_items.end(),
                                        [&]( std::unique_ptr<LIST_ITEM>& x )
@@ -313,6 +1430,9 @@ public:
         else if( aCol == COLUMN_PAD_DIE_LENGTH )
             return aItem->PadDieLengthChanged();
 
+        else if( aCol == COLUMN_UNROUTED_LENGTH )
+            return aItem->UnroutedLengthChanged();
+
         else if( aCol == COLUMN_TOTAL_LENGTH )
             return aItem->TotalLengthChanged();
 
@@ -331,13 +1451,232 @@ public:
     // use the public functions above.
 
 protected:
-    unsigned int GetColumnCount() const override { return columnCount(); }
-
     void GetValue( wxVariant& aOutValue, const wxDataViewItem& aItem,
                    unsigned int aCol ) const override
     {
         if( LIST_ITEM* i = static_cast<LIST_ITEM*>( aItem.GetID() ) )
+<<<<<<< b2e17e0a
             aOutValue = m_parent.itemText( i, aCol, m_show_time_domain_details );
+||||||| 1304b76aad
+        {
+            if( aCol == COLUMN_NAME )
+            {
+                if( i->GetIsGroup() )
+                {
+                    switch( i->GetGroupType() )
+                    {
+                    case LIST_ITEM::GROUP_TYPE::NETCLASS:
+                        aOutValue = _( "Netclass" ) + ": " + i->GetGroupName();
+                        break;
+                    case LIST_ITEM::GROUP_TYPE::USER_DEFINED:
+                        aOutValue = _( "Custom" ) + ": " + i->GetGroupName();
+                        break;
+                    default:
+                        aOutValue = i->GetGroupName();
+                        break;
+                    }
+                }
+                else
+                {
+                    aOutValue = i->GetNetName();
+                }
+            }
+            else if( aCol == COLUMN_NETCLASS )
+            {
+                aOutValue = i->GetNetclassName();
+            }
+            else if( aCol == COLUMN_PAD_COUNT )
+            {
+                aOutValue = m_parent.formatCount( i->GetPadCount() );
+            }
+            else if( aCol == COLUMN_VIA_COUNT )
+            {
+                aOutValue = m_parent.formatCount( i->GetViaCount() );
+            }
+            else if( aCol == COLUMN_VIA_LENGTH )
+            {
+                if( m_show_time_domain_details )
+                    aOutValue = m_parent.formatDelay( i->GetViaDelay() );
+                else
+                    aOutValue = m_parent.formatLength( i->GetViaLength() );
+            }
+            else if( aCol == COLUMN_BOARD_LENGTH )
+            {
+                if( m_show_time_domain_details )
+                    aOutValue = m_parent.formatDelay( i->GetBoardWireDelay() );
+                else
+                    aOutValue = m_parent.formatLength( i->GetBoardWireLength() );
+            }
+            else if( aCol == COLUMN_PAD_DIE_LENGTH )
+            {
+                if( m_show_time_domain_details )
+                    aOutValue = m_parent.formatDelay( i->GetPadDieDelay() );
+                else
+                    aOutValue = m_parent.formatLength( i->GetPadDieLength() );
+            }
+            else if( aCol == COLUMN_TOTAL_LENGTH )
+            {
+                if( m_show_time_domain_details )
+                    aOutValue = m_parent.formatDelay( i->GetTotalDelay() );
+                else
+                    aOutValue = m_parent.formatLength( i->GetTotalLength() );
+            }
+            else if( aCol > COLUMN_LAST_STATIC_COL && aCol <= m_parent.m_columns.size() )
+            {
+                if( m_show_time_domain_details )
+                    aOutValue = m_parent.formatDelay( i->GetLayerWireDelay( m_parent.m_columns[aCol].layer ) );
+                else
+                    aOutValue = m_parent.formatLength( i->GetLayerWireLength( m_parent.m_columns[aCol].layer ) );
+            }
+            else
+            {
+                aOutValue = "";
+            }
+        }
+    }
+
+    static int compareUInt( int64_t aValue1, int64_t aValue2, bool aAsc )
+    {
+        if( aAsc )
+            return aValue1 < aValue2 ? -1 : 1;
+        else
+            return aValue2 < aValue1 ? -1 : 1;
+=======
+        {
+            if( aCol == COLUMN_NAME )
+            {
+                if( i->GetIsGroup() )
+                {
+                    switch( i->GetGroupType() )
+                    {
+                    case LIST_ITEM::GROUP_TYPE::NETCLASS:
+                        aOutValue = _( "Netclass" ) + ": " + i->GetGroupName();
+                        break;
+                    case LIST_ITEM::GROUP_TYPE::USER_DEFINED:
+                        aOutValue = _( "Custom" ) + ": " + i->GetGroupName();
+                        break;
+                    default:
+                        aOutValue = i->GetGroupName();
+                        break;
+                    }
+                }
+                else
+                {
+                    aOutValue = i->GetNetName();
+                }
+            }
+            else if( aCol == COLUMN_NET_CHAIN )
+            {
+                wxString chainName = i->GetNetChainName();
+
+                // If the chain is assigned to a class, append it for visibility:
+                //   "DDR_DQ0  [DDR_DATA]"
+                if( !chainName.IsEmpty() && m_parent.m_board )
+                {
+                    if( const std::shared_ptr<NET_SETTINGS>& ns = m_parent.m_board->GetDesignSettings().m_NetSettings )
+                    {
+                        wxString className = ns->GetNetChainClass( chainName );
+
+                        if( !className.IsEmpty() )
+                            chainName += wxString::Format( wxT( "  [%s]" ), className );
+                    }
+                }
+
+                aOutValue = chainName;
+            }
+            else if( aCol == COLUMN_NETCLASS )
+            {
+                aOutValue = i->GetNetclassName();
+            }
+            else if( aCol == COLUMN_PAD_COUNT )
+            {
+                aOutValue = m_parent.formatCount( i->GetPadCount() );
+            }
+            else if( aCol == COLUMN_VIA_COUNT )
+            {
+                aOutValue = m_parent.formatCount( i->GetViaCount() );
+            }
+            else if( aCol == COLUMN_VIA_LENGTH )
+            {
+                if( m_show_time_domain_details )
+                    aOutValue = m_parent.formatDelay( i->GetViaDelay() );
+                else
+                    aOutValue = m_parent.formatLength( i->GetViaLength() );
+            }
+            else if( aCol == COLUMN_BOARD_LENGTH )
+            {
+                if( m_show_time_domain_details )
+                    aOutValue = m_parent.formatDelay( i->GetBoardWireDelay() );
+                else
+                    aOutValue = m_parent.formatLength( i->GetBoardWireLength() );
+            }
+            else if( aCol == COLUMN_PAD_DIE_LENGTH )
+            {
+                if( m_show_time_domain_details )
+                    aOutValue = m_parent.formatDelay( i->GetPadDieDelay() );
+                else
+                    aOutValue = m_parent.formatLength( i->GetPadDieLength() );
+            }
+            else if( aCol == COLUMN_UNROUTED_LENGTH )
+            {
+                aOutValue = m_parent.formatLength( i->GetUnroutedLength() );
+            }
+            else if( aCol == COLUMN_TOTAL_LENGTH )
+            {
+                if( m_show_time_domain_details )
+                    aOutValue = m_parent.formatDelay( i->GetTotalDelay() );
+                else
+                    aOutValue = m_parent.formatLength( i->GetTotalLength() );
+            }
+            else if( aCol == COLUMN_NET_CHAIN_LENGTH )
+            {
+                if( i->GetNetChainName().IsEmpty() )
+                    aOutValue = "";
+                else if( m_show_time_domain_details )
+                    aOutValue = m_parent.formatDelay( i->GetNetChainDelay() );
+                else
+                    aOutValue = m_parent.formatLength( i->GetNetChainLength() );
+            }
+            else if( aCol > COLUMN_LAST_STATIC_COL && aCol <= m_parent.m_columns.size() )
+            {
+                if( m_show_time_domain_details )
+                    aOutValue = m_parent.formatDelay( i->GetLayerWireDelay( m_parent.m_columns[aCol].layer ) );
+                else
+                    aOutValue = m_parent.formatLength( i->GetLayerWireLength( m_parent.m_columns[aCol].layer ) );
+            }
+            else
+            {
+                aOutValue = "";
+            }
+        }
+    }
+
+    bool GetAttr( const wxDataViewItem& aItem, unsigned int aCol, wxDataViewItemAttr& aAttr ) const override
+    {
+        if( !aItem.IsOk() || aCol >= m_parent.m_columns.size() )
+            return false;
+
+        const LIST_ITEM& item = *static_cast<const LIST_ITEM*>( aItem.GetID() );
+
+        if( const auto zeroValued = isZeroValued( item, aCol ); zeroValued.has_value() )
+        {
+            if( zeroValued.value() )
+            {
+                aAttr.SetColour( wxSystemSettings::GetColour( wxSYS_COLOUR_GRAYTEXT ) );
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    static int compareUInt( int64_t aValue1, int64_t aValue2, bool aAsc )
+    {
+        if( aAsc )
+            return aValue1 < aValue2 ? -1 : 1;
+        else
+            return aValue2 < aValue1 ? -1 : 1;
+>>>>>>> ed8c16703e
     }
 
     int Compare( const wxDataViewItem& aItem1, const wxDataViewItem& aItem2, unsigned int aCol,
@@ -355,8 +1694,196 @@ protected:
         const LIST_ITEM& i1 = *static_cast<const LIST_ITEM*>( aItem1.GetID() );
         const LIST_ITEM& i2 = *static_cast<const LIST_ITEM*>( aItem2.GetID() );
 
+<<<<<<< b2e17e0a
         if( int res = m_parent.compareItems( i1, i2, aCol, aAsc, m_show_time_domain_details ) )
             return res;
+||||||| 1304b76aad
+        if( i1.GetIsGroup() && !i2.GetIsGroup() )
+            return -1;
+
+        if( i2.GetIsGroup() && !i1.GetIsGroup() )
+            return 1;
+
+        if( aCol == COLUMN_NAME )
+        {
+            int res = compareNetNames( i1, i2 );
+
+            if( res != 0 )
+                return res;
+        }
+        else if( aCol == COLUMN_NETCLASS )
+        {
+            const wxString& s1 = i1.GetNetclassName();
+            const wxString& s2 = i2.GetNetclassName();
+
+            int res = aAsc ? ValueStringCompare( s1, s2 ) : ValueStringCompare( s2, s1 );
+
+            if( res != 0 )
+                return res;
+        }
+        else if( aCol == COLUMN_PAD_COUNT && i1.GetPadCount() != i2.GetPadCount() )
+        {
+            return compareUInt( i1.GetPadCount(), i2.GetPadCount(), aAsc );
+        }
+        else if( aCol == COLUMN_VIA_COUNT && i1.GetViaCount() != i2.GetViaCount() )
+        {
+            return compareUInt( i1.GetViaCount(), i2.GetViaCount(), aAsc );
+        }
+        else if( aCol == COLUMN_VIA_LENGTH )
+        {
+            if( m_show_time_domain_details && i1.GetViaDelay() != i2.GetViaDelay() )
+                return compareUInt( i1.GetViaDelay(), i2.GetViaDelay(), aAsc );
+
+            if( !m_show_time_domain_details && i1.GetViaLength() != i2.GetViaLength() )
+                return compareUInt( i1.GetViaLength(), i2.GetViaLength(), aAsc );
+        }
+        else if( aCol == COLUMN_BOARD_LENGTH )
+        {
+            if( m_show_time_domain_details && i1.GetBoardWireDelay() != i2.GetBoardWireDelay() )
+                return compareUInt( i1.GetBoardWireDelay(), i2.GetBoardWireDelay(), aAsc );
+
+            if( !m_show_time_domain_details && i1.GetBoardWireLength() != i2.GetBoardWireLength() )
+                return compareUInt( i1.GetBoardWireLength(), i2.GetBoardWireLength(), aAsc );
+        }
+        else if( aCol == COLUMN_PAD_DIE_LENGTH )
+        {
+            if( m_show_time_domain_details && i1.GetPadDieDelay() != i2.GetPadDieDelay() )
+                return compareUInt( i1.GetPadDieDelay(), i2.GetPadDieDelay(), aAsc );
+
+            if( !m_show_time_domain_details && i1.GetPadDieLength() != i2.GetPadDieLength() )
+                return compareUInt( i1.GetPadDieLength(), i2.GetPadDieLength(), aAsc );
+        }
+        else if( aCol == COLUMN_TOTAL_LENGTH )
+        {
+            if( m_show_time_domain_details && i1.GetTotalDelay() != i2.GetTotalDelay() )
+                return compareUInt( i1.GetTotalDelay(), i2.GetTotalDelay(), aAsc );
+
+            if( !m_show_time_domain_details && i1.GetTotalLength() != i2.GetTotalLength() )
+                return compareUInt( i1.GetTotalLength(), i2.GetTotalLength(), aAsc );
+        }
+        else if( aCol > COLUMN_LAST_STATIC_COL && aCol < m_parent.m_columns.size() )
+        {
+            if( m_show_time_domain_details
+                && i1.GetLayerWireDelay( m_parent.m_columns[aCol].layer )
+                           != i2.GetLayerWireDelay( m_parent.m_columns[aCol].layer ) )
+            {
+                return compareUInt( i1.GetLayerWireDelay( m_parent.m_columns[aCol].layer ),
+                                    i2.GetLayerWireDelay( m_parent.m_columns[aCol].layer ), aAsc );
+            }
+
+            if( !m_show_time_domain_details
+                && i1.GetLayerWireLength( m_parent.m_columns[aCol].layer )
+                           != i2.GetLayerWireLength( m_parent.m_columns[aCol].layer ) )
+            {
+                return compareUInt( i1.GetLayerWireLength( m_parent.m_columns[aCol].layer ),
+                                    i2.GetLayerWireLength( m_parent.m_columns[aCol].layer ), aAsc );
+            }
+        }
+=======
+        if( i1.GetIsGroup() && !i2.GetIsGroup() )
+            return -1;
+
+        if( i2.GetIsGroup() && !i1.GetIsGroup() )
+            return 1;
+
+        if( aCol == COLUMN_NAME )
+        {
+            int res = compareNetNames( i1, i2 );
+
+            if( res != 0 )
+                return res;
+        }
+        else if( aCol == COLUMN_NETCLASS )
+        {
+            const wxString& s1 = i1.GetNetclassName();
+            const wxString& s2 = i2.GetNetclassName();
+
+            int res = aAsc ? ValueStringCompare( s1, s2 ) : ValueStringCompare( s2, s1 );
+
+            if( res != 0 )
+                return res;
+        }
+        else if( aCol == COLUMN_NET_CHAIN )
+        {
+            const wxString& s1 = i1.GetNetChainName();
+            const wxString& s2 = i2.GetNetChainName();
+
+            int res = aAsc ? ValueStringCompare( s1, s2 ) : ValueStringCompare( s2, s1 );
+
+            if( res != 0 )
+                return res;
+        }
+        else if( aCol == COLUMN_PAD_COUNT && i1.GetPadCount() != i2.GetPadCount() )
+        {
+            return compareUInt( i1.GetPadCount(), i2.GetPadCount(), aAsc );
+        }
+        else if( aCol == COLUMN_VIA_COUNT && i1.GetViaCount() != i2.GetViaCount() )
+        {
+            return compareUInt( i1.GetViaCount(), i2.GetViaCount(), aAsc );
+        }
+        else if( aCol == COLUMN_VIA_LENGTH )
+        {
+            if( m_show_time_domain_details && i1.GetViaDelay() != i2.GetViaDelay() )
+                return compareUInt( i1.GetViaDelay(), i2.GetViaDelay(), aAsc );
+
+            if( !m_show_time_domain_details && i1.GetViaLength() != i2.GetViaLength() )
+                return compareUInt( i1.GetViaLength(), i2.GetViaLength(), aAsc );
+        }
+        else if( aCol == COLUMN_BOARD_LENGTH )
+        {
+            if( m_show_time_domain_details && i1.GetBoardWireDelay() != i2.GetBoardWireDelay() )
+                return compareUInt( i1.GetBoardWireDelay(), i2.GetBoardWireDelay(), aAsc );
+
+            if( !m_show_time_domain_details && i1.GetBoardWireLength() != i2.GetBoardWireLength() )
+                return compareUInt( i1.GetBoardWireLength(), i2.GetBoardWireLength(), aAsc );
+        }
+        else if( aCol == COLUMN_PAD_DIE_LENGTH )
+        {
+            if( m_show_time_domain_details && i1.GetPadDieDelay() != i2.GetPadDieDelay() )
+                return compareUInt( i1.GetPadDieDelay(), i2.GetPadDieDelay(), aAsc );
+
+            if( !m_show_time_domain_details && i1.GetPadDieLength() != i2.GetPadDieLength() )
+                return compareUInt( i1.GetPadDieLength(), i2.GetPadDieLength(), aAsc );
+        }
+        else if( aCol == COLUMN_UNROUTED_LENGTH && i1.GetUnroutedLength() != i2.GetUnroutedLength() )
+        {
+            return compareUInt( i1.GetUnroutedLength(), i2.GetUnroutedLength(), aAsc );
+        }
+        else if( aCol == COLUMN_TOTAL_LENGTH )
+        {
+            if( m_show_time_domain_details && i1.GetTotalDelay() != i2.GetTotalDelay() )
+                return compareUInt( i1.GetTotalDelay(), i2.GetTotalDelay(), aAsc );
+
+            if( !m_show_time_domain_details && i1.GetTotalLength() != i2.GetTotalLength() )
+                return compareUInt( i1.GetTotalLength(), i2.GetTotalLength(), aAsc );
+        }
+        else if( aCol == COLUMN_NET_CHAIN_LENGTH )
+        {
+            if( m_show_time_domain_details && i1.GetNetChainDelay() != i2.GetNetChainDelay() )
+                return compareUInt( i1.GetNetChainDelay(), i2.GetNetChainDelay(), aAsc );
+
+            if( !m_show_time_domain_details && i1.GetNetChainLength() != i2.GetNetChainLength() )
+                return compareUInt( i1.GetNetChainLength(), i2.GetNetChainLength(), aAsc );
+        }
+        else if( aCol > COLUMN_LAST_STATIC_COL && aCol < m_parent.m_columns.size() )
+        {
+            if( m_show_time_domain_details
+                && i1.GetLayerWireDelay( m_parent.m_columns[aCol].layer )
+                           != i2.GetLayerWireDelay( m_parent.m_columns[aCol].layer ) )
+            {
+                return compareUInt( i1.GetLayerWireDelay( m_parent.m_columns[aCol].layer ),
+                                    i2.GetLayerWireDelay( m_parent.m_columns[aCol].layer ), aAsc );
+            }
+
+            if( !m_show_time_domain_details
+                && i1.GetLayerWireLength( m_parent.m_columns[aCol].layer )
+                           != i2.GetLayerWireLength( m_parent.m_columns[aCol].layer ) )
+            {
+                return compareUInt( i1.GetLayerWireLength( m_parent.m_columns[aCol].layer ),
+                                    i2.GetLayerWireLength( m_parent.m_columns[aCol].layer ), aAsc );
+            }
+        }
+>>>>>>> ed8c16703e
 
         // When the item values compare equal, fall back to net name order so the sort is stable
         // across rebuilds, and also in a sensible order for the user to find entries when sorting
@@ -438,8 +1965,6 @@ protected:
         return 0;
     }
 
-    wxString GetColumnType( unsigned int /* aCol */ ) const override { return wxS( "string" ); }
-
 private:
     PCB_NET_INSPECTOR_PANEL& m_parent;
 
@@ -452,6 +1977,92 @@ private:
     std::map<wxString, LIST_ITEM*> m_custom_group_map;
 
     bool m_show_time_domain_details{ false };
+
+    /**
+     * @return True if the cell contians a value that is "zero-ish" and should be
+     *        displayed in de-emphasized text, false if it is non-zero, or std::nullopt if
+     *        the column is not a field with a meaningful zero value
+     *        (e.g. name, netclass, etc.)
+     */
+    std::optional<bool> isZeroValued( const LIST_ITEM& aItem, unsigned int aCol ) const
+    {
+        switch( aCol )
+        {
+        case COLUMN_PAD_COUNT:
+            return aItem.GetPadCount() == 0;
+        case COLUMN_VIA_COUNT:
+            return aItem.GetViaCount() == 0;
+        default:
+            break;
+        }
+
+        // Always-length columns
+        switch( aCol )
+        {
+        case COLUMN_UNROUTED_LENGTH:
+            return aItem.GetUnroutedLength() == 0;
+        default:
+            break;
+        }
+
+        if( !m_show_time_domain_details )
+        {
+            // In length-mode, these are the lengths
+            switch( aCol )
+            {
+            case COLUMN_TOTAL_LENGTH:
+                return aItem.GetTotalLength() == 0;
+            case COLUMN_NET_CHAIN_LENGTH:
+                return aItem.GetNetChainLength() == 0;
+            case COLUMN_VIA_LENGTH:
+                return aItem.GetViaLength() == 0;
+            case COLUMN_BOARD_LENGTH:
+                return aItem.GetBoardWireLength() == 0;
+            case COLUMN_PAD_DIE_LENGTH:
+                return aItem.GetPadDieLength() == 0;
+            case COLUMN_UNROUTED_LENGTH:
+                return aItem.GetUnroutedLength() == 0;
+            default:
+                break;
+            }
+
+            // Lengths per-layer
+            if( aCol > COLUMN_LAST_STATIC_COL && aCol < m_parent.m_columns.size() )
+            {
+                const PCB_LAYER_ID layer = m_parent.m_columns[aCol].layer;
+                return aItem.GetLayerWireLength( layer ) == 0;
+            }
+        }
+        else
+        {
+            // In time-domain mode, these are the delays
+            switch( aCol )
+            {
+            case COLUMN_TOTAL_LENGTH:
+                return aItem.GetTotalDelay() == 0;
+            case COLUMN_NET_CHAIN_LENGTH:
+                return aItem.GetNetChainDelay() == 0;
+            case COLUMN_VIA_LENGTH:
+                return aItem.GetViaDelay() == 0;
+            case COLUMN_BOARD_LENGTH:
+                return aItem.GetBoardWireDelay() == 0;
+            case COLUMN_PAD_DIE_LENGTH:
+                return aItem.GetPadDieDelay() == 0;
+            default:
+                break;
+            }
+
+            // Delays per-layer
+            if( aCol > COLUMN_LAST_STATIC_COL && aCol < m_parent.m_columns.size() )
+            {
+                const PCB_LAYER_ID layer = m_parent.m_columns[aCol].layer;
+                return aItem.GetLayerWireDelay( layer ) == 0;
+            }
+        }
+
+        // Not a zero-able field
+        return std::nullopt;
+    }
 };
 
 #endif

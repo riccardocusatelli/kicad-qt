@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef STRING_ANY_MAP_H_
@@ -24,7 +24,9 @@
 #include <string>
 #include <map>
 #include <optional>
+#include <type_traits>
 
+#include <math/util.h>
 #include <wx/any.h>
 
 
@@ -66,7 +68,12 @@ public:
                 return false;
 
             number *= m_iuScale;
-            aVar = number;
+
+            // Most millimetre values are not exact doubles, so truncating would load them 1 IU short
+            if constexpr( std::is_integral_v<T> )
+                aVar = KiROUND<double, T>( number );
+            else
+                aVar = number;
         }
         else
         {

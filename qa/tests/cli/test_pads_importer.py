@@ -14,9 +14,7 @@
 #  GNU General Public License for more details.
 #
 #  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software
-#  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-#  MA 02110-1301, USA.
+#  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
 """
@@ -111,6 +109,8 @@ class DrillResult:
 @dataclass
 class TestCaseResult:
     """Result of testing a complete design"""
+    __test__ = False  # Not a pytest test class
+
     name: str
     passed: bool
     layer_results: List[LayerResult] = field( default_factory=list )

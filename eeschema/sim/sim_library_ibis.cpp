@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <sim/sim_library_ibis.h>
@@ -26,7 +22,6 @@
 #include <ki_exception.h>
 #include <locale_io.h>
 #include <pegtl/contrib/parse_tree.hpp>
-#include <sch_pin.h>
 
 
 void SIM_LIBRARY_IBIS::ReadFile( const wxString& aFilePath, REPORTER& aReporter )
@@ -41,11 +36,7 @@ void SIM_LIBRARY_IBIS::ReadFile( const wxString& aFilePath, REPORTER& aReporter 
         return;
     }
 
-    SCH_PIN pinA( nullptr );
-    SCH_PIN pinB( nullptr );
-    pinA.SetNumber( wxT( "1" ) );
-    pinB.SetNumber( wxT( "2" ) );
-    std::vector<SCH_PIN*> pins = { &pinA, &pinB };
+    const std::vector<wxString> pins = { wxS( "1" ), wxS( "2" ) };
 
     for( KIBIS_COMPONENT& kcomp : m_kibis.m_components )
     {

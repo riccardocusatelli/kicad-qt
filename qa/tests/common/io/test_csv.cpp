@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <boost/test/unit_test.hpp>
@@ -153,6 +153,23 @@ BOOST_AUTO_TEST_CASE( BasicDecode )
         bool result = AutoDecodeCSV( testCase.m_input, readRows );
         BOOST_CHECK( result );
         BOOST_CHECK_PREDICATE( TableDataEqual, ( testCase.m_expectedRows )( readRows ) );
+    }
+}
+
+
+BOOST_AUTO_TEST_CASE( QuotedLinebreaks )
+{
+    for( const wxString& linebreak : { wxString( "\n" ), wxString( "\r\n" ) } )
+    {
+        const wxString input = wxString( "\"first" ) + linebreak + wxString( "second\",\"value\"" )
+                               + linebreak + wxString( "\"last\",\"row\"" ) + linebreak;
+        std::vector<std::vector<wxString>> rows;
+
+        BOOST_REQUIRE( AutoDecodeCSV( input, rows ) );
+        BOOST_REQUIRE_EQUAL( rows.size(), 2U );
+        BOOST_CHECK_EQUAL( rows[0][0], wxString( "first" ) + linebreak + wxString( "second" ) );
+        BOOST_CHECK_EQUAL( rows[0][1], wxString( "value" ) );
+        BOOST_CHECK_EQUAL( rows[1][0], wxString( "last" ) );
     }
 }
 

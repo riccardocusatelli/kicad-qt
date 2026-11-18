@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -55,7 +55,9 @@ protected:
     size_t                    m_bomPresetsPage;
     size_t                    m_pinMapPage;
     size_t                    m_busesPage;
+    size_t                    m_netChainsPage;
     size_t                    m_textVarsPage;
+    size_t                    m_symbolParityPage;
     size_t                    m_severitiesPage;
     size_t                    m_netclassesPage;
     size_t                    m_embeddedFilesPage;

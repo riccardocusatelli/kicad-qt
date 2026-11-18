@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
@@ -110,7 +110,8 @@ BOOST_AUTO_TEST_CASE( TestEditPageNumbersInSharedDesign )
         prjFn.SetExt( FILEEXT::ProjectFileExtension );
 
         rootFn.AppendDir( "temp" );
-        BOOST_CHECK( rootFn.Mkdir() );
+        if( !rootFn.DirExists() )
+            BOOST_CHECK( rootFn.Mkdir() );
 
         wxFileName newPrjFn = rootFn;
         newPrjFn.SetExt( FILEEXT::ProjectFileExtension );
@@ -122,7 +123,8 @@ BOOST_AUTO_TEST_CASE( TestEditPageNumbersInSharedDesign )
 
         wxFileName subSheetFn = rootFn;
         BOOST_CHECK( subSheetFn.AppendDir( "ampli_ht" ) );
-        BOOST_CHECK( subSheetFn.Mkdir() );
+        if( !subSheetFn.DirExists() )
+            BOOST_CHECK( subSheetFn.Mkdir() );
 
         subSheetFn.SetName( "ampli_ht" );
         m_pi->SaveSchematicFile( subSheetFn.GetFullPath(), sheets.at( 1 ).Last(), m_schematic.get() );

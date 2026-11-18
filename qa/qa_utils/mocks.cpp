@@ -14,19 +14,13 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <kiface_base.h>
 #include <confirm.h>
 #include <pcb_edit_frame.h>
-#include <eda_dde.h>
 #include <wx/file.h>
-#include <wx/snglinst.h>
 #include <wx/app.h>
 #include <board.h>
 #include <collectors.h>
@@ -198,7 +192,6 @@ PCB_SELECTION_TOOL::PCB_SELECTION_TOOL() :
         SELECTION_TOOL( "common.InteractiveSelection" ),
         m_frame( NULL ),
         m_enteredGroup( NULL ),
-        m_nonModifiedCursor( KICURSOR::ARROW ),
         m_lockedItemsFiltered( false ),
         m_priv( nullptr )
 {
@@ -394,7 +387,7 @@ bool PCB_SELECTION_TOOL::Selectable( const BOARD_ITEM* aItem, bool checkVisibili
 }
 
 
-bool PCB_SELECTION_TOOL::selectionContains( const VECTOR2I& aPoint ) const
+bool PCB_SELECTION_TOOL::SelectionContains( const VECTOR2I& aPoint ) const
 {
     return false;
 }

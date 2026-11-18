@@ -42,7 +42,8 @@
 #include <kiqt.h>     // Qt, without its METHOD macro
 #include <QStatusBar>
 
-#include <string_utils.h>       // LOAD_MESSAGE
+#include <ki_error.h>
+#include <map>
 #include <wx/defs.h>
 #include <wx/kiwx_window.h>
 #include <wx/string.h>
@@ -134,7 +135,7 @@ public:
     void ClearWarningMessages( const wxString& aSource = wxEmptyString );
 
     /**
-     * Add warning/error messages (not thread-safe, use the std::vector<LOAD_MESSAGE> variant
+     * Add warning/error messages (not thread-safe, use the std::vector<KI_ERROR> variant
      * from other threads)
      */
     void AddWarningMessages( const wxString& aSource, const wxString& aMessages );
@@ -143,12 +144,18 @@ public:
      * Add warning/error messages thread-safely.
      * Can be called from any thread. UI update is deferred to main thread.
      */
-    void AddWarningMessages( const wxString& aSource, const std::vector<LOAD_MESSAGE>& aMessages );
+    void AddWarningMessages( const wxString& aSource, const std::vector<KI_ERROR>& aMessages );
 
     /**
      * Get current message count (thread-safe).
      */
     size_t GetLoadWarningCount() const;
+
+    /**
+     * Get a copy of all stored warning/error messages, grouped by source and sorted by
+     * source name for stable display order.  Thread-safe.
+     */
+    std::map<wxString, std::vector<KI_ERROR>> GetWarningMessages() const;
 
 protected:
     void resizeEvent( QResizeEvent* aEvent ) override;
@@ -168,7 +175,7 @@ private:
     BITMAP_BUTTON* m_notificationsButton;
     BITMAP_BUTTON* m_warningButton;
     mutable std::mutex m_warningMutex;  ///< Protects m_warningMessages
-    std::unordered_map<wxString, std::vector<LOAD_MESSAGE>> m_warningMessages;
+    std::unordered_map<wxString, std::vector<KI_ERROR>> m_warningMessages;
     int            m_normalFieldsCount;
     std::vector<int> m_statusWidths;     ///< The widths of the fields given to SetStatusWidths()
     STYLE_FLAGS    m_styleFlags;

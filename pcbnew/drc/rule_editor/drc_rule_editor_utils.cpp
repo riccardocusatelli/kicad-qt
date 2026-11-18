@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "drc_rule_editor_utils.h"
@@ -40,6 +36,12 @@
 #include "drc_re_routing_width_constraint_data.h"
 #include "drc_re_numeric_input_constraint_data.h"
 #include "drc_re_bool_input_constraint_data.h"
+#include "drc_re_abs_length_two_constraint_data.h"
+#include "drc_re_min_txt_ht_th_constraint_data.h"
+#include "drc_re_rtg_diff_pair_constraint_data.h"
+#include "drc_re_permitted_layers_constraint_data.h"
+#include "drc_re_allowed_orientation_constraint_data.h"
+#include "drc_re_vias_under_smd_constraint_data.h"
 #include <board.h>
 #include <wx/ffile.h>
 #include <wx/regex.h>
@@ -48,34 +50,38 @@
 using CODE_MAP = std::unordered_map<DRC_RULE_EDITOR_CONSTRAINT_NAME, const char*>;
 using REVERSE_CODE_MAP = std::unordered_map<wxString, DRC_RULE_EDITOR_CONSTRAINT_NAME, wxStringHash, wxStringEqual>;
 
-static const CODE_MAP sCodeMap = { { MINIMUM_CLEARANCE, DRC_RULES_LEXER::TokenName( DRCRULE_T::T_clearance ) },
-                                   { CREEPAGE_DISTANCE, DRC_RULES_LEXER::TokenName( DRCRULE_T::T_creepage ) },
-                                   { MINIMUM_CONNECTION_WIDTH, DRC_RULES_LEXER::TokenName( DRCRULE_T::T_connection_width ) },
-                                   { COPPER_TO_HOLE_CLEARANCE, DRC_RULES_LEXER::TokenName( DRCRULE_T::T_hole_clearance ) },
-                                   { MINIMUM_THERMAL_RELIEF_SPOKE_COUNT, DRC_RULES_LEXER::TokenName( DRCRULE_T::T_min_resolved_spokes ) },
-                                   { MINIMUM_ANNULAR_WIDTH, DRC_RULES_LEXER::TokenName( DRCRULE_T::T_annular_width ) },
-                                   { COPPER_TO_EDGE_CLEARANCE, DRC_RULES_LEXER::TokenName( DRCRULE_T::T_edge_clearance ) },
-                                   { COURTYARD_CLEARANCE, DRC_RULES_LEXER::TokenName( DRCRULE_T::T_courtyard_clearance ) },
-                                   { PHYSICAL_CLEARANCE, DRC_RULES_LEXER::TokenName( DRCRULE_T::T_physical_clearance ) },
-                                   { MINIMUM_DRILL_SIZE, DRC_RULES_LEXER::TokenName( DRCRULE_T::T_hole_size ) },
-                                   { HOLE_SIZE, DRC_RULES_LEXER::TokenName( DRCRULE_T::T_hole_size ) },
-                                   { HOLE_TO_HOLE_DISTANCE, DRC_RULES_LEXER::TokenName( DRCRULE_T::T_hole_to_hole ) },
-                                   { MINIMUM_VIA_DIAMETER, DRC_RULES_LEXER::TokenName( DRCRULE_T::T_via_diameter ) },
-                                   { VIA_STYLE, "via_style" },
-                                   { MINIMUM_TEXT_HEIGHT_AND_THICKNESS, DRC_RULES_LEXER::TokenName( DRCRULE_T::T_text_height ) },
-                                   { SILK_TO_SILK_CLEARANCE, DRC_RULES_LEXER::TokenName( DRCRULE_T::T_silk_clearance ) },
-                                   { SILK_TO_SOLDERMASK_CLEARANCE, DRC_RULES_LEXER::TokenName( DRCRULE_T::T_silk_clearance ) },
-                                   { MINIMUM_SOLDERMASK_SLIVER, DRC_RULES_LEXER::TokenName( DRCRULE_T::T_solder_mask_sliver ) },
-                                   { SOLDERMASK_EXPANSION, DRC_RULES_LEXER::TokenName( DRCRULE_T::T_solder_mask_expansion ) },
-                                   { SOLDERPASTE_EXPANSION, DRC_RULES_LEXER::TokenName( DRCRULE_T::T_solder_paste_abs_margin ) },
-                                   { MATCHED_LENGTH_DIFF_PAIR, DRC_RULES_LEXER::TokenName( DRCRULE_T::T_length ) },
-                                   { ROUTING_DIFF_PAIR, DRC_RULES_LEXER::TokenName( DRCRULE_T::T_diff_pair_gap ) },
-                                   { ROUTING_WIDTH, DRC_RULES_LEXER::TokenName( DRCRULE_T::T_track_width ) },
-                                   { MAXIMUM_VIA_COUNT, DRC_RULES_LEXER::TokenName( DRCRULE_T::T_via_count ) },
-                                   { ABSOLUTE_LENGTH, DRC_RULES_LEXER::TokenName( DRCRULE_T::T_length ) },
-                                   { PERMITTED_LAYERS, "permitted_layers" },
-                                   { ALLOWED_ORIENTATION, "allowed_orientation" },
-                                   { VIAS_UNDER_SMD, "disallow_via" } };
+static const CODE_MAP sCodeMap = {
+    { MINIMUM_CLEARANCE,                  DRC_RULES_LEXER::TokenName( DRCRULE_T::T_clearance ) },
+    { CREEPAGE_DISTANCE,                  DRC_RULES_LEXER::TokenName( DRCRULE_T::T_creepage ) },
+    { MINIMUM_CONNECTION_WIDTH,           DRC_RULES_LEXER::TokenName( DRCRULE_T::T_connection_width ) },
+    { COPPER_TO_HOLE_CLEARANCE,           DRC_RULES_LEXER::TokenName( DRCRULE_T::T_hole_clearance ) },
+    { MINIMUM_THERMAL_RELIEF_SPOKE_COUNT, DRC_RULES_LEXER::TokenName( DRCRULE_T::T_min_resolved_spokes ) },
+    { MICROVIA_STACK_DEPTH,               DRC_RULES_LEXER::TokenName( DRCRULE_T::T_microvia_stack_depth ) },
+    { HOLE_ASPECT_RATIO,                  DRC_RULES_LEXER::TokenName( DRCRULE_T::T_hole_aspect_ratio ) },
+    { MINIMUM_ANNULAR_WIDTH,              DRC_RULES_LEXER::TokenName( DRCRULE_T::T_annular_width ) },
+    { COPPER_TO_EDGE_CLEARANCE,           DRC_RULES_LEXER::TokenName( DRCRULE_T::T_edge_clearance ) },
+    { COURTYARD_CLEARANCE,                DRC_RULES_LEXER::TokenName( DRCRULE_T::T_courtyard_clearance ) },
+    { PHYSICAL_CLEARANCE,                 DRC_RULES_LEXER::TokenName( DRCRULE_T::T_physical_clearance ) },
+    { MINIMUM_DRILL_SIZE,                 DRC_RULES_LEXER::TokenName( DRCRULE_T::T_hole_size ) },
+    { HOLE_SIZE,                          DRC_RULES_LEXER::TokenName( DRCRULE_T::T_hole_size ) },
+    { HOLE_TO_HOLE_DISTANCE,              DRC_RULES_LEXER::TokenName( DRCRULE_T::T_hole_to_hole ) },
+    { MINIMUM_VIA_DIAMETER,               DRC_RULES_LEXER::TokenName( DRCRULE_T::T_via_diameter ) },
+    { VIA_STYLE,                          "via_style" },
+    { MINIMUM_TEXT_HEIGHT_AND_THICKNESS,  DRC_RULES_LEXER::TokenName( DRCRULE_T::T_text_height ) },
+    { SILK_TO_SILK_CLEARANCE,             DRC_RULES_LEXER::TokenName( DRCRULE_T::T_silk_clearance ) },
+    { SILK_TO_SOLDERMASK_CLEARANCE,       DRC_RULES_LEXER::TokenName( DRCRULE_T::T_silk_clearance ) },
+    { MINIMUM_SOLDERMASK_SLIVER,          DRC_RULES_LEXER::TokenName( DRCRULE_T::T_solder_mask_sliver ) },
+    { SOLDERMASK_EXPANSION,               DRC_RULES_LEXER::TokenName( DRCRULE_T::T_solder_mask_expansion ) },
+    { SOLDERPASTE_EXPANSION,              DRC_RULES_LEXER::TokenName( DRCRULE_T::T_solder_paste_abs_margin ) },
+    { MATCHED_LENGTH_DIFF_PAIR,           DRC_RULES_LEXER::TokenName( DRCRULE_T::T_length ) },
+    { ROUTING_DIFF_PAIR,                  DRC_RULES_LEXER::TokenName( DRCRULE_T::T_diff_pair_gap ) },
+    { ROUTING_WIDTH,                      DRC_RULES_LEXER::TokenName( DRCRULE_T::T_track_width ) },
+    { MAXIMUM_VIA_COUNT,                  DRC_RULES_LEXER::TokenName( DRCRULE_T::T_via_count ) },
+    { ABSOLUTE_LENGTH,                    DRC_RULES_LEXER::TokenName( DRCRULE_T::T_length ) },
+    { PERMITTED_LAYERS,                   "permitted_layers" },
+    { ALLOWED_ORIENTATION,                "allowed_orientation" },
+    { VIAS_UNDER_SMD,                     "disallow_via" }
+};
 
 static const REVERSE_CODE_MAP sCodeReverse = []
 {
@@ -112,7 +118,7 @@ static wxString GetConstraintCodeFromType( DRC_CONSTRAINT_T aType )
     case COURTYARD_CLEARANCE_CONSTRAINT:     return DRC_RULES_LEXER::TokenName( DRCRULE_T::T_courtyard_clearance );
     case SILK_CLEARANCE_CONSTRAINT:          return DRC_RULES_LEXER::TokenName( DRCRULE_T::T_silk_clearance );
     case TEXT_HEIGHT_CONSTRAINT:             return DRC_RULES_LEXER::TokenName( DRCRULE_T::T_text_height );
-    case TEXT_THICKNESS_CONSTRAINT:          return DRC_RULES_LEXER::TokenName( DRCRULE_T::T_text_thickness );
+    case LINE_WIDTH_CONSTRAINT:              return DRC_RULES_LEXER::TokenName( DRCRULE_T::T_line_width );
     case TRACK_ANGLE_CONSTRAINT:             return DRC_RULES_LEXER::TokenName( DRCRULE_T::T_track_angle );
     case TRACK_SEGMENT_LENGTH_CONSTRAINT:    return DRC_RULES_LEXER::TokenName( DRCRULE_T::T_track_segment_length );
     case CONNECTION_WIDTH_CONSTRAINT:        return DRC_RULES_LEXER::TokenName( DRCRULE_T::T_connection_width );
@@ -121,6 +127,8 @@ static wxString GetConstraintCodeFromType( DRC_CONSTRAINT_T aType )
     case THERMAL_RELIEF_GAP_CONSTRAINT:      return DRC_RULES_LEXER::TokenName( DRCRULE_T::T_thermal_relief_gap );
     case THERMAL_SPOKE_WIDTH_CONSTRAINT:     return DRC_RULES_LEXER::TokenName( DRCRULE_T::T_thermal_spoke_width );
     case MIN_RESOLVED_SPOKES_CONSTRAINT:     return DRC_RULES_LEXER::TokenName( DRCRULE_T::T_min_resolved_spokes );
+    case MICROVIA_STACK_DEPTH_CONSTRAINT:    return DRC_RULES_LEXER::TokenName( DRCRULE_T::T_microvia_stack_depth );
+    case HOLE_ASPECT_RATIO_CONSTRAINT:       return DRC_RULES_LEXER::TokenName( DRCRULE_T::T_hole_aspect_ratio );
     case SOLDER_MASK_EXPANSION_CONSTRAINT:   return DRC_RULES_LEXER::TokenName( DRCRULE_T::T_solder_mask_expansion );
     case SOLDER_PASTE_ABS_MARGIN_CONSTRAINT: return DRC_RULES_LEXER::TokenName( DRCRULE_T::T_solder_paste_abs_margin );
     case SOLDER_PASTE_REL_MARGIN_CONSTRAINT: return DRC_RULES_LEXER::TokenName( DRCRULE_T::T_solder_paste_rel_margin );
@@ -147,97 +155,98 @@ static void RegisterDefaultConverters()
 
     // Generic Converter
     DRC_RULE_EDITOR_UTILS::RegisterRuleConverter(
-        []( const std::shared_ptr<DRC_RULE>& aRule ) -> std::shared_ptr<DRC_RE_BASE_CONSTRAINT_DATA>
-        {
-            if( aRule->m_Constraints.empty() ) return nullptr;
-
-            const auto& constraint = aRule->m_Constraints[0];
-            wxString code = GetConstraintCodeFromType( constraint.m_Type );
-
-            if( code.IsEmpty() ) return nullptr;
-
-            if( sCodeReverse.count( code ) )
+            []( const std::shared_ptr<DRC_RULE>& aRule ) -> std::shared_ptr<DRC_RE_BASE_CONSTRAINT_DATA>
             {
-                auto type = sCodeReverse.at( code );
+                if( aRule->m_Constraints.empty() ) return nullptr;
 
-                if( DRC_RULE_EDITOR_UTILS::IsNumericInputType( type ) )
-                {
-                    double val = constraint.GetValue().Min() / 1000000.0;
-                    auto data = DRC_RULE_EDITOR_UTILS::CreateNumericConstraintData( type );
-                    data->SetRuleName( aRule->m_Name );
-                    data->SetNumericInputValue( val );
-                    data->SetConstraintCode( code );
-                    return data;
-                }
-                else if( DRC_RULE_EDITOR_UTILS::IsBoolInputType( type ) )
-                {
-                    auto data = std::make_shared<DRC_RE_BOOL_INPUT_CONSTRAINT_DATA>( 0, 0, true, aRule->m_Name );
-                    data->SetConstraintCode( code );
-                    return data;
-                }
-                else if( code == "track_width" )
-                {
-                    double minW = constraint.GetValue().Min() / 1000000.0;
-                    double optW = constraint.GetValue().Opt() / 1000000.0;
-                    double maxW = constraint.GetValue().Max() / 1000000.0;
+                const auto& constraint = aRule->m_Constraints[0];
+                wxString code = GetConstraintCodeFromType( constraint.m_Type );
 
-                    double tol = 0;
-                    if( optW > 0 )
-                        tol = std::max( optW - minW, maxW - optW );
+                if( code.IsEmpty() ) return nullptr;
 
-                    auto data =
-                            std::make_shared<DRC_RE_ROUTING_WIDTH_CONSTRAINT_DATA>( 0, 0, aRule->m_Name, optW, tol );
-                    data->SetConstraintCode( code );
-                    return data;
+                if( sCodeReverse.count( code ) )
+                {
+                    auto type = sCodeReverse.at( code );
+
+                    if( DRC_RULE_EDITOR_UTILS::IsNumericInputType( type ) )
+                    {
+                        double val = pcbIUScale.IUTomm( constraint.GetValue().Min() );
+                        auto data = DRC_RULE_EDITOR_UTILS::CreateNumericConstraintData( type );
+                        data->SetRuleName( aRule->m_Name );
+                        data->SetNumericInputValue( val );
+                        data->SetConstraintCode( code );
+                        return data;
+                    }
+                    else if( DRC_RULE_EDITOR_UTILS::IsBoolInputType( type ) )
+                    {
+                        auto data = std::make_shared<DRC_RE_BOOL_INPUT_CONSTRAINT_DATA>( 0, true, aRule->m_Name );
+                        data->SetConstraintCode( code );
+                        return data;
+                    }
+                    else if( code == "track_width" )
+                    {
+                        double minW = pcbIUScale.IUTomm( constraint.GetValue().Min() );
+                        double optW = pcbIUScale.IUTomm( constraint.GetValue().Opt() );
+                        double maxW = pcbIUScale.IUTomm( constraint.GetValue().Max() );
+
+                        double tol = 0;
+                        if( optW > 0 )
+                            tol = std::max( optW - minW, maxW - optW );
+
+                        auto data = std::make_shared<DRC_RE_ROUTING_WIDTH_CONSTRAINT_DATA>( 0, aRule->m_Name, optW,
+                                                                                            tol );
+                        data->SetConstraintCode( code );
+                        return data;
+                    }
                 }
-            }
-            return nullptr;
-        } );
+                return nullptr;
+            } );
 
     // Via Style Converter
     DRC_RULE_EDITOR_UTILS::RegisterRuleConverter(
-        []( const std::shared_ptr<DRC_RULE>& aRule ) -> std::shared_ptr<DRC_RE_BASE_CONSTRAINT_DATA>
-        {
-            auto diaConstraint = aRule->FindConstraint( VIA_DIAMETER_CONSTRAINT );
-            auto holeConstraint = aRule->FindConstraint( HOLE_SIZE_CONSTRAINT );
-
-            if( diaConstraint && holeConstraint )
+            []( const std::shared_ptr<DRC_RULE>& aRule ) -> std::shared_ptr<DRC_RE_BASE_CONSTRAINT_DATA>
             {
-                double minDia = diaConstraint->GetValue().Min() / 1000000.0;
-                double maxDia = diaConstraint->GetValue().Max() / 1000000.0;
+                auto diaConstraint = aRule->FindConstraint( VIA_DIAMETER_CONSTRAINT );
+                auto holeConstraint = aRule->FindConstraint( HOLE_SIZE_CONSTRAINT );
 
-                double minDrill = holeConstraint->GetValue().Min() / 1000000.0;
-                double maxDrill = holeConstraint->GetValue().Max() / 1000000.0;
-
-                VIA_STYLE_TYPE viaType = VIA_STYLE_TYPE::ANY;
-
-                if( aRule->m_Condition )
+                if( diaConstraint && holeConstraint )
                 {
-                    wxString expr = aRule->m_Condition->GetExpression();
+                    double minDia = pcbIUScale.IUTomm( diaConstraint->GetValue().Min() );
+                    double maxDia = pcbIUScale.IUTomm( diaConstraint->GetValue().Max() );
 
-                    if( expr.Contains( wxS( "'Micro'" ) ) )
-                        viaType = VIA_STYLE_TYPE::MICRO;
-                    else if( expr.Contains( wxS( "'Through'" ) ) )
-                        viaType = VIA_STYLE_TYPE::THROUGH;
-                    else if( expr.Contains( wxS( "'Blind'" ) ) )
-                        viaType = VIA_STYLE_TYPE::BLIND;
-                    else if( expr.Contains( wxS( "'Buried'" ) ) )
-                        viaType = VIA_STYLE_TYPE::BURIED;
+                    double minDrill = pcbIUScale.IUTomm( holeConstraint->GetValue().Min() );
+                    double maxDrill = pcbIUScale.IUTomm( holeConstraint->GetValue().Max() );
+
+                    VIA_STYLE_TYPE viaType = VIA_STYLE_TYPE::ANY;
+
+                    if( aRule->m_Condition )
+                    {
+                        wxString expr = aRule->m_Condition->GetExpression();
+
+                        if( expr.Contains( wxS( "'Micro'" ) ) )
+                            viaType = VIA_STYLE_TYPE::MICRO;
+                        else if( expr.Contains( wxS( "'Through'" ) ) )
+                            viaType = VIA_STYLE_TYPE::THROUGH;
+                        else if( expr.Contains( wxS( "'Blind'" ) ) )
+                            viaType = VIA_STYLE_TYPE::BLIND;
+                        else if( expr.Contains( wxS( "'Buried'" ) ) )
+                            viaType = VIA_STYLE_TYPE::BURIED;
+                    }
+
+                    auto data = std::make_shared<DRC_RE_VIA_STYLE_CONSTRAINT_DATA>( 0, aRule->m_Name, minDia, maxDia,
+                                                                                    minDrill, maxDrill, viaType );
+                    data->SetConstraintCode( "via_style" );
+                    return data;
                 }
-
-                auto data = std::make_shared<DRC_RE_VIA_STYLE_CONSTRAINT_DATA>( 0, 0, aRule->m_Name, minDia, maxDia,
-                                                                                minDrill, maxDrill, viaType );
-                data->SetConstraintCode( "via_style" );
-                return data;
-            }
-            return nullptr;
-        } );
+                return nullptr;
+            } );
 }
 
 
 wxString DRC_RULE_EDITOR_UTILS::GetConstraintCode( DRC_RULE_EDITOR_CONSTRAINT_NAME aConstraintType )
 {
     auto it = sCodeMap.find( aConstraintType );
+
     if( it != sCodeMap.end() )
         return wxString::FromUTF8( it->second );
 
@@ -248,6 +257,7 @@ wxString DRC_RULE_EDITOR_UTILS::GetConstraintCode( DRC_RULE_EDITOR_CONSTRAINT_NA
 std::optional<DRC_RULE_EDITOR_CONSTRAINT_NAME> DRC_RULE_EDITOR_UTILS::GetConstraintTypeFromCode( const wxString& aCode )
 {
     auto it = sCodeReverse.find( aCode );
+
     if( it != sCodeReverse.end() )
         return it->second;
 
@@ -261,29 +271,10 @@ wxString DRC_RULE_EDITOR_UTILS::ConstraintToKicadDrc( DRC_RULE_EDITOR_CONSTRAINT
 }
 
 
-bool DRC_RULE_EDITOR_UTILS::ConstraintFromKicadDrc( const wxString& aCode, DRC_RE_BASE_CONSTRAINT_DATA* aData )
-{
-    if( !aData )
-        return false;
-
-    auto type = GetConstraintTypeFromCode( aCode );
-    if( type )
-    {
-        aData->SetConstraintCode( GetConstraintCode( *type ) );
-        return true;
-    }
-
-    aData->SetConstraintCode( aCode );
-    return false;
-}
-
-
 bool DRC_RULE_EDITOR_UTILS::IsBoolInputType( const DRC_RULE_EDITOR_CONSTRAINT_NAME& aConstraintType )
 {
-    switch( aConstraintType )
-    {
-    default: return false;
-    }
+    // No constraint takes a boolean input yet
+    return false;
 }
 
 
@@ -305,6 +296,8 @@ bool DRC_RULE_EDITOR_UTILS::IsNumericInputType( const DRC_RULE_EDITOR_CONSTRAINT
     case MINIMUM_CONNECTION_WIDTH:
     case MINIMUM_SOLDERMASK_SLIVER:
     case MINIMUM_THERMAL_RELIEF_SPOKE_COUNT:
+    case MICROVIA_STACK_DEPTH:
+    case HOLE_ASPECT_RATIO:
     case MINIMUM_DRILL_SIZE:
     case MINIMUM_VIA_DIAMETER:
     case SILK_TO_SILK_CLEARANCE:
@@ -319,7 +312,7 @@ bool DRC_RULE_EDITOR_UTILS::IsNumericInputType( const DRC_RULE_EDITOR_CONSTRAINT
 
 
 bool DRC_RULE_EDITOR_UTILS::ValidateNumericCtrl( wxTextCtrl* aTextCtrl, const wxString& aLabel, bool aCanBeZero,
-                                                 int* aErrorCount, wxString* aValidationMessage )
+                                                 int* aErrorCount, wxString* aMsg )
 {
     VALIDATOR_NUMERIC_CTRL validator( aCanBeZero );
     aTextCtrl->SetValidator( validator );
@@ -332,27 +325,26 @@ bool DRC_RULE_EDITOR_UTILS::ValidateNumericCtrl( wxTextCtrl* aTextCtrl, const wx
         {
         case VALIDATOR_NUMERIC_CTRL::VALIDATION_STATE::Empty:
         {
-            ( *aErrorCount )++;
-            *aValidationMessage +=
-                    DRC_RULE_EDITOR_UTILS::FormatErrorMessage( *aErrorCount,
-                            wxString::Format( _( "%s should not be empty." ), aLabel ) );
+            int n = ++( *aErrorCount );
+            *aMsg += FormatErrorMessage( n, wxString::Format( _( "%s must not be empty." ), aLabel ) );
             return false;
         }
         case VALIDATOR_NUMERIC_CTRL::VALIDATION_STATE::NotNumeric:
         {
-            ( *aErrorCount )++;
-            *aValidationMessage += DRC_RULE_EDITOR_UTILS::FormatErrorMessage(
-                    *aErrorCount, wxString::Format( _( "The value of %s must be a valid number." ), aLabel ) );
+            int n = ++( *aErrorCount );
+            *aMsg += FormatErrorMessage( n, wxString::Format( _( "The value of %s must be a valid number." ),
+                                                              aLabel ) );
             return false;
         }
         case VALIDATOR_NUMERIC_CTRL::VALIDATION_STATE::NotGreaterThanZero:
         {
-            ( *aErrorCount )++;
-            *aValidationMessage += DRC_RULE_EDITOR_UTILS::FormatErrorMessage(
-                    *aErrorCount, wxString::Format( _( "The value of %s must be greater than 0." ), aLabel ) );
+            int n = ++( *aErrorCount );
+            *aMsg += FormatErrorMessage( n, wxString::Format( _( "The value of %s must be greater than 0." ),
+                                                              aLabel ) );
             return false;
         }
-        default: break;
+        default:
+            break;
         }
     }
 
@@ -361,7 +353,7 @@ bool DRC_RULE_EDITOR_UTILS::ValidateNumericCtrl( wxTextCtrl* aTextCtrl, const wx
 
 
 bool DRC_RULE_EDITOR_UTILS::ValidateIntegerCtrl( wxTextCtrl* aTextCtrl, const wxString& aLabel, bool aCanBeZero,
-                                                 int* aErrorCount, wxString* aValidationMessage )
+                                                 int* aErrorCount, wxString* aMsg )
 {
     VALIDATOR_NUMERIC_CTRL validator( aCanBeZero, true );
     aTextCtrl->SetValidator( validator );
@@ -374,27 +366,26 @@ bool DRC_RULE_EDITOR_UTILS::ValidateIntegerCtrl( wxTextCtrl* aTextCtrl, const wx
         {
         case VALIDATOR_NUMERIC_CTRL::VALIDATION_STATE::Empty:
         {
-            ( *aErrorCount )++;
-            *aValidationMessage +=
-                    DRC_RULE_EDITOR_UTILS::FormatErrorMessage( *aErrorCount,
-                            wxString::Format( _( "%s should not be empty." ), aLabel ) );
+            int n = ++( *aErrorCount );
+            *aMsg += FormatErrorMessage( n, wxString::Format( _( "%s must not be empty." ), aLabel ) );
             return false;
         }
         case VALIDATOR_NUMERIC_CTRL::VALIDATION_STATE::NotInteger:
         {
-            ( *aErrorCount )++;
-            *aValidationMessage += DRC_RULE_EDITOR_UTILS::FormatErrorMessage(
-                    *aErrorCount, wxString::Format( _( "The value of %s must be a valid integer." ), aLabel ) );
+            int n = ++( *aErrorCount );
+            *aMsg += FormatErrorMessage( n, wxString::Format( _( "The value of %s must be a valid integer." ),
+                                                              aLabel ) );
             return false;
         }
         case VALIDATOR_NUMERIC_CTRL::VALIDATION_STATE::NotGreaterThanZero:
         {
-            ( *aErrorCount )++;
-            *aValidationMessage += DRC_RULE_EDITOR_UTILS::FormatErrorMessage(
-                    *aErrorCount, wxString::Format( _( "The value of %s must be greater than 0." ), aLabel ) );
+            int n = ++( *aErrorCount );
+            *aMsg += FormatErrorMessage( n, wxString::Format( _( "The value of %s must be greater than 0." ),
+                                                              aLabel ) );
             return false;
         }
-        default: break;
+        default:
+            break;
         }
     }
 
@@ -403,7 +394,7 @@ bool DRC_RULE_EDITOR_UTILS::ValidateIntegerCtrl( wxTextCtrl* aTextCtrl, const wx
 
 
 bool DRC_RULE_EDITOR_UTILS::ValidateComboCtrl( wxComboBox* aComboBox, const wxString& aLabel, int* aErrorCount,
-                                               wxString* aValidationMessage )
+                                               wxString* aMsg )
 {
     VALIDATOR_COMBO_CTRL cmbCtrlValidator;
     aComboBox->SetValidator( cmbCtrlValidator );
@@ -416,12 +407,12 @@ bool DRC_RULE_EDITOR_UTILS::ValidateComboCtrl( wxComboBox* aComboBox, const wxSt
         {
         case VALIDATOR_COMBO_CTRL::VALIDATION_STATE::NothingSelected:
         {
-            ( *aErrorCount )++;
-            *aValidationMessage += DRC_RULE_EDITOR_UTILS::FormatErrorMessage( *aErrorCount,
-                    wxString::Format( _( "Please choose %s." ), aLabel ) );
+            int n = ++( *aErrorCount );
+            *aMsg += FormatErrorMessage( n, wxString::Format( _( "Please choose %s." ), aLabel ) );
             return false;
         }
-        default: break;
+        default:
+            break;
         }
     }
 
@@ -431,7 +422,7 @@ bool DRC_RULE_EDITOR_UTILS::ValidateComboCtrl( wxComboBox* aComboBox, const wxSt
 
 bool DRC_RULE_EDITOR_UTILS::ValidateMinMaxCtrl( wxTextCtrl* aMinTextCtrl, wxTextCtrl* aMaxTextCtrl,
                                                 const wxString& aMinLabel, const wxString& aMaxLabel,
-                                                int* aErrorCount, wxString* aValidationMessage )
+                                                int* aErrorCount, wxString* aMsg )
 {
     aMinTextCtrl->SetName( "min" );
     aMaxTextCtrl->SetName( "max" );
@@ -446,13 +437,13 @@ bool DRC_RULE_EDITOR_UTILS::ValidateMinMaxCtrl( wxTextCtrl* aMinTextCtrl, wxText
         {
         case VALIDATE_MIN_MAX_CTRL::VALIDATION_STATE::MinGreaterThanMax:
         {
-            ( *aErrorCount )++;
-            *aValidationMessage += DRC_RULE_EDITOR_UTILS::FormatErrorMessage(
-                    *aErrorCount, wxString::Format( _( "%s value cannot be greater than %s value." ),
-                                                    aMinLabel, aMaxLabel ) );
+            int n = ++( *aErrorCount );
+            *aMsg += FormatErrorMessage( n, wxString::Format( _( "%s value cannot be greater than %s value." ),
+                                                              aMinLabel, aMaxLabel ) );
             return false;
         }
-        default: break;
+        default:
+            break;
         }
     }
 
@@ -466,7 +457,7 @@ bool DRC_RULE_EDITOR_UTILS::ValidateMinMaxCtrl( wxTextCtrl* aMinTextCtrl, wxText
 bool DRC_RULE_EDITOR_UTILS::ValidateMinPreferredMaxCtrl( wxTextCtrl* aMinTextCtrl, wxTextCtrl* aPreferredTextCtrl,
                                                          wxTextCtrl* aMaxTextCtrl, const wxString& aMinLabel,
                                                          const wxString& aPreferredLabel, const wxString& aMaxLabel,
-                                                         int* aErrorCount, wxString* aValidationMessage )
+                                                         int* aErrorCount, wxString* aMsg )
 {
     aMinTextCtrl->SetName( "min" );
     aPreferredTextCtrl->SetName( "preferred" );
@@ -476,36 +467,33 @@ bool DRC_RULE_EDITOR_UTILS::ValidateMinPreferredMaxCtrl( wxTextCtrl* aMinTextCtr
 
     if( !aMinTextCtrl->Validate() )
     {
-        VALIDATE_MIN_PREFERRED_MAX_CTRL* v =
-                static_cast<VALIDATE_MIN_PREFERRED_MAX_CTRL*>( aMinTextCtrl->GetValidator() );
+        auto* v = static_cast<VALIDATE_MIN_PREFERRED_MAX_CTRL*>( aMinTextCtrl->GetValidator() );
 
         switch( v->GetValidationState() )
         {
         case VALIDATE_MIN_PREFERRED_MAX_CTRL::VALIDATION_STATE::MinGreaterThanPreferred:
         {
-            ( *aErrorCount )++;
-            *aValidationMessage += DRC_RULE_EDITOR_UTILS::FormatErrorMessage(
-                    *aErrorCount, wxString::Format( _( "%s value cannot be greater than %s value." ),
-                                                    aMinLabel, aPreferredLabel ) );
+            int n = ++( *aErrorCount );
+            *aMsg += FormatErrorMessage( n, wxString::Format( _( "%s value cannot be greater than %s value." ),
+                                                              aMinLabel, aPreferredLabel ) );
             return false;
         }
         case VALIDATE_MIN_PREFERRED_MAX_CTRL::VALIDATION_STATE::PreferredGreaterThanMax:
         {
-            ( *aErrorCount )++;
-            *aValidationMessage += DRC_RULE_EDITOR_UTILS::FormatErrorMessage(
-                    *aErrorCount, wxString::Format( _( "%s value cannot be greater than %s value." ),
-                                                    aPreferredLabel, aMaxLabel ) );
+            int n = ++( *aErrorCount );
+            *aMsg += FormatErrorMessage( n, wxString::Format( _( "%s value cannot be greater than %s value." ),
+                                                              aPreferredLabel, aMaxLabel ) );
             return false;
         }
         case VALIDATE_MIN_PREFERRED_MAX_CTRL::VALIDATION_STATE::MinGreaterThanMax:
         {
-            ( *aErrorCount )++;
-            *aValidationMessage += DRC_RULE_EDITOR_UTILS::FormatErrorMessage(
-                     *aErrorCount, wxString::Format( _( "%s value cannot be greater than %s value." ),
-                                                    aMinLabel, aMaxLabel ) );
+            int n = ++( *aErrorCount );
+            *aMsg += FormatErrorMessage( n, wxString::Format( _( "%s value cannot be greater than %s value." ),
+                                                              aMinLabel, aMaxLabel ) );
             return false;
         }
-        default: break;
+        default:
+            break;
         }
     }
 
@@ -518,7 +506,7 @@ bool DRC_RULE_EDITOR_UTILS::ValidateMinPreferredMaxCtrl( wxTextCtrl* aMinTextCtr
 
 
 bool DRC_RULE_EDITOR_UTILS::ValidateCheckBoxCtrls( const std::vector<wxCheckBox*>& aCheckboxes, const wxString& aLabel,
-                                                   int* aErrorCount, wxString* aValidationMessage )
+                                                   int* aErrorCount, wxString* aMsg )
 {
     VALIDATE_CHECKBOX_LIST validator( aCheckboxes );
 
@@ -532,12 +520,13 @@ bool DRC_RULE_EDITOR_UTILS::ValidateCheckBoxCtrls( const std::vector<wxCheckBox*
         {
         case VALIDATE_CHECKBOX_LIST::VALIDATION_STATE::NotSelected:
         {
-            ( *aErrorCount )++;
-            *aValidationMessage += DRC_RULE_EDITOR_UTILS::FormatErrorMessage(
-                    *aErrorCount, wxString::Format( _( "Please select at least one option from %s list." ), aLabel ));
+            int n = ++( *aErrorCount );
+            *aMsg += FormatErrorMessage( n, wxString::Format( _( "Please select at least one option from %s list." ),
+                                                              aLabel ));
             return false;
         }
-        default: break;
+        default:
+            break;
         }
     }
 
@@ -554,7 +543,7 @@ wxString DRC_RULE_EDITOR_UTILS::FormatErrorMessage( int aErrorCount, const wxStr
 // ==================== Pure Validators (No GUI Dependencies) ====================
 
 bool DRC_RULE_EDITOR_UTILS::ValidateNumericValue( double aValue, bool aCanBeZero, const wxString& aLabel,
-                                                   VALIDATION_RESULT* aResult )
+                                                  VALIDATION_RESULT* aResult )
 {
     if( !aCanBeZero && aValue <= 0.0 )
     {
@@ -566,9 +555,8 @@ bool DRC_RULE_EDITOR_UTILS::ValidateNumericValue( double aValue, bool aCanBeZero
 }
 
 
-bool DRC_RULE_EDITOR_UTILS::ValidateNumericString( const wxString& aValueStr, bool aCanBeZero,
-                                                    bool aIntegerOnly, const wxString& aLabel,
-                                                    VALIDATION_RESULT* aResult )
+bool DRC_RULE_EDITOR_UTILS::ValidateNumericString( const wxString& aValueStr, bool aCanBeZero, bool aIntegerOnly,
+                                                   const wxString& aLabel, VALIDATION_RESULT* aResult )
 {
     if( aValueStr.IsEmpty() )
     {
@@ -581,8 +569,8 @@ bool DRC_RULE_EDITOR_UTILS::ValidateNumericString( const wxString& aValueStr, bo
         if( aIntegerOnly )
         {
             std::string stdStr = aValueStr.ToStdString();
-            size_t pos;
-            long   intVal = std::stol( stdStr, &pos );
+            size_t      pos;
+            long        intVal = std::stol( stdStr, &pos );
 
             if( pos != stdStr.length() )
             {
@@ -599,8 +587,8 @@ bool DRC_RULE_EDITOR_UTILS::ValidateNumericString( const wxString& aValueStr, bo
         else
         {
             std::string stdStr = aValueStr.ToStdString();
-            size_t pos;
-            double floatVal = std::stod( stdStr, &pos );
+            size_t      pos;
+            double      floatVal = std::stod( stdStr, &pos );
 
             if( pos != stdStr.length() )
             {
@@ -643,10 +631,8 @@ bool DRC_RULE_EDITOR_UTILS::ValidateMinMax( double aMin, double aMax, const wxSt
 
 
 bool DRC_RULE_EDITOR_UTILS::ValidateMinPreferredMax( double aMin, double aPreferred, double aMax,
-                                                      const wxString& aMinLabel,
-                                                      const wxString& aPrefLabel,
-                                                      const wxString& aMaxLabel,
-                                                      VALIDATION_RESULT* aResult )
+                                                     const wxString& aMinLabel, const wxString& aPrefLabel,
+                                                     const wxString& aMaxLabel, VALIDATION_RESULT* aResult )
 {
     bool valid = true;
 
@@ -672,9 +658,8 @@ bool DRC_RULE_EDITOR_UTILS::ValidateMinPreferredMax( double aMin, double aPrefer
 }
 
 
-bool DRC_RULE_EDITOR_UTILS::ValidateAtLeastOneSelected( const std::vector<bool>& aSelected,
-                                                         const wxString&          aLabel,
-                                                         VALIDATION_RESULT*       aResult )
+bool DRC_RULE_EDITOR_UTILS::ValidateAtLeastOneSelected( const std::vector<bool>& aSelected, const wxString& aLabel,
+                                                        VALIDATION_RESULT* aResult )
 {
     for( bool selected : aSelected )
     {
@@ -688,7 +673,7 @@ bool DRC_RULE_EDITOR_UTILS::ValidateAtLeastOneSelected( const std::vector<bool>&
 
 
 bool DRC_RULE_EDITOR_UTILS::ValidateSelection( int aSelectionIndex, const wxString& aLabel,
-                                                VALIDATION_RESULT* aResult )
+                                               VALIDATION_RESULT* aResult )
 {
     if( aSelectionIndex < 0 )
     {
@@ -708,8 +693,9 @@ std::vector<std::shared_ptr<DRC_RE_BASE_CONSTRAINT_DATA>> DRC_RULE_EDITOR_UTILS:
     std::vector<std::shared_ptr<DRC_RULE>> parsedRules;
 
     wxString rulesText = aRules;
+
     if( !rulesText.Contains( "(version" ) )
-        rulesText.Prepend( "(version 1)\n" );
+        rulesText.Prepend( "(version 2)\n" );
 
     try
     {
@@ -733,7 +719,7 @@ std::vector<std::shared_ptr<DRC_RE_BASE_CONSTRAINT_DATA>> DRC_RULE_EDITOR_UTILS:
 
         if( !data )
         {
-            auto customData = std::make_shared<DRC_RE_CUSTOM_RULE_CONSTRAINT_DATA>( 0, 0, rule->m_Name );
+            auto customData = std::make_shared<DRC_RE_CUSTOM_RULE_CONSTRAINT_DATA>( 0, rule->m_Name );
             customData->SetRuleText( wxString::Format( "(rule \"%s\" ...)", rule->m_Name ) );
             data = customData;
         }
@@ -751,7 +737,7 @@ bool DRC_RULE_EDITOR_UTILS::SaveRules( const wxString& aFilename,
                                        const std::vector<std::shared_ptr<DRC_RE_BASE_CONSTRAINT_DATA>>& aRules,
                                        const BOARD* aBoard )
 {
-    wxString content = wxT( "(version 1)\n" );
+    wxString content = wxT( "(version 2)\n" );
 
     for( const auto& data : aRules )
     {
@@ -804,6 +790,7 @@ DRC_LAYER_CATEGORY DRC_RULE_EDITOR_UTILS::GetLayerCategoryForConstraint(
     case ROUTING_WIDTH:
     case ROUTING_DIFF_PAIR:
     case MINIMUM_THERMAL_RELIEF_SPOKE_COUNT:
+    case MICROVIA_STACK_DEPTH:
     case MATCHED_LENGTH_DIFF_PAIR:
     case ABSOLUTE_LENGTH:
         return DRC_LAYER_CATEGORY::COPPER_ONLY;
@@ -839,6 +826,7 @@ DRC_LAYER_CATEGORY DRC_RULE_EDITOR_UTILS::GetLayerCategoryForConstraint(
     // NO_LAYER_SELECTOR: Constraints where layer selection doesn't apply
     case MAXIMUM_VIA_COUNT:
     case PERMITTED_LAYERS:
+    case HOLE_ASPECT_RATIO:
     case CUSTOM_RULE:
         return DRC_LAYER_CATEGORY::NO_LAYER_SELECTOR;
 
@@ -848,24 +836,34 @@ DRC_LAYER_CATEGORY DRC_RULE_EDITOR_UTILS::GetLayerCategoryForConstraint(
 }
 
 
-wxString DRC_RULE_EDITOR_UTILS::TranslateTopBottomLayer( DRC_RULE_EDITOR_CONSTRAINT_NAME aConstraintType,
-                                                         bool aIsTop )
+PCB_LAYER_ID DRC_RULE_EDITOR_UTILS::TopBottomLayerId( DRC_RULE_EDITOR_CONSTRAINT_NAME aConstraintType, bool aIsTop )
 {
     switch( aConstraintType )
     {
     case COURTYARD_CLEARANCE:
-        return wxString::Format( wxS( "(layer \"%s\")" ),
-                                 aIsTop ? wxS( "F.CrtYd" ) : wxS( "B.CrtYd" ) );
-
+        return aIsTop ? F_CrtYd : B_CrtYd;
     case SILK_TO_SOLDERMASK_CLEARANCE:
-        // Generates a condition to match silk on one side with mask on the same side
+        return aIsTop ? F_SilkS : B_SilkS;
+    default:
+        return aIsTop ? F_Cu : B_Cu;
+    }
+}
+
+
+wxString DRC_RULE_EDITOR_UTILS::TranslateTopBottomLayer( DRC_RULE_EDITOR_CONSTRAINT_NAME aConstraintType, bool aIsTop )
+{
+    switch( aConstraintType )
+    {
+    case SILK_TO_SOLDERMASK_CLEARANCE:
+        // Matches silk on one side against the mask on that same side
         return wxString::Format( wxS( "(condition \"A.Layer == '%s' && B.Layer == '%s'\")" ),
-                                 aIsTop ? wxS( "F.SilkS" ) : wxS( "B.SilkS" ),
+                                 LSET::Name( TopBottomLayerId( aConstraintType, aIsTop ) ),
                                  aIsTop ? wxS( "F.Mask" ) : wxS( "B.Mask" ) );
 
+    case COURTYARD_CLEARANCE:
     case VIAS_UNDER_SMD:
     case ALLOWED_ORIENTATION:
-        return wxString::Format( wxS( "(layer \"%s\")" ), aIsTop ? wxS( "F.Cu" ) : wxS( "B.Cu" ) );
+        return wxString::Format( wxS( "(layer \"%s\")" ), LSET::Name( TopBottomLayerId( aConstraintType, aIsTop ) ) );
 
     default:
         return wxEmptyString;
@@ -891,6 +889,8 @@ DRC_RULE_EDITOR_UTILS::CreateNumericConstraintData( DRC_RULE_EDITOR_CONSTRAINT_N
     case MINIMUM_CONNECTION_WIDTH:           return std::make_shared<DRC_RE_MINIMUM_CONNECTION_WIDTH_CONSTRAINT_DATA>();
     case MINIMUM_SOLDERMASK_SLIVER:          return std::make_shared<DRC_RE_MINIMUM_SOLDERMASK_SLIVER_CONSTRAINT_DATA>();
     case MINIMUM_THERMAL_RELIEF_SPOKE_COUNT: return std::make_shared<DRC_RE_MINIMUM_THERMAL_SPOKE_COUNT_CONSTRAINT_DATA>();
+    case MICROVIA_STACK_DEPTH:               return std::make_shared<DRC_RE_MICROVIA_STACK_DEPTH_CONSTRAINT_DATA>();
+    case HOLE_ASPECT_RATIO:                  return std::make_shared<DRC_RE_HOLE_ASPECT_RATIO_CONSTRAINT_DATA>();
     case MINIMUM_DRILL_SIZE:                 return std::make_shared<DRC_RE_MINIMUM_DRILL_SIZE_CONSTRAINT_DATA>();
     case MINIMUM_VIA_DIAMETER:               return std::make_shared<DRC_RE_MINIMUM_VIA_DIAMETER_CONSTRAINT_DATA>();
     case SILK_TO_SILK_CLEARANCE:             return std::make_shared<DRC_RE_SILK_TO_SILK_CLEARANCE_CONSTRAINT_DATA>();
@@ -921,6 +921,8 @@ DRC_RULE_EDITOR_UTILS::CreateNumericConstraintData( DRC_RULE_EDITOR_CONSTRAINT_N
     case MINIMUM_CONNECTION_WIDTH:           return std::make_shared<DRC_RE_MINIMUM_CONNECTION_WIDTH_CONSTRAINT_DATA>( aBase );
     case MINIMUM_SOLDERMASK_SLIVER:          return std::make_shared<DRC_RE_MINIMUM_SOLDERMASK_SLIVER_CONSTRAINT_DATA>( aBase );
     case MINIMUM_THERMAL_RELIEF_SPOKE_COUNT: return std::make_shared<DRC_RE_MINIMUM_THERMAL_SPOKE_COUNT_CONSTRAINT_DATA>( aBase );
+    case MICROVIA_STACK_DEPTH:               return std::make_shared<DRC_RE_MICROVIA_STACK_DEPTH_CONSTRAINT_DATA>( aBase );
+    case HOLE_ASPECT_RATIO:                  return std::make_shared<DRC_RE_HOLE_ASPECT_RATIO_CONSTRAINT_DATA>( aBase );
     case MINIMUM_DRILL_SIZE:                 return std::make_shared<DRC_RE_MINIMUM_DRILL_SIZE_CONSTRAINT_DATA>( aBase );
     case MINIMUM_VIA_DIAMETER:               return std::make_shared<DRC_RE_MINIMUM_VIA_DIAMETER_CONSTRAINT_DATA>( aBase );
     case SILK_TO_SILK_CLEARANCE:             return std::make_shared<DRC_RE_SILK_TO_SILK_CLEARANCE_CONSTRAINT_DATA>( aBase );
@@ -929,4 +931,64 @@ DRC_RULE_EDITOR_UTILS::CreateNumericConstraintData( DRC_RULE_EDITOR_CONSTRAINT_N
     case SOLDERPASTE_EXPANSION:              return std::make_shared<DRC_RE_SOLDERPASTE_EXPANSION_CONSTRAINT_DATA>( aBase );
     default:                                 return std::make_shared<DRC_RE_NUMERIC_INPUT_CONSTRAINT_DATA>( aBase );
     }
+}
+
+
+std::optional<DRC_RULE_EDITOR_UTILS::SELECTOR_CONDITION>
+DRC_RULE_EDITOR_UTILS::ParseSelectorCondition( const wxString& aExpr )
+{
+    // Anchored at the end too, or a trailing comparison such as "== 0" would be dropped when the rule is saved
+    static wxRegEx netRe( wxT( "^NetName\\s*==\\s*'([^']*)'\\s*$" ) );
+    static wxRegEx netclassRe1( wxT( "^hasNetclass\\('([^']*)'\\)\\s*$" ) );
+    static wxRegEx netclassRe2( wxT( "^NetClass\\s*==\\s*'([^']*)'\\s*$" ) );
+    static wxRegEx intersectsRe( wxT( "^intersectsArea\\('([^']*)'\\)\\s*$" ) );
+    static wxRegEx enclosedRe( wxT( "^enclosedByArea\\('([^']*)'\\)\\s*$" ) );
+
+    if( netRe.Matches( aExpr ) )
+        return SELECTOR_CONDITION{ SELECTOR_KIND::NET, netRe.GetMatch( aExpr, 1 ) };
+
+    if( netclassRe1.Matches( aExpr ) )
+        return SELECTOR_CONDITION{ SELECTOR_KIND::NETCLASS, netclassRe1.GetMatch( aExpr, 1 ) };
+
+    if( netclassRe2.Matches( aExpr ) )
+        return SELECTOR_CONDITION{ SELECTOR_KIND::NETCLASS, netclassRe2.GetMatch( aExpr, 1 ) };
+
+    if( intersectsRe.Matches( aExpr ) )
+        return SELECTOR_CONDITION{ SELECTOR_KIND::INTERSECTS_AREA, intersectsRe.GetMatch( aExpr, 1 ) };
+
+    if( enclosedRe.Matches( aExpr ) )
+        return SELECTOR_CONDITION{ SELECTOR_KIND::ENCLOSED_BY_AREA, enclosedRe.GetMatch( aExpr, 1 ) };
+
+    return std::nullopt;
+}
+
+
+std::shared_ptr<DRC_RE_BASE_CONSTRAINT_DATA>
+DRC_RULE_EDITOR_UTILS::CreateConstraintData( DRC_RULE_EDITOR_CONSTRAINT_NAME    aType,
+                                             const DRC_RE_BASE_CONSTRAINT_DATA& aBase )
+{
+    switch( aType )
+    {
+    case VIA_STYLE: return std::make_shared<DRC_RE_VIA_STYLE_CONSTRAINT_DATA>( aBase );
+    case MINIMUM_TEXT_HEIGHT_AND_THICKNESS:
+        return std::make_shared<DRC_RE_MINIMUM_TEXT_HEIGHT_THICKNESS_CONSTRAINT_DATA>( aBase );
+    case ROUTING_DIFF_PAIR: return std::make_shared<DRC_RE_ROUTING_DIFF_PAIR_CONSTRAINT_DATA>( aBase );
+    case ROUTING_WIDTH: return std::make_shared<DRC_RE_ROUTING_WIDTH_CONSTRAINT_DATA>( aBase );
+    case PERMITTED_LAYERS: return std::make_shared<DRC_RE_PERMITTED_LAYERS_CONSTRAINT_DATA>( aBase );
+    case ALLOWED_ORIENTATION: return std::make_shared<DRC_RE_ALLOWED_ORIENTATION_CONSTRAINT_DATA>( aBase );
+    case CUSTOM_RULE: return std::make_shared<DRC_RE_CUSTOM_RULE_CONSTRAINT_DATA>( aBase );
+    case ABSOLUTE_LENGTH: return std::make_shared<DRC_RE_ABSOLUTE_LENGTH_TWO_CONSTRAINT_DATA>( aBase );
+    case MATCHED_LENGTH_DIFF_PAIR: return std::make_shared<DRC_RE_MATCHED_LENGTH_DIFF_PAIR_CONSTRAINT_DATA>( aBase );
+    case VIAS_UNDER_SMD: return std::make_shared<DRC_RE_VIAS_UNDER_SMD_CONSTRAINT_DATA>( aBase );
+    default: break;
+    }
+
+    if( IsNumericInputType( aType ) )
+        return CreateNumericConstraintData( aType, aBase );
+
+    if( IsBoolInputType( aType ) )
+        return std::make_shared<DRC_RE_BOOL_INPUT_CONSTRAINT_DATA>( aBase );
+
+    wxLogWarning( "No factory found for constraint type: %d", aType );
+    return std::make_shared<DRC_RE_BASE_CONSTRAINT_DATA>( aBase );
 }

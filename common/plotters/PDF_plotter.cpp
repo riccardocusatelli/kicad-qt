@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <algorithm>
@@ -54,11 +50,14 @@
 
 #include <plotters/pdf_stroke_font.h>
 #include <plotters/pdf_outline_font.h>
+#include <plotters/pdf_unicode.h>
 #include <plotters/plotters_pslike.h>
 #include <geometry/shape_rect.h>
 #include <text_eval/text_eval_wrapper.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
+
+#include "callback_gal.h"
 
 
 PDF_PLOTTER::~PDF_PLOTTER() = default;
@@ -73,8 +72,8 @@ std::string PDF_PLOTTER::encodeStringForPlotter( const wxString& aText )
 {
     // returns a string compatible with PDF string convention from a unicode string.
     // if the initial text is only ASCII7, return the text between ( and ) for a good readability
-    // if the initial text is no ASCII7, return the text between < and >
-    // and encoded using 16 bits hexa (4 digits) by wide char (unicode 16)
+    // if the initial text contains non ASCII7, return the text between < and > encoded using
+    // UTF-16 BE (big-endian).
     std::string result;
 
     // Is aText only ASCII7 ?
@@ -93,22 +92,25 @@ std::string PDF_PLOTTER::encodeStringForPlotter( const wxString& aText )
     {
         result = '(';
 
-        for( unsigned ii = 0; ii < aText.Len(); ii++ )
+        for( size_t ii = 0; ii < aText.Len(); ii++ )
         {
             unsigned int code = aText[ii];
 
-            // These characters must be escaped
-            switch( code )
+            if( code == '(' || code == ')' || code == '\\' )
             {
-            case '(':
-            case ')':
-            case '\\':
+                // These characters must be escaped.
                 result += '\\';
-                KI_FALLTHROUGH;
-
-            default:
-                result += code;
-                break;
+                result += static_cast<char>( code );
+            }
+            else if( code < 0x20 )
+            {
+                // Control characters (inc. null) are not illegal in principle,
+                // but we use octal escapes for them to avoid confusing parsers.
+                result += fmt::format( "\\{:03o}", code );
+            }
+            else
+            {
+                result += static_cast<char>( code );
             }
         }
 
@@ -116,12 +118,13 @@ std::string PDF_PLOTTER::encodeStringForPlotter( const wxString& aText )
     }
     else
     {
+        // UTF-16BE text string with BOM.
         result = "<FEFF";
 
         for( size_t ii = 0; ii < aText.Len(); ii++ )
         {
             unsigned int code = aText[ii];
-            result += fmt::format("{:04X}", code);
+            result += FormatPdfUtf16Hex( static_cast<uint32_t>( code ) );
         }
 
         result += '>';
@@ -239,22 +242,37 @@ void PDF_PLOTTER::SetCurrentLineWidth( int aWidth, void* aData )
 }
 
 
+int PDF_PLOTTER::getExtGStateHandleForAlpha( double aAlpha )
+{
+    auto [it, inserted] = m_alphaToExtGStateHandles.try_emplace( aAlpha );
+
+    if( inserted )
+        it->second = allocPdfObject();
+
+    return it->second;
+}
+
+
 void PDF_PLOTTER::emitSetRGBColor( double r, double g, double b, double a )
 {
     KI_ASSERT( m_workFile );
 
-    // PDF treats all colors as opaque, so the best we can do with alpha is generate an
-    // appropriate blended color assuming white paper.
-    if( a < 1.0 )
-    {
-        r = ( r * a ) + ( 1 - a );
-        g = ( g * a ) + ( 1 - a );
-        b = ( b * a ) + ( 1 - a );
-    }
-
     fmt::println( m_workFile, "{} {} {} rg {} {} {} RG",
                   encodeDoubleForPlotter( r ), encodeDoubleForPlotter( g ), encodeDoubleForPlotter( b ),
                   encodeDoubleForPlotter( r ), encodeDoubleForPlotter( g ), encodeDoubleForPlotter( b ) );
+
+    // PDF sets opacity through the graphics state
+    // It is 'sticky' and remains in effect until changed by another graphics state operator
+    // So change it if it differs from the current alpha value
+    if( a != m_currentAlpha )
+    {
+        const int extGStateHandle = getExtGStateHandleForAlpha( a );
+
+        // Apply that ExtGState to this context.
+        fmt::println( m_workFile, "/GS{} gs", extGStateHandle );
+
+        m_currentAlpha = a;
+    }
 }
 
 
@@ -543,6 +561,9 @@ void PDF_PLOTTER::PlotPoly( const std::vector<VECTOR2I>& aCornerList, FILL_T aFi
 
 void PDF_PLOTTER::PlotPoly( const SHAPE_LINE_CHAIN& aLineChain, FILL_T aFill, int aWidth, void* aData )
 {
+    if( aFill == FILL_T::NO_FILL && aWidth == 0 )
+        return;
+
     SetCurrentLineWidth( aWidth );
 
     std::set<size_t>      handledArcs;
@@ -626,7 +647,7 @@ void PDF_PLOTTER::PenTo( const VECTOR2I& pos, char plume )
 }
 
 
-void PDF_PLOTTER::PlotImage( const RASTER_IMAGE& aImage, const VECTOR2I& aPos, double aScaleFactor )
+void PDF_PLOTTER::PlotImage( const RASTER_IMAGE& aImage, const VECTOR2I& aPos, double aScaleFactor, double aAlpha )
 {
     KI_ASSERT( m_workFile );
     VECTOR2I pix_size( aImage.GetWidth(), aImage.GetHeight() );
@@ -705,6 +726,10 @@ void PDF_PLOTTER::PlotImage( const RASTER_IMAGE& aImage, const VECTOR2I& aPos, d
                   encodeDoubleForPlotter( dev_start.x ),
                   encodeDoubleForPlotter( dev_start.y ) );
 
+    // Apply any global alpha setting for this image (on top of the image's own alpha)
+    if( m_currentAlpha != aAlpha )
+        fmt::println( m_workFile, "/GS{} gs", getExtGStateHandleForAlpha( aAlpha ) );
+
     fmt::println( m_workFile, "/Im{} Do", imgHandle );
     fmt::println( m_workFile, "Q" );
 }
@@ -712,8 +737,7 @@ void PDF_PLOTTER::PlotImage( const RASTER_IMAGE& aImage, const VECTOR2I& aPos, d
 
 int PDF_PLOTTER::allocPdfObject()
 {
-    m_xrefTable.push_back( 0 );
-    return m_xrefTable.size() - 1;
+    return m_xrefTable.Allocate();
 }
 
 
@@ -722,10 +746,13 @@ int PDF_PLOTTER::startPdfObject( int aHandle )
     KI_ASSERT( m_outputFile );
     KI_ASSERT( !m_workFile );
 
-    if( aHandle < 0 )
+    if( !m_xrefTable.IsValid( aHandle ) )
+    {
+        KI_ASSERT_MSG( aHandle < 0, "PDF object handle given was not previously allocated" );
         aHandle = allocPdfObject();
+    }
 
-    m_xrefTable[aHandle] = ftell( m_outputFile );
+    m_xrefTable.SetOffset( aHandle, ftell( m_outputFile ) );
     fmt::println( m_outputFile, "{} 0 obj", aHandle );
     return aHandle;
 }
@@ -751,14 +778,12 @@ int PDF_PLOTTER::startPdfStream( int aHandle )
 
     if( ADVANCED_CFG::GetCfg().m_DebugPDFWriter )
     {
-        fmt::print( m_outputFile,
-                     "<< /Length {} 0 R >>\nstream\n",
+        fmt::print( m_outputFile, "<< /Length {} 0 R >>\nstream\n",
                      m_streamLengthHandle );
     }
     else
     {
-        fmt::print( m_outputFile,
-                     "<< /Length {} 0 R /Filter /FlateDecode >>\nstream\n",
+        fmt::print( m_outputFile, "<< /Length {} 0 R /Filter /FlateDecode >>\nstream\n",
                      m_streamLengthHandle );
     }
 
@@ -805,7 +830,7 @@ void PDF_PLOTTER::closePdfStream()
     else
     {
         // NULL means memos owns the memory, but provide a hint on optimum size needed.
-        wxMemoryOutputStream    memos( nullptr, std::max( 2000l, stream_len ) ) ;
+        wxMemoryOutputStream memos( nullptr, std::max( 2000l, stream_len ) ) ;
 
         {
             /* Somewhat standard parameters to compress in DEFLATE. The PDF spec is
@@ -815,7 +840,7 @@ void PDF_PLOTTER::closePdfStream()
              *                    8, Z_DEFAULT_STRATEGY );
              */
 
-            wxZlibOutputStream      zos( memos, wxZ_BEST_COMPRESSION, wxZLIB_ZLIB );
+            wxZlibOutputStream zos( memos, wxZ_BEST_COMPRESSION, wxZLIB_ZLIB );
 
             zos.Write( inbuf, stream_len );
         }   // flush the zip stream using zos destructor
@@ -863,6 +888,9 @@ void PDF_PLOTTER::StartPage( const wxString& aPageNumber, const wxString& aPageN
     // Set m_currentPenWidth to a unused value to ensure the pen width
     // will be initialized to a the right value in pdf file by the first item to plot
     m_currentPenWidth = 0;
+
+    // Each page content stream starts with a default graphics state
+    m_currentAlpha = 1.0;
 
     if( !m_3dExportMode )
     {
@@ -974,7 +1002,8 @@ void PDF_PLOTTER::ClosePage()
     auto iuToPdfUserSpace =
             [&]( const VECTOR2I& aCoord ) -> VECTOR2D
             {
-                VECTOR2D pos = VECTOR2D( aCoord ) * PTsPERMIL / ( m_IUsPerDecimil * 10 );
+                VECTOR2D pos = ( aCoord - m_plotOffset ) * m_plotScale;
+                pos *= PTsPERMIL / ( m_IUsPerDecimil * 10 );
 
                 // PDF y=0 is at bottom of page, invert coordinate
                 VECTOR2D retval( pos.x, psPaperSize.y - pos.y );
@@ -1075,11 +1104,13 @@ void PDF_PLOTTER::ClosePage()
                 "/Resources <<\n"
                 "    /ProcSet [/PDF /Text /ImageC /ImageB]\n"
                 "    /Font {} 0 R\n"
-                "    /XObject {} 0 R >>\n"
+                "    /XObject {} 0 R\n"
+                "    /ExtGState {} 0 R >>\n"
                 "/MediaBox [0 0 {} {}]\n",
                 m_pageTreeHandle,
                 m_fontResDictHandle,
                 m_imgResDictHandle,
+                m_extGStateResDictHandle,
                 encodeDoubleForPlotter( psPaperSize.x ),
                 encodeDoubleForPlotter( psPaperSize.y ) );
 
@@ -1192,14 +1223,18 @@ bool PDF_PLOTTER::StartPlot( const wxString& aPageNumber, const wxString& aPageN
     KI_ASSERT( m_outputFile );
 
     // First things first: the customary null object
-    m_xrefTable.clear();
-    m_xrefTable.push_back( 0 );
+    m_pageHandles.clear();
+    m_xrefTable.Reset();
+    m_pageNumbers.clear();
     m_hyperlinksInPage.clear();
     m_hyperlinkMenusInPage.clear();
     m_hyperlinkHandles.clear();
     m_hyperlinkMenuHandles.clear();
     m_bookmarksInPage.clear();
+    m_imageHandles.clear();
+    m_alphaToExtGStateHandles.clear();
     m_totalOutlineNodes = 0;
+    m_usedBase14Fonts = false;
 
     m_outlineRoot = std::make_unique<OUTLINE_NODE>();
 
@@ -1226,6 +1261,8 @@ bool PDF_PLOTTER::StartPlot( const wxString& aPageNumber, const wxString& aPageN
     m_fontResDictHandle = allocPdfObject();
 
     m_imgResDictHandle = allocPdfObject();
+
+    m_extGStateResDictHandle = allocPdfObject();
 
     m_jsNamesHandle = allocPdfObject();
 
@@ -1545,8 +1582,44 @@ void PDF_PLOTTER::endPlotEmitResources()
     emitOutlineFonts();
     emitStrokeFonts();
 
+    // The non-embeddable font fallback writes Tf against these names, so they must be declared
+    // or the invisible searchable layer is an undefined resource
+    struct
+    {
+        const char* psname;
+        const char* rsname;
+        int         handle;
+    } base14[4] = {
+        { "/Helvetica",             "/KicadFont",   0 },
+        { "/Helvetica-Oblique",     "/KicadFontI",  0 },
+        { "/Helvetica-Bold",        "/KicadFontB",  0 },
+        { "/Helvetica-BoldOblique", "/KicadFontBI", 0 }
+    };
+
+    if( m_usedBase14Fonts )
+    {
+        for( auto& font : base14 )
+        {
+            font.handle = startPdfObject();
+            fmt::println( m_outputFile,
+                          "<< /BaseFont {}\n"
+                          "   /Type /Font\n"
+                          "   /Subtype /Type1\n"
+                          "   /Encoding /WinAnsiEncoding\n"
+                          ">>",
+                          font.psname );
+            closePdfObject();
+        }
+    }
+
     startPdfObject( m_fontResDictHandle );
     fmt::println( m_outputFile, "<<" );
+
+    if( m_usedBase14Fonts )
+    {
+        for( const auto& font : base14 )
+            fmt::println( m_outputFile, "    {} {} 0 R", font.rsname, font.handle );
+    }
 
     if( m_outlineFontManager )
     {
@@ -1580,6 +1653,31 @@ void PDF_PLOTTER::endPlotEmitResources()
 
     fmt::println( m_outputFile, ">>" );
     closePdfObject();
+
+    // Graphics state objects.
+    // For now, we have only alpha-setting graphics state objects.
+    // If we we had other types of graphics state objects, we would handle them here as well.
+    // We re-use the handle as the resource name: handle 42 -> '/GS42'
+    {
+        // First, write out all the external graphics state objects one at a time
+        for( const auto& [alpha, handle] : m_alphaToExtGStateHandles )
+        {
+            startPdfObject( handle );
+            fmt::println( m_outputFile, "<< /Type /ExtGState /ca {} /CA {} >>", encodeDoubleForPlotter( alpha ),
+                          encodeDoubleForPlotter( alpha ) );
+            closePdfObject();
+        }
+
+        // Now write out the external graphics state resource dictionary
+        startPdfObject( m_extGStateResDictHandle );
+        fmt::println( m_outputFile, "<<" );
+
+        for( const auto& [alpha, handle] : m_alphaToExtGStateHandles )
+            fmt::println( m_outputFile, "    /GS{} {} 0 R", handle, handle );
+
+        fmt::println( m_outputFile, ">>" );
+        closePdfObject();
+    }
 
     // Emit images with optional SMask for transparency
     for( const auto& [imgHandle, image] : m_imageHandles )
@@ -1822,7 +1920,8 @@ void PDF_PLOTTER::endPlotEmitResources()
 
                     if( converted )
                     {
-                        js += wxString::Format( wxT( "[\"%s\", \"%s\"],\n" ), EscapeString( property, CTX_JS_STR ),
+                        js += wxString::Format( wxT( "[\"%s\", \"%s\"],\n" ),
+                                                EscapeString( property, CTX_JS_STR ),
                                                 EscapeString( href, CTX_JS_STR ) );
                     }
                     else
@@ -1856,8 +1955,9 @@ void PDF_PLOTTER::endPlotEmitResources()
                     href = ResolveUriByEnvVars( href, m_project );
 
                 // Convert bare file paths to file:// URIs (legacy support)
-                if( !href.StartsWith( wxS( "http:" ) ) && !href.StartsWith( wxS( "https:" ) )
-                    && !href.StartsWith( wxS( "file:" ) ) )
+                if( !href.StartsWith( wxS( "http:" ) )
+                        && !href.StartsWith( wxS( "https:" ) )
+                        && !href.StartsWith( wxS( "file:" ) ) )
                 {
                     if( href.StartsWith( wxS( "/" ) ) || href.StartsWith( wxS( "${" ) ) )
                     {
@@ -1878,12 +1978,14 @@ void PDF_PLOTTER::endPlotEmitResources()
                 if( href.StartsWith( wxS( "file:" ) ) )
                     href = NormalizeFileUri( href );
 
-                if( href.StartsWith( wxS( "http:" ) ) || href.StartsWith( wxS( "https:" ) )
-                    || href.StartsWith( wxS( "file:" ) ) )
+                if( href.StartsWith( wxS( "http:" ) )
+                        || href.StartsWith( wxS( "https:" ) )
+                        || href.StartsWith( wxS( "file:" ) ) )
                 {
                     wxString menuText = wxString::Format( _( "Open %s" ), href );
 
-                    js += wxString::Format( wxT( "[\"%s\", \"%s\"],\n" ), EscapeString( menuText, CTX_JS_STR ),
+                    js += wxString::Format( wxT( "[\"%s\", \"%s\"],\n" ),
+                                            EscapeString( menuText, CTX_JS_STR ),
                                             EscapeString( href, CTX_JS_STR ) );
                 }
             }
@@ -2070,14 +2172,16 @@ bool PDF_PLOTTER::EndPlot()
        be 20 bytes long, and object zero must be done in that way). Also
        the offset must be kept along for the trailer */
     long xref_start = ftell( m_outputFile );
+    const std::vector<long>& xrefEntries = m_xrefTable.Entries();
+
     fmt::print( m_outputFile,
                 "xref\n"
                 "0 {}\n"
                 "0000000000 65535 f \n",
-                m_xrefTable.size() );
+                xrefEntries.size() );
 
-    for( unsigned i = 1; i < m_xrefTable.size(); i++ )
-        fmt::print( m_outputFile, "{:010d} 00000 n \n", m_xrefTable[i] );
+    for( unsigned i = 1; i < xrefEntries.size(); i++ )
+        fmt::print( m_outputFile, "{:010d} 00000 n \n", xrefEntries[i] );
 
     // Done the xref, go for the trailer
     fmt::print( m_outputFile,
@@ -2086,7 +2190,7 @@ bool PDF_PLOTTER::EndPlot()
                 "startxref\n"
                 "{}\n" // The offset we saved before
                 "%%EOF\n",
-                m_xrefTable.size(),
+                xrefEntries.size(),
                 catalogHandle,
                 infoDictHandle,
                 xref_start );
@@ -2098,20 +2202,10 @@ bool PDF_PLOTTER::EndPlot()
 }
 
 
-void PDF_PLOTTER::Text( const VECTOR2I&        aPos,
-                        const COLOR4D&         aColor,
-                        const wxString&        aText,
-                        const EDA_ANGLE&       aOrient,
-                        const VECTOR2I&        aSize,
-                        enum GR_TEXT_H_ALIGN_T aH_justify,
-                        enum GR_TEXT_V_ALIGN_T aV_justify,
-                        int                    aWidth,
-                        bool                   aItalic,
-                        bool                   aBold,
-                        bool                   aMultilineAllowed,
-                        KIFONT::FONT*          aFont,
-                        const KIFONT::METRICS& aFontMetrics,
-                        void*                  aData )
+void PDF_PLOTTER::Text( const VECTOR2I& aPos, const COLOR4D& aColor, const wxString& aText, const EDA_ANGLE& aOrient,
+                        const VECTOR2I& aSize, enum GR_TEXT_H_ALIGN_T aH_justify, enum GR_TEXT_V_ALIGN_T aV_justify,
+                        int aWidth, bool aItalic, bool aBold, bool aMultilineAllowed, KIFONT::FONT* aFont,
+                        const KIFONT::METRICS& aFontMetrics, void* aData )
 {
     // PDF files do not like 0 sized texts which create broken files.
     if( aSize.x == 0 || aSize.y == 0 )
@@ -2127,10 +2221,6 @@ void PDF_PLOTTER::Text( const VECTOR2I&        aPos,
 
     if( !aFont )
         aFont = KIFONT::FONT::GetFont( m_renderSettings->GetDefaultFont() );
-
-
-
-
 
     if( aFont->IsOutline() )
     {
@@ -2150,6 +2240,8 @@ void PDF_PLOTTER::Text( const VECTOR2I&        aPos,
             const char *fontname = aItalic ? ( aBold ? "/KicadFontBI" : "/KicadFontI" )
                                            : ( aBold ? "/KicadFontB"  : "/KicadFont"  );
 
+            m_usedBase14Fonts = true;
+
             // Compute the copious transformation parameters of the Current Transform Matrix
             double ctm_a, ctm_b, ctm_c, ctm_d, ctm_e, ctm_f;
             double wideningFactor, heightFactor;
@@ -2157,16 +2249,16 @@ void PDF_PLOTTER::Text( const VECTOR2I&        aPos,
             VECTOR2I t_size( std::abs( aSize.x ), std::abs( aSize.y ) );
             bool     textMirrored = aSize.x < 0;
 
-            computeTextParameters( aPos, aText, aOrient, t_size, textMirrored, aH_justify, aV_justify, aWidth,
+            computeTextParameters( aPos, text, aOrient, t_size, textMirrored, aH_justify, aV_justify, aWidth,
                                    aItalic, aBold, &wideningFactor, &ctm_a, &ctm_b, &ctm_c, &ctm_d, &ctm_e, &ctm_f,
                                    &heightFactor );
 
             SetColor( aColor );
             SetCurrentLineWidth( aWidth, aData );
 
-            wxStringTokenizer str_tok( aText, " ", wxTOKEN_RET_DELIMS );
+            wxStringTokenizer str_tok( text, " ", wxTOKEN_RET_DELIMS );
 
-            VECTOR2I full_box( aFont->StringBoundaryLimits( aText, t_size, aWidth, aBold, aItalic, aFontMetrics ) );
+            VECTOR2I full_box( aFont->StringBoundaryLimits( text, t_size, aWidth, aBold, aItalic, aFontMetrics ) );
 
             if( textMirrored )
                 full_box.x *= -1;
@@ -2226,9 +2318,9 @@ void PDF_PLOTTER::Text( const VECTOR2I&        aPos,
                 fmt::println( m_workFile, "Q" );
             }
 
-            // Plot the stroked text (if requested)
-            PLOTTER::Text( aPos, aColor, aText, aOrient, aSize, aH_justify, aV_justify, aWidth, aItalic,
-                           aBold, aMultilineAllowed, aFont, aFontMetrics );
+            // Plot the text
+            PLOTTER::Text( aPos, aColor, text, aOrient, aSize, aH_justify, aV_justify, aWidth, aItalic,
+                           aBold, aMultilineAllowed, aFont, aFontMetrics, aData );
 
             return;
         }
@@ -2249,58 +2341,61 @@ void PDF_PLOTTER::Text( const VECTOR2I&        aPos,
     if( !aFont )
         aFont = KIFONT::FONT::GetFont( m_renderSettings->GetDefaultFont() );
 
-    auto computeAlignedStartPos = [&]()
-    {
-        VECTOR2I startPos( aPos );
+    auto computeAlignedStartPos =
+            [&]()
+            {
+                VECTOR2I startPos( aPos );
 
-        if( aFont->IsStroke() )
-        {
-            TEXT_ATTRIBUTES alignAttrs;
-            alignAttrs.m_Size = t_size;
-            alignAttrs.m_StrokeWidth = aWidth;
-            alignAttrs.m_Halign = aH_justify;
-            alignAttrs.m_Valign = aV_justify;
-            alignAttrs.m_Bold = aBold;
-            alignAttrs.m_Italic = aItalic;
+                if( aFont->IsStroke() )
+                {
+                    TEXT_ATTRIBUTES alignAttrs;
+                    alignAttrs.m_Size = t_size;
+                    alignAttrs.m_StrokeWidth = aWidth;
+                    alignAttrs.m_Halign = aH_justify;
+                    alignAttrs.m_Valign = aV_justify;
+                    alignAttrs.m_Bold = aBold;
+                    alignAttrs.m_Italic = aItalic;
 
-            // getLinePositions returns anchor + offset; use (0,0) to get the offset alone.
-            VECTOR2I drawOffset = aFont->GetAlignedDrawPosition( text, VECTOR2I( 0, 0 ), alignAttrs, aFontMetrics );
+                    // getLinePositions returns anchor + offset; use (0,0) to get the offset alone.
+                    VECTOR2I drawOffset = aFont->GetAlignedDrawPosition( text, VECTOR2I( 0, 0 ), alignAttrs,
+                                                                         aFontMetrics );
 
-            // GAL mirrors about the text anchor (GetDrawPos), after placing the unmirrored
-            // cursor.  Negating the X offset before rotation makes the Type3 Tz=-100 origin
-            // land on the mirrored start so ink sits on the correct side of the anchor.
-            if( textMirrored )
-                drawOffset.x = -drawOffset.x;
+                    // GAL mirrors about the text anchor (GetDrawPos), after placing the unmirrored
+                    // cursor.  Negating the X offset before rotation makes the Type3 Tz=-100 origin
+                    // land on the mirrored start so ink sits on the correct side of the anchor.
+                    if( textMirrored )
+                        drawOffset.x = -drawOffset.x;
 
-            RotatePoint( drawOffset, aOrient );
-            startPos = aPos + drawOffset;
-        }
-        else
-        {
-            VECTOR2I full_box( aFont->StringBoundaryLimits( text, t_size, aWidth, aBold, aItalic, aFontMetrics ) );
+                    RotatePoint( drawOffset, aOrient );
+                    startPos = aPos + drawOffset;
+                }
+                else
+                {
+                    VECTOR2I full_box( aFont->StringBoundaryLimits( text, t_size, aWidth, aBold, aItalic,
+                                                                    aFontMetrics ) );
 
-            if( textMirrored )
-                full_box.x *= -1;
+                    if( textMirrored )
+                        full_box.x *= -1;
 
-            VECTOR2I box_x( full_box.x, 0 );
-            VECTOR2I box_y( 0, full_box.y );
+                    VECTOR2I box_x( full_box.x, 0 );
+                    VECTOR2I box_y( 0, full_box.y );
 
-            RotatePoint( box_x, aOrient );
-            RotatePoint( box_y, aOrient );
+                    RotatePoint( box_x, aOrient );
+                    RotatePoint( box_y, aOrient );
 
-            if( aH_justify == GR_TEXT_H_ALIGN_CENTER )
-                startPos -= box_x / 2;
-            else if( aH_justify == GR_TEXT_H_ALIGN_RIGHT )
-                startPos -= box_x;
+                    if( aH_justify == GR_TEXT_H_ALIGN_CENTER )
+                        startPos -= box_x / 2;
+                    else if( aH_justify == GR_TEXT_H_ALIGN_RIGHT )
+                        startPos -= box_x;
 
-            if( aV_justify == GR_TEXT_V_ALIGN_CENTER )
-                startPos += box_y / 2;
-            else if( aV_justify == GR_TEXT_V_ALIGN_TOP )
-                startPos += box_y;
-        }
+                    if( aV_justify == GR_TEXT_V_ALIGN_CENTER )
+                        startPos += box_y / 2;
+                    else if( aV_justify == GR_TEXT_V_ALIGN_TOP )
+                        startPos += box_y;
+                }
 
-        return startPos;
-    };
+                return startPos;
+            };
 
     // Parse the text for markup
     // IMPORTANT: Use explicit UTF-8 encoding. wxString::ToStdString() is locale-dependent
@@ -2377,11 +2472,12 @@ VECTOR2I PDF_PLOTTER::renderWord( const wxString& aWord, const VECTOR2I& aPositi
     if( aItalic )
         metricsStyle |= TEXT_STYLE::ITALIC;
 
-    auto cursorAdvanceX = [&]( const wxString& aText )
-    {
-        return aFont->GetTextAsGlyphs( nullptr, nullptr, aText, aSize, VECTOR2I(), ANGLE_0,
-                                       false, VECTOR2I(), metricsStyle ).x;
-    };
+    auto cursorAdvanceX =
+            [&]( const wxString& aText )
+            {
+                return aFont->GetTextAsGlyphs( nullptr, nullptr, aText, aSize, VECTOR2I(), ANGLE_0,
+                                               false, VECTOR2I(), metricsStyle ).x;
+            };
 
     // If the word is just a space character, advance position by space width and continue
     if( aWord == wxT( " " ) )
@@ -2399,31 +2495,32 @@ VECTOR2I PDF_PLOTTER::renderWord( const wxString& aWord, const VECTOR2I& aPositi
     // Tabs are layout only.  Plot visible runs at font layout positions.
     if( aWord.Contains( wxT( '\t' ) ) )
     {
-        auto positionedAdvance = [&]( const wxString& aText )
-        {
-            VECTOR2I advance( cursorAdvanceX( aText ), 0 );
+        auto positionedAdvance =
+                [&]( const wxString& aText )
+                {
+                    VECTOR2I advance( cursorAdvanceX( aText ), 0 );
 
-            if( aTextMirrored )
-                advance.x *= -1;
+                    if( aTextMirrored )
+                        advance.x *= -1;
 
-            RotatePoint( advance, aOrient );
-            return advance;
-        };
+                    RotatePoint( advance, aOrient );
+                    return advance;
+                };
 
         wxString prefix;
         wxString segment;
 
-        auto flushSegment = [&]()
-        {
-            if( !segment.IsEmpty() )
-            {
-                renderWord( segment, aPosition + positionedAdvance( prefix ), aSize, aOrient,
-                            aTextMirrored, aWidth, aBold, aItalic, aFont, aFontMetrics,
-                            aV_justify, aTextStyle );
-                prefix += segment;
-                segment.clear();
-            }
-        };
+        auto flushSegment =
+                [&]()
+                {
+                    if( !segment.IsEmpty() )
+                    {
+                        renderWord( segment, aPosition + positionedAdvance( prefix ), aSize, aOrient, aTextMirrored,
+                                    aWidth, aBold, aItalic, aFont, aFontMetrics, aV_justify, aTextStyle );
+                        prefix += segment;
+                        segment.clear();
+                    }
+                };
 
         for( wxUniChar c : aWord )
         {
@@ -2568,8 +2665,8 @@ VECTOR2I PDF_PLOTTER::renderWord( const wxString& aWord, const VECTOR2I& aPositi
             }
 
             // Trace after we know style flags
-            KI_LOG_TRACE( tracePdfPlotter,
-                        "Outline path word='%s' runs=%zu wantItalic=%d fontIsItalic=%d fontIsFakeItalic=%d wantBold=%d fontIsBold=%d fontIsFakeBold=%d forceSyn=%d",
+            KI_LOG_TRACE( tracePdfPlotter, "Outline path word='%s' runs=%zu wantItalic=%d fontIsItalic=%d "
+                                         "fontIsFakeItalic=%d wantBold=%d fontIsBold=%d fontIsFakeBold=%d forceSyn=%d",
                         TO_UTF8( aWord ), outlineRuns.size(), (int) wantItalic, (int) fontIsItalic,
                         (int) fontIsFakeItalic, (int) wantBold, (int) fontIsBold, (int) fontIsFakeBold,
                         (int) forceSynItalic );
@@ -2627,7 +2724,8 @@ VECTOR2I PDF_PLOTTER::renderWord( const wxString& aWord, const VECTOR2I& aPositi
             for( const PDF_OUTLINE_FONT_RUN& run : outlineRuns )
             {
                 fmt::print( m_workFile, "{} {} Tf <",
-                            run.m_subset->ResourceName(), encodeDoubleForPlotter( heightFactor ) );
+                            run.m_subset->ResourceName(),
+                            encodeDoubleForPlotter( heightFactor ) );
 
                 for( const PDF_OUTLINE_FONT_GLYPH& glyph : run.m_glyphs )
                 {
@@ -2650,7 +2748,8 @@ VECTOR2I PDF_PLOTTER::renderWord( const wxString& aWord, const VECTOR2I& aPositi
             return nextPos;
 
         KI_LOG_TRACE( tracePdfPlotter, "Stroke path word='%s' wantItalic=%d aItalic=%d aBold=%d",
-                    TO_UTF8( aWord ), (int) ( aItalic || ( aTextStyle & TEXT_STYLE::ITALIC ) ), (int) aItalic, (int) aBold );
+                    TO_UTF8( aWord ), (int) ( aItalic || ( aTextStyle & TEXT_STYLE::ITALIC ) ),
+                    (int) aItalic, (int) aBold );
 
         std::vector<PDF_STROKE_FONT_RUN> runs;
         m_strokeFontManager->EncodeString( aWord, &runs, aWidth, aSize.x, aSize.y, aBold, aItalic );
@@ -2814,12 +2913,9 @@ void PDF_PLOTTER::drawOverbars( const std::vector<OVERBAR_INFO>& aOverbars, cons
         // Base vertical offset distance in device units (baseline -> default overbar position)
         double barOffset = aFontMetrics.GetOverbarVerticalPosition( overbar.fontSize.y );
 
-        // Adjust further to match screen drawing.  This is somewhat disturbing, but I can't figure
-        // out why it's needed.
+        // Adjust further for outline fonts
         if( overbar.isOutline )
-            barOffset += overbar.fontSize.y * 0.16;
-        else
-            barOffset += overbar.fontSize.y * 0.32;
+            barOffset += overbar.fontSize.y * 0.25; // extra raise for outline font
 
         // Mirror the text vertical alignment adjustments used for baseline shifting.
         // Earlier logic scales baseline adjustment: CENTER ~2x, TOP ~4x. We apply proportional
@@ -2883,7 +2979,7 @@ void PDF_PLOTTER::PlotText( const VECTOR2I&        aPos,
     if( aAttributes.m_Mirrored )
         size.x = -size.x;
 
-    PDF_PLOTTER::Text( aPos, aColor, aText, aAttributes.m_Angle, size, aAttributes.m_Halign, aAttributes.m_Valign,
+    PDF_PLOTTER::Text( aPos, aColor, aText, aAttributes.m_Angle.GetAngle(), size, aAttributes.m_Halign, aAttributes.m_Valign,
                        aAttributes.m_StrokeWidth, aAttributes.m_Italic, aAttributes.m_Bold, aAttributes.m_Multiline,
                        aFont, aFontMetrics, aData );
 }
@@ -2942,11 +3038,13 @@ void PDF_PLOTTER::Plot3DModel( const wxString& aSourcePath, const std::vector<PD
         int viewHandle = allocPdfObject();
         startPdfObject( viewHandle );
 
+        const std::string encodedName = encodeStringForPlotter( wxString::FromUTF8( view.m_name ) );
+
         fmt::print( m_outputFile,
                     "<<\n"
                     "/Type /3DView\n"
-                    "/XN ({})\n"
-                    "/IN ({})\n"
+                    "/XN {}\n"
+                    "/IN {}\n"
                     "/MS /M\n"
                     "/C2W [{:f} {:f} {:f} {:f} {:f} {:f} {:f} {:f} {:f} {:f} {:f} {:f}]\n"
                     "/CO {:f}\n"
@@ -2961,7 +3059,8 @@ void PDF_PLOTTER::Plot3DModel( const wxString& aSourcePath, const std::vector<PD
                     "/Type /3DLightingScheme\n"
                     "/Subtype /CAD>>\n"
                     ">>\n",
-                    view.m_name, view.m_name, view.m_cameraMatrix[0],
+                    encodedName, encodedName,
+                    view.m_cameraMatrix[0],
                     view.m_cameraMatrix[1],
                     view.m_cameraMatrix[2], view.m_cameraMatrix[3], view.m_cameraMatrix[4],
                     view.m_cameraMatrix[5], view.m_cameraMatrix[6], view.m_cameraMatrix[7],
@@ -3066,9 +3165,7 @@ std::vector<float> PDF_PLOTTER::CreateC2WMatrixFromAngles( const VECTOR3D& aTarg
     for( int col = 0; col < 3; ++col )
     {
         for( int row = 0; row < 3; ++row )
-        {
             result[index++] = static_cast<float>( rotationMatrix[col][row] );
-        }
     }
 
     // Handle translation part (last 3 elements)

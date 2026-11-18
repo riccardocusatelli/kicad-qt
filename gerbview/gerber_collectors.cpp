@@ -13,20 +13,13 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "gerber_collectors.h"
 
 
-/**
- * The examining function within the INSPECTOR which is passed to the iterate function.
- *
- * @param testItem is an EDA_ITEM to examine.
- * @param testData is not used here.
- * @return SEARCH_QUIT if the iterator is to stop the scan, else SCAN_CONTINUE.
- */
 INSPECT_RESULT GERBER_COLLECTOR::Inspect( EDA_ITEM* testItem, void* testData )
 {
     if( testItem->HitTest( m_refPos ) )

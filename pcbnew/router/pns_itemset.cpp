@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "pns_itemset.h"
@@ -142,6 +142,21 @@ ITEM* ITEM_SET::FindVertex( const VECTOR2I& aV ) const
         if( auto seg = dyn_cast<SEGMENT*>( item ) )
         {
             if( seg->Seg().A == aV || seg->Seg().B == aV )
+                return seg;
+        }
+    }
+
+    return nullptr;
+}
+
+ITEM* ITEM_SET::FindSegment( const SEG& aSeg ) const
+{
+    for( ITEM* item : m_items )
+    {
+        // fixme: biconnected concept
+        if( auto seg = dyn_cast<SEGMENT*>( item ) )
+        {
+            if( seg->Seg() == aSeg )
                 return seg;
         }
     }

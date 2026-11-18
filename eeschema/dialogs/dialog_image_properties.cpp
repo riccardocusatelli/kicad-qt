@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <dialogs/dialog_image_properties.h>
@@ -34,7 +30,8 @@ DIALOG_IMAGE_PROPERTIES::DIALOG_IMAGE_PROPERTIES( SCH_EDIT_FRAME* aParent, SCH_B
         m_frame( aParent ),
         m_bitmap( aBitmap ),
         m_posX( aParent, m_XPosLabel, m_ModPositionX, m_XPosUnit ),
-        m_posY( aParent, m_YPosLabel, m_ModPositionY, m_YPosUnit )
+        m_posY( aParent, m_YPosLabel, m_ModPositionY, m_YPosUnit ),
+        m_rotation( aParent, m_RotationLabel, m_ModRotation, m_RotationUnit )
 {
     // Create the image editor page
     const REFERENCE_IMAGE& refImage = aBitmap.GetReferenceImage();
@@ -44,6 +41,7 @@ DIALOG_IMAGE_PROPERTIES::DIALOG_IMAGE_PROPERTIES( SCH_EDIT_FRAME* aParent, SCH_B
 
     m_posX.SetCoordType( ORIGIN_TRANSFORMS::ABS_X_COORD );
     m_posY.SetCoordType( ORIGIN_TRANSFORMS::ABS_Y_COORD );
+    m_rotation.SetUnits( EDA_UNITS::DEGREES );
 
     SetupStandardButtons();
 
@@ -55,6 +53,11 @@ bool DIALOG_IMAGE_PROPERTIES::TransferDataToWindow()
 {
     m_posX.SetValue( m_bitmap.GetPosition().x );
     m_posY.SetValue( m_bitmap.GetPosition().y );
+    m_rotation.SetAngleValue( m_bitmap.GetReferenceImage().GetOrientation() );
+
+    // A UNIT_BINDER only reads wxTextEntry and wxStaticText controls, so a spin control would
+    // silently report 0.
+    m_ModOpacity->SetValue( m_bitmap.GetReferenceImage().GetOpacity() );
 
     return m_imageEditor->TransferDataToWindow();
 }
@@ -76,6 +79,8 @@ bool DIALOG_IMAGE_PROPERTIES::TransferDataFromWindow()
         m_imageEditor->TransferToImage( refImage.MutableImage() );
 
         m_bitmap.SetPosition( VECTOR2I( m_posX.GetIntValue(), m_posY.GetIntValue() ) );
+        refImage.SetOrientation( m_rotation.GetAngleValue() );
+        refImage.SetOpacity( m_ModOpacity->GetValue() );
 
         if( !commit.Empty() )
             commit.Push( _( "Image Properties" ) );

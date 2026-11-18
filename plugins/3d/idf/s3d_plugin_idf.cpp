@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 // Note: the board's bottom side is at Z = 0
@@ -33,8 +29,8 @@
 
 #include "plugins/3d/3d_plugin.h"
 #include "plugins/3dapi/ifsg_all.h"
-#include "idf_parser.h"
-#include "vrml_layer.h"
+#include <io/idf/idf_parser.h>
+#include <io/idf/vrml_layer.h>
 #include <core/ki_log.h>
 
 #define PLUGIN_3D_IDF_MAJOR 1
@@ -606,7 +602,7 @@ static SCENEGRAPH* addOutline( IDF3_COMP_OUTLINE* outline, int idxColor, SGNODE*
 static SCENEGRAPH* loadIDFOutline( const wxString& aFileName )
 {
     LOCALESWITCH switcher;
-    IDF3_BOARD brd( IDF3::CAD_ELEC );
+    IDF3_BOARD brd( IDF3::CAD_TYPE::CAD_ELEC );
     IDF3_COMP_OUTLINE* outline = nullptr;
 
     outline = brd.GetComponentOutline( aFileName );
@@ -633,7 +629,7 @@ static SCENEGRAPH* loadIDFOutline( const wxString& aFileName )
 static SCENEGRAPH* loadIDFBoard( const wxString& aFileName )
 {
     LOCALESWITCH switcher;
-    IDF3_BOARD brd( IDF3::CAD_ELEC );
+    IDF3_BOARD brd( IDF3::CAD_TYPE::CAD_ELEC );
 
     // note: if the IDF model is defective no outline substitutes shall be made
     if( !brd.ReadFile( aFileName, true ) )
@@ -766,7 +762,7 @@ static bool makeComponents( IDF3_BOARD& brd, SGNODE* aParent )
     {
         sc->second->GetPosition( vX, vY, vA, lyr );
 
-        if( lyr == IDF3::LYR_BOTTOM )
+        if( lyr == IDF3::IDF_LAYER::LYR_BOTTOM )
             bottom = true;
         else
             bottom = false;
@@ -776,24 +772,24 @@ static bool makeComponents( IDF3_BOARD& brd, SGNODE* aParent )
 
         while( so != eo )
         {
-            if( std::abs( (*so)->GetOutline()->GetThickness() ) < 0.001 )
+            pout = static_cast<IDF3_COMP_OUTLINE*>( ( *so )->GetOutline() );
+
+            if( !pout )
             {
                 ++so;
                 continue;
             }
 
-            (*so)->GetOffsets( tX, tY, tZ, tA );
+            if( std::abs( pout->GetThickness() ) < 0.001 )
+            {
+                ++so;
+                continue;
+            }
+
+            ( *so )->GetOffsets( tX, tY, tZ, tA );
             tX += vX;
             tY += vY;
             tA += vA;
-
-            pout = (IDF3_COMP_OUTLINE*)((*so)->GetOutline());
-
-            if( nullptr == pout  )
-            {
-                ++so;
-                continue;
-            }
 
             dataItem = dataMap.find( pout->GetUID() );
             SCENEGRAPH* sg = nullptr;
@@ -901,7 +897,7 @@ static bool makeOtherOutlines( IDF3_BOARD& brd, SGNODE* aParent )
         while( nvcont > 0 )
             vpcb.EnsureWinding( nvcont--, true );
 
-        if( pout->GetSide() == IDF3::LYR_BOTTOM )
+        if( pout->GetSide() == IDF3::IDF_LAYER::LYR_BOTTOM )
         {
             top = 0.0;
             bot = -pout->GetThickness();

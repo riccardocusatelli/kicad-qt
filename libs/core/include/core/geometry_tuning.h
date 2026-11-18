@@ -35,6 +35,8 @@ struct GEOMETRY_TUNING
     int  triangulateSimplificationLevel = 50;
     int  triangulateMinimumArea = 1000;
     bool enableCacheFriendlyFracture = true;
+    bool triangulateDelaunayRefine = true;
+    bool enableFractureEdgeIndex = true;
 };
 
 using GEOMETRY_TUNING_PROVIDER = const GEOMETRY_TUNING& ( * )();

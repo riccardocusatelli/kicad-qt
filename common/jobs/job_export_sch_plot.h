@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef JOB_EXPORT_SCH_PLOT_H
@@ -40,7 +40,8 @@ enum class SCH_PLOT_FORMAT
     POST,
     DXF,
     PDF,
-    SVG
+    SVG,
+    PNG
 };
 
 
@@ -58,6 +59,9 @@ public:
     bool                  m_plotAll;
     bool                  m_plotDrawingSheet;
     std::vector<wxString> m_plotPages;
+
+    // KIID path of the sheet to plot in single-sheet mode; empty means the current sheet
+    wxString              m_sheetPath;
 
     bool                  m_show_hop_over;
     bool                  m_blackAndWhite;
@@ -86,7 +90,7 @@ public:
 class KICOMMON_API JOB_EXPORT_SCH_PLOT_DXF : public JOB_EXPORT_SCH_PLOT
 {
 public:
-    JOB_EXPORT_SCH_PLOT_DXF();
+    JOB_EXPORT_SCH_PLOT_DXF( bool aOutputIsDirectory = true );
     wxString GetDefaultDescription() const override;
     wxString GetSettingsDialogTitle() const override;
 };
@@ -95,7 +99,7 @@ public:
 class KICOMMON_API JOB_EXPORT_SCH_PLOT_SVG : public JOB_EXPORT_SCH_PLOT
 {
 public:
-    JOB_EXPORT_SCH_PLOT_SVG();
+    JOB_EXPORT_SCH_PLOT_SVG( bool aOutputIsDirectory = true );
     wxString GetDefaultDescription() const override;
     wxString GetSettingsDialogTitle() const override;
 };
@@ -104,7 +108,7 @@ public:
 class KICOMMON_API JOB_EXPORT_SCH_PLOT_PS : public JOB_EXPORT_SCH_PLOT
 {
 public:
-    JOB_EXPORT_SCH_PLOT_PS();
+    JOB_EXPORT_SCH_PLOT_PS( bool aOutputIsDirectory = true );
     wxString GetDefaultDescription() const override;
     wxString GetSettingsDialogTitle() const override;
 };
@@ -115,6 +119,18 @@ class KICOMMON_API JOB_EXPORT_SCH_PLOT_HPGL : public JOB_EXPORT_SCH_PLOT
 public:
     JOB_EXPORT_SCH_PLOT_HPGL();
     wxString GetDefaultDescription() const override;
+};
+
+
+class KICOMMON_API JOB_EXPORT_SCH_PLOT_PNG : public JOB_EXPORT_SCH_PLOT
+{
+public:
+    JOB_EXPORT_SCH_PLOT_PNG( bool aOutputIsDirectory = true );
+    wxString GetDefaultDescription() const override;
+    wxString GetSettingsDialogTitle() const override;
+
+    int  m_dpi;
+    bool m_antialias;
 };
 
 #endif

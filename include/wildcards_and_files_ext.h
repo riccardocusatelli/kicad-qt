@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -200,6 +196,8 @@ public:
     static const std::string PlyFileExtension;
     static const std::string StlFileExtension;
     static const std::string U3DFileExtension;
+    static const std::string IdfV3BoardFileExtension;
+    static const std::string IdfV3LibraryFileExtension;
 
     static const std::string GencadFileExtension;
 
@@ -252,10 +250,16 @@ public:
     static wxString CadstarArchiveFilesWildcard();
     static wxString AltiumProjectFilesWildcard();
     static wxString EagleFilesWildcard();
+    static wxString PcadFilesWildcard();
     static wxString PADSProjectFilesWildcard();
     static wxString GedaProjectFilesWildcard();
     static wxString EasyEdaArchiveWildcard();
     static wxString EasyEdaProFileWildcard();
+    static wxString DipTraceFilesWildcard();
+    static wxString EasyPcFilesWildcard();
+    static wxString Target3001FilesWildcard();
+    static wxString OrCadSchematicFilesWildcard();
+    static wxString AllegroPcbFilesWildcard();
     static wxString PdfFileWildcard();
     static wxString PSFileWildcard();
     static wxString MacrosFileWildcard();
@@ -276,6 +280,7 @@ public:
     static wxString ErcFileWildcard();
     static wxString SpiceLibraryFileWildcard();
     static wxString SpiceNetlistFileWildcard();
+    static wxString SpiceSubcircuitFileWildcard();
     static wxString CadstarNetlistFileWildcard();
     static wxString EquFileWildcard();
     static wxString ZipFileWildcard();

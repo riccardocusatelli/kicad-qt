@@ -15,15 +15,17 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef BITMAPS_PNG_BITMAPS_LIST__H
 #define BITMAPS_PNG_BITMAPS_LIST__H
+
+// GCC reports scoped enumerators such as git_push as shadowing libgit2's typedefs of the same name
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+#endif
 
 /**
  * A list of all bitmap identifiers.  These map to multiple actual images, i.e. light and dark icon
@@ -41,6 +43,11 @@ enum class BITMAPS : unsigned int
     about,
     add_aligned_dimension,
     add_arc,
+    add_arc_center,
+    add_arc_start_end_mid,
+    add_arc_start_end_center,
+    add_arc_tangent,
+    add_arc_start_dir_end,
     add_barcode,
     add_bezier,
     add_board,
@@ -53,8 +60,11 @@ enum class BITMAPS : unsigned int
     add_corner,
     add_dashed_line,
     add_document,
+    add_ellipse,
+    add_ellipse_arc,
     add_gerber,
     add_glabel,
+    add_grid_item,
     add_graphical_polygon,
     add_graphical_segments,
     add_hierar_pin,
@@ -78,6 +88,8 @@ enum class BITMAPS : unsigned int
     add_textbox,
     add_tracks,
     add_via,
+    add_via_stack,
+    add_via_stitch,
     add_zone,
     add_zone_cutout,
     align_elements_to_grid,
@@ -117,6 +129,7 @@ enum class BITMAPS : unsigned int
     bus_definition_tool,
     c_microstrip,
     cancel,
+    calculator,
     chamfer,
     change_entry_orient,
     change_glabel,
@@ -179,7 +192,6 @@ enum class BITMAPS : unsigned int
     e_192,
     edge_to_copper_clearance,
     edit,
-    edit_cmp_symb_links,
     edit_comp_footprint,
     edit_comp_ref,
     edit_comp_value,
@@ -241,6 +253,16 @@ enum class BITMAPS : unsigned int
     git_delete,
     git_good_check,
     git_out_of_date,
+    git_branches,
+    git_history,
+    git_remotes,
+    git_repository,
+    git_stashes,
+    git_tags,
+    git_fetch,
+    git_pull,
+    git_push,
+    git_changes,
     grid,
     grid_override,
     grid_select,
@@ -261,10 +283,6 @@ enum class BITMAPS : unsigned int
     hotkeys,
     hv45mode,
     icon_3d,
-    icon_bitmap2component,
-    icon_bitmap2component_16,
-    icon_bitmap2component_24,
-    icon_bitmap2component_32,
     icon_cvpcb,
     icon_cvpcb_24,
     icon_eeschema,
@@ -343,8 +361,8 @@ enum class BITMAPS : unsigned int
     library_table,
     lines_any,
     lines90,
+    link,
     list_nets,
-    list_nets_16,
     load_drill,
     load_gerber,
     load_module_board,
@@ -405,7 +423,6 @@ enum class BITMAPS : unsigned int
     options_3drender,
     options_board,
     options_generic,
-    options_generic_16,
     options_pad,
     options_schematic,
     ortho,
@@ -413,8 +430,13 @@ enum class BITMAPS : unsigned int
     pack_footprints,
     pad,
     pad_enumerate,
+    pad_npth,
     pad_number,
+    pad_paste_aperture,
     pad_sketch,
+    pad_smd,
+    pad_table,
+    pad_tht,
     pads_mask_layers,
     pads_npth,
     pads_npth_bottom,
@@ -695,6 +717,8 @@ enum class BITMAPS : unsigned int
 
     constraint_basic_clearance,
     constraint_board_outline_clearance,
+    constraint_hole_aspect_ratio,
+    constraint_microvia_stack_depth,
     constraint_minimum_clearance,
     constraint_creepage_distance,
     constraint_minimum_connection_width,
@@ -729,8 +753,34 @@ enum class BITMAPS : unsigned int
     constraint_absolute_length_2,
     constraint_permitted_layers,
     constraint_allowed_orientation,
-    constraint_vias_under_smd
+    constraint_vias_under_smd,
+
+    constraint_coincident,
+    constraint_horizontal,
+    constraint_vertical,
+    constraint_parallel,
+    constraint_perpendicular,
+    constraint_collinear,
+    constraint_symmetric,
+    constraint_equal_length,
+    constraint_equal_radius,
+    constraint_point_on_line,
+    constraint_midpoint,
+    constraint_fixed_position,
+    constraint_fixed_length,
+    constraint_concentric,
+    constraint_fixed_radius,
+    constraint_angular_dimension,
+    constraint_tangent,
+    constraint_arc_angle,
+    constraint_auto,
+
+    spread_tracks
 };
+
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
 
 inline bool operator!( const BITMAPS& aBitmap ) { return aBitmap == BITMAPS::INVALID_BITMAP; }

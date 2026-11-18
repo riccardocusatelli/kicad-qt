@@ -18,17 +18,13 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <config.h>     // Needed for MSW compilation
 #include <common.h>
 #include <locale_io.h>
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <paths.h>
 #include <richio.h>
 
@@ -79,7 +75,8 @@ NGSPICE::NGSPICE() :
         m_ngSpice_Running( nullptr ),
         m_ngSpice_LockRealloc( nullptr ),
         m_ngSpice_UnlockRealloc( nullptr ),
-        m_error( false )
+        m_error( false ),
+        m_lastStderrSeverity( RPT_SEVERITY_UNDEFINED )
 {
     init_dll();
 }
@@ -314,10 +311,19 @@ bool NGSPICE::Attach( const std::shared_ptr<SIMULATION_MODEL>& aModel, const wxS
 }
 
 
+void NGSPICE::resetStderrSeverity()
+{
+    std::lock_guard<std::mutex> lock( m_reporterMutex );
+    m_lastStderrSeverity = RPT_SEVERITY_UNDEFINED;
+}
+
+
 bool NGSPICE::LoadNetlist( const std::string& aNetlist )
 {
     LOCALE_IO         c_locale; // ngspice works correctly only with C locale
     std::stringstream ss( aNetlist );
+
+    resetStderrSeverity();
 
     // Own the deck as strings so a bad_alloc mid-build cannot leak or leave m_netlist
     // half-populated.  ngSpice_Circ only reads the array during the call, so plain string
@@ -355,6 +361,8 @@ bool NGSPICE::Run()
     // Install signal handlers to catch ngspice crashes in the background thread
     installSignalHandlers();
 
+    resetStderrSeverity();
+
     return Command( "bg_run" );     // bg_* commands execute in a separate thread
 }
 
@@ -385,7 +393,9 @@ bool NGSPICE::IsRunning()
         restoreSignalHandlers();
 
         // Report the crash to the user
-        if( m_reporter )
+        std::lock_guard<std::mutex> lock( m_reporterMutex );
+
+        if( REPORTER* reporter = m_reporter.load( std::memory_order_acquire ) )
         {
             wxString signalName;
 
@@ -398,7 +408,7 @@ bool NGSPICE::IsRunning()
             default:      signalName = wxString::Format( wxT( "signal %d" ), signal ); break;
             }
 
-            m_reporter->Report( wxString::Format(
+            reporter->Report( wxString::Format(
                     _( "Simulation crashed (%s). This is usually caused by a bug in ngspice "
                        "or an invalid netlist. The simulator will be reset." ),
                     signalName ) );
@@ -515,7 +525,7 @@ void NGSPICE::init_dll()
     std::vector<std::string> dllPaths = { "/usr/local/lib" };
 #endif
 
-    if( wxGetEnv( wxT( "KICAD_RUN_FROM_BUILD_DIR" ), nullptr ) )
+    if( PATHS::RunningFromBuildDir() )
         dllPaths.emplace_back( NGSPICE_DLL_DIR );
 
 #if defined(__WINDOWS__) || (__WXMAC__)
@@ -732,20 +742,62 @@ bool NGSPICE::loadCodemodels( const std::string& aPath )
 }
 
 
+/**
+ * Severity of an ngspice line for the console filter.  An unprefixed stderr line continues the previous
+ * warning, or is an error ("Timestep too small"); a stdout line ends the continuation.
+ */
+static SEVERITY classifySpiceLine( const wxString& aText, bool aStderr, SEVERITY& aLastStderr )
+{
+    wxString tag = aText;
+
+    tag.Trim( false );
+    tag.MakeUpper();
+
+    SEVERITY severity = RPT_SEVERITY_UNDEFINED;
+
+    if( tag.StartsWith( wxS( "WARNING" ) ) )
+        severity = RPT_SEVERITY_WARNING;
+    else if( tag.StartsWith( wxS( "ERROR" ) ) || tag.StartsWith( wxS( "FATAL" ) ) )
+        severity = RPT_SEVERITY_ERROR;
+    else if( !aStderr )
+        severity = RPT_SEVERITY_UNDEFINED;
+    else if( tag.StartsWith( wxS( "NOTE" ) ) || tag.StartsWith( wxS( "USING " ) ) )
+        severity = RPT_SEVERITY_INFO;
+    else if( aLastStderr == RPT_SEVERITY_WARNING )
+        severity = RPT_SEVERITY_WARNING;
+    else
+        severity = RPT_SEVERITY_ERROR;
+
+    aLastStderr = aStderr ? severity : RPT_SEVERITY_UNDEFINED;
+
+    return severity;
+}
+
+
 int NGSPICE::cbSendChar( char* aWhat, int aId, void* aUser )
 {
     NGSPICE* sim = reinterpret_cast<NGSPICE*>( aUser );
 
-    if( sim->m_reporter )
+    std::lock_guard<std::mutex> lock( sim->m_reporterMutex );
+    REPORTER*                   reporter = sim->m_reporter.load( std::memory_order_acquire );
+
+    if( reporter )
     {
+        bool fromStderr = strncasecmp( aWhat, "stderr ", 7 ) == 0;
+
         // strip stdout/stderr from the line
-        if( ( strncasecmp( aWhat, "stdout ", 7 ) == 0 )
-                || ( strncasecmp( aWhat, "stderr ", 7 ) == 0 ) )
+        if( ( strncasecmp( aWhat, "stdout ", 7 ) == 0 ) || fromStderr )
         {
             aWhat += 7;
         }
 
-        sim->m_reporter->Report( aWhat );
+        // ngspice writes UTF-8, but paths may arrive in the local encoding.
+        wxString text = wxString::FromUTF8( aWhat );
+
+        if( text.IsEmpty() && *aWhat )
+            text = wxString( aWhat );
+
+        reporter->Report( text, classifySpiceLine( text, fromStderr, sim->m_lastStderrSeverity ) );
     }
 
     return 0;
@@ -766,8 +818,14 @@ int NGSPICE::cbBGThreadRunning( NG_BOOL aFinished, int aId, void* aUser )
     if( aFinished )
         sim->restoreSignalHandlers();
 
-    if( sim->m_stateListener )
-        sim->m_stateListener->OnSimStateChange( sim, aFinished ? SIM_IDLE : SIM_RUNNING );
+    // Hold the reporter mutex while invoking the reporter so SetReporter(nullptr)
+    // can serve as a barrier before the caller destroys the reporter.
+    std::lock_guard<std::mutex> lock( sim->m_reporterMutex );
+
+    SIM_STATE_LISTENER* stateListener = sim->m_stateListener.load( std::memory_order_acquire );
+
+    if( stateListener )
+        stateListener->OnSimStateChange( sim, aFinished ? SIM_IDLE : SIM_RUNNING );
 
     return 0;
 }
@@ -782,14 +840,22 @@ int NGSPICE::cbControlledExit( int aStatus, NG_BOOL aImmediate, NG_BOOL aExitOnQ
     // ngspice calls this when it encounters a fatal error (e.g. out of memory) or receives a
     // 'quit' command. For error exits, we must notify the UI before ngspice crashes during
     // cleanup, since cbBGThreadRunning may never fire if the background thread is terminated.
-    if( !aExitOnQuit && sim->m_reporter )
-    {
-        sim->m_reporter->Report(
-                _( "Simulation terminated by ngspice. This may be caused by insufficient "
-                   "memory or an internal error. The simulator will be reset." ) );
+    std::lock_guard<std::mutex> lock( sim->m_reporterMutex );
 
-        if( sim->m_stateListener )
-            sim->m_stateListener->OnSimStateChange( sim, SIM_IDLE );
+    REPORTER*           reporter = sim->m_reporter.load( std::memory_order_acquire );
+    SIM_STATE_LISTENER* stateListener = sim->m_stateListener.load( std::memory_order_acquire );
+
+    if( !aExitOnQuit )
+    {
+        if( reporter )
+        {
+            reporter->Report( _( "Simulation terminated by ngspice. This may be caused by insufficient "
+                                 "memory or an internal error. The simulator will be reset." ),
+                              RPT_SEVERITY_ERROR );
+        }
+
+        if( stateListener )
+            stateListener->OnSimStateChange( sim, SIM_IDLE );
     }
 
     return 0;

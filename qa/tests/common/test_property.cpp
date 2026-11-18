@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
@@ -26,6 +26,8 @@
 
 using namespace std;
 
+namespace
+{
 class A : public INSPECTABLE
 {
 public:
@@ -47,6 +49,7 @@ protected:
     int m_a = 0;
     wxPoint m_p;
 };
+} // namespace
 
 class B : public A
 {
@@ -61,7 +64,7 @@ private:
     int m_c = 0;
 };
 
-class C 
+class C
 {
 public:
     bool getBool() const { return m_bool; }
@@ -113,7 +116,7 @@ static struct ENUM_GLOB_DESC
                 .Map( enum_glob::TEST2, "TEST2" )
                 .Map( enum_glob::TEST3, "TEST3" );
     }
-} _ENUM_GLOB_DESC;
+} s_ENUM_GLOB_DESC;
 
 ENUM_TO_WXANY( enum_glob );
 
@@ -176,11 +179,12 @@ static struct CLASS_D_DESC
         propMgr.InheritsAfter( TYPE_HASH( D ), TYPE_HASH( A ) );
         propMgr.InheritsAfter( TYPE_HASH( D ), TYPE_HASH( C ) );
 
-        auto cond = new PROPERTY<D, int>( "cond", &D::setCond, &D::getCond );
-        cond->SetAvailableFunc( [=](INSPECTABLE* aItem)->bool {
-                return *aItem->Get<enum_glob>( "enumGlob" ) == enum_glob::TEST1;
-        } );
-        propMgr.AddProperty( cond );
+        propMgr.AddProperty( new PROPERTY<D, int>( "cond",
+                    &D::setCond, &D::getCond ) )
+                .SetAvailableFunc( [=]( INSPECTABLE* aItem )->bool
+                                   {
+                                       return *aItem->Get<enum_glob>( "enumGlob" ) == enum_glob::TEST1;
+                                   } );
     }
 } _CLASS_D_DESC;
 
@@ -225,11 +229,6 @@ struct PropertiesFixture
 };
 
 BOOST_FIXTURE_TEST_SUITE( Properties, PropertiesFixture )
-
-BOOST_AUTO_TEST_CASE( Init )
-{
-    propMgr.Rebuild();
-}
 
 // Basic Set() & Get()
 BOOST_AUTO_TEST_CASE( SetGet )
@@ -433,8 +432,7 @@ BOOST_AUTO_TEST_CASE( DuplicateProperty )
     b.setC( origValue );
 
     // Attempt to register a duplicate property with the same name and owner
-    PROPERTY_BASE& returned = propMgr.AddProperty(
-            new PROPERTY<B, int>( "C", &B::setC, &B::getC ) );
+    PROPERTY_BASE& returned = propMgr.AddProperty( new PROPERTY<B, int>( "C", &B::setC, &B::getC ) );
 
     // AddProperty should return the existing property, not the new one
     BOOST_CHECK_EQUAL( &returned, original );

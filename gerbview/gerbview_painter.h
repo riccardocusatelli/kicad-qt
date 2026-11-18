@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef __GERBVIEW_PAINTER_H
@@ -96,6 +96,14 @@ public:
 
     bool GetShowPageLimits() const override;
 
+    void SetContrastMode( GBR_INACTIVE_LAYER_MODE aMode )
+    {
+        m_contrastMode = aMode;
+        SetHighContrast( aMode != GBR_INACTIVE_LAYER_MODE::NORMAL );
+    }
+
+    GBR_INACTIVE_LAYER_MODE GetContrastMode() const { return m_contrastMode; }
+
     /// Clear all highlight selections (dcode, net, component, attribute selection)
     void ClearHighlightSelections();
 
@@ -113,6 +121,8 @@ public:
     int m_dcodeHighlightValue;
 
 protected:
+    GBR_INACTIVE_LAYER_MODE m_contrastMode = GBR_INACTIVE_LAYER_MODE::NORMAL;
+
     /// Maximum font size for D-Codes and other strings
     static const double MAX_FONT_SIZE;
 };

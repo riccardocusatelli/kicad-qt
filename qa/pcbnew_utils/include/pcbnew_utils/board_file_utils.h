@@ -14,20 +14,17 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#pragma once
 
-#ifndef QA_PCBNEW_UTILS_BOARD_FILE_UTILS__H
-#define QA_PCBNEW_UTILS_BOARD_FILE_UTILS__H
-
+#include <filesystem>
 #include <iostream>
 #include <memory>
 #include <string>
+
+#include <wx/string.h>
 
 class BOARD;
 class BOARD_ITEM;
@@ -56,12 +53,12 @@ std::string GetPcbnewTestDataDir();
  * @param aBoard    the board to write out
  * @param aFilename the filename to write to
  */
-void DumpBoardToFile( BOARD& aBoard, const std::string& aFilename );
+void DumpBoardToFile( BOARD& aBoard, const std::filesystem::path& aFilename );
 
 /**
  * Same as DumpBoardToFile, but for footprints
  */
-void DumpFootprintToFile( const FOOTPRINT& aFootprint, const std::string& aLibraryPath );
+void DumpFootprintToFile( const FOOTPRINT& aFootprint, const std::filesystem::path& aLibraryPath );
 
 /**
  * Utility function to read a #BOARD_ITEM (probably a #FOOTPRINT or a #BOARD)
@@ -69,8 +66,8 @@ void DumpFootprintToFile( const FOOTPRINT& aFootprint, const std::string& aLibra
  *
  * Helps when writing tests or utilities that can be fed an external file.
  *
- * @param aFilename   the file to read in
- * @returns           a new #BOARD_ITEM, which is nullptr if the read or parse failed.
+ * @param aStream   the stream to read in
+ * @returns         a new #BOARD_ITEM, which is nullptr if the read or parse failed.
  */
 std::unique_ptr<BOARD_ITEM> ReadBoardItemFromStream( std::istream& aStream );
 
@@ -106,9 +103,29 @@ template <typename ITEM> std::unique_ptr<ITEM> ReadItemFromStream( std::istream&
 std::unique_ptr<BOARD> ReadBoardFromFileOrStream( const std::string& aFilename,
                                                   std::istream& aFallback = std::cin );
 
-std::unique_ptr<FOOTPRINT> ReadFootprintFromFileOrStream( const std::string& aFilename,
-                                                          std::istream& aFallback = std::cin );
+std::unique_ptr<BOARD> ReadBoardFromFile( const std::filesystem::path& aFilename );
+
+/**
+ * Require a board from the path relative to the pcbnew QA data directory.
+ *
+ * @param aFilename the path relative to the pcbnew QA data directory
+ * @returns a new #BOARD, or a test failure if it cannot be obtained.
+ */
+std::unique_ptr<BOARD> RequireBoardFromPcbnewQAData( const std::filesystem::path& aFilename );
+
+/**
+ * Read a footprint object  \a aFootprintName from \a aFileName.
+ *
+ * @note This no longer directly parses a FOOTPRINT object from a file.  This was always conceptually a
+ *       bad idea because it assumed a footprint library file would only ever be a FOOTPRINT object which
+ *       was wrong.  This now calls #PCB_IO_KICAD_SEXPR::LoadFootprint which loads a footprint library.
+ *       This means that the footprint name must be the file name of the originally saved file.
+ *
+ * @param aFilename is the full path and file name with extension of the file to load.
+ * @param aFootprintName is the name of the footprint to load.
+ * @return a pointer to the loaded #FOOTPRINT object or a nullptr if the footprint was not loaded.
+ */
+std::unique_ptr<FOOTPRINT> ReadFootprintFromFile( const std::filesystem::path& aFilename,
+                                                  const wxString& aFootprintName );
 
 } // namespace KI_TEST
-
-#endif // QA_PCBNEW_UTILS_BOARD_FILE_UTILS__H

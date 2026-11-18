@@ -135,18 +135,23 @@ void SCH_PASTE::UpdateSymbolInstance( SCH_SYMBOL* aSymbol, const SCH_SHEET_PATH&
 }
 
 
-void SCH_PASTE::PruneSymbolInstances( SCH_SYMBOL* aSymbol, const wxString& aProjectName )
+void SCH_PASTE::PruneSymbolInstances( SCH_SYMBOL* aSymbol, const SCHEMATIC& aSchematic )
 {
-    KI_CHECK( aSymbol, /* void */ );
+    KI_CHECK( aSymbol && aSchematic.IsValid(), /* void */ );
 
-    std::vector<KIID_PATH> instancePathsToRemove;
+    const wxString projectName = aSchematic.Project().GetProjectName();
 
+    std::vector<KIID_PATH> pathsToRemove;
+
+    // Claiming rewrites a field in place, so only the removals have to wait for the walk to end
     for( const SCH_SYMBOL_INSTANCE& instance : aSymbol->GetInstances() )
     {
-        if( instance.m_ProjectName != aProjectName || instance.m_Path.empty() )
-            instancePathsToRemove.emplace_back( instance.m_Path );
+        if( !aSchematic.IsInstancePathInProject( instance.m_Path ) )
+            pathsToRemove.emplace_back( instance.m_Path );
+        else if( instance.m_ProjectName != projectName )
+            aSymbol->SetInstanceProjectName( instance.m_Path, projectName );
     }
 
-    for( const KIID_PATH& path : instancePathsToRemove )
+    for( const KIID_PATH& path : pathsToRemove )
         aSymbol->RemoveInstance( path );
 }

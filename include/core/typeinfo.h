@@ -16,18 +16,12 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef __KICAD_TYPEINFO_H
-#define __KICAD_TYPEINFO_H
+#pragma once
 
 
-#ifndef SWIG
 #include <type_traits>
 
 /**
@@ -51,7 +45,7 @@ bool IsA( const I& aObject )
 /**
  * A lightweight dynamic downcast.
  *
- * Cast \a aObject to type Casted*.  Uses #EDA_ITEM::Type() and #EDA_ITEM::ClassOf() to
+ * Cast \a aObject to type Casted*.  Uses #EDA_ITEM::Type() and object specific ClassOf method to
  * check if type matches.
  *
  * @param aObject object to be casted.
@@ -68,8 +62,6 @@ Casted dyn_cast( From aObject )
 
 class EDA_ITEM;
 
-#endif  // SWIG
-
 
 /**
  * The set of class identification values stored in #EDA_ITEM::m_structType
@@ -83,34 +75,34 @@ enum KICAD_T
     SCREEN_T, ///< not really an item, used to identify a screen
 
     // Items in pcb
-    PCB_FOOTPRINT_T,         ///< class FOOTPRINT, a footprint
-    PCB_PAD_T,               ///< class PAD, a pad in a footprint
-    PCB_SHAPE_T,             ///< class PCB_SHAPE, a segment not on copper layers
-    PCB_REFERENCE_IMAGE_T,   ///< class PCB_REFERENCE_IMAGE, bitmap on a layer
-    PCB_FIELD_T,             ///< class PCB_FIELD, text associated with a footprint property
-    PCB_GENERATOR_T,         ///< class PCB_GENERATOR, generator on a layer
-    PCB_TEXT_T,              ///< class PCB_TEXT, text on a layer
-    PCB_TEXTBOX_T,           ///< class PCB_TEXTBOX, wrapped text on a layer
-    PCB_TABLE_T,             ///< class PCB_TABLE, table of PCB_TABLECELLs
-    PCB_TABLECELL_T,         ///< class PCB_TABLECELL, PCB_TEXTBOX for use in tables
-    PCB_TRACE_T,             ///< class PCB_TRACK, a track segment (segment on a copper layer)
-    PCB_VIA_T,               ///< class PCB_VIA, a via (like a track segment on a copper layer)
-    PCB_ARC_T,               ///< class PCB_ARC, an arc track segment on a copper layer
-    PCB_MARKER_T,            ///< class PCB_MARKER, a marker used to show something
-    PCB_DIMENSION_T,         ///< class PCB_DIMENSION_BASE: abstract dimension meta-type
-    PCB_BARCODE_T,           ///< class PCB_BARCODE, a barcode (graphic item)
-    PCB_DIM_ALIGNED_T,       ///< class PCB_DIM_ALIGNED, a linear dimension (graphic item)
-    PCB_DIM_LEADER_T,        ///< class PCB_DIM_LEADER, a leader dimension (graphic item)
-    PCB_DIM_CENTER_T,        ///< class PCB_DIM_CENTER, a center point marking (graphic item)
-    PCB_DIM_RADIAL_T,        ///< class PCB_DIM_RADIAL, a radius or diameter dimension
-    PCB_DIM_ORTHOGONAL_T,    ///< class PCB_DIM_ORTHOGONAL, a linear dimension constrained to x/y
-    PCB_TARGET_T,            ///< class PCB_TARGET, a target (graphic item)
-    PCB_ZONE_T,              ///< class ZONE, a copper pour area
-    PCB_ITEM_LIST_T,         ///< class BOARD_ITEM_LIST, a list of board items
-    PCB_NETINFO_T,           ///< class NETINFO_ITEM, a description of a net
-    PCB_GROUP_T,             ///< class PCB_GROUP, a set of BOARD_ITEMs
-    PCB_BOARD_OUTLINE_T,     ///< class PCB_BOARD_OUTLINE_T, a pcb board outline item
-    PCB_POINT_T,             ///< class PCB_POINT, a 0-dimensional point
+    PCB_FOOTPRINT_T,       ///< class FOOTPRINT, a footprint
+    PCB_PAD_T,             ///< class PAD, a pad in a footprint
+    PCB_SHAPE_T,           ///< class PCB_SHAPE, a segment not on copper layers
+    PCB_REFERENCE_IMAGE_T, ///< class PCB_REFERENCE_IMAGE, bitmap on a layer
+    PCB_FIELD_T,           ///< class PCB_FIELD, text associated with a footprint property
+    PCB_GENERATOR_T,       ///< class PCB_GENERATOR, generator on a layer
+    PCB_TEXT_T,            ///< class PCB_TEXT, text on a layer
+    PCB_TEXTBOX_T,         ///< class PCB_TEXTBOX, wrapped text on a layer
+    PCB_TABLE_T,           ///< class PCB_TABLE, table of PCB_TABLECELLs
+    PCB_TABLECELL_T,       ///< class PCB_TABLECELL, PCB_TEXTBOX for use in tables
+    PCB_TRACE_T,           ///< class PCB_TRACK, a track segment (segment on a copper layer)
+    PCB_VIA_T,             ///< class PCB_VIA, a via (like a track segment on a copper layer)
+    PCB_ARC_T,             ///< class PCB_ARC, an arc track segment on a copper layer
+    PCB_MARKER_T,          ///< class PCB_MARKER, a marker used to show something
+    PCB_DIMENSION_T,       ///< class PCB_DIMENSION_BASE: abstract dimension meta-type
+    PCB_BARCODE_T,         ///< class PCB_BARCODE, a barcode (graphic item)
+    PCB_DIM_ALIGNED_T,     ///< class PCB_DIM_ALIGNED, a linear dimension (graphic item)
+    PCB_DIM_LEADER_T,      ///< class PCB_DIM_LEADER, a leader dimension (graphic item)
+    PCB_DIM_CENTER_T,      ///< class PCB_DIM_CENTER, a center point marking (graphic item)
+    PCB_DIM_RADIAL_T,      ///< class PCB_DIM_RADIAL, a radius or diameter dimension
+    PCB_DIM_ORTHOGONAL_T,  ///< class PCB_DIM_ORTHOGONAL, a linear dimension constrained to x/y
+    PCB_TARGET_T,          ///< class PCB_TARGET, a target (graphic item)
+    PCB_ZONE_T,            ///< class ZONE, a copper pour area
+    PCB_ITEM_LIST_T,       ///< class BOARD_ITEM_LIST, a list of board items
+    PCB_NETINFO_T,         ///< class NETINFO_ITEM, a description of a net
+    PCB_GROUP_T,           ///< class PCB_GROUP, a set of BOARD_ITEMs
+    PCB_BOARD_OUTLINE_T,   ///< class PCB_BOARD_OUTLINE_T, a pcb board outline item
+    PCB_POINT_T,           ///< class PCB_POINT, a 0-dimensional point
 
     // Be prudent with these types:
     // they should be used only to locate a specific field type among PCB_FIELD_Ts
@@ -238,9 +230,24 @@ enum KICAD_T
     SEARCH_STACK_T,
     S3D_CACHE_T,
 
+    // New types appended here to preserve historical KICAD_T ordinals
+    // (IPC clients with stale protobuf-generated headers depend on stable values).
+    PCB_SHAPE_LOCATE_ELLIPSE_T,
+    PCB_SHAPE_LOCATE_ELLIPSE_ARC_T,
+    PCB_CONSTRAINT_T,                   ///< a geometric constraint between board items
+    PCB_GRID_ITEM_T,                    ///< a subgrid placed on a board
+    PCB_DRILL_CHART_T,     ///< class PCB_DRILL_CHART, a live drill chart derived from PCB_TABLE
+    PCB_DRILL_MAP_T,       ///< class PCB_DRILL_MAP, drill symbols drawn at the holes
+    PCB_3D_BODY_T,         ///< class PCB_3D_BODY, a 3D body (extruded or model) on a footprint
+    PCB_STACKUP_TABLE_T,   ///< class PCB_STACKUP_TABLE, a live stackup table derived from PCB_TABLE
+
     // End value
     MAX_STRUCT_TYPE_ID
 };
+
+static_assert( S3D_CACHE_T == 104,
+               "KICAD_T ordinals are exposed via IPC; new values must be appended at the end "
+               "of the enum, not inserted into existing blocks." );
 
 /**
  * Return the underlying type of the given type.
@@ -291,7 +298,8 @@ constexpr KICAD_T BaseType( const KICAD_T aType )
     case PCB_SHAPE_LOCATE_ARC_T:
     case PCB_SHAPE_LOCATE_POLY_T:
     case PCB_SHAPE_LOCATE_BEZIER_T:
-        return PCB_SHAPE_T;
+    case PCB_SHAPE_LOCATE_ELLIPSE_T:
+    case PCB_SHAPE_LOCATE_ELLIPSE_ARC_T: return PCB_SHAPE_T;
 
     case PCB_DIM_ALIGNED_T:
     case PCB_DIM_CENTER_T:
@@ -299,6 +307,10 @@ constexpr KICAD_T BaseType( const KICAD_T aType )
     case PCB_DIM_ORTHOGONAL_T:
     case PCB_DIM_LEADER_T:
         return PCB_DIMENSION_T;
+
+    case PCB_DRILL_CHART_T:
+    case PCB_STACKUP_TABLE_T:
+        return PCB_TABLE_T;
 
     default:
         return aType;
@@ -308,6 +320,14 @@ constexpr KICAD_T BaseType( const KICAD_T aType )
 constexpr bool IsNullType( const KICAD_T aType )
 {
     return aType <= 0;
+}
+
+/**
+ * A PCB_TABLE subclass whose cells are generated from the board rather than typed by the user
+ */
+constexpr bool IsGeneratedTableType( const KICAD_T aType )
+{
+    return aType == PCB_DRILL_CHART_T || aType == PCB_STACKUP_TABLE_T;
 }
 
 constexpr bool IsInstantiableType( const KICAD_T aType )
@@ -355,8 +375,18 @@ constexpr bool IsInstantiableType( const KICAD_T aType )
     case PCB_SHAPE_LOCATE_ARC_T:
     case PCB_SHAPE_LOCATE_POLY_T:
     case PCB_SHAPE_LOCATE_BEZIER_T:
+    case PCB_SHAPE_LOCATE_ELLIPSE_T:
+    case PCB_SHAPE_LOCATE_ELLIPSE_ARC_T:
+        return false;
 
     case PCB_DIMENSION_T:
+        // base class is not instantiable
+        return false;
+
+    case SCH_TABLECELL_T:
+    case PCB_TABLECELL_T:
+        // must be instantiated as part of a SCH_TABLE or PCB_TABLE
+        return false;
 
     case SCH_SCREEN_T:
     case PCB_ITEM_LIST_T:
@@ -452,12 +482,17 @@ constexpr bool IsPcbnewType( const KICAD_T aType )
     case PCB_DIM_RADIAL_T:
     case PCB_DIM_ORTHOGONAL_T:
     case PCB_TARGET_T:
+    case PCB_DRILL_CHART_T:
+    case PCB_DRILL_MAP_T:
+    case PCB_3D_BODY_T:
+    case PCB_STACKUP_TABLE_T:
     case PCB_POINT_T:
     case PCB_ZONE_T:
     case PCB_ITEM_LIST_T:
     case PCB_NETINFO_T:
     case PCB_GROUP_T:
     case PCB_GENERATOR_T:
+    case PCB_GRID_ITEM_T:
 
     case PCB_FIELD_LOCATE_REFERENCE_T:
     case PCB_FIELD_LOCATE_VALUE_T:
@@ -478,7 +513,44 @@ constexpr bool IsPcbnewType( const KICAD_T aType )
     case PCB_SHAPE_LOCATE_ARC_T:
     case PCB_SHAPE_LOCATE_POLY_T:
     case PCB_SHAPE_LOCATE_BEZIER_T:
+    case PCB_SHAPE_LOCATE_ELLIPSE_T:
+    case PCB_SHAPE_LOCATE_ELLIPSE_ARC_T:
     case PCB_BOARD_OUTLINE_T:
+    case PCB_CONSTRAINT_T:
+        return true;
+
+    default:
+        return false;
+    }
+}
+
+constexpr bool IsSingleLayerType( const KICAD_T aType )
+{
+    switch( aType )
+    {
+    case PCB_SHAPE_T:
+    case PCB_REFERENCE_IMAGE_T:
+    case PCB_FIELD_T:
+    case PCB_TEXT_T:
+    case PCB_TEXTBOX_T:
+    case PCB_BARCODE_T:
+    case PCB_TABLE_T:
+    case PCB_DRILL_CHART_T:
+    case PCB_DRILL_MAP_T:
+    case PCB_STACKUP_TABLE_T:
+    case PCB_TABLECELL_T:
+    case PCB_TRACE_T:
+    case PCB_ARC_T:
+    case PCB_MARKER_T:
+    case PCB_DIMENSION_T:
+    case PCB_DIM_ALIGNED_T:
+    case PCB_DIM_LEADER_T:
+    case PCB_DIM_CENTER_T:
+    case PCB_DIM_RADIAL_T:
+    case PCB_DIM_ORTHOGONAL_T:
+    case PCB_TARGET_T:
+    case PCB_POINT_T:
+    case PCB_GENERATOR_T:
         return true;
 
     default:
@@ -548,5 +620,3 @@ constexpr bool IsTypeCorrect( KICAD_T aType )
         || IsPageLayoutEditorType( aType )
         || IsMiscType( aType );
 }
-
-#endif // __KICAD_TYPEINFO_H

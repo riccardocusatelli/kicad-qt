@@ -15,14 +15,13 @@
 #  GNU General Public License for more details.
 #
 #  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software
-#  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-#  MA 02110-1301, USA.
+#  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
 import utils
 import cairosvg
 import re
+import shutil
 from pathlib import Path
 import pytest
 from typing import List
@@ -66,15 +65,62 @@ def test_sch_export_svg( kitest: KiTestFixture,
 
     png_converted_from_svg_path = output_svg_path.with_suffix( '.png' )
 
-    cairosvg.svg2png( url=str( output_svg_path ), write_to=str( png_converted_from_svg_path ), dpi=1200 )
+    cairosvg.svg2png( url=str( output_svg_path ), write_to=str( png_converted_from_svg_path ), dpi=600 )
 
     compare_file_path = kitest.get_data_file_path( compare_fn )
     compare_stem = f"orig_{output_dir}"
     compare_png_converted_from_svg_path = output_svg_path.with_suffix( '.png' ).with_stem(compare_stem)
-    cairosvg.svg2png( url=str( compare_file_path ), write_to=str( compare_png_converted_from_svg_path ), dpi=1200 )
+    cairosvg.svg2png( url=str( compare_file_path ), write_to=str( compare_png_converted_from_svg_path ), dpi=600 )
 
     assert utils.images_are_equal( png_converted_from_svg_path, compare_png_converted_from_svg_path,
                                    diff_handler=kitest.add_attachment )
+
+
+@pytest.mark.parametrize("test_file,output_dir,cli_args",
+                            [("cli/basic_test/basic_test.kicad_sch", "basic_test_png", []),
+                             ("cli/basic_test/basic_test.kicad_sch", "basic_test_png_bnw_nobg",
+                              ["--no-background-color", "--black-and-white"])
+                             ])
+def test_sch_export_png( kitest: KiTestFixture,
+                         test_file: str,
+                         output_dir: str,
+                         cli_args: List[str] ):
+    input_file = kitest.get_data_file_path( test_file )
+
+    output_path = kitest.get_output_path( "cli/{}/".format( output_dir ) )
+
+    command = [utils.kicad_cli(), "sch", "export", "png", "--dpi", "150"]
+    command.extend( cli_args )
+    command.append( "-o" )
+    command.append( str( output_path ) )
+    command.append( str( input_file ) )
+
+    stdout, stderr, exitcode = utils.run_and_capture( command )
+
+    assert exitcode == 0
+    assert stderr == ''
+    assert stdout is not None
+
+    png_files = list( output_path.glob( "*.png" ) )
+    assert len( png_files ) >= 1, \
+        "Expected at least 1 PNG file in output dir, found {}".format( len( png_files ) )
+
+    for png in png_files:
+        kitest.add_attachment( png )
+        assert not utils.image_is_blank( str( png ) )
+
+
+def test_sch_export_png_invalid_dpi( kitest: KiTestFixture ):
+    input_file = kitest.get_data_file_path( "cli/basic_test/basic_test.kicad_sch" )
+    output_path = kitest.get_output_path( "cli/basic_test_png_invalid_dpi/" )
+
+    command = [utils.kicad_cli(), "sch", "export", "png", "--dpi", "1",
+               "-o", str( output_path ), str( input_file )]
+
+    stdout, stderr, exitcode = utils.run_and_capture( command )
+
+    assert exitcode != 0
+    assert "DPI must be between" in stderr
 
 
 @pytest.mark.parametrize("test_file,output_fn,line_skip_count,skip_compare,cli_args",
@@ -142,20 +188,25 @@ def test_sch_export_pdf( kitest,
     kitest.add_attachment( output_filepath )
 
 
-@pytest.mark.parametrize("test_file,output_fn,compare_fn,line_skip_count,cli_args",
+@pytest.mark.parametrize("test_file,output_fn,compare_fn,line_skip_count,cli_args,expect_byte_order_mark",
                             [("cli/variants/variants.kicad_sch", "variants_default.bom.csv", "cli/variants/variants_default.bom.csv", 0,
-                              ["--exclude-dnp", "--fields", "Reference,Value", "--labels", "Refs,Value"]),
+                              ["--exclude-dnp", "--fields", "Reference,Value", "--labels", "Refs,Value"], False),
                              ("cli/variants/variants.kicad_sch", "variants_v1.bom.csv", "cli/variants/variants_v1.bom.csv", 0,
-                              ["--variant", "Variant 1", "--exclude-dnp", "--fields", "Reference,Value", "--labels", "Refs,Value"]),
+                              ["--variant", "Variant 1", "--exclude-dnp", "--fields", "Reference,Value", "--labels", "Refs,Value"], False),
                              ("cli/variants/variants.kicad_sch", "variants_v2.bom.csv", "cli/variants/variants_v2.bom.csv", 0,
-                              ["--variant", "Variant2", "--exclude-dnp", "--fields", "Reference,Value", "--labels", "Refs,Value"]),
+                              ["--variant", "Variant2", "--exclude-dnp", "--fields", "Reference,Value", "--labels", "Refs,Value"], False),
+                             ("cli/variants/variants.kicad_sch", "variants_default_bom_flag.bom.csv", "cli/variants/variants_default.bom.csv", 0,
+                              ["--include-byte-order-mark", "--exclude-dnp", "--fields", "Reference,Value", "--labels", "Refs,Value"], True),
+                             ("cli/variants/variants.kicad_sch", "variants_default_bom_preset.bom.csv", "cli/variants/variants_default.bom.csv", 0,
+                              ["--format-preset", "UTF-8 BOM", "--exclude-dnp", "--fields", "Reference,Value", "--labels", "Refs,Value"], True),
                              ])
 def test_sch_export_bom_variants( kitest: KiTestFixture,
                          test_file: str,
                          output_fn: str,
                          compare_fn: str,
                          line_skip_count: int,
-                         cli_args: List[str] ):
+                         cli_args: List[str],
+                         expect_byte_order_mark: bool ):
     """Test BOM export with variant support and DNP exclusion"""
     input_file = kitest.get_data_file_path( test_file )
     compare_filepath = kitest.get_data_file_path( compare_fn )
@@ -173,7 +224,11 @@ def test_sch_export_bom_variants( kitest: KiTestFixture,
     assert exitcode == 0
     assert stderr == ''
 
-    assert utils.textdiff_files( compare_filepath, output_filepath, line_skip_count )
+    if expect_byte_order_mark:
+        expected = b"\xef\xbb\xbf" + compare_filepath.read_bytes()
+        assert output_filepath.read_bytes() == expected
+    else:
+        assert utils.textdiff_files( compare_filepath, output_filepath, line_skip_count )
 
     kitest.add_attachment( output_filepath )
 
@@ -357,3 +412,37 @@ def test_sch_export_bom( kitest,
         assert expected in actual_headers, f"Expected header '{expected}' not found in BOM output. Got: {actual_headers}"
 
     kitest.add_attachment( output_filepath )
+
+
+@pytest.mark.parametrize( "trace", [False, True] )
+def test_sch_child_input_validation( kitest: KiTestFixture, tmp_path: Path, monkeypatch, trace ):
+    for variable in ("WXTRACE", "KICAD_ENABLE_WXTRACE", "KICAD_FORCE_CONSOLE_TRACE"):
+        monkeypatch.delenv( variable, raising=False )
+
+    if trace:
+        monkeypatch.setenv( "WXTRACE", "KICAD_SETTINGS" )
+        monkeypatch.setenv( "KICAD_ENABLE_WXTRACE", "1" )
+        monkeypatch.setenv( "KICAD_FORCE_CONSOLE_TRACE", "1" )
+
+    source = kitest.get_data_file_path( "eeschema/issue23840" )
+    project = tmp_path / "project-é-100%%"
+    shutil.copytree( source, project )
+    child = project / "LEDs.kicad_sch"
+    output = tmp_path / "child.net"
+
+    stdout, stderr, exitcode = utils.run_and_capture(
+        [utils.kicad_cli(), "sch", "export", "netlist", "-o", str(output), str(child)] )
+
+    assert exitcode != 0
+    diagnostic = f"Schematic '{child}' is a hierarchical subsheet; load its root schematic."
+    assert diagnostic in stderr
+
+    if trace and "(KICAD_SETTINGS) " in stderr:
+        assert stderr.index( "(KICAD_SETTINGS) " ) < stderr.index( diagnostic )
+
+    assert not output.exists()
+
+    stdout, stderr, exitcode = utils.run_and_capture(
+        [utils.kicad_cli(), "sch", "upgrade", str(child)] )
+
+    assert exitcode == 0

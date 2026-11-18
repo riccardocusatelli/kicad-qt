@@ -13,17 +13,51 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
 
+#include <connection_graph.h>
 #include <project/net_settings.h>
 #include <sch_connection.h>
 
 
 BOOST_AUTO_TEST_SUITE( BusParsing )
+
+
+BOOST_AUTO_TEST_CASE( EscapedVectorMembersMatchScalarConnections )
+{
+    SCH_CONNECTION bus( static_cast<CONNECTION_GRAPH*>( nullptr ) );
+    bus.ConfigureFromLabel( wxS( "{slash}IRQ[1..2]" ) );
+    BOOST_REQUIRE_EQUAL( bus.Members().size(), 2 );
+
+    for( size_t i = 0; i < bus.Members().size(); ++i )
+    {
+        SCH_CONNECTION scalar( static_cast<CONNECTION_GRAPH*>( nullptr ) );
+        scalar.ConfigureFromLabel( wxString::Format( wxS( "{slash}IRQ%zu" ), i + 1 ) );
+        BOOST_CHECK_EQUAL( bus.Members()[i]->Name(), scalar.Name() );
+        BOOST_CHECK_EQUAL( bus.Members()[i]->LocalName(), scalar.LocalName() );
+    }
+}
+
+
+BOOST_AUTO_TEST_CASE( EscapedGroupMembersMatchScalarConnections )
+{
+    CONNECTION_GRAPH graph;
+    SCH_CONNECTION bus( &graph );
+    bus.ConfigureFromLabel( wxS( "{ {slash}IRQ1 {slash}IRQ2 }" ) );
+    BOOST_REQUIRE_EQUAL( bus.Members().size(), 2 );
+
+    for( size_t i = 0; i < bus.Members().size(); ++i )
+    {
+        SCH_CONNECTION scalar( &graph );
+        scalar.ConfigureFromLabel( wxString::Format( wxS( "{slash}IRQ%zu" ), i + 1 ) );
+        BOOST_CHECK_EQUAL( bus.Members()[i]->Name(), scalar.Name() );
+        BOOST_CHECK_EQUAL( bus.Members()[i]->LocalName(), scalar.LocalName() );
+    }
+}
 
 
 BOOST_AUTO_TEST_CASE( ParsesFormattedVectorBus )

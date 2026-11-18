@@ -18,22 +18,21 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-/// @todo The Boost entropy exception does not exist prior to 1.67. Once the minimum Boost
-///       version is raise to 1.67 or greater, this version check can be removed.
 #include <boost/version.hpp>
+<<<<<<< b2e17e0a
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
 
 #if BOOST_VERSION >= 106700
+||||||| 1304b76aad
+
+#if BOOST_VERSION >= 106700
+=======
+>>>>>>> ed8c16703e
 #include <boost/uuid/entropy_error.hpp>
-#endif
 
 #include <3d_viewer/eda_3d_viewer_frame.h>
 #include <advanced_config.h>
@@ -115,10 +114,20 @@ bool PCB_BASE_FRAME::canCloseWindow( CLOSE_REQUEST& aRequest )
 {
     // Close modeless dialogs.  They're trouble when they get destroyed after the frame and/or
     // board.
+<<<<<<< b2e17e0a
     EDA_3D_VIEWER_FRAME* viewer3D = Get3DViewerFrame();
 
     if( viewer3D )
         viewer3D->Close( true );
+||||||| 1304b76aad
+    wxWindow* viewer3D = Get3DViewerFrame();
+
+    if( viewer3D )
+        viewer3D->Close( true );
+=======
+    if( wxWindow* our3DViewer = GetOur3DViewerFrame() )
+        our3DViewer->Close( true );
+>>>>>>> ed8c16703e
 
     // Similarly, wxConvBrokenFileNames uses some statically allocated variables that make it
     // crash when run later from a d'tor.
@@ -146,7 +155,7 @@ void PCB_BASE_FRAME::handleIconizeEvent( bool aIconized )
 }
 
 
-EDA_3D_VIEWER_FRAME* PCB_BASE_FRAME::Get3DViewerFrame()
+EDA_3D_VIEWER_FRAME* PCB_BASE_FRAME::GetOur3DViewerFrame()
 {
     TOOLKIT_WINDOW* frame = TOOLKIT::FindWindowByName( QUALIFIED_VIEWER3D_FRAMENAME( this ) );
     return dynamic_cast<EDA_3D_VIEWER_FRAME*>( frame );
@@ -155,9 +164,7 @@ EDA_3D_VIEWER_FRAME* PCB_BASE_FRAME::Get3DViewerFrame()
 
 void PCB_BASE_FRAME::Update3DView( bool aMarkDirty, bool aRefresh, const wxString* aTitle )
 {
-    EDA_3D_VIEWER_FRAME* draw3DFrame = Get3DViewerFrame();
-
-    if( draw3DFrame )
+    if( EDA_3D_VIEWER_FRAME* draw3DFrame = GetOur3DViewerFrame() )
     {
         if( aTitle )
             draw3DFrame->SetTitle( *aTitle );
@@ -298,6 +305,25 @@ void PCB_BASE_FRAME::FocusOnItems( const std::vector<BOARD_ITEM*>& aItems, PCB_L
     if( aItems.empty() )
         return;
 
+    for( BOARD_ITEM* item : aItems )
+    {
+        if( item && item != DELETED_BOARD_ITEM::GetInstance() )
+        {
+            item->SetBrightened();
+            lastBrightenedItemIDs.push_back( item->m_Uuid );
+
+            item->RunOnChildren(
+                    [&]( BOARD_ITEM* child )
+                    {
+                        child->SetBrightened();
+                        lastBrightenedItemIDs.push_back( child->m_Uuid );
+                    },
+                    RECURSE_MODE::RECURSE );
+
+            GetCanvas()->GetView()->Update( item );
+        }
+    }
+
     VECTOR2I       focusPt;
     KIGFX::VIEW*   view = GetCanvas()->GetView();
     SHAPE_POLY_SET viewportPoly( view->GetViewport() );
@@ -323,19 +349,6 @@ void PCB_BASE_FRAME::FocusOnItems( const std::vector<BOARD_ITEM*>& aItems, PCB_L
     {
         if( item && item != DELETED_BOARD_ITEM::GetInstance() )
         {
-            item->SetBrightened();
-            lastBrightenedItemIDs.push_back( item->m_Uuid );
-
-            item->RunOnChildren(
-                    [&]( BOARD_ITEM* child )
-                    {
-                        child->SetBrightened();
-                        lastBrightenedItemIDs.push_back( child->m_Uuid );
-                    },
-                    RECURSE_MODE::RECURSE );
-
-            GetCanvas()->GetView()->Update( item );
-
             // Focus on the object's location.  Prefer a visible part of the object to its anchor
             // in order to keep from scrolling around.
 
@@ -391,10 +404,10 @@ void PCB_BASE_FRAME::FocusOnItems( const std::vector<BOARD_ITEM*>& aItems, PCB_L
                 zone->TransformShapeToPolygon( itemPoly, aLayer, 0, pcbIUScale.mmToIU( 0.1 ), ERROR_INSIDE );
 
                 if( itemPoly.IsEmpty() )
-                    itemPoly = *zone->Outline();
+                    itemPoly = zone->GetBoardOutline();
 #else
                 // much faster calculation time when using only the zone outlines
-                itemPoly = *zone->Outline();
+                itemPoly = zone->GetBoardOutline();
 #endif
 
                 break;
@@ -695,16 +708,14 @@ void PCB_BASE_FRAME::ShowChangedLanguage()
     // tooltips in toolbars
     RecreateToolbars();
 
-    EDA_3D_VIEWER_FRAME* viewer3D = Get3DViewerFrame();
-
-    if( viewer3D )
+    if( EDA_3D_VIEWER_FRAME* viewer3D = GetOur3DViewerFrame() )
         viewer3D->ShowChangedLanguage();
 }
 
 
 EDA_3D_VIEWER_FRAME* PCB_BASE_FRAME::CreateAndShow3D_Frame()
 {
-    EDA_3D_VIEWER_FRAME* draw3DFrame = Get3DViewerFrame();
+    EDA_3D_VIEWER_FRAME* draw3DFrame = GetOur3DViewerFrame();
 
     if( !draw3DFrame )
         draw3DFrame = new EDA_3D_VIEWER_FRAME( &Kiway(), this, _( "3D Viewer" ) );
@@ -889,9 +900,7 @@ SEVERITY PCB_BASE_FRAME::GetSeverity( int aErrorCode ) const
     if( aErrorCode >= CLEANUP_FIRST )
         return RPT_SEVERITY_ACTION;
 
-    BOARD_DESIGN_SETTINGS& bds = GetBoard()->GetDesignSettings();
-
-    return bds.m_DRCSeverities[ aErrorCode ];
+    return GetBoard()->GetDesignSettings().m_DRCSeverities[ aErrorCode ];
 }
 
 
@@ -1003,9 +1012,7 @@ void PCB_BASE_FRAME::CommonSettingsChanged( int aFlags )
     RecreateToolbars();
 
     // The 3D viewer isn't in the Kiway, so send its update manually
-    EDA_3D_VIEWER_FRAME* viewer = Get3DViewerFrame();
-
-    if( viewer )
+    if( EDA_3D_VIEWER_FRAME* viewer = GetOur3DViewerFrame() )
         viewer->CommonSettingsChanged( aFlags );
 }
 
@@ -1128,7 +1135,17 @@ void PCB_BASE_FRAME::setFPWatcher( FOOTPRINT* aFootprint )
 
     if( m_watcher )
     {
+<<<<<<< b2e17e0a
         KI_LOG_TRACE( traceLibWatch, "Remove watch" );
+||||||| 1304b76aad
+    KI_LOG_TRACE( traceLibWatch, "Remove watch" );
+        m_watcher->RemoveAll();
+        m_watcher->SetOwner( nullptr );
+=======
+        KI_LOG_TRACE( traceLibWatch, "Remove watch" );
+        m_watcher->RemoveAll();
+        m_watcher->SetOwner( nullptr );
+>>>>>>> ed8c16703e
         m_watcher.reset();
     }
 

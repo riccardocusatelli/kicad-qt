@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -32,6 +28,7 @@
 #ifndef VERTEX_CONTAINER_H_
 #define VERTEX_CONTAINER_H_
 
+#include <gal/gal.h>
 #include <gal/opengl/vertex_common.h>
 
 namespace KIGFX
@@ -39,7 +36,7 @@ namespace KIGFX
 class VERTEX_ITEM;
 class SHADER;
 
-class VERTEX_CONTAINER
+class GAL_API VERTEX_CONTAINER
 {
 public:
     /**
@@ -176,23 +173,23 @@ protected:
         return m_currentSize - m_freeSpace;
     }
 
-    ///< Free space left in the container, expressed in vertices
+    /// Free space left in the container, expressed in vertices
     unsigned int    m_freeSpace;
 
-    ///< Current container size, expressed in vertices
+    /// Current container size, expressed in vertices
     unsigned int    m_currentSize;
 
-    ///< Store the initial size, so it can be resized to this on Clear()
+    /// Store the initial size, so it can be resized to this on Clear()
     unsigned int    m_initialSize;
 
-    ///< Actual storage memory
+    /// Actual storage memory
     VERTEX*         m_vertices;
 
     // Status flags
     bool            m_failed;
     bool            m_dirty;
 
-    ///< Default initial size of a container (expressed in vertices)
+    /// Default initial size of a container (expressed in vertices)
     static constexpr unsigned int DEFAULT_SIZE = 1048576;
 };
 } // namespace KIGFX

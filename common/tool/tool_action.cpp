@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <optional>
@@ -69,13 +65,25 @@ TOOL_ACTION::TOOL_ACTION() :
 }
 
 
+TOOL_ACTION::TOOL_ACTION( int aDefaultHotKey, int aDefaultHotKeyAlt ) :
+        m_scope( AS_GLOBAL ),
+        m_group( std::nullopt ),
+        m_defaultHotKey( aDefaultHotKey ),
+        m_defaultHotKeyAlt( aDefaultHotKeyAlt ),
+        m_id( -1 ),
+        m_flags( AF_NONE )
+{
+    SetHotKey( aDefaultHotKey, aDefaultHotKeyAlt );
+}
+
+
 TOOL_ACTION::TOOL_ACTION( const TOOL_ACTION_ARGS& aArgs ) :
         m_name( aArgs.m_name.value_or( "" ) ),
         m_scope( aArgs.m_scope.value_or( AS_CONTEXT ) ),
         m_defaultHotKey( aArgs.m_defaultHotKey.value_or( 0 ) ),
         m_defaultHotKeyAlt( aArgs.m_defaultHotKeyAlt.value_or( 0 ) ),
         m_hotKey( aArgs.m_defaultHotKey.value_or( 0 ) ),
-        m_hotKeyAlt( 0 ),
+        m_hotKeyAlt( aArgs.m_defaultHotKeyAlt.value_or( 0 ) ),
         m_legacyName( aArgs.m_legacyName.value_or( "" ) ),
         m_friendlyName( TowxString( aArgs.m_friendlyName.value_or( "" ) ) ),
         m_tooltip( TowxString( aArgs.m_tooltip.value_or( "" ) ) ),

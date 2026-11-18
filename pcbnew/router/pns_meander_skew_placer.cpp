@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "pns_meander_skew_placer.h"
@@ -31,6 +31,10 @@
 
 #include "pns_router.h"
 #include "pns_debug_decorator.h"
+#include "pns_helpers.h"
+
+#include <board.h>
+#include <netinfo.h>
 
 namespace PNS {
 
@@ -62,7 +66,7 @@ bool MEANDER_SKEW_PLACER::Start( const VECTOR2I& aP, ITEM* aStartItem )
 
     m_initialSegment = static_cast<LINKED_ITEM*>( aStartItem );
     m_currentNode    = nullptr;
-    m_currentStart   = getSnappedStartPoint( m_initialSegment, aP );
+    m_currentStart = PNS::HELPERS::GetSnappedStartPoint( m_initialSegment, aP );
 
     m_world = Router()->GetWorld( )->Branch();
     m_originLine = m_world->AssembleLine( m_initialSegment );
@@ -78,7 +82,7 @@ bool MEANDER_SKEW_PLACER::Start( const VECTOR2I& aP, ITEM* aStartItem )
         return false;
     }
 
-    if( m_originPair.Gap() < 0 )
+    if( m_originPair.Dimensions().Gap() < 0 )
         m_originPair.SetGap( Router()->Sizes().DiffPairGap() );
 
     if( !m_originPair.PLine().SegmentCount() ||
@@ -130,26 +134,41 @@ bool MEANDER_SKEW_PLACER::Start( const VECTOR2I& aP, ITEM* aStartItem )
     m_netClass = conItem->GetEffectiveNetClass();
     m_settings.m_netClass = m_netClass;
 
-    if ( m_originPair.NetP() == m_originLine.Net() )
+    bool pIsActive = ( m_originPair.NetP() == m_originLine.Net() );
+    long long int lenP = m_padToDieLengthP + lineLength( m_tunedPathP, m_startPad_p, m_endPad_p );
+    long long int lenN = m_padToDieLengthN + lineLength( m_tunedPathN, m_startPad_n, m_endPad_n );
+    int64_t delayP = m_padToDieDelayP + lineDelay( m_tunedPathP, m_startPad_p, m_endPad_p );
+    int64_t delayN = m_padToDieDelayN + lineDelay( m_tunedPathN, m_startPad_n, m_endPad_n );
+
+    // Query interface for aggregate chain contribution (other nets in same chain)
+    long long int extraSignalLen = 0;
+    long long int extraSignalDelay = 0;
+    Router()->GetInterface()->GetSignalAggregate( m_originPair.NetP(), m_originPair.NetN(),
+                                                  extraSignalLen, extraSignalDelay );
+
+    if( pIsActive )
     {
-        m_coupledLength = m_padToDieLengthN + lineLength( m_tunedPathN, m_startPad_n, m_endPad_n );
-        m_lastLength = m_padToDieLengthP + lineLength( m_tunedPathP, m_startPad_p, m_endPad_p );
-
-        m_coupledDelay = m_padToDieDelayN + lineDelay( m_tunedPathN, m_startPad_n, m_endPad_n );
-        m_lastDelay = m_padToDieDelayP + lineDelay( m_tunedPathP, m_startPad_p, m_endPad_p );
-
+        m_coupledLength = lenN + extraSignalLen;
+        m_lastLength = lenP + extraSignalLen;
+        m_coupledDelay = delayN + extraSignalDelay;
+        m_lastDelay = delayP + extraSignalDelay;
         m_tunedPath = m_tunedPathP;
     }
     else
     {
-        m_coupledLength = m_padToDieLengthP + lineLength( m_tunedPathP, m_startPad_p, m_endPad_p );
-        m_lastLength = m_padToDieLengthN + lineLength( m_tunedPathN, m_startPad_n, m_endPad_n );
-
-        m_coupledDelay = m_padToDieDelayP + lineDelay( m_tunedPathP, m_startPad_p, m_endPad_p );
-        m_lastDelay = m_padToDieDelayN + lineDelay( m_tunedPathN, m_startPad_n, m_endPad_n );
-
+        m_coupledLength = lenP + extraSignalLen;
+        m_lastLength = lenN + extraSignalLen;
+        m_coupledDelay = delayP + extraSignalDelay;
+        m_lastDelay = delayN + extraSignalDelay;
         m_tunedPath = m_tunedPathN;
     }
+
+    m_startPathLength = origPathLength();
+    m_baselineLength = TuningLengthResult();
+    m_baselineDelay = m_settings.m_isTimeDomain ? TuningDelayResult() : 0;
+    m_hasBaseline = true;
+
+    initChainExtras();
 
     calculateTimeDomainTargets();
 
@@ -177,7 +196,7 @@ int64_t MEANDER_SKEW_PLACER::origPathDelay() const
 
 long long int MEANDER_SKEW_PLACER::CurrentSkew() const
 {
-    return m_lastLength - m_coupledLength;
+    return m_lastLength - m_coupledLength; // Includes aggregate chain contribution if applicable
 }
 
 
@@ -207,9 +226,16 @@ bool MEANDER_SKEW_PLACER::Move( const VECTOR2I& aP, ITEM* aEndItem )
         }
     }
 
-    return doMove( aP, aEndItem, m_coupledLength + m_settings.m_targetSkew.Opt(),
-                   m_coupledLength + m_settings.m_targetSkew.Min(),
-                   m_coupledLength + m_settings.m_targetSkew.Max() );
+    // Convert the user-facing skew target (active total minus coupled total) into a meander-only
+    // doMove target. m_coupledLength already includes the chain-extras aggregate captured at
+    // Start(); the chain extras and any unmeasured stub on the active net are absorbed by the
+    // chain rather than by the meander, so subtract them here. Without this, the meander
+    // over-corrects by exactly chainNarrowingOffset() whenever the diff pair belongs to a chain.
+    const long long offset = chainNarrowingOffset();
+
+    return doMove( aP, aEndItem, m_coupledLength + m_settings.m_targetSkew.Opt() - offset,
+                   m_coupledLength + m_settings.m_targetSkew.Min() - offset,
+                   m_coupledLength + m_settings.m_targetSkew.Max() - offset );
 }
 
 
@@ -233,7 +259,7 @@ void MEANDER_SKEW_PLACER::calculateTimeDomainTargets()
         const int64_t skewDelayDifference = targetSkewDelay - curSkewDelay;
 
         int64_t skewLengthDiff = m_router->GetInterface()->CalculateLengthForDelay(
-                std::abs( skewDelayDifference ), m_originPair.Width(), true, m_originPair.Gap(),
+                std::abs( skewDelayDifference ), m_originPair.Dimensions().Width(), true, m_originPair.Dimensions().Gap(),
                 m_router->GetCurrentLayer(), m_netClass );
 
         const int64_t curSkew = CurrentSkew();

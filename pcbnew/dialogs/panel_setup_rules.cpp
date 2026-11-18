@@ -14,16 +14,12 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <drc/rule_editor/drc_rule_document.h>
 #include <bitmaps.h>
 #include <common.h>
-#include <kiplatform/io.h>
 #include <widgets/std_bitmap_button.h>
 #include <widgets/paged_dialog.h>
 #include <pcb_edit_frame.h>
@@ -45,15 +41,15 @@
 #include <drc/drc_rule_parser.h>
 #include <tools/drc_tool.h>
 #include <pgm_base.h>
-#include <wildcards_and_files_ext.h>
 #include <regex>
 #include <unordered_map>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
 
-PANEL_SETUP_RULES::PANEL_SETUP_RULES( wxWindow* aParentWindow, PCB_EDIT_FRAME* aFrame ) :
+PANEL_SETUP_RULES::PANEL_SETUP_RULES( wxWindow* aParentWindow, PCB_EDIT_FRAME* aFrame, DRC_RULE_DOCUMENT* aDocument ) :
         PANEL_SETUP_RULES_BASE( aParentWindow ),
         m_frame( aFrame ),
+        m_document( aDocument ),
         m_scintillaTricks( nullptr ),
         m_helpWindow( nullptr )
 {
@@ -238,7 +234,7 @@ void PANEL_SETUP_RULES::OnShowMatching()
                 };
 
         wxString rulesText = m_frame->GetBoard()->ConvertCrossReferencesToKIIDs( text );
-        rulesText = ExpandTextVars( rulesText, &resolver );
+        rulesText = ExpandTextVars( rulesText, &resolver, RESOLVED );
 
         DRC_RULES_PARSER parser( rulesText, _( "DRC rules" ) );
         parser.Parse( rules, m_errorsReport );
@@ -490,6 +486,7 @@ void PANEL_SETUP_RULES::onScintillaCharAdded( wxStyledTextEvent &aEvent )
                     || token == wxT( "disallow" )
                     || token == wxT( "edge_clearance" )
                     || token == wxT( "length" )
+                    || token == wxT( "line_width" )
                     || token == wxT( "hole_clearance" )
                     || token == wxT( "hole_size" )
                     || token == wxT( "hole_to_hole" )
@@ -712,6 +709,7 @@ void PANEL_SETUP_RULES::onScintillaCharAdded( wxStyledTextEvent &aEvent )
                           "disallow|"
                           "edge_clearance|"
                           "length|"
+                          "line_width|"
                           "hole_clearance|"
                           "hole_size|"
                           "hole_to_hole|"
@@ -724,7 +722,6 @@ void PANEL_SETUP_RULES::onScintillaCharAdded( wxStyledTextEvent &aEvent )
                           "solder_paste_abs_margin|"
                           "solder_paste_rel_margin|"
                           "text_height|"
-                          "text_thickness|"
                           "thermal_relief_gap|"
                           "thermal_spoke_width|"
                           "track_width|"
@@ -812,8 +809,7 @@ void PANEL_SETUP_RULES::onScintillaCharAdded( wxStyledTextEvent &aEvent )
         {
             if( m_netClassRegex.Matches( last ) )
             {
-                BOARD_DESIGN_SETTINGS&         bds = m_frame->GetBoard()->GetDesignSettings();
-                std::shared_ptr<NET_SETTINGS>& netSettings = bds.m_NetSettings;
+                std::shared_ptr<NET_SETTINGS>& netSettings = m_frame->GetBoard()->GetDesignSettings().m_NetSettings;
 
                 for( const auto& [name, netclass] : netSettings->GetNetclasses() )
                     tokens += wxT( "|" ) + name;
@@ -962,7 +958,7 @@ void PANEL_SETUP_RULES::OnCompile( wxCommandEvent& event )
 
         wxString rulesText = m_textEditor->GetText();
         rulesText = m_frame->GetBoard()->ConvertCrossReferencesToKIIDs( rulesText );
-        rulesText = ExpandTextVars( rulesText, &resolver );
+        rulesText = ExpandTextVars( rulesText, &resolver, RESOLVED );
 
         DRC_RULES_PARSER parser( rulesText, _( "DRC rules" ) );
 
@@ -986,9 +982,8 @@ void PANEL_SETUP_RULES::OnCompile( wxCommandEvent& event )
 
 void PANEL_SETUP_RULES::checkPlausibility( const std::vector<std::shared_ptr<DRC_RULE>>& aRules )
 {
-    BOARD*                 board = m_frame->GetBoard();
-    BOARD_DESIGN_SETTINGS& bds = board->GetDesignSettings();
-    LSET                   enabledLayers = board->GetEnabledLayers();
+    BOARD* board = m_frame->GetBoard();
+    LSET   enabledLayers = board->GetEnabledLayers();
 
     // Key by (condition, layerSource) so rules with different layer scopes are considered distinct
     std::map<std::pair<wxString, wxString>, wxString> seenConditions;
@@ -1025,7 +1020,7 @@ void PANEL_SETUP_RULES::checkPlausibility( const std::vector<std::shared_ptr<DRC
         {
             wxString ncName = wxString::FromUTF8( ( *it )[1].str() );
 
-            if( !bds.m_NetSettings->HasNetclass( ncName ) )
+            if( !board->GetDesignSettings().m_NetSettings->HasNetclass( ncName ) )
             {
                 m_errorsReport->Report( wxString::Format( _( "Rule '%s' references undefined netclass '%s'." ),
                                                           rule->m_Name,
@@ -1087,32 +1082,10 @@ void PANEL_SETUP_RULES::OnErrorLinkClicked( wxHtmlLinkEvent& event )
 
 bool PANEL_SETUP_RULES::TransferDataToWindow()
 {
-    wxFileName rulesFile( m_frame->GetDesignRulesPath() );
+    if( !m_frame->GetBoard() )
+        return true;
 
-    if( rulesFile.FileExists() )
-    {
-        wxTextFile file( rulesFile.GetFullPath() );
-
-        if( file.Open() )
-        {
-            for ( wxString str = file.GetFirstLine(); !file.Eof(); str = file.GetNextLine() )
-            {
-                ConvertSmartQuotesAndDashes( &str );
-                m_textEditor->AddText( str << '\n' );
-            }
-
-            m_textEditor->EmptyUndoBuffer();
-
-            wxCommandEvent dummy;
-            OnCompile( dummy );
-        }
-    }
-    else
-    {
-        m_textEditor->AddText( wxT( "(version 1)\n" ) );
-    }
-
-    m_originalText = m_textEditor->GetText();
+    RefreshFromDocument();
 
     if( m_frame->Prj().IsNullProject() )
     {
@@ -1127,32 +1100,13 @@ bool PANEL_SETUP_RULES::TransferDataToWindow()
 
 bool PANEL_SETUP_RULES::TransferDataFromWindow()
 {
-    if( !IsModified() )
-        return true;
-
-    wxString rulesFilepath = m_frame->GetDesignRulesPath();
-
-    wxString    content = m_textEditor->GetText();
-    std::string utf8 = std::string( content.mb_str( wxConvUTF8 ) );
-    wxString    writeError;
-
-    if( !KIPLATFORM::IO::AtomicWriteFile( rulesFilepath, utf8.data(), utf8.size(), &writeError ) )
+    if( IsModified() )
     {
-        wxLogError( _( "Cannot save design rules to '%s': %s" ), rulesFilepath, writeError );
-        return false;
+        m_document->SetText( m_textEditor->GetText() );
+        m_originalText = m_textEditor->GetText();
     }
 
-    try
-    {
-        m_frame->GetBoard()->GetDesignSettings().m_DRCEngine->InitEngine( rulesFilepath );
-        return true;
-    }
-    catch( PARSE_ERROR& )
-    {
-        // Don't lock them in to the Setup dialog if they have bad rules.  They've already
-        // saved them so we can allow an exit.
-        return true;
-    }
+    return true;
 }
 
 
@@ -1230,34 +1184,18 @@ void PANEL_SETUP_RULES::OnSyntaxHelp( wxHyperlinkEvent& aEvent )
 }
 
 
-void PANEL_SETUP_RULES::ImportSettingsFrom( BOARD* aBoard )
+void PANEL_SETUP_RULES::RefreshFromDocument()
 {
-    if( !m_frame->Prj().IsNullProject() )
+    wxString text = m_document->GetText();
+
+    if( text != m_textEditor->GetText() )
     {
-        wxFileName relFile = aBoard->GetFileName();
-        relFile.SetExt( FILEEXT::DesignRulesFileExtension );
+        m_textEditor->SetText( text );
+        m_textEditor->EmptyUndoBuffer();
 
-        wxFileName absFile( aBoard->GetProject()->AbsolutePath( relFile.GetFullName() ) );
-
-        if( absFile.FileExists() )
-        {
-            wxTextFile file( absFile.GetFullPath() );
-
-            if( file.Open() )
-            {
-                m_textEditor->ClearAll();
-
-                for ( wxString str = file.GetFirstLine(); !file.Eof(); str = file.GetNextLine() )
-                {
-                    ConvertSmartQuotesAndDashes( &str );
-                    m_textEditor->AddText( str << '\n' );
-                }
-
-                m_textEditor->EmptyUndoBuffer();
-
-                wxCommandEvent dummy;
-                OnCompile( dummy );
-            }
-        }
+        wxCommandEvent dummy;
+        OnCompile( dummy );
     }
+
+    m_originalText = m_textEditor->GetText();
 }

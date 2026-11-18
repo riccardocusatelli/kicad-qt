@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -24,7 +24,10 @@
 #include <geometry/eda_angle.h>
 #include <geometry/geometry_utils.h>
 #include <settings/app_settings.h>
+#include <settings/snap_settings.h>
 #include <pcb_display_options.h>
+
+#include <set>
 
 namespace PNS
 {
@@ -47,30 +50,6 @@ struct CONVERT_SETTINGS
     int              m_Gap;
     int              m_LineWidth;
     bool             m_DeleteOriginals;
-};
-
-
-enum class MAGNETIC_OPTIONS
-{
-    NO_EFFECT = 0,
-    CAPTURE_CURSOR_IN_TRACK_TOOL,
-    CAPTURE_ALWAYS
-};
-
-
-struct MAGNETIC_SETTINGS
-{
-    MAGNETIC_OPTIONS pads;
-    MAGNETIC_OPTIONS tracks;
-    bool             graphics;
-    bool             allLayers;
-
-    MAGNETIC_SETTINGS() :
-            pads( MAGNETIC_OPTIONS::CAPTURE_CURSOR_IN_TRACK_TOOL ),
-            tracks( MAGNETIC_OPTIONS::CAPTURE_CURSOR_IN_TRACK_TOOL ),
-            graphics( false ),
-            allLayers( false )
-    { }
 };
 
 
@@ -121,6 +100,9 @@ public:
 
     VIEWERS_DISPLAY_OPTIONS m_ViewersDisplay;
 
+    /// Keyed as "family/Property Name"; see MATCH_PROPERTIES_CATALOG.
+    std::set<wxString> m_MatchProperties;
+
     PCB_VIEWERS_SETTINGS_BASE( const std::string& aFilename, int aSchemaVersion ):
         APP_SETTINGS_BASE( aFilename, aSchemaVersion ),
         m_FootprintViewerZoom( 1.0 ),
@@ -134,6 +116,11 @@ public:
     }
 
     virtual ~PCB_VIEWERS_SETTINGS_BASE() {};
+
+protected:
+    /// Opt-in.  The two editors share one key and one default.  cvpcb derives from this class
+    /// but cannot edit, so it keeps the key out of its file.
+    void addMatchPropertiesParam();
 };
 
 
@@ -154,6 +141,7 @@ public:
         int   search_panel_dock_direction;
         bool  show_layer_manager;
         bool  show_properties;
+        bool  show_git_commit_pane;
         bool  show_search;
         bool  show_net_inspector;
         bool  design_blocks_show;
@@ -215,6 +203,17 @@ public:
 
         bool                 m_ForceShowFieldsWhenFPSelected;
         bool                 m_Live3DRefresh;
+
+        bool m_ShowConstraints; ///< Keep the geometric-constraint overlay shown.
+    };
+
+    struct DIFF_PHASE_SKEW_SETTINGS
+    {
+        KIGFX::COLOR4D m_ZeroSkewColor{ 1.0, 1.0, 1.0, 1.0 };
+        KIGFX::COLOR4D m_PositiveSkewColor{ 0.0, 0.0, 1.0, 1.0 };
+        KIGFX::COLOR4D m_NegativeSkewColor{ 1.0, 0.0, 0.0, 1.0 };
+        KIGFX::COLOR4D m_UnknownSkewColor{ 0.5, 0.5, 0.5, 1.0 };
+        bool           m_UseLogScale{ false };
     };
 
     PCBNEW_SETTINGS();
@@ -237,7 +236,10 @@ public:
 
     DISPLAY_OPTIONS    m_Display;
 
+    FIELDS_TABLE_SETTINGS m_FieldEditorPanel;
+
     MAGNETIC_SETTINGS  m_MagneticItems;
+    SNAP_INFERENCE_SETTINGS m_SnapInference;
     TRACK_DRAG_ACTION  m_TrackDragAction;
     ARC_EDIT_MODE      m_ArcEditMode;
 
@@ -245,6 +247,8 @@ public:
 
     LEADER_MODE        m_AngleSnapMode;        // Constrain tool actions to horizontal/vertical or 45°/90°
     FLIP_DIRECTION     m_FlipDirection;
+
+    bool m_AutoConstraints;
 
     bool      m_ESCClearsNetHighlight;
 
@@ -255,12 +259,15 @@ public:
     bool      m_ShowPageLimits;
     bool      m_ShowCourtyardCollisions;
 
-    ///<@todo Implement real auto zone filling (not just after zone properties are edited)
+    /// @todo Implement real auto zone filling (not just after zone properties are edited)
     bool      m_AutoRefillZones; // Fill zones after editing the zone using the Zone Properties dialog
 
     bool      m_AllowFreePads;  // True: unlocked pads can be moved freely with respect to the footprint.
                                 // False (default): all pads are treated as locked for the purposes of
                                 // movement and any attempt to move them will move the footprint instead.
+
+    bool m_AreaAnchorPointSelection; // True: every reshapeable item in a multi-selection
+    // shows its own anchor point handles
 
     bool      m_ImportKeepKiCadLayerNames;
 
@@ -272,6 +279,5 @@ public:
     wxString  m_LastFootprintLibDir;
     wxString  m_LastFootprint3dDir;
 
-    ACTION_PLUGIN_SETTINGS_LIST m_VisibleActionPlugins;
+    DIFF_PHASE_SKEW_SETTINGS m_DiffPhaseSkewSettings;
 };
-

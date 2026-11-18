@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef DRC_RE_RULE_SAVER_H_
@@ -52,21 +48,25 @@ public:
      * @param aPath Path to the output file.
      * @param aEntries Vector of panel entries to save.
      * @param aBoard Optional board for layer name resolution.
+     * @param aTrivia Text outside the rules of the loaded file, reproduced around them.
      * @return True if the file was saved successfully.
      */
     bool SaveFile( const wxString&                               aPath,
                    const std::vector<DRC_RE_LOADED_PANEL_ENTRY>& aEntries,
-                   const BOARD*                                  aBoard = nullptr );
+                   const BOARD*                                  aBoard = nullptr,
+                   const DRC_RE_FILE_TRIVIA&                     aTrivia = {} );
 
     /**
      * Generate rule text from panel entries.
      *
      * @param aEntries Vector of panel entries to convert.
      * @param aBoard Optional board for layer name resolution.
+     * @param aTrivia Text outside the rules of the loaded file, reproduced around them.
      * @return String containing all rules in DRC file format.
      */
     wxString GenerateRulesText( const std::vector<DRC_RE_LOADED_PANEL_ENTRY>& aEntries,
-                                const BOARD*                                  aBoard = nullptr );
+                                const BOARD*                                  aBoard = nullptr,
+                                const DRC_RE_FILE_TRIVIA&                     aTrivia = {} );
 
 private:
     /**
@@ -87,10 +87,9 @@ private:
      * Generate a layer clause from an LSET.
      *
      * @param aLayers The layer set.
-     * @param aBoard The board for layer name resolution.
-     * @return Layer clause string like "(layer \"F.Cu\" \"B.Cu\")".
+     * @return Layer clause string like "(layer \"F.Cu\")", or empty for every layer.
      */
-    wxString generateLayerClause( const LSET& aLayers, const BOARD* aBoard );
+    wxString generateLayerClause( const LSET& aLayers );
 
     /**
      * Generate a severity clause.

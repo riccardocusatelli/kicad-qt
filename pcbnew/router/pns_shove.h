@@ -15,13 +15,14 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef __PNS_SHOVE_H
 #define __PNS_SHOVE_H
 
+#include <memory>
 #include <vector>
 #include <stack>
 
@@ -31,6 +32,7 @@
 #include "pns_routing_settings.h"
 #include "pns_algo_base.h"
 #include "pns_logger.h"
+#include "pns_node.h"
 #include "range.h"
 
 namespace PNS {
@@ -87,13 +89,8 @@ public:
     bool ShoveObstacleLine( const LINE& aCurLine, const LINE& aObstacleLine,
                                     LINE& aResultLine );
 
-    void ForceClearance ( bool aEnabled, int aClearance )
-    {
-        if( aEnabled )
-            m_forceClearance = aClearance;
-        else
-            m_forceClearance = -1;
-    }
+    void SetCollisionFilter( COLLISION_FILTER_FUNC aFunc );
+    void SetClearanceOverride( CLEARANCE_OVERRIDE_FUNC aFunc );
 
     NODE* CurrentNode();
 
@@ -107,6 +104,7 @@ public:
     bool RewindToLastLockedNode();
     void DisablePostShoveOptimizations( int aMask );
     void SetSpringbackDoNotTouchNode( const NODE *aNode );
+    void SetClearanceOvevride( CLEARANCE_OVERRIDE_FUNC aFunc );
 
 private:
     typedef std::vector<SHAPE_LINE_CHAIN> HULL_SET;
@@ -116,12 +114,12 @@ private:
 
     struct ROOT_LINE_ENTRY
     {
-        ROOT_LINE_ENTRY( LINE* aLine = nullptr, int aPolicy = SHP_DEFAULT ) :
-            rootLine( aLine ),
+        ROOT_LINE_ENTRY( std::unique_ptr<LINE> aLine = {}, int aPolicy = SHP_DEFAULT ) :
+            rootLine( std::move( aLine ) ),
             policy( aPolicy )
         {}
 
-        LINE *rootLine = nullptr;
+        std::unique_ptr<LINE> rootLine;
         VIA* oldVia = nullptr;
         VIA* newVia = nullptr;
         std::optional<LINE> newLine;
@@ -251,6 +249,8 @@ private:
                     bool aAllowRedundantSegments = true,
                       NODE *aNode = nullptr );
 
+    ROOT_LINE_ENTRY* allocRootLine( std::unique_ptr<LINE> aLine,
+                                    int aPolicy = SHP_DEFAULT );
     ROOT_LINE_ENTRY* findRootLine( const LINE& aLine ) const;
     ROOT_LINE_ENTRY* findRootLine( const LINKED_ITEM *aItem ) const;
     ROOT_LINE_ENTRY* touchRootLine( const LINE& aLine );
@@ -261,7 +261,7 @@ private:
     SHOVE_STATUS shoveIteration( int aIter );
     SHOVE_STATUS shoveMainLoop();
 
-    int getClearance( const ITEM* aA, const ITEM* aB ) const;
+    int getClearance( const ITEM* aA, const ITEM* aB, CLEARANCE_ASPECT aAspect = CLEARANCE_ASPECT::ASP_SHOVE_FORWARD ) const;
     bool fixupViaCollisions( const LINE* aCurrent, OBSTACLE& obs );
     void sanityCheck( LINE* aOld, LINE* aNew );
     void reconstructHeads( bool aShoveFailed );
@@ -273,7 +273,10 @@ private:
     std::vector<LINE>           m_lineStack;
     std::vector<LINE>           m_optimizerQueue;
     std::deque<HEAD_LINE_ENTRY> m_headLines;
-
+    COLLISION_FILTER_FUNC       m_collisionFilter;
+    
+    // UID entries may alias the same history entry, so ownership lives outside the index.
+    std::vector<std::unique_ptr<ROOT_LINE_ENTRY>> m_rootLineHistoryEntries;
     std::unordered_map<LINKED_ITEM::UNIQ_ID, ROOT_LINE_ENTRY*> m_rootLineHistory;
 
     NODE*                       m_root;
@@ -283,14 +286,13 @@ private:
     VIA*                        m_draggedVia;
     int                         m_iter;
     bool m_headsModified;
-    int m_forceClearance;
+    CLEARANCE_OVERRIDE_FUNC     m_overrideClearance;
     bool m_multiLineMode;
 
     int m_optFlagDisableMask;
 
     int m_defaultPolicy;
     OPT_BOX2I                   m_affectedArea;
-
 };
 
 }

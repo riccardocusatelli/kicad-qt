@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef KICAD_PANEL_MOUSE_SETTINGS_H
@@ -26,6 +26,7 @@
 
 class COMMON_SETTINGS;
 class PAGED_DIALOG;
+enum class TOUCHPAD_MODE;
 
 
 struct SCROLL_MOD_SET
@@ -63,10 +64,13 @@ private:
 
     void updateScrollModButtons();
 
+    TOUCHPAD_MODE getTouchpadMode() const;
+
     bool isScrollModSetValid( const SCROLL_MOD_SET& aSet );
 
 private:
     SCROLL_MOD_SET m_currentScrollMod;
+    bool           m_nativeTouchpadGestureAvailable;
 };
 
 

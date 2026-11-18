@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 // For page and paper size, values are in 1/1000 inch
@@ -127,7 +123,7 @@ private:
 /**
  * Print the border and title block.
  *
- * @param aDC The device context.
+ * @param aSettings are the render settings for printing the drawing sheet.
  * @param aPageInfo for margins and page size (in mils).
  * @param aSheetName The sheet name, for basic inscriptions.
  * @param aSheetPath The sheetpath (full sheet name), for basic inscriptions.
@@ -137,6 +133,7 @@ private:
  * @param aSheetCount The number of sheets (for text variable resolution).
  * @param aPageNumber The page number.
  * @param aScalar the scale factor to convert from mils to internal units.
+ * @param aProject is the project used for variable substitutions.
  * @param aSheetLayer The layer from Pcbnew.
  * @param aIsFirstPage True when this is the first page.  This only has meaning for schematics.
  *

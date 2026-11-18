@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -31,11 +27,18 @@
 #ifndef SCH_IO_KICAD_SEXPR_PARSER_H_
 #define SCH_IO_KICAD_SEXPR_PARSER_H_
 
+#include <eda_fill.h>
 #include <symbol_library_common.h>
+#include <lib_id.h>
+#include <line_ending.h>
 #include <progress_reporter.h>
 #include <schematic_lexer.h>
 #include <sch_file_versions.h>
+#include <pin_map.h>
 #include <default_values.h>    // For some default values
+#include <map>
+#include <set>
+#include <wx/string.h>
 
 
 class SCH_PIN;
@@ -109,7 +112,7 @@ public:
      * @param aFileVersion The schematic file version to parser.  Defaults to the schematic
      *                     file being parsed when \a aIsCopyableOnly is false.
      */
-    void ParseSchematic( SCH_SHEET* aSheet, bool aIsCopyablyOnly = false,
+    void ParseSchematic( SCH_SHEET* aSheet, bool aIsCopyableOnly = false,
                          int aFileVersion = SEXPR_SCHEMATIC_FILE_VERSION );
 
     int GetParsedRequiredVersion() const { return m_requiredVersion; }
@@ -119,6 +122,34 @@ public:
      * These are errors that were handled gracefully but should be reported to the user.
      */
     const std::vector<wxString>& GetParseWarnings() const { return m_parseWarnings; }
+
+    // Access parsed per-chain netclass overrides (chain name -> netclass name).
+    const std::map<wxString, wxString>& GetNetChainNetClasses() const
+    {
+        return m_netChainNetClasses;
+    }
+
+    // Access parsed per-chain colour overrides (chain name -> RGBA).
+    const std::map<wxString, COLOR4D>& GetNetChainColors() const
+    {
+        return m_netChainColors;
+    }
+
+    struct CHAIN_TERMINAL
+    {
+        wxString refDes;
+        wxString pinNum;
+    };
+    using CHAIN_TERMINALS = std::pair<CHAIN_TERMINAL, CHAIN_TERMINAL>;
+
+    const std::map<wxString, CHAIN_TERMINALS>& GetNetChainTerminalRefs() const { return m_netChainTerminalRefs; }
+
+    // Access parsed per-chain member-net lists.  Used to reconstruct manually force-created
+    // chains on reload, since those have no underlying inferred potential.
+    const std::map<wxString, std::set<wxString>>& GetNetChainMemberNets() const
+    {
+        return m_netChainMemberNets;
+    }
 
 private:
     // Group membership info refers to other Uuids in the file.
@@ -133,6 +164,8 @@ private:
         KIID              uuid;
         LIB_ID            libId;
         std::vector<KIID> memberUuids;
+        bool              locked = false;
+        std::map<wxString, wxString> customProperties;
     };
 
     void checkpoint();
@@ -180,6 +213,9 @@ private:
 
     bool parseBool();
 
+    void parseCustomProperty( EDA_ITEM* aItem );
+    void parseCustomProperty( std::map<wxString, wxString>& aProps );
+
     /**
      * Parses a boolean flag inside a list that existed before boolean normalization.
      *
@@ -197,9 +233,16 @@ private:
     /**
      * Parse stroke definition \a aStroke.
      *
-     * @param aStrokeDef A reference to the #STROKE_PARAMS structure to write to.
+     * @param aStroke A reference to the #STROKE_PARAMS structure to write to.
      */
     void parseStroke( STROKE_PARAMS& aStroke );
+
+    /**
+     * Parse a line ending definition from the token stream.
+     *
+     * @param aEnding A reference to the #LINE_ENDING structure to write to.
+     */
+    void parseLineEnding( LINE_ENDING& aEnding );
 
     void parseFill( FILL_PARAMS& aFill );
 
@@ -216,11 +259,22 @@ private:
     void parsePinNames( std::unique_ptr<LIB_SYMBOL>& aSymbol );
     void parsePinNumbers( std::unique_ptr<LIB_SYMBOL>& aSymbol );
 
+    void    parseAssociatedFootprints( std::unique_ptr<LIB_SYMBOL>& aSymbol );
+    void    parsePinMaps( std::unique_ptr<LIB_SYMBOL>& aSymbol );
+    PIN_MAP parseOnePinMap();
+
+    PIN_MAP_INSTANCE_OVERRIDE parsePinMapOverride();
+    LIB_ID                     parseSymbolOverride();
+
     SCH_FIELD* parseProperty( std::unique_ptr<LIB_SYMBOL>& aSymbol );
+
+    void parseEllipseBody( SCH_SHAPE* aShape, bool aIsArc, bool aIsSchematic, TSCHEMATIC_T::T aFirstTok );
 
     SCH_SHAPE* parseSymbolArc();
     SCH_SHAPE* parseSymbolBezier();
     SCH_SHAPE* parseSymbolCircle();
+    SCH_SHAPE*   parseSymbolEllipse();
+    SCH_SHAPE*   parseSymbolEllipseArc();
     SCH_PIN* parseSymbolPin();
     SCH_SHAPE* parseSymbolPolyLine();
     SCH_SHAPE* parseSymbolRectangle();
@@ -247,6 +301,8 @@ private:
     SCH_SHAPE* parseSchPolyLine();
     SCH_SHAPE* parseSchArc();
     SCH_SHAPE* parseSchCircle();
+    SCH_SHAPE*          parseSchEllipse();
+    SCH_SHAPE*          parseSchEllipseArc();
     SCH_SHAPE* parseSchRectangle();
     SCH_SHAPE* parseSchBezier();
     SCH_RULE_AREA* parseSchRuleArea();
@@ -256,6 +312,7 @@ private:
     SCH_TABLECELL* parseSchTableCell();
     SCH_TABLE* parseSchTable();
     void parseBusAlias( SCH_SCREEN* aScreen );
+    void parseSchNetChain();
 
     void resolveGroups( SCH_SCREEN* aParent );
 
@@ -297,6 +354,11 @@ private:
     std::vector<GROUP_INFO> m_groupInfos;
 
     std::vector<wxString>   m_parseWarnings;    ///< Non-fatal warnings collected during parsing
+
+    std::map<wxString, wxString>              m_netChainNetClasses;
+    std::map<wxString, COLOR4D>               m_netChainColors;
+    std::map<wxString, CHAIN_TERMINALS>       m_netChainTerminalRefs;
+    std::map<wxString, std::set<wxString>>    m_netChainMemberNets;
 };
 
 #endif    // SCH_IO_KICAD_SEXPR_PARSER_H_

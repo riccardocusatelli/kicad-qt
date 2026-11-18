@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -113,7 +109,7 @@ private:
      * @warning This routine is reentrant!
      *
      * @param[in] aList is the #SCH_SHEET_PATH list to explore.
-     * @param aPreviousmenu is the wxTreeItemId used as parent to add sub items.
+     * @param[in] aParent is the wxTreeItemId used as parent to add sub items.
      */
     void buildHierarchyTree( SCH_SHEET_PATH* aList, const wxTreeItemId& aParent );
 
@@ -137,6 +133,8 @@ private:
     void onCharHook( wxKeyEvent& aKeyStroke );
     void onTreeRightClick( wxTreeEvent& event );
     void onTreeEditFinished( wxTreeEvent& event );
+
+    void renameSheet( const SCH_SHEET_PATH& aPath, const wxString& aNewName );
 
     /**
      * @return String with page number in parenthesis
@@ -166,6 +164,7 @@ private:
     HIERARCHY_TREE* m_tree;
 
     bool            m_events_bound;
+    bool            m_contextMenuOpen;
     std::set<wxString> m_collapsedPaths;
     wxString           m_highlightedNet;
 };

@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PNS_SEGMENT_H
@@ -48,6 +48,14 @@ public:
     {
         m_net = aNet;
     }
+
+    SEGMENT( const SHAPE_SEGMENT& aSeg, NET_HANDLE aNet ) :
+        LINKED_ITEM( SEGMENT_T ),
+        m_seg( aSeg )
+    {
+        m_net = aNet;
+    }
+
 
     SEGMENT( const LINE& aParentLine, const SEG& aSeg ) :
         LINKED_ITEM( SEGMENT_T ),

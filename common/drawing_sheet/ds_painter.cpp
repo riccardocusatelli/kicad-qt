@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -177,7 +173,7 @@ wxString DS_DRAW_ITEM_LIST::BuildFullText( const wxString& aTextbase )
                 }
                 else if( m_titleBlock )
                 {
-                    if( m_titleBlock->TextVarResolver( token, m_project, m_flags ) )
+                    if( m_titleBlock->TextVarResolver( token, m_project, m_context ) )
                     {
                         // No need for tokenUpdated; TITLE_BLOCK::TextVarResolver() already goes
                         // up to the project.
@@ -189,7 +185,7 @@ wxString DS_DRAW_ITEM_LIST::BuildFullText( const wxString& aTextbase )
 
                         m_titleBlock = nullptr;
                         {
-                            *token = ExpandTextVars( *token, &wsResolver, m_flags );
+                            *token = ExpandTextVars( *token, &wsResolver, m_context );
                         }
                         m_titleBlock = savedTitleBlock;
 
@@ -204,8 +200,14 @@ wxString DS_DRAW_ITEM_LIST::BuildFullText( const wxString& aTextbase )
 
                 if( tokenUpdated )
                 {
-                   *token = ExpandTextVars( *token, m_project, m_flags );
-                   return true;
+                    std::function<bool( wxString* )> projectResolver = [&]( wxString* aToken ) -> bool
+                    {
+                        return m_project && m_project->TextVarResolver( aToken );
+                    };
+
+                    int depth = 0;
+                    *token = ResolveTextVars( *token, &projectResolver, depth );
+                    return true;
                 }
 
                 if( m_project && m_project->TextVarResolver( token ) )
@@ -214,7 +216,7 @@ wxString DS_DRAW_ITEM_LIST::BuildFullText( const wxString& aTextbase )
                 return false;
             };
 
-    wxString retv = ExpandTextVars( aTextbase, &wsResolver, m_flags );
+    wxString retv = ExpandTextVars( aTextbase, &wsResolver, m_context );
 
     if( retv.Contains( wxS( "@{" ) ) )
     {
@@ -223,6 +225,8 @@ wxString DS_DRAW_ITEM_LIST::BuildFullText( const wxString& aTextbase )
         EXPRESSION_EVALUATOR evaluator;
         retv = evaluator.Evaluate( retv );
     }
+
+    FinalizeTextVarExpansion( retv, m_context );
 
     return retv;
 }
@@ -292,8 +296,8 @@ void KIGFX::DS_PAINTER::draw( const DS_DRAW_ITEM_TEXT* aItem, int aLayer ) const
 
     if( !font )
     {
-        font = KIFONT::FONT::GetFont( m_renderSettings.GetDefaultFont(), aItem->IsBold(),
-                                      aItem->IsItalic(), nullptr, true );
+        font = KIFONT::FONT::GetFont( m_renderSettings.GetDefaultFont(), aItem->IsBold(), aItem->IsItalic(),
+                                      nullptr, true );
     }
 
     const COLOR4D& color = m_renderSettings.GetColor( aItem, aLayer );
@@ -302,11 +306,9 @@ void KIGFX::DS_PAINTER::draw( const DS_DRAW_ITEM_TEXT* aItem, int aLayer ) const
     m_gal->SetFillColor( color );
 
     TEXT_ATTRIBUTES attrs = aItem->GetAttributes();
-    attrs.m_StrokeWidth = std::max( aItem->GetEffectiveTextPenWidth(),
-                                    m_renderSettings.GetDefaultPenWidth() );
+    attrs.m_StrokeWidth = std::max( aItem->GetEffectiveTextPenWidth(), m_renderSettings.GetDefaultPenWidth() );
 
-    font->Draw( m_gal, aItem->GetShownText( true ), aItem->GetTextPos(), attrs,
-                aItem->GetFontMetrics() );
+    font->Draw( m_gal, aItem->GetShownText( FOR_CANVAS ), aItem->GetTextPos(), attrs, aItem->GetFontMetrics() );
 }
 
 
@@ -319,11 +321,8 @@ void KIGFX::DS_PAINTER::draw( const DS_DRAW_ITEM_BITMAP* aItem, int aLayer ) con
     m_gal->Translate( position );
 
     // If we've failed to read the bitmap data, don't try to draw it
-    if( !( bitmap && bitmap->m_ImageBitmap
-                    && bitmap->m_ImageBitmap->GetImageData() ) )
-    {
+    if( !( bitmap && bitmap->m_ImageBitmap && bitmap->m_ImageBitmap->GetImageData() ) )
         return;
-    }
 
     // When the image scale factor is not 1.0, we need to modify the actual scale
     // as the image scale factor is similar to a local zoom
@@ -344,8 +343,7 @@ void KIGFX::DS_PAINTER::draw( const DS_DRAW_ITEM_BITMAP* aItem, int aLayer ) con
     if( img_scale != 1.0 )
         m_canvas->Scale( VECTOR2D( 1.0, 1.0 ) );
 
-    m_canvas->DrawRectangle( VECTOR2D( bbox.GetOrigin() ) - position,
-                          VECTOR2D( bbox.GetEnd() ) - position );
+    m_canvas->DrawRectangle( VECTOR2D( bbox.GetOrigin() ) - position, VECTOR2D( bbox.GetEnd() ) - position );
 #endif
 
     m_gal->Restore();

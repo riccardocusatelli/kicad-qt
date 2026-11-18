@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <kiface_base.h>
@@ -40,6 +36,12 @@
 
 void PCB_EDIT_FRAME::Edit_Zone_Params( ZONE* aZone )
 {
+    if( aZone->IsCopperThieving() )
+    {
+        SetStatusText( _( "Edit copper-thieving parameters in the Properties panel." ), 0 );
+        return;
+    }
+
     int           dialogResult;
     ZONE_SETTINGS zoneInfo = m_pcb->GetDesignSettings().GetDefaultZoneSettings();
     BOARD_COMMIT  commit( this );
@@ -77,11 +79,6 @@ void PCB_EDIT_FRAME::Edit_Zone_Params( ZONE* aZone )
 
     if( NETINFO_ITEM* net = GetBoard()->FindNet( zoneInfo.m_Netcode ) )
         aZone->SetNetCode( net->GetNetCode() );
-
-    // restore default net properties
-    zoneInfo.m_Netcode = NETINFO_LIST::ORPHANED;
-
-    m_pcb->GetDesignSettings().SetDefaultZoneSettings( zoneInfo );
 
     commit.Push( _( "Edit Zone Properties" ), SKIP_CONNECTIVITY );
     rebuildConnectivity();

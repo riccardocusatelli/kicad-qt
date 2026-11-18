@@ -17,20 +17,25 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PCB_CONTROL_H
 #define PCB_CONTROL_H
 
 #include <pcb_io/pcb_io_mgr.h>
+#include <functional>
 #include <memory>
 #include <tools/pcb_tool_base.h>
+<<<<<<< b2e17e0a
 class STATUS_TEXT_POPUP;
+||||||| 1304b76aad
+#include <status_popup.h>
+=======
+#include <status_popup.h>
+#include <wx/dialog.h>
+#include <wx/weakref.h>
+>>>>>>> ed8c16703e
 
 namespace KIGFX {
     class ORIGIN_VIEWITEM;
@@ -38,6 +43,7 @@ namespace KIGFX {
 
 class PCB_BASE_FRAME;
 class BOARD_ITEM;
+class PCB_GENERATED_TABLE;
 
 /**
  * Handle actions that are shared between different frames in PcbNew.
@@ -115,6 +121,10 @@ public:
     int UpdateMessagePanel( const TOOL_EVENT& aEvent );
     int PlaceCharacteristics( const TOOL_EVENT& aEvent );
     int PlaceStackup( const TOOL_EVENT& aEvent );
+    int PlaceDrillChart( const TOOL_EVENT& aEvent );
+    int PlaceDrillMap( const TOOL_EVENT& aEvent );
+    int ShowDrillGroups( const TOOL_EVENT& aEvent );
+
     int CollectAndEmbed3DModels( const TOOL_EVENT& aEvent );
 
     int FlipPcbView( const TOOL_EVENT& aEvent );
@@ -130,7 +140,7 @@ public:
     int DdImportFootprint( const TOOL_EVENT& aEvent );
 
 private:
-    ///< Sets up handlers for various events.
+    /// Sets up handlers for various events.
     void setTransitions() override;
 
     /**
@@ -149,6 +159,7 @@ private:
     /**
      * Add and select or just select for move/place command a list of board items.
      *
+     * @param aCommit is the commit for undo/redo handling.
      * @param aItems is the list of items
      * @param aIsNew = true to add items to the current board, false to just select if
      *               items are already managed by the current board
@@ -156,12 +167,32 @@ private:
      *                        (if false, the top-left item's origin will be used)
      * @param aReannotateDuplicates = true to reannotate any footprints with a designator
      *                                that already exist in the board.
+     * @param aSkipMove
      */
     bool placeBoardItems( BOARD_COMMIT* aCommit, std::vector<BOARD_ITEM*>& aItems, bool aIsNew, bool aAnchorAtOrigin,
                           bool aReannotateDuplicates, bool aSkipMove );
 
     bool placeBoardItems( BOARD_COMMIT* aCommit, BOARD* aBoard, bool aAnchorAtOrigin, bool aReannotateDuplicates,
                           bool aSkipMove );
+
+    /**
+     * The active layer when \a aAvailable accepts it, otherwise the first documentation layer it
+     * does, which becomes active. UNDEFINED_LAYER, with \a aNoLayerMessage shown, when none does.
+     */
+    PCB_LAYER_ID pickDocumentationLayer( const std::function<bool( PCB_LAYER_ID )>& aAvailable,
+                                         const wxString&                            aNoLayerMessage );
+
+    /**
+     * Build a generated table on a documentation layer and hand it to the user to place.
+     *
+     * A cancelled placement is reverted, which deletes the table and leaves the refresh's
+     * pending board state uncommitted.
+     *
+     * @param aNoLayerMessage is shown when no enabled documentation layer can hold the table.
+     * @param aUndoMessage names the placement in the undo history.
+     */
+    int placeGeneratedTable( std::unique_ptr<PCB_GENERATED_TABLE> aTable, const wxString& aNoLayerMessage,
+                             const wxString& aUndoMessage );
 
 private:
     PCB_BASE_FRAME*                         m_frame;
@@ -171,6 +202,12 @@ private:
     BOARD_ITEM*                             m_pickerItem;
 
     std::unique_ptr<STATUS_TEXT_POPUP>      m_statusPopup;
+
+    /**
+     * Modeless, so it outlives the action that opened it. Weak, so a dialog the user
+     * closed leaves nothing dangling here.
+     */
+    wxWeakRef<wxDialog>                     m_drillGroupsDialog;
 };
 
 #endif

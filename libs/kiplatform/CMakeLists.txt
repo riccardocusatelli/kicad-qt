@@ -6,17 +6,38 @@ set( PLATFORM_COMPILE_DEFS "" )
 
 # Add port-specific (GUI) files and definitions
 if( KICAD_WX_PORT STREQUAL osx )
+<<<<<<< b2e17e0a
     set( PLATFORM_GUI_SRCS
+||||||| 1304b76aad
+    set( PLATFORM_SRCS
+=======
+    set( PLATFORM_SRCS
+        port/wxosx/touchpad.mm
+>>>>>>> ed8c16703e
         port/wxosx/ui.mm
         port/wxosx/webview.mm
         )
 elseif( KICAD_WX_PORT STREQUAL msw )
+<<<<<<< b2e17e0a
     set( PLATFORM_GUI_SRCS
+||||||| 1304b76aad
+    set( PLATFORM_SRCS
+=======
+    set( PLATFORM_SRCS
+        port/wxmsw/touchpad.cpp
+>>>>>>> ed8c16703e
         port/wxmsw/ui.cpp
         port/wxmsw/webview.cpp
         )
 elseif( KICAD_WX_PORT STREQUAL gtk )
+<<<<<<< b2e17e0a
     set( PLATFORM_GUI_SRCS
+||||||| 1304b76aad
+    set( PLATFORM_SRCS
+=======
+    set( PLATFORM_SRCS
+        port/wxgtk/touchpad.cpp
+>>>>>>> ed8c16703e
         port/wxgtk/ui.cpp
         port/wxgtk/webview.cpp
         )
@@ -24,9 +45,14 @@ elseif( KICAD_WX_PORT STREQUAL gtk )
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
 
+    # X11 is used directly for the window-manager class hint (see port/wxgtk/ui.cpp); GTK links
+    # it only privately, so we need it explicitly on the final link line.
+    find_package( X11 REQUIRED )
+
     # Detect GTK3 and configure it
     set( PLATFORM_GUI_LIBS
         ${GTK3_LIBRARIES}
+        X11::X11
         )
 endif()
 
@@ -101,6 +127,7 @@ elseif( UNIX )
 
     find_package(PkgConfig REQUIRED)
 
+<<<<<<< b2e17e0a
     # GLib and GIO (not GTK) for the OS services
     pkg_check_modules(GIO REQUIRED gio-2.0)
     set( PLATFORM_INCLUDE_DIRS ${GIO_INCLUDE_DIRS} )
@@ -117,6 +144,16 @@ elseif( UNIX )
         set( PLATFORM_GUI_INCLUDE_DIRS ${POPPLER_INCLUDE_DIRS} )
         list( APPEND PLATFORM_GUI_LIBS ${Poppler_LIBRARIES} )
     endif()
+||||||| 1304b76aad
+    # Detect Poppler library for printing and configure it
+    find_package( Poppler REQUIRED )
+    include_directories( SYSTEM ${POPPLER_INCLUDE_DIRS} )
+    list( APPEND PLATFORM_LIBS ${Poppler_LIBRARIES} )
+=======
+    # Detect Poppler library for printing and configure it
+    find_package( Poppler REQUIRED COMPONENTS Glib )
+    list( APPEND PLATFORM_LIBS Poppler::Glib )
+>>>>>>> ed8c16703e
 
     if( KICAD_WAYLAND )
         find_package(Wayland 1.20 COMPONENTS Client REQUIRED)

@@ -14,14 +14,11 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <boost/test/unit_test.hpp>
+#include <qa_utils/file_utils.h>
 
 #include <filesystem>
 #include <memory>
@@ -43,12 +40,8 @@ BOOST_AUTO_TEST_CASE( ExportGencadWithFilename )
 
     BOOST_REQUIRE( std::filesystem::exists( boardPath ) );
 
-    const std::filesystem::path outputRoot =
-            std::filesystem::temp_directory_path() / "kicad_gencad_export_test";
-    const std::filesystem::path outputPath = outputRoot / "test_output.cad";
-
-    if( std::filesystem::exists( outputRoot ) )
-        std::filesystem::remove_all( outputRoot );
+    KI_TEST::SCOPED_TEMP_DIR    outputRoot( wxS( "kicad_gencad_export_test" ) );
+    const std::filesystem::path outputPath = outputRoot.Path() / "test_output.cad";
 
     auto gencadJob = std::make_unique<JOB_EXPORT_PCB_GENCAD>();
     gencadJob->m_filename = wxString::FromUTF8( boardPath.string().c_str() );
@@ -59,6 +52,4 @@ BOOST_AUTO_TEST_CASE( ExportGencadWithFilename )
 
     BOOST_CHECK( std::filesystem::exists( outputPath ) );
     BOOST_CHECK( std::filesystem::is_regular_file( outputPath ) );
-
-    std::filesystem::remove_all( outputRoot );
 }

@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef BOARD_EDITOR_CONTROL_H
@@ -54,6 +50,7 @@ public:
     int New( const TOOL_EVENT& aEvent );
     int Open( const TOOL_EVENT& aEvent );
     int Save( const TOOL_EVENT& aEvent );
+    int ExportForOlderVersion( const TOOL_EVENT& aEvent );
     int SaveAs( const TOOL_EVENT& aEvent );
     int SaveCopy( const TOOL_EVENT& aEvent );
     int Revert( const TOOL_EVENT& aEvent );
@@ -66,14 +63,18 @@ public:
     int Search( const TOOL_EVENT& aEvent );
     int Find( const TOOL_EVENT& aEvent );
     int FindNext( const TOOL_EVENT& aEvent );
+    int FindByProperties( const TOOL_EVENT& aEvent );
 
     int BoardSetup( const TOOL_EVENT& aEvent );
+    int DesignRules( const TOOL_EVENT& aEvent );
     int ImportNetlist( const TOOL_EVENT& aEvent );
     int ImportSpecctraSession( const TOOL_EVENT& aEvent );
     int ExportSpecctraDSN( const TOOL_EVENT& aEvent );
     int ExportNetlist( const TOOL_EVENT& aEvent );
+    int EditFootprintFields( const TOOL_EVENT& aEvent );
     int GenerateDrillFiles( const TOOL_EVENT& aEvent );
     int GeneratePosFile( const TOOL_EVENT& aEvent );
+    int GenerateBOM( const TOOL_EVENT& aEvent );
     int GenerateGerbers( const TOOL_EVENT& aEvent );
     int ExportGenCAD( const TOOL_EVENT& aEvent );
     int ExportVRML( const TOOL_EVENT& aEvent );
@@ -94,8 +95,9 @@ public:
     int ToggleLayersManager( const TOOL_EVENT& aEvent );
     int ToggleProperties( const TOOL_EVENT& aEvent );
     int ToggleNetInspector( const TOOL_EVENT& aEvent );
+    int ToggleGitCommitPane( const TOOL_EVENT& aEvent );
     int ToggleSearch( const TOOL_EVENT& aEvent );
-    int TogglePythonConsole( const TOOL_EVENT& aEvent );
+    int ToggleConstraintsPanel( const TOOL_EVENT& aEvent );
     int ToggleLibraryTree( const TOOL_EVENT& aEvent );
 
     // Track & via size control
@@ -108,7 +110,7 @@ public:
     // Zone actions
     int ZoneMerge( const TOOL_EVENT& aEvent );
 
-    ///< Duplicate a zone onto a layer (prompts for new layer)
+    /// Duplicate a zone onto a layer (prompts for new layer)
     int ZoneDuplicate( const TOOL_EVENT& aEvent );
 
     // Zone priority manipulation
@@ -119,13 +121,13 @@ public:
 
     int EditFpInFpEditor( const TOOL_EVENT& aEvent );
 
-    ///< Notify Eeschema about selected items.
+    /// Notify Eeschema about selected items.
     int CrossProbeToSch( const TOOL_EVENT& aEvent );
 
-    ///< Equivalent to the above, but initiated by the user.
+    /// Equivalent to the above, but initiated by the user.
     int ExplicitCrossProbeToSch( const TOOL_EVENT& aEvent );
 
-    ///< Assign a netclass to a labelled net.
+    /// Assign a netclass to a labelled net.
     int AssignNetclass( const TOOL_EVENT& aEvent );
 
     /**
@@ -138,19 +140,19 @@ public:
      */
     bool PlacingFootprint() const { return m_placingFootprint; }
 
-    ///< Toggle 'lock' property for selected items.
+    /// Toggle 'lock' property for selected items.
     int ToggleLockSelected( const TOOL_EVENT& aEvent );
 
-    ///< Lock selected items.
+    /// Lock selected items.
     int LockSelected( const TOOL_EVENT& aEvent );
 
-    ///< Unlock selected items.
+    /// Unlock selected items.
     int UnlockSelected( const TOOL_EVENT& aEvent );
 
-    ///< Run the drill origin tool for setting the origin for drill and pick-and-place files.
+    /// Run the drill origin tool for setting the origin for drill and pick-and-place files.
     int DrillOrigin( const TOOL_EVENT& aEvent );
 
-    ///< Low-level access (below undo) to setting the drill origin.
+    /// Low-level access (below undo) to setting the drill origin.
     static void DoSetDrillOrigin( KIGFX::VIEW* aView, PCB_BASE_FRAME* aFrame,
                                   EDA_ITEM* aItem, const VECTOR2D& aPoint );
 
@@ -159,12 +161,12 @@ public:
     int OnAngleSnapModeChanged( const TOOL_EVENT& aEvent );
 
 private:
-    ///< How to modify a property for selected items.
+    /// How to modify a property for selected items.
     enum MODIFY_MODE { ON, OFF, TOGGLE };
 
     int modifyLockSelected( MODIFY_MODE aMode );
 
-    ///< Set up handlers for various events.
+    /// Set up handlers for various events.
     void setTransitions() override;
 
     void doCrossProbePcbToSch( const TOOL_EVENT& aEvent, bool aForce );

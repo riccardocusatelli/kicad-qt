@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -48,22 +48,6 @@ public:
 
 protected:
     std::unique_ptr<wxValidator> m_validator;
-};
-
-
-/**
- * A general-purpose text renderer for WX_GRIDs backed by WX_GRID_TABLE_BASE tables that can handle
- * drawing expand/collapse controls.
- */
-class KIQT_COMMON_API GRID_CELL_TEXT_RENDERER : public wxGridCellStringRenderer
-{
-public:
-    GRID_CELL_TEXT_RENDERER();
-
-    void Draw( wxGrid& aGrid, wxGridCellAttr& aAttr, wxDC& aDC, const wxRect& aRect, int aRow,
-               int aCol, bool isSelected ) override;
-
-    wxSize GetBestSize( wxGrid& grid, wxGridCellAttr& attr, wxDC& dc, int row, int col ) override;
 };
 
 

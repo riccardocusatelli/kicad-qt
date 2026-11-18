@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <app_monitor.h>
@@ -39,6 +35,7 @@
 #endif
 
 using namespace APP_MONITOR;
+
 
 SENTRY::SENTRY() :
         m_isOptedIn( false )
@@ -165,6 +162,13 @@ void SENTRY::sentryInit()
         // only capture 5% of transactions
         sentry_options_set_traces_sample_rate( options, 0.05 );
         sentry_options_set_dsn( options, KICAD_SENTRY_DSN );
+
+#ifdef __WXMAC__
+        wxString handlerPath = PATHS::GetExecutablePath() + wxT( "Contents/MacOS/crashpad_handler" );
+
+        if( wxFileExists( handlerPath ) )
+            sentry_options_set_handler_path( options, handlerPath.c_str() );
+#endif
 
         wxFileName tmp;
         tmp.AssignDir( PATHS::GetUserCachePath() );

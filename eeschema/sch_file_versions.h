@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -58,7 +58,15 @@
 //#define SEXPR_SYMBOL_LIB_FILE_VERSION  20250829  // Rounded Rectangles
 //#define SEXPR_SYMBOL_LIB_FILE_VERSION  20250901  // Stacked Pin notation
 //#define SEXPR_SYMBOL_LIB_FILE_VERSION  20250925  // Bus alias in Project File
-#define SEXPR_SYMBOL_LIB_FILE_VERSION 20251024 // Updated properties formatting (do_not_autoplace, show_name)
+//#define SEXPR_SYMBOL_LIB_FILE_VERSION  20251024 // Updated properties formatting (do_not_autoplace, show_name)
+//#define SEXPR_SYMBOL_LIB_FILE_VERSION  20260508 // Native ellipse primitive
+//#define SEXPR_SYMBOL_LIB_FILE_VERSION  20260622 // Escaped special chars in stacked pin notation
+//#define SEXPR_SYMBOL_LIB_FILE_VERSION  20260629 // Pin-to-pad maps (issue #2282)
+//#define SEXPR_SYMBOL_LIB_FILE_VERSION  20260710 // Line ending shapes
+//#define SEXPR_SYMBOL_LIB_FILE_VERSION  20260826 // Bold is a stroke-width multiplier; thickness stores the base width
+//#define SEXPR_SYMBOL_LIB_FILE_VERSION  20260830 // Custom user properties
+//#define SEXPR_SYMBOL_LIB_FILE_VERSION  20261015 // Custom user properties for SCH_SHAPEs
+#define   SEXPR_SYMBOL_LIB_FILE_VERSION  20261106 // Persist custom properties for pins and sheet pins
 
 /**
  * Schematic file version.
@@ -135,4 +143,18 @@
 //#define SEXPR_SCHEMATIC_FILE_VERSION 20251012  // Flat schematic hierarchy support
 //#define SEXPR_SCHEMATIC_FILE_VERSION 20251028  // Updated properties formatting (do_not_autoplace, show_name)
 //#define SEXPR_SCHEMATIC_FILE_VERSION 20260101  // PCB variants
-#define SEXPR_SCHEMATIC_FILE_VERSION 20260306  // Variant in_bom semantics corrected
+//#define SEXPR_SCHEMATIC_FILE_VERSION 20260306  // Variant in_bom semantics corrected
+//#define SEXPR_SCHEMATIC_FILE_VERSION 20260326  // Locking properties
+//#define SEXPR_SCHEMATIC_FILE_VERSION 20260508  // Native ellipse primitive
+//#define SEXPR_SCHEMATIC_FILE_VERSION 20260512  // Net chains
+//#define SEXPR_SCHEMATIC_FILE_VERSION 20260622  // Escaped special chars in stacked pin notation
+//#define SEXPR_SCHEMATIC_FILE_VERSION 20260623  // Migrate reference image scale for PNG pixel-density fix
+//#define SEXPR_SCHEMATIC_FILE_VERSION 20260629  // Pin-to-pad maps (issue #2282)
+//#define SEXPR_SCHEMATIC_FILE_VERSION 20260722  // Dedicated variant symbol_override token
+//#define SEXPR_SCHEMATIC_FILE_VERSION 20260803  // Schematic polygons with normalized closing edge
+//#define SEXPR_SCHEMATIC_FILE_VERSION 20260818  // Line ending shapes
+//#define SEXPR_SCHEMATIC_FILE_VERSION 20260826  // Bold is a stroke-width multiplier; thickness stores the base width
+//#define SEXPR_SCHEMATIC_FILE_VERSION 20260830  // Custom user properties
+//#define SEXPR_SCHEMATIC_FILE_VERSION 20261015  // Custom user properties for SCH_SHAPEs
+//#define SEXPR_SCHEMATIC_FILE_VERSION 20261025  // Reference image rotation and opacity
+#define SEXPR_SCHEMATIC_FILE_VERSION   20261106  // Persist custom properties for pins and sheet pins

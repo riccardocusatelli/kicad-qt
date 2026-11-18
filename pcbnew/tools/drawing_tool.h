@@ -17,18 +17,18 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef __DRAWING_TOOL_H
 #define __DRAWING_TOOL_H
 
+#include <functional>
 #include <stack>
 #include <optional>
+#include <eda_shape.h>
+#include <tool/arc_tangent_seed.h>
+#include <tool/shape_draw_behavior.h>
 #include <tool/tool_menu.h>
 #include <tools/pcb_selection.h>
 #include <tools/pcb_tool_base.h>
@@ -41,11 +41,38 @@ namespace KIGFX
 }
 
 class BOARD;
+class BOARD_ITEM;
+class PAD;
+class PCB_TRACK;
+class DRC_ENGINE;
 class PCB_BASE_EDIT_FRAME;
 class PCB_SHAPE;
+class BOARD_CONNECTED_ITEM;
+class PCB_VIA;
 class POLYGON_GEOM_MANAGER;
 class PCB_TUNING_PATTERN;
 class STATUS_MIN_MAX_POPUP;
+
+
+/**
+ * Shared placement DRC checks, used by the plain via tool and the microvia stack tool so both
+ * block placement over foreign copper consistently.
+ */
+int  ComputeWorstViaClearance( PCB_BASE_EDIT_FRAME* aFrame, DRC_ENGINE* aEngine );
+bool CheckItemDRCViolation( BOARD_CONNECTED_ITEM* aItem, PCB_BASE_EDIT_FRAME* aFrame, DRC_ENGINE* aEngine,
+                            int aWorstClearance, int aEpsilon );
+
+
+/**
+ * Shared placement snapping, used by the plain via tool and the microvia stack tool. @a aVia
+ * gives the reach and the bounding box to search, @a aLayers which layers may be snapped to,
+ * so a stack can offer every layer it spans rather than just the via's own.
+ */
+int        ViaSnapRange( PCB_BASE_EDIT_FRAME* aFrame );
+PCB_TRACK* FindSnapTrack( PCB_BASE_EDIT_FRAME* aFrame, const PCB_VIA* aVia, const VECTOR2I& aPosition,
+                          const LSET& aLayers, int aSnapRange = 0 );
+PAD* FindSnapPad( PCB_BASE_EDIT_FRAME* aFrame, const PCB_VIA* aVia, const VECTOR2I& aPosition, const LSET& aLayers,
+                  int aSnapRange = 0 );
 
 
 /**
@@ -64,13 +91,15 @@ public:
     /// @copydoc TOOL_INTERACTIVE::Reset()
     void Reset( RESET_REASON aReason ) override;
 
-    ///< The possible drawing modes of DRAWING_TOOL
+    /// The possible drawing modes of DRAWING_TOOL
     enum class MODE
     {
         NONE,
         LINE,
         RECTANGLE,
         CIRCLE,
+        ELLIPSE,
+        ELLIPSE_ARC,
         ARC,
         BEZIER,
         IMAGE,
@@ -85,27 +114,40 @@ public:
         VIA,
         TUNING,
         TABLE,
-        BARCODE
+        BARCODE,
+        STITCH
     };
 
     /**
-     * Return the current drawing mode of the DRAWING_TOOL or #MODE::NONE if not currently in
+     * Return the current drawing mode of the DRAWING_TOOL or #NONE if not currently in
      * any drawing mode.
      */
     MODE GetDrawingMode() const;
 
     /**
      */
-    std::vector<BOARD_ITEM*> DrawSpecificationStackup( const VECTOR2I& origin, PCB_LAYER_ID aLayer,
-                                                       bool aDrawNow, VECTOR2I* tablesize );
-
-    /**
-     */
-    int PlaceStackup( const TOOL_EVENT& aEvent );
-
-    /**
-     */
     int PlaceTuningPattern( const TOOL_EVENT& aEvent );
+
+    /**
+     */
+    int PlaceViaStitch( const TOOL_EVENT& aEvent );
+
+    /**
+     * Place a stacked or staggered microvia stack.
+     */
+    int PlaceMicroviaStack( const TOOL_EVENT& aEvent );
+
+    /**
+     * Pre-anchor the next microvia stack placement to a fixed first hop and span, used when the
+     * router hands off a staggered stack so the user places the remaining hops interactively.
+     */
+    void SeedViaStackStart( const VECTOR2I& aPos, PCB_LAYER_ID aStart, PCB_LAYER_ID aEnd )
+    {
+        m_viaStackSeeded = true;
+        m_viaStackSeedPos = aPos;
+        m_viaStackSeedStart = aStart;
+        m_viaStackSeedEnd = aEnd;
+    }
 
     /**
      * Start interactively drawing a line.
@@ -132,6 +174,10 @@ public:
      */
     int DrawCircle( const TOOL_EVENT& aEvent );
 
+    int DrawEllipse( const TOOL_EVENT& aEvent );
+
+    int DrawEllipseArc( const TOOL_EVENT& aEvent );
+
     /**
      * Start interactively drawing an arc.
      *
@@ -153,6 +199,11 @@ public:
      * place the image in the editor.
      */
     int PlaceReferenceImage( const TOOL_EVENT& aEvent );
+
+    /**
+     * Trace a placed reference image into filled graphics and replace it with them.
+     */
+    int ConvertImageToOutlines( const TOOL_EVENT& aEvent );
 
     /**
      * Place a reference 0D point
@@ -209,29 +260,16 @@ public:
     int PlaceImportedGraphics( const TOOL_EVENT& aEvent );
 
     /**
-     * Interactively place a set of @ref BOARD_ITEM.
-     * As a list of BOARD_ITEMs can be resource intesive to move around,
-     * we can use a reduced set of BOARD_ITEMs for preview purpose only.
-     *
-     * @param aEvent
-     * @param aItems BOARD_ITEMs to add to the board.
-     * @param aPreview BOARD_ITEMs only used during placement / preview.
-     * @param aLayers   Set of allowed destination when asking the user.
-     *                  If set to NULL, the user is not asked and all BOARD_ITEMs remain on
-     *                  their layers.
-     */
-    int InteractivePlaceWithPreview( const TOOL_EVENT& aEvent,
-                                     std::vector<BOARD_ITEM*>& aItems,
-                                     std::vector<BOARD_ITEM*>& aPreview, LSET* aLayers );
-
-
-    /**
      * Place the footprint anchor (only in footprint editor).
      */
     int SetAnchor( const TOOL_EVENT& aEvent );
 
+    /**
+     * Place a grid item on the board.
+     */
+    int PlaceSubGrid( const TOOL_EVENT& aEvent );
 
-    ///< Set up handlers for various events.
+    /// Set up handlers for various events.
     void setTransitions() override;
 
     void SetStroke( const STROKE_PARAMS& aStroke, PCB_LAYER_ID aLayer )
@@ -243,75 +281,50 @@ public:
     void UpdateStatusBar() const;
 
 private:
-    enum class DRAW_ONE_RESULT
-    {
-        // The drawing was accepted "normally"
-        // E.g. for a poly-line, you might then begin a chained next segment
-        ACCEPTED,
-        // The drawing was cancelled with no shape accepted.
-        CANCELLED,
-        // The drawing was reset - no shape was accepted this time,
-        // but the tool remains active.
-        RESET,
-        // A shape was accepted, but the tool should reset for the
-        // next one (e.g. no chaining)
-        ACCEPTED_AND_RESET,
-    };
-
     /**
      * Start drawing a selected shape (i.e. PCB_SHAPE).
      *
+     * @param aTool  the tool event to draw the shape.
      * @param aGraphic is an object that is going to be used by the tool for drawing. Must be
      *                 already created. The tool deletes the object if it is not added to a BOARD.
      * @param aStartingPoint is a starting point for this new PCB_SHAPE. If it exists the new
      *                       item has its start point set to aStartingPoint, and its settings
      *                       (width, layer) set to the current default values.
+     * @param aCommittedGraphics
      * @return False if the tool was canceled before the origin was set or origin and end are
      *         the same point.
      */
-    bool drawShape( const TOOL_EVENT& aTool, PCB_SHAPE** aGraphic,
-                    std::optional<VECTOR2D> aStartingPoint,
+    bool drawShape( const TOOL_EVENT& aTool, PCB_SHAPE** aGraphic, std::optional<VECTOR2D> aStartingPoint,
                     std::stack<PCB_SHAPE*>* aCommittedGraphics );
 
-    /**
-     * Start drawing an arc.
-     *
-     * @param aGraphic is an object that is going to be used by the tool for drawing. Must be
-     *                 already created. The tool deletes the object if it is not added to a BOARD.
-     * @return False if the tool was canceled before the origin was set or origin and end are
-     *         the same point.
-     */
-    bool drawArc( const TOOL_EVENT& aTool, PCB_SHAPE** aGraphic,
-                  std::optional<VECTOR2D> aStartingPoint );
+    int runSimpleShapeDraw( const TOOL_EVENT& aEvent, SHAPE_T aShapeType, MODE aMode, const wxString& aCommitLabel,
+                            std::function<bool( const TOOL_EVENT&, PCB_SHAPE**, std::optional<VECTOR2D> )> aDrawer );
 
     /**
-     * Draw a bezier curve.
+     * Snap a tool event's position the way a click is snapped.
      *
-     * @param aTool is the event that triggered the drawing.
-     * @param aStartingPoint is the starting point of the curve (e.g. the end point of the
-     *                      previous curve).
-     * @param aStartingControl1Point is the previous control point of the curve (which can
-     *                               be used to create a smooth transition between two curves).
-     * @param aCancelled is set to true if the tool was canceled before the curve was finished.
-     *
-     * @return A new PCB_SHAPE object representing the bezier curve, or nullptr if
-     *         the tool was cancelled or reset.
+     * A hotkey start carries the raw mouse position, which becomes the first point of a managed shape.
      */
-    std::unique_ptr<PCB_SHAPE> drawOneBezier( const TOOL_EVENT&   aTool,
-                                              const OPT_VECTOR2I& aStartingPoint,
-                                              const OPT_VECTOR2I& aStartingControl1Point,
-                                              DRAW_ONE_RESULT&    aResult );
-
+    VECTOR2I snapEventPosition( const TOOL_EVENT& aEvent );
 
     /**
-     * Draw a polygon, that is added as a zone or a keepout area.
+     * Run the interactive drawing event loop for a shape, driven by a SHAPE_DRAW_BEHAVIOR.
      *
-     * @param aKeepout dictates if the drawn polygon is a zone or a keepout area.
-     * @param aMode dictates the mode of the zone tool:
-     *  - ADD      add a new zone/keepout with fresh settings
-     *  - CUTOUT   add a cutout to an existing zone
-     *  - SIMILAR  add a new zone with the same settings as an existing one
+     * @param aTool  the tool event to draw the managed shape.
+     * @param aGraphic  the shape being drawn; must already be created.  On cancel the unique_ptr is reset;
+     *                  on completion the caller can take ownership (e.g. to release into a COMMIT).
+     * @param aBehavior  defines the drawing behavior of the managed shape.
+     * @param aInitialPts  points to pre-load into the behaviour before the first user click, e.g. start
+     *                     point and mirrored control point for tangent-continuous bezier chaining.
+     * @param aTangentSeed  start point and direction that begin a tangent arc, applied to the behavior before
+     *                      any initial point.  A seeded draw counts as started.
+     * @param aLastClick  if not null, receives the position of the last click taken by the loop.
+     * @return the outcome of the drawing loop: see @ref SHAPE_DRAW_RESULT.
      */
+    SHAPE_DRAW_RESULT drawManagedShape( const TOOL_EVENT& aTool, std::unique_ptr<PCB_SHAPE>& aGraphic,
+                                        SHAPE_DRAW_BEHAVIOR& aBehavior, const std::vector<VECTOR2D>& aInitialPts,
+                                        const std::optional<ARC_TANGENT_SEED>& aTangentSeed = std::nullopt,
+                                        VECTOR2I* aLastClick = nullptr );
 
     /**
      * Get a source zone item for an action that takes an existing zone into account (for
@@ -330,7 +343,7 @@ private:
     /**
      * Force the dimension lime to be drawn on multiple of 45 degrees.
      *
-     * @param aDimension is the dimension element currently being drawn.
+     * @param aDim is the dimension element currently being drawn.
      */
     void constrainDimension( PCB_DIMENSION_BASE* aDim );
 
@@ -365,7 +378,7 @@ private:
     }
 
     /**
-     * Clamps the end vector to respect numeric limits of radius representation
+     * Clamp the end vector to respect numeric limits of radius representation.
      *
      * @param aOrigin - the origin vector.
      * @param aEnd - the end vector.
@@ -407,6 +420,12 @@ private:
     PCB_SELECTION             m_preview;
     BOARD_CONNECTED_ITEM*     m_pickerItem;
     PCB_TUNING_PATTERN*       m_tuningPattern;
+
+    // Router handoff: pre-anchored first hop and span for the next stack placement.
+    bool         m_viaStackSeeded = false;
+    VECTOR2I     m_viaStackSeedPos;
+    PCB_LAYER_ID m_viaStackSeedStart = UNDEFINED_LAYER;
+    PCB_LAYER_ID m_viaStackSeedEnd = UNDEFINED_LAYER;
 
     static const unsigned int WIDTH_STEP;          // Amount of width change for one -/+ key press
     static const unsigned int COORDS_PADDING;      // Padding from coordinates limits for this tool

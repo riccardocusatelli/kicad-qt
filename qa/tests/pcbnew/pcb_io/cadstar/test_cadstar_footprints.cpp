@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -41,7 +41,11 @@
 
 struct CADSTAR_IMPORT_FIXTURE
 {
-    CADSTAR_IMPORT_FIXTURE() {}
+    CADSTAR_IMPORT_FIXTURE()
+    {
+        // Don't internally throw on font substitution warnings
+        wxLog::SetTimestamp( wxEmptyString );
+    }
 
     PCB_IO_CADSTAR_ARCHIVE cstarPlugin;
     PCB_IO_KICAD_SEXPR     kicadPlugin;
@@ -87,18 +91,18 @@ BOOST_AUTO_TEST_CASE( CadstarFootprintImport )
                                                   footprintName,
                                                   libName.first ) )
             {
-                FOOTPRINT* eagleFp = cstarPlugin.FootprintLoad( cstarLibraryPath, footprintName,
-                                                                false, nullptr );
+                std::unique_ptr<FOOTPRINT> eagleFp =
+                        cstarPlugin.FootprintLoad( cstarLibraryPath, footprintName, false, nullptr );
                 BOOST_CHECK( eagleFp );
 
                 BOOST_CHECK_EQUAL( "REF**", eagleFp->GetReference() );
                 BOOST_CHECK_EQUAL( footprintName, eagleFp->GetValue() );
 
-                FOOTPRINT* kicadFp = kicadPlugin.FootprintLoad( kicadLibraryPath, footprintName,
-                                                                true, nullptr );
+                std::unique_ptr<FOOTPRINT> kicadFp =
+                        kicadPlugin.FootprintLoad( kicadLibraryPath, footprintName, true, nullptr );
                 BOOST_CHECK( kicadFp );
 
-                KI_TEST::CheckFootprint( kicadFp, eagleFp );
+                KI_TEST::CheckFootprint( kicadFp.get(), eagleFp.get() );
             }
         }
     }
@@ -114,9 +118,9 @@ BOOST_AUTO_TEST_CASE( CadstarRevision7FormatImport )
     std::string dataPath = KI_TEST::GetPcbnewTestDataDir() + "plugins/cadstar/route_offset/";
     wxString    filePath = dataPath + "revision7_format_no_routewidth.cpa";
 
-    BOARD* board = nullptr;
+    std::unique_ptr<BOARD> board;
 
-    BOOST_CHECK_NO_THROW( board = cstarPlugin.LoadBoard( filePath, nullptr, nullptr, nullptr ) );
+    BOOST_CHECK_NO_THROW( board = cstarPlugin.LoadBoard( filePath ) );
 
     BOOST_REQUIRE( board != nullptr );
 
@@ -145,8 +149,37 @@ BOOST_AUTO_TEST_CASE( CadstarRevision7FormatImport )
 
     // At least one track must take the route-code-derived width, proving the fallback was used
     BOOST_CHECK( foundRouteCodeWidth );
+}
 
-    delete board;
+
+// Bottom technical layers listed before bottom copper in the LAYERSTACK stay on the back
+BOOST_AUTO_TEST_CASE( BottomLayersListedBeforeBottomCopper )
+{
+    wxString filePath = KI_TEST::GetPcbnewTestDataDir() + "plugins/cadstar/issue26027/test2_layer_side.cpa";
+
+    std::unique_ptr<BOARD> board;
+
+    BOOST_REQUIRE_NO_THROW( board = cstarPlugin.LoadBoard( filePath ) );
+    BOOST_REQUIRE( board != nullptr );
+
+    auto countOnLayer =
+            [&]( PCB_LAYER_ID aLayer )
+            {
+                int count = 0;
+
+                for( BOARD_ITEM* item : board->Drawings() )
+                {
+                    if( item->GetLayer() == aLayer )
+                        ++count;
+                }
+
+                return count;
+            };
+
+    BOOST_CHECK_EQUAL( countOnLayer( F_SilkS ), 1 );
+    BOOST_CHECK_EQUAL( countOnLayer( B_SilkS ), 1 );
+    BOOST_CHECK_EQUAL( countOnLayer( F_Mask ), 1 );
+    BOOST_CHECK_EQUAL( countOnLayer( B_Mask ), 1 );
 }
 
 
@@ -157,8 +190,6 @@ BOOST_AUTO_TEST_CASE( CadstarRevision7FormatImport )
  */
 BOOST_AUTO_TEST_CASE( UnknownReassignShapeIsSkipped )
 {
-    wxLogNull suppress;
-
     XNODE padReassign( wxXML_ELEMENT_NODE, wxT( "PADREASSIGN" ) );
     padReassign.AddAttribute( wxT( "attr0" ), wxT( "TOP" ) );
     padReassign.AddChild( new XNODE( wxXML_ELEMENT_NODE, wxT( "FUTURE_SHAPE" ) ) );

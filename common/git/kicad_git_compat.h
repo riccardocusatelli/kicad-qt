@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef KICAD_GIT_COMPAT_H_
@@ -34,5 +30,18 @@
 #if LIBGIT2_VER_MAJOR > 1 || ( LIBGIT2_VER_MAJOR == 1 && LIBGIT2_VER_MINOR >= 8 )
 #include <git2/sys/errors.h>
 #endif
+
+// GIT_EOWNER was introduced in 1.3.1, 1.4.3 and 1.5.0.
+#define KIGIT_HAS_EOWNER                                                                                               \
+    ( LIBGIT2_VER_MAJOR > 1 || ( LIBGIT2_VER_MAJOR == 1                                                                \
+           && ( LIBGIT2_VER_MINOR >= 5                                                                                 \
+                || ( LIBGIT2_VER_MINOR == 4 && LIBGIT2_VER_REVISION >= 3 )                                             \
+                || ( LIBGIT2_VER_MINOR == 3 && LIBGIT2_VER_REVISION >= 1 ) ) ) )
+
+// GIT_OPT_GET_HOMEDIR and GIT_OPT_SET_HOMEDIR were added in libgit2 1.6
+#define KIGIT_HAS_HOMEDIR_OPT ( LIBGIT2_VER_MAJOR > 1 || ( LIBGIT2_VER_MAJOR == 1 && LIBGIT2_VER_MINOR >= 6 ) )
+
+// libgit2 1.8 added GIT_CONFIG_LEVEL_WORKTREE and started reading config.worktree
+#define KIGIT_HAS_WORKTREE_CONFIG ( LIBGIT2_VER_MAJOR > 1 || ( LIBGIT2_VER_MAJOR == 1 && LIBGIT2_VER_MINOR >= 8 ) )
 
 #endif // KICAD_GIT_COMPAT_H_

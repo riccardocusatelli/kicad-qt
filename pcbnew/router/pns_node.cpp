@@ -16,8 +16,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <vector>
@@ -92,6 +92,7 @@ NODE::~NODE()
     m_joints.clear();
 
     std::vector<const ITEM*> toDelete;
+    std::vector<const ITEM*> parentedHoles;
 
     toDelete.reserve( m_index->Size() );
 
@@ -108,8 +109,12 @@ NODE::~NODE()
                     // heap of trouble.
                     assert( hole->ParentPadVia()->BelongsTo( this ) );
 
-                    // we will encounter its parent later, disguised as VIA or SOLID.
-                    // don't bother reparenting the hole now, it's deleted anyway.
+                    // Its parent comes by as a VIA or SOLID, and deletes only a hole it owns
+                    if( hole->ParentPadVia()->BelongsTo( this ) )
+                    {
+                        hole->SetOwner( hole->ParentPadVia() );
+                        parentedHoles.push_back( hole );
+                    }
                 }
                 else
                 {
@@ -127,6 +132,7 @@ NODE::~NODE()
     if( m_ruleResolver )
     {
         m_ruleResolver->ClearCacheForItems( toDelete );
+        m_ruleResolver->ClearCacheForItems( parentedHoles );
     }
 
     for( const ITEM* item : toDelete )
@@ -141,8 +147,7 @@ NODE::~NODE()
     delete m_index;
 }
 
-
-int NODE::GetClearance( const ITEM* aA, const ITEM* aB, bool aUseClearanceEpsilon ) const
+int NODE::GetClearance( const ITEM* aA, const ITEM* aB, bool aUseClearanceEpsilon, const COLLISION_SEARCH_OPTIONS& aOpts ) const
 {
     if( !m_ruleResolver )
         return 100000;
@@ -150,9 +155,21 @@ int NODE::GetClearance( const ITEM* aA, const ITEM* aB, bool aUseClearanceEpsilo
     if( aA->IsVirtual() || aB->IsVirtual() )
         return 0;
 
-    int cl = m_ruleResolver->Clearance( aA, aB, aUseClearanceEpsilon );
+    int rrClearance = m_ruleResolver->Clearance( aA, aB, aUseClearanceEpsilon );
 
-    return cl;
+    if( aOpts.m_overrideClearance && ( rrClearance > 0 || aOpts.m_overrideExemptPairs ) )
+    {
+        int overriddenClearance = aOpts.m_overrideClearance( aA, aB, CLEARANCE_ASPECT::ASP_DEFAULT );
+        
+        // fixme: negative return value from clearance override lambda indicates return to default. Perhaps an enum or a constant
+        // for this case would be better here
+        if( overriddenClearance < 0 ) 
+            return rrClearance;
+        else
+            return overriddenClearance;
+    }
+
+    return rrClearance;
 }
 
 
@@ -168,14 +185,12 @@ NODE* NODE::Branch()
     child->m_root = isRoot() ? this : m_root;
     child->m_maxClearance = m_maxClearance;
 
-    // Immediate offspring of the root branch needs not copy anything. For the rest, deep-copy
-    // joints, overridden item maps and pointers to stored items.
+    // Immediate offspring of the root branch needs not copy anything. For the rest, clone
+    // the spatial index, joints, and overridden item maps.
     if( !isRoot() )
     {
-        JOINT_MAP::iterator j;
-
-        for( ITEM* item : *m_index )
-            child->m_index->Add( item );
+        delete child->m_index;
+        child->m_index = m_index->Clone().release();
 
         child->m_joints = m_joints;
         child->m_override = m_override;
@@ -251,7 +266,7 @@ struct NODE::DEFAULT_OBSTACLE_VISITOR : public OBSTACLE_VISITOR
         if( m_item == aCandidate )
             return true;
 
-        if( m_ctx->options.m_filter && !m_ctx->options.m_filter( aCandidate ) )
+        if( m_ctx->options.m_filter && !m_ctx->options.m_filter( aCandidate, m_item ) )
             return true;
 
         if( visit( aCandidate ) )
@@ -341,6 +356,7 @@ NODE::OPT_OBSTACLE NODE::NearestObstacle( const LINE* aLine,
             hull.Append( bbox.GetRight(), bbox.GetTop()    );
             hull.Append( bbox.GetRight(), bbox.GetBottom() );
             hull.Append( bbox.GetLeft(),  bbox.GetBottom() );
+            hull.SetClosed( true );
             return hull;
         }
 
@@ -362,7 +378,7 @@ NODE::OPT_OBSTACLE NODE::NearestObstacle( const LINE* aLine,
     {
         const OBSTACLE& obstacle = obstacles[i];
 
-        int clearance = GetClearance( obstacle.m_item, aLine, aOpts.m_useClearanceEpsilon )
+        int clearance = GetClearance( obstacle.m_item, aLine, aOpts.m_useClearanceEpsilon, aOpts )
                             + aLine->Width() / 2;
 
         hullData[i].lineHull = makeHull( ruleResolver->HullCache( obstacle.m_item, clearance,
@@ -371,7 +387,7 @@ NODE::OPT_OBSTACLE NODE::NearestObstacle( const LINE* aLine,
         if( hasVia )
         {
             const VIA& via = aLine->Via();
-            int viaClearance = GetClearance( obstacle.m_item, &via, aOpts.m_useClearanceEpsilon )
+            int viaClearance = GetClearance( obstacle.m_item, &via, aOpts.m_useClearanceEpsilon, aOpts )
                                + via.Diameter( aLine->Layer() ) / 2;
 
             hullData[i].viaHull = makeHull( ruleResolver->HullCache( obstacle.m_item,
@@ -1258,6 +1274,19 @@ int NODE::FindLinesBetweenJoints( const JOINT& aA, const JOINT& aB, std::vector<
 }
 
 
+void NODE::BeginBulkAdd()
+{
+    m_index->SetDeferred( true );
+}
+
+
+void NODE::FinalizeBulkAdd()
+{
+    m_index->SetDeferred( false );
+    m_index->BuildSpatialIndex();
+}
+
+
 void NODE::FixupVirtualVias()
 {
     const SEGMENT* locked_seg = nullptr;
@@ -1588,17 +1617,23 @@ void NODE::releaseGarbage()
     std::vector<const ITEM*> toDelete;
     toDelete.reserve( m_garbageItems.size() );
 
+    std::vector<const ITEM*> holes;
+
     for( ITEM* item : m_garbageItems )
     {
         if( !item->BelongsTo( this ) )
         {
             toDelete.push_back( item );
+
+            if( item->HasHole() )
+                holes.push_back( item->Hole() );
         }
     }
 
     if( m_ruleResolver )
     {
         m_ruleResolver->ClearCacheForItems( toDelete );
+        m_ruleResolver->ClearCacheForItems( holes );
     }
 
     for( const ITEM* item : toDelete)

@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -36,16 +32,13 @@ public:
     // -----<PUBLIC PCB_IO API>--------------------------------------------------
     const IO_BASE::IO_FILE_DESC GetBoardFileDesc() const override
     {
-        return IO_BASE::IO_FILE_DESC( _HKI( "Allegro PCB files" ), { "brd" } );
+        return IO_BASE::IO_FILE_DESC( _HKI( "Allegro PCB files" ), { "brd", "mdd" } );
     }
 
     const IO_BASE::IO_FILE_DESC GetLibraryDesc() const override { return IO_BASE::IO_FILE_DESC( wxEmptyString, {} ); }
 
     bool CanReadBoard( const wxString& aFileName ) const override;
     bool CanReadLibrary( const wxString& aFileName ) const override;
-
-    BOARD* LoadBoard( const wxString& aFileName, BOARD* aAppendToMe, const std::map<std::string, UTF8>* aProperties,
-                      PROJECT* aProject ) override;
 
     long long GetLibraryTimestamp( const wxString& aLibraryPath ) const override { return 0; }
 
@@ -66,4 +59,8 @@ public:
     bool LoadBoardFromData( const uint8_t* aData, size_t aSize, BOARD& aBoard );
 
     PCB_IO_ALLEGRO();
+
+private:
+    void loadBoard( const wxString& aFileName, BOARD& aBoard, bool aIsNewLoad,
+                    const std::map<std::string, UTF8>* aProperties, PROJECT* aProject ) override;
 };

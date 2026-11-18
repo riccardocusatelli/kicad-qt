@@ -60,8 +60,9 @@ SCH_DESIGN_BLOCK_PREVIEW_WIDGET::SCH_DESIGN_BLOCK_PREVIEW_WIDGET( wxWindow* aPar
 
     EDA_DRAW_PANEL_GAL::GAL_TYPE canvasType = aCanvasType;
 
-    // Allows only a CAIRO or OPENGL canvas:
-    if( canvasType != EDA_DRAW_PANEL_GAL::GAL_TYPE_OPENGL && canvasType != EDA_DRAW_PANEL_GAL::GAL_FALLBACK )
+    // Only a canvas that can draw is allowed
+    if( canvasType != EDA_DRAW_PANEL_GAL::GAL_TYPE_OPENGL && canvasType != EDA_DRAW_PANEL_GAL::GAL_TYPE_MODERN
+        && canvasType != EDA_DRAW_PANEL_GAL::GAL_FALLBACK )
     {
         canvasType = EDA_DRAW_PANEL_GAL::GAL_TYPE_OPENGL;
     }
@@ -71,11 +72,6 @@ SCH_DESIGN_BLOCK_PREVIEW_WIDGET::SCH_DESIGN_BLOCK_PREVIEW_WIDGET( wxWindow* aPar
     m_preview->SetStealsFocus( false );
     m_preview->ShowScrollbars( wxSHOW_SB_NEVER, wxSHOW_SB_NEVER );
     m_preview->GetGAL()->SetAxesEnabled( false );
-
-    // Do not display the grid: the look is not good for a small canvas area.
-    // But mainly, due to some strange bug I (JPC) was unable to fix, the grid creates
-    // strange artifacts on Windows when Eeschema is run from KiCad manager (but not in
-    // stand alone...).
     m_preview->GetGAL()->SetGridVisibility( true );
 
     // Early initialization of the canvas background color,

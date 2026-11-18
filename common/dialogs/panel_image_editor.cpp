@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <wx/dcclient.h>
@@ -29,6 +25,7 @@
 #include <tool/actions.h>
 #include <confirm.h>
 #include <units_provider.h>
+#include <dialogs/dialog_color_picker.h>
 #include <dialogs/panel_image_editor.h>
 
 #include <algorithm>
@@ -57,6 +54,31 @@ void PANEL_IMAGE_EDITOR::OnGreyScaleConvert( wxCommandEvent& event )
 {
     m_workingImage->ConvertToGreyscale();
     m_panelDraw->Refresh();
+}
+
+
+void PANEL_IMAGE_EDITOR::OnInvert( wxCommandEvent& event )
+{
+    m_workingImage->InvertColors();
+    m_panelDraw->Refresh();
+}
+
+
+void PANEL_IMAGE_EDITOR::OnRemoveBackground( wxCommandEvent& event )
+{
+    // Nearly all images are white background (probably crops from documents)
+    // So that seems a good default on startup.
+    static KIGFX::COLOR4D s_defaultColor = KIGFX::COLOR4D::WHITE;
+
+    DIALOG_COLOR_PICKER dialog( this, s_defaultColor, false );
+
+    if( dialog.ShowModal() == wxID_OK )
+    {
+        m_workingImage->ConvertColourToAlpha( dialog.GetColor().ToColour() );
+        m_panelDraw->Refresh();
+
+        s_defaultColor = dialog.GetColor();
+    }
 }
 
 

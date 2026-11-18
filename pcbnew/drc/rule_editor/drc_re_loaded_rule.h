@@ -14,17 +14,14 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef DRC_RE_LOADED_RULE_H_
 #define DRC_RE_LOADED_RULE_H_
 
 #include <memory>
+#include <vector>
 #include <wx/string.h>
 
 #include <layer_ids.h>
@@ -55,6 +52,10 @@ struct DRC_RE_LOADED_PANEL_ENTRY
     wxString originalRuleText;
     bool     wasEdited = false;
     int      originalEntryCount = 1;
+    int      sourceRule = -1;  ///< Index of the rule in the loaded file, or -1 for a new rule
+
+    /// Shared by entries split out of one rule. Zero when the entry stands alone.
+    int ruleGroupId = 0;
 
     DRC_RE_LOADED_PANEL_ENTRY() = default;
 
@@ -72,6 +73,17 @@ struct DRC_RE_LOADED_PANEL_ENTRY
             layerCondition( aLayers )
     {
     }
+};
+
+
+/**
+ * The text of a rules file that lies outside every rule, kept so a save can reproduce it.
+ */
+struct DRC_RE_FILE_TRIVIA
+{
+    wxString              header;         ///< Everything through the version expression, empty for a new file
+    std::vector<wxString> leadingTrivia;  ///< Comments and blank lines before each rule, by sourceRule
+    wxString              trailer;        ///< Everything after the last rule
 };
 
 

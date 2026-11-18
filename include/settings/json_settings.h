@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef _JSON_SETTINGS_H
@@ -147,11 +147,38 @@ public:
     virtual bool LoadFromFile( const wxString& aDirectory = "" );
 
     /**
-     * Calls Store() and then writes the contents of the JSON document to a file
-     * @param aDirectory is the directory to save to, including trailing separator
+     * Loads the document from file contents already in memory, so the caller can bound the read of the file.
+     * Migrates the schema as LoadFromFile() does, but never writes the migrated result back and does not load
+     * nested settings.
+     * @param aContents is the raw text of the backing file
+     * @return true if the contents parsed
+     */
+    bool LoadFromBuffer( const std::string& aContents );
+
+    /**
+     * Calls Store() and then writes the contents of the JSON document to a file.
+     * @param aDirectory is the directory to save to, including trailing separator.
+     * @param aForce is a flag to force a save to file.
      * @return true if the file was saved
      */
     virtual bool SaveToFile( const wxString& aDirectory = "", bool aForce = false );
+
+    /**
+     * @return true once the in-memory store has been synchronized with an on-disk file, either
+     *         by loading an existing file or by a successful save
+     */
+    bool IsFileSynced() const { return m_fileSynced; }
+
+    /**
+     * SaveToFile() also returns false when it had nothing to write, so its result cannot tell a
+     * skipped save from a lost one.
+     *
+     * @return true if the most recent SaveToFile() had changes to write and could not write them
+     */
+    bool LastSaveFailed() const { return m_lastSaveFailed; }
+
+    /// @return true if the loaded file has a newer schema version than this build understands
+    bool IsFutureFormat() const { return m_isFutureFormat; }
 
     /**
      * Resets all parameters to default values.  Does NOT write to file or update underlying JSON.
@@ -208,18 +235,17 @@ public:
     virtual bool MigrateFromLegacy( wxConfigBase* aLegacyConfig );
 
     /**
-     * Transfers ownership of a given NESTED_SETTINGS to this object.
-     * Can be used to construct a NESTED_SETTINGS without the parent object needing to know about
+     * Transfers ownership of a given #NESTED_SETTINGS to this object.
+     * Can be used to construct a #NESTED_SETTINGS without the parent object needing to know about
      * the implementation of the nested object;
      *
      * @param aSettings is the settings object to take ownership of
-     * @param aTarget is a pointer to update to the passed in settings
      */
     void AddNestedSettings( NESTED_SETTINGS* aSettings );
 
     /**
      * Saves and frees a nested settings object, if it exists within this one
-     * @param aSettings is a pointer to a NESTED_SETTINGS that has already been added to this one
+     * @param aSettings is a pointer to a #NESTED_SETTINGS that has already been added to this one
      */
     void ReleaseNestedSettings( NESTED_SETTINGS* aSettings );
 
@@ -229,44 +255,48 @@ public:
     }
 
     /**
-    * Sets the given string if the given key/path is present
-    * @param aObj is the source object
-    * @param aTarget is the storage destination
-    * @return True if set, false if not
-    */
-    static bool SetIfPresent( const nlohmann::json& aObj, const std::string& aPath,
-                              wxString& aTarget );
+     * Sets the given string if the given key/path is present
+     * @param aObj is the source object
+     * @param aPath is the path of \a aObj.
+     * @param aTarget is the storage destination
+     * @return True if set, false if not
+     */
+    static bool SetIfPresent( const nlohmann::json& aObj, const std::string& aPath, wxString& aTarget );
 
     /**
-    * Sets the given bool if the given key/path is present
-    * @param aObj is the source object
-    * @param aTarget is the storage destination
-    * @return True if set, false if not
-    */
+     * Sets the given bool if the given key/path is present.
+     * @param aObj is the source object.
+     * @param aPath is the path of \a aObj.
+     * @param aTarget is the storage destination.
+     * @return True if set, false if not.
+     */
     static bool SetIfPresent( const nlohmann::json& aObj, const std::string& aPath, bool& aTarget );
 
     /**
-    * Sets the given int if the given key/path is present
-    * @param aObj is the source object
-    * @param aTarget is the storage destination
-    * @return True if set, false if not
-    */
+     * Sets the given int if the given key/path is present.
+     * @param aObj is the source object.
+     * @param aPath is the path of \a aObj.
+     * @param aTarget is the storage destination.
+     * @return True if set, false if not.
+     */
     static bool SetIfPresent( const nlohmann::json& aObj, const std::string& aPath, int& aTarget );
 
     /**
-    * Sets the given unsigned int if the given key/path is present
-    * @param aObj is the source object
-    * @param aTarget is the storage destination
-    * @return True if set, false if not
-    */
-    static bool SetIfPresent( const nlohmann::json& aObj, const std::string& aPath ,
-                              unsigned int& aTarget );
+     * Sets the given unsigned int if the given key/path is present.
+     * @param aObj is the source object.
+     * @param aPath is the path of \a aObj.
+     * @param aTarget is the storage destination.
+     * @return True if set, false if not.
+     */
+    static bool SetIfPresent( const nlohmann::json& aObj, const std::string& aPath, unsigned int& aTarget );
 
     const std::string FormatAsString();
 
     bool LoadFromRawFile( const wxString& aPath );
 
 protected:
+    /// @return the file contents as loaded, before migration and parameter storage
+    const nlohmann::json& originalJson() const;
 
     /**
      * Registers a migration from one schema version to another.  If the schema version in the file
@@ -280,12 +310,12 @@ protected:
                             std::function<bool(void)> aMigrator );
 
     /**
-    * Translates a legacy wxConfig value to a given JSON pointer value
-    * @tparam ValueType is the basic type of the value
-    * @param aConfig is the legacy config to read from
-    * @param aKey is the key (within the current path) to read
-    * @param aDest is a string that will form a JSON pointer (key1.key2.key3) to write to
-    */
+     * Translates a legacy wxConfig value to a given JSON pointer value
+     * @tparam ValueType is the basic type of the value
+     * @param aConfig is the legacy config to read from
+     * @param aKey is the key (within the current path) to read
+     * @param aDest is a string that will form a JSON pointer (key1.key2.key3) to write to
+     */
     template<typename ValueType>
     bool fromLegacy( wxConfigBase* aConfig, const std::string& aKey, const std::string& aDest );
 
@@ -299,11 +329,11 @@ protected:
                            const std::string& aDest );
 
     /**
-    * Translates a legacy COLOR4D stored in a wxConfig string to a given JSON pointer value
-    * @param aConfig is the legacy config to read from
-    * @param aKey is the key (within the current path) to read
-    * @param aDest is a string that will form a JSON pointer (key1.key2.key3) to write to
-    */
+     * Translates a legacy COLOR4D stored in a wxConfig string to a given JSON pointer value
+     * @param aConfig is the legacy config to read from
+     * @param aKey is the key (within the current path) to read
+     * @param aDest is a string that will form a JSON pointer (key1.key2.key3) to write to
+     */
     bool fromLegacyColor( wxConfigBase* aConfig, const std::string& aKey,
                           const std::string& aDest );
 
@@ -334,6 +364,7 @@ protected:
      * @tparam ResultType is the type of the retrieved value.
      * @param aJson is the object to act on .
      * @param aKey is the object key to retrieve the value for.
+     * @param aDefault is the default result type.
      * @return the result, or aDefault if aKey is not found.
      */
     template<typename ResultType>
@@ -370,8 +401,20 @@ protected:
     /// True if the JSON data store has been written to since the last file write
     bool m_modified;
 
+    /// True once the store has been synchronized with an on-disk file (loaded or saved)
+    bool m_fileSynced;
+
+    /// True if the most recent SaveToFile() had changes to write and could not write them
+    bool m_lastSaveFailed;
+
     /// Whether or not to delete legacy file after migration
     bool m_deleteLegacyAfterMigration;
+
+    /**
+     * Whether migration and default fill may write the file by themselves.  When false, they
+     * reach the file only with the next real change.  Nested settings inherit it from the parent.
+     */
+    bool m_writeImplicitly;
 
     /// Whether or not to set parameters to their default value if missing from JSON on Load()
     bool m_resetParamsIfMissing;
@@ -389,6 +432,17 @@ protected:
     std::map<int, std::pair<int, std::function<bool()>>> m_migrators;
 
     std::unique_ptr<JSON_SETTINGS_INTERNALS> m_internals;
+
+private:
+    /**
+     * Parses a document into the store through \a aParse, then checks the schema version and migrates.
+     * @param aParse fills the store, and returns false if there was nothing to parse
+     * @param aMigrated is set when a migration ran and succeeded
+     * @param aParseError is set when the document is not valid JSON
+     * @return false if the document did not parse or its version could not be read
+     */
+    bool parseAndMigrate( const std::function<bool( nlohmann::json& )>& aParse, bool& aMigrated,
+                          bool& aParseError );
 };
 
 // Specializations to allow conversion between wxString and std::string via JSON_SETTINGS API

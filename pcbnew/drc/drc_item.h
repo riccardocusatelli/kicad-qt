@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef DRC_ITEM_H
@@ -34,6 +30,17 @@ class DRC_RULE;
 class DRC_TEST_PROVIDER;
 class PCB_MARKER;
 class BOARD;
+
+namespace PAD_UTILS
+{
+enum class PAD_CHECK_CODE;
+}
+
+/**
+ * Map a granular #PAD_UTILS::PAD_CHECK_CODE to the DRC error code
+ * used to report it at the DRC level (including reports and APIs).
+ */
+int ConvertPadCheckToDrcCode( PAD_UTILS::PAD_CHECK_CODE aCode );
 
 enum PCB_DRC_CODE
 {
@@ -64,6 +71,12 @@ enum PCB_DRC_CODE
     DRCE_PADSTACK,                       // something is questionable with a pad or via stackup
     DRCE_PADSTACK_INVALID,               // something is invalid with a pad or via stackup
     DRCE_MICROVIA_DRILL_OUT_OF_RANGE,    // Too small micro via drill
+    DRCE_MALFORMED_MICROVIA_STACK_SPAN,  // Stack's hops do not tile the span it declares
+    DRCE_MICROVIA_STACK_NOT_FILLED,      // Microvia under another microvia is not filled
+    DRCE_MICROVIA_STACK_DEPTH,           // Microvia stack exceeds the maximum depth
+    DRCE_HOLE_ASPECT_RATIO,              // Hole is too deep for its diameter
+    DRCE_MICROVIA_CROSSES_CORE,          // Microvia crosses core rather than build-up material
+    DRCE_MICROVIA_SPANS_DIELECTRICS,     // Microvia spans more than the one dielectric a laser can drill
     DRCE_OVERLAPPING_FOOTPRINTS,         // footprint courtyards overlap
     DRCE_MISSING_COURTYARD,              // footprint has no courtyard defined
     DRCE_MALFORMED_COURTYARD,            // footprint has a courtyard but malformed
@@ -80,47 +93,56 @@ enum PCB_DRC_CODE
     DRCE_SCHEMATIC_PARITY,    // footprint attributes don't match symbol attributes
     DRCE_FOOTPRINT_FILTERS,   // footprint doesn't match symbol's footprint filters
 
-    DRCE_FOOTPRINT_TYPE_MISMATCH, // footprint attribute does not match actual pads
-    DRCE_LIB_FOOTPRINT_ISSUES,    // footprint not found in active libraries
-    DRCE_LIB_FOOTPRINT_MISMATCH,  // footprint does not match the current library
-    DRCE_PAD_TH_WITH_NO_HOLE,     // footprint has Plated Through-Hole with no hole
-    DRCE_FOOTPRINT,               // error in footprint definition
+    DRCE_FOOTPRINT_TYPE_MISMATCH,    // footprint attribute does not match actual pads
+    DRCE_LIB_FOOTPRINT_ISSUES,       // footprint not found in active libraries
+    DRCE_LIB_FOOTPRINT_MISMATCH,     // footprint does not match the current library
+    DRCE_PAD_TH_WITH_NO_HOLE,        // footprint has Plated Through-Hole with no hole
+    DRCE_FOOTPRINT,                  // error in footprint definition
+    DRCE_FOOTPRINT_SCALED_WITH_PADS, // scale != 1 on a footprint that has pads
 
     DRCE_UNRESOLVED_VARIABLE,
-    DRCE_ASSERTION_FAILURE,       // user-defined (custom rule) assertion
-    DRCE_GENERIC_WARNING,         // generic warning
-    DRCE_GENERIC_ERROR,           // generic error
+    DRCE_ASSERTION_FAILURE, // user-defined (custom rule) assertion
+    DRCE_GENERIC_WARNING,   // generic warning
+    DRCE_GENERIC_ERROR,     // generic error
 
     DRCE_COPPER_SLIVER,
-    DRCE_SOLDERMASK_BRIDGE,       // failure to maintain min soldermask web thickness
-                                  //   between copper items with different nets
+    DRCE_SOLDERMASK_BRIDGE, // failure to maintain min soldermask web thickness
+                            //   between copper items with different nets
 
-    DRCE_SILK_MASK_CLEARANCE,     // silkscreen clipped by mask (potentially leaving it
-                                  //   over pads, exposed copper, etc.)
+    DRCE_SILK_MASK_CLEARANCE, // silkscreen clipped by mask (potentially leaving it
+                              //   over pads, exposed copper, etc.)
     DRCE_SILK_EDGE_CLEARANCE,
-    DRCE_SILK_CLEARANCE,          // silk-to-silk or silk-to-other clearance error
+    DRCE_SILK_CLEARANCE, // silk-to-silk or silk-to-other clearance error
     DRCE_TEXT_HEIGHT,
-    DRCE_TEXT_THICKNESS,
+    DRCE_LINE_WIDTH,
 
     DRCE_LENGTH_OUT_OF_RANGE,
+    DRCE_NET_CHAIN_STUB_TOO_LONG,     // Routed stub on a net chain exceeds the (stub_length max) constraint
+    DRCE_NET_CHAIN_RETURN_PATH_BREAK, // Net chain routed without copper on the required reference layer
+    DRCE_NET_CHAIN_TUNING_PROFILES,   // All nets in a net chain must have the same tuning profile (or none)
     DRCE_SKEW_OUT_OF_RANGE,
     DRCE_VIA_COUNT_OUT_OF_RANGE,
-    DRCE_DIFF_PAIR_GAP_OUT_OF_RANGE,
-    DRCE_DIFF_PAIR_UNCOUPLED_LENGTH_TOO_LONG,
+    DRCE_DP_GAP_OUT_OF_RANGE,
+    DRCE_DP_UNCOUPLED_LENGTH_TOO_LONG,
 
     DRCE_MIRRORED_TEXT_ON_FRONT_LAYER,
-    DRCE_NONMIRRORED_TEXT_ON_BACK_LAYER,
+    DRCE_UNMIRRORED_TEXT_ON_BACK_LAYER,
 
     DRCE_MISSING_TUNING_PROFILE,        // Tuning profile used in net class is not defined
     DRCE_TUNING_PROFILE_IMPLICIT_RULES, // Pseudo-code for setting severities
 
-    DRCE_TRACK_ON_POST_MACHINED_LAYER,  // Track connected to pad/via on post-machined/backdrilled layer
+    DRCE_TRACK_ON_POST_MACHINED_LAYER, // Track connected to pad/via on post-machined/backdrilled layer
 
-    DRCE_TRACK_NOT_CENTERED_ON_VIA,     // Track endpoint within via pad but not at via center
+    DRCE_TRACK_NOT_CENTERED_ON_VIA, // Track endpoint within via pad but not at via center
 
     DRCE_SCHEMATIC_FIELDS_PARITY, // Mismatch with schematic fields
 
-    DRCE_LAST = DRCE_SCHEMATIC_FIELDS_PARITY
+    DRCE_VIA_STITCH_OVERLAP, // Two same-net via-stitching zones overlap — placement priority
+                             // is undefined in the overlap, leading to nondeterministic vias.
+
+    DRCE_COPPER_OUTSIDE_BOARD, // copper item lies entirely outside the board outline
+
+    DRCE_LAST = DRCE_COPPER_OUTSIDE_BOARD
 };
 
 
@@ -206,6 +228,7 @@ private:
     static DRC_ITEM creepage;
     static DRC_ITEM tracksCrossing;
     static DRC_ITEM edgeClearance;
+    static DRC_ITEM copperOutsideBoard;
     static DRC_ITEM zonesIntersect;
     static DRC_ITEM isolatedCopper;
     static DRC_ITEM starvedThermal;
@@ -224,6 +247,12 @@ private:
     static DRC_ITEM padstack;
     static DRC_ITEM padstackInvalid;
     static DRC_ITEM microviaDrillTooSmall;
+    static DRC_ITEM malformedMicroviaStackSpan;
+    static DRC_ITEM microviaStackNotFilled;
+    static DRC_ITEM microviaStackDepth;
+    static DRC_ITEM holeAspectRatio;
+    static DRC_ITEM microviaCrossesCore;
+    static DRC_ITEM microviaSpansDielectrics;
     static DRC_ITEM courtyardsOverlap;
     static DRC_ITEM missingCourtyard;
     static DRC_ITEM malformedCourtyard;
@@ -249,8 +278,11 @@ private:
     static DRC_ITEM solderMaskBridge;
     static DRC_ITEM silkClearance;
     static DRC_ITEM textHeightOutOfRange;
-    static DRC_ITEM textThicknessOutOfRange;
+    static DRC_ITEM lineWidthOutOfRange;
     static DRC_ITEM lengthOutOfRange;
+    static DRC_ITEM netChainStubTooLong;
+    static DRC_ITEM netChainReturnPathBreak;
+    static DRC_ITEM netChainTuningProfiles;
     static DRC_ITEM skewOutOfRange;
     static DRC_ITEM viaCountOutOfRange;
     static DRC_ITEM diffPairGapOutOfRange;
@@ -258,13 +290,15 @@ private:
     static DRC_ITEM footprint;
     static DRC_ITEM footprintTypeMismatch;
     static DRC_ITEM footprintTHPadhasNoHole;
+    static DRC_ITEM footprintScaledWithPads;
     static DRC_ITEM mirroredTextOnFrontLayer;
-    static DRC_ITEM nonMirroredTextOnBackLayer;
+    static DRC_ITEM unMirroredTextOnBackLayer;
     static DRC_ITEM missingTuningProfile;
     static DRC_ITEM tuningProfileImplicitRules;
     static DRC_ITEM trackOnPostMachinedLayer;
     static DRC_ITEM trackNotCenteredOnVia;
     static DRC_ITEM schematicFieldsParity;
+    static DRC_ITEM viaStitchOverlap;
 
 private:
     DRC_RULE*          m_violatingRule = nullptr;
@@ -309,5 +343,22 @@ private:
     std::vector<PCB_MARKER*>           m_filteredMarkers;
 };
 
+
+/**
+ * Implements the RC_ITEM_RESOLVER interface to resolve PCB items by their KIID.
+ */
+class BOARD_RC_ITEM_RESOLVER : public RC_ITEM_RESOLVER
+{
+public:
+    explicit BOARD_RC_ITEM_RESOLVER( const BOARD& aBoard ) :
+            m_board( aBoard )
+    {
+    }
+
+    EDA_ITEM* doResolveItemById( const KIID& aKiid ) const override;
+
+private:
+    const BOARD& m_board;
+};
 
 #endif      // DRC_ITEM_H

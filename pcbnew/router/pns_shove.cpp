@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <deque>
@@ -138,7 +138,7 @@ SHOVE::ROOT_LINE_ENTRY* SHOVE::replaceLine( LINE& aOld, LINE& aNew, bool aInclud
     {
         if( ! rootEntry )
         {
-            rootEntry = new ROOT_LINE_ENTRY( aOld.Clone() );
+            rootEntry = allocRootLine( std::unique_ptr<LINE>( aOld.Clone() ) );
         }
 
         for( LINKED_ITEM* link : aOld.Links() )
@@ -166,11 +166,15 @@ SHOVE::ROOT_LINE_ENTRY* SHOVE::replaceLine( LINE& aOld, LINE& aNew, bool aInclud
 }
 
 
-int SHOVE::getClearance( const ITEM* aA, const ITEM* aB ) const
+int SHOVE::getClearance( const ITEM* aA, const ITEM* aB, CLEARANCE_ASPECT aAspect ) const
 {
-    if( m_forceClearance >= 0 )
-        return m_forceClearance;
-
+    if( m_overrideClearance )
+    {
+        int overriddenClearance = m_overrideClearance( aA, aB, aAspect );
+        if( overriddenClearance >= 0 )
+            return overriddenClearance;
+    }
+    
     int clearance = m_currentNode->GetClearance( aA, aB, false );
 
     if( aA->HasHole() )
@@ -194,7 +198,7 @@ SHOVE::SHOVE( NODE* aWorld, ROUTER* aRouter ) :
     ALGO_BASE( aRouter )
 {
     m_optFlagDisableMask = 0;
-    m_forceClearance = -1;
+    m_overrideClearance = nullptr;
     m_root = aWorld;
     m_currentNode = aWorld;
     SetDebugDecorator( aRouter->GetInterface()->GetDebugDecorator() );
@@ -1651,9 +1655,13 @@ SHOVE::SHOVE_STATUS SHOVE::shoveIteration( int aIter )
     {
         COLLISION_SEARCH_OPTIONS opts;
         opts.m_kindMask = search_order;
-        opts.m_filter = [ this ] ( const ITEM* item ) -> bool
+        opts.m_overrideClearance = m_overrideClearance;
+        opts.m_filter = [ this ] ( const ITEM* item, const ITEM* aRefItem ) -> bool
         {
             bool rv = true;
+
+            if( m_collisionFilter && ! m_collisionFilter( item, aRefItem ) )
+                return false;
 
             if( item->OfKind( ITEM::SEGMENT_T | ITEM::ARC_T | ITEM::VIA_T | ITEM::SOLID_T | ITEM::HOLE_T ) )
             {
@@ -1939,6 +1947,15 @@ OPT_BOX2I SHOVE::totalAffectedArea() const
 }
 
 
+SHOVE::ROOT_LINE_ENTRY* SHOVE::allocRootLine( std::unique_ptr<LINE> aLine, int aPolicy )
+{
+    m_rootLineHistoryEntries.push_back(
+            std::make_unique<ROOT_LINE_ENTRY>( std::move( aLine ), aPolicy ) );
+
+    return m_rootLineHistoryEntries.back().get();
+}
+
+
 SHOVE::ROOT_LINE_ENTRY* SHOVE::findRootLine( const LINE& aLine ) const
 {
         for( const LINKED_ITEM* link : aLine.Links() )
@@ -1977,7 +1994,7 @@ SHOVE::ROOT_LINE_ENTRY* SHOVE::touchRootLine( const LINE& aLine )
         }
     }
 
-    auto rootEntry = new ROOT_LINE_ENTRY( aLine.Clone() );
+    auto rootEntry = allocRootLine( std::unique_ptr<LINE>( aLine.Clone() ) );
 
 
     for( const LINKED_ITEM* link : aLine.Links() )
@@ -2001,7 +2018,7 @@ SHOVE::ROOT_LINE_ENTRY* SHOVE::touchRootLine( const LINKED_ITEM* aItem )
         return it->second;
     }
 
-    auto rootEntry = new ROOT_LINE_ENTRY( nullptr );
+    auto rootEntry = allocRootLine( nullptr );
 
     PNS_DBG( Dbg(), Message, wxString::Format( wxT( "touch [create] uid=%llu"), aItem->Uid() ) );
     m_rootLineHistory[ aItem->Uid() ] = rootEntry;
@@ -2093,7 +2110,7 @@ void SHOVE::runOptimizer( NODE* aNode )
 
             if( rootEntry )
             {
-                rootLine = rootEntry->rootLine;
+                rootLine = rootEntry->rootLine.get();
 
                 if( rootEntry->policy & SHP_DONT_OPTIMIZE )
                     continue;
@@ -2309,8 +2326,8 @@ void SHOVE::reconstructHeads( bool aShoveFailed )
 
                 wxString msg = wxString::Format(
                         "head %d/%d [net %-20s]: root %p, lc-root %d, lc-new %d\n", i, (int) m_headLines.size(),
-                        iface->GetNetName( rootEntry->rootLine->Net() ).c_str().AsChar(), rootEntry->rootLine, rootEntry->rootLine->LinkCount(), headEntry.newHead->LinkCount() );
-                PNS_DBG( Dbg(), AddItem, rootEntry->rootLine, CYAN, 0, msg );
+                        iface->GetNetName( rootEntry->rootLine->Net() ).c_str().AsChar(), rootEntry->rootLine.get(), rootEntry->rootLine->LinkCount(), headEntry.newHead->LinkCount() );
+                PNS_DBG( Dbg(), AddItem, rootEntry->rootLine.get(), CYAN, 0, msg );
                 PNS_DBG( Dbg(), Message, msg );
 
             }
@@ -2397,7 +2414,9 @@ SHOVE::SHOVE_STATUS SHOVE::Run()
     m_lineStack.clear();
     m_optimizerQueue.clear();
 
-    ITEM_SET headSet;
+    // An ITEM_SET does not free what it holds, so the copies of the heads are kept here
+    std::vector<std::unique_ptr<ITEM>> heads;
+    ITEM_SET                           headSet;
 
     PNS_DBG( Dbg(), Message, wxString::Format("shove run (heads: %d, currentNode=%p, depth=%d)", (int) m_headLines.size(), m_currentNode, m_currentNode->Depth() ) );
 
@@ -2408,11 +2427,13 @@ SHOVE::SHOVE_STATUS SHOVE::Run()
             PNS_DBG( Dbg(), Message, wxString::Format("process head-via [%d %d] node=%p", l.theVia->pos.x, l.theVia->pos.y, m_currentNode ) );
             auto realVia = m_currentNode->FindViaByHandle( *l.theVia );
             assert( realVia != nullptr );
-            headSet.Add( realVia->Clone() );
+            heads.emplace_back( realVia->Clone() );
+            headSet.Add( heads.back().get() );
         }
         else
         {
-            headSet.Add( *l.origHead->Clone() );
+            heads.emplace_back( l.origHead->Clone() );
+            headSet.Add( heads.back().get() );
         }
     }
 
@@ -2502,7 +2523,7 @@ SHOVE::SHOVE_STATUS SHOVE::Run()
 
             auto headRoot = touchRootLine( *headLineEntry.origHead );
             headRoot->isHead = true;
-            headRoot->rootLine = new PNS::LINE( *headLineEntry.origHead );
+            headRoot->rootLine = std::make_unique<PNS::LINE>( *headLineEntry.origHead );
             headRoot->policy = headLineEntry.policy;
             if( head.EndsWithVia() )
             {
@@ -2642,6 +2663,16 @@ const PNS::LINE SHOVE::GetModifiedHead( int aIndex ) const
 const VIA_HANDLE SHOVE::GetModifiedHeadVia( int aIndex ) const
 {
     return *m_headLines[ aIndex ].theVia;
+}
+
+void SHOVE::SetCollisionFilter( COLLISION_FILTER_FUNC aFunc )
+{
+    m_collisionFilter = aFunc;
+}
+
+void SHOVE::SetClearanceOverride( CLEARANCE_OVERRIDE_FUNC aFunc )
+{
+    m_overrideClearance = aFunc;
 }
 
 

@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef SCH_PAINTER_H
@@ -29,6 +25,7 @@
 
 #include <sch_render_settings.h>
 #include <sch_symbol.h>
+#include <set>
 
 #include <gal/painter.h>
 
@@ -127,6 +124,11 @@ private:
     bool isUnitAndConversionShown( const SCH_ITEM* aItem ) const;
 
     float getShadowWidth( bool aForHighlight ) const;
+
+    /**
+     * Whether a text item is drawn as bitmap text at this zoom, see SCH_ITEM::RenderAsBitmap().
+     */
+    bool renderAsBitmap( const SCH_ITEM* aItem ) const;
     COLOR4D getRenderColor( const SCH_ITEM* aItem, int aLayer, bool aDrawingShadows,
                             bool aDimmed = false, bool aIgnoreNets = false ) const;
     KIFONT::FONT* getFont( const EDA_TEXT* aText ) const;
@@ -149,6 +151,9 @@ public:
 private:
     SCH_RENDER_SETTINGS m_schSettings;
     SCHEMATIC*          m_schematic;
+
+    /// Temporary pins standing in for the highlighted chain's terminals during a symbol draw.
+    std::set<const SCH_PIN*> m_netChainTerminalPins;
 };
 
 }; // namespace KIGFX

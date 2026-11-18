@@ -13,14 +13,15 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
 
 #include <functional>
 #include <map>
+#include <optional>
 #include <vector>
 #include <string>
 
@@ -47,7 +48,7 @@ public:
         /// Filter used for file pickers if m_IsFile is true.
         std::vector<std::string> m_FileExtensions;
 
-        ///< In case of folders: extensions of files inside.
+        /// In case of folders: extensions of files inside.
         std::vector<std::string> m_ExtensionsInDir;
         bool                     m_IsFile;          ///< Whether the library is a folder or a file
         bool                     m_CanRead;         ///< Whether the IO can read this file type
@@ -163,6 +164,28 @@ public:
                                 const std::map<std::string, UTF8>* aProperties = nullptr );
 
     /**
+     * Ask a library load running on this plugin to end early.  Called from another thread while an asynchronous load
+     * is in flight, so it must return at once.  Plugins with no wait worth cutting short ignore it.
+     */
+    virtual void CancelLoad() {}
+
+    /// Called after the loads that were cancelled have ended, to clear what CancelLoad() left behind
+    virtual void ResumeLoad() noexcept {}
+
+    /**
+     * Have the destructor leave the library cache unfreed.  Only for use as the process exits, since freeing the
+     * caches of thousands of libraries one item at a time holds it up for seconds.  The cache stays usable until the
+     * plugin is destroyed, so threads still reading it are safe.  Plugins without a large cache ignore it.
+     */
+    virtual void LeakCacheAtExit() {}
+
+    /**
+     * Stop and join any thread that reads other libraries through the library adapter.  Called before the plugin
+     * is retired, while every library such a thread could reach is still alive.  The plugin is not used again.
+     */
+    virtual void StopBackgroundRefresh() {}
+
+    /**
      * Return true if the library at @a aLibraryPath is writable.
      *
      * The system libraries are typically read only because of where they are installed..
@@ -208,17 +231,23 @@ public:
     virtual bool SupportsConfigurationDialog() const { return false; }
 
     /**
-     * Shows the configuration dialog of a plugin, @return true if it handled @a aPlugin.
-     * The dialogs are GUI code: the editors register their handlers.
+     * Shows the configuration dialog of a plugin, @return the dialog result if it handled
+     * @a aPlugin.  The dialogs are GUI code: the editors register their handlers.
+     * @param aLibraryPath is the fully expanded path of the library to configure
      */
-    using CONFIGURATION_DIALOG_HANDLER = std::function<bool( IO_BASE* aPlugin, wxWindow* aParent )>;
+    using CONFIGURATION_DIALOG_HANDLER =
+            std::function<std::optional<int>( IO_BASE* aPlugin, wxWindow* aParent, const wxString& aLibraryPath )>;
 
     static void AddConfigurationDialogHandler( CONFIGURATION_DIALOG_HANDLER aHandler );
 
-    /// Show the configuration dialog of this plugin (SupportsConfigurationDialog()).
-    void ShowConfigurationDialog( wxWindow* aParent );
+    /**
+     * Show the configuration dialog of this plugin (SupportsConfigurationDialog()).
+     * @return the dialog result (wxID_OK, ...), or nothing if no handler shows a dialog for it.
+     */
+    std::optional<int> ShowConfigurationDialog( wxWindow* aParent, const wxString& aLibraryPath );
 
-    virtual void Report( const wxString& aText, SEVERITY aSeverity = RPT_SEVERITY_UNDEFINED );
+    virtual void Report( const wxString& aText,
+                         SEVERITY aSeverity = RPT_SEVERITY_UNDEFINED ) const;
 
     virtual void AdvanceProgressPhase();
 

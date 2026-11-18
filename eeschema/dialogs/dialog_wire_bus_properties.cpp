@@ -15,13 +15,10 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <bitmaps.h>
 #include <sch_line.h>
 #include <sch_bus_entry.h>
 #include <sch_junction.h>
@@ -114,7 +111,7 @@ bool DIALOG_WIRE_BUS_PROPERTIES::TransferDataToWindow()
     }
     else
     {
-        m_colorSwatch->SetSwatchColor( COLOR4D::UNSPECIFIED, false );
+        m_colorSwatch->SetIndeterminate();
     }
 
     if( std::all_of( m_items.begin(), m_items.end(),
@@ -214,21 +211,25 @@ bool DIALOG_WIRE_BUS_PROPERTIES::TransferDataFromWindow()
                     static_cast<SCH_BUS_ENTRY_BASE*>( item )->SetLineStyle( lineStyle );
             }
 
-            COLOR4D color = m_colorSwatch->GetSwatchColor();
+            if( !m_colorSwatch->IsIndeterminate() )
+            {
+                COLOR4D color = m_colorSwatch->GetSwatchColor();
 
-            if( item->Type() == SCH_LINE_T )
-                static_cast<SCH_LINE*>( item )->SetLineColor( color );
-            else if( dynamic_cast<SCH_BUS_ENTRY_BASE*>( item ) )
-                static_cast<SCH_BUS_ENTRY_BASE*>( item )->SetBusEntryColor( color );
+                if( item->Type() == SCH_LINE_T )
+                    static_cast<SCH_LINE*>( item )->SetLineColor( color );
+                else if( dynamic_cast<SCH_BUS_ENTRY_BASE*>( item ) )
+                    static_cast<SCH_BUS_ENTRY_BASE*>( item )->SetBusEntryColor( color );
+            }
         }
         else
         {
             SCH_JUNCTION* junction = static_cast<SCH_JUNCTION*>( item );
 
-            junction->SetColor( m_colorSwatch->GetSwatchColor() );
+            if( !m_colorSwatch->IsIndeterminate() )
+                junction->SetColor( m_colorSwatch->GetSwatchColor() );
 
             if( !m_junctionSize.IsIndeterminate() )
-                junction->SetDiameter( m_junctionSize.GetValue() );
+                junction->SetDiameter( m_junctionSize.GetIntValue() );
         }
     }
 

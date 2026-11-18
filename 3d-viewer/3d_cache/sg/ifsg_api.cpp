@@ -15,17 +15,14 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <iostream>
 #include <sstream>
 #include <fstream>
 #include <memory>
+#include <mutex>
 #include <wx/filename.h>
 #include <wx/log.h>
 #include "plugins/3dapi/ifsg_api.h"
@@ -42,6 +39,23 @@
 
 // version format of the cache file
 #define SG_VERSION_TAG "VERSION:2"
+
+namespace
+{
+std::recursive_mutex modelImportMutex;
+} // namespace
+
+
+void S3D::LockModelImport() noexcept
+{
+    modelImportMutex.lock();
+}
+
+
+void S3D::UnlockModelImport() noexcept
+{
+    modelImportMutex.unlock();
+}
 
 
 static void formatMaterial( SMATERIAL& mat, SGAPPEARANCE const* app )
@@ -79,6 +93,8 @@ static void formatMaterial( SMATERIAL& mat, SGAPPEARANCE const* app )
 bool S3D::WriteVRML( const char* filename, bool overwrite, SGNODE* aTopNode,
                      bool reuse, bool renameNodes )
 {
+    std::lock_guard<std::recursive_mutex> guard( modelImportMutex );
+
     if( nullptr == filename || filename[0] == 0 )
         return false;
 
@@ -134,6 +150,8 @@ bool S3D::WriteVRML( const char* filename, bool overwrite, SGNODE* aTopNode,
 
 void S3D::ResetNodeIndex( SGNODE* aNode )
 {
+    std::lock_guard<std::recursive_mutex> guard( modelImportMutex );
+
     KI_CHECK( aNode, /* void */ );
 
     aNode->ResetNodeIndex();
@@ -142,6 +160,8 @@ void S3D::ResetNodeIndex( SGNODE* aNode )
 
 void S3D::RenameNodes( SGNODE* aNode )
 {
+    std::lock_guard<std::recursive_mutex> guard( modelImportMutex );
+
     KI_CHECK( aNode, /* void */ );
 
     aNode->ReNameNodes();
@@ -159,6 +179,8 @@ void S3D::DestroyNode( SGNODE* aNode ) noexcept
 bool S3D::WriteCache( const char* aFileName, bool overwrite, SGNODE* aNode,
                       const char* aPluginInfo )
 {
+    std::lock_guard<std::recursive_mutex> guard( modelImportMutex );
+
     if( nullptr == aFileName || aFileName[0] == 0 )
         return false;
 
@@ -223,6 +245,8 @@ bool S3D::WriteCache( const char* aFileName, bool overwrite, SGNODE* aNode,
 SGNODE* S3D::ReadCache( const char* aFileName, void* aPluginMgr,
                         bool (*aTagCheck)( const char*, void* ) )
 {
+    std::lock_guard<std::recursive_mutex> guard( modelImportMutex );
+
     if( nullptr == aFileName || aFileName[0] == 0 )
         return nullptr;
 
@@ -414,7 +438,7 @@ void S3D::Destroy3DModel( S3DMODEL** aModel )
 }
 
 
-void Free3DModel( S3DMODEL& aModel )
+void S3D::Free3DModel( S3DMODEL& aModel )
 {
     S3D::FREE_S3DMODEL( aModel );
 }

@@ -63,9 +63,9 @@ class DIALOG_SHAPE_PROPERTIES_BASE : public DIALOG_SHIM
 		WX_INFOBAR* m_infoBar;
 		wxBoxSizer* m_ruleAreaSizer;
 		wxCheckBox* m_cbExcludeFromSim;
-		wxCheckBox* m_cbExcludeFromBom;
 		wxCheckBox* m_cbExcludeFromBoard;
 		wxCheckBox* m_cbDNP;
+		wxCheckBox* m_cbExcludeFromBom;
 		wxGridBagSizer* m_borderSizer;
 		wxCheckBox* m_borderCheckbox;
 		wxStaticText* m_borderWidthLabel;
@@ -92,6 +92,7 @@ class DIALOG_SHAPE_PROPERTIES_BASE : public DIALOG_SHIM
 		wxRadioButton* m_rbFillBackground;
 		wxRadioButton* m_rbFillCustom;
 		COLOR_SWATCH* m_customColorSwatch;
+		wxBoxSizer* m_endingsSizer;
 		wxBoxSizer* m_symbolEditorSizer;
 		wxCheckBox* m_privateCheckbox;
 		wxCheckBox* m_checkApplyToAllUnits;

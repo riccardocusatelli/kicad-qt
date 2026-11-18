@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PROGRESS_REPORTER_H
@@ -73,6 +69,14 @@ public:
      * Display \a aMessage in the progress bar dialog.
      */
     virtual void Report( const wxString& aMessage ) = 0;
+
+    /**
+     * Ask for an indeterminate (pulsing) display, for work whose total is not known yet.
+     *
+     * Safe to call from a worker thread. Implementations record the request and apply it on
+     * the next UI refresh.
+     */
+    virtual void SetIndeterminate( bool aIndeterminate ) {}
 
     /**
      * Set the progress value to aProgress (0..1).

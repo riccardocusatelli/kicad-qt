@@ -16,20 +16,19 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "spice_circuit_model.h"
+#include "spice_settings.h"
 
 #include <wx/regex.h>
 #include <wx/tokenzr.h>
 
 #include <locale_io.h>
 #include <richio.h>
+#include <schematic.h>
+#include <schematic_settings.h>
 #include <string_utils.h>
 
 SIM_TRACE_TYPE SPICE_CIRCUIT_MODEL::VectorToSignal( const std::string& aVector,
@@ -222,7 +221,7 @@ bool SPICE_CIRCUIT_MODEL::ParseNoiseCommand( const wxString& aCmd, wxString* aOu
 
     if( token.Lower() == "dec" || token.Lower() == "oct" || token.Lower() == "lin" )
     {
-        *aScale = token;
+        *aScale = token.Lower();
         token = tokens.GetNextToken();
     }
 
@@ -256,6 +255,15 @@ void SPICE_CIRCUIT_MODEL::WriteDirectives( const wxString& aSimCommand, unsigned
 {
     if( aSimCommand.IsEmpty() )
         aSimOptions |= OPTION_SIM_COMMAND;
+
+    // Precedes the schematic directives so a schematic .options wins; ngspice keeps the last value
+    if( NGSPICE_SETTINGS* settings = m_schematic->Settings().m_NgspiceSettings.get() )
+    {
+        wxString options = settings->GetOptionsDirective();
+
+        if( !options.IsEmpty() )
+            aFormatter.Print( 0, "%s\n", TO_UTF8( options ) );
+    }
 
     NETLIST_EXPORTER_SPICE::WriteDirectives( aSimCommand, aSimOptions, aFormatter );
 

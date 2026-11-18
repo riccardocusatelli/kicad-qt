@@ -14,24 +14,18 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef BOARD_INSPECTION_TOOL_H
-#define BOARD_INSPECTION_TOOL_H
+#pragma once
 
-#include <drc/drc_rule.h>
-#include <drc/drc_engine.h>
 #include <pcb_edit_frame.h>
 #include <rc_item.h>
 #include <tools/pcb_actions.h>
 #include <tools/pcb_tool_base.h>
 
 class CONNECTIVITY_DATA;
+class DRC_ENGINE;
 class FOOTPRINT_DIFF_WIDGET;
 class wxPanel;
 class wxTopLevelWindow;
@@ -56,34 +50,36 @@ public:
      */
     int ShowBoardStatistics( const TOOL_EVENT& aEvent );
 
-    ///< Highlight net belonging to the item under the cursor.
+    /// Highlight net belonging to the item under the cursor.
     int HighlightNet( const TOOL_EVENT& aEvent );
+    int HighlightNetChain( const TOOL_EVENT& aEvent );
+    int ReplaceTerminalPad( const TOOL_EVENT& aEvent );
 
-    ///< Clear all board highlights
+    /// Clear all board highlights
     int ClearHighlight( const TOOL_EVENT& aEvent );
 
-    ///< Perform the appropriate action in response to an Eeschema cross-probe.
+    /// Perform the appropriate action in response to an Eeschema cross-probe.
     int HighlightItem( const TOOL_EVENT& aEvent );
 
-    ///< Update ratsnest for selected items.
+    /// Update ratsnest for selected items.
     int UpdateLocalRatsnest( const TOOL_EVENT& aEvent );
 
-    ///< Hide ratsnest for selected items. Called when there are no items selected.
+    /// Hide ratsnest for selected items. Called when there are no items selected.
     int HideLocalRatsnest( const TOOL_EVENT& aEvent );
 
-    ///< Show local ratsnest of a component.
+    /// Show local ratsnest of a component.
     int LocalRatsnestTool( const TOOL_EVENT& aEvent );
 
-    ///< Hide the ratsnest for a given net.
+    /// Hide the ratsnest for a given net.
     int HideNetInRatsnest( const TOOL_EVENT& aEvent );
 
-    ///< Show the ratsnest for a given net.
+    /// Show the ratsnest for a given net.
     int ShowNetInRatsnest( const TOOL_EVENT& aEvent );
 
     wxString InspectDRCErrorMenuText( const std::shared_ptr<RC_ITEM>& aDRCItem );
     void InspectDRCError( const std::shared_ptr<RC_ITEM>& aDRCItem );
 
-    ///< Show the clearance resolution for two selected items.
+    /// Show the clearance resolution for two selected items.
     int InspectClearance( const TOOL_EVENT& aEvent );
 
     int InspectConstraints( const TOOL_EVENT& aEvent );
@@ -93,6 +89,12 @@ public:
     int DiffFootprint( const TOOL_EVENT& aEvent );
     void DiffFootprint( FOOTPRINT* aFootprint, wxTopLevelWindow* aReparentTo = nullptr );
 
+    /// Diff the current board against a user-selected .kicad_pcb file.
+    int CompareBoardWithFile( const TOOL_EVENT& aEvent );
+
+    /// Diff the current board against the most recent local-history commit.
+    int CompareBoardWithHistory( const TOOL_EVENT& aEvent );
+
     /**
      * @return true if a net or nets to highlight have been set
      */
@@ -101,8 +103,16 @@ public:
         return !m_currentlyHighlighted.empty();
     }
 
+protected:
+    /// Bind handlers to corresponding TOOL_ACTIONs.
+    void setTransitions() override;
+
 private:
-    ///< Recalculate dynamic ratsnest for the current selection.
+    /// Diff the board at aOtherPath against the live one and show the dialog.
+    int showBoardComparison( const wxString& aOtherPath, const wxString& aProjectPath,
+                             const wxString& aComparisonLabel );
+
+    /// Recalculate dynamic ratsnest for the current selection.
     void calculateSelectionRatsnest( const VECTOR2I& aDelta );
 
     /**
@@ -116,36 +126,31 @@ private:
 
     void doHideRatsnestNet( int aNetCode, bool aHide );
 
-    ///< Bind handlers to corresponding TOOL_ACTIONs.
-    void setTransitions() override;
-
     std::unique_ptr<DRC_ENGINE> makeDRCEngine( bool* aCompileError, bool* aCourtyardError );
 
-    wxString getItemDescription( BOARD_ITEM* aItem );
+    wxString getItemDescription( const BOARD_ITEM* aItem );
 
     void reportCompileError( REPORTER* r );
-    void reportHeader( const wxString& aTitle, BOARD_ITEM* a, REPORTER* r );
-    void reportHeader( const wxString& aTitle, BOARD_ITEM* a, BOARD_ITEM* b, REPORTER* r );
-    void reportHeader( const wxString& aTitle, BOARD_ITEM* a, BOARD_ITEM* b, PCB_LAYER_ID aLayer,
+    void reportHeader( const wxString& aTitle, const BOARD_ITEM* a, REPORTER* r );
+    void reportHeader( const wxString& aTitle, const BOARD_ITEM* a, const BOARD_ITEM* b, REPORTER* r );
+    void reportHeader( const wxString& aTitle, const BOARD_ITEM* a, const BOARD_ITEM* b, PCB_LAYER_ID aLayer,
                        REPORTER* r );
 
     FOOTPRINT_DIFF_WIDGET* constructDiffPanel( wxPanel* aParentPanel );
 
-    void reportClearance( BOARD_ITEM* aItemA, BOARD_ITEM* aItemB );
+    void reportClearance( const BOARD_ITEM* aItemA, const BOARD_ITEM* aItemB );
 
     void filterCollectorForInspection( GENERAL_COLLECTOR& aCollector, const VECTOR2I& aPos );
 
     BOARD_ITEM* pickItemForInspection( const TOOL_EVENT& aEvent, const wxString& aPrompt,
-                                       const std::vector<KICAD_T>& aTypes,
-                                       BOARD_ITEM* aLockedHighlight );
+                                       const std::vector<KICAD_T>& aTypes, BOARD_ITEM* aLockedHighlight );
 
 private:
-    PCB_EDIT_FRAME*     m_frame;    // Pointer to the currently used edit frame.
+    PCB_EDIT_FRAME*     m_frame;                // Pointer to the currently used edit frame.
 
     std::set<int>       m_currentlyHighlighted; // Active net being highlighted, or -1 when off
     std::set<int>       m_lastHighlighted;      // For toggling between last two highlighted nets
+    wxString            m_highlightedNetChain;
 
-    CONNECTIVITY_DATA*  m_dynamicData;      // Cached connectivity data from the selection
+    CONNECTIVITY_DATA*  m_dynamicData;          // Cached connectivity data from the selection
 };
-
-#endif //BOARD_INSPECTION_TOOL_H

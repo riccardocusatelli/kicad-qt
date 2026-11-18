@@ -16,14 +16,12 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <confirm.h>
+#include <footprint.h>
+#include <libraries/library_manager.h>
+#include <pad.h>
 #include <kiface_gui.h>
 #include <pgm_base.h>
 #include <settings/settings_manager.h>
@@ -31,10 +29,67 @@
 #include <cvpcb_mainframe.h>
 #include <settings/cvpcb_settings.h>
 #include <display_footprints_frame.h>
-#include <kiface_ids.h>
+#include <kiface_services.h>
+
+#include <memory>
+#include <optional>
+#include <set>
 #include <project_pcb.h>
 
 namespace CV {
+
+void getFootprintPadNumbers( const wxString& aFootprint, PROJECT* aProject, std::set<wxString>& aPadNumbers )
+{
+    LIB_ID fpID;
+
+    if( fpID.Parse( aFootprint ) >= 0 )
+        return;
+
+    if( std::optional<LIBRARY_MANAGER_ADAPTER*> mgr =
+                Pgm().GetLibraryManager().Adapter( LIBRARY_TABLE_TYPE::FOOTPRINT ) )
+    {
+        ( *mgr )->BlockUntilLoaded();
+    }
+
+    FOOTPRINT_LIBRARY_ADAPTER* adapter = PROJECT_PCB::FootprintLibAdapter( aProject );
+
+    if( !adapter )
+        return;
+
+    if( fpID.GetLibNickname().empty() )
+    {
+        for( const LIBRARY_TABLE_ROW* row : adapter->Rows() )
+        {
+            if( !adapter->IsLibraryLoaded( row->Nickname() ) )
+                adapter->LoadOne( row->Nickname() );
+        }
+    }
+    else
+    {
+        adapter->LoadOne( fpID.GetLibNickname() );
+    }
+
+    std::unique_ptr<FOOTPRINT> footprint;
+
+    // This runs across the kiface boundary, so let nothing escape into the caller's ERC loop.
+    try
+    {
+        footprint.reset( adapter->LoadFootprintWithOptionalNickname( fpID, false ) );
+    }
+    catch( ... )
+    {
+    }
+
+    if( !footprint )
+        return;
+
+    for( const PAD* pad : footprint->Pads() )
+    {
+        if( !pad->GetNumber().IsEmpty() )
+            aPadNumbers.insert( pad->GetNumber() );
+    }
+}
+
 
 static struct IFACE : public KIFACE_GUI
 {
@@ -74,7 +129,11 @@ static struct IFACE : public KIFACE_GUI
         switch( aDataId )
         {
         case KIFACE_TEST_FOOTPRINT_LINK:
-            return reinterpret_cast<void*>( &PROJECT_PCB::TestFootprintLink );
+            return KifaceServiceAddress<KIFACE_TEST_FOOTPRINT_LINK_SERVICE>( &PROJECT_PCB::TestFootprintLink );
+
+        case KIFACE_FOOTPRINT_PAD_NUMBERS:
+            return KifaceServiceAddress<KIFACE_FOOTPRINT_PAD_NUMBERS_SERVICE>(
+                    &getFootprintPadNumbers );
 
         default:
             return nullptr;

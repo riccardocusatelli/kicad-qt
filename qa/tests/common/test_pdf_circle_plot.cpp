@@ -120,7 +120,7 @@ CIRCLE_PATH plotOneCircle( int aDiameter, FILL_T aFill, int aWidth, int aDefault
                            double aIusPerDecimil = 1.0 )
 {
     KI_TEST::SCOPED_TEMP_DIR tempDir( wxT( "kicad_pdf_circle" ) );
-    const wxString           pdfPath = wxString::FromUTF8( ( tempDir.Path() / "output.pdf" ).string() );
+    const wxString           pdfPath = tempDir.CreateChildFileStr( wxT( "output.pdf" ) );
 
     PDF_PLOTTER            plotter;
     SIMPLE_RENDER_SETTINGS renderSettings;

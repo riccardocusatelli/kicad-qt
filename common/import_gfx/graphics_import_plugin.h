@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef GRAPHICS_IMPORT_PLUGIN_H
@@ -91,8 +87,10 @@ public:
      * Set memory buffer with content for import.
      *
      * It is necessary to have the GRAPHICS_IMPORTER object set before.
+     *
+     * @return false if the plugin cannot load from memory.
      */
-    virtual bool LoadFromMemory( const wxMemoryBuffer& aMemBuffer ) = 0;
+    virtual bool LoadFromMemory( const wxMemoryBuffer& aMemBuffer ) { return false; }
 
     /**
      * Return image height from original imported file.

@@ -15,13 +15,12 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <bitmaps/bitmaps_list.h>
+#include <connectivity/conn_presentation.h>
+#include <netclass.h>
 #include <sch_sheet_context.h>
 #include <trigo.h>
 #include <common.h>
@@ -37,6 +36,8 @@
 #include <settings/color_settings.h>
 #include <connection_graph.h>
 #include <string_utils.h>
+#include <api/api_utils.h>
+#include <api/schematic/schematic_types.pb.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
 #include <core/ki_assert.h>
@@ -59,6 +60,53 @@ SCH_JUNCTION::SCH_JUNCTION( const VECTOR2I& aPosition, int aDiameter, SCH_LAYER_
 EDA_ITEM* SCH_JUNCTION::Clone() const
 {
     return new SCH_JUNCTION( *this );
+}
+
+
+void SCH_JUNCTION::Serialize( google::protobuf::Any& aContainer ) const
+{
+    using namespace kiapi::common;
+
+    kiapi::schematic::types::Junction junction;
+
+    junction.mutable_id()->set_value( m_Uuid.AsStdString() );
+    PackVector2( *junction.mutable_position(), m_pos, schIUScale );
+    PackDistance( *junction.mutable_diameter(), m_diameter, schIUScale );
+
+    if( m_color != COLOR4D::UNSPECIFIED )
+        PackColor( *junction.mutable_color(), m_color );
+
+    junction.set_locked( IsLocked() ? types::LockedState::LS_LOCKED
+                                    : types::LockedState::LS_UNLOCKED );
+
+    kiapi::common::PackCustomProperties( junction.mutable_custom_properties(), *this );
+
+    if( !aContainer.PackFrom( junction ) )
+        KI_FAIL_MSG( wxT( "Failed to pack SCH_JUNCTION" ) );
+}
+
+
+bool SCH_JUNCTION::Deserialize( const google::protobuf::Any& aContainer )
+{
+    using namespace kiapi::common;
+
+    kiapi::schematic::types::Junction junction;
+
+    if( !aContainer.UnpackTo( &junction ) )
+        return false;
+
+    const_cast<KIID&>( m_Uuid ) = KIID( junction.id().value() );
+    m_pos = UnpackVector2( junction.position(), schIUScale );
+    m_diameter = UnpackDistance( junction.diameter(), schIUScale );
+
+    if( junction.has_color() )
+        m_color = UnpackColor( junction.color() );
+    else
+        m_color = COLOR4D::UNSPECIFIED;
+
+    SetLocked( junction.locked() == types::LockedState::LS_LOCKED );
+    kiapi::common::UnpackCustomProperties( junction.custom_properties(), *this );
+    return true;
 }
 
 
@@ -304,21 +352,8 @@ void SCH_JUNCTION::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG
 
     aList.emplace_back( _( "Size" ), aContext->MessageTextFromValue( GetEffectiveDiameter() ) );
 
-    SCH_CONNECTION* conn = nullptr;
-
     if( !IsConnectivityDirty() && dynamic_cast<SCH_SHEET_CONTEXT*>( aContext ) )
-        conn = Connection();
-
-    if( conn )
-    {
-        conn->AppendInfoToMsgPanel( aList );
-
-        if( !conn->IsBus() )
-        {
-            aList.emplace_back( _( "Resolved Netclass" ),
-                                UnescapeString( GetEffectiveNetClass()->GetHumanReadableName() ) );
-        }
-    }
+        SCH_CONNECTIVITY::AppendConnectionInfo( *this, aList );
 }
 
 
@@ -376,11 +411,11 @@ static struct SCH_JUNCTION_DESC
         propMgr.InheritsAfter( TYPE_HASH( SCH_JUNCTION ), TYPE_HASH( SCH_ITEM ) );
 
         propMgr.AddProperty( new PROPERTY<SCH_JUNCTION, int>( _HKI( "Diameter" ),
-                &SCH_JUNCTION::SetDiameter, &SCH_JUNCTION::GetDiameter,
-                PROPERTY_DISPLAY::PT_SIZE ) );
+                    &SCH_JUNCTION::SetDiameter, &SCH_JUNCTION::GetDiameter,
+                    PROPERTY_DISPLAY::PT_SIZE ) );
 
         propMgr.AddProperty( new PROPERTY<SCH_JUNCTION, COLOR4D>( _HKI( "Color" ),
-                &SCH_JUNCTION::SetColor, &SCH_JUNCTION::GetColor ) );
+                    &SCH_JUNCTION::SetColor, &SCH_JUNCTION::GetColor ) );
 
     }
 } _SCH_JUNCTION_DESC;

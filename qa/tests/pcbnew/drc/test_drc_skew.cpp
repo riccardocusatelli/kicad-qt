@@ -14,14 +14,11 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
+#include <qa_utils/file_utils.h>
 #include <pcbnew_utils/board_test_utils.h>
 #include <board.h>
 #include <board_design_settings.h>
@@ -38,6 +35,8 @@
 #include <fstream>
 
 
+namespace
+{
 struct DRC_REGRESSION_TEST_FIXTURE
 {
     DRC_REGRESSION_TEST_FIXTURE()
@@ -46,6 +45,7 @@ struct DRC_REGRESSION_TEST_FIXTURE
     SETTINGS_MANAGER       m_settingsManager;
     std::unique_ptr<BOARD> m_board;
 };
+} // namespace
 
 
 BOOST_FIXTURE_TEST_CASE( DRCSkew, DRC_REGRESSION_TEST_FIXTURE )
@@ -100,13 +100,12 @@ BOOST_FIXTURE_TEST_CASE( DRCSkew, DRC_REGRESSION_TEST_FIXTURE )
         {
             UNITS_PROVIDER unitsProvider( pcbIUScale, EDA_UNITS::INCH );
 
-            std::map<KIID, EDA_ITEM*> itemMap;
-            m_board->FillItemMap( itemMap );
+            BOARD_RC_ITEM_RESOLVER resolver( *m_board );
 
             for( const DRC_ITEM& item : violations )
             {
                 BOOST_TEST_MESSAGE( item.ShowReport( &unitsProvider, RPT_SEVERITY_ERROR,
-                                                     itemMap ) );
+                                                     resolver ) );
             }
 
             BOOST_ERROR( wxString::Format( "DRC skew: %s, failed (violations found %d expected %d)",
@@ -121,10 +120,9 @@ static size_t runInlineSkewRule( SETTINGS_MANAGER& aSettingsManager, std::unique
 {
     namespace fs = std::filesystem;
 
-    fs::path tmpDir = fs::temp_directory_path() / aTmpSubdir;
-    fs::create_directories( tmpDir );
+    KI_TEST::SCOPED_TEMP_DIR tmpDir( wxString::FromUTF8( aTmpSubdir ) );
 
-    fs::path druPath = tmpDir / "skew.kicad_dru";
+    fs::path druPath = tmpDir.Path() / "skew.kicad_dru";
 
     {
         std::ofstream druOut( druPath );

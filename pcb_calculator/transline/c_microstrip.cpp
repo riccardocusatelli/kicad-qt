@@ -14,9 +14,7 @@
  * General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this package; see the file COPYING.  If not, write to
- * the Free Software Foundation, Inc., 51 Franklin Street - Fifth Floor,
- * Boston, MA 02110-1301, USA.
+ * along with this package.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -109,6 +107,9 @@ void C_MICROSTRIP::getProperties()
     m_calc.SetParameter( TRANSLINE_PARAMETERS::Z0_E, m_parameters[Z0_E_PRM] );
     m_calc.SetParameter( TRANSLINE_PARAMETERS::Z0_O, m_parameters[Z0_O_PRM] );
     m_calc.SetParameter( TRANSLINE_PARAMETERS::EPSILONR, m_parameters[EPSILONR_PRM] );
+    m_calc.SetParameter( TRANSLINE_PARAMETERS::DIELECTRIC_MODEL_SEL, m_parameters[DIELECTRIC_MODEL_PRM] );
+    m_calc.SetParameter( TRANSLINE_PARAMETERS::EPSILONR_SPEC_FREQ, m_parameters[EPSILONR_SPEC_FREQ_PRM] );
+    pushSoldermaskParameters( m_calc );
     m_calc.SetParameter( TRANSLINE_PARAMETERS::PHYS_WIDTH, m_parameters[PHYS_WIDTH_PRM] );
     m_calc.SetParameter( TRANSLINE_PARAMETERS::PHYS_LEN, m_parameters[PHYS_LEN_PRM] );
     m_calc.SetParameter( TRANSLINE_PARAMETERS::PHYS_S, m_parameters[PHYS_S_PRM] );

@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PCB_IO_KICAD_LEGACY_H_
@@ -55,7 +51,7 @@ struct LP_CACHE;
 
 
 /**
- * A #PLUGIN derivation which could possibly be put into a DLL/DSO.
+ * A #PCB_IO derivation which could possibly be put into a DLL/DSO.
  *
  * As with any PLUGIN, there is no UI, i.e. windowing calls allowed.
  */
@@ -80,16 +76,13 @@ public:
     bool CanReadBoard( const wxString& aFileName ) const override;
     bool CanReadFootprint( const wxString& aFileName ) const override;
 
-    BOARD* LoadBoard( const wxString& aFileName, BOARD* aAppendToMe,
-                      const std::map<std::string, UTF8>* aProperties = nullptr, PROJECT* aProject = nullptr ) override;
-
     void FootprintEnumerate( wxArrayString& aFootprintNames, const wxString& aLibraryPath,
                              bool aBestEfforts,
                              const std::map<std::string, UTF8>* aProperties = nullptr ) override;
 
-    FOOTPRINT* FootprintLoad( const wxString& aLibraryPath, const wxString& aFootprintName,
-                              bool  aKeepUUID = false,
-                              const std::map<std::string, UTF8>* aProperties = nullptr ) override;
+    std::unique_ptr<FOOTPRINT> FootprintLoad( const wxString& aLibraryPath, const wxString& aFootprintName,
+                                              bool                               aKeepUUID = false,
+                                              const std::map<std::string, UTF8>* aProperties = nullptr ) override;
 
     bool DeleteLibrary( const wxString& aLibraryPath,
                         const std::map<std::string, UTF8>* aProperties = nullptr ) override;
@@ -108,6 +101,9 @@ public:
     static LSET leg_mask2new( int cu_count, unsigned aMask );
 
 protected:
+    void loadBoard( const wxString& aFileName, BOARD& aBoard, bool aIsNewLoad,
+                    const std::map<std::string, UTF8>* aProperties = nullptr, PROJECT* aProject = nullptr ) override;
+
     /// initialize PLUGIN like a constructor would, and futz with fresh BOARD if needed.
     void init( const std::map<std::string, UTF8>* aProperties );
 
@@ -126,8 +122,6 @@ protected:
     /**
      * Parse an ASCII decimal floating point value and scales it into a BIU according to the
      * current value of diskToBui.
-     *
-     * This function is the complement of #fmtBIU().  One has to know what the other is doing.
      *
      * @param aValue is the ASCII value in C locale form with possible leading whitespace
      * @param nptrptr may be NULL, but if not, then it tells where to put a pointer to the
@@ -202,8 +196,7 @@ protected:
     double  biuToDisk;              ///< convert from BIUs to disk engineering units
                                     ///< with this scale factor
 
-    double  diskToBiu;              ///< convert from disk engineering units to BIUs
-    ///< with this scale factor
+    double  diskToBiu;              ///< convert from disk engineering units to BIUs with this scale factor
 };
 
 #endif  // PCB_IO_KICAD_LEGACY_H_

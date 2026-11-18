@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <wx/intl.h>
@@ -74,6 +74,10 @@ bool strCompare( const char* aString, const char* aLine, const char** aOutput )
 
 int parseInt( LINE_READER& aReader, const char* aLine, const char** aOutput )
 {
+    if( !aLine )
+        THROW_PARSE_ERROR( _( "unexpected end of file" ), aReader.GetSource(), aReader.Line(), aReader.LineNumber(),
+                           0 );
+
     if( !*aLine )
         SCH_PARSE_ERROR( _( "unexpected end of line" ), aReader, aLine );
 

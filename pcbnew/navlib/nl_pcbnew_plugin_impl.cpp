@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "nl_pcbnew_plugin_impl.h"
@@ -432,7 +432,7 @@ long NL_PCBNEW_PLUGIN_IMPL::SetActiveCommand( std::string commandId )
             bool runAction = true;
 
             if( const ACTION_CONDITIONS* aCond = tool_manager->GetActionManager()->GetCondition( *context ) )
-                runAction = aCond->enableCondition( sel );
+                runAction = aCond->GetHotkeyCondition()( sel );
 
             if( runAction )
                 tool_manager->RunAction( *context );

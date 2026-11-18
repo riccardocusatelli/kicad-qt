@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -28,7 +24,6 @@
 #include <router/pns_item.h>
 
 
-#define VERBOSE     // Sends PSN_DBG message output to the console
 
 
 PNS_DEBUG_SHAPE::PNS_DEBUG_SHAPE( PNS_DEBUG_SHAPE* aParent )
@@ -68,6 +63,25 @@ void PNS_DEBUG_SHAPE::AddChild( PNS_DEBUG_SHAPE* ent )
     m_children.push_back( ent );
 }
 
+
+bool PNS_DEBUG_SHAPE::IsSelected() const
+{
+     if( m_selected )
+        return true;
+
+    PNS_DEBUG_SHAPE* parent = m_parent;
+
+    while( parent )
+    {
+        if( parent->m_selected )
+            return true;
+
+        parent = parent->m_parent;
+    }
+
+    return false;
+}
+    
 
 bool PNS_DEBUG_SHAPE::IsVisible() const
 {
@@ -246,17 +260,8 @@ void PNS_TEST_DEBUG_DECORATOR::Message( const wxString& msg, const SRC_LOCATION_
     ent->m_srcLoc = aSrcLoc;
     addEntry( ent );
 
-    printf("PNS: %s\n", msg.c_str().AsChar() );
-
-#ifdef VERBOSE
-    static wxString lastMsg;
-
-    if( msg != lastMsg )
-    {
+    if( m_reporter )
         m_reporter->Report( msg );
-        lastMsg = msg;
-    }
-#endif
 }
 
 

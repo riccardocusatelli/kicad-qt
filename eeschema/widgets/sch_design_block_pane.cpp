@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -44,8 +40,10 @@
 
 void SCH_DESIGN_BLOCK_PANE::ProjectChanged()
 {
+    m_chooserPanel->RefreshLibs();
     // Project change will blow up the default project; re-create any active preview canvas
-    m_chooserPanel->GetPreviewWidget()->DisplayDesignBlock( GetSelectedDesignBlock( true, true ) );
+    if( DESIGN_BLOCK_PREVIEW_WIDGET* preview = m_chooserPanel->GetPreviewWidget() )
+        preview->DisplayDesignBlock( GetSelectedDesignBlock( true, true ) );
 }
 
 

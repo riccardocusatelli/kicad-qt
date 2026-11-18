@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef DRC_RE_OVERLAY_FIELD_H
@@ -31,8 +27,16 @@
 #include "drc_re_overlay_types.h"
 
 class wxWindow;
+<<<<<<< b2e17e0a
 class wxStaticBitmap;
+||||||| 1304b76aad
+class wxControl;
+class wxStaticBitmap;
+=======
+class wxControl;
+>>>>>>> ed8c16703e
 class wxStaticText;
+class FIELD_WARNING_ICON;
 class UNIT_BINDER;
 
 
@@ -126,16 +130,21 @@ public:
     UNIT_BINDER* GetUnitBinder() const { return m_unitBinder; }
 
     /**
-     * Show or hide the error indicator icon adjacent to this field.
+     * Show the error icon inside the right end of this field, with a tooltip listing the error.
      *
-     * @param aShow true to display the error icon, false to hide it
+     * @param aMessage The reason the field is invalid
      */
-    void ShowError( bool aShow );
+    void ShowError( const wxString& aMessage );
+
+    /**
+     * Hide the error icon.
+     */
+    void ClearError();
 
     /**
      * @return true if the error icon is currently visible.
      */
-    bool IsShowingError() const { return m_showingError; }
+    bool IsShowingError() const;
 
     /**
      * @return The label control, or nullptr if no label was created.
@@ -165,8 +174,6 @@ public:
     void CreateLabels();
 
 private:
-    void createErrorIcon();
-
     wxWindow*            m_parent;
     wxString             m_fieldId;
     wxControl*           m_control;
@@ -176,8 +183,7 @@ private:
     Setter               m_setter;
     UNIT_BINDER*         m_unitBinder;
 
-    wxStaticBitmap*      m_errorIcon;
-    bool                 m_showingError;
+    FIELD_WARNING_ICON*  m_errorIcon; ///< Owned by the control's parent window, created on first error
 
     wxStaticText*        m_label;
     wxStaticText*        m_prefixLabel;

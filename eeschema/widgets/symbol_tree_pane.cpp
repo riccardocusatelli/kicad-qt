@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "symbol_tree_pane.h"
@@ -30,24 +26,31 @@
 #include <tool/tool_manager.h>
 #include <tools/sch_actions.h>
 
-SYMBOL_TREE_PANE::SYMBOL_TREE_PANE( SYMBOL_EDIT_FRAME* aParent,
-                                    LIB_SYMBOL_LIBRARY_MANAGER* aLibMgr )
-        : wxPanel( aParent ),
-          m_symbolEditFrame( aParent ),
-          m_tree( nullptr ),
-          m_libMgr( aLibMgr )
+SYMBOL_TREE_PANE::SYMBOL_TREE_PANE( SYMBOL_EDIT_FRAME* aParent, LIB_SYMBOL_LIBRARY_MANAGER* aLibMgr ) :
+        wxPanel( aParent ),
+        m_symbolEditFrame( aParent ),
+        m_tree( nullptr ),
+        m_libMgr( aLibMgr )
 {
     // Create widgets
     wxBoxSizer* boxSizer = new wxBoxSizer( wxVERTICAL );
-    m_tree = new LIB_TREE( this, wxT( "symbols" ),
-                           m_libMgr->GetAdapter(), LIB_TREE::SEARCH | LIB_TREE::MULTISELECT );
+    m_tree = new LIB_TREE( this, wxT( "symbols" ), m_libMgr->GetAdapter(), LIB_TREE::SEARCH | LIB_TREE::MULTISELECT );
     boxSizer->Add( m_tree, 1, wxEXPAND, 5 );
 
     SetSizer( boxSizer );      // should remove the previous sizer according to wxWidgets docs
     Layout();
     boxSizer->Fit( this );
 
+    m_filter = [this]( LIB_TREE_NODE& aNode ) -> bool
+    {
+        if( m_tree->GetSearchString().StartsWith( "::" ) )
+            return aNode.m_IsRoot;
+        else
+            return true;
+    };
+
     m_libMgr->GetAdapter()->FinishTreeInitialization();
+    m_libMgr->GetAdapter()->SetFilter( &m_filter );
 
     // Event handlers
     Bind( EVT_LIBITEM_CHOSEN, &SYMBOL_TREE_PANE::onSymbolSelected, this );

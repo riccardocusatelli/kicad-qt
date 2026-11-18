@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "pcb_generator.h"
@@ -30,7 +26,10 @@
 
 
 PCB_GENERATOR::PCB_GENERATOR( BOARD_ITEM* aParent, PCB_LAYER_ID aLayer ) :
-        PCB_GROUP( aParent, PCB_GENERATOR_T, aLayer )
+        PCB_GROUP( aParent, PCB_GENERATOR_T, aLayer ),
+        m_generatorType(),
+        m_origin(),
+        m_isDirty( false )
 {
 }
 
@@ -111,7 +110,7 @@ void PCB_GENERATOR::Flip( const VECTOR2I& aCentre, FLIP_DIRECTION aFlipDirection
 {
     baseMirror( aCentre, aFlipDirection );
 
-    SetLayer( GetBoard()->FlipLayer( GetLayer() ) );
+    SetLayer( GetFlippedLayer( GetLayer() ) );
 
     PCB_GROUP::Flip( aCentre, aFlipDirection );
 }
@@ -123,25 +122,28 @@ void PCB_GENERATOR::Mirror( const VECTOR2I& aCentre, FLIP_DIRECTION aFlipDirecti
     PCB_GROUP::Mirror( aCentre, aFlipDirection );
 }
 
+void PCB_GENERATOR::Mirror( const SEG& aAxis )
+{
+    baseMirror( aAxis );
+
+    PCB_GROUP::Mirror( aAxis );
+}
+
 void PCB_GENERATOR::baseMirror( const VECTOR2I& aCentre, FLIP_DIRECTION aFlipDirection )
 {
-    if( aFlipDirection == FLIP_DIRECTION::TOP_BOTTOM )
-        MIRROR( m_origin.y, aCentre.y );
-    else
-        MIRROR( m_origin.x, aCentre.x );
+    const SEG mirrorAxis( MIRROR_AXIS( aCentre, aFlipDirection ) );
+    baseMirror( mirrorAxis );
+}
+
+void PCB_GENERATOR::baseMirror( const SEG& aAxis )
+{
+    m_origin = aAxis.ReflectPoint( m_origin );
 }
 
 LSET PCB_GENERATOR::GetLayerSet() const
 {
     return PCB_GROUP::GetLayerSet() | LSET( { GetLayer() } );
 }
-
-
-void PCB_GENERATOR::SetLayer( PCB_LAYER_ID aLayer )
-{
-    m_layer = aLayer;
-}
-
 
 wxString PCB_GENERATOR::GetGeneratorType() const
 {
@@ -214,9 +216,8 @@ static struct PCB_GENERATOR_DESC
         const wxString groupTab = _HKI( "Generator Properties" );
 
         propMgr.AddProperty( new PROPERTY<PCB_GENERATOR, int>( _HKI( "Update Order" ),
-                                                               &PCB_GENERATOR::SetUpdateOrder,
-                                                               &PCB_GENERATOR::GetUpdateOrder ),
-                             groupTab );
+                    &PCB_GENERATOR::SetUpdateOrder, &PCB_GENERATOR::GetUpdateOrder ),
+                    groupTab );
     }
 } _PCB_GENERATOR_DESC;
 #endif

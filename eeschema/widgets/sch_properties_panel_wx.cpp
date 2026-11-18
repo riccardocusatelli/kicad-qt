@@ -109,6 +109,11 @@ void SCH_PROPERTIES_PANEL::registerEditors()
 
     auto netlistCallback = [this]()
     {
+
+    Bind( wxEVT_MENU, &SCH_PROPERTIES_PANEL::onContextMenu, this, ID_CTX_ADD_FIELD );
+    Bind( wxEVT_MENU, &SCH_PROPERTIES_PANEL::onContextMenu, this, ID_CTX_ADD_CUSTOM_PROPERTY );
+    Bind( wxEVT_MENU, &SCH_PROPERTIES_PANEL::onContextMenu, this, ID_CTX_REMOVE_FIELD );
+    Bind( wxEVT_MENU, &SCH_PROPERTIES_PANEL::onContextMenu, this, ID_CTX_REMOVE_CUSTOM_PROPERTY );
         return symbolNetlist();
     };
 
@@ -139,3 +144,81 @@ void SCH_PROPERTIES_PANEL::registerEditors()
         state->m_urlEditorInstance = static_cast<PG_URL_EDITOR*>( wxPropertyGrid::RegisterEditorClass( urlEditor ) );
     }
 }
+
+
+bool SCH_PROPERTIES_PANEL::isKeyEditable( const wxPGProperty* aPGProp ) const
+{
+    PROPERTY_BASE* prop = static_cast<PROPERTY_BASE*>( aPGProp->GetClientData() );
+
+    if( !prop )
+        return false;
+
+    EDA_ITEM* item = const_cast<SCH_PROPERTIES_PANEL*>( this )->getFrontItem();
+
+    if( !item )
+        return false;
+
+    if( prop->Group() == _HKI( "Custom Properties" ) )
+        return true;
+
+    if( item->Type() == SCH_SYMBOL_T )
+    {
+        SCH_FIELD* field = static_cast<SCH_SYMBOL*>( item )->GetField( prop->Name() );
+        return field && !field->IsMandatory();
+    }
+    else if( item->Type() == SCH_SHEET_T )
+    {
+        SCH_FIELD* field = static_cast<SCH_SHEET*>( item )->GetField( prop->Name() );
+        return field && !field->IsMandatory();
+    }
+
+    return false;
+}
+
+
+bool SCH_PROPERTIES_PANEL::buildContextMenu( wxMenu& aMenu, wxPGProperty* aPGProp )
+{
+    if( aPGProp->IsCategory() )
+    {
+        if( aPGProp->GetLabel() == wxGetTranslation( _HKI( "Fields" ) ) )
+            aMenu.Append( ID_CTX_ADD_FIELD, _( "Add Field" ) );
+        else if( aPGProp->GetLabel() == wxGetTranslation( _HKI( "Custom Properties" ) ) )
+            aMenu.Append( ID_CTX_ADD_CUSTOM_PROPERTY, _( "Add Custom Property" ) );
+    }
+    else
+    {
+        PROPERTY_BASE* prop = static_cast<PROPERTY_BASE*>( aPGProp->GetClientData() );
+
+        if( !prop )
+            return false;
+
+        if( prop->Group() == _HKI( "Fields" ) )
+        {
+            if( isKeyEditable( aPGProp ) )
+                aMenu.Append( ID_CTX_REMOVE_FIELD, _( "Remove Field" ) );
+
+            aMenu.Append( ID_CTX_ADD_FIELD, _( "Add Field" ) );
+        }
+        else if( prop->Group() == _HKI( "Custom Properties" ) )
+        {
+            aMenu.Append( ID_CTX_REMOVE_CUSTOM_PROPERTY, _( "Remove Custom Property" ) );
+            aMenu.Append( ID_CTX_ADD_CUSTOM_PROPERTY, _( "Add Custom Property" ) );
+        }
+    }
+
+    return aMenu.GetMenuItemCount() > 0;
+}
+
+
+void SCH_PROPERTIES_PANEL::onContextMenu( wxCommandEvent& aEvent )
+{
+    switch( aEvent.GetId() )
+    {
+    case ID_CTX_ADD_FIELD:             addBlankField();                           break;
+    case ID_CTX_ADD_CUSTOM_PROPERTY:   addBlankCustomProperty();                 break;
+    case ID_CTX_REMOVE_FIELD:          removeField( m_contextMenuPropertyName ); break;
+    case ID_CTX_REMOVE_CUSTOM_PROPERTY: removeCustomProperty( m_contextMenuPropertyName ); break;
+    default:                                                                     break;
+    }
+}
+

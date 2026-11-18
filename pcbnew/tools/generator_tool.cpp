@@ -15,16 +15,14 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "generator_tool.h"
 
 #include <collectors.h>
+#include <generators/pcb_tuning_pattern.h>
+#include <generators/pcb_via_stack.h>
 #include <tool/tool_manager.h>
 #include <tools/pcb_selection_tool.h>
 #include <tools/pcb_actions.h>
@@ -37,10 +35,11 @@
 
 
 GENERATOR_TOOL::GENERATOR_TOOL() :
-        GENERATOR_TOOL_PNS_PROXY( "pcbnew.Generators" ),
+        GENERATOR_TOOL_PNS_PROXY( GENERATOR_TOOL_NAME ),
         m_mgrDialog( nullptr )
 {
-    PROPERTY_MANAGER::Instance().RegisterListener( TYPE_HASH( BOARD_ITEM ),
+    m_boardItemListener = PROPERTY_MANAGER::Instance().RegisterListener(
+            TYPE_HASH( BOARD_ITEM ),
             [&]( INSPECTABLE* aItem, PROPERTY_BASE* aProperty, COMMIT* aCommit )
             {
                 // Special case: propagate lock from generated items to parent generator
@@ -62,7 +61,8 @@ GENERATOR_TOOL::GENERATOR_TOOL() :
                 }
             } );
 
-    PROPERTY_MANAGER::Instance().RegisterListener( TYPE_HASH( PCB_GENERATOR ),
+    m_generatorListener = PROPERTY_MANAGER::Instance().RegisterListener(
+            TYPE_HASH( PCB_GENERATOR ),
             [&]( INSPECTABLE* aItem, PROPERTY_BASE* aProperty, COMMIT* aCommit )
             {
                 // Special case: regenerate generators when their properties change
@@ -81,12 +81,20 @@ GENERATOR_TOOL::GENERATOR_TOOL() :
 
 GENERATOR_TOOL::~GENERATOR_TOOL()
 {
+    // Unregister before the rest of the object tears down so a property
+    // change firing mid-destruction cannot dispatch into a half-destroyed
+    // listener body.
+    m_generatorListener.reset();
+    m_boardItemListener.reset();
 }
 
 
 void GENERATOR_TOOL::Reset( RESET_REASON aReason )
 {
     GENERATOR_TOOL_PNS_PROXY::Reset( aReason );
+
+    if( aReason != RUN )
+        m_selectedTuningPatterns.clear();
 }
 
 
@@ -196,6 +204,72 @@ int GENERATOR_TOOL::RegenerateAllOfType( const TOOL_EVENT& aEvent )
 }
 
 
+int GENERATOR_TOOL::MakeViaStackFromSelection( const TOOL_EVENT& aEvent )
+{
+    PCB_SELECTION_TOOL* selTool = m_toolMgr->GetTool<PCB_SELECTION_TOOL>();
+
+    PCB_SELECTION sel = selTool->RequestSelection(
+            []( const VECTOR2I&, GENERAL_COLLECTOR& aCollector, PCB_SELECTION_TOOL* )
+            {
+                // Iterate from the back so we don't have to worry about removals.
+                for( int i = aCollector.GetCount() - 1; i >= 0; --i )
+                {
+                    BOARD_ITEM* item = aCollector[i];
+
+                    if( item->Type() != PCB_VIA_T && item->Type() != PCB_TRACE_T )
+                        aCollector.Remove( item );
+                }
+            } );
+
+    std::vector<BOARD_ITEM*> items;
+
+    for( EDA_ITEM* item : sel )
+    {
+        if( item->IsBOARD_ITEM() )
+            items.push_back( static_cast<BOARD_ITEM*>( item ) );
+    }
+
+    std::vector<BOARD_ITEM*> members;
+    wxString                 error;
+    PCB_VIA_STACK*           stack = PCB_VIA_STACK::CreateFromItems( items, board(), &members, &error );
+
+    if( !stack )
+    {
+        if( error.IsEmpty() )
+        {
+            error = _( "A microvia stack needs two or more microvias on the same net, each spanning "
+                       "one layer step, with no gap between them." );
+        }
+
+        frame()->ShowInfoBarWarning( error );
+        return 0;
+    }
+
+    m_toolMgr->RunAction( ACTIONS::selectionClear );
+
+    BOARD_COMMIT commit( this );
+
+    commit.Add( stack );
+
+    for( BOARD_ITEM* item : members )
+    {
+        if( EDA_GROUP* existingGroup = item->GetParentGroup() )
+            commit.Modify( existingGroup->AsEdaItem(), nullptr, RECURSE_MODE::NO_RECURSE );
+
+        commit.Modify( item );
+        stack->AddItem( item );
+    }
+
+    commit.Push( _( "Create Microvia Stack" ) );
+
+    selTool->AddItemToSel( stack );
+    m_toolMgr->PostEvent( EVENTS::SelectedItemsModified );
+    frame()->RefreshCanvas();
+
+    return 0;
+}
+
+
 int GENERATOR_TOOL::RegenerateSelected( const TOOL_EVENT& aEvent )
 {
     BOARD_COMMIT commit( this );
@@ -297,6 +371,52 @@ int GENERATOR_TOOL::GenEditAction( const TOOL_EVENT& aEvent )
 }
 
 
+int GENERATOR_TOOL::RemoveDeselectedEmptyPatterns( const TOOL_EVENT& aEvent )
+{
+    std::set<KIID> selected;
+
+    for( EDA_ITEM* item : m_toolMgr->GetTool<PCB_SELECTION_TOOL>()->GetSelection() )
+    {
+        if( dynamic_cast<PCB_TUNING_PATTERN*>( item ) )
+            selected.insert( item->m_Uuid );
+    }
+
+    // Interactive tools share the generator router, so wait until they exit before editing copper
+    if( !frame()->ToolStackIsEmpty() )
+    {
+        m_selectedTuningPatterns.insert( selected.begin(), selected.end() );
+        return 0;
+    }
+
+    std::vector<PCB_TUNING_PATTERN*> emptyPatterns;
+
+    for( const KIID& id : m_selectedTuningPatterns )
+    {
+        if( selected.contains( id ) )
+            continue;
+
+        auto* pattern = dynamic_cast<PCB_TUNING_PATTERN*>( board()->ResolveItem( id, true ) );
+
+        if( pattern && !pattern->IsLocked() && !pattern->HasFlag( IN_EDIT ) && !pattern->HasMeanders() )
+            emptyPatterns.push_back( pattern );
+    }
+
+    m_selectedTuningPatterns = std::move( selected );
+
+    BOARD_COMMIT commit( this );
+    int          commitFlags = 0;
+
+    for( PCB_TUNING_PATTERN* pattern : emptyPatterns )
+    {
+        pattern->Remove( this, board(), &commit );
+        commit.Push( _( "Remove Empty Tuning Pattern" ), commitFlags );
+        commitFlags |= APPEND_UNDO;
+    }
+
+    return 0;
+}
+
+
 void GENERATOR_TOOL::setTransitions()
 {
     // Generator actions
@@ -311,4 +431,10 @@ void GENERATOR_TOOL::setTransitions()
     Go( &GENERATOR_TOOL::GenEditAction,         PCB_ACTIONS::genFinishEdit.MakeEvent() );
     Go( &GENERATOR_TOOL::GenEditAction,         PCB_ACTIONS::genCancelEdit.MakeEvent() );
     Go( &GENERATOR_TOOL::GenEditAction,         PCB_ACTIONS::genRemove.MakeEvent() );
+
+    Go( &GENERATOR_TOOL::MakeViaStackFromSelection, PCB_ACTIONS::makeViaStack.MakeEvent() );
+
+    Go( &GENERATOR_TOOL::RemoveDeselectedEmptyPatterns, EVENTS::SelectedEvent );
+    Go( &GENERATOR_TOOL::RemoveDeselectedEmptyPatterns, EVENTS::UnselectedEvent );
+    Go( &GENERATOR_TOOL::RemoveDeselectedEmptyPatterns, EVENTS::ClearedEvent );
 }

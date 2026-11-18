@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -37,7 +33,7 @@
 
 std::ostream& boost_test_print_type( std::ostream& os, SCH_FIELD const& f )
 {
-    os << "SCH_FIELD[ " << f.GetCanonicalName() << " ]";
+    os << "SCH_FIELD[ " << f.GetUntranslatedName() << " ]";
     return os;
 }
 
@@ -61,7 +57,7 @@ namespace KI_TEST
 bool FieldNameIdMatches( const SCH_FIELD& aField, const std::string& aExpectedName, int aExpectedId )
 {
     bool       ok = true;
-    const auto gotName = aField.GetCanonicalName();
+    const auto gotName = aField.GetUntranslatedName();
 
     if( gotName != aExpectedName )
     {

@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -53,6 +53,13 @@ namespace KIPLATFORM
          * @return true if given path is on a network location
          */
         bool IsNetworkPath( const wxString& aPath );
+
+        /**
+         * @return true only if an existing path resolves to local removable media.
+         *         Network mounts and paths whose backing drive cannot be determined return
+         *         false.  Follows symlinks and volume mount points when identifying the drive.
+         */
+        bool IsRemovablePath( const wxString& aPath );
 
 
         /**

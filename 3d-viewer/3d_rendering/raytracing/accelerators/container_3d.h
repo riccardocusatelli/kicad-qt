@@ -15,27 +15,14 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-/**
- * @file container_3d.h
- */
-
-#ifndef _CONTAINER_3D_H_
-#define _CONTAINER_3D_H_
+#pragma once
 
 #include "../shapes3D/object_3d.h"
 #include <list>
 #include <vector>
-
-typedef std::list<OBJECT_3D*> LIST_OBJECT;
-typedef std::vector<OBJECT_3D*> VECTOR_OBJECT;
-typedef std::vector<const OBJECT_3D*> CONST_VECTOR_OBJECT;
 
 
 class CONTAINER_3D_BASE
@@ -56,9 +43,9 @@ public:
 
     void Clear();
 
-    const LIST_OBJECT& GetList() const { return m_objects; }
+    const std::list<OBJECT_3D*>& GetList() const { return m_objects; }
 
-    void ConvertTo( CONST_VECTOR_OBJECT& aOutVector ) const;
+    void ConvertTo( std::vector<const OBJECT_3D*>& aOutVector ) const;
 
     const BBOX_3D& GetBBox() const { return m_bbox; }
 
@@ -66,8 +53,8 @@ public:
     virtual bool IntersectP( const RAY& aRay, float aMaxDistance ) const = 0;
 
 protected:
-    BBOX_3D     m_bbox;
-    LIST_OBJECT m_objects;
+    BBOX_3D               m_bbox;
+    std::list<OBJECT_3D*> m_objects;
 };
 
 
@@ -77,5 +64,3 @@ public:
     bool Intersect( const RAY& aRay, HITINFO& aHitInfo ) const override;
     bool IntersectP( const RAY& aRay, float aMaxDistance ) const override;
 };
-
-#endif // _CONTAINER_3D_H_

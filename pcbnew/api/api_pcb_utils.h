@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef KICAD_API_PCB_UTLIS_H
@@ -23,6 +23,7 @@
 
 #include <map>
 #include <memory>
+#include <vector>
 #include <core/typeinfo.h>
 #include <import_export.h>
 #include <board_item.h>
@@ -30,20 +31,28 @@
 #include <lset.h>
 #include <api/common/types/base_types.pb.h>
 #include <api/common/types/embedded_files.pb.h>
+#include <api/common/commands/cross_probe_commands.pb.h>
 #include <api/board/board_types.pb.h>
 
+class BOARD;
 class BOARD_ITEM;
 class BOARD_ITEM_CONTAINER;
 class TEARDROP_PARAMETERS;
 
 std::unique_ptr<BOARD_ITEM> CreateItemForType( KICAD_T aType, BOARD_ITEM_CONTAINER* aContainer );
 
+std::unique_ptr<BOARD_ITEM> CreateGeneratorForType( const wxString& aGeneratorType, BOARD_ITEM_CONTAINER* aContainer );
+
 namespace kiapi::board
 {
+
+class BoardStackup;
 
 void PackLayerSet( google::protobuf::RepeatedField<int>& aOutput, const LSET& aLayerSet );
 
 LSET UnpackLayerSet( const google::protobuf::RepeatedField<int>& aInput );
+
+void PackBoardStackup( const BOARD& aBoard, BoardStackup& aOut );
 
 void PackTeardropSettings( types::PadTeardropSettings& aOutput, const TEARDROP_PARAMETERS& aParams );
 
@@ -58,6 +67,17 @@ void UnpackZoneLayerOverrides( std::map<PCB_LAYER_ID, ZONE_LAYER_OVERRIDE>& aOut
 void PackEmbeddedFiles( kiapi::common::types::EmbeddedFiles& aOutput, const EMBEDDED_FILES& aFiles );
 
 bool UnpackEmbeddedFiles( EMBEDDED_FILES& aOutput, const kiapi::common::types::EmbeddedFiles& aProto );
+
+/**
+ * Resolve a cross-probe selection request against a board.
+ *
+ * @param aBoard is the board to search.
+ * @param aItems are the specs to resolve, each naming a footprint, a pad or a schematic sheet.
+ * @return the matching items, ordered to follow the order of \a aItems.
+ */
+std::vector<BOARD_ITEM*> FindItemsFromSyncSelection(
+        const BOARD* aBoard,
+        const google::protobuf::RepeatedPtrField<kiapi::common::commands::SelectionSpec>& aItems );
 
 }   // namespace kiapi::board
 

@@ -15,14 +15,12 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
+
+#include <memory>
 
 #include <wx/htmllbox.h>
 
@@ -40,7 +38,11 @@ wxDECLARE_EVENT( EDA_EVT_CLOSE_ERC_DIALOG, wxCommandEvent );
 #define DIALOG_ERC_WINDOW_NAME "DialogErcWindowName"
 
 
+class SCH_EDIT_FRAME;
 class SCH_MARKER;
+class SCHEMATIC;
+class RC_ITEMS_PROVIDER;
+class RC_TREE_MODEL;
 
 
 class DIALOG_ERC : public DIALOG_ERC_BASE, PROGRESS_REPORTER_BASE
@@ -68,6 +70,7 @@ public:
      */
     void ExcludeMarker( SCH_MARKER* aMarker = nullptr );
 
+    void DeleteAllMarkers( bool aIncludeExclusions );
     void UpdateData();
     void UpdateAnnotationWarning();
 
@@ -98,8 +101,6 @@ private:
     void redrawDrawPanel();
 
     void testErc();
-
-    void deleteAllMarkers( bool aIncludeExclusions );
 
     void syncCheckboxes();
     void updateDisplayedCounts();

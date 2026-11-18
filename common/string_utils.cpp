@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -32,9 +28,11 @@
 #include <core/map_helpers.h>
 #include <fmt/core.h>
 #include <macros.h>
+#include <core/kicad_algo.h>
 #include <string_utils.h>
 #include <wx_filename.h>
 #include <fmt/chrono.h>
+#include <harfbuzz/hb.h>
 #include <wx/log.h>
 #include <wx/regex.h>
 #include <wx/tokenzr.h>
@@ -184,10 +182,88 @@ bool ConvertSmartQuotesAndDashes( wxString* aString )
 }
 
 
+/// The code point at aPos in aText, joining a UTF-16 surrogate pair. aUnits receives how many units it spans
+static wxUint32 codePointAt( const wxString& aText, size_t aPos, size_t& aUnits )
+{
+    const wxUint32 high = aText[aPos].GetValue();
+
+    if( high >= 0xD800 && high <= 0xDBFF && aPos + 1 < aText.length() )
+    {
+        const wxUint32 low = aText[aPos + 1].GetValue();
+
+        if( low >= 0xDC00 && low <= 0xDFFF )
+        {
+            aUnits = 2;
+            return 0x10000 + ( ( high - 0xD800 ) << 10 ) + ( low - 0xDC00 );
+        }
+    }
+
+    aUnits = 1;
+    return high;
+}
+
+
+/// True for a code point drawn as part of the one before it
+static bool extendsCluster( wxUint32 aCodePoint )
+{
+    // Variation selectors, including the ideographic ones used in CJK names
+    if( ( aCodePoint >= 0xFE00 && aCodePoint <= 0xFE0F ) || ( aCodePoint >= 0xE0100 && aCodePoint <= 0xE01EF ) )
+        return true;
+
+    switch( hb_unicode_general_category( hb_unicode_funcs_get_default(), aCodePoint ) )
+    {
+    case HB_UNICODE_GENERAL_CATEGORY_NON_SPACING_MARK:
+    case HB_UNICODE_GENERAL_CATEGORY_SPACING_MARK:
+    case HB_UNICODE_GENERAL_CATEGORY_ENCLOSING_MARK: return true;
+    default: return false;
+    }
+}
+
+
+static bool isVirama( wxUint32 aCodePoint )
+{
+    return hb_unicode_combining_class( hb_unicode_funcs_get_default(), aCodePoint )
+           == HB_UNICODE_COMBINING_CLASS_VIRAMA;
+}
+
+
+std::vector<wxString> SplitGraphemeClusters( const wxString& aText )
+{
+    std::vector<wxString> clusters;
+    size_t                pos = 0;
+
+    while( pos < aText.length() )
+    {
+        const size_t start = pos;
+        size_t       units = 0;
+        bool         joinNext = false;
+
+        codePointAt( aText, pos, units );
+        pos += units;
+
+        while( pos < aText.length() )
+        {
+            const wxUint32 next = codePointAt( aText, pos, units );
+            const bool     extender = extendsCluster( next );
+
+            if( !joinNext && !extender )
+                break;
+
+            // A virama binds the next base, carried through any marks before it
+            joinNext = isVirama( next ) || ( joinNext && extender );
+            pos += units;
+        }
+
+        clusters.push_back( aText.Mid( start, pos - start ) );
+    }
+
+    return clusters;
+}
+
+
 wxString EscapeString( const wxString& aSource, ESCAPE_CONTEXT aContext )
 {
-    wxString          converted;
-    std::vector<bool> braceStack;    // true == formatting construct
+    wxString converted;
 
     converted.reserve( aSource.length() );
 
@@ -299,6 +375,15 @@ wxString EscapeString( const wxString& aSource, ESCAPE_CONTEXT aContext )
                 converted += wxT( "{return}" );
             else
                 converted += c;
+        }
+        else if( aContext == CTX_REGEX )
+        {
+            const wxString regExCtrlChars = wxT( ".^$*+?{}()[]~|\\" );
+
+            if( regExCtrlChars.Contains( c ) )
+                converted += wxT( "\\" );
+
+            converted += c;
         }
         else
         {
@@ -822,7 +907,7 @@ wxString GetISO8601CurrentDateTime()
 }
 
 
-int StrNumCmp( const wxString& aString1, const wxString& aString2, bool aIgnoreCase )
+int StrNumCmp( const wxString& aString1, const wxString& aString2, CMP_T aCaseSensitivity )
 {
     int nb1 = 0, nb2 = 0;
 
@@ -867,7 +952,7 @@ int StrNumCmp( const wxString& aString1, const wxString& aString2, bool aIgnoreC
         }
 
         // Any numerical comparisons to here are identical.
-        if( aIgnoreCase )
+        if( aCaseSensitivity == CMP_T::IGNORE_CASE )
         {
             if( c1 != c2 )
             {
@@ -981,6 +1066,21 @@ bool ApplyModifier( double& value, const wxString& aString )
     wxChar   modifier;
     wxString units;
 
+    if( aString.Strip() == wxT( "m" ) )
+    {
+        // a single m is meters, not milli-undefineds
+        return true;
+    }
+    else if( aString.Strip() == wxT( "mils" ) )
+    {
+        value *= 0.0000254;
+        return true;
+    }
+    else if( aString.Strip() == wxT( "in" ) )
+    {
+        value *= 0.0254;
+        return true;
+    }
     if( modifiers.Find( aString[ 0 ] ) >= 0 )
     {
         modifier = aString[ 0 ];
@@ -995,10 +1095,13 @@ bool ApplyModifier( double& value, const wxString& aString )
     if( units.length()
             && !units.IsSameAs( wxT( "F" ), false )
             && !units.IsSameAs( wxT( "hz" ), false )
+            && !units.IsSameAs( wxT( "Ω" ), false )
             && !units.IsSameAs( wxT( "W" ), false )
             && !units.IsSameAs( wxT( "V" ), false )
             && !units.IsSameAs( wxT( "A" ), false )
-            && !units.IsSameAs( wxT( "H" ), false ) )
+            && !units.IsSameAs( wxT( "H" ), false )
+            && !units.IsSameAs( wxT( "s" ), false )
+            && !units.IsSameAs( wxT( "m" ), false ) )
     {
         return false;
     }
@@ -1012,12 +1115,15 @@ bool ApplyModifier( double& value, const wxString& aString )
         value *= 1.0e-12;
     if( modifier == 'n' )
         value *= 1.0e-9;
+    /// Although the two 'μ's look the same, they are U+03BC and U+00B5
     else if( modifier == 'u' || modifier == wxS( "µ" )[0] || modifier == wxS( "μ" )[0] )
         value *= 1.0e-6;
     else if( modifier == 'm' || modifier == 'L' )
         value *= 1.0e-3;
     else if( modifier == 'R' || modifier == 'F' )
         ; // unity scalar
+    else if( modifier == 'c' )  // primarily for cm
+        value *= 1.0e2;
     else if( modifier == 'k' || modifier == 'K' )
         value *= 1.0e3;
     else if( modifier == 'M' )
@@ -1154,6 +1260,37 @@ bool convertSeparators( wxString* value )
 }
 
 
+// Return true if aStr can be parsed as a numeric value (including units and scalers, so
+// something like "4K7Ω" will return true).
+bool QuacksLikeADuck( const wxString& aStr, double* aValue )
+{
+    if( aValue )
+        *aValue = NAN;
+
+    wxString str = UnescapeString( aStr );
+
+    wxString beforeDigits, digits, afterDigits;
+    SplitString( str, &beforeDigits, &digits, &afterDigits );
+
+    if( !beforeDigits.Trim( true ).Trim( false ).IsEmpty() )
+        return false;
+
+    double number = 0;
+    convertSeparators( &digits );
+
+    if( !digits.ToCDouble( &number ) )
+        return false;
+
+   if( !afterDigits.IsEmpty() && !ApplyModifier( number, afterDigits ) )
+       return false;
+
+    if( aValue )
+        *aValue = number;
+
+    return true;
+}
+
+
 int ValueStringCompare( const wxString& strFWord, const wxString& strSWord )
 {
     // Compare unescaped text
@@ -1257,7 +1394,19 @@ int SplitString( const wxString& strToSplit,
             {
                 continue;
             }
-            if( infix == 0 && NUMERIC_EVALUATOR::IsOldSchoolDecimalSeparator( c, &scale ) )
+            // This can be tricky to get to parse things like 4K7 (or just K7)
+            // but not G4W
+            if(
+                // Only allow one infix character e.g. 4K7, not 4KK7
+                infix == 0
+                // Allowed only it isn't the first character, or nothing follows it,
+                // e.g. K7 but not K7X
+                && ( ii > 0 || strEnd->IsEmpty() )
+                // Also make sure its a valid SI separator, e.g. 4K7 but not 4X7
+                && NUMERIC_EVALUATOR::IsOldSchoolDecimalSeparator( c, &scale )
+                // Finally make that the combo makes sense e.g. T9G fails because TG is not a valid combo,
+                // but unfortunately cursed constructions like 1u5F are indeed found in the wild
+                && ApplyModifier( scale, c + *strEnd ) )
             {
                 infix = c;
                 continue;
@@ -1472,6 +1621,26 @@ std::string FormatDouble2Str( double aValue )
 }
 
 
+wxString FormatTrimmedDecimal( double aValue, int aPrecision )
+{
+    wxString str = wxString::FromCDouble( aValue, aPrecision );
+    int      dot = str.Find( '.' );
+
+    // Keep one zero after the last significant digit and never trim the integer part
+    while( dot != wxNOT_FOUND && (int) str.length() - dot > 2 && str.EndsWith( wxT( "00" ) ) )
+        str.RemoveLast();
+
+    // Rounded zero has no meaningful sign
+    if( str.StartsWith( wxS( "-" ) )
+        && str.find_first_not_of( wxS( "0." ), 1 ) == wxString::npos )
+    {
+        str.Remove( 0, 1 );
+    }
+
+    return str;
+}
+
+
 std::string UIDouble2Str( double aValue )
 {
     char    buf[50];
@@ -1639,6 +1808,86 @@ wxString ConvertPathToFileUri( const wxString& aPath, const PROJECT* aProject )
 
 namespace
 {
+    // Characters that carry structural meaning inside stacked pin notation and therefore must be
+    // backslash-escaped when they appear literally inside an individual pin number.
+    bool IsStackedPinSpecialChar( wxUniChar aChar )
+    {
+        return aChar == '[' || aChar == ']' || aChar == ',' || aChar == '-' || aChar == '\\';
+    }
+
+
+    // A backslash starts an escape sequence only when it precedes one of the structural characters.
+    // Any other backslash is a literal character, which keeps legacy notation that happened to use
+    // an un-escaped backslash (e.g. [A\B,C]) intact.
+    bool IsEscapeAt( const wxString& aText, size_t aIndex )
+    {
+        return aText[aIndex] == '\\' && aIndex + 1 < aText.length()
+               && IsStackedPinSpecialChar( aText[aIndex + 1] );
+    }
+
+
+    // Split the inner part of a stacked notation string on commas, honouring backslash escaping so
+    // that a literal comma in a pin number (written "\,") does not start a new item.  The returned
+    // parts are still escaped; call UnescapeStackedPinItem() to recover the literal pin number.
+    std::vector<wxString> SplitStackedPinItems( const wxString& aInner )
+    {
+        std::vector<wxString> parts;
+        wxString              current;
+
+        for( size_t i = 0; i < aInner.length(); ++i )
+        {
+            if( IsEscapeAt( aInner, i ) )
+            {
+                current << aInner[i] << aInner[i + 1];
+                ++i;
+            }
+            else if( aInner[i] == ',' )
+            {
+                parts.push_back( current );
+                current.clear();
+            }
+            else
+            {
+                current << aInner[i];
+            }
+        }
+
+        parts.push_back( current );
+        return parts;
+    }
+
+
+    int FindUnescaped( const wxString& aText, wxUniChar aChar )
+    {
+        for( size_t i = 0; i < aText.length(); ++i )
+        {
+            if( IsEscapeAt( aText, i ) )
+                ++i;
+            else if( aText[i] == aChar )
+                return static_cast<int>( i );
+        }
+
+        return wxNOT_FOUND;
+    }
+
+
+    // A backslash that does not precede a structural character is a literal and is left untouched.
+    wxString UnescapeStackedPinItem( const wxString& aItem )
+    {
+        wxString out;
+
+        for( size_t i = 0; i < aItem.length(); ++i )
+        {
+            if( IsEscapeAt( aItem, i ) )
+                out << aItem[++i];
+            else
+                out << aItem[i];
+        }
+
+        return out;
+    }
+
+
     // Extract (prefix, numericValue) where numericValue = -1 if no numeric suffix
     std::pair<wxString, long> ParseAlphaNumericPin( const wxString& pinNum )
     {
@@ -1667,6 +1916,33 @@ namespace
         return { prefix, numValue };
     }
 }
+
+wxString EscapeStackedPinItem( const wxString& aPinNumber )
+{
+    wxString escaped;
+
+    for( wxUniChar ch : aPinNumber )
+    {
+        if( IsStackedPinSpecialChar( ch ) )
+            escaped << '\\';
+
+        escaped << ch;
+    }
+
+    return escaped;
+}
+
+
+std::vector<wxString> SplitStackedPinDisplayItems( const wxString& aInner )
+{
+    std::vector<wxString> items;
+
+    for( const wxString& part : SplitStackedPinItems( aInner ) )
+        items.push_back( UnescapeStackedPinItem( part ) );
+
+    return items;
+}
+
 
 std::vector<wxString> ExpandStackedPinNotation( const wxString& aPinName, bool* aValid )
 {
@@ -1697,23 +1973,20 @@ std::vector<wxString> ExpandStackedPinNotation( const wxString& aPinName, bool* 
 
     const wxString inner = aPinName.Mid( 1, aPinName.Length() - 2 );
 
-    size_t start = 0;
-    while( start < inner.length() )
+    for( wxString part : SplitStackedPinItems( inner ) )
     {
-        size_t comma = inner.find( ',', start );
-        wxString part = ( comma == wxString::npos ) ? inner.Mid( start ) : inner.Mid( start, comma - start );
         part.Trim( true ).Trim( false );
-        if( part.empty() )
-        {
-            start = ( comma == wxString::npos ) ? inner.length() : comma + 1;
-            continue;
-        }
 
-        int dashPos = part.Find( '-' );
+        if( part.empty() )
+            continue;
+
+        // A range (e.g. A1-A4) is only recognized on an unescaped dash; an escaped dash is a
+        // literal character inside a single pin number.
+        int dashPos = FindUnescaped( part, '-' );
         if( dashPos != wxNOT_FOUND )
         {
-            wxString startTxt = part.Left( dashPos );
-            wxString endTxt   = part.Mid( dashPos + 1 );
+            wxString startTxt = UnescapeStackedPinItem( part.Left( dashPos ) );
+            wxString endTxt   = UnescapeStackedPinItem( part.Mid( dashPos + 1 ) );
             startTxt.Trim( true ).Trim( false );
             endTxt.Trim( true ).Trim( false );
 
@@ -1739,12 +2012,8 @@ std::vector<wxString> ExpandStackedPinNotation( const wxString& aPinName, bool* 
         }
         else
         {
-            expanded.push_back( part );
+            expanded.push_back( UnescapeStackedPinItem( part ) );
         }
-
-        if( comma == wxString::npos )
-            break;
-        start = comma + 1;
     }
 
     if( expanded.empty() )
@@ -1761,6 +2030,15 @@ std::vector<wxString> ExpandStackedPinNotation( const wxString& aPinName, bool* 
 int CountStackedPinNotation( const wxString& aPinName, bool* aValid )
 {
     size_t len = aPinName.length();
+
+    // An empty pin number is a single (valid) pin; guard before indexing below.
+    if( len == 0 )
+    {
+        if( aValid )
+            *aValid = true;
+
+        return 1;
+    }
 
     if( !aValid )
     {
@@ -1792,25 +2070,19 @@ int CountStackedPinNotation( const wxString& aPinName, bool* aValid )
     const wxString inner = aPinName.Mid( 1, aPinName.Length() - 2 );
 
     int count = 0;
-    size_t start = 0;
 
-    while( start < inner.length() )
+    for( wxString part : SplitStackedPinItems( inner ) )
     {
-        size_t comma = inner.find( ',', start );
-        wxString part = ( comma == wxString::npos ) ? inner.Mid( start ) : inner.Mid( start, comma - start );
         part.Trim( true ).Trim( false );
 
         if( part.empty() )
-        {
-            start = ( comma == wxString::npos ) ? inner.length() : comma + 1;
             continue;
-        }
 
-        int dashPos = part.Find( '-' );
+        int dashPos = FindUnescaped( part, '-' );
         if( dashPos != wxNOT_FOUND )
         {
-            wxString startTxt = part.Left( dashPos );
-            wxString endTxt   = part.Mid( dashPos + 1 );
+            wxString startTxt = UnescapeStackedPinItem( part.Left( dashPos ) );
+            wxString endTxt   = UnescapeStackedPinItem( part.Mid( dashPos + 1 ) );
             startTxt.Trim( true ).Trim( false );
             endTxt.Trim( true ).Trim( false );
 
@@ -1833,11 +2105,6 @@ int CountStackedPinNotation( const wxString& aPinName, bool* aValid )
             // Single pin
             ++count;
         }
-
-        if( comma == wxString::npos )
-            break;
-
-        start = comma + 1;
     }
 
     if( count == 0 )
@@ -1858,6 +2125,25 @@ wxString GetDefaultVariantName()
 }
 
 
+wxString GetVariantFileToken( const wxString& aVariantName )
+{
+    if( aVariantName.IsEmpty() || aVariantName.CmpNoCase( GetDefaultVariantName() ) == 0 )
+        return wxString();
+
+    wxString token = aVariantName;
+    ReplaceIllegalFileNameChars( token, '_' );
+    return token;
+}
+
+
+wxString ExpandVariantOutputPath( const wxString& aPath, const wxString& aVariantToken )
+{
+    wxString expanded = aPath;
+    expanded.Replace( wxS( "${VARIANT}" ), aVariantToken );
+    return expanded;
+}
+
+
 int SortVariantNames( const wxString& aLhs, const wxString& aRhs )
 {
     if( ( aLhs == defaultVariantName ) && ( aRhs != defaultVariantName ) )
@@ -1870,33 +2156,9 @@ int SortVariantNames( const wxString& aLhs, const wxString& aRhs )
 }
 
 
-std::vector<LOAD_MESSAGE> ExtractLibraryLoadErrors( const wxString& aErrorString, int aSeverity )
+bool IsAutoGeneratedNetName( const wxString& aNetName )
 {
-    std::vector<LOAD_MESSAGE> messages;
-
-    if( aErrorString.IsEmpty() )
-        return messages;
-
-    // Errors are separated by newlines. We want to keep:
-    // - Lines starting with "Library '" (library-level errors)
-    // - Lines containing "Expecting" (file error location)
-    // And strip:
-    // - Lines starting with "from " (internal code location info)
-    wxStringTokenizer tokenizer( aErrorString, wxS( "\n" ), wxTOKEN_STRTOK );
-
-    while( tokenizer.HasMoreTokens() )
-    {
-        wxString line = tokenizer.GetNextToken();
-
-        // Skip internal code location lines (e.g., "from pcb_io_kicad_sexpr_parser.cpp : ...")
-        if( line.StartsWith( wxS( "from " ) ) )
-            continue;
-
-        if( line.StartsWith( wxS( "Library '" ) ) || line.Contains( wxS( "Expecting" ) ) )
-            messages.push_back( { line, static_cast<SEVERITY>( aSeverity ) } );
-    }
-
-    return messages;
+    return aNetName.StartsWith( wxS( "unconnected-(" ) ) || aNetName.StartsWith( wxS( "Net-(" ) );
 }
 
 

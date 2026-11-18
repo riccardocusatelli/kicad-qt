@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <deque>
@@ -26,6 +26,7 @@
 #include <set>
 
 #include <api/api_plugin.h>
+#include <frame_type.h>
 #include <json_schema_validator.h>
 #include <kicommon.h>
 
@@ -44,6 +45,7 @@ public:
      * Clears the loaded plugins and actions and re-scans the filesystem to register new ones.
      * @param aDirectoryToScan can be provided to scan an arbitrary directory instead of the
      *                         stock paths; provided for QA testing.
+     * @param aReporter is a #REPORTER object to write status information to.
      */
     void ReloadPlugins( std::optional<wxString> aDirectoryToScan = std::nullopt,
                         std::shared_ptr<REPORTER> aReporter = nullptr );
@@ -63,13 +65,30 @@ public:
     void InvokeAction( const wxString& aIdentifier,
                        std::shared_ptr<REPORTER> aReporter = nullptr );
 
+    /**
+     * Invokes an action synchronously, capturing its output.  Mainly used for things like
+     * wizards that have actions that return quickly and pass data to KiCad via stdout.
+     * @param aIdentifier is the plugin action to invoke
+     * @param aExtraArgs are extra arguments to pass to the action beyond the ones specified in the
+     *                   plugin configuration file
+     * @param aStdout is a pointer to a string to fill with the stdout output of the action
+     * @param aStderr is a pointer to a string to fill with the stderr output of the action
+     * @param aReporter is a #REPORTER object to write status information to.
+     * @return the exit code from the action process
+     */
+    int InvokeActionSync( const wxString& aIdentifier, std::vector<wxString> aExtraArgs,
+                          wxString* aStdout = nullptr, wxString* aStderr = nullptr,
+                          std::shared_ptr<REPORTER> aReporter = nullptr );
+
+    bool Busy() const;
+
     std::optional<const PLUGIN_ACTION*> GetAction( const wxString& aIdentifier );
 
     std::vector<const PLUGIN_ACTION*> GetActionsForScope( PLUGIN_ACTION_SCOPE aScope );
 
-    std::map<int, wxString>& ButtonBindings() { return m_buttonBindings; }
+    std::map<int, wxString>& ButtonBindings( FRAME_T aFrame );
 
-    std::map<int, wxString>& MenuBindings() { return m_menuBindings; }
+    std::map<int, wxString>& MenuBindings( FRAME_T aFrame );
 
     std::shared_ptr<REPORTER> GetReporter() { return m_reloadReporter; }
 
@@ -84,6 +103,8 @@ public:
     void RemoveAvailabilityChangedListener( int aId );
 
 private:
+    wxString pluginName( const wxString& aIdentifier ) const;
+
     void processPluginDependencies();
 
     /// Process the next job of the queue (from the event loop).
@@ -99,6 +120,11 @@ private:
 
     void recreateCancelledPlugin( const wxString& aIdentifier );
 
+    int doInvokeAction( const wxString& aIdentifier, std::vector<wxString> aExtraArgs,
+                        bool aSync = false, wxString* aStdout = nullptr,
+                        wxString* aStderr = nullptr,
+                        std::shared_ptr<REPORTER> aReporter = nullptr );
+
     std::set<std::unique_ptr<API_PLUGIN>, CompareApiPluginIdentifiers> m_plugins;
 
     std::map<wxString, const API_PLUGIN*> m_pluginsCache;
@@ -108,11 +134,11 @@ private:
     /// Map of plugin identifier to a path for the plugin's virtual environment, if it has one
     std::map<wxString, wxString> m_environmentCache;
 
-    /// Map of button wx item id to action identifier
-    std::map<int, wxString> m_buttonBindings;
+    /// Map of button wx item id to action identifier, per frame
+    std::map<FRAME_T, std::map<int, wxString>> m_buttonBindings;
 
-    /// Map of menu wx item id to action identifier
-    std::map<int, wxString> m_menuBindings;
+    /// Map of menu wx item id to action identifier, per frame
+    std::map<FRAME_T, std::map<int, wxString>> m_menuBindings;
 
     std::set<wxString> m_readyPlugins;
 

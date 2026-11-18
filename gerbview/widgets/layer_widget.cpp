@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -770,18 +766,15 @@ COLOR4D LAYER_WIDGET::GetLayerColor( int aLayer ) const
 
 COLOR4D LAYER_WIDGET::GetRenderColor( int aRow ) const
 {
-    int row = aRow;
-
-    if( row >= 0 )
+    if( aRow >= 0 )
     {
         const int col = 0;    // bitmap button (swatch) is column 0
-        auto swatch = static_cast<COLOR_SWATCH*>( getRenderComp( row, col ) );
-        KI_ASSERT( swatch );
 
-        return swatch->GetSwatchColor();
+        if( COLOR_SWATCH* swatch = dynamic_cast<COLOR_SWATCH*>( getRenderComp( aRow, col ) ) )
+            return swatch->GetSwatchColor();
     }
 
-    return COLOR4D::UNSPECIFIED;   // it's caller fault, gave me a bad layer
+    return COLOR4D::UNSPECIFIED;
 }
 
 

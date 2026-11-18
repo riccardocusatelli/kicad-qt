@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -374,7 +370,7 @@ static void fillArcPOLY( GERBER_DRAW_ITEM* aGbrItem, const VECTOR2I& aStart, con
     // Approximate arc by segments with a approximation error = err_max
     // a max err = 5 microns looks good
     const int approx_err_max =  gerbIUScale.mmToIU( 0.005 );
-    int radius = VECTOR2I( aStart - rel_center ).EuclideanNorm();
+    int       radius = start.EuclideanNorm();
     int count = GetArcToSegmentCount( radius, approx_err_max, arc_angle );
     EDA_ANGLE increment_angle = std::abs( arc_angle ) / count;
 
@@ -406,19 +402,17 @@ static void fillArcPOLY( GERBER_DRAW_ITEM* aGbrItem, const VECTOR2I& aStart, con
 
 int GERBER_FILE_IMAGE::CodeNumber( char*& aText )
 {
-    int retval;
+    char* numberStart = aText + 1;
     char* endptr;
 
     errno = 0;
 
-    retval = strtol( aText + 1, &endptr, 10 );
-
-    if( endptr == aText || errno != 0 )
-        return 0;
-
-    KI_CHECK_MSG( retval < std::numeric_limits<int>::max(), 0, _( "Invalid Code Number" ) );
-
+    long retval = strtol( numberStart, &endptr, 10 );
     aText = endptr;
+
+    if( endptr == numberStart || errno != 0 || retval < 0
+        || retval > std::numeric_limits<int>::max() )
+        return 0;
 
     return static_cast<int>( retval );
 }
@@ -467,7 +461,7 @@ bool GERBER_FILE_IMAGE::Execute_G_Command( char*& text, int G_command )
 
             char* cptr = (char*)x2buf.data();
             int code_command = ReadXCommandID( cptr );
-            ExecuteRS274XCommand( code_command, nullptr, 0, cptr );
+            ExecuteRS274XCommand( code_command, x2buf.data(), x2buf.size(), cptr );
         }
 
         GetEndOfBlock( m_LineBuffer, GERBER_BUFZ, text, m_Current_File );

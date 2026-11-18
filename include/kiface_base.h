@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef KIFACE_BASE_H
@@ -60,8 +56,9 @@ public:
      *                    name of the DSO.  Examples: "eeschema", "pcbnew", etc.  This controls
      *                    the name of the wxConfigBase established in m_bm, so it should be
      *                    lowercase.
-     * @param aId is the type of DSO ( #FACE_SCH, #FACE_PCB, #FACE_CVPCB, #FACE_GERBVIEW,
-     *            #FACE_PL_EDITOR, #FACE_PCB_CALCULATOR, #FACE_BMP2CMP)
+     * @param aId is the type of DSO ( #KIWAY_FACES::FACE_SCH, #KIWAY_FACES::FACE_PCB, #KIWAY_FACES::FACE_CVPCB,
+     *            #KIWAY_FACES::FACE_GERBVIEW, #KIWAY_FACES::FACE_PL_EDITOR, #KIWAY_FACES::FACE_PCB_CALCULATOR,
+     *            #KIWAY_FACES::FACE_PCB )
      */
     KIFACE_BASE( const char* aKifaceName, KIWAY_FACES::FACE_T aId ) :
         m_start_flags( 0 ),

@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef OUTLINE_FONT_H_
@@ -47,7 +43,7 @@
 namespace KIFONT
 {
 /**
- * Class OUTLINE_FONT implements outline font drawing.
+ * Implement outline font drawing.
  */
 class GAL_API OUTLINE_FONT : public FONT
 {
@@ -98,6 +94,10 @@ public:
      * Load an outline font. TrueType (.ttf) and OpenType (.otf) are supported.
      *
      * @param aFontFileName is the (platform-specific) fully qualified name of the font file
+     * @param aBold loads the bold font if true
+     * @param aItalic loads the italic font if true
+     * @param aEmbeddedFiles
+     * @param aForDrawingSheet
      */
     static OUTLINE_FONT* LoadFont( const wxString& aFontFileName, bool aBold, bool aItalic,
                                    const std::vector<wxString>* aEmbeddedFiles,
@@ -111,6 +111,9 @@ public:
     double GetInterline( double aGlyphHeight, const METRICS& aFontMetrics ) const override;
 
     double GetSuperSubSizeMultiplier() const override { return m_subscriptSuperscriptSize; }
+
+    /// Edge of the em square for glyphs drawn at text size @a aSize
+    double GetEmSize( double aSize ) const { return aSize * m_outlineFontSizeCompensation; }
 
     double GetSuperSubBaselineOffset( TEXT_STYLE_FLAGS aTextStyle ) const override
     {
@@ -137,6 +140,25 @@ public:
     const FT_Face& GetFace() const { return m_face; }
 
     /**
+     * Load a single glyph into the shared FreeType slot and decompose its outline into
+     * line-chain contours.
+     *
+     * FreeType clears the slot before the font driver runs, so a failed load leaves an empty or
+     * partially parsed outline that would silently render nothing. Return false in that case so
+     * the caller can substitute a placeholder box instead.
+     *
+     * Not thread safe. The internal caller already holds m_freeTypeMutex; any other caller must
+     * guarantee exclusive access to the FreeType library. Public only so tests can exercise the
+     * failure contract.
+     *
+     * @param aGlyphIndex FreeType index of the glyph to load.
+     * @param aContours receives the decomposed contours; left empty on failure and for glyphs
+     *                  with no outline (e.g. a space).
+     * @return true if the glyph loaded and decomposed cleanly, false otherwise.
+     */
+    bool LoadGlyphContours( unsigned int aGlyphIndex, std::vector<CONTOUR>& aContours ) const;
+
+    /**
      * Select the charmap used to map characters to glyphs for @p aFace.
      *
      * Prefers a Unicode charmap, but legacy "symbol" fonts place their glyphs in the
@@ -145,12 +167,6 @@ public:
      * and the font renders instead of producing .notdef boxes.
      */
     static void SelectCharmap( FT_Face aFace );
-
-#if 0
-    void RenderToOpenGLCanvas( KIGFX::OPENGL_FREETYPE& aTarget, const wxString& aString,
-                               const VECTOR2D& aSize, const wxPoint& aPosition,
-                               const EDA_ANGLE& aAngle, bool aMirror ) const;
-#endif
 
 protected:
     FT_Error loadFace( const wxString& aFontFileName, int aFaceIndex );

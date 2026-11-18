@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "gerbview_frame.h"
@@ -94,7 +90,7 @@ void GERBVIEW_FRAME::doReCreateMenuBar()
     }
 
     // Ensure the title is up to date after changing language
-    openRecentGbrMenu->SetTitle( _( "Open Recent Gerber File" ) );
+    openRecentDrlMenu->SetTitle( _( "Open Recent Drill File" ) );
     m_drillFileHistory.UpdateClearText( openRecentDrlMenu, _( "Clear Recent Drill Files" ) );
 
     fileMenu->Add( GERBVIEW_ACTIONS::openDrillFile );
@@ -197,8 +193,17 @@ void GERBVIEW_FRAME::doReCreateMenuBar()
     viewMenu->Add( GERBVIEW_ACTIONS::negativeObjectDisplay,   ACTION_MENU::CHECK );
     viewMenu->Add( GERBVIEW_ACTIONS::toggleForceOpacityMode,  ACTION_MENU::CHECK );
     viewMenu->Add( GERBVIEW_ACTIONS::toggleXORMode,           ACTION_MENU::CHECK );
-    viewMenu->Add( ACTIONS::highContrastMode,                 ACTION_MENU::CHECK );
     viewMenu->Add( GERBVIEW_ACTIONS::flipGerberView,          ACTION_MENU::CHECK );
+
+    ACTION_MENU* contrastModeSubMenu = new ACTION_MENU( false, selTool );
+
+    contrastModeSubMenu->SetTitle( _( "&Inactive Layer View Mode" ) );
+    contrastModeSubMenu->SetIcon( BITMAPS::show_all_layers );
+    contrastModeSubMenu->Add( GERBVIEW_ACTIONS::showInactiveLayers, ACTION_MENU::CHECK );
+    contrastModeSubMenu->Add( GERBVIEW_ACTIONS::dimInactiveLayers,  ACTION_MENU::CHECK );
+    contrastModeSubMenu->Add( GERBVIEW_ACTIONS::hideInactiveLayers, ACTION_MENU::CHECK );
+
+    viewMenu->Add( contrastModeSubMenu );
 
     viewMenu->AppendSeparator();
     viewMenu->Add( GERBVIEW_ACTIONS::toggleLayerManager,      ACTION_MENU::CHECK );

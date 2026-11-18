@@ -14,8 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one at
- * http://www.gnu.org/licenses/
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -46,7 +45,7 @@ MULTILINE_PIN_TEXT_LAYOUT ComputeMultiLinePinNumberLayout( const wxString& aText
     layout.m_LineSpacing = KiROUND( aAttrs.m_Size.y * 1.3 );
 
     // Apply alignment-dependent origin shift identical to sch_painter logic
-    if( aAttrs.m_Angle == ANGLE_VERTICAL )
+    if( aAttrs.m_Angle.GetAngle() == ANGLE_VERTICAL )
     {
         int totalWidth = ( (int) layout.m_Lines.size() - 1 ) * layout.m_LineSpacing;
         if( aAttrs.m_Halign == GR_TEXT_H_ALIGN_RIGHT )

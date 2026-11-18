@@ -15,22 +15,27 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef _CONNECTION_GRAPH_H
 #define _CONNECTION_GRAPH_H
 
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <utility>
 #include <vector>
+#include <map>
 
 #include <erc/erc_settings.h>
+#include <gal/color4d.h>
 #include <sch_connection.h>
 #include <sch_item.h>
-#include <advanced_config.h>
+#include <sch_netchain.h>
+#include <connectivity/conn_netchain_manager.h>
+#include <wx/string.h>
 #include <progress_reporter.h>
 
 
@@ -46,6 +51,7 @@ class SCH_EDIT_FRAME;
 class SCH_HIERLABEL;
 class SCH_PIN;
 class SCH_SHEET_PIN;
+class SCH_NETCHAIN;
 
 
 /**
@@ -208,8 +214,8 @@ public:
     void RemoveItem( SCH_ITEM* aItem );
 
     /**
-     * Replaces all references to #aOldItem with #aNewItem in the subgraph.
-    */
+     * Replace all references to \a aOldItem with \a aNewItem in the subgraph.
+     */
     void ExchangeItem( SCH_ITEM* aOldItem, SCH_ITEM* aNewItem );
 
     // Use this to keep a connection pointer that is not owned by any item
@@ -358,26 +364,34 @@ namespace std
     };
 }
 
-/// Associate a #NET_CODE_NAME with all the subgraphs in that net.
+/// Associate a #NET_NAME_CODE_CACHE_KEY with all the subgraphs in that net.
 typedef std::unordered_map<NET_NAME_CODE_CACHE_KEY, std::vector<CONNECTION_SUBGRAPH*>> NET_MAP;
 
+/// Lets indexed items detect graph destruction without traversing their schematic parents.
+struct CONNECTION_GRAPH_LIFETIME
+{
+    CONNECTION_GRAPH* graph;
+};
+
+
 /**
- * Calculate the connectivity of a schematic and generates netlists.
+ * Calculate the connectivity of a schematic and generate netlists.
  */
 class CONNECTION_GRAPH
 {
 public:
-    CONNECTION_GRAPH( SCHEMATIC* aSchematic = nullptr ) :
+    CONNECTION_GRAPH( SCHEMATIC* aSchematic = nullptr,
+                      SCH_CONNECTIVITY::NETCHAIN_MANAGER* aNetChains = nullptr ) :
+              m_ownedNetChains( aNetChains ? nullptr
+                                         : std::make_unique<SCH_CONNECTIVITY::NETCHAIN_MANAGER>( aSchematic ) ),
+              m_netChains( aNetChains ? aNetChains : m_ownedNetChains.get() ),
               m_last_net_code( 1 ),
               m_last_bus_code( 1 ),
               m_last_subgraph_code( 1 ),
               m_schematic( aSchematic )
     {}
 
-    ~CONNECTION_GRAPH()
-    {
-        Reset();
-    }
+    ~CONNECTION_GRAPH();
 
     // We own at least one list of raw pointers.  Don't let the compiler fill in copy c'tors that
     // will only land us in trouble.
@@ -387,13 +401,24 @@ public:
     // Define QA friend functions to allow testing of private methods
     friend void boost_test_update_symbol_connectivity();
     friend void boost_test_update_generic_connectivity();
+    friend void boost_test_inject_committed_net_chain( CONNECTION_GRAPH& aGraph,
+                                                       std::unique_ptr<SCH_NETCHAIN> aChain );
+    friend SCH_NETCHAIN* boost_test_resolve_potential_chain_by_terminals(
+            const std::pair<std::pair<wxString, wxString>,
+                            std::pair<wxString, wxString>>& aTerms,
+            const std::map<std::pair<wxString, wxString>, wxString>& aRefPinToNet,
+            const std::vector<std::unique_ptr<SCH_NETCHAIN>>& aPotentials,
+            const wxString& aChainName );
 
     void Reset();
 
     void SetSchematic( SCHEMATIC* aSchematic )
     {
         m_schematic = aSchematic;
+        m_netChains->SetSchematic( aSchematic );
     }
+
+    SCHEMATIC* GetSchematic() const { return m_schematic; }
 
     void SetLastCodes( const CONNECTION_GRAPH* aOther )
     {
@@ -408,6 +433,7 @@ public:
      * @param aSheetList is the list of possibly modified sheets
      * @param aUnconditional is true if an unconditional full recalculation should be done
      * @param aChangedItemHandler an optional handler to receive any changed items
+     * @param[in] aProgressReporter is the optional #REPORTER object to sent output to.
      */
     void Recalculate( const SCH_SHEET_LIST& aSheetList, bool aUnconditional = false,
                       std::function<void( SCH_ITEM* )>* aChangedItemHandler = nullptr,
@@ -441,15 +467,63 @@ public:
 
     const NET_MAP& GetNetMap() const { return m_net_code_to_subgraphs_map; }
 
+    // (Deprecated accessor moved to potential net chains section; retained later.)
+
+    SCH_NETCHAIN* GetNetChainForNet( const wxString& aNet );
+    SCH_NETCHAIN* GetNetChainByName( const wxString& aName );
+
     /**
-     * Return the subgraph for a given net name on a given sheet.
-     *
-     * @param aNetName is the local net name to look for.
-     * @param aPath is a sheet path to look on.
-     * @return the subgraph matching the query, or nullptr if none is found.
+     * Stash per-net-chain netclass overrides read from the schematic file.  These are
+     * consumed by RebuildNetChains when committed chains are named: if a chain matches
+     * one of the keys, its netclass override is set from the value.
      */
-    CONNECTION_SUBGRAPH* FindSubgraphByName( const wxString& aNetName,
-                                             const SCH_SHEET_PATH& aPath );
+    void SetNetChainNetClassOverrides( const std::map<wxString, wxString>& aOverrides )
+    {
+        m_netChains->SetNetChainNetClassOverrides( aOverrides );
+    }
+
+    const std::map<wxString, wxString>& GetNetChainNetClassOverrides() const
+    {
+        return m_netChains->GetNetChainNetClassOverrides();
+    }
+
+    using CHAIN_TERMINAL_REF = SCH_CONNECTIVITY::NETCHAIN_MANAGER::CHAIN_TERMINAL_REF;
+    using CHAIN_TERMINAL_REFS = SCH_CONNECTIVITY::NETCHAIN_MANAGER::CHAIN_TERMINAL_REFS;
+
+    void SetNetChainTerminalRefOverrides( const std::map<wxString, CHAIN_TERMINAL_REFS>& aRefs )
+    {
+        m_netChains->SetNetChainTerminalRefOverrides( aRefs );
+    }
+
+    const std::map<wxString, CHAIN_TERMINAL_REFS>& GetNetChainTerminalRefOverrides() const
+    {
+        return m_netChains->GetNetChainTerminalRefOverrides();
+    }
+
+    void SetNetChainColorOverrides( const std::map<wxString, COLOR4D>& aOverrides )
+    {
+        m_netChains->SetNetChainColorOverrides( aOverrides );
+    }
+
+    const std::map<wxString, COLOR4D>& GetNetChainColorOverrides() const
+    {
+        return m_netChains->GetNetChainColorOverrides();
+    }
+
+    /**
+     * Stash per-chain member-net lists read from the schematic file.  Used by
+     * RebuildNetChains to reconstruct manual force-created chains, which have no
+     * underlying inferred potential to match against.
+     */
+    void SetNetChainMemberNetOverrides( const std::map<wxString, std::set<wxString>>& aOverrides )
+    {
+        m_netChains->SetNetChainMemberNetOverrides( aOverrides );
+    }
+
+    const std::map<wxString, std::set<wxString>>& GetNetChainMemberNetOverrides() const
+    {
+        return m_netChains->GetNetChainMemberNetOverrides();
+    }
 
     /**
      * Retrieve a subgraph for the given net name, if one exists.
@@ -463,7 +537,25 @@ public:
 
     CONNECTION_SUBGRAPH* GetSubgraphForItem( SCH_ITEM* aItem ) const;
 
+    /**
+     * Return the subgraph containing an item on a specific sheet path.
+     *
+     * Items on shared screens can belong to a different subgraph for each instantiating path.
+     */
+    CONNECTION_SUBGRAPH* GetSubgraphForItemOnSheet( SCH_ITEM* aItem, const SCH_SHEET_PATH& aSheetPath ) const;
+
     const std::vector<CONNECTION_SUBGRAPH*>& GetAllSubgraphs( const wxString& aNetName ) const;
+
+    /**
+     * Map a bus group name between its alias and expanded forms ({MIXED_BUS} <-> {FOO BAR HAM EGGS}).
+     *
+     * Any sheet-path prefix on the input is preserved on the results so they resolve against the
+     * graph's net-name map.
+     *
+     * @param aBusName is the bus group name, optionally sheet-path qualified.
+     * @return the equivalent bus names, empty if none.
+     */
+    std::vector<wxString> GetEquivalentBusNames( const wxString& aBusName ) const;
 
     /**
      * Return the fully-resolved netname for a given subgraph.
@@ -495,7 +587,7 @@ public:
     void RemoveItem( SCH_ITEM* aItem );
 
     /**
-     * Replace all references to #aOldItem with #aNewItem in the graph.
+     * Replace all references to \a aOldItem with \a aNewItem in the graph.
     */
     void ExchangeItem( SCH_ITEM* aOldItem, SCH_ITEM* aNewItem );
 
@@ -506,11 +598,7 @@ public:
      * a temporary solution until the connectivity graph is refactored with an
      * eye toward partial updates
     */
-    bool IsMinor() const
-    {
-        return static_cast<ssize_t>( m_items.size() )
-               < ADVANCED_CFG::GetCfg().m_MinorSchematicGraphSize;
-    }
+    bool IsMinor() const;
 
 private:
 
@@ -765,20 +853,25 @@ private:
     bool ercCheckDanglingWireEndpoints( const CONNECTION_SUBGRAPH* aSubgraph );
 
     /**
+     * Find bus members on other sheets that share aBusParent's bus and member name.
+     */
+    void collectBusMemberSiblings( const CONNECTION_SUBGRAPH* aBusParent, const wxString& aMemberName,
+                                   std::unordered_set<const CONNECTION_SUBGRAPH*>& aOut ) const;
+
+    /**
      * Check one subgraph for proper connection of labels.
      *
      * Labels should be connected to something.
      *
-     * @param  aSubgraph      is the subgraph to examine.
-     * @param  aCheckGlobalLabels is true if global labels should be checked for loneliness.
-     * @return                true for no errors, false for errors.
+     * @param aSubgraph is the subgraph to examine.
+     * @return true for no errors, false for errors.
      */
     bool ercCheckLabels( const CONNECTION_SUBGRAPH* aSubgraph );
 
     /**
      * Check directive labels should be connected to something.
      *
-     * @return                the number of errors found.
+     * @return the number of errors found.
      */
     int ercCheckDirectiveLabels();
 
@@ -786,8 +879,7 @@ private:
      * Check that a hierarchical sheet has at least one matching label inside the sheet for each
      * port on the parent sheet object.
      *
-     * @param  aSubgraph      is the subgraph to examine.
-     * @return                the number of errors found.
+     * @return the number of errors found.
      */
     int ercCheckHierSheets();
 
@@ -804,8 +896,113 @@ private:
      */
     size_t hasPins( const CONNECTION_SUBGRAPH* aLocSubgraph );
 
+    void RebuildNetChains();
+
+    // Potential net chain (inferred) API -------------------------------
+public:
+    /**
+     * Potential net chains are inferred groupings produced by RebuildNetChains() but not
+     * yet user-committed. Existing m_committedNetChains now represents only user-created connectivity groups.
+     */
+    const std::vector<std::unique_ptr<SCH_NETCHAIN>>& GetPotentialNetChains() const
+    {
+        return m_netChains->GetPotentialNetChains();
+    }
+
+    /** Promote a potential net chain to an actual user net chain with the provided name. */
+    SCH_NETCHAIN* CreateNetChainFromPotential( SCH_NETCHAIN* aPotential, const wxString& aName );
+
+    /**
+     * Commit a manually-defined net chain that the inferred-potential pass did not produce.
+     *
+     * @param aName        Name of the new chain.  Must satisfy SCH_NETCHAIN::IsValidName().
+     * @param aSymbols     Symbols that participate in the chain.
+     * @param aNets        Member nets of the chain.
+     * @param aTerminalPinA First terminal pin KIID.
+     * @param aTerminalPinB Second terminal pin KIID.
+     * @param aRefA        Reference designator for the first terminal symbol.
+     * @param aPinNumA     Pin number for the first terminal pin.
+     * @param aRefB        Reference designator for the second terminal symbol.
+     * @param aPinNumB     Pin number for the second terminal pin.
+     *
+     * @return The new committed chain, or nullptr on name collision, name validation
+     *         failure, or net-ownership collision with an existing committed chain.
+     */
+    SCH_NETCHAIN* CreateManualNetChain( const wxString& aName,
+                                        const std::set<class SCH_SYMBOL*>& aSymbols,
+                                        const std::set<wxString>& aNets,
+                                        const KIID& aTerminalPinA, const KIID& aTerminalPinB,
+                                        const wxString& aRefA, const wxString& aPinNumA,
+                                        const wxString& aRefB, const wxString& aPinNumB );
+
+    /** Return user-created (committed) net chains (legacy accessor retained under net-chain API). */
+    const std::vector<std::unique_ptr<SCH_NETCHAIN>>& GetCommittedNetChains() const
+    {
+        return m_netChains->GetCommittedNetChains();
+    }
+
+    /**
+     * Mirror each committed net chain's netclass override into the project NET_SETTINGS as a
+     * chain-derived pattern assignment, so SCH_ITEM::GetEffectiveNetClass() resolves the chain's
+     * netclass for member nets the same way board_netlist_updater does on the PCB side.  Existing
+     * chain-derived assignments are cleared first so removed or renamed chains leave no stale
+     * entries.  Synthetic per-run member keys can't be matched against a resolved net name and
+     * are skipped, and a chain whose netclass no longer exists is ignored.
+     */
+    void ApplyNetChainNetclasses();
+
+    /** Returns true once RebuildNetChains() has completed at least once on this graph. */
+    bool NetChainsBuilt() const { return m_netChains->NetChainsBuilt(); }
+
+    /** QA hook receives candidate state before publication and may throw to test rollback. */
+    static std::function<void( SCH_CONNECTIVITY::NETCHAIN_MANAGER& )>& RebuildNetChainsTestHook();
+
+    /**
+     * Delete a committed net chain by name.  Clears every net-chain override map
+     * entry (netclass, colour, terminal refs, terminal pin overrides) and resets
+     * the SetNetChainName marker on every member symbol so the chain is not
+     * reapplied on the next RebuildNetChains() pass.
+     *
+     * @return true if a chain with that name was found and removed.
+     */
+    bool DeleteCommittedNetChain( const wxString& aName );
+
+    /**
+     * Rename a committed net chain.  Re-keys override map entries from the old
+     * name to the new one, and updates every member symbol's net-chain name
+     * marker.  Returns false when the new name is empty, the old chain does
+     * not exist, or another chain already uses the new name.
+     */
+    bool RenameCommittedNetChain( const wxString& aOld, const wxString& aNew );
 
 private:
+    friend class SCHEMATIC;
+
+    /** The graph keeps using the released manager. */
+    std::unique_ptr<SCH_CONNECTIVITY::NETCHAIN_MANAGER> ReleaseNetChains() noexcept
+    {
+        return std::move( m_ownedNetChains );
+    }
+
+    void BorrowNetChains( SCH_CONNECTIVITY::NETCHAIN_MANAGER& aManager ) noexcept
+    {
+        m_netChains = &aManager;
+        m_ownedNetChains.reset();
+    }
+
+    /**
+     * Disambiguate the saved (refA.pinA, refB.pinB) terminal pair against the current set of
+     * potential net chains.  Returns the potential chain whose net set contains BOTH endpoint
+     * nets.  Returning the first match that contains only one net would silently pick the wrong
+     * chain when two potentials share an endpoint but differ at the other terminal.  Tested
+     * via the boost_test_resolve_potential_chain_by_terminals friend shim.
+     */
+    static SCH_NETCHAIN*
+    resolvePotentialChainByTerminals( const CHAIN_TERMINAL_REFS& aTermRefs,
+                                      const std::map<std::pair<wxString, wxString>, wxString>& aRefPinToNet,
+                                      const std::vector<std::unique_ptr<SCH_NETCHAIN>>& aPotentials,
+                                      const wxString& aChainName );
+
     /// All the sheets in the schematic (as long as we don't have partial updates).
     SCH_SHEET_LIST m_sheetList;
 
@@ -842,6 +1039,9 @@ private:
 
     NET_MAP m_net_code_to_subgraphs_map;
 
+    std::unique_ptr<SCH_CONNECTIVITY::NETCHAIN_MANAGER> m_ownedNetChains;
+    SCH_CONNECTIVITY::NETCHAIN_MANAGER* m_netChains;
+
     int m_last_net_code;
 
     int m_last_bus_code;
@@ -849,6 +1049,10 @@ private:
     int m_last_subgraph_code;
 
     SCHEMATIC* m_schematic;     ///< The schematic this graph represents.
+
+    /// Retired before graph teardown so late item destruction cannot enter this graph.
+    std::shared_ptr<CONNECTION_GRAPH_LIFETIME> m_lifetime =
+            std::make_shared<CONNECTION_GRAPH_LIFETIME>( CONNECTION_GRAPH_LIFETIME{ this } );
 };
 
 #endif

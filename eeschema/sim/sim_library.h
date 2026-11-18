@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef SIM_LIBRARY_H
@@ -52,6 +48,7 @@ public:
      * @param aReporter The reporter the library reports to
      * @param aForceFullParse Caller requires fully parsed models.  If false fallback models can
      *                        be generarted for performance.
+     * @param aResolver is the resolver callback function.
      * @return The library loaded in a newly constructed object.
      */
     static std::unique_ptr<SIM_LIBRARY>
@@ -63,6 +60,7 @@ public:
      * Spice for SIM_LIBRARY_SPICE).
      *
      * @param aFilePath Path to the file.
+     * @param aReporter is where to write file read status messages.
      * @throw IO_ERROR on read or parsing error.
      */
     virtual void ReadFile( const wxString& aFilePath, REPORTER& aReporter ) = 0;

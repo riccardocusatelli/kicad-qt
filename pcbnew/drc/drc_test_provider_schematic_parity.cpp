@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <board.h>
@@ -122,7 +118,7 @@ void DRC_TEST_PROVIDER_SCHEMATIC_PARITY::testNetlist( NETLIST& aNetlist )
             {
                 wxString msg;
                 msg.Printf( _( "Value (%s) doesn't match symbol value (%s)" ),
-                            footprint->GetReference(), footprint->GetValue(),
+                            footprint->GetValue(),
                             component->GetValue() );
 
                 std::shared_ptr<DRC_ITEM> drcItem = DRC_ITEM::Create( DRCE_SCHEMATIC_PARITY );
@@ -202,6 +198,19 @@ void DRC_TEST_PROVIDER_SCHEMATIC_PARITY::testNetlist( NETLIST& aNetlist )
                 reportViolation( drcItem, footprint->GetPosition(), UNDEFINED_LAYER );
             }
 
+            if( ( component->GetProperties().count( "exclude_from_sim" ) > 0 )
+                != ( ( footprint->GetAttributes() & FP_EXCLUDE_FROM_SIM ) > 0 )
+                && !m_drcEngine->IsErrorLimitExceeded( DRCE_SCHEMATIC_PARITY ) )
+            {
+                wxString msg;
+                msg.Printf( _( "'%s' settings differ" ), _( "Exclude from simulation" ) );
+
+                std::shared_ptr<DRC_ITEM> drcItem = DRC_ITEM::Create( DRCE_SCHEMATIC_PARITY );
+                drcItem->SetErrorMessage( drcItem->GetErrorMessage( true ) + wxS( ": " ) + msg );
+                drcItem->SetItems( footprint );
+                reportViolation( drcItem, footprint->GetPosition(), UNDEFINED_LAYER );
+            }
+
             // Compare custom fields between schematic component and PCB footprint
             if( !m_drcEngine->IsErrorLimitExceeded( DRCE_SCHEMATIC_FIELDS_PARITY ) )
             {
@@ -219,12 +228,12 @@ void DRC_TEST_PROVIDER_SCHEMATIC_PARITY::testNetlist( NETLIST& aNetlist )
 
                 // Remove the extra component fields we don't want to evaluate here
                 nlohmann::ordered_map<wxString, wxString> compFields = component->GetFields();
-                compFields.erase( GetCanonicalFieldName( FIELD_T::REFERENCE ) );
-                compFields.erase( GetCanonicalFieldName( FIELD_T::VALUE ) );
-                compFields.erase( GetCanonicalFieldName( FIELD_T::FOOTPRINT ) );
+                compFields.erase( GetDefaultFieldName( FIELD_T::REFERENCE, UNTRANSLATED ) );
+                compFields.erase( GetDefaultFieldName( FIELD_T::VALUE, UNTRANSLATED ) );
+                compFields.erase( GetDefaultFieldName( FIELD_T::FOOTPRINT, UNTRANSLATED ) );
                 compFields.erase( wxT( "Component Class" ) );
 
-                const wxString datasheetName = GetCanonicalFieldName( FIELD_T::DATASHEET );
+                const wxString datasheetName = GetDefaultFieldName( FIELD_T::DATASHEET, UNTRANSLATED );
 
                 // Boards from 9.0.3+ store a "~" datasheet that the 10.0 schematic loader reads as empty
                 auto isBlank =

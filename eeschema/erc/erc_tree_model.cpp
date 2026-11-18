@@ -45,23 +45,38 @@ void ERC_TREE_MODEL::GetValue( wxVariant& aVariant, wxDataViewItem const& aItem,
 {
     SCH_EDIT_FRAME*           schEditFrame = static_cast<SCH_EDIT_FRAME*>( m_editFrame );
     const RC_TREE_NODE*       node = ToNode( aItem );
+
+    if( !node || !node->m_RcItem )
+    {
+        aVariant = wxEmptyString;
+        return;
+    }
+
     std::shared_ptr<ERC_ITEM> ercItem = std::static_pointer_cast<ERC_ITEM>( node->m_RcItem );
     MARKER_BASE*              marker = ercItem->GetParent();
     wxString                  msg;
+    const SCH_SHEET_PATH& fallbackSheet = ercItem->IsSheetSpecific() ? ercItem->GetSpecificSheetPath()
+                                                                    : schEditFrame->GetCurrentSheet();
 
     auto getItemDesc =
-            [&]( EDA_ITEM* aCurrItem, SCH_SHEET_PATH& aSheet )
+            [&]( EDA_ITEM* aCurrItem, const SCH_SHEET_PATH& aSheet )
             {
+                const auto currentPath = schEditFrame->Schematic().Hierarchy().GetSheetPathByKIIDPath(
+                        aSheet.PathRef() );
+
+                if( !currentPath )
+                    return _( "(Deleted Item)" );
+
                 SCH_SHEET_PATH curSheet = schEditFrame->GetCurrentSheet();
                 wxString       desc;
 
-                if( aSheet != curSheet )
+                if( *currentPath != curSheet )
                 {
                     // Use the schematic-level setter to avoid the view side effects of
                     // SCH_EDIT_FRAME::SetCurrentSheet, which recreates the drawing sheet
                     // proxy with potentially stale page number state.
-                    schEditFrame->Schematic().SetCurrentSheet( aSheet );
-                    aSheet.UpdateAllScreenReferences();
+                    schEditFrame->Schematic().SetCurrentSheet( *currentPath );
+                    currentPath->UpdateAllScreenReferences();
                     {
                         desc = aCurrItem->GetItemDescription( m_editFrame, true );
                     }
@@ -112,7 +127,7 @@ void ERC_TREE_MODEL::GetValue( wxVariant& aVariant, wxDataViewItem const& aItem,
         {
             msg = getItemDesc( schEditFrame->ResolveItem( ercItem->GetMainItemID() ),
                                ercItem->MainItemHasSheetPath() ? ercItem->GetMainItemSheetPath()
-                                                               : schEditFrame->GetCurrentSheet() );
+                                                               : fallbackSheet );
         }
 
         break;
@@ -120,17 +135,17 @@ void ERC_TREE_MODEL::GetValue( wxVariant& aVariant, wxDataViewItem const& aItem,
     case RC_TREE_NODE::AUX_ITEM:
         msg = getItemDesc( schEditFrame->ResolveItem( ercItem->GetAuxItemID() ),
                            ercItem->AuxItemHasSheetPath() ? ercItem->GetAuxItemSheetPath()
-                                                          : schEditFrame->GetCurrentSheet() );
+                                                          : fallbackSheet );
         break;
 
     case RC_TREE_NODE::AUX_ITEM2:
         msg = getItemDesc( schEditFrame->ResolveItem( ercItem->GetAuxItem2ID() ),
-                           schEditFrame->GetCurrentSheet() );
+                           fallbackSheet );
         break;
 
     case RC_TREE_NODE::AUX_ITEM3:
         msg = getItemDesc( schEditFrame->ResolveItem( ercItem->GetAuxItem3ID() ),
-                           schEditFrame->GetCurrentSheet() );
+                           fallbackSheet );
         break;
 
     case RC_TREE_NODE::COMMENT:

@@ -16,9 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this package; see the file COPYING.  If not, write to
- * the Free Software Foundation, Inc., 51 Franklin Street - Fifth Floor,
- * Boston, MA 02110-1301, USA.
+ * along with this package.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef TRANSLINE_CALCULATIONS_COUPLED_MICROSTRIP_H
@@ -59,8 +57,30 @@ public:
                                           TCP::MURC,
                                           TCP::SIGMA,
                                           TCP::ROUGH,
-                                          TCP::TAND } )
+                                          TCP::TAND,
+                                          TCP::DIELECTRIC_MODEL_SEL,
+                                          TCP::EPSILONR_SPEC_FREQ,
+                                          TCP::SOLDERMASK_PRESENT,
+                                          TCP::SOLDERMASK_THICKNESS,
+                                          TCP::SOLDERMASK_EPSILONR,
+                                          TCP::SOLDERMASK_TAND } )
     {
+    }
+
+    /// Coupled microstrip shares the microstrip incremental filling factor.  Both modes
+    /// see the same over-substrate cover geometry; the even- and odd-mode differences are
+    /// handled by applying the correction separately to er_eff_e and er_eff_o.  Ignores
+    /// the inter-trace gap contribution (a second-order refinement that would require
+    /// extending Wan-Hoorfar 2000 to the even/odd modal decomposition of
+    /// Kirschning-Jansen 1984).
+    double GetSoldermaskDeltaQ( double aWOverH, double aCOverH ) const override
+    {
+        if( aWOverH <= 0.0 || aCOverH <= 0.0 )
+            return 0.0;
+
+        const double q2Coated = WanHoorfarQ2( aWOverH, 1.0 + aCOverH );
+        const double q2Base = WanHoorfarQ2( aWOverH, 1.0 );
+        return std::max( 0.0, q2Coated - q2Base );
     }
 
     /// Analyse track geometry parameters to output Z0 and Ang_L

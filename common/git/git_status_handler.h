@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef GIT_STATUS_HANDLER_H
@@ -37,6 +33,9 @@ struct FileStatus
     wxString filePath;
     KIGIT_COMMON::GIT_STATUS status;
     unsigned int gitStatus;  // Raw git status flags
+
+    /// Git reports an ignored directory rather than the files inside it
+    bool isDirectory = false;
 };
 
 class APIEXPORT GIT_STATUS_HANDLER : public KIGIT_REPO_MIXIN
@@ -46,17 +45,13 @@ public:
     virtual ~GIT_STATUS_HANDLER();
 
     /**
-     * Check if the repository has any changed files
-     * @return True if there are uncommitted changes, false otherwise
-     */
-    bool HasChangedFiles();
-
-    /**
      * Get detailed file status for all files in the specified path
      * @param aPathspec Path specification to filter files (empty for all files)
+     * @param aChangedOnly Omit unmodified tracked files, for callers that only list changes
      * @return Map of absolute file paths to their status information
      */
-    std::map<wxString, FileStatus> GetFileStatus( const wxString& aPathspec = wxEmptyString );
+    std::map<wxString, FileStatus> GetFileStatus( const wxString& aPathspec = wxEmptyString,
+                                                  bool            aChangedOnly = false );
 
     /**
      * Get the current branch name

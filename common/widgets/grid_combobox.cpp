@@ -14,19 +14,52 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <widgets/grid_combobox.h>
+#include <algorithm>
+#include <wx/dc.h>
+#include <wx/grid.h>
+#include <wx/renderer.h>
 
 
 //-------- Renderer ---------------------------------------------------------------------
-// None required; just render as normal text.
 
+wxGridCellRenderer* GRID_CELL_COMBOBOX_RENDERER::Clone() const
+{
+    return new GRID_CELL_COMBOBOX_RENDERER( *this );
+}
+
+
+void GRID_CELL_COMBOBOX_RENDERER::Draw( wxGrid& aGrid, wxGridCellAttr& aAttr, wxDC& aDC, const wxRect& aRect, int aRow,
+                                        int aCol, bool isSelected )
+{
+    int arrowWidth = aRect.GetHeight();
+
+    wxRect textRect = aRect;
+    textRect.width = std::max( 0, textRect.width - arrowWidth );
+
+    wxGridCellStringRenderer::Draw( aGrid, aAttr, aDC, textRect, aRow, aCol, isSelected );
+
+    wxRect arrowRect = aRect;
+    arrowRect.x += textRect.width;
+    arrowRect.width = arrowWidth;
+
+    aDC.DrawRectangle( arrowRect );     // needed at least on wxMSW to draw the background with current brush
+                                        // DrawDropArrow uses a transparent brush to draw the background
+    wxRendererNative::Get().DrawDropArrow( &aGrid, aDC, arrowRect );
+}
+
+
+wxSize GRID_CELL_COMBOBOX_RENDERER::GetBestSize( wxGrid& aGrid, wxGridCellAttr& aAttr, wxDC& aDC, int aRow, int aCol )
+{
+    wxSize size = wxGridCellStringRenderer::GetBestSize( aGrid, aAttr, aDC, aRow, aCol );
+
+    size.x += size.y; // Reserve a square area for the always-visible dropdown arrow.
+
+    return size;
+}
 
 
 //-------- Editor -----------------------------------------------------------------------

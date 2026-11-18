@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef SCH_TEXTBOX_H
@@ -32,6 +28,11 @@
 
 class HTML_MESSAGE_BOX;
 
+namespace kiapi::schematic::types
+{
+    class SchematicTextBox;
+}
+
 class SCH_TEXTBOX : public SCH_SHAPE, public EDA_TEXT
 {
 public:
@@ -42,6 +43,14 @@ public:
     SCH_TEXTBOX( const SCH_TEXTBOX& aText );
 
     ~SCH_TEXTBOX() { }
+
+    void Serialize( google::protobuf::Any& aContainer ) const override;
+    bool Deserialize( const google::protobuf::Any& aContainer ) override;
+
+    void Serialize( kiapi::schematic::types::SchematicTextBox& aOutput,
+                    const EDA_IU_SCALE& aScale ) const;
+    bool Deserialize( const kiapi::schematic::types::SchematicTextBox& aInput,
+                      const EDA_IU_SCALE& aScale );
 
     static bool ClassOf( const EDA_ITEM* aItem )
     {
@@ -80,16 +89,16 @@ public:
     KIFONT::FONT* GetDrawFont( const RENDER_SETTINGS* aSettings ) const override;
 
     virtual wxString GetShownText( const RENDER_SETTINGS* aSettings, const SCH_SHEET_PATH* aPath,
-                                   bool aAllowExtraText, int aDepth = 0 ) const;
+                                   RESOLUTION_CONTEXT aContext, int aDepth = 0 ) const;
 
-    wxString GetShownText( bool aAllowExtraText, int aDepth = 0 ) const override
+    wxString GetShownText( RESOLUTION_CONTEXT aContext, int aDepth = 0 ) const override
     {
         SCH_SHEET_PATH* sheetPath = nullptr;
 
         if( SCHEMATIC* schematic = Schematic() )
             sheetPath = &schematic->CurrentSheet();
 
-        return GetShownText( nullptr, sheetPath, aAllowExtraText, aDepth );
+        return GetShownText( nullptr, sheetPath, aContext, aDepth );
     }
 
     bool HasHypertext() const override;

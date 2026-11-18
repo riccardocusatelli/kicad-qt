@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <pgm_base.h>
@@ -89,6 +85,8 @@ PANEL_EESCHEMA_EDITING_OPTIONS::PANEL_EESCHEMA_EDITING_OPTIONS( wxWindow* aWindo
 #else
     m_leftClickCmdsBook->SetSelection( 0 );
 #endif
+
+    Layout();
 }
 
 
@@ -119,10 +117,12 @@ void PANEL_EESCHEMA_EDITING_OPTIONS::loadEEschemaSettings( EESCHEMA_SETTINGS* aC
     m_checkAutoplaceAlign->SetValue( aCfg->m_AutoplaceFields.align_to_grid );
 
     m_mouseDragIsDrag->SetValue( !aCfg->m_Input.drag_is_move );
+    m_cbPinSelectionOpt->SetValue( aCfg->m_Selection.select_pin_selects_symbol );
 
     m_cbAutoStartWires->SetValue( aCfg->m_Drawing.auto_start_wires );
     m_escClearsNetHighlight->SetValue( aCfg->m_Input.esc_clears_net_highlight );
     m_checkAutoAnnotate->SetValue( aCfg->m_AnnotatePanel.automatic );
+    m_checkAutoPlaceSheetPins->SetValue( aCfg->m_Drawing.auto_place_sheet_pins );
     m_checkAllowUnconstrainedPinSwaps->SetValue( aCfg->m_Input.allow_unconstrained_pin_swaps );
 
     m_choicePower->SetSelection( static_cast<int>( aCfg->m_Drawing.new_power_symbols ) );
@@ -158,11 +158,13 @@ bool PANEL_EESCHEMA_EDITING_OPTIONS::TransferDataFromWindow()
         cfg->m_AutoplaceFields.allow_rejustify = m_checkAutoplaceJustify->GetValue();
         cfg->m_AutoplaceFields.align_to_grid = m_checkAutoplaceAlign->GetValue();
 
-        cfg->m_Input.drag_is_move = !m_mouseDragIsDrag->GetValue();
+    cfg->m_Input.drag_is_move = !m_mouseDragIsDrag->GetValue();
+    cfg->m_Selection.select_pin_selects_symbol = m_cbPinSelectionOpt->GetValue();
 
         cfg->m_Drawing.auto_start_wires = m_cbAutoStartWires->GetValue();
         cfg->m_Input.esc_clears_net_highlight = m_escClearsNetHighlight->GetValue();
         cfg->m_AnnotatePanel.automatic = m_checkAutoAnnotate->GetValue();
+        cfg->m_Drawing.auto_place_sheet_pins = m_checkAutoPlaceSheetPins->GetValue();
         cfg->m_Input.allow_unconstrained_pin_swaps = m_checkAllowUnconstrainedPinSwaps->GetValue();
     }
 

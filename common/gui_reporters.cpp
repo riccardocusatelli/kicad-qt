@@ -70,8 +70,22 @@ REPORTER& STATUSBAR_REPORTER::Report( const wxString& aText, SEVERITY aSeverity 
 
     if( m_statusBar )
     {
-        // The message will be ellipsized automatically
-        m_statusBar->SetStatusText( aText, m_position );
+        wxStatusBar* statusBar = m_statusBar;
+        int          position = m_position;
+
+        if( wxIsMainThread() )
+        {
+            // The message will be ellipsized automatically
+            statusBar->SetStatusText( aText, position );
+        }
+        else
+        {
+            statusBar->CallAfter(
+                    [statusBar, position, aText]()
+                    {
+                        statusBar->SetStatusText( aText, position );
+                    } );
+        }
     }
 
     return *this;
@@ -97,26 +111,37 @@ REPORTER& STATUSBAR_WARNING_REPORTER::Report( const wxString& aText, SEVERITY aS
     if( !statusBar || aText.IsEmpty() )
         return *this;
 
-    std::vector<LOAD_MESSAGE> messages;
+    std::vector<KI_ERROR> messages;
     wxStringTokenizer tokenizer( aText, wxS( "\n" ), wxTOKEN_STRTOK );
     SEVERITY severity = aSeverity == RPT_SEVERITY_UNDEFINED ? RPT_SEVERITY_WARNING : aSeverity;
 
     while( tokenizer.HasMoreTokens() )
     {
-        LOAD_MESSAGE message;
-        message.message = tokenizer.GetNextToken();
-        message.severity = severity;
+        KI_ERROR message;
+        message.SetTitle( tokenizer.GetNextToken() );
+        message.SetSeverity( severity );
         messages.emplace_back( std::move( message ) );
     }
 
     if( messages.empty() )
     {
-        LOAD_MESSAGE message;
-        message.message = aText;
-        message.severity = severity;
+        KI_ERROR message;
+        message.SetTitle( aText );
+        message.SetSeverity( severity );
         messages.emplace_back( std::move( message ) );
     }
 
     statusBar->AddWarningMessages( m_impl->m_source, messages );
+    return *this;
+}
+
+
+REPORTER& STATUSBAR_WARNING_REPORTER::Report( const KI_ERROR& aError )
+{
+    REPORTER::Report( aError.AsString(), aError.GetSeverity() );
+
+    if( KISTATUSBAR* statusBar = m_impl ? m_impl->GetStatusBar() : nullptr )
+        statusBar->AddWarningMessages( m_impl->m_source, { aError } );
+
     return *this;
 }

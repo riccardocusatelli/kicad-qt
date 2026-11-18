@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <jobs/job.h>
@@ -102,18 +102,14 @@ wxString JOB::ResolveOutputPath( const wxString& aPath, bool aPathIsDirectory, P
     std::function<bool( wxString* )> textResolver =
             [&]( wxString* token ) -> bool
             {
-                if( m_titleBlock.TextVarResolver( token, aProject ) )
+                if( m_titleBlock.TextVarResolver( token, aProject, INTERNAL ) )
                     return true;
                 if( aProject )
                     return aProject->TextVarResolver( token );
                 return false;
             };
 
-    // Jobsets authored on Windows must still resolve on other platforms
-    wxString outPath = aPath;
-    outPath.Replace( wxT( "\\" ), wxT( "/" ) );
-
-    outPath = ExpandPathVariables( outPath, aProject, &textResolver );
+    wxString outPath = ExpandPathVariables( aPath, aProject, &textResolver );
 
     if( !m_tempOutputDirectory.IsEmpty() )
     {
@@ -121,8 +117,11 @@ wxString JOB::ResolveOutputPath( const wxString& aPath, bool aPathIsDirectory, P
         {
             wxFileName fn( outPath );
 
-            if( fn.IsAbsolute() || outPath.IsEmpty() )
+            // Absolute directories are used as given, like absolute file paths
+            if( outPath.IsEmpty() )
                 fn.AssignDir( m_tempOutputDirectory );
+            else if( fn.IsAbsolute() )
+                fn.AssignDir( outPath );
             else
                 PrependDirectoryToPath( fn, m_tempOutputDirectory );
 
@@ -147,6 +146,28 @@ wxString JOB::ResolveOutputPath( const wxString& aPath, bool aPathIsDirectory, P
     }
 
     return outPath;
+}
+
+
+wxString JOB::AppendDefaultFileName( const wxString& aPath, const wxString& aDefaultName )
+{
+    if( aPath.IsEmpty() )
+        return aPath;
+
+    wxFileName fn( aPath );
+
+    if( !fn.GetFullName().IsEmpty() )
+    {
+        if( !wxFileName::DirExists( aPath ) )
+            return aPath;
+
+        // An existing folder without a trailing separator parses as a file name
+        fn.AssignDir( aPath );
+    }
+
+    fn.SetFullName( aDefaultName );
+
+    return fn.GetFullPath();
 }
 
 

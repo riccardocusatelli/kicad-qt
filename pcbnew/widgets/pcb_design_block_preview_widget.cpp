@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -38,6 +38,137 @@
 #include <core/ki_assert.h>
 
 
+<<<<<<< b2e17e0a
+||||||| 1304b76aad
+PCB_DESIGN_BLOCK_PREVIEW_WIDGET::PCB_DESIGN_BLOCK_PREVIEW_WIDGET( wxWindow* aParent, PCB_EDIT_FRAME* aFrame ) :
+        DESIGN_BLOCK_PREVIEW_WIDGET( aParent ), m_preview( nullptr ), m_status( nullptr ), m_statusPanel( nullptr ),
+        m_statusSizer( nullptr ), m_previewItem( nullptr )
+{
+    COMMON_SETTINGS* common_settings = Pgm().GetCommonSettings();
+    PCBNEW_SETTINGS* cfg = GetAppSettings<PCBNEW_SETTINGS>( "pcbnew" );
+
+    m_galDisplayOptions.ReadConfig( *common_settings, cfg->m_Window, this );
+    m_galDisplayOptions.m_forceDisplayCursor = false;
+
+    m_preview = FOOTPRINT_PREVIEW_PANEL::New( &aFrame->Kiway(), this, aFrame );
+    m_preview->SetStealsFocus( false );
+    m_preview->ShowScrollbars( wxSHOW_SB_NEVER, wxSHOW_SB_NEVER );
+    m_preview->GetGAL()->SetAxesEnabled( false );
+
+    // Do not display the grid: the look is not good for a small canvas area.
+    // But mainly, due to some strange bug I (JPC) was unable to fix, the grid creates
+    // strange artifacts on Windows when Pcb is run from KiCad manager (but not in
+    // stand alone...).
+    m_preview->GetGAL()->SetGridVisibility( true );
+
+    // Early initialization of the canvas background color,
+    // before any OnPaint event is fired for the canvas using a wrong bg color
+    KIGFX::VIEW* view = m_preview->GetView();
+    auto         settings = static_cast<KIGFX::PCB_RENDER_SETTINGS*>( view->GetPainter()->GetSettings() );
+
+    if( COLOR_SETTINGS* cs = ::GetColorSettings( cfg ? cfg->m_ColorTheme : DEFAULT_THEME ) )
+        settings->LoadColors( cs );
+
+    const COLOR4D& backgroundColor = settings->GetBackgroundColor();
+    const COLOR4D& foregroundColor = settings->GetCursorColor();
+
+    m_preview->GetGAL()->SetClearColor( backgroundColor );
+
+    m_outerSizer = new wxBoxSizer( wxVERTICAL );
+
+    m_statusPanel = new wxPanel( this );
+    m_statusPanel->SetBackgroundColour( backgroundColor.ToColour() );
+    m_status = new wxStaticText( m_statusPanel, wxID_ANY, wxEmptyString );
+    m_status->SetForegroundColour( settings->GetLayerColor( LAYER_REFERENCEPART ).ToColour() );
+    m_statusSizer = new wxBoxSizer( wxVERTICAL );
+    m_statusSizer->Add( 0, 0, 1 ); // add a spacer
+    m_statusSizer->Add( m_status, 0, wxALIGN_CENTER );
+    m_statusSizer->Add( 0, 0, 1 ); // add a spacer
+    m_statusPanel->SetSizer( m_statusSizer );
+
+    // Give the status panel the same color scheme as the canvas so it isn't jarring when
+    // switched to.
+    m_statusPanel->SetBackgroundColour( backgroundColor.ToColour() );
+    m_statusPanel->SetForegroundColour( foregroundColor.ToColour() );
+
+    // Give the preview panel a small top border to align its top with the status panel,
+    // and give the status panel a small bottom border to align its bottom with the preview
+    // panel.
+    m_outerSizer->Add( m_preview, 1, wxTOP | wxEXPAND, 5 );
+    m_outerSizer->Add( m_statusPanel, 1, wxBOTTOM | wxEXPAND, 5 );
+
+    // Hide the status panel to start
+    m_statusPanel->Hide();
+
+    SetSizer( m_outerSizer );
+    Layout();
+
+    Connect( wxEVT_SIZE, wxSizeEventHandler( PCB_DESIGN_BLOCK_PREVIEW_WIDGET::onSize ), nullptr, this );
+}
+
+=======
+PCB_DESIGN_BLOCK_PREVIEW_WIDGET::PCB_DESIGN_BLOCK_PREVIEW_WIDGET( wxWindow* aParent, PCB_EDIT_FRAME* aFrame ) :
+        DESIGN_BLOCK_PREVIEW_WIDGET( aParent ), m_preview( nullptr ), m_status( nullptr ), m_statusPanel( nullptr ),
+        m_statusSizer( nullptr ), m_previewItem( nullptr )
+{
+    COMMON_SETTINGS* common_settings = Pgm().GetCommonSettings();
+    PCBNEW_SETTINGS* cfg = GetAppSettings<PCBNEW_SETTINGS>( "pcbnew" );
+
+    m_galDisplayOptions.ReadConfig( *common_settings, cfg->m_Window, this );
+    m_galDisplayOptions.m_forceDisplayCursor = false;
+
+    m_preview = FOOTPRINT_PREVIEW_PANEL::New( &aFrame->Kiway(), this, aFrame );
+    m_preview->SetStealsFocus( false );
+    m_preview->ShowScrollbars( wxSHOW_SB_NEVER, wxSHOW_SB_NEVER );
+    m_preview->GetGAL()->SetAxesEnabled( false );
+    m_preview->GetGAL()->SetGridVisibility( true );
+
+    // Early initialization of the canvas background color,
+    // before any OnPaint event is fired for the canvas using a wrong bg color
+    KIGFX::VIEW* view = m_preview->GetView();
+    auto         settings = static_cast<KIGFX::PCB_RENDER_SETTINGS*>( view->GetPainter()->GetSettings() );
+
+    if( COLOR_SETTINGS* cs = ::GetColorSettings( cfg ? cfg->m_ColorTheme : DEFAULT_THEME ) )
+        settings->LoadColors( cs );
+
+    const COLOR4D& backgroundColor = settings->GetBackgroundColor();
+    const COLOR4D& foregroundColor = settings->GetCursorColor();
+
+    m_preview->GetGAL()->SetClearColor( backgroundColor );
+
+    m_outerSizer = new wxBoxSizer( wxVERTICAL );
+
+    m_statusPanel = new wxPanel( this );
+    m_statusPanel->SetBackgroundColour( backgroundColor.ToColour() );
+    m_status = new wxStaticText( m_statusPanel, wxID_ANY, wxEmptyString );
+    m_status->SetForegroundColour( settings->GetLayerColor( LAYER_REFERENCEPART ).ToColour() );
+    m_statusSizer = new wxBoxSizer( wxVERTICAL );
+    m_statusSizer->Add( 0, 0, 1 ); // add a spacer
+    m_statusSizer->Add( m_status, 0, wxALIGN_CENTER );
+    m_statusSizer->Add( 0, 0, 1 ); // add a spacer
+    m_statusPanel->SetSizer( m_statusSizer );
+
+    // Give the status panel the same color scheme as the canvas so it isn't jarring when
+    // switched to.
+    m_statusPanel->SetBackgroundColour( backgroundColor.ToColour() );
+    m_statusPanel->SetForegroundColour( foregroundColor.ToColour() );
+
+    // Give the preview panel a small top border to align its top with the status panel,
+    // and give the status panel a small bottom border to align its bottom with the preview
+    // panel.
+    m_outerSizer->Add( m_preview, 1, wxTOP | wxEXPAND, 5 );
+    m_outerSizer->Add( m_statusPanel, 1, wxBOTTOM | wxEXPAND, 5 );
+
+    // Hide the status panel to start
+    m_statusPanel->Hide();
+
+    SetSizer( m_outerSizer );
+    Layout();
+
+    Connect( wxEVT_SIZE, wxSizeEventHandler( PCB_DESIGN_BLOCK_PREVIEW_WIDGET::onSize ), nullptr, this );
+}
+
+>>>>>>> ed8c16703e
 
 PCB_DESIGN_BLOCK_PREVIEW_WIDGET::~PCB_DESIGN_BLOCK_PREVIEW_WIDGET()
 {
@@ -87,7 +218,27 @@ void PCB_DESIGN_BLOCK_PREVIEW_WIDGET::DisplayDesignBlock( DESIGN_BLOCK* aDesignB
     {
         try
         {
+<<<<<<< b2e17e0a
             m_previewItem = loadBoard( aDesignBlock->GetBoardFile() );
+||||||| 1304b76aad
+            IO_RELEASER<PCB_IO>  pi( PCB_IO_MGR::FindPlugin( PCB_IO_MGR::KICAD_SEXP ) );
+            WX_PROGRESS_REPORTER progressReporter( this, _( "Load PCB" ), 1, PR_CAN_ABORT );
+
+            pi->SetProgressReporter( &progressReporter );
+
+            m_previewItem = pi->LoadBoard( aDesignBlock->GetBoardFile(), nullptr );
+=======
+            IO_RELEASER<PCB_IO>  pi( PCB_IO_MGR::FindPlugin( PCB_IO_MGR::KICAD_SEXP ) );
+            WX_PROGRESS_REPORTER progressReporter( this, _( "Load PCB" ), 1, PR_CAN_ABORT );
+
+            pi->SetProgressReporter( &progressReporter );
+
+            m_previewItem = pi->LoadBoard( aDesignBlock->GetBoardFile(), nullptr ).release();
+        }
+        catch( const IO_CANCELLED& )
+        {
+            // A user-cancelled load is not an error; the preview simply stays empty.
+>>>>>>> ed8c16703e
         }
         catch( const IO_ERROR& ioe )
         {
@@ -96,12 +247,8 @@ void PCB_DESIGN_BLOCK_PREVIEW_WIDGET::DisplayDesignBlock( DESIGN_BLOCK* aDesignB
             // cost us much.
             try
             {
-                if( ioe.Problem() != wxT( "CANCEL" ) )
-                {
-                    wxString msg =
-                            wxString::Format( _( "Error loading board file:\n%s" ), aDesignBlock->GetBoardFile() );
-                    DisplayErrorMessage( this, msg, ioe.What() );
-                }
+                wxString msg = wxString::Format( _( "Error loading board file:\n%s" ), aDesignBlock->GetBoardFile() );
+                DisplayErrorMessage( this, msg, ioe.What() );
             }
             catch( ... )
             {
@@ -120,6 +267,11 @@ void PCB_DESIGN_BLOCK_PREVIEW_WIDGET::DisplayDesignBlock( DESIGN_BLOCK* aDesignB
 
             for( BOARD_ITEM* item : m_previewItem->GetItemSet() )
             {
+                // Geometry-free items (constraints) are never rendered; adding them stamps
+                // their view data on an empty layer set with no benefit.
+                if( item->Type() == PCB_CONSTRAINT_T )
+                    continue;
+
                 view->Add( item );
 
                 if( item->Type() == PCB_FIELD_T )

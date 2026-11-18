@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <advanced_config.h>
@@ -30,7 +26,8 @@
 #include <kiface_base.h>
 #include <pcb_edit_frame.h>
 #include <pcbnew_id.h>
-#include <python_scripting.h>
+#include <pgm_base.h>
+#include <settings/common_settings.h>
 #include <tool/action_manager.h>
 #include <tool/actions.h>
 #include <tool/tool_manager.h>
@@ -85,6 +82,18 @@ void PCB_EDIT_FRAME::doReCreateMenuBar()
     }
 
     fileMenu->Add( PCB_ACTIONS::appendBoard );
+    fileMenu->Add( PCB_ACTIONS::compareBoardWithFile );
+
+    wxMenuItem*       historyItem = fileMenu->Add( PCB_ACTIONS::compareBoardWithHistory );
+    ACTION_CONDITIONS historyCond;
+    historyCond.Enable(
+            []( const SELECTION& )
+            {
+                COMMON_SETTINGS* cs = Pgm().GetCommonSettings();
+                return cs && cs->AutosaveUsesLocalHistory();
+            } );
+    RegisterUIUpdateHandler( historyItem->GetId(), historyCond );
+
     fileMenu->AppendSeparator();
 
     fileMenu->Add( ACTIONS::save );
@@ -122,6 +131,7 @@ void PCB_EDIT_FRAME::doReCreateMenuBar()
     submenuExport->SetIcon( BITMAPS::export_file );
 
     submenuExport->Add( PCB_ACTIONS::exportSpecctraDSN, ACTION_MENU::NORMAL, _( "Specctra DSN..." ) );
+    submenuExport->Add( ACTIONS::exportForOlderVersion, ACTION_MENU::NORMAL, _( "For Older KiCad Version..." ) );
     submenuExport->Add( PCB_ACTIONS::exportGenCAD,      ACTION_MENU::NORMAL, _( "GenCAD..." ) );
     submenuExport->Add( PCB_ACTIONS::exportVRML,        ACTION_MENU::NORMAL, _( "VRML..." ) );
     submenuExport->Add( PCB_ACTIONS::exportIDF,         ACTION_MENU::NORMAL, _( "IDFv3..." ) );
@@ -151,6 +161,7 @@ void PCB_EDIT_FRAME::doReCreateMenuBar()
     submenuFabOutputs->Add( PCB_ACTIONS::generateReportFile );
     submenuFabOutputs->Add( PCB_ACTIONS::generateD356File );
     submenuFabOutputs->Add( PCB_ACTIONS::generateBOM );
+    submenuFabOutputs->Add( PCB_ACTIONS::generateBOMLegacy );
     fileMenu->Add( submenuFabOutputs );
 
     fileMenu->AppendSeparator();
@@ -191,10 +202,14 @@ void PCB_EDIT_FRAME::doReCreateMenuBar()
 
     editMenu->AppendSeparator();
     editMenu->Add( ACTIONS::find );
+    editMenu->Add( PCB_ACTIONS::findByProperties );
 
     editMenu->AppendSeparator();
+    editMenu->Add( PCB_ACTIONS::extendGraphic );
+    editMenu->Add( PCB_ACTIONS::trimGraphic );
     editMenu->Add( PCB_ACTIONS::editTracksAndVias );
     editMenu->Add( PCB_ACTIONS::editTextAndGraphics );
+    editMenu->Add( PCB_ACTIONS::mirrorInteractive );
     editMenu->Add( PCB_ACTIONS::editTeardrops );
     editMenu->Add( PCB_ACTIONS::changeFootprints );
     editMenu->Add( PCB_ACTIONS::swapLayers );
@@ -220,6 +235,8 @@ void PCB_EDIT_FRAME::doReCreateMenuBar()
     showHidePanels->Add( PCB_ACTIONS::showSearch,                 ACTION_MENU::CHECK );
     showHidePanels->Add( PCB_ACTIONS::showLayersManager,          ACTION_MENU::CHECK );
     showHidePanels->Add( PCB_ACTIONS::showNetInspector,           ACTION_MENU::CHECK );
+    showHidePanels->Add( PCB_ACTIONS::showConstraintsPanel,       ACTION_MENU::CHECK );
+    showHidePanels->Add( ACTIONS::showGitCommitPane, ACTION_MENU::CHECK );
 
     if( ADVANCED_CFG::GetCfg().m_EnablePcbDesignBlocks )
         showHidePanels->Add( PCB_ACTIONS::showDesignBlockPanel, ACTION_MENU::CHECK, _( "Design Blocks" ) );
@@ -287,7 +304,10 @@ void PCB_EDIT_FRAME::doReCreateMenuBar()
 
     placeMenu->Add( PCB_ACTIONS::placeFootprint );
     placeMenu->Add( PCB_ACTIONS::drawVia );
+    placeMenu->Add( PCB_ACTIONS::placeViaStack );
+    placeMenu->Add( PCB_ACTIONS::makeViaStack );
     placeMenu->Add( PCB_ACTIONS::drawZone );
+    placeMenu->Add( PCB_ACTIONS::drawCopperThievingZone );
     placeMenu->Add( PCB_ACTIONS::drawRuleArea );
 
     ACTION_MENU* muwaveSubmenu = new ACTION_MENU( false, selTool );
@@ -305,6 +325,8 @@ void PCB_EDIT_FRAME::doReCreateMenuBar()
     placeMenu->Add( PCB_ACTIONS::drawArc );
     placeMenu->Add( PCB_ACTIONS::drawRectangle );
     placeMenu->Add( PCB_ACTIONS::drawCircle );
+    placeMenu->Add( PCB_ACTIONS::drawEllipse );
+    placeMenu->Add( PCB_ACTIONS::drawEllipseArc );
     placeMenu->Add( PCB_ACTIONS::drawPolygon );
     placeMenu->Add( PCB_ACTIONS::drawBezier );
     placeMenu->Add( PCB_ACTIONS::placeReferenceImage );
@@ -325,16 +347,34 @@ void PCB_EDIT_FRAME::doReCreateMenuBar()
     dimensionSubmenu->Add( PCB_ACTIONS::drawLeader );
     placeMenu->Add( dimensionSubmenu );
 
+    // Mirrors the selection tool's Constraints context submenu so the feature is reachable without
+    // right-clicking; an unsuitable selection is reported by the tool via the info bar.  The action
+    // list is shared (PCB_ACTIONS::ConstraintAddActions) so this menu cannot drift from the context
+    // one.  The pane itself is reached from View > Panels, so no toggle is repeated here.
+    ACTION_MENU* constraintsSubmenu = new ACTION_MENU( false, selTool );
+    constraintsSubmenu->SetTitle( _( "Geometric Constraints" ) );
+    constraintsSubmenu->SetIcon( BITMAPS::measurement );
+
+    for( const TOOL_ACTION* action : PCB_ACTIONS::ConstraintAddActions() )
+        constraintsSubmenu->Add( *action );
+
+    constraintsSubmenu->AppendSeparator();
+    constraintsSubmenu->Add( PCB_ACTIONS::removeConstraints );
+    placeMenu->Add( constraintsSubmenu );
+
     placeMenu->AppendSeparator();
     placeMenu->Add( PCB_ACTIONS::placeCharacteristics );
     placeMenu->Add( PCB_ACTIONS::placeStackup );
+    placeMenu->Add( PCB_ACTIONS::placeDrillChart );
+    placeMenu->Add( PCB_ACTIONS::placeDrillMap );
 
     placeMenu->AppendSeparator();
     placeMenu->Add( PCB_ACTIONS::drillOrigin );
     placeMenu->Add( PCB_ACTIONS::drillResetOrigin );
     placeMenu->Add( ACTIONS::gridSetOrigin );
     placeMenu->Add( ACTIONS::gridResetOrigin );
-
+    placeMenu->AppendSeparator();
+    placeMenu->Add( PCB_ACTIONS::placeSubGrid );
     placeMenu->AppendSeparator();
     ACTION_MENU* autoplaceSubmenu = new ACTION_MENU( false, selTool );
     autoplaceSubmenu->SetTitle( _( "Auto-Place Footprints" ) );
@@ -354,6 +394,7 @@ void PCB_EDIT_FRAME::doReCreateMenuBar()
     routeMenu->AppendSeparator();
     routeMenu->Add( PCB_ACTIONS::routeSingleTrack );
     routeMenu->Add( PCB_ACTIONS::routeDiffPair );
+    routeMenu->Add( PCB_ACTIONS::routerSpreadTracks );
 
     routeMenu->AppendSeparator();
     routeMenu->Add( PCB_ACTIONS::tuneSingleTrack );
@@ -398,11 +439,13 @@ void PCB_EDIT_FRAME::doReCreateMenuBar()
 
     toolsMenu->AppendSeparator();
     toolsMenu->Add( PCB_ACTIONS::drcRuleEditor );
+    toolsMenu->Add( PCB_ACTIONS::showDrillGroups );
 
     toolsMenu->AppendSeparator();
     toolsMenu->Add( ACTIONS::showFootprintEditor );
     toolsMenu->Add( PCB_ACTIONS::updateFootprints );
     toolsMenu->Add( PCB_ACTIONS::migrate3DModels );
+    toolsMenu->Add( PCB_ACTIONS::editFootprintFields );
 
     //Zones management
     toolsMenu->AppendSeparator();
@@ -429,17 +472,15 @@ void PCB_EDIT_FRAME::doReCreateMenuBar()
     toolsMenu->Add( PCB_ACTIONS::boardReannotate );
     toolsMenu->Add( ACTIONS::updateSchematicFromPcb )->Enable( !Kiface().IsSingle() );
 
-    if( SCRIPTING::IsWxAvailable() )
-    {
-        toolsMenu->AppendSeparator();
-        toolsMenu->Add( PCB_ACTIONS::showPythonConsole );
-    }
-
     ACTION_MENU* multichannelSubmenu = new ACTION_MENU( false, selTool );
     multichannelSubmenu->SetTitle( _( "Multi-Channel" ) );
     multichannelSubmenu->SetIcon( BITMAPS::mode_module );
     multichannelSubmenu->Add( PCB_ACTIONS::generatePlacementRuleAreas );
+    multichannelSubmenu->Add( PCB_ACTIONS::expandToMatchingTopology );
+    multichannelSubmenu->Add( PCB_ACTIONS::expandToLargestTopology );
     multichannelSubmenu->Add( PCB_ACTIONS::repeatLayout );
+    multichannelSubmenu->Add( PCB_ACTIONS::updateLinkedLayouts );
+    multichannelSubmenu->Add( PCB_ACTIONS::unlinkLayout );
 
     toolsMenu->Add( multichannelSubmenu );
 
@@ -447,13 +488,11 @@ void PCB_EDIT_FRAME::doReCreateMenuBar()
     submenuActionPlugins->SetTitle( _( "External Plugins" ) );
     submenuActionPlugins->SetIcon( BITMAPS::puzzle_piece );
 
-    submenuActionPlugins->Add( ACTIONS::pluginsReload );
-    submenuActionPlugins->Add( PCB_ACTIONS::pluginsShowFolder );
+    if( Pgm().GetCommonSettings()->m_Api.enable_server && AddApiPluginMenuItems( submenuActionPlugins ) > 0 )
+        submenuActionPlugins->AppendSeparator();
 
-    // Populate the Action Plugin sub-menu: Must be done before Add
-    // Since the object is cloned by Add
-    submenuActionPlugins->AppendSeparator();
-    buildActionPluginMenus( submenuActionPlugins );
+    submenuActionPlugins->Add( ACTIONS::pluginsReload );
+    submenuActionPlugins->Add( ACTIONS::pluginsShowFolder );
 
     toolsMenu->AppendSeparator();
     toolsMenu->Add( submenuActionPlugins );

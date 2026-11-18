@@ -49,11 +49,12 @@
 #include <iso646.h>
 #endif
 
-#if !defined( HAVE_STRCASECMP )
+// OpenCASCADE's Standard_CString.hxx may already map these
+#if !defined( HAVE_STRCASECMP ) && !defined( strcasecmp )
 #define strcasecmp stricmp
 #endif
 
-#if !defined( HAVE_STRNCASECMP )
+#if !defined( HAVE_STRNCASECMP ) && !defined( strncasecmp )
 #define strncasecmp strnicmp
 #endif
 
@@ -77,11 +78,6 @@
 
 /// The install prefix defined during CMake configuration or fall back to CMAKE_INSTALL_PREFIX.
 #define DEFAULT_INSTALL_PATH            "@DEFAULT_INSTALL_PATH@"
-
-/// The wxPython version found during configuration.
-#if defined( KICAD_SCRIPTING_WXPYTHON )
-#define WXPYTHON_VERSION                "@WXPYTHON_VERSION@"
-#endif
 
 #define PYTHON_VERSION_MAJOR             @PYTHON_VERSION_MAJOR@
 #define PYTHON_VERSION_MINOR             @PYTHON_VERSION_MINOR@

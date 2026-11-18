@@ -20,11 +20,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef _GENDRILL_GERBER_WRITER_
@@ -89,8 +85,8 @@ private:
      *
      * @param aFullFilename is the full file name.
      * @param aIsNpth set to true for a NPTH file or false for a PTH file.
-     * @param aLayerPair is the first board layer and the last board layer for this drill file
-     *                   for blind buried vias, they are not always top and bottom layers/
+     * @param aSpan is the first board layer and the last board layer for this drill file
+     *              for blind buried vias, they are not always top and bottom layers.
      * @return hole count or -1 if the file cannot be created.
      */
     int createDrillFile( wxString& aFullFilename, bool aIsNpth, const DRILL_SPAN& aSpan );
@@ -106,7 +102,7 @@ private:
                               DRILL_LAYER_PAIR aLayerPair );
 
     /**
-     * @param aPair is the layer pair.
+     * @param aSpan is the layer span.
      * @param aNPTH set to true to generate the filename of NPTH holes.
      * @param aMerge_PTH_NPTH set to true to generate the filename of a file which contains both
      *                        NPH and NPTH holes

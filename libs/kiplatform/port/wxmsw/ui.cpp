@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <windows.h>
@@ -23,7 +23,9 @@
 #include <kiplatform/ui.h>
 
 #include <wx/cursor.h>
+#include <wx/dataview.h>
 #include <wx/dialog.h>
+#include <wx/display.h>
 #include <wx/nonownedwnd.h>
 #include <wx/window.h>
 #include <wx/msw/registry.h>
@@ -60,6 +62,12 @@ void KIPLATFORM::UI::GetInfoBarColours( wxColour& aFGColour, wxColour& aBGColour
 }
 
 
+wxWindow* KIPLATFORM::UI::CreateCanvasOverlay( wxWindow* aCanvas )
+{
+    return nullptr;
+}
+
+
 void KIPLATFORM::UI::ForceFocus( wxWindow* aWindow )
 {
     aWindow->SetFocus();
@@ -77,9 +85,15 @@ bool KIPLATFORM::UI::IsWindowActive( wxWindow* aWindow )
 }
 
 
-void KIPLATFORM::UI::EnsureVisible( wxWindow* aWindow )
+void KIPLATFORM::UI::StabilizeWindowPosition( wxWindow* aWindow )
 {
     // Not needed on this platform
+}
+
+
+wxPoint KIPLATFORM::UI::GetRestorablePosition( wxWindow* aWindow )
+{
+    return aWindow->GetPosition();
 }
 
 
@@ -139,6 +153,13 @@ double KIPLATFORM::UI::GetContentScaleFactor( const wxWindow* aWindow )
 }
 
 
+double KIPLATFORM::UI::GetDisplayRefreshRate( const wxWindow* aWindow )
+{
+    // wx reports the hardware's default rate as 0
+    return wxDisplay( aWindow ).GetCurrentMode().refresh;
+}
+
+
 wxSize KIPLATFORM::UI::GetUnobscuredSize( const wxWindow* aWindow )
 {
     return aWindow->GetClientSize();
@@ -158,6 +179,18 @@ bool KIPLATFORM::UI::AllowIconsInMenus()
 
 
 bool KIPLATFORM::UI::SupportsKeyState()
+{
+    return true;
+}
+
+
+wxKeyEvent KIPLATFORM::UI::GetNativePopupDismissalEvent()
+{
+    return wxKeyEvent();
+}
+
+
+bool KIPLATFORM::UI::PrepareChoicePopup( wxWindow* )
 {
     return true;
 }
@@ -225,10 +258,17 @@ void KIPLATFORM::UI::AllowNetworkFileSystems( wxDialog* aDialog )
 }
 
 
+int KIPLATFORM::UI::GetColumnWidth( const wxDataViewColumn* aColumn )
+{
+    return aColumn->WXGetSpecifiedWidth();
+}
+
+
 void KIPLATFORM::UI::CancelPendingScroll( wxDataViewCtrl* aCtrl )
 {
     // Not needed on this platform; the native control does not race on model resets.
 }
+<<<<<<< b2e17e0a
 
 
 void KIPLATFORM::UI::RemoveShutdownBlockReason( wxWindow* aWindow )
@@ -248,3 +288,39 @@ void KIPLATFORM::UI::SetShutdownBlockReason( wxWindow* aWindow, const wxString& 
 
     ShutdownBlockReasonCreate( aWindow->GetHandle(), aReason.wc_str() );
 }
+||||||| 1304b76aad
+=======
+
+
+void KIPLATFORM::UI::SetWMClass( wxWindow* aWindow, const wxString& aClass )
+{
+    // WM_CLASS is an X11/Wayland concept; taskbar identity on Windows is driven by the
+    // AppUserModelID (see KIPLATFORM::ENV::SetAppDetailsForWindow).
+}
+
+
+void KIPLATFORM::UI::GetNativeWindowHandles( wxWindow* aWindow, void** aHandle, void** aDisplay,
+                                              int* aDisplayType )
+{
+    *aHandle = nullptr;
+    *aDisplay = nullptr;
+
+    if( aDisplayType )
+        *aDisplayType = NATIVE_DISPLAY_TYPE::DISPLAY_WIN32;
+
+    if( aWindow )
+        *aHandle = static_cast<void*>( aWindow->GetHWND() );
+}
+
+
+void KIPLATFORM::UI::PrepareForExternalRendering( wxWindow* aWindow )
+{
+    // The GPU API owns Win32 surfaces natively
+}
+
+
+void KIPLATFORM::UI::KeepAboveExternalRendering( wxWindow* aChild )
+{
+    // Child windows are native and clip their parent's surface
+}
+>>>>>>> ed8c16703e

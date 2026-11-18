@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <dialogs/dialog_executecommand_job_settings_base.h>
@@ -44,6 +44,9 @@ private:
     /// Fill the variable table with the available variables and any
     /// referenced in the command, resolved as the job runner will.
     void populateEnvironReadOnlyTable();
+
+    /// Show the command with variables expanded as the job runner will run it.
+    void updateExpandedPreview();
 
 private:
     JOB_SPECIAL_EXECUTE* m_job;

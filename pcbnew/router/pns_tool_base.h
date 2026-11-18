@@ -16,8 +16,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef __PNS_TOOL_BASE_H
@@ -60,12 +60,15 @@ protected:
 
     virtual ITEM* pickSingleItem( const VECTOR2I& aWhere, NET_HANDLE aNet = nullptr,
                                   int aLayer = -1, bool aIgnorePads = false,
-                                  const std::vector<ITEM*> aAvoidItems = {} );
+                                  const std::vector<ITEM*> aAvoidItems = {},
+                                  int aPermittedItemMask = ITEM::ANY_T );
 
     virtual void highlightNets( bool aEnabled, std::set<NET_HANDLE> aNetcodes = {} );
 
     virtual void updateStartItem( const TOOL_EVENT& aEvent, bool aIgnorePads = false );
     virtual void updateEndItem( const TOOL_EVENT& aEvent );
+
+    virtual void setSelectableItemMask( int aMask );
 
 protected:
     SIZES_SETTINGS   m_savedSizes;       // Stores sizes settings between router invocations
@@ -81,6 +84,7 @@ protected:
     ROUTER*          m_router;
 
     bool             m_cancelled;
+    int              m_selectableItemMask;
 
     static const unsigned int COORDS_PADDING; // Padding from coordinates limits for this tool
 };

@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -48,7 +44,7 @@ struct DIELECTRIC_SUBSTRATE
 // Handle a list of substrates prms in gerber job file and dialogs
 class DIELECTRIC_SUBSTRATE_LIST
 {
-    ///< The list of available substrates. It contains at least predefined substrates
+    /// The list of available substrates. It contains at least predefined substrates
     std::vector<DIELECTRIC_SUBSTRATE> m_substrateList;
 
 public:
@@ -60,10 +56,10 @@ public:
     };
 
     /**
-     * @param aForDielectric set to #DL_MATERIAL_DIELECTRIC to build a dielectric material list
-     *                       or #DL_MATERIAL_SOLDERMASK to build a solder mask material list.
+     * @param aListType set to #DIELECTRIC_SUBSTRATE_LIST::DL_MATERIAL_DIELECTRIC to build a dielectric material list
+     *                  or #DIELECTRIC_SUBSTRATE_LIST::DL_MATERIAL_SOLDERMASK to build a solder mask material list.
      */
-    DIELECTRIC_SUBSTRATE_LIST( DL_MATERIAL_LIST_TYPE aListType);
+    DIELECTRIC_SUBSTRATE_LIST( DL_MATERIAL_LIST_TYPE aListType );
 
     /**
      * @return the number of substrates in list
@@ -120,7 +116,7 @@ public:
     /**
      * Delete the specified item in the substrate list.
      *
-     * @param aInd is the index in the substrate list to delete
+     * @param aIdx is the index in the substrate list to delete.
      */
     void DeleteSubstrate( int aIdx )
     {

@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 // Tests taken from GCC:
@@ -36,9 +36,8 @@
 // 3.1, as published by the Free Software Foundation.
 
 // You should have received a copy of the GNU General Public License and
-// a copy of the GCC Runtime Library Exception along with this program;
-// see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
-// <http://www.gnu.org/licenses/>.
+// a copy of the GCC Runtime Library Exception along with this program.
+// If not, see <https://www.gnu.org/licenses/>.
 
 #include <boost/test/unit_test.hpp>
 
@@ -95,10 +94,13 @@ static_assert(!std::is_constructible_v<any,
 
 static_assert( std::is_copy_constructible_v<std::tuple<any>> );
 
+namespace
+{
 struct A {
     A(const A&) = default;
     explicit A(any value);
 };
+} // namespace
 static_assert(std::is_copy_constructible_v<A>);
 
 BOOST_AUTO_TEST_SUITE( ki_any )

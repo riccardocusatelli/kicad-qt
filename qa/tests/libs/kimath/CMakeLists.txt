@@ -13,11 +13,7 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, you may find one here:
-# http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-# or you may search the http://www.gnu.org website for the version 2 license,
-# or you may write to the Free Software Foundation, Inc.,
-# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #
 # Unit tests for KiCad math routines.
@@ -29,6 +25,8 @@ set( QA_KIMATH_SRCS
 
     geometry/geom_test_utils.cpp
     geometry/test_arc_chord_params.cpp
+    geometry/test_arc_construction.cpp
+    geometry/test_bezier.cpp
     geometry/test_chamfer.cpp
     geometry/test_circle.cpp
     geometry/test_distribute.cpp
@@ -37,11 +35,17 @@ set( QA_KIMATH_SRCS
     geometry/test_ellipse_to_bezier.cpp
     geometry/test_fillet.cpp
     geometry/test_half_line.cpp
+    geometry/test_intersection.cpp
     geometry/test_oval.cpp
+    geometry/test_poisson_disk.cpp
     geometry/test_poly_triangulation.cpp
+    geometry/test_triangulation_benchmark.cpp
+    geometry/test_poly_ystripes_index.cpp
     geometry/test_segment.cpp
+    geometry/test_segment_index.cpp
     geometry/test_shape_compound_collision.cpp
     geometry/test_shape_arc.cpp
+    geometry/test_shape_ellipse.cpp
     geometry/test_shape_nearest_points.cpp
     geometry/test_shape_poly_set.cpp
     geometry/test_shape_poly_set_arcs.cpp
@@ -49,17 +53,22 @@ set( QA_KIMATH_SRCS
     geometry/test_shape_poly_set_distance.cpp
     geometry/test_shape_poly_set_iterator.cpp
     geometry/test_shape_poly_set_split_outlines.cpp
+    geometry/test_shape_poly_set_triangle_index.cpp
     geometry/test_shape_line_chain.cpp
     geometry/test_shape_line_chain_collision.cpp
+    geometry/test_transform_trs.cpp
     geometry/test_vector_utils.cpp
     geometry/test_shape_rect_corner.cpp
     geometry/test_roundrect.cpp
+    geometry/test_packed_rtree.cpp
+    geometry/test_dynamic_rtree.cpp
 
     math/test_box2.cpp
     math/test_matrix3x3.cpp
     math/test_vector2.cpp
     math/test_vector3.cpp
     math/test_util.cpp
+    math/test_wide_int.cpp
 )
 
 if( WIN32 )
@@ -84,6 +93,8 @@ add_executable( qa_kimath
 target_link_libraries( qa_kimath
     qa_utils
     kimath
+    rtree
+    nlohmann_json
     Boost::headers
     Boost::unit_test_framework
     ${wxWidgets_LIBRARIES}
@@ -97,3 +108,28 @@ target_include_directories( qa_kimath PRIVATE
 kicad_add_boost_test( qa_kimath qa_kimath )
 
 setup_qa_env( qa_kimath )
+
+
+# Spatial index benchmarks — opt-in, not part of the default QA gate.
+# Run manually: ./qa/tests/libs/kimath/bench_spatial_index
+add_executable( bench_spatial_index EXCLUDE_FROM_ALL
+    kimath_test_module.cpp
+    geometry/bench_spatial_index.cpp
+
+    ${CMAKE_SOURCE_DIR}/qa/mocks/kicad/common_mocks.cpp
+)
+
+target_link_libraries( bench_spatial_index
+    qa_utils
+    kimath
+    rtree
+    nlohmann_json
+    Boost::headers
+    Boost::unit_test_framework
+    ${wxWidgets_LIBRARIES}
+)
+
+target_include_directories( bench_spatial_index PRIVATE
+    ${CMAKE_SOURCE_DIR}/qa/mocks/include
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)

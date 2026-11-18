@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <pcbnew_utils/board_test_utils.h>
@@ -41,6 +37,7 @@
 #include <board_design_settings.h>
 #include <pcb_dimension.h>
 #include <project/net_settings.h>
+#include <settings/settings_manager.h>
 #include <board_stackup_manager/board_stackup.h>
 #include <map>
 #include <set>
@@ -89,7 +86,7 @@ static std::unique_ptr<BOARD> LoadAndVerify( const PADS_BOARD_INFO& aBoard )
 
     try
     {
-        board.reset( plugin.LoadBoard( filename, nullptr, nullptr, nullptr ) );
+        board = plugin.LoadBoard( filename, nullptr, nullptr );
     }
     catch( const std::exception& e )
     {
@@ -363,7 +360,7 @@ BOOST_AUTO_TEST_CASE( ImportNonCopperTrackSkipped )
 
     wxString filename = KI_TEST::GetPcbnewTestDataDir() + "plugins/pads/synthetic_noncopper_track.asc";
 
-    std::unique_ptr<BOARD> board( plugin.LoadBoard( filename, nullptr, nullptr, nullptr ) );
+    std::unique_ptr<BOARD> board = plugin.LoadBoard( filename, nullptr, nullptr );
 
     BOOST_REQUIRE( board != nullptr );
 
@@ -389,7 +386,7 @@ BOOST_AUTO_TEST_CASE( ImportTextOnUnmappedLayer )
 
     wxString filename = KI_TEST::GetPcbnewTestDataDir() + "plugins/pads/synthetic_unmapped_text_layer.asc";
 
-    std::unique_ptr<BOARD> board( plugin.LoadBoard( filename, nullptr, nullptr, nullptr ) );
+    std::unique_ptr<BOARD> board = plugin.LoadBoard( filename, nullptr, nullptr );
 
     BOOST_REQUIRE( board != nullptr );
 
@@ -616,7 +613,7 @@ BOOST_AUTO_TEST_CASE( ImportDegeneratePourSkipped )
     wxString filename = KI_TEST::GetPcbnewTestDataDir()
                         + "plugins/pads/synthetic_degenerate_pour.asc";
 
-    std::unique_ptr<BOARD> board( plugin.LoadBoard( filename, nullptr, nullptr, nullptr ) );
+    std::unique_ptr<BOARD> board = plugin.LoadBoard( filename, nullptr, nullptr );
 
     BOOST_REQUIRE( board != nullptr );
 
@@ -650,7 +647,7 @@ BOOST_AUTO_TEST_CASE( ImportFilledCopperSingleOutline )
     wxString filename = KI_TEST::GetPcbnewTestDataDir()
                         + "plugins/pads/synthetic_filled_copper.asc";
 
-    std::unique_ptr<BOARD> board( plugin.LoadBoard( filename, nullptr, nullptr, nullptr ) );
+    std::unique_ptr<BOARD> board = plugin.LoadBoard( filename, nullptr, nullptr );
 
     BOOST_REQUIRE( board != nullptr );
     BOOST_REQUIRE_EQUAL( board->Zones().size(), 1 );
@@ -676,7 +673,7 @@ BOOST_AUTO_TEST_CASE( Importer_SpecificFixes )
 
     wxString filename = KI_TEST::GetPcbnewTestDataDir() + "plugins/pads/Importer.asc";
 
-    std::unique_ptr<BOARD> board( plugin.LoadBoard( filename, nullptr, nullptr, nullptr ) );
+    std::unique_ptr<BOARD> board = plugin.LoadBoard( filename, nullptr, nullptr );
 
     BOOST_REQUIRE( board != nullptr );
 
@@ -793,7 +790,7 @@ BOOST_AUTO_TEST_CASE( Peka_ViaImport )
 
     wxString filename = KI_TEST::GetPcbnewTestDataDir() + "plugins/pads/peka.asc";
 
-    std::unique_ptr<BOARD> board( plugin.LoadBoard( filename, nullptr, nullptr, nullptr ) );
+    std::unique_ptr<BOARD> board = plugin.LoadBoard( filename, nullptr, nullptr );
 
     BOOST_REQUIRE( board != nullptr );
 
@@ -894,7 +891,7 @@ BOOST_AUTO_TEST_CASE( Importer_OvalDrillHits )
 
     wxString filename = KI_TEST::GetPcbnewTestDataDir() + "plugins/pads/Importer.asc";
 
-    std::unique_ptr<BOARD> board( plugin.LoadBoard( filename, nullptr, nullptr, nullptr ) );
+    std::unique_ptr<BOARD> board = plugin.LoadBoard( filename, nullptr, nullptr );
 
     BOOST_REQUIRE( board != nullptr );
 
@@ -966,7 +963,7 @@ BOOST_AUTO_TEST_CASE( Peka_AlternateDecalDrill )
 
     wxString filename = KI_TEST::GetPcbnewTestDataDir() + "plugins/pads/peka.asc";
 
-    std::unique_ptr<BOARD> board( plugin.LoadBoard( filename, nullptr, nullptr, nullptr ) );
+    std::unique_ptr<BOARD> board = plugin.LoadBoard( filename, nullptr, nullptr );
 
     BOOST_REQUIRE( board != nullptr );
 
@@ -1027,7 +1024,7 @@ BOOST_AUTO_TEST_CASE( Peka_ZoneFillNoSelfIntersection )
 
     wxString filename = KI_TEST::GetPcbnewTestDataDir() + "plugins/pads/peka.asc";
 
-    std::unique_ptr<BOARD> board( plugin.LoadBoard( filename, nullptr, nullptr, nullptr ) );
+    std::unique_ptr<BOARD> board = plugin.LoadBoard( filename, nullptr, nullptr );
 
     BOOST_REQUIRE( board != nullptr );
 
@@ -1121,7 +1118,7 @@ BOOST_AUTO_TEST_CASE( ImportMaskPasteLayers )
     wxString filename =
             KI_TEST::GetPcbnewTestDataDir() + "plugins/pads/synthetic_mask_paste.asc";
 
-    std::unique_ptr<BOARD> board( plugin.LoadBoard( filename, nullptr, nullptr, nullptr ) );
+    std::unique_ptr<BOARD> board = plugin.LoadBoard( filename, nullptr, nullptr );
 
     BOOST_REQUIRE( board != nullptr );
     BOOST_REQUIRE_EQUAL( board->Footprints().size(), 5 );
@@ -1216,7 +1213,7 @@ BOOST_AUTO_TEST_CASE( ImportMaskPasteLayersIssue23254 )
     wxString filename =
             KI_TEST::GetPcbnewTestDataDir() + "plugins/pads/issue23254/issue23254.asc";
 
-    std::unique_ptr<BOARD> board( plugin.LoadBoard( filename, nullptr, nullptr, nullptr ) );
+    std::unique_ptr<BOARD> board = plugin.LoadBoard( filename, nullptr, nullptr );
 
     BOOST_REQUIRE( board != nullptr );
 
@@ -1253,7 +1250,7 @@ BOOST_AUTO_TEST_CASE( ImportIssue23352 )
     wxString filename = KI_TEST::GetPcbnewTestDataDir() + "plugins/pads/issue23352.asc";
 
     std::unique_ptr<BOARD> board;
-    board.reset( plugin.LoadBoard( filename, nullptr, nullptr, nullptr ) );
+    board = plugin.LoadBoard( filename, nullptr, nullptr );
     BOOST_REQUIRE( board != nullptr );
 
     // Issue 1: Square pads should be imported as RECTANGLE, not CIRCLE.
@@ -1375,7 +1372,7 @@ BOOST_AUTO_TEST_CASE( Issue23393_NetClassImport )
     PCB_IO_PADS plugin;
     wxString filename = KI_TEST::GetPcbnewTestDataDir() + "plugins/pads/issue23393/demo.asc";
 
-    std::unique_ptr<BOARD> board( plugin.LoadBoard( filename, nullptr, nullptr, nullptr ) );
+    std::unique_ptr<BOARD> board = plugin.LoadBoard( filename, nullptr, nullptr );
     BOOST_REQUIRE( board != nullptr );
 
     const BOARD_DESIGN_SETTINGS& bds = board->GetDesignSettings();
@@ -1432,7 +1429,7 @@ BOOST_AUTO_TEST_CASE( Issue23612_RouteArcSpansNeighbours )
     wxString filename = KI_TEST::GetPcbnewTestDataDir()
                         + "plugins/pads/issue23540/test_import.asc";
 
-    std::unique_ptr<BOARD> board( plugin.LoadBoard( filename, nullptr, nullptr, nullptr ) );
+    std::unique_ptr<BOARD> board = plugin.LoadBoard( filename, nullptr, nullptr );
 
     BOOST_REQUIRE( board != nullptr );
 
@@ -1486,113 +1483,6 @@ BOOST_AUTO_TEST_CASE( Issue23612_RouteArcSpansNeighbours )
 }
 
 
-
-
-/**
- * Verify in-circuit test point import (issue 23637).
- *
- * In-circuit test points are zero-drill vias placed on a route layer and tagged
- * in the *TESTPOINT* section.  Two bugs existed before the fix:
- *   1. The test point via was also emitted as a bare PCB_VIA by loadTracksAndVias(),
- *      creating a duplicate object and a DRC open-connection error.
- *   2. loadTestPoints() always placed the footprint on F.Cu when side=0 ("through"),
- *      even though the pad definition's soldermask layer indicates B.Cu.
- *
- * synthetic_testpoint.asc defines two test point via types:
- *   TP_BOTTOM_SMD  drill=0, routing-layer pad (layer 0) + soldermask bottom (28)
- *                  -> SMD footprint on B.Cu, pad ~0.8mm
- *   TP_TOP_SMD     drill=0, top copper pad (layer -2) + soldermask top (25)
- *                  -> SMD footprint on F.Cu, pad ~0.8mm
- */
-BOOST_AUTO_TEST_CASE( InCircuitTestPointImport )
-{
-    PCB_IO_PADS plugin;
-
-    wxString filename =
-            KI_TEST::GetPcbnewTestDataDir() + "plugins/pads/synthetic_testpoint.asc";
-
-    std::unique_ptr<BOARD> board( plugin.LoadBoard( filename, nullptr, nullptr, nullptr ) );
-
-    BOOST_REQUIRE( board != nullptr );
-
-    // R1 (1 part) + 2 test point footprints = 3 total
-    BOOST_CHECK_EQUAL( board->Footprints().size(), 3u );
-
-    FOOTPRINT* tpBottom = nullptr;
-    FOOTPRINT* tpTop    = nullptr;
-
-    for( FOOTPRINT* fp : board->Footprints() )
-    {
-        if( fp->GetValue() == wxT( "TP_BOTTOM_SMD" ) )
-            tpBottom = fp;
-        else if( fp->GetValue() == wxT( "TP_TOP_SMD" ) )
-            tpTop = fp;
-    }
-
-    // TP_BOTTOM_SMD: stack has soldermask bottom (layer 28) -> must land on B.Cu
-    BOOST_REQUIRE_MESSAGE( tpBottom, "TP_BOTTOM_SMD test point footprint should exist" );
-    BOOST_CHECK_EQUAL( tpBottom->Pads().size(), 1u );
-
-    if( tpBottom->Pads().size() == 1 )
-    {
-        PAD* pad = tpBottom->Pads().front();
-        BOOST_CHECK_MESSAGE( pad->IsOnLayer( B_Cu ),
-                             "TP_BOTTOM_SMD pad should be on B.Cu" );
-        BOOST_CHECK_MESSAGE( !pad->IsOnLayer( F_Cu ),
-                             "TP_BOTTOM_SMD pad should not be on F.Cu" );
-
-        // Pad size: 1200000 BASIC * 2/3 = 800000 nm (0.8mm).  Allow 5% tolerance.
-        int padSize = pad->GetSize( PADSTACK::ALL_LAYERS ).x;
-        BOOST_CHECK_MESSAGE( padSize > 700000 && padSize < 900000,
-                             "TP_BOTTOM_SMD pad size " << padSize << " should be ~800000 nm" );
-    }
-
-    // TP_TOP_SMD: explicit top copper pad (layer -2) -> must land on F.Cu
-    BOOST_REQUIRE_MESSAGE( tpTop, "TP_TOP_SMD test point footprint should exist" );
-    BOOST_CHECK_EQUAL( tpTop->Pads().size(), 1u );
-
-    if( tpTop->Pads().size() == 1 )
-    {
-        PAD* pad = tpTop->Pads().front();
-        BOOST_CHECK_MESSAGE( pad->IsOnLayer( F_Cu ),
-                             "TP_TOP_SMD pad should be on F.Cu" );
-        BOOST_CHECK_MESSAGE( !pad->IsOnLayer( B_Cu ),
-                             "TP_TOP_SMD pad should not be on B.Cu" );
-
-        int padSize = pad->GetSize( PADSTACK::ALL_LAYERS ).x;
-        BOOST_CHECK_MESSAGE( padSize > 700000 && padSize < 900000,
-                             "TP_TOP_SMD pad size " << padSize << " should be ~800000 nm" );
-    }
-
-    // Test point positions must NOT also appear as bare PCB_VIA objects.
-    // Before the fix, loadTracksAndVias() placed a PCB_VIA at each test point
-    // position, creating a duplicate and causing DRC open-connection errors.
-    VECTOR2I tpBottomPos( 0, 0 );
-    VECTOR2I tpTopPos( 0, 0 );
-
-    if( tpBottom )
-        tpBottomPos = tpBottom->GetPosition();
-
-    if( tpTop )
-        tpTopPos = tpTop->GetPosition();
-
-    for( PCB_TRACK* trk : board->Tracks() )
-    {
-        PCB_VIA* via = dynamic_cast<PCB_VIA*>( trk );
-
-        if( !via )
-            continue;
-
-        VECTOR2I pos = via->GetPosition();
-
-        BOOST_CHECK_MESSAGE( pos != tpBottomPos,
-                             "TP_BOTTOM_SMD position should not have a bare PCB_VIA" );
-        BOOST_CHECK_MESSAGE( pos != tpTopPos,
-                             "TP_TOP_SMD position should not have a bare PCB_VIA" );
-    }
-}
-
-
 /**
  * Verify RF finger pad offsets are not double-rotated on import (issue #23425).
  *
@@ -1615,7 +1505,7 @@ BOOST_AUTO_TEST_CASE( ImportFingerPadOffsetIssue23425 )
     wxString filename = KI_TEST::GetPcbnewTestDataDir()
                         + "plugins/pads/issue23425/controlCARDDockingStation.asc";
 
-    std::unique_ptr<BOARD> board( plugin.LoadBoard( filename, nullptr, nullptr, nullptr ) );
+    std::unique_ptr<BOARD> board = plugin.LoadBoard( filename, nullptr, nullptr );
 
     BOOST_REQUIRE( board != nullptr );
 
@@ -1684,7 +1574,7 @@ BOOST_AUTO_TEST_CASE( ImportIssue23391 )
 
     wxString filename = KI_TEST::GetPcbnewTestDataDir() + "plugins/pads/issue23391.asc";
 
-    std::unique_ptr<BOARD> board( plugin.LoadBoard( filename, nullptr, nullptr, nullptr ) );
+    std::unique_ptr<BOARD> board = plugin.LoadBoard( filename, nullptr, nullptr );
 
     BOOST_REQUIRE( board != nullptr );
 
@@ -1768,6 +1658,111 @@ BOOST_AUTO_TEST_CASE( ImportIssue23391 )
 
 
 /**
+ * Verify in-circuit test point import (issue 23637).
+ *
+ * In-circuit test points are zero-drill vias placed on a route layer and tagged
+ * in the *TESTPOINT* section.  Two bugs existed before the fix:
+ *   1. The test point via was also emitted as a bare PCB_VIA by loadTracksAndVias(),
+ *      creating a duplicate object and a DRC open-connection error.
+ *   2. loadTestPoints() always placed the footprint on F.Cu when side=0 ("through"),
+ *      even though the pad definition's soldermask layer indicates B.Cu.
+ *
+ * synthetic_testpoint.asc defines two test point via types:
+ *   TP_BOTTOM_SMD  drill=0, routing-layer pad (layer 0) + soldermask bottom (28)
+ *                  -> SMD footprint on B.Cu, pad ~0.8mm
+ *   TP_TOP_SMD     drill=0, top copper pad (layer -2) + soldermask top (25)
+ *                  -> SMD footprint on F.Cu, pad ~0.8mm
+ */
+BOOST_AUTO_TEST_CASE( InCircuitTestPointImport )
+{
+    PCB_IO_PADS plugin;
+
+    wxString filename =
+            KI_TEST::GetPcbnewTestDataDir() + "plugins/pads/synthetic_testpoint.asc";
+
+    std::unique_ptr<BOARD> board = plugin.LoadBoard( filename, nullptr, nullptr );
+
+    BOOST_REQUIRE( board != nullptr );
+
+    // R1 (1 part) + 2 test point footprints = 3 total
+    BOOST_CHECK_EQUAL( board->Footprints().size(), 3u );
+
+    FOOTPRINT* tpBottom = nullptr;
+    FOOTPRINT* tpTop    = nullptr;
+
+    for( FOOTPRINT* fp : board->Footprints() )
+    {
+        if( fp->GetValue() == wxT( "TP_BOTTOM_SMD" ) )
+            tpBottom = fp;
+        else if( fp->GetValue() == wxT( "TP_TOP_SMD" ) )
+            tpTop = fp;
+    }
+
+    // TP_BOTTOM_SMD: stack has soldermask bottom (layer 28) -> must land on B.Cu
+    BOOST_REQUIRE_MESSAGE( tpBottom, "TP_BOTTOM_SMD test point footprint should exist" );
+    BOOST_CHECK_EQUAL( tpBottom->Pads().size(), 1u );
+
+    if( tpBottom->Pads().size() == 1 )
+    {
+        PAD* pad = tpBottom->Pads().front();
+        BOOST_CHECK_MESSAGE( pad->IsOnLayer( B_Cu ),
+                             "TP_BOTTOM_SMD pad should be on B.Cu" );
+        BOOST_CHECK_MESSAGE( !pad->IsOnLayer( F_Cu ),
+                             "TP_BOTTOM_SMD pad should not be on F.Cu" );
+
+        // Pad size: 1200000 BASIC * 2/3 = 800000 nm (0.8mm).  Allow 5% tolerance.
+        int padSize = pad->GetSize( PADSTACK::ALL_LAYERS ).x;
+        BOOST_CHECK_MESSAGE( padSize > 700000 && padSize < 900000,
+                             "TP_BOTTOM_SMD pad size " << padSize << " should be ~800000 nm" );
+    }
+
+    // TP_TOP_SMD: explicit top copper pad (layer -2) -> must land on F.Cu
+    BOOST_REQUIRE_MESSAGE( tpTop, "TP_TOP_SMD test point footprint should exist" );
+    BOOST_CHECK_EQUAL( tpTop->Pads().size(), 1u );
+
+    if( tpTop->Pads().size() == 1 )
+    {
+        PAD* pad = tpTop->Pads().front();
+        BOOST_CHECK_MESSAGE( pad->IsOnLayer( F_Cu ),
+                             "TP_TOP_SMD pad should be on F.Cu" );
+        BOOST_CHECK_MESSAGE( !pad->IsOnLayer( B_Cu ),
+                             "TP_TOP_SMD pad should not be on B.Cu" );
+
+        int padSize = pad->GetSize( PADSTACK::ALL_LAYERS ).x;
+        BOOST_CHECK_MESSAGE( padSize > 700000 && padSize < 900000,
+                             "TP_TOP_SMD pad size " << padSize << " should be ~800000 nm" );
+    }
+
+    // Test point positions must NOT also appear as bare PCB_VIA objects.
+    // Before the fix, loadTracksAndVias() placed a PCB_VIA at each test point
+    // position, creating a duplicate and causing DRC open-connection errors.
+    VECTOR2I tpBottomPos( 0, 0 );
+    VECTOR2I tpTopPos( 0, 0 );
+
+    if( tpBottom )
+        tpBottomPos = tpBottom->GetPosition();
+
+    if( tpTop )
+        tpTopPos = tpTop->GetPosition();
+
+    for( PCB_TRACK* trk : board->Tracks() )
+    {
+        PCB_VIA* via = dynamic_cast<PCB_VIA*>( trk );
+
+        if( !via )
+            continue;
+
+        VECTOR2I pos = via->GetPosition();
+
+        BOOST_CHECK_MESSAGE( pos != tpBottomPos,
+                             "TP_BOTTOM_SMD position should not have a bare PCB_VIA" );
+        BOOST_CHECK_MESSAGE( pos != tpTopPos,
+                             "TP_TOP_SMD position should not have a bare PCB_VIA" );
+    }
+}
+
+
+/**
  * Issue #23856: PADS PCB import got text and pad details wrong.
  *
  *   1. Free text containing non-ASCII bytes (e.g. the copyright sign) was
@@ -1783,7 +1778,7 @@ BOOST_AUTO_TEST_CASE( Issue23856_TextAndPadOrientation )
     wxString filename = KI_TEST::GetPcbnewTestDataDir() + "plugins/pads/issue23856.asc";
 
     std::unique_ptr<BOARD> board;
-    board.reset( plugin.LoadBoard( filename, nullptr, nullptr, nullptr ) );
+    board = plugin.LoadBoard( filename, nullptr, nullptr );
     BOOST_REQUIRE( board != nullptr );
 
     // Issue 1 + 3: free text with the copyright character must survive import,
@@ -1876,7 +1871,7 @@ BOOST_AUTO_TEST_CASE( Issue23392_ThermalReliefGap )
     PCB_IO_PADS plugin;
     wxString filename = KI_TEST::GetPcbnewTestDataDir() + "plugins/pads/issue23393/demo.asc";
 
-    std::unique_ptr<BOARD> board( plugin.LoadBoard( filename, nullptr, nullptr, nullptr ) );
+    std::unique_ptr<BOARD> board = plugin.LoadBoard( filename, nullptr, nullptr );
     BOOST_REQUIRE( board != nullptr );
 
     auto findFP = [&]( const wxString& aRef ) -> FOOTPRINT*
@@ -1954,7 +1949,7 @@ BOOST_AUTO_TEST_CASE( Issue23241_V5Parts )
     wxString filename =
             KI_TEST::GetPcbnewTestDataDir() + "plugins/pads/issue23241/partsandattr.asc";
 
-    std::unique_ptr<BOARD> board( plugin.LoadBoard( filename, nullptr, nullptr, nullptr ) );
+    std::unique_ptr<BOARD> board = plugin.LoadBoard( filename, nullptr, nullptr );
 
     BOOST_REQUIRE( board != nullptr );
 
@@ -2028,7 +2023,7 @@ BOOST_AUTO_TEST_CASE( Issue23297_RfPadCornerRadius )
 
     wxString filename = KI_TEST::GetPcbnewTestDataDir() + "plugins/pads/issue23297.asc";
 
-    std::unique_ptr<BOARD> board( plugin.LoadBoard( filename, nullptr, nullptr, nullptr ) );
+    std::unique_ptr<BOARD> board = plugin.LoadBoard( filename, nullptr, nullptr );
 
     BOOST_REQUIRE( board != nullptr );
 
@@ -2127,7 +2122,7 @@ BOOST_AUTO_TEST_CASE( Issue25274_IndirectDecalGeometry )
 
     wxString filename = KI_TEST::GetPcbnewTestDataDir() + "plugins/pads/issue25274.asc";
 
-    std::unique_ptr<BOARD> board( plugin.LoadBoard( filename, nullptr, nullptr, nullptr ) );
+    std::unique_ptr<BOARD> board = plugin.LoadBoard( filename, nullptr, nullptr );
 
     BOOST_REQUIRE( board != nullptr );
 
@@ -2159,6 +2154,39 @@ BOOST_AUTO_TEST_CASE( Issue25274_IndirectDecalGeometry )
         BOOST_CHECK_SMALL( std::abs( std::abs( offset.x ) - pcbIUScale.mmToIU( 0.41 ) ), tolerance );
         BOOST_CHECK_SMALL( std::abs( std::abs( offset.y ) - pcbIUScale.mmToIU( 0.335 ) ), tolerance );
     }
+}
+
+
+BOOST_AUTO_TEST_CASE( Issue25616_BoardDesignRules )
+{
+    PCB_IO_PADS plugin;
+
+    wxString filename = KI_TEST::GetPcbnewTestDataDir() + "plugins/pads/issue25616/260806.asc";
+
+    std::unique_ptr<BOARD> board = plugin.LoadBoard( filename, nullptr, nullptr );
+
+    BOOST_REQUIRE( board != nullptr );
+
+    SETTINGS_MANAGER settingsManager;
+    settingsManager.LoadProject( "" );
+    board->SetProject( &settingsManager.Prj() );
+
+    BOARD_DESIGN_SETTINGS& bds = board->GetDesignSettings();
+    std::shared_ptr<NETCLASS> defaultNc = bds.m_NetSettings->GetDefaultNetclass();
+
+    BOOST_REQUIRE( defaultNc != nullptr );
+
+    // Rule set 1 of the file is 228600 and 225000 BASIC units, i.e. 6 mil and 0.15 mm
+    BOOST_CHECK_EQUAL( defaultNc->GetClearance(), 152400 );
+    BOOST_CHECK_EQUAL( defaultNc->GetTrackWidth(), 150000 );
+    BOOST_CHECK_EQUAL( bds.m_TrackMinWidth, 150000 );
+    BOOST_CHECK_EQUAL( bds.m_HoleToHoleMin, 152400 );
+    BOOST_CHECK_EQUAL( bds.m_CopperEdgeClearance, 152400 );
+
+    // The file declares no minimum via rules so KiCad's own values must stand
+    BOARD defaults;
+    BOOST_CHECK_EQUAL( bds.m_ViasMinSize, defaults.GetDesignSettings().m_ViasMinSize );
+    BOOST_CHECK_EQUAL( bds.m_MinThroughDrill, defaults.GetDesignSettings().m_MinThroughDrill );
 }
 
 

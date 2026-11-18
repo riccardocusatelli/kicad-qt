@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef DRC_RE_BOOL_INPUT_CONSTRAINT_DATA_H_
@@ -37,9 +33,8 @@ public:
     {
     }
 
-    explicit DRC_RE_BOOL_INPUT_CONSTRAINT_DATA( int aId, int aParentId, bool aBoolInputValue,
-                                                const wxString& aRuleName ) :
-            DRC_RE_BASE_CONSTRAINT_DATA( aId, aParentId, aRuleName ),
+    explicit DRC_RE_BOOL_INPUT_CONSTRAINT_DATA( int aId, bool aBoolInputValue, const wxString& aRuleName ) :
+            DRC_RE_BASE_CONSTRAINT_DATA( aId, aRuleName ),
             m_boolInputValue( aBoolInputValue )
     {
     }
@@ -51,9 +46,10 @@ public:
     std::vector<DRC_RE_FIELD_POSITION> GetFieldPositions() const override
     {
         // Positions measured from constraint_vias_under_smd.png (~280x160)
-        // Format: { xStart, xEnd, yCenter, tabOrder }
+        // Format: { xStart, xEnd, yCenter }
         return {
-            { 90, 205, 162, 1, _( "Disallow" ), LABEL_POSITION::RIGHT }, // checkbox (bottom left corner)
+            { 90, 205, 162, _( "Disallow" ), LABEL_POSITION::RIGHT,
+              _( "Forbid the matched items entirely" ) }, // checkbox (bottom left corner)
         };
     }
 

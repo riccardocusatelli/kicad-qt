@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef KIPLATFORM_UI_H_
@@ -24,8 +24,10 @@
 #include <wx/cursor.h>
 
 class wxChoice;
+class wxDataViewColumn;
 class wxDataViewCtrl;
 class wxDialog;
+class wxKeyEvent;
 class wxNonOwnedWindow;
 class wxTopLevelWindow;
 class wxWindow;
@@ -125,9 +127,26 @@ namespace KIPLATFORM
         double GetContentScaleFactor( const wxWindow* aWindow );
 
         /**
+         * Return the refresh rate in Hz of the display showing most of the window, or 0 if unknown.
+         */
+        double GetDisplayRefreshRate( const wxWindow* aWindow );
+
+        /**
          * Return the background and foreground colors for info bars in the current scheme
          */
         void GetInfoBarColours( wxColour& aFGColour, wxColour& aBGColour );
+
+        /**
+         * Create a window for widgets that are shown over a canvas without taking space from it.
+         *
+         * This is only needed where a child of the canvas cannot be drawn above its OpenGL
+         * surface.  The window stays at the top left corner of the canvas and above its surface,
+         * and the caller sets its size and shows it.
+         *
+         * @param aCanvas is the window to cover, which owns the new window
+         * @return the window, or nullptr if the widgets can be children of the canvas
+         */
+        wxWindow* CreateCanvasOverlay( wxWindow* aCanvas );
 
         /**
          * Tries to determine the size of the viewport of a scrollable widget (wxDataViewCtrl, wxGrid)
@@ -153,6 +172,10 @@ namespace KIPLATFORM
          * On GTK, this requires an active X11 display.
          */
         bool SupportsKeyState();
+
+        wxKeyEvent GetNativePopupDismissalEvent();
+
+        bool PrepareChoicePopup( wxWindow* aControl );
 
         /**
          * Returns the mouse position in screen coordinates.
@@ -195,12 +218,28 @@ namespace KIPLATFORM
         void InfiniteDragReleaseWindow();
 
         /**
-         * Ensure that a window is visible on the screen.  On MacOS, this will make it visible
-         * in all Spaces.  Other platforms are nops.
+         * Prepare a top-level window for reliable position round-tripping.
          *
-         * @param aWindow window to make visible
+         * On GTK/X11, default window gravity lets window-manager decorations affect the
+         * coordinates returned by wxWindow::GetPosition().  Some window managers, notably
+         * i3, can then shift a restored top-level window each time it is shown.  Other
+         * platforms are nops.
+         *
+         * @param aWindow window to prepare
          */
-        void EnsureVisible( wxWindow* aWindow );
+        void StabilizeWindowPosition( wxWindow* aWindow );
+
+        /**
+         * Return the point that wxWindow::Move() needs to put a stabilized window back where it is.
+         *
+         * Static gravity makes GTK place a window by its client origin, while GetPosition() reports
+         * the origin of the decorations.  On GTK the point is pulled down and right as needed to put
+         * the decorations back inside the work area.  Other platforms, and hidden windows, return
+         * GetPosition().
+         *
+         * @param aWindow window previously prepared by StabilizeWindowPosition()
+         */
+        wxPoint GetRestorablePosition( wxWindow* aWindow );
 
         /**
          * Intended to set the floating window level in macOS on a window
@@ -237,6 +276,18 @@ namespace KIPLATFORM
         void AllowNetworkFileSystems( wxDialog* aDialog );
 
         /**
+         * Display server types reported by GetNativeWindowHandles().
+         */
+        enum NATIVE_DISPLAY_TYPE
+        {
+            DISPLAY_UNKNOWN  = 0,
+            DISPLAY_X11      = 1,
+            DISPLAY_WAYLAND  = 2,
+            DISPLAY_WIN32    = 3,
+            DISPLAY_COCOA    = 4,
+        };
+
+        /**
          * Cancel any pending scroll-to-item request on @p aCtrl.
          *
          * GtkTreeView keeps a "scroll_to_path" reference that survives across model
@@ -249,6 +300,7 @@ namespace KIPLATFORM
          * controls do not exhibit this race.
          */
         void CancelPendingScroll( wxDataViewCtrl* aCtrl );
+<<<<<<< b2e17e0a
 
         /**
          * Sets the block reason why the window/application is preventing OS shutdown.
@@ -268,6 +320,63 @@ namespace KIPLATFORM
          * @param aWindow that has a shutdown block reason set
          */
         void RemoveShutdownBlockReason( wxWindow* aWindow );
+||||||| 1304b76aad
+=======
+
+        /**
+         * The width last asked of aColumn, by SetWidth or by the user dragging its border.
+         *
+         * wxGTK reports the width GTK last laid out, which lags a SetWidth until the next
+         * layout, so reading it back right after setting it returns the old width.  The
+         * generic control used on MSW also reports the stretch it gives its last column.
+         */
+        int GetColumnWidth( const wxDataViewColumn* aColumn );
+
+        /**
+         * Tag a top-level window with the freedesktop application id of its installed
+         * launcher, setting the X11 WM_CLASS and, on Wayland, the surface application id.
+         *
+         * wxGTK derives the X11 res_class from the human-facing application display name and
+         * only feeds the Wayland application id (from the class name) on wx >= 3.3.1.  Neither
+         * matches the installed .desktop launcher, so a taskbar that groups by WM_CLASS
+         * mis-associates the windows with an unrelated application (wrong icon, name, and
+         * group).  Setting the id explicitly restores the association.  No-op on MSW and macOS,
+         * where the application identity comes from the AppUserModelID / bundle identifier.
+         *
+         * May be called before the window is realized; the GTK backend defers applying the hint
+         * to the realize/map signals, and also applies it immediately if already realized.
+         *
+         * @param aWindow is the top-level window to tag
+         * @param aClass is the desktop application id, e.g. org.kicad.kicad
+         */
+        void SetWMClass( wxWindow* aWindow, const wxString& aClass );
+
+        /**
+         * Get the native handles needed to create a GPU surface for \a aWindow.
+         *
+         * @param aHandle [out] receives the X11 Window, wl_surface*, HWND or NSView*, or nullptr on failure.
+         * @param aDisplay [out] receives the X11 Display* or wl_display*, otherwise nullptr.
+         * @param aDisplayType [out] receives a NATIVE_DISPLAY_TYPE when not nullptr.
+         */
+        void GetNativeWindowHandles( wxWindow* aWindow, void** aHandle, void** aDisplay,
+                                     int* aDisplayType = nullptr );
+
+        /**
+         * Prepare a realized widget for Vulkan or Metal rendering, before its first present.
+         *
+         * On GTK3/X11 this stops GTK's double-buffer blit from overwriting the GPU output. Other
+         * platforms need nothing.
+         */
+        void PrepareForExternalRendering( wxWindow* aWindow );
+
+        /**
+         * Keep a child visible on top of a parent prepared with PrepareForExternalRendering().
+         *
+         * On GTK3/X11 a child is painted into its parent's window, where the next present overwrites it.
+         * This makes the realized child's window native so the present is clipped around it.
+         */
+        void KeepAboveExternalRendering( wxWindow* aChild );
+>>>>>>> ed8c16703e
     }
 }
 

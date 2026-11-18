@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -35,9 +31,9 @@
 #include <geometry/geometry_utils.h>
 #include <plotters/plotter.h>
 #include <settings/color_settings.h>
-#include <trigo.h>
+#include <api/api_utils.h>
+#include <api/schematic/schematic_types.pb.h>
 
-#include <wx/mstream.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
 #include <core/ki_assert.h>
@@ -123,6 +119,64 @@ void SCH_BITMAP::Move( const VECTOR2I& aMoveVector )
 }
 
 
+void SCH_BITMAP::Serialize( google::protobuf::Any& aContainer ) const
+{
+    using namespace kiapi::common;
+
+    kiapi::schematic::types::SchematicImage image;
+
+    image.mutable_id()->set_value( m_Uuid.AsStdString() );
+    PackVector2( *image.mutable_position(), m_referenceImage.GetPosition(), schIUScale );
+    PackVector2( *image.mutable_transform_origin_offset(), m_referenceImage.GetTransformOriginOffset(), schIUScale );
+
+    image.mutable_image_scale()->set_value( m_referenceImage.GetImageScale() );
+    image.set_locked( IsLocked() ? types::LockedState::LS_LOCKED : types::LockedState::LS_UNLOCKED );
+
+    m_referenceImage.PackToBytes( *image.mutable_image_data() );
+
+    kiapi::common::PackCustomProperties( image.mutable_custom_properties(), *this );
+
+    image.mutable_orientation()->set_value_degrees( m_referenceImage.GetOrientation().AsDegrees() );
+    image.set_opacity( m_referenceImage.GetOpacity() );
+
+    if( !aContainer.PackFrom( image ) )
+        KI_FAIL_MSG( wxT( "Failed to pack SCH_BITMAP" ) );
+}
+
+
+bool SCH_BITMAP::Deserialize( const google::protobuf::Any& aContainer )
+{
+    using namespace kiapi::common;
+
+    kiapi::schematic::types::SchematicImage image;
+
+    if( !aContainer.UnpackTo( &image ) )
+        return false;
+
+    const_cast<KIID&>( m_Uuid ) = KIID( image.id().value() );
+
+    if( !image.image_data().empty() )
+    {
+        if( !m_referenceImage.UnpackFromBytes( image.image_data() ) )
+            return false;
+    }
+
+    if( image.has_image_scale() )
+        m_referenceImage.SetImageScale( image.image_scale().value() );
+
+    SetPosition( UnpackVector2( image.position(), schIUScale ) );
+    m_referenceImage.SetTransformOriginOffset( UnpackVector2( image.transform_origin_offset(), schIUScale ) );
+
+    SetLocked( image.locked() == types::LockedState::LS_LOCKED );
+    kiapi::common::UnpackCustomProperties( image.custom_properties(), *this );
+
+    m_referenceImage.SetOrientation( EDA_ANGLE( image.orientation().value_degrees(), DEGREES_T ) );
+    m_referenceImage.SetOpacity( image.opacity() );
+
+    return true;
+}
+
+
 void SCH_BITMAP::MirrorVertically( int aCenter )
 {
     m_referenceImage.Flip( VECTOR2I( 0, aCenter ), FLIP_DIRECTION::TOP_BOTTOM );
@@ -176,11 +230,10 @@ void SCH_BITMAP::Plot( PLOTTER* aPlotter, bool aBackground, const SCH_PLOT_OPTS&
 {
     if( aBackground )
     {
-        RENDER_SETTINGS* cfg = aPlotter->RenderSettings();
+        const RENDER_SETTINGS& cfg = *aPlotter->RenderSettings();
 
-        m_referenceImage.GetImage().PlotImage( aPlotter, GetPosition(),
-                                               cfg->GetLayerColor( GetLayer() ),
-                                               cfg->GetDefaultPenWidth() );
+        m_referenceImage.PlotImage( aPlotter, GetPosition(), cfg.GetLayerColor( GetLayer() ),
+                                    cfg.GetDefaultPenWidth() );
     }
 }
 
@@ -300,6 +353,30 @@ void SCH_BITMAP::SetHeight( int aHeight )
 }
 
 
+EDA_ANGLE SCH_BITMAP::GetOrientation() const
+{
+    return m_referenceImage.GetOrientation();
+}
+
+
+void SCH_BITMAP::SetOrientation( EDA_ANGLE aAngle )
+{
+    m_referenceImage.SetOrientation( aAngle );
+}
+
+
+double SCH_BITMAP::GetOpacity() const
+{
+    return m_referenceImage.GetOpacity();
+}
+
+
+void SCH_BITMAP::SetOpacity( double aOpacity )
+{
+    m_referenceImage.SetOpacity( aOpacity );
+}
+
+
 static struct SCH_BITMAP_DESC
 {
     SCH_BITMAP_DESC()
@@ -309,40 +386,45 @@ static struct SCH_BITMAP_DESC
         propMgr.InheritsAfter( TYPE_HASH( SCH_BITMAP ), TYPE_HASH( SCH_ITEM ) );
 
         propMgr.AddProperty( new PROPERTY<SCH_BITMAP, int>( _HKI( "Position X" ),
-                                     &SCH_BITMAP::SetX, &SCH_BITMAP::GetX,
-                                     PROPERTY_DISPLAY::PT_COORD ) );
+                    &SCH_BITMAP::SetX, &SCH_BITMAP::GetX, PROPERTY_DISPLAY::PT_COORD ) );
 
 
         propMgr.AddProperty( new PROPERTY<SCH_BITMAP, int>( _HKI( "Position Y" ),
-                                     &SCH_BITMAP::SetY, &SCH_BITMAP::GetY,
-                                     PROPERTY_DISPLAY::PT_COORD ) );
+                    &SCH_BITMAP::SetY, &SCH_BITMAP::GetY, PROPERTY_DISPLAY::PT_COORD ) );
 
         const wxString groupImage = _HKI( "Image Properties" );
 
+        // clang-format off
         propMgr.AddProperty( new PROPERTY<SCH_BITMAP, double>( _HKI( "Scale" ),
-                                     &SCH_BITMAP::SetImageScale, &SCH_BITMAP::GetImageScale ),
-                             groupImage );
+                    &SCH_BITMAP::SetImageScale, &SCH_BITMAP::GetImageScale ),
+                    groupImage );
 
         propMgr.AddProperty( new PROPERTY<SCH_BITMAP, int>( _HKI( "Transform Offset X" ),
-                                     &SCH_BITMAP::SetTransformOriginOffsetX,
-                                     &SCH_BITMAP::GetTransformOriginOffsetX,
-                                     PROPERTY_DISPLAY::PT_COORD, ORIGIN_TRANSFORMS::ABS_X_COORD ),
-                             groupImage );
+                    &SCH_BITMAP::SetTransformOriginOffsetX, &SCH_BITMAP::GetTransformOriginOffsetX,
+                    PROPERTY_DISPLAY::PT_COORD, ORIGIN_TRANSFORMS::ABS_X_COORD ),
+                    groupImage );
 
         propMgr.AddProperty( new PROPERTY<SCH_BITMAP, int>( _HKI( "Transform Offset Y" ),
-                                     &SCH_BITMAP::SetTransformOriginOffsetY,
-                                     &SCH_BITMAP::GetTransformOriginOffsetY,
-                                     PROPERTY_DISPLAY::PT_COORD, ORIGIN_TRANSFORMS::ABS_Y_COORD ),
-                             groupImage );
+                    &SCH_BITMAP::SetTransformOriginOffsetY, &SCH_BITMAP::GetTransformOriginOffsetY,
+                    PROPERTY_DISPLAY::PT_COORD, ORIGIN_TRANSFORMS::ABS_Y_COORD ),
+                    groupImage );
+
+        propMgr.AddProperty( new PROPERTY<SCH_BITMAP, EDA_ANGLE>( _HKI( "Orientation" ),
+                    &SCH_BITMAP::SetOrientation, &SCH_BITMAP::GetOrientation,
+                    PROPERTY_DISPLAY::PT_DECIDEGREE ),
+                    groupImage );
+
+        propMgr.AddProperty( new PROPERTY<SCH_BITMAP, double>( _HKI( "Opacity" ),
+                    &SCH_BITMAP::SetOpacity, &SCH_BITMAP::GetOpacity ),
+                    groupImage );
 
         propMgr.AddProperty( new PROPERTY<SCH_BITMAP, int>( _HKI( "Width" ),
-                                     &SCH_BITMAP::SetWidth, &SCH_BITMAP::GetWidth,
-                                     PROPERTY_DISPLAY::PT_COORD ),
-                             groupImage );
+                    &SCH_BITMAP::SetWidth, &SCH_BITMAP::GetWidth, PROPERTY_DISPLAY::PT_COORD ),
+                    groupImage );
 
         propMgr.AddProperty( new PROPERTY<SCH_BITMAP, int>( _HKI( "Height" ),
-                                     &SCH_BITMAP::SetHeight, &SCH_BITMAP::GetHeight,
-                                     PROPERTY_DISPLAY::PT_COORD ),
-                             groupImage );
+                    &SCH_BITMAP::SetHeight, &SCH_BITMAP::GetHeight, PROPERTY_DISPLAY::PT_COORD ),
+                    groupImage );
+        // clang-format on
     }
 } _SCH_BITMAP_DESC;

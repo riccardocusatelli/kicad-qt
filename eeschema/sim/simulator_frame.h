@@ -18,11 +18,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef SIMULATOR_FRAME_H
@@ -35,12 +31,14 @@
 #include <kiway_player.h>
 #include <toolkit/toolkit_types.h>
 #include <dialogs/dialog_sim_command.h>
+#include <reporter.h>
 
 #include <wx/event.h>
 
 #include <list>
 #include <memory>
 #include <map>
+#include <vector>
 
 class SCH_EDIT_FRAME;
 class SCH_SYMBOL;
@@ -51,6 +49,17 @@ class ACTION_TOOLBAR;
 class SPICE_SIMULATOR;
 
 
+struct SIM_CONSOLE_ENTRY
+{
+    SEVERITY severity;
+    wxString text;
+};
+
+
+/// @return \a aSignal without its " (gain)", " (phase)" or " (amplitude)" suffix.
+wxString SimSignalBaseName( const wxString& aSignal );
+
+
 /**
  * Simple error container for failure to init the simulation engine
  * and ultimately abort the frame construction
@@ -58,7 +67,7 @@ class SPICE_SIMULATOR;
 class SIMULATOR_INIT_ERR : public std::runtime_error
 {
 public:
-    explicit SIMULATOR_INIT_ERR(const std::string& what_arg)
+    explicit SIMULATOR_INIT_ERR( const std::string& what_arg )
         : std::runtime_error(what_arg) {}
 };
 
@@ -124,6 +133,15 @@ public:
      */
     const std::vector<wxString> Signals();
 
+    /// @return the schematic signals without the user defined ones.
+    const std::vector<wxString>& NativeSignals();
+
+    /// @return the schematic net names.
+    const std::vector<wxString>& Netnames();
+
+    /// @return the component voltages, such as "V(R1)".
+    std::vector<wxString> DeviceVoltages();
+
     const std::map<int, wxString>& UserDefinedSignals();
 
     void SetUserDefinedSignals( const std::map<int, wxString>& aSignals );
@@ -139,7 +157,6 @@ public:
      * Add a current trace for a given device to the current plot.
      *
      * @param aDeviceName is the device name (e.g. R1, C1).
-     * @param aParam is the current type (e.g. I, Ic, Id).
      */
     void AddCurrentTrace( const wxString& aDeviceName );
 
@@ -161,6 +178,11 @@ public:
      * Toggle dark-mode of the plot tabs.
      */
     void ToggleDarkModePlots();
+
+    /**
+     * Toggle the current S-parameter tab between Smith chart and amplitude/phase views.
+     */
+    void ToggleSmithChart();
 
     void ShowChangedLanguage() override;
 
@@ -194,7 +216,7 @@ public:
 
     bool SimFinished() const { return m_simFinished; }
 
-    wxString TakeSimReportMessages();
+    std::vector<SIM_CONSOLE_ENTRY> TakeSimReportEntries();
 
     // Simulator doesn't host a canvas
     TOOLKIT_WINDOW* GetToolCanvas() const override { return nullptr; }

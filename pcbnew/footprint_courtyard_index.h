@@ -22,7 +22,7 @@
 
 #include <functional>
 
-#include <geometry/rtree.h>
+#include <geometry/rtree/packed_rtree.h>
 #include <math/box2.h>
 
 class BOARD;
@@ -49,7 +49,7 @@ public:
                            const std::function<bool( FOOTPRINT* )>& aVisitor ) const;
 
 private:
-    RTree<FOOTPRINT*, int, 2, double> m_tree;
+    KIRTREE::PACKED_RTREE<FOOTPRINT*, int, 2> m_tree;
 };
 
 #endif // FOOTPRINT_COURTYARD_INDEX_H

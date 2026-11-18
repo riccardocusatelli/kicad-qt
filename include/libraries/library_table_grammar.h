@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef LIBRARY_TABLE_GRAMMAR_H
@@ -57,7 +57,8 @@ struct RPAREN : TAO_PEGTL_STRING( ")" ) {};
 // An s-expression identifier token
 struct TOKEN : plus< not_one< '(', ')', ' ', '\t', '\n', '\r' > > {};
 
-struct QUOTED_TEXT : if_must< one< '"' >, until< one< '"' > > > {};
+struct ESCAPE : seq< one< '\\' >, any > {};
+struct QUOTED_TEXT : if_must< one< '"' >, until< one< '"' >, sor< ESCAPE, any > > > {};
 
 // Inner expression
 struct SEXPR_CONTENT : star<

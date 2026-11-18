@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef DRC_RE_NUMERIC_INPUT_CONSTRAINT_DATA_H_
@@ -37,9 +33,8 @@ public:
     {
     }
 
-    explicit DRC_RE_NUMERIC_INPUT_CONSTRAINT_DATA( int aId, int aParentId,
-                                                   double aNumericInputValue, const wxString& aRuleName ) :
-            DRC_RE_BASE_CONSTRAINT_DATA( aId, aParentId, aRuleName ),
+    explicit DRC_RE_NUMERIC_INPUT_CONSTRAINT_DATA( int aId, double aNumericInputValue, const wxString& aRuleName ) :
+            DRC_RE_BASE_CONSTRAINT_DATA( aId, aRuleName ),
             m_numericInputValue( aNumericInputValue )
     {
     }
@@ -50,7 +45,7 @@ public:
 
     std::vector<DRC_RE_FIELD_POSITION> GetFieldPositions() const override
     {
-        return { { 20, 55, 32, 1 } };
+        return { { 20, 55, 32 } };
     }
 
     std::vector<wxString> GetConstraintClauses( const RULE_GENERATION_CONTEXT& aContext ) const override
@@ -58,12 +53,12 @@ public:
         wxString code = GetConstraintCode();
         wxString valueStr;
 
-        if( code == "via_count" || code == "min_resolved_spokes" )
+        if( code == "via_count" || code == "min_resolved_spokes" || code == "microvia_stack_depth" )
             valueStr = wxString::Format( "%d", (int) m_numericInputValue );
         else
             valueStr = formatDouble( m_numericInputValue );
 
-        if( code == "via_count" )
+        if( code == "via_count" || code == "microvia_stack_depth" || code == "hole_aspect_ratio" )
         {
             return { wxString::Format( "(constraint %s (max %s))", code, valueStr ) };
         }
@@ -91,6 +86,8 @@ public:
     void SetNumericInputValue( double aNumericInput ) { m_numericInputValue = aNumericInput; }
 
     virtual bool IsIntegerOnly() const { return false; }
+
+    virtual bool IsUnitless() const { return false; }
 
     VALIDATION_RESULT Validate() const override
     {

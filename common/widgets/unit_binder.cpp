@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <wx/clipbrd.h>
@@ -49,9 +45,9 @@ UNIT_BINDER::UNIT_BINDER( EDA_DRAW_FRAME* aParent, wxStaticText* aLabel, wxWindo
 {
 }
 
-UNIT_BINDER::UNIT_BINDER( UNITS_PROVIDER* aUnitsProvider, wxWindow* aEventSource,
-                          wxStaticText* aLabel, wxWindow* aValueCtrl, wxStaticText* aUnitLabel,
-                          bool aAllowEval, bool aBindFocusEvent ) :
+UNIT_BINDER::UNIT_BINDER( UNITS_PROVIDER* aUnitsProvider, wxWindow* aEventSource, wxStaticText* aLabel,
+                          wxWindow* aValueCtrl, wxStaticText* aUnitLabel, bool aAllowEval,
+                          bool aBindFocusEvent ) :
         m_bindFocusEvent( aBindFocusEvent ),
         m_label( aLabel ),
         m_valueCtrl( aValueCtrl ),
@@ -97,10 +93,20 @@ UNIT_BINDER::UNIT_BINDER( UNITS_PROVIDER* aUnitsProvider, wxWindow* aEventSource
     {
         wxClientDC dc( m_valueCtrl );
 
-        // Gives enough room to display a value in inches in textEntry
-        // 3 digits + '.' + 10 digits
-        wxSize     minSize = m_valueCtrl->GetMinSize();
-        int        minWidth = dc.GetTextExtent( wxT( "XXX.XXXXXXXXXX" ) ).GetWidth();
+        wxSize minSize = m_valueCtrl->GetMinSize();
+        int    minWidth;
+
+        if( m_iuScale->IU_PER_MM <= schIUScale.IU_PER_MM )
+        {
+            // PLEditor and SCH editors don't need as much room
+            minWidth = dc.GetTextExtent( wxT( "XXX.XXXXX" ) ).GetWidth();
+        }
+        else
+        {
+            // Gives enough room to display a value in inches in PCBNew
+            // 3 digits + '.' + 8 digits
+            minWidth = dc.GetTextExtent( wxT( "XXX.XXXXXXXX" ) ).GetWidth();
+        }
 
         if( minSize.GetWidth() < minWidth )
             m_valueCtrl->SetMinSize( wxSize( minWidth, minSize.GetHeight() ) );
@@ -191,37 +197,36 @@ void UNIT_BINDER::SetDataType( EDA_DATA_TYPE aDataType )
 
 void UNIT_BINDER::onUnitsChanged( wxCommandEvent& aEvent )
 {
-    EDA_BASE_FRAME* provider = static_cast<EDA_BASE_FRAME*>( aEvent.GetClientData() );
-
     if( !UnitsInvariant() )
     {
-        int temp = GetIntValue();
-
-        wxComboBox* const          combo = dynamic_cast<wxComboBox*>( m_valueCtrl );
-        std::vector<long long int> comboValues;
-
-        // Read out the current values
-        if( combo )
+        if( EDA_BASE_FRAME* provider = static_cast<EDA_BASE_FRAME*>( aEvent.GetClientData() ) )
         {
-            for( unsigned int i = 0; i < combo->GetCount(); i++ )
+            int temp = GetIntValue();
+
+            wxComboBox* const          combo = dynamic_cast<wxComboBox*>( m_valueCtrl );
+            std::vector<long long int> comboValues;
+
+            // Read out the current values
+            if( combo )
             {
-                const wxString value = combo->GetString( i );
-                long long int  conv = ValueFromString( *m_iuScale, m_units, value, m_dataType );
-                comboValues.push_back( conv );
+                for( unsigned int i = 0; i < combo->GetCount(); i++ )
+                {
+                    const wxString value = combo->GetString( i );
+                    long long int  conv = ValueFromString( *m_iuScale, m_units, value, m_dataType );
+                    comboValues.push_back( conv );
+                }
             }
+
+            SetUnits( provider->GetUserUnits() );
+            m_iuScale = &provider->GetIuScale();
+
+            // Re-populate the combo box with updated values
+            if( combo )
+                SetOptionsList( comboValues );
+
+            if( !IsIndeterminate() )
+                SetValue( temp );
         }
-
-        SetUnits( provider->GetUserUnits() );
-        m_iuScale = &provider->GetIuScale();
-
-        // Re-populate the combo box with updated values
-        if( combo )
-        {
-            SetOptionsList( comboValues );
-        }
-
-        if( !IsIndeterminate() )
-            SetValue( temp );
     }
 
     aEvent.Skip();
@@ -359,7 +364,7 @@ void UNIT_BINDER::onKillFocus( wxFocusEvent& aEvent )
 }
 
 
-wxString valueDescriptionFromLabel( wxStaticText* aLabel )
+static wxString valueDescriptionFromLabel( wxStaticText* aLabel )
 {
     wxString desc = aLabel->GetLabel();
 
@@ -378,6 +383,35 @@ void UNIT_BINDER::delayedFocusHandler( wxCommandEvent& )
 }
 
 
+UNIT_BINDER::RANGE_BOUND UNIT_BINDER::ConvertRangeBound( const EDA_IU_SCALE& aIuScale, EDA_UNITS aBoundUnits,
+                                                         double aBound, EDA_UNITS aDisplayUnits,
+                                                         EDA_DATA_TYPE aDataType )
+{
+    // StringFromValue scales the user value once per dimension (twice for area, thrice for
+    // volume), so invert that same chain to bring the bound into internal units.
+    int conversions = 1;
+
+    switch( aDataType )
+    {
+    case EDA_DATA_TYPE::AREA:     conversions = 2; break;
+    case EDA_DATA_TYPE::VOLUME:   conversions = 3; break;
+    case EDA_DATA_TYPE::UNITLESS: conversions = 0; break;
+    case EDA_DATA_TYPE::ANGLE:    conversions = 0; break;
+    default:                      conversions = 1; break;
+    }
+
+    double boundIU = aBound;
+
+    for( int i = 0; i < conversions; ++i )
+        boundIU = FromUserUnit( aIuScale, aBoundUnits, boundIU );
+
+    // GetText has no UNITLESS label, so asking for units text would assert
+    bool addUnitsText = aDataType != EDA_DATA_TYPE::UNITLESS;
+
+    return { boundIU, StringFromValue( aIuScale, aDisplayUnits, boundIU, addUnitsText, aDataType ) };
+}
+
+
 bool UNIT_BINDER::Validate( double aMin, double aMax, EDA_UNITS aUnits )
 {
     wxTextEntry* textEntry = dynamic_cast<wxTextEntry*>( m_valueCtrl );
@@ -389,14 +423,15 @@ bool UNIT_BINDER::Validate( double aMin, double aMax, EDA_UNITS aUnits )
         return true;
     }
 
-    // TODO: Validate() does not currently support m_dataType being anything other than DISTANCE
     // Note: aMin and aMax are not always given in internal units
-    if( GetValue() < FromUserUnit( *m_iuScale, aUnits, aMin ) )
+    RANGE_BOUND minBound = ConvertRangeBound( *m_iuScale, aUnits, aMin, m_units, m_dataType );
+    RANGE_BOUND maxBound = ConvertRangeBound( *m_iuScale, aUnits, aMax, m_units, m_dataType );
+
+    if( GetValue() < minBound.internalUnits )
     {
-        double val_min_iu = FromUserUnit( *m_iuScale, aUnits, aMin );
         m_errorMessage = wxString::Format( _( "%s must be at least %s." ),
                                            valueDescriptionFromLabel( m_label ),
-                                           StringFromValue( *m_iuScale, m_units, val_min_iu, true ) );
+                                           minBound.displayText );
 
         textEntry->SelectAll();
 
@@ -406,12 +441,11 @@ bool UNIT_BINDER::Validate( double aMin, double aMax, EDA_UNITS aUnits )
         return false;
     }
 
-    if( GetValue() > FromUserUnit( *m_iuScale, aUnits, aMax ) )
+    if( GetValue() > maxBound.internalUnits )
     {
-        double val_max_iu = FromUserUnit( *m_iuScale, aUnits, aMax );
         m_errorMessage = wxString::Format( _( "%s must be less than %s." ),
                                            valueDescriptionFromLabel( m_label ),
-                                           StringFromValue( *m_iuScale, m_units, val_max_iu, true ) );
+                                           maxBound.displayText );
 
         textEntry->SelectAll();
 

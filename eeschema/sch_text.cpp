@@ -16,15 +16,15 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "markup_parser.h"
+#include <google/protobuf/any.pb.h>
+
 #include <advanced_config.h>
+#include <api/api_utils.h>
+#include <api/schematic/schematic_types.pb.h>
 #include <base_units.h>
 #include <pgm_base.h>
 #include <sch_plotter.h>
@@ -43,6 +43,7 @@
 #include <project/net_settings.h>
 #include <core/mirror.h>
 #include <core/kicad_algo.h>
+#include <tool/tool_manager.h>
 #include <trigo.h>
 #include <markup_parser.h>
 #include <properties/property.h>
@@ -71,6 +72,49 @@ SCH_TEXT::SCH_TEXT( const SCH_TEXT& aText ) :
         EDA_TEXT( aText )
 {
     m_excludedFromSim = aText.m_excludedFromSim;
+}
+
+
+void SCH_TEXT::Serialize( google::protobuf::Any& aContainer ) const
+{
+    using namespace kiapi::common;
+
+    kiapi::schematic::types::SchematicText text;
+
+    text.mutable_id()->set_value( m_Uuid.AsStdString() );
+    text.set_locked( IsLocked() ? types::LockedState::LS_LOCKED : types::LockedState::LS_UNLOCKED );
+    text.set_exclude_from_sim( GetExcludedFromSim() );
+
+    EDA_TEXT::Serialize( *text.mutable_text(), schIUScale );
+
+    PackVector2( *text.mutable_text()->mutable_position(), GetPosition(), schIUScale );
+
+    PackCustomProperties( text.mutable_custom_properties(), *this );
+
+    if( !aContainer.PackFrom( text ) )
+        KI_FAIL_MSG( wxT( "Failed to pack SCH_TEXT" ) );
+}
+
+
+bool SCH_TEXT::Deserialize( const google::protobuf::Any& aContainer )
+{
+    using namespace kiapi::common;
+
+    kiapi::schematic::types::SchematicText text;
+
+    if( !aContainer.UnpackTo( &text ) )
+        return false;
+
+    const_cast<KIID&>( m_Uuid ) = KIID( text.id().value() );
+    SetLocked( text.locked() == types::LockedState::LS_LOCKED );
+    SetExcludedFromSim( text.exclude_from_sim() );
+    UnpackCustomProperties( text.custom_properties(), *this );
+
+    if( !EDA_TEXT::Deserialize( text.text(), schIUScale ) )
+        return false;
+
+    SetPosition( UnpackVector2( text.text().position(), schIUScale ) );
+    return true;
 }
 
 
@@ -235,6 +279,8 @@ void SCH_TEXT::swapData( SCH_ITEM* aItem )
 {
     SCH_TEXT* item = static_cast<SCH_TEXT*>( aItem );
 
+    std::swap( m_excludedFromSim, item->m_excludedFromSim );
+
     SwapText( *item );
     SwapAttributes( *item );
 }
@@ -257,7 +303,7 @@ bool SCH_TEXT::operator<( const SCH_ITEM& aItem ) const
         return GetPosition().y < other->GetPosition().y;
 
     if( GetExcludedFromSim() != other->GetExcludedFromSim() )
-        return GetExcludedFromSim() - other->GetExcludedFromSim();
+        return GetExcludedFromSim();
 
     return GetText() < other->GetText();
 }
@@ -316,7 +362,7 @@ const BOX2I SCH_TEXT::GetBoundingBox() const
 }
 
 
-wxString SCH_TEXT::GetShownText( const SCH_SHEET_PATH* aPath, bool aAllowExtraText, int aDepth ) const
+wxString SCH_TEXT::GetShownText( const SCH_SHEET_PATH* aPath, RESOLUTION_CONTEXT aContext, int aDepth ) const
 {
     // Use local depth counter so each text element starts fresh
     int depth = 0;
@@ -328,36 +374,36 @@ wxString SCH_TEXT::GetShownText( const SCH_SHEET_PATH* aPath, bool aAllowExtraTe
     else if( SCHEMATIC* schematic = Schematic() )
         sheet = schematic->CurrentSheet().Last();
 
-    std::function<bool( wxString* )> textResolver = [&]( wxString* token ) -> bool
+    std::function<bool( wxString* )> textResolver =
+            [&]( wxString* token ) -> bool
+            {
+                if( SCH_SYMBOL* sch_symbol = dynamic_cast<SCH_SYMBOL*>( m_parent ) )
+                {
+                    if( sch_symbol->ResolveTextVar( aPath, token, depth + 1 ) )
+                        return true;
+                }
+                else if( LIB_SYMBOL* lib_symbol = dynamic_cast<LIB_SYMBOL*>( m_parent ) )
+                {
+                    if( lib_symbol->ResolveTextVar( token, depth + 1 ) )
+                        return true;
+                }
+
+                if( sheet )
+                {
+                    if( sheet->ResolveTextVar( aPath, token, depth + 1 ) )
+                        return true;
+                }
+
+                return false;
+            };
+
+    wxString text = EDA_TEXT::GetShownText( aContext, depth );
+
+    if( HasTextVars() && aContext != RAW_VALUE )
     {
-        if( SCH_SYMBOL* sch_symbol = dynamic_cast<SCH_SYMBOL*>( m_parent ) )
-        {
-            if( sch_symbol->ResolveTextVar( aPath, token, depth + 1 ) )
-                return true;
-        }
-        else if( LIB_SYMBOL* lib_symbol = dynamic_cast<LIB_SYMBOL*>( m_parent ) )
-        {
-            if( lib_symbol->ResolveTextVar( token, depth + 1 ) )
-                return true;
-        }
-
-        if( sheet )
-        {
-            if( sheet->ResolveTextVar( aPath, token, depth + 1 ) )
-                return true;
-        }
-
-        return false;
-    };
-
-    wxString text = EDA_TEXT::GetShownText( aAllowExtraText, depth );
-
-    if( HasTextVars() )
         text = ResolveTextVars( text, &textResolver, depth );
-
-    // Convert escape markers back to literals for final display
-    text.Replace( wxT( "<<<ESC_DOLLAR:" ), wxT( "${" ) );
-    text.Replace( wxT( "<<<ESC_AT:" ), wxT( "@{" ) );
+        FinalizeTextVarExpansion( text, aContext );
+    }
 
     return text;
 }
@@ -386,8 +432,8 @@ wxString SCH_TEXT::GetHypertextTarget() const
 
 wxString SCH_TEXT::GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool aFull ) const
 {
-    return wxString::Format( _( "Graphic Text '%s'" ),
-                             aFull ? GetShownText( false ) : EllipsizeMenuText( GetText() ) );
+    return wxString::Format( _( "Graphic Text '%s'" ), aFull ? GetShownText( FOR_GUI )
+                                                             : EllipsizeMenuText( GetText() ) );
 }
 
 
@@ -523,7 +569,7 @@ void SCH_TEXT::Plot( PLOTTER* aPlotter, bool aBackground, const SCH_PLOT_OPTS& a
             attrs.m_Angle = ANGLE_VERTICAL;
 
         bool origHoriz = ( GetTextAngle() == ANGLE_HORIZONTAL );
-        bool screenHoriz = ( attrs.m_Angle == ANGLE_HORIZONTAL );
+        bool screenHoriz = ( attrs.m_Angle.GetAngle() == ANGLE_HORIZONTAL );
 
         // Check if the text reading direction is reversed by the transform
         // Flip H alignment when reversed
@@ -556,7 +602,7 @@ void SCH_TEXT::Plot( PLOTTER* aPlotter, bool aBackground, const SCH_PLOT_OPTS& a
 
         // Compute line positions
         wxArrayString strings_list;
-        wxStringSplit( GetShownText( nullptr, true ), strings_list, '\n' );
+        wxStringSplit( GetShownText( nullptr, FOR_CANVAS ), strings_list, '\n' );
 
         int lineCount = (int) strings_list.Count();
 
@@ -600,7 +646,7 @@ void SCH_TEXT::Plot( PLOTTER* aPlotter, bool aBackground, const SCH_PLOT_OPTS& a
 
         std::vector<VECTOR2I> positions;
         wxArrayString         strings_list;
-        wxStringSplit( GetShownText( sheet, true ), strings_list, '\n' );
+        wxStringSplit( GetShownText( sheet, FOR_CANVAS ), strings_list, '\n' );
         positions.reserve( strings_list.Count() );
 
         GetLinePositions( renderSettings, positions, (int) strings_list.Count() );
@@ -772,9 +818,9 @@ static struct SCH_TEXT_DESC
         propMgr.Mask( TYPE_HASH( SCH_TEXT ), TYPE_HASH( EDA_TEXT ), _HKI( "Height" ) );
         propMgr.Mask( TYPE_HASH( SCH_TEXT ), TYPE_HASH( EDA_TEXT ), _HKI( "Thickness" ) );
 
-        propMgr.AddProperty( new PROPERTY<SCH_TEXT, int>( _HKI( "Text Size" ), &SCH_TEXT::SetSchTextSize,
-                                                          &SCH_TEXT::GetSchTextSize, PROPERTY_DISPLAY::PT_SIZE ),
-                             _HKI( "Text Properties" ) );
+        propMgr.AddProperty( new PROPERTY<SCH_TEXT, int>( _HKI( "Text Size" ),
+                    &SCH_TEXT::SetSchTextSize, &SCH_TEXT::GetSchTextSize, PROPERTY_DISPLAY::PT_SIZE ),
+                    _HKI( "Text Properties" ) );
 
         // Orientation is exposed differently in schematic; mask the base for now
         propMgr.Mask( TYPE_HASH( SCH_TEXT ), TYPE_HASH( EDA_TEXT ), _HKI( "Orientation" ) );

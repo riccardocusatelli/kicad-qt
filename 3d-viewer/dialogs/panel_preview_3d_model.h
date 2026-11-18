@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PANEL_PREVIEW_3D_MODEL_H
@@ -33,8 +29,14 @@
 #include <tool/tools_holder.h>
 #include <3d_canvas/eda_3d_canvas.h>
 #include <3d_viewer_id.h>
+#include <3d_model_align.h>
 #include <3d_rendering/track_ball.h>
 #include <wx/event.h>
+#include <wx/timer.h>
+#include <array>
+#include <limits>
+#include <map>
+#include <math/vector3.h>
 
 // Define min and max parameter values
 #define MAX_SCALE          10000.0
@@ -63,6 +65,7 @@ class EMBEDDED_FILES;
 class BOARD;
 class BOARD_ADAPTER;
 class FOOTPRINT;
+class PCB_3D_BODY;
 #if defined(__linux__) || defined(__FreeBSD__)
 class SPNAV_VIEWER_PLUGIN;
 #else
@@ -110,7 +113,46 @@ public:
      */
     FOOTPRINT* GetDummyFootprint() const { return m_dummyFootprint; }
 
+    void SetExtrusionTransformMode( PCB_3D_BODY* aBody );
+
 private:
+    enum class ALIGN_STATE { IDLE, PICK_MODEL, PICK_FOOTPRINT, SOLVED };
+
+    void onAlign( wxCommandEvent& aEvent ) override;
+    void onAlignUpdateUI( wxUpdateUIEvent& aEvent ) override;
+    void onAlignKey( wxKeyEvent& aEvent );
+    void onAlignAnimation( wxTimerEvent& aEvent );
+    void tickAlignmentAnimation();
+    bool canAlign() const;
+    bool pickAlignment( const RAY& aRay );
+    void hoverAlignment( const std::optional<RAY>& aRay );
+    const S3DMODEL* alignmentModel();
+    void dismissAlignmentInfoBar();
+    void cancelAlignment();
+    void restoreAlignmentView();
+    void stopPicking();
+    void refreshAlignmentView();
+    void applyAlignment();
+
+    /** Region under the ray, as an index into m_alignRegions. */
+    std::optional<size_t> alignmentRegionAt( const RAY& aRay );
+
+    /** Model-space triangle soup of one region, for the selection overlay. */
+    std::vector<SFVEC3F> alignmentRegionTriangles( size_t aRegion ) const;
+
+    /** World-space triangle soup covering a pad's copper shape. */
+    std::vector<SFVEC3F> alignmentPadTriangles( const PAD& aPad ) const;
+
+    /** Transform carrying the selected model's geometry into world units. */
+    glm::mat4 alignmentModelMatrix() const;
+
+    /** Push the selection and roll-over overlays to the canvas. */
+    void updateAlignmentOverlays();
+
+    /** Slide the preview from its current placement to the solved one. */
+    void startAlignmentAnimation( const VECTOR3D& aRotation, const VECTOR3D& aOffset );
+    void stopAlignmentAnimation();
+
     /**
      * Load 3D relevant settings from the user configuration
      */
@@ -165,16 +207,16 @@ private:
 
     void evalRotationValue( TEXT_CTRL_EVAL* aRotationControl );
 
-	void View3DISO( wxCommandEvent& event ) override
+    void View3DISO( wxCommandEvent& event ) override
     {
-	    m_currentCamera.ToggleProjection();
+        m_currentCamera.ToggleProjection();
         m_previewPane->Refresh();
     }
 
     // turn ON or OFF options to show the board body. If OFF, solder paste, soldermask
     // and board body are hidden, to allows a good view of the 3D model and its pads.
     // Useful for 3D model placement
-	void setBodyStyleView( wxCommandEvent& event ) override;
+    void setBodyStyleView( wxCommandEvent& event ) override;
 
 	void View3DLeft( wxCommandEvent& event ) override
     {
@@ -193,6 +235,7 @@ private:
 
 	void View3DUpdate( wxCommandEvent& event ) override
     {
+        cancelAlignment();
         m_previewPane->ReloadRequest();
         m_previewPane->Refresh();
     }
@@ -222,6 +265,7 @@ private:
     PCB_BASE_FRAME*          m_parentFrame;
     EDA_3D_CANVAS*           m_previewPane;
     WX_INFOBAR*              m_infobar;
+    WX_INFOBAR*              m_alignmentInfoBar;
     BOARD_ADAPTER            m_boardAdapter;
     CAMERA&                  m_currentCamera;
     TRACK_BALL               m_trackBallCamera;
@@ -232,7 +276,32 @@ private:
     std::vector<FP_3DMODEL>* m_parentModelList;
     int                      m_selected;            /// Index into m_parentInfoList
 
+    ALIGN_STATE m_alignState = ALIGN_STATE::IDLE;
+    bool m_alignUpdating = false;
+    std::optional<std::bitset<LAYER_3D_END>> m_alignLayers;
+    std::optional<bool> m_alignBodyShown;
+    std::vector<MODEL_ALIGN::REGION> m_alignRegions;
+    std::vector<MODEL_ALIGN::ALIGN_SOLUTION> m_alignSolutions;
+    const S3DMODEL* m_alignGeometry = nullptr;
+    std::map<std::array<unsigned int, 2>, size_t> m_alignTriangleRegions;
+    size_t m_alignSeed = 0;
+    size_t m_alignSolution = 0;
+
+    std::vector<SFVEC3F> m_alignFaceTriangles;  ///< Picked face, kept until the move finishes.
+    std::optional<size_t> m_alignHoverRegion;
+    const PAD* m_alignHoverPad = nullptr;
+
+    wxTimer  m_alignAnimTimer;
+    int64_t  m_alignAnimStart = 0;
+    VECTOR3D m_alignAnimFromRotation;
+    VECTOR3D m_alignAnimFromOffset;
+    VECTOR3D m_alignAnimRotation;
+    VECTOR3D m_alignAnimOffset;
+    bool     m_alignAnimating = false;
+    size_t   m_dummySelectedModel = std::numeric_limits<size_t>::max();  ///< Selected model in the dummy footprint.
+
     EDA_UNITS                m_userUnits;
+    PCB_3D_BODY*             m_extrudedBody = nullptr;
     EMBEDDED_FILES*          m_localEmbeddedFiles = nullptr;
 
     /// The 3d viewer Render initial settings (must be saved and restored)

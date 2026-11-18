@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -28,6 +24,9 @@
 
 #ifndef REFDES_UTILS__H
 #define REFDES_UTILS__H
+
+#include <utility>
+#include <vector>
 
 #include <wx/string.h>
 
@@ -63,6 +62,22 @@ wxString GetRefDesUnannotated( const wxString& aRefDes );
  * @return         the suffix, or -1 if nothing found
  */
 int GetRefDesNumber( const wxString& aRefDes );
+
+/**
+ * Format a sorted list of reference designators, shortening consecutive sequences of three or
+ * more references into ranges.
+ */
+wxString FormatRefDesRanges( const std::vector<wxString>& aReferences, const wxString& aRefDelimiter,
+                             const wxString& aRefRangeDelimiter );
+
+/**
+ * Format references given as base and sheet suffix pairs, ranging bases within one suffix only.
+ *
+ * R1_M1 and R1_M2 are different channels, so they never form a range. Each suffix's references
+ * stay together, in the order their suffix first appears.
+ */
+wxString FormatRefDesRanges( const std::vector<std::pair<wxString, wxString>>& aBasesAndSuffixes,
+                             const wxString& aRefDelimiter, const wxString& aRefRangeDelimiter );
 
 } // namespace UTIL
 

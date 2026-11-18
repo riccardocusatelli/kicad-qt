@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <wx/file.h>
@@ -32,6 +28,7 @@
 #include <dialogs/panel_pl_editor_display_options.h>
 #include <dialogs/panel_pl_editor_color_settings.h>
 #include <dialogs/panel_grid_settings.h>
+#include <dialogs/panel_snapping.h>
 
 #include <dialogs/panel_toolbar_customization.h>
 #include <toolbars_pl_editor.h>
@@ -82,6 +79,10 @@ static struct IFACE : public KIFACE_GUI, public UNITS_PROVIDER
 
             return new PANEL_GRID_SETTINGS( aParent, this, frame, cfg, FRAME_PL_EDITOR );
         }
+
+        case PANEL_DS_SNAPPING:
+            return CreateSnappingPanel( aParent, GetAppSettings<PL_EDITOR_SETTINGS>( "pl_editor" ),
+                                        FRAME_PL_EDITOR );
 
         case PANEL_DS_COLORS:
             return new PANEL_PL_EDITOR_COLOR_SETTINGS( aParent );

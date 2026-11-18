@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -53,6 +49,8 @@ public:
     int EditField( const TOOL_EVENT& aEvent );
     int AutoplaceFields( const TOOL_EVENT& aEvent );
     int ChangeSymbols( const TOOL_EVENT& aEvent );
+    int SetVariantSymbol( const TOOL_EVENT& aEvent );
+    int ClearVariantSymbol( const TOOL_EVENT& aEvent );
     int CycleBodyStyle( const TOOL_EVENT& aEvent );
     int EditPageNumber( const TOOL_EVENT& aEvent );
 
@@ -73,12 +71,20 @@ public:
     int CleanupSheetPins( const TOOL_EVENT& aEvent );
     int GlobalEdit( const TOOL_EVENT& aEvent );
 
-    ///< Delete the selected items, or the item under the cursor.
+    /// Lock/unlock selected items.
+    int ToggleLock( const TOOL_EVENT& aEvent );
+    int Lock( const TOOL_EVENT& aEvent );
+    int Unlock( const TOOL_EVENT& aEvent );
+
+    /// Delete the selected items, or the item under the cursor.
     int DoDelete( const TOOL_EVENT& aEvent );
 
     /// Drag and drop
     int DdAppendFile( const TOOL_EVENT& aEvent );
     int DdAddImage( const TOOL_EVENT& aEvent );
+
+    /// Trace a placed image into filled graphics and replace it with them.
+    int ConvertImageToOutlines( const TOOL_EVENT& aEvent );
 
     /// Modify Attributes (DNP, Exclude, etc.)  All attributes are
     /// set to true unless all symbols already have the attribute set to true.
@@ -95,6 +101,11 @@ private:
     void collectUnits( const SCH_SELECTION& aSelection,
                        std::set<std::pair<SCH_SYMBOL*, SCH_SCREEN*>>& aCollectedUnits );
 
-    ///< Set up handlers for various events.
+    /// How to modify a property for selected items.
+    enum MODIFY_MODE { ON, OFF, TOGGLE };
+
+    int modifyLockSelected( MODIFY_MODE aMode );
+
+    /// Set up handlers for various events.
     void setTransitions() override;
 };

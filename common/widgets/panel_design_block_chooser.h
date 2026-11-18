@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #ifndef PANEL_DESIGN_BLOCK_CHOOSER_H
 #define PANEL_DESIGN_BLOCK_CHOOSER_H
@@ -44,7 +40,8 @@ public:
      *
      * @param aFrame  the parent frame (usually a SCH_EDIT_FRAME or PCB_EDIT_FRAME)
      * @param aParent the parent design block pane
-     * @param aAcceptHandler a handler to be called on double-click of a footprint
+     * @param aHistoryList is list of previously chosen design block library IDs.
+     * @param aSelectHandler a handler to be called on double-click of a footprint
      * @param aContextMenuTool the tool that will be used to provide an appropriate context menu
      *                         for the design block actions available in that frame
      */
@@ -61,7 +58,15 @@ public:
 
     wxPanel* GetDetailsPanel() { return m_detailsPanel; }
 
-    void     SetPreviewWidget( DESIGN_BLOCK_PREVIEW_WIDGET* aPreview );
+    /**
+     * Set how the preview is built. On a modern canvas it waits for the details panel's first
+     * paint, so a pane that is never shown never creates a render thread.
+     */
+    void SetPreviewWidgetFactory( std::function<DESIGN_BLOCK_PREVIEW_WIDGET*( wxWindow* aParent )> aFactory );
+
+    /**
+     * Null on a modern canvas until the details panel has been shown.
+     */
     DESIGN_BLOCK_PREVIEW_WIDGET* GetPreviewWidget() const { return m_preview; }
 
     void     FinishSetup();
@@ -96,6 +101,9 @@ protected:
     void onOpenLibsTimer( wxTimerEvent& aEvent );
 
     void onDesignBlockSelected( wxCommandEvent& aEvent );
+    void onDetailsPaint( wxPaintEvent& aEvent );
+    void createPreview();
+    void displaySelectedDesignBlock();
 
     /**
      * Handle the selection of an item. This is called when either the search box or the tree
@@ -130,11 +138,14 @@ protected:
     LIB_TREE*                    m_tree;
     DESIGN_BLOCK_PREVIEW_WIDGET* m_preview;
 
+    std::function<DESIGN_BLOCK_PREVIEW_WIDGET*( wxWindow* aParent )> m_previewFactory;
+
     DESIGN_BLOCK_PANE*    m_parent;
     EDA_DRAW_FRAME*       m_frame;
     std::function<void()> m_selectHandler;
 
-    std::vector<LIB_ID>   m_historyList;
+    std::vector<LIB_ID>&  m_historyList;
+    LIB_ID                m_preselect;
 };
 
 #endif /* PANEL_DESIGN_BLOCK_CHOOSER_H */

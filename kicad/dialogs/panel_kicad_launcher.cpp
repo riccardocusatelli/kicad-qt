@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <bitmaps.h>
@@ -61,6 +61,16 @@ PANEL_KICAD_LAUNCHER::~PANEL_KICAD_LAUNCHER()
 
 void PANEL_KICAD_LAUNCHER::onLauncherButtonClick( wxCommandEvent& aEvent )
 {
+    // BITMAP_BUTTON::OnLeftButtonUp() defers this click via CallAfter(), so CreateLaunchers()
+    // can destroy and rebuild the sender before this event is delivered.  aEvent.GetEventObject()
+    // may therefore be dangling; aEvent.GetId() is a plain copy made while the button was alive.
+    auto it = m_actionForId.find( aEvent.GetId() );
+
+    if( it == m_actionForId.end() )
+        return;
+
+    const TOOL_ACTION* action = it->second;
+
     // Don't accept clicks processed during wxProgressReporter updating.  In particular, the wxSafeYield()
     // call below will puke.
     if( m_frame->GetToolManager()->GetTool<KICAD_MANAGER_CONTROL>()->InShowPlayer() )
@@ -74,12 +84,6 @@ void PANEL_KICAD_LAUNCHER::onLauncherButtonClick( wxCommandEvent& aEvent )
     // cosmetic issues).
     wxSafeYield();
 
-    BITMAP_BUTTON*     button = (BITMAP_BUTTON*) aEvent.GetEventObject();
-    const TOOL_ACTION* action = static_cast<const TOOL_ACTION*>( button->GetClientData() );
-
-    if( action == nullptr )
-        return;
-
     OPT_TOOL_EVENT evt = action->MakeEvent();
     evt->SetHasPosition( false );
     m_frame->GetToolManager()->ProcessEvent( *evt );
@@ -89,6 +93,10 @@ void PANEL_KICAD_LAUNCHER::onLauncherButtonClick( wxCommandEvent& aEvent )
 void PANEL_KICAD_LAUNCHER::CreateLaunchers()
 {
     m_frame->SetPcmButton( nullptr );
+
+    // Old buttons are about to be destroyed; drop the id lookup with them so a stale
+    // asynchronous click event can never be mapped to an action again.
+    m_actionForId.clear();
 
     if( m_toolsSizer->GetEffectiveRowsCount() > 0 )
     {
@@ -178,8 +186,6 @@ void PANEL_KICAD_LAUNCHER::CreateLaunchers()
                          _( "Preview Gerber files" ), true ), 1, wxEXPAND );
     grid->Add( makeCard( m_scrolledWindow, KICAD_MANAGER_ACTIONS::showCalculator, _( "CA" ),
                          _( "Resistance, current capacity, etc." ), true ), 1, wxEXPAND );
-    grid->Add( makeCard( m_scrolledWindow, KICAD_MANAGER_ACTIONS::convertImage, _( "IM" ),
-                         _( "Bitmaps to symbols or footprints" ), true ), 1, wxEXPAND );
 
     LAUNCHER_CARD* pcm = makeCard( m_scrolledWindow, KICAD_MANAGER_ACTIONS::showPluginManager, _( "PM" ),
                                    _( "KiCad and third-party packages" ), true,
@@ -198,7 +204,6 @@ void PANEL_KICAD_LAUNCHER::CreateLaunchers()
 
 void PANEL_KICAD_LAUNCHER::onThemeChanged( wxSysColourChangedEvent& aEvent )
 {
-    GetBitmapStore()->ThemeChanged();
     CreateLaunchers();
 
     aEvent.Skip();

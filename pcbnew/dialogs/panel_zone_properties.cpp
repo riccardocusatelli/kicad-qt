@@ -16,13 +16,10 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <bitmaps.h>
 #include <magic_enum.hpp>
 #include "panel_zone_properties.h"
 
@@ -165,7 +162,7 @@ bool PANEL_ZONE_PROPERTIES::TransferZoneSettingsToWindow()
     case ZONE_BORDER_DISPLAY_STYLE::NO_HATCH:         m_OutlineDisplayCtrl->SetSelection( 0 ); break;
     case ZONE_BORDER_DISPLAY_STYLE::DIAGONAL_EDGE:    m_OutlineDisplayCtrl->SetSelection( 1 ); break;
     case ZONE_BORDER_DISPLAY_STYLE::DIAGONAL_FULL:    m_OutlineDisplayCtrl->SetSelection( 2 ); break;
-    case ZONE_BORDER_DISPLAY_STYLE::INVISIBLE_BORDER: break;
+    case ZONE_BORDER_DISPLAY_STYLE::INVISIBLE_BORDER:                                          break;
     }
 
     m_outlineHatchPitch.SetValue( m_settings->m_BorderHatchPitch );
@@ -375,15 +372,15 @@ bool PANEL_ZONE_PROPERTIES::AcceptOptions( bool aUseExportableSetupOnly )
 
     switch( m_PadInZoneOpt->GetSelection() )
     {
-    case 3: m_settings->SetPadConnection( ZONE_CONNECTION::NONE ); break;
+    case 3: m_settings->SetPadConnection( ZONE_CONNECTION::NONE );        break;
     case 2: m_settings->SetPadConnection( ZONE_CONNECTION::THT_THERMAL ); break;
-    case 1: m_settings->SetPadConnection( ZONE_CONNECTION::THERMAL ); break;
-    case 0: m_settings->SetPadConnection( ZONE_CONNECTION::FULL ); break;
+    case 1: m_settings->SetPadConnection( ZONE_CONNECTION::THERMAL );     break;
+    case 0: m_settings->SetPadConnection( ZONE_CONNECTION::FULL );        break;
     }
 
     switch( m_OutlineDisplayCtrl->GetSelection() )
     {
-    case 0: m_settings->m_ZoneBorderDisplayStyle = ZONE_BORDER_DISPLAY_STYLE::NO_HATCH; break;
+    case 0: m_settings->m_ZoneBorderDisplayStyle = ZONE_BORDER_DISPLAY_STYLE::NO_HATCH;      break;
     case 1: m_settings->m_ZoneBorderDisplayStyle = ZONE_BORDER_DISPLAY_STYLE::DIAGONAL_EDGE; break;
     case 2: m_settings->m_ZoneBorderDisplayStyle = ZONE_BORDER_DISPLAY_STYLE::DIAGONAL_FULL; break;
     }
@@ -436,7 +433,12 @@ bool PANEL_ZONE_PROPERTIES::AcceptOptions( bool aUseExportableSetupOnly )
     if( BOARD* board = m_frame->GetBoard() )
         m_settings->m_Name = m_zonesSettingsBag.GetUniqueZoneName( *board, m_settings->m_Name, m_zone );
 
-    m_settings->m_FillMode = m_cbHatched->GetValue() ? ZONE_FILL_MODE::HATCH_PATTERN : ZONE_FILL_MODE::POLYGONS;
+    // Avoid clobbering theiving zone properties
+    if( m_settings->m_FillMode != ZONE_FILL_MODE::COPPER_THIEVING )
+    {
+        m_settings->m_FillMode = m_cbHatched->GetValue() ? ZONE_FILL_MODE::HATCH_PATTERN
+                                                         : ZONE_FILL_MODE::POLYGONS;
+    }
     m_settings->m_HatchOrientation = m_gridStyleRotation.GetAngleValue();
     m_settings->m_HatchThickness = m_gridStyleThickness.GetIntValue();
     m_settings->m_HatchGap = m_gridStyleGap.GetIntValue();

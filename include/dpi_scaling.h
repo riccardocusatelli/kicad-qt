@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef DPI_SCALING__H
@@ -36,11 +32,6 @@ class KIQT_COMMON_API DPI_SCALING
 public:
     /**
      * Construct a DPI scale provider.
-     *
-     * @param aConfig the config store to check for a user value (can be nullptr,
-     * in which case on automatically determined values are considered)
-     * @param aWindow a WX window to use for automatic DPI determination
-     * @return the scaling factor (1.0 = no scaling)
      */
     DPI_SCALING(){};
 

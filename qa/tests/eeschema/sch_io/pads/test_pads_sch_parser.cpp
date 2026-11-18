@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -28,6 +28,8 @@
 
 #include <sch_io/pads/pads_sch_parser.h>
 #include <sch_io/pads/pads_sch_symbol_builder.h>
+#include <io/pads/pads_common.h>
+#include <ki_exception.h>
 #include <lib_symbol.h>
 #include <sch_shape.h>
 #include <sch_pin.h>
@@ -49,6 +51,75 @@ BOOST_AUTO_TEST_CASE( CheckFileHeader_ValidPowerLogicFile )
     std::string testFile = KI_TEST::GetEeschemaTestDataDir() + "/plugins/pads/powerlogic_schematic.txt";
 
     BOOST_CHECK( PADS_SCH::PADS_SCH_PARSER::CheckFileHeader( testFile ) );
+}
+
+
+BOOST_AUTO_TEST_CASE( BussesSection )
+{
+    std::string               testFile = KI_TEST::GetEeschemaTestDataDir() + "/plugins/pads/buses.txt";
+    PADS_SCH::PADS_SCH_PARSER parser;
+    BOOST_REQUIRE( parser.Parse( testFile ) );
+
+    const auto& buses = parser.GetBuses();
+    BOOST_REQUIRE_EQUAL( buses.size(), 1 );
+    BOOST_CHECK_EQUAL( buses[0].handle, "@@@B0" );
+    BOOST_CHECK_EQUAL( buses[0].name, "DATA[0..2]" );
+    BOOST_CHECK_EQUAL( buses[0].sheet_number, 1 );
+    BOOST_REQUIRE_EQUAL( buses[0].path.size(), 3 );
+    BOOST_CHECK_EQUAL( buses[0].path[0].x, 3000 );
+    BOOST_CHECK_EQUAL( buses[0].path[2].y, 5000 );
+    BOOST_REQUIRE_EQUAL( buses[0].entries.size(), 3 );
+    BOOST_CHECK_EQUAL( buses[0].entries[1].member_net, "DATA1" );
+    BOOST_CHECK_EQUAL( buses[0].entries[1].position.x, 5000 );
+    BOOST_CHECK_EQUAL( buses[0].aliases, std::vector<std::string>{ "DATA[0..2]" } );
+    BOOST_CHECK_EQUAL( buses[0].member_nets, ( std::vector<std::string>{ "DATA0", "DATA1", "DATA2" } ) );
+}
+
+
+BOOST_AUTO_TEST_CASE( ParseBussesClearsPriorState )
+{
+    const std::string         root = KI_TEST::GetEeschemaTestDataDir() + "/plugins/pads/";
+    PADS_SCH::PADS_SCH_PARSER parser;
+    BOOST_REQUIRE( parser.Parse( root + "buses.txt" ) );
+    BOOST_REQUIRE_EQUAL( parser.GetBuses().size(), 1 );
+    BOOST_REQUIRE( parser.Parse( root + "simple_schematic.txt" ) );
+    BOOST_CHECK( parser.GetBuses().empty() );
+}
+
+
+// A malformed bus drops that bus and the import continues. Nothing outside these tests reads
+// GetBuses(), and the grammar is inferred, so aborting a whole design over it would be worse than
+// losing a payload no consumer wants. buses_truncated.txt also proves the parser resynchronizes:
+// its first bus is short, but the well-formed bus that follows is still recovered.
+BOOST_AUTO_TEST_CASE( ParseBussesSkipsMalformedRecords )
+{
+    const std::string root = KI_TEST::GetEeschemaTestDataDir() + "/plugins/pads/";
+
+    for( const std::string fixture : { "buses_bad_header.txt", "buses_bad_point.txt",
+                                       "buses_negative_count.txt", "buses_excessive_count.txt" } )
+    {
+        BOOST_TEST_CONTEXT( fixture )
+        {
+            PADS_SCH::PADS_SCH_PARSER parser;
+
+            BOOST_CHECK( parser.Parse( root + fixture ) );
+            BOOST_CHECK( parser.GetBuses().empty() );
+        }
+    }
+
+    PADS_SCH::PADS_SCH_PARSER truncated;
+
+    BOOST_CHECK( truncated.Parse( root + "buses_truncated.txt" ) );
+    BOOST_REQUIRE_EQUAL( truncated.GetBuses().size(), 1 );
+    BOOST_CHECK_EQUAL( truncated.GetBuses()[0].name, std::string( "OTHER" ) );
+
+    // A readable point after an unreadable one must not complete the bus, or a record we could
+    // not decode would reach the design looking whole
+    PADS_SCH::PADS_SCH_PARSER recovered;
+
+    BOOST_CHECK( recovered.Parse( root + "buses_bad_point_recovers.txt" ) );
+    BOOST_REQUIRE_EQUAL( recovered.GetBuses().size(), 1 );
+    BOOST_CHECK_EQUAL( recovered.GetBuses()[0].name, std::string( "OTHER" ) );
 }
 
 
@@ -82,8 +153,7 @@ BOOST_AUTO_TEST_CASE( CheckFileHeader_LogicWithCodePageSuffix )
     // Regression test for https://gitlab.com/kicad/code/kicad/-/issues/23420
     // PADS exporters may include the ANSI code page as a suffix in the header
     // (e.g. *PADS-LOGIC-V9.0-CP1250*). Detection must still succeed.
-    std::string testFile =
-            KI_TEST::GetEeschemaTestDataDir() + "/plugins/pads/issue23420_codepage_schematic.txt";
+    std::string testFile = KI_TEST::GetEeschemaTestDataDir() + "/plugins/pads/issue23420_codepage_schematic.txt";
 
     BOOST_CHECK( PADS_SCH::PADS_SCH_PARSER::CheckFileHeader( testFile ) );
 }
@@ -92,8 +162,7 @@ BOOST_AUTO_TEST_CASE( CheckFileHeader_LogicWithCodePageSuffix )
 BOOST_AUTO_TEST_CASE( ParseHeader_LogicWithCodePageSuffix )
 {
     // Regression test for https://gitlab.com/kicad/code/kicad/-/issues/23420
-    std::string testFile =
-            KI_TEST::GetEeschemaTestDataDir() + "/plugins/pads/issue23420_codepage_schematic.txt";
+    std::string testFile = KI_TEST::GetEeschemaTestDataDir() + "/plugins/pads/issue23420_codepage_schematic.txt";
 
     PADS_SCH::PADS_SCH_PARSER parser;
 
@@ -1064,13 +1133,11 @@ BOOST_AUTO_TEST_CASE( BuildKiCadPowerSymbol_Styles )
     params.units = PADS_SCH::UNIT_TYPE::MILS;
     PADS_SCH::PADS_SCH_SYMBOL_BUILDER builder( params );
 
-    // GND style: chevron ground, pin facing down
     std::unique_ptr<LIB_SYMBOL> gnd( builder.BuildKiCadPowerSymbol( "GND" ) );
     BOOST_REQUIRE( gnd != nullptr );
     BOOST_CHECK( gnd->IsPower() );
     BOOST_CHECK_EQUAL( gnd->GetName(), "GND" );
 
-    // VCC style: arrow up, pin facing up
     std::unique_ptr<LIB_SYMBOL> vcc( builder.BuildKiCadPowerSymbol( "VCC" ) );
     BOOST_REQUIRE( vcc != nullptr );
     BOOST_CHECK( vcc->IsPower() );
@@ -1102,13 +1169,29 @@ BOOST_AUTO_TEST_CASE( BuildKiCadPowerSymbol_Styles )
     BOOST_CHECK( pwrTri->IsPower() );
 
     // Verify each symbol has exactly one pin
-    BOOST_CHECK_EQUAL( gnd->GetPins().size(), 1u );
-    BOOST_CHECK_EQUAL( vcc->GetPins().size(), 1u );
-    BOOST_CHECK_EQUAL( vee->GetPins().size(), 1u );
-    BOOST_CHECK_EQUAL( gndd->GetPins().size(), 1u );
-    BOOST_CHECK_EQUAL( earth->GetPins().size(), 1u );
-    BOOST_CHECK_EQUAL( pwrBar->GetPins().size(), 1u );
-    BOOST_CHECK_EQUAL( pwrTri->GetPins().size(), 1u );
+    BOOST_CHECK_EQUAL( gnd->GetGraphicalPins( ALL_UNITS, ALL_BODY_STYLES ).size(), 1u );
+    BOOST_CHECK_EQUAL( vcc->GetGraphicalPins( ALL_UNITS, ALL_BODY_STYLES ).size(), 1u );
+    BOOST_CHECK_EQUAL( vee->GetGraphicalPins( ALL_UNITS, ALL_BODY_STYLES ).size(), 1u );
+    BOOST_CHECK_EQUAL( gndd->GetGraphicalPins( ALL_UNITS, ALL_BODY_STYLES ).size(), 1u );
+    BOOST_CHECK_EQUAL( earth->GetGraphicalPins( ALL_UNITS, ALL_BODY_STYLES ).size(), 1u );
+    BOOST_CHECK_EQUAL( pwrBar->GetGraphicalPins( ALL_UNITS, ALL_BODY_STYLES ).size(), 1u );
+    BOOST_CHECK_EQUAL( pwrTri->GetGraphicalPins( ALL_UNITS, ALL_BODY_STYLES ).size(), 1u );
+    BOOST_CHECK( !gnd->GetReferenceField().IsVisible() );
+    BOOST_CHECK( !vcc->GetReferenceField().IsVisible() );
+
+    size_t gndShapes = 0;
+    size_t vccCircles = 0;
+
+    for( const SCH_ITEM& item : gnd->GetDrawItems() )
+        gndShapes += item.Type() == SCH_SHAPE_T;
+
+    for( const SCH_ITEM& item : vcc->GetDrawItems() )
+    {
+        vccCircles += item.Type() == SCH_SHAPE_T && static_cast<const SCH_SHAPE&>( item ).GetShape() == SHAPE_T::CIRCLE;
+    }
+
+    BOOST_CHECK_EQUAL( gndShapes, 4u );
+    BOOST_CHECK_EQUAL( vccCircles, 1u );
 }
 
 
@@ -1155,7 +1238,7 @@ BOOST_AUTO_TEST_CASE( SheetNumbers_FromParts )
     BOOST_REQUIRE( parser.Parse( testFile ) );
 
     std::set<int> sheets = parser.GetSheetNumbers();
-    BOOST_CHECK( sheets.count( 1 ) > 0 );  // At least sheet 1 should exist
+    BOOST_CHECK( sheets.count( 1 ) > 0 ); // At least sheet 1 should exist
 }
 
 
@@ -1400,7 +1483,7 @@ BOOST_AUTO_TEST_CASE( SymbolBuilder_ConnectorPinSymbol )
     LIB_SYMBOL* sym15 = builder.GetOrCreateConnectorPinSymbol( connPt, symDef, "15" );
     BOOST_REQUIRE( sym15 != nullptr );
 
-    auto pins15 = sym15->GetPins();
+    auto pins15 = sym15->GetGraphicalPins( ALL_UNITS, ALL_BODY_STYLES );
     BOOST_REQUIRE_EQUAL( pins15.size(), 1u );
     BOOST_CHECK_EQUAL( pins15[0]->GetNumber(), "15" );
 
@@ -1408,7 +1491,7 @@ BOOST_AUTO_TEST_CASE( SymbolBuilder_ConnectorPinSymbol )
     LIB_SYMBOL* sym1 = builder.GetOrCreateConnectorPinSymbol( connPt, symDef, "1" );
     BOOST_REQUIRE( sym1 != nullptr );
 
-    auto pins1 = sym1->GetPins();
+    auto pins1 = sym1->GetGraphicalPins( ALL_UNITS, ALL_BODY_STYLES );
     BOOST_REQUIRE_EQUAL( pins1.size(), 1u );
     BOOST_CHECK_EQUAL( pins1[0]->GetNumber(), "1" );
 
@@ -1458,10 +1541,9 @@ BOOST_AUTO_TEST_CASE( SymbolBuilder_MultiUnitConnectorSymbol )
     symDef.pins.push_back( symPin );
 
     std::vector<std::string> pinNumbers = { "1", "2", "3", "4" };
-    std::string cacheKey = "TEST_MULTICONN:conn:J1";
+    std::string              cacheKey = "TEST_MULTICONN:conn:J1";
 
-    LIB_SYMBOL* multiSym =
-            builder.GetOrCreateMultiUnitConnectorSymbol( connPt, symDef, pinNumbers, cacheKey );
+    LIB_SYMBOL* multiSym = builder.GetOrCreateMultiUnitConnectorSymbol( connPt, symDef, pinNumbers, cacheKey );
     BOOST_REQUIRE( multiSym != nullptr );
 
     BOOST_CHECK_EQUAL( multiSym->GetUnitCount(), 4 );
@@ -1470,7 +1552,7 @@ BOOST_AUTO_TEST_CASE( SymbolBuilder_MultiUnitConnectorSymbol )
     {
         std::vector<SCH_PIN*> unitPins;
 
-        for( SCH_PIN* pin : multiSym->GetPins() )
+        for( SCH_PIN* pin : multiSym->GetGraphicalPins( ALL_UNITS, ALL_BODY_STYLES ) )
         {
             if( pin->GetUnit() == unit )
                 unitPins.push_back( pin );
@@ -1481,62 +1563,12 @@ BOOST_AUTO_TEST_CASE( SymbolBuilder_MultiUnitConnectorSymbol )
     }
 
     // Same cache key should return the same symbol
-    LIB_SYMBOL* cached =
-            builder.GetOrCreateMultiUnitConnectorSymbol( connPt, symDef, pinNumbers, cacheKey );
+    LIB_SYMBOL* cached = builder.GetOrCreateMultiUnitConnectorSymbol( connPt, symDef, pinNumbers, cacheKey );
     BOOST_CHECK_EQUAL( multiSym, cached );
 
     // Different cache key should produce a new symbol
-    LIB_SYMBOL* other =
-            builder.GetOrCreateMultiUnitConnectorSymbol( connPt, symDef, pinNumbers, "other_key" );
+    LIB_SYMBOL* other = builder.GetOrCreateMultiUnitConnectorSymbol( connPt, symDef, pinNumbers, "other_key" );
     BOOST_CHECK_NE( multiSym, other );
-}
-
-
-BOOST_AUTO_TEST_CASE( V9_MultiGate_TL082_FromFile )
-{
-    std::string testFile = "/home/seth/Downloads/ATS-501 Tape Template (1).txt";
-
-    if( !wxFileExists( wxString::FromUTF8( testFile ) ) )
-    {
-        BOOST_TEST_MESSAGE( "Skipping: test file not present" );
-        return;
-    }
-
-    PADS_SCH::PADS_SCH_PARSER parser;
-    BOOST_REQUIRE( parser.Parse( testFile ) );
-
-    const auto& partTypes = parser.GetPartTypes();
-    auto ptIt = partTypes.find( "TL082" );
-    BOOST_REQUIRE( ptIt != partTypes.end() );
-
-    const auto& tl082 = ptIt->second;
-    BOOST_REQUIRE_EQUAL( tl082.gates.size(), 2u );
-    BOOST_CHECK_EQUAL( tl082.gates[0].num_pins, 5 );
-    BOOST_CHECK_EQUAL( tl082.gates[1].num_pins, 3 );
-    BOOST_CHECK_EQUAL( tl082.gates[0].decal_names[0], "TL082A" );
-    BOOST_CHECK_EQUAL( tl082.gates[1].decal_names[0], "TL082" );
-
-    const auto& params = parser.GetParameters();
-    PADS_SCH::PADS_SCH_SYMBOL_BUILDER builder( params );
-
-    LIB_SYMBOL* sym = builder.BuildMultiUnitSymbol( tl082, parser.GetSymbolDefs() );
-    BOOST_REQUIRE( sym != nullptr );
-    BOOST_CHECK_EQUAL( sym->GetUnitCount(), 2 );
-
-    int unit1Pins = 0, unit2Pins = 0;
-
-    for( auto* pin : sym->GetPins() )
-    {
-        if( pin->GetUnit() == 1 )
-            unit1Pins++;
-        else if( pin->GetUnit() == 2 )
-            unit2Pins++;
-    }
-
-    BOOST_CHECK_EQUAL( unit1Pins, 5 );
-    BOOST_CHECK_EQUAL( unit2Pins, 3 );
-
-    delete sym;
 }
 
 
@@ -1622,7 +1654,7 @@ BOOST_AUTO_TEST_CASE( CreateNetLabel_FromSignal )
     wire.end.y = 2000.0;
     signal.wires.push_back( wire );
 
-    VECTOR2I pos( 1000, 2000 );
+    VECTOR2I         pos( 1000, 2000 );
     SCH_GLOBALLABEL* label = builder.CreateNetLabel( signal, pos );
     BOOST_REQUIRE( label != nullptr );
 
@@ -1644,7 +1676,7 @@ BOOST_AUTO_TEST_CASE( CreateNetLabel_PreservesSpecialChars )
     PADS_SCH::SCH_SIGNAL signal;
     signal.name = "NET 1";
 
-    VECTOR2I pos( 1000, 2000 );
+    VECTOR2I         pos( 1000, 2000 );
     SCH_GLOBALLABEL* label = builder.CreateNetLabel( signal, pos );
     BOOST_REQUIRE( label != nullptr );
 
@@ -1730,7 +1762,7 @@ BOOST_AUTO_TEST_CASE( ApplyPartAttributes_Reference )
 
     // Create a minimal symbol for testing
     LIB_SYMBOL* libSymbol = new LIB_SYMBOL( wxS( "TEST" ) );
-    LIB_ID libId( wxS( "test" ), wxS( "TEST" ) );
+    LIB_ID      libId( wxS( "test" ), wxS( "TEST" ) );
 
     SCH_SYMBOL* symbol = new SCH_SYMBOL( *libSymbol, libId, &schematic.CurrentSheet(), 0 );
 
@@ -1772,7 +1804,7 @@ BOOST_AUTO_TEST_CASE( ApplyPartAttributes_Footprint )
     PADS_SCH::PADS_SCH_SCHEMATIC_BUILDER builder( parser.GetParameters(), &schematic );
 
     LIB_SYMBOL* libSymbol = new LIB_SYMBOL( wxS( "CAP" ) );
-    LIB_ID libId( wxS( "test" ), wxS( "CAP" ) );
+    LIB_ID      libId( wxS( "test" ), wxS( "CAP" ) );
 
     SCH_SYMBOL* symbol = new SCH_SYMBOL( *libSymbol, libId, &schematic.CurrentSheet(), 0 );
 
@@ -1817,7 +1849,7 @@ BOOST_AUTO_TEST_CASE( ApplyFieldSettings_Visibility )
     PADS_SCH::PADS_SCH_SCHEMATIC_BUILDER builder( parser.GetParameters(), &schematic );
 
     LIB_SYMBOL* libSymbol = new LIB_SYMBOL( wxS( "74HC00" ) );
-    LIB_ID libId( wxS( "test" ), wxS( "74HC00" ) );
+    LIB_ID      libId( wxS( "test" ), wxS( "74HC00" ) );
 
     SCH_SYMBOL* symbol = new SCH_SYMBOL( *libSymbol, libId, &schematic.CurrentSheet(), 0 );
 
@@ -1847,7 +1879,7 @@ BOOST_AUTO_TEST_CASE( ApplyPartAttributes_NullSymbol )
     // Should not crash when called with nullptr
     builder.ApplyPartAttributes( nullptr, placement );
 
-    BOOST_CHECK( true );  // If we get here, we passed
+    BOOST_CHECK( true ); // If we get here, we passed
 }
 
 
@@ -1882,7 +1914,7 @@ BOOST_AUTO_TEST_CASE( CreateCustomFields_ManufacturerAndMPN )
     PADS_SCH::PADS_SCH_SCHEMATIC_BUILDER builder( parser.GetParameters(), &schematic );
 
     LIB_SYMBOL* libSymbol = new LIB_SYMBOL( wxS( "74HC00" ) );
-    LIB_ID libId( wxS( "test" ), wxS( "74HC00" ) );
+    LIB_ID      libId( wxS( "test" ), wxS( "74HC00" ) );
 
     SCH_SYMBOL* symbol = new SCH_SYMBOL( *libSymbol, libId, &schematic.CurrentSheet(), 0 );
 
@@ -1919,12 +1951,12 @@ BOOST_AUTO_TEST_CASE( CreateCustomFields_SkipsStandardFields )
 
     // Add standard field attributes (should be skipped by CreateCustomFields)
     PADS_SCH::PART_ATTRIBUTE refAttr;
-    refAttr.name = "Ref.Des.";  // Standard field
+    refAttr.name = "Ref.Des."; // Standard field
     refAttr.value = "R1";
     placement.attributes.push_back( refAttr );
 
     PADS_SCH::PART_ATTRIBUTE valAttr;
-    valAttr.name = "Part Type";  // Standard field
+    valAttr.name = "Part Type"; // Standard field
     valAttr.value = "10K";
     placement.attributes.push_back( valAttr );
 
@@ -1941,7 +1973,7 @@ BOOST_AUTO_TEST_CASE( CreateCustomFields_SkipsStandardFields )
     PADS_SCH::PADS_SCH_SCHEMATIC_BUILDER builder( parser.GetParameters(), &schematic );
 
     LIB_SYMBOL* libSymbol = new LIB_SYMBOL( wxS( "RES" ) );
-    LIB_ID libId( wxS( "test" ), wxS( "RES" ) );
+    LIB_ID      libId( wxS( "test" ), wxS( "RES" ) );
 
     SCH_SYMBOL* symbol = new SCH_SYMBOL( *libSymbol, libId, &schematic.CurrentSheet(), 0 );
 
@@ -1989,7 +2021,7 @@ BOOST_AUTO_TEST_CASE( CreateCustomFields_SkipsEmptyValues )
     PADS_SCH::PADS_SCH_SCHEMATIC_BUILDER builder( parser.GetParameters(), &schematic );
 
     LIB_SYMBOL* libSymbol = new LIB_SYMBOL( wxS( "IC" ) );
-    LIB_ID libId( wxS( "test" ), wxS( "IC" ) );
+    LIB_ID      libId( wxS( "test" ), wxS( "IC" ) );
 
     SCH_SYMBOL* symbol = new SCH_SYMBOL( *libSymbol, libId, &schematic.CurrentSheet(), 0 );
 
@@ -2088,7 +2120,7 @@ BOOST_AUTO_TEST_CASE( CreateTitleBlock_NullScreen )
     // Should not crash with nullptr
     builder.CreateTitleBlock( nullptr );
 
-    BOOST_CHECK( true );  // If we get here, we passed
+    BOOST_CHECK( true ); // If we get here, we passed
 }
 
 
@@ -2175,7 +2207,7 @@ BOOST_AUTO_TEST_CASE( CreateHierarchicalSheet_ReturnsValidSheet )
     schematic.Reset();
 
     // Create root sheet
-    SCH_SHEET* rootSheet = new SCH_SHEET( &schematic );
+    SCH_SHEET*  rootSheet = new SCH_SHEET( &schematic );
     SCH_SCREEN* rootScreen = new SCH_SCREEN( &schematic );
     rootSheet->SetScreen( rootScreen );
 
@@ -2208,7 +2240,7 @@ BOOST_AUTO_TEST_CASE( CreateHierarchicalSheet_SetsFilename )
     SCHEMATIC schematic( nullptr );
     schematic.Reset();
 
-    SCH_SHEET* rootSheet = new SCH_SHEET( &schematic );
+    SCH_SHEET*  rootSheet = new SCH_SHEET( &schematic );
     SCH_SCREEN* rootScreen = new SCH_SCREEN( &schematic );
     rootSheet->SetScreen( rootScreen );
 
@@ -2235,7 +2267,7 @@ BOOST_AUTO_TEST_CASE( CreateHierarchicalSheet_SetsSheetName )
     SCHEMATIC schematic( nullptr );
     schematic.Reset();
 
-    SCH_SHEET* rootSheet = new SCH_SHEET( &schematic );
+    SCH_SHEET*  rootSheet = new SCH_SHEET( &schematic );
     SCH_SCREEN* rootScreen = new SCH_SCREEN( &schematic );
     rootSheet->SetScreen( rootScreen );
 
@@ -2341,7 +2373,7 @@ BOOST_AUTO_TEST_CASE( CreateHierLabel_ValidLabel )
 
     PADS_SCH::PADS_SCH_SCHEMATIC_BUILDER builder( params, &schematic );
 
-    VECTOR2I pos( 1000, 2000 );
+    VECTOR2I       pos( 1000, 2000 );
     SCH_HIERLABEL* label = builder.CreateHierLabel( "DATA_OUT", pos, &screen );
     BOOST_REQUIRE( label != nullptr );
 
@@ -2350,7 +2382,6 @@ BOOST_AUTO_TEST_CASE( CreateHierLabel_ValidLabel )
     // Label should be added to screen
     BOOST_CHECK( screen.Items().size() > 0 );
 }
-
 
 
 BOOST_AUTO_TEST_CASE( IsGlobalSignal_PowerNets )
@@ -2385,6 +2416,199 @@ BOOST_AUTO_TEST_CASE( IsGlobalSignal_NotGlobal )
     BOOST_CHECK( !PADS_SCH::PADS_SCH_SCHEMATIC_BUILDER::IsGlobalSignal( "DATA", singleSheet ) );
     BOOST_CHECK( !PADS_SCH::PADS_SCH_SCHEMATIC_BUILDER::IsGlobalSignal( "CLK", singleSheet ) );
     BOOST_CHECK( !PADS_SCH::PADS_SCH_SCHEMATIC_BUILDER::IsGlobalSignal( "", singleSheet ) );
+}
+
+
+// Issue 23855: a resistor Value attribute uses display flag 3 (name+value). The low
+// bits select what is shown, so it must remain visible. Only the hidden bit (8) hides.
+BOOST_AUTO_TEST_CASE( Issue23855_ValueVisibleWithDisplayFlag )
+{
+    std::string testFile = KI_TEST::GetEeschemaTestDataDir() + "/plugins/pads/issue23855_schematic.txt";
+
+    PADS_SCH::PADS_SCH_PARSER parser;
+    BOOST_REQUIRE( parser.Parse( testFile ) );
+
+    const PADS_SCH::PART_PLACEMENT* r1 = parser.GetPartPlacement( "R1" );
+    BOOST_REQUIRE( r1 != nullptr );
+
+    bool foundValue = false;
+
+    for( const auto& attr : r1->attributes )
+    {
+        if( attr.name == "Value" )
+        {
+            // Display flag 3 (name+value) must stay visible.
+            BOOST_CHECK( attr.visible );
+            BOOST_CHECK_EQUAL( attr.justification, 6 );
+            foundValue = true;
+        }
+    }
+
+    BOOST_CHECK( foundValue );
+}
+
+
+// Issue 23855: a "CN" category part type must be flagged as a connector so its pin
+// numbers are shown, even when the gate is written in the V9 "GATE" format.
+BOOST_AUTO_TEST_CASE( Issue23855_ConnectorCategoryFlagged )
+{
+    std::string testFile = KI_TEST::GetEeschemaTestDataDir() + "/plugins/pads/issue23855_schematic.txt";
+
+    PADS_SCH::PADS_SCH_PARSER parser;
+    BOOST_REQUIRE( parser.Parse( testFile ) );
+
+    auto ptIt = parser.GetPartTypes().find( "91-HDSKT10DH" );
+    BOOST_REQUIRE( ptIt != parser.GetPartTypes().end() );
+    BOOST_CHECK( ptIt->second.is_connector );
+
+    // A non-connector resistor must not be flagged.
+    auto resIt = parser.GetPartTypes().find( "71=B2002.2" );
+    BOOST_REQUIRE( resIt != parser.GetPartTypes().end() );
+    BOOST_CHECK( !resIt->second.is_connector );
+}
+
+
+// Issue 23855: a connector part type symbol must show pin numbers even though its pins
+// carry no pin names.
+BOOST_AUTO_TEST_CASE( Issue23855_ConnectorShowsPinNumbers )
+{
+    std::string testFile = KI_TEST::GetEeschemaTestDataDir() + "/plugins/pads/issue23855_schematic.txt";
+
+    PADS_SCH::PADS_SCH_PARSER parser;
+    BOOST_REQUIRE( parser.Parse( testFile ) );
+
+    auto ptIt = parser.GetPartTypes().find( "91-HDSKT10DH" );
+    BOOST_REQUIRE( ptIt != parser.GetPartTypes().end() );
+
+    const PADS_SCH::SYMBOL_DEF* symDef = parser.GetSymbolDef( "CONNECTOR-10P" );
+    BOOST_REQUIRE( symDef != nullptr );
+
+    PADS_SCH::PADS_SCH_SYMBOL_BUILDER builder( parser.GetParameters() );
+    LIB_SYMBOL*                       connSym = builder.GetOrCreatePartTypeSymbol( ptIt->second, *symDef );
+    BOOST_REQUIRE( connSym != nullptr );
+    BOOST_CHECK( connSym->GetShowPinNumbers() );
+
+    // A resistor (non-connector, no pin names) keeps pin numbers off.
+    auto resIt = parser.GetPartTypes().find( "71=B2002.2" );
+    BOOST_REQUIRE( resIt != parser.GetPartTypes().end() );
+
+    const PADS_SCH::SYMBOL_DEF* resDef = parser.GetSymbolDef( "RESZ-H" );
+    BOOST_REQUIRE( resDef != nullptr );
+
+    LIB_SYMBOL* resSym = builder.GetOrCreatePartTypeSymbol( resIt->second, *resDef );
+    BOOST_REQUIRE( resSym != nullptr );
+    BOOST_CHECK( !resSym->GetShowPinNumbers() );
+}
+
+
+// Issue 23855: the shared justification decoder maps PADS codes to KiCad alignment so
+// reference and value fields keep their authored alignment instead of forcing center.
+BOOST_AUTO_TEST_CASE( Issue23855_DecodeJustification )
+{
+    GR_TEXT_H_ALIGN_T h = GR_TEXT_H_ALIGN_CENTER;
+    GR_TEXT_V_ALIGN_T v = GR_TEXT_V_ALIGN_CENTER;
+
+    // 0 = bottom-left
+    PADS_COMMON::DecodeJustification( 0, h, v );
+    BOOST_CHECK_EQUAL( h, GR_TEXT_H_ALIGN_LEFT );
+    BOOST_CHECK_EQUAL( v, GR_TEXT_V_ALIGN_BOTTOM );
+
+    // 6 = top-center (band 2..7 -> top, code 6-2=4 -> center)
+    PADS_COMMON::DecodeJustification( 6, h, v );
+    BOOST_CHECK_EQUAL( h, GR_TEXT_H_ALIGN_CENTER );
+    BOOST_CHECK_EQUAL( v, GR_TEXT_V_ALIGN_TOP );
+
+    // 1 = bottom-right
+    PADS_COMMON::DecodeJustification( 1, h, v );
+    BOOST_CHECK_EQUAL( h, GR_TEXT_H_ALIGN_RIGHT );
+    BOOST_CHECK_EQUAL( v, GR_TEXT_V_ALIGN_BOTTOM );
+
+    // 12 = middle-center (band 8.. -> middle, code 12-8=4 -> center)
+    PADS_COMMON::DecodeJustification( 12, h, v );
+    BOOST_CHECK_EQUAL( h, GR_TEXT_H_ALIGN_CENTER );
+    BOOST_CHECK_EQUAL( v, GR_TEXT_V_ALIGN_CENTER );
+}
+
+
+// Issue 23855: the parser must capture the *NETNAMES* offset/justification for each
+// off-page anchor so the importer can orient global labels correctly, and must read the
+// placed-frame attribute offsets of a 90 degree rotated part.
+BOOST_AUTO_TEST_CASE( Issue23855_NetNamesAndRotatedAttributes )
+{
+    std::string testFile = KI_TEST::GetEeschemaTestDataDir() + "/plugins/pads/issue23855_schematic.txt";
+
+    PADS_SCH::PADS_SCH_PARSER parser;
+    BOOST_REQUIRE( parser.Parse( testFile ) );
+
+    // The SP1 net carries two off-page anchors with opposite X offsets, so its global
+    // labels must take opposite orientations from the *NETNAMES* offsets. @@@O14 sits on
+    // the CN1 side (positive offset) and @@@O22 on the R1 side (negative offset).
+    const PADS_SCH::NETNAME_LABEL* o0 = nullptr;
+    const PADS_SCH::NETNAME_LABEL* o1 = nullptr;
+
+    for( const auto& nn : parser.GetNetNameLabels() )
+    {
+        if( nn.anchor_ref == "@@@O14" )
+            o0 = &nn;
+        else if( nn.anchor_ref == "@@@O22" )
+            o1 = &nn;
+    }
+
+    BOOST_REQUIRE( o0 != nullptr );
+    BOOST_REQUIRE( o1 != nullptr );
+    BOOST_CHECK_GT( o0->x_offset, 0 );
+    BOOST_CHECK_LT( o1->x_offset, 0 );
+
+    // The 90 degree rotated diode keeps its placed-frame attribute offsets and text angle.
+    // PADS writes the named REF-DES and PART-TYPE labels rotated with the part, followed by
+    // unnamed free-attribute slots ("*") that stay axis-aligned; only the named labels matter.
+    const PADS_SCH::PART_PLACEMENT* d5 = parser.GetPartPlacement( "D5" );
+    BOOST_REQUIRE( d5 != nullptr );
+    BOOST_CHECK_EQUAL( d5->rotation, 90.0 );
+
+    bool foundRef = false;
+    bool foundPartType = false;
+
+    for( const auto& attr : d5->attributes )
+    {
+        if( attr.name == "REF-DES" )
+        {
+            foundRef = true;
+            BOOST_CHECK_EQUAL( attr.rotation, 90.0 );
+            BOOST_CHECK_EQUAL( attr.position.x, 210 );
+            BOOST_CHECK_EQUAL( attr.position.y, 230 );
+            BOOST_CHECK_EQUAL( attr.justification, 4 );
+        }
+        else if( attr.name == "PART-TYPE" )
+        {
+            foundPartType = true;
+            BOOST_CHECK_EQUAL( attr.rotation, 90.0 );
+            BOOST_CHECK_EQUAL( attr.position.x, -70 );
+            BOOST_CHECK_EQUAL( attr.position.y, 520 );
+            BOOST_CHECK_EQUAL( attr.justification, 5 );
+        }
+    }
+
+    BOOST_CHECK( foundRef );
+    BOOST_CHECK( foundPartType );
+}
+
+// The gate decal is a lookup key. symbol_name is what the power-symbol and CAEDECAL-fallback
+// consumers read as the part's identity, so it has to stay the part type.
+BOOST_AUTO_TEST_CASE( PartPlacementKeepsPartTypeAndDecalApart )
+{
+    std::string testFile = KI_TEST::GetEeschemaTestDataDir() + "/plugins/pads/power_gate_decal.txt";
+
+    PADS_SCH::PADS_SCH_PARSER parser;
+
+    BOOST_REQUIRE( parser.Parse( testFile ) );
+
+    const PADS_SCH::PART_PLACEMENT* vcc = parser.GetPartPlacement( "VCC1" );
+    BOOST_REQUIRE( vcc != nullptr );
+
+    BOOST_CHECK_EQUAL( vcc->part_type, "+5V" );
+    BOOST_CHECK_EQUAL( vcc->symbol_name, "+5V" );
+    BOOST_CHECK_EQUAL( vcc->decal_name, "RES_0805" );
 }
 
 

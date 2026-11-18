@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <view/view.h>
@@ -31,6 +27,8 @@
 #include <gal/painter.h>
 
 #include <geometry/seg.h>
+#include <geometry/shape_poly_set.h>
+
 
 namespace KIGFX {
 
@@ -307,7 +305,7 @@ void VIEW_OVERLAY::ViewDraw( int aLayer, VIEW* aView ) const
 {
     GAL& gal = *aView->GetGAL();
 
-    GAL_SCOPED_ATTRS scopedAttrs( gal, GAL_SCOPED_ATTRS::LAYER_DEPTH );
+    GAL_SCOPED_ATTRS scopedAttrs( gal, GAL_SCOPED_ATTRS::ALL_ATTRS );
     gal.SetLayerDepth( gal.GetMinDepth() );
 
     for( const VIEW_OVERLAY::COMMAND* cmd : m_commands )

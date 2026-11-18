@@ -15,17 +15,13 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "sim/sim_model_serializer.h"
 
 #include <ki_exception.h>
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <pegtl.hpp>
 #include <pegtl/contrib/parse_tree.hpp>
 #include <boost/algorithm/string/case_conv.hpp>
@@ -91,11 +87,8 @@ std::string SIM_MODEL_SERIALIZER::GenerateParams() const
 
         const SIM_MODEL::PARAM& param = m_model.GetParamOverride( i );
 
-        if( param.value == ""
-            && !( i == 0 && m_model.HasPrimaryValue() && !m_model.IsStoredInValue() ) )
-        {
+        if( param.value == "" && !( i == 0 && m_model.HasPrimaryValue() && !m_model.IsStoredInValue() ) )
             continue;
-        }
 
         if( m_model.GetBaseModel() && m_model.GetBaseModel()->GetParam( i ).value == param.value )
             continue;
@@ -133,19 +126,19 @@ std::string SIM_MODEL_SERIALIZER::GeneratePins() const
     std::sort( pins.begin(), pins.end(),
                []( const SIM_MODEL_PIN& lhs, const SIM_MODEL_PIN& rhs )
                {
-                   return StrNumCmp( lhs.symbolPinNumber, rhs.symbolPinNumber, true ) < 0;
+                   return StrNumCmp( lhs.symbolPinNumber, rhs.symbolPinNumber, CMP_T::IGNORE_CASE ) < 0;
                } );
 
-    for( const SIM_MODEL_PIN& pin : pins )
+    for( const std::reference_wrapper<const SIM_MODEL_PIN>& pin : pins )
     {
-        std::string symbolPinNumber( pin.symbolPinNumber.ToUTF8() );
+        std::string symbolPinNumber( pin.get().symbolPinNumber.ToUTF8() );
 
         if( symbolPinNumber != "" )
         {
             if( !result.empty() )
                 result.append( " " );
 
-            result.append( fmt::format( "{}={}", symbolPinNumber, pin.modelPinName ) );
+            result.append( fmt::format( "{}={}", symbolPinNumber, pin.get().modelPinName ) );
         }
     }
 
@@ -164,18 +157,16 @@ void SIM_MODEL_SERIALIZER::ParseValue( const std::string& aValue )
     try
     {
         tao::pegtl::string_input<> in( aValue, "Value field" );
-        auto root =
-                tao::pegtl::parse_tree::parse<SIM_MODEL_SERIALIZER_PARSER::fieldInferValueGrammar,
-                                              SIM_MODEL_SERIALIZER_PARSER::fieldInferValueSelector,
-                                              tao::pegtl::nothing,
-                                              SIM_MODEL_SERIALIZER_PARSER::control>
-                ( in );
+        auto root = tao::pegtl::parse_tree::parse<SIM_MODEL_SERIALIZER_PARSER::fieldInferValueGrammar,
+                                                  SIM_MODEL_SERIALIZER_PARSER::fieldInferValueSelector,
+                                                  tao::pegtl::nothing,
+                                                  SIM_MODEL_SERIALIZER_PARSER::control>
+                        ( in );
 
         for( const auto& node : root->children )
         {
-            if( node->is_type<SIM_MODEL_SERIALIZER_PARSER::number<SIM_VALUE::TYPE_FLOAT,
-                                                                  SIM_VALUE::NOTATION::SI>>()
-                && node->string() != "" )
+            if( node->is_type<SIM_MODEL_SERIALIZER_PARSER::number<SIM_VALUE::TYPE_FLOAT, SIM_VALUE::NOTATION::SI>>()
+                    && node->string() != "" )
             {
                 m_model.SetParamValue( 0, node->string() );
             }
@@ -213,25 +204,27 @@ bool SIM_MODEL_SERIALIZER::ParseParams( const std::string& aParams )
     std::string paramName;
     bool        isPrimaryValueSet = false;
 
-    auto unescapeQuoted = []( const std::string& aString ) -> std::string
-    {
-        std::string result;
-        result.reserve( aString.size() );
-
-        for( size_t i = 0; i < aString.size(); ++i )
-        {
-            if( aString[i] == '\\' && i + 1 < aString.size() && ( aString[i + 1] == '"' || aString[i + 1] == '\\' ) )
+    auto unescapeQuoted =
+            []( const std::string& aString ) -> std::string
             {
-                result.push_back( aString[++i] );
-            }
-            else
-            {
-                result.push_back( aString[i] );
-            }
-        }
+                std::string result;
+                result.reserve( aString.size() );
 
-        return result;
-    };
+                for( size_t i = 0; i < aString.size(); ++i )
+                {
+                    if( aString[i] == '\\' && i + 1 < aString.size()
+                            && ( aString[i + 1] == '"' || aString[i + 1] == '\\' ) )
+                    {
+                        result.push_back( aString[++i] );
+                    }
+                    else
+                    {
+                        result.push_back( aString[i] );
+                    }
+                }
+
+                return result;
+            };
 
     for( const auto& node : root->children )
     {
@@ -329,8 +322,10 @@ std::string SIM_MODEL_SERIALIZER::generateParamValuePair( const SIM_MODEL::PARAM
     if( aParam.info.category == SIM_MODEL::PARAM::CATEGORY::FLAGS )
         return value == "1" ? name : "";
 
-    if( value.empty() || value.find( ' ' ) != std::string::npos || value.find( '"' ) != std::string::npos
-        || value.find( '\\' ) != std::string::npos )
+    if( value.empty()
+            || value.find( ' ' ) != std::string::npos
+            || value.find( '"' ) != std::string::npos
+            || value.find( '\\' ) != std::string::npos )
     {
         std::string escaped;
         escaped.reserve( value.size() + 8 );

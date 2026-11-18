@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <dialogs/panel_common_settings.h>
@@ -39,6 +35,8 @@
 #include <widgets/std_bitmap_button.h>
 #include <wx/filedlg.h>
 
+#include <algorithm>
+
 /*
  * What follows is a whole lot of ugly to handle various platform GUI deficiences with respect
  * to light/dark mode, DPI scaling, and other foibles.
@@ -46,14 +44,36 @@
  * Ugly as it all is, it does improve our usability on various platforms.
  */
 
+struct CANVAS_CHOICE
+{
+    int      type;
+    wxString label;
+};
+
+
+static std::vector<CANVAS_CHOICE> canvasChoices()
+{
+    return {
+        { EDA_DRAW_PANEL_GAL::GAL_TYPE_OPENGL, _( "Accelerated Graphics" ) },
+#ifdef __WXMAC__
+        { EDA_DRAW_PANEL_GAL::GAL_TYPE_MODERN, _( "RHI Metal (Experimental)" ) },
+#else
+        { EDA_DRAW_PANEL_GAL::GAL_TYPE_CAIRO, _( "Fallback Graphics" ) },
+        { EDA_DRAW_PANEL_GAL::GAL_TYPE_MODERN, _( "RHI Vulkan (Experimental)" ) },
+#endif
+    };
+}
+
+
 PANEL_COMMON_SETTINGS::PANEL_COMMON_SETTINGS( wxWindow* aParent ) :
         PANEL_COMMON_SETTINGS_BASE( aParent )
 {
-    // Rendering engine
-#ifdef __WXMAC__
-    // On MAC, Cairo render does not work.
-    m_renderingSizer->Show( false );
-#endif
+    m_canvasType->Clear();
+
+    for( const CANVAS_CHOICE& choice : canvasChoices() )
+        m_canvasType->Append( choice.label );
+
+    m_canvasType->SetSelection( 0 );
 
     ShowFileManagerWidgets( ADVANCED_CFG::GetCfg().m_EnableLibDir );
 
@@ -179,10 +199,13 @@ bool PANEL_COMMON_SETTINGS::TransferDataFromWindow()
 
     commonSettings->m_Graphics.aa_mode = m_antialiasing->GetSelection();
 
-    if( m_rbAccelerated->GetValue() )
-        commonSettings->m_Graphics.canvas_type = EDA_DRAW_PANEL_GAL::GAL_TYPE_OPENGL;
+    const std::vector<CANVAS_CHOICE> choices = canvasChoices();
+    int                              sel = m_canvasType->GetSelection();
+
+    if( sel >= 0 && sel < static_cast<int>( choices.size() ) )
+        commonSettings->m_Graphics.canvas_type = choices[sel].type;
     else
-        commonSettings->m_Graphics.canvas_type = EDA_DRAW_PANEL_GAL::GAL_TYPE_CAIRO;
+        commonSettings->m_Graphics.canvas_type = EDA_DRAW_PANEL_GAL::GAL_TYPE_OPENGL;
 
     if( m_canvasScaleCtrl )
     {
@@ -286,10 +309,13 @@ void PANEL_COMMON_SETTINGS::applySettingsToPanel( COMMON_SETTINGS& aSettings )
 
     m_antialiasing->SetSelection( aSettings.m_Graphics.aa_mode );
 
-    if( aSettings.m_Graphics.canvas_type == EDA_DRAW_PANEL_GAL::GAL_TYPE_OPENGL )
-        m_rbAccelerated->SetValue( true );
-    else
-        m_rbFallback->SetValue( true );
+    // A canvas this platform does not offer shows as the first entry
+    const std::vector<CANVAS_CHOICE> choices = canvasChoices();
+    const int                        storedType = static_cast<int>(
+            EDA_DRAW_PANEL_GAL::ResolveStoredCanvasType( aSettings.m_Graphics.canvas_type ) );
+    auto                             it = std::ranges::find( choices, storedType, &CANVAS_CHOICE::type );
+
+    m_canvasType->SetSelection( it == choices.end() ? 0 : static_cast<int>( it - choices.begin() ) );
 
     if( m_canvasScaleCtrl )
     {

@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 // Based on https://github.com/aappleby/smhasher/blob/master/src/MurmurHash3.cpp
@@ -31,6 +27,11 @@
 #define MMH3_HASH_H_
 
 #include <hash_128.h>
+
+#include <algorithm>
+#include <cstring>
+#include <string>
+#include <vector>
 
 //-----------------------------------------------------------------------------
 // Platform-specific functions and macros
@@ -71,6 +72,48 @@ public:
     }
 
     FORCE_INLINE void addData( const uint8_t* data, size_t length )
+    {
+        size_t remaining = length;
+        size_t pending = len % 16;
+
+        // Complete a block an earlier call left partial, so data may arrive in pieces of any size
+        if( pending > 0 && remaining > 0 )
+        {
+            size_t fill = std::min( remaining, 16 - pending );
+            memcpy( reinterpret_cast<uint8_t*>( blocks ) + pending, data, fill );
+            data += fill;
+            remaining -= fill;
+            len += fill;
+
+            if( len % 16 != 0 )
+                return;
+
+            hashBlock();
+        }
+
+        while( remaining >= 16 )
+        {
+            memcpy( blocks, data, 16 );
+            hashBlock();
+            data += 16;
+            remaining -= 16;
+            len += 16;
+        }
+
+        if( remaining > 0 )
+        {
+            memcpy( blocks, data, remaining );
+            memset( reinterpret_cast<uint8_t*>( blocks ) + remaining, 0, 16 - remaining );
+            len += remaining;
+        }
+    }
+
+    // Reproduces the pre-fix addData tail handling for reading files saved
+    // before the correction. The old code rounded remaining bytes to 4-byte
+    // alignment, counted padding in len, and only zeroed the padding bytes
+    // (not the full block remainder). This produced wrong hashes but files
+    // were saved with them, so we need to verify against them on load.
+    FORCE_INLINE void addDataV1( const uint8_t* data, size_t length )
     {
         size_t remaining = length;
 

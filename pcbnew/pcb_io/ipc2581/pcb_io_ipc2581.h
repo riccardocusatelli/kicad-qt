@@ -13,14 +13,15 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PCB_IO_IPC2581_H_
 #define PCB_IO_IPC2581_H_
 
 #include <pcb_io/pcb_io.h>
+#include "ipc2581_function_mode.h"
 #include <pcb_io/pcb_io_mgr.h>
 #include <pcb_io/common/plugin_common_layer_mapping.h>
 
@@ -28,6 +29,7 @@
 
 #include <eda_shape.h>
 #include <layer_ids.h> // PCB_LAYER_ID
+#include <drill/drill_span.h>
 #include <font/font.h>
 #include <geometry/shape_segment.h>
 #include <stroke_params.h>
@@ -37,10 +39,14 @@
 #include <memory>
 #include <map>
 #include <set>
+#include <tuple>
 
 class BOARD;
 class BOARD_ITEM;
 class BOARD_STACKUP_ITEM;
+class FAB_STACKUP;
+class FAB_DRILL_MODEL;
+struct DRILL_OPERATION;
 class EDA_TEXT;
 class FOOTPRINT;
 class PROGRESS_REPORTER;
@@ -62,7 +68,14 @@ public:
         m_total_bytes = 0;
         m_scale = 1.0;
         m_sigfig = 3;
-        m_version = 'B';
+        m_revision = IPC2581::REVISION::B;
+        m_mode = IPC2581::MODE::USERDEF;
+        m_functionModeNode = nullptr;
+        m_anonymizeNets = false;
+        m_omitRefDes = false;
+        m_step_node = nullptr;
+        m_progress_tick = 0;
+        m_haveCadData = true;
         m_enterpriseNode = nullptr;
         m_board = nullptr;
         m_props = nullptr;
@@ -81,11 +94,11 @@ public:
 
     ~PCB_IO_IPC2581() override;
 
-    // BOARD* LoadBoard( const wxString& aFileName, BOARD* aAppendToMe,
-    //                   const std::map<std::string, UTF8>* aProperties = nullptr,
-    //                   PROJECT* aProject = nullptr ) override;
+    /// Content logistic history CAD data components the two netlists BOM vendor list
+    /// references the write and the release  The export subtracts the phases that it skips
+    static constexpr int EXPORT_PHASES = 12;
 
-    void SaveBoard( const wxString& aFileName, BOARD* aBoard,
+    void SaveBoard( const wxString& aFileName, BOARD& aBoard,
                     const std::map<std::string, UTF8>* aProperties = nullptr ) override;
 
     const IO_BASE::IO_FILE_DESC GetBoardFileDesc() const override
@@ -197,11 +210,74 @@ private:
 
     void generateLayerSetDrill( wxXmlNode* aStepNode );
 
-    void generateLayerSetNet( wxXmlNode* aLayerNode, PCB_LAYER_ID aLayer, std::vector<BOARD_ITEM*>& aItems );
+    void generateLayerSetNet( wxXmlNode* aLayerNode, PCB_LAYER_ID aLayer, const std::vector<BOARD_ITEM*>& aItems );
 
     void generateLayerSetAuxilliary( wxXmlNode* aStepNode );
 
     wxXmlNode* generateContentStackup( wxXmlNode* aContentNode );
+
+    void generateContentLayerRefs( wxXmlNode* aCadDataNode );
+
+    /// Remove Content/StepRef when the export writes no Step
+    void dropContentStepRefs();
+
+    /// Schema sections that the finished document holds
+    IPC2581::SECTION_SET emittedSections() const;
+
+    bool included( IPC2581::SECTION aSection ) const
+    {
+        return m_resolved.m_included.Contains( aSection );
+    }
+
+    bool suppressed( IPC2581::SUPPRESS aWhat ) const
+    {
+        return m_resolved.m_suppressions.Contains( aWhat );
+    }
+
+    /**
+     * Go to the next progress phase and repaint
+     *
+     * Only KeepRefreshing operates the event loop  Without it the dialog stops
+     */
+    void reportPhase( const wxString& aMessage );
+
+    /// Count one unit of work in this phase and repaint at intervals
+    void tickProgress( const wxString& aMessage = wxEmptyString );
+
+    /// True if @a aLayer is in a schema section that this export holds
+    bool layerIncluded( PCB_LAYER_ID aLayer ) const;
+
+    /// True if a stackup row is in a schema section that this export holds
+    bool stackupRowIncluded( bool aDielectric, PCB_LAYER_ID aLayer ) const;
+
+    /**
+     * Name to write for @a aNetname with the net name policy
+     *
+     * @a aSuffix divides the physical view of a net from the logical view
+     */
+    wxString netName( const wxString& aNetname, const wxString& aSuffix = wxEmptyString );
+
+    /// True if the export removes the reference designators from the artwork
+    bool omitRefDes() const
+    {
+        return m_omitRefDes || suppressed( IPC2581::SUPPRESS::COMPONENT_REFDES );
+    }
+
+    /**
+     * True if a Component keeps a designator that a reference can name
+     *
+     * Since rev B makes Component\@refDes mandatory the export only replaces the name
+     */
+    bool refDesEmitted() const
+    {
+        return m_revision == IPC2581::REVISION::B || !omitRefDes();
+    }
+
+    /// True if a component reference can name a Component that the export wrote
+    bool componentRefEmitted() const
+    {
+        return included( IPC2581::SECTION::COMPONENTS ) && !omitRefDes();
+    }
 
     void generateComponents( wxXmlNode* aStepNode );
 
@@ -221,11 +297,14 @@ private:
 
     void addBackdrillSpecRefs( wxXmlNode* aHoleNode, const wxString& aPadstackName );
 
+    void addPostMachiningSpecRefs( wxXmlNode* aHoleNode, const DRILL_OPERATION& aOperation );
+
     void pruneUnusedBackdrillSpecs();
 
     void addLocationNode( wxXmlNode* aContentNode, double aX, double aY );
 
-    void addLocationNode( wxXmlNode* aContentNode, const PAD& aPad, bool aRelative );
+    void addLocationNode( wxXmlNode* aContentNode, const PAD& aPad, bool aRelative,
+                          PCB_LAYER_ID aLayer );
 
     void addLocationNode( wxXmlNode* aContentNode, const PCB_SHAPE& aShape );
 
@@ -257,8 +336,6 @@ private:
                          LINE_STYLE aDashType = LINE_STYLE::SOLID );
 
     size_t lineHash( int aWidth, LINE_STYLE aDashType );
-
-    size_t shapeHash( const PCB_SHAPE& aShape );
 
     wxString sanitizeId( const wxString& aStr ) const;
     wxString genString( const wxString& aStr, const char* aPrefix = nullptr ) const;
@@ -292,7 +369,6 @@ private:
 
     void addLayerAttributes( wxXmlNode* aNode, PCB_LAYER_ID aLayer );
 
-    bool isValidLayerFor2581( PCB_LAYER_ID aLayer );
 private:
 
     size_t                  m_total_bytes;  //<! Total number of bytes to be written
@@ -300,19 +376,32 @@ private:
     wxString                m_units_str;    //<! Output string for units
     double                  m_scale;        //<! Scale factor from IU to IPC2581 units (mm, micron, in)
     int                     m_sigfig;       //<! Max number of digits past the decimal point
-    char                    m_version;      //<! Currently, either 'B' or 'C' for the IPC2581 version
+    IPC2581::REVISION       m_revision;
+    IPC2581::MODE           m_mode;
+    IPC2581::SECTION_SET    m_requestedSections;
+    IPC2581::RESOLVE_RESULT m_resolved;
+    wxXmlNode*              m_functionModeNode;
+    bool                    m_anonymizeNets;
+    bool                    m_omitRefDes;
+    std::map<wxString, wxString> m_net_name_dict;
+    std::map<FOOTPRINT*, wxString> m_anon_refdes_dict;
+    wxXmlNode*              m_step_node;
+    size_t                  m_progress_tick;
+    bool                    m_haveCadData;
     wxString                m_OEMRef;       //<! If set, field name containing the internal ID of parts
     wxString                m_mpn;          //<! If set, field name containing the manufacturer part number
     wxString                m_mfg;          //<! If set, field name containing the part manufacturer
     wxString                m_distpn;       //<! If set, field name containing the distributor part number
     wxString                m_dist;         //<! If set, field name containing the distributor name
     wxString                m_bomRev;       //<! BOM revision string for the BomHeader element
+    wxString                m_variantName;  //<! BOM population variant or board current
 
     // Node pointer to the main enterprise node to be used for adding
     // enterprises later when forming the AVL
     wxXmlNode*              m_enterpriseNode;
 
     BOARD*                  m_board;
+    const FAB_STACKUP*                  m_fabStackup = nullptr;
     std::vector<FOOTPRINT*> m_loaded_footprints;
     const std::map<std::string, UTF8>*  m_props;
 
@@ -333,6 +422,7 @@ private:
     std::map<wxString, wxXmlNode*>                    m_backdrill_spec_nodes;
     std::set<wxString>                                m_backdrill_spec_used;
     int                                               m_backdrill_spec_index;
+    std::map<std::tuple<bool, int, int, int, int>, wxString> m_post_machining_specs;
     wxXmlNode*                                        m_cad_header_node;
 
     std::map<size_t, wxString>
@@ -353,8 +443,8 @@ private:
     std::map<PCB_LAYER_ID, wxString>
             m_layer_name_map; //<! Mapping layer name in 2581 to the internal layer id
 
-    std::map<std::pair<PCB_LAYER_ID, PCB_LAYER_ID>, std::vector<BOARD_ITEM*>>
-            m_drill_layers; //<! Drill sets are output as layers (to/from pairs)
+    std::map<DRILL_SPAN, std::vector<BOARD_ITEM*>> m_drill_layers; //<! Drill sets are output as layers, one per span
+    const FAB_DRILL_MODEL* m_fabDrillModel = nullptr;
 
     std::map<std::pair<PCB_LAYER_ID, PCB_LAYER_ID>, std::vector<PAD*>>
             m_slot_holes; //<! Storage vector of slotted holes that need to be output as cutouts
@@ -364,8 +454,8 @@ private:
 
     PROGRESS_REPORTER*      m_progress_reporter;
 
-    mutable std::set<wxString>           m_element_names;   //<! Track generated element names
-    mutable std::map<wxString, wxString> m_generated_names; //<! Map input keys to unique names
+    mutable std::map<wxString, std::set<wxString>> m_element_names;   //<! Track generated names by namespace
+    mutable std::map<wxString, wxString>           m_generated_names; //<! Map input keys to unique names
 
     std::set<wxUniChar>     m_acceptable_chars;     //<! IPC2581B and C have differing sets of allowed characters in names
 

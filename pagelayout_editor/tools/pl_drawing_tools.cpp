@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <class_draw_panel_gal.h>
@@ -30,6 +26,9 @@
 #include <drawing_sheet/ds_draw_item.h>
 #include <drawing_sheet/ds_data_item.h>
 #include <drawing_sheet/ds_data_model.h>
+
+#include <dialogs/dialog_import_gfx.h>
+#include <import_gfx/graphics_importer_pl_editor.h>
 
 #include "pl_editor_frame.h"
 #include "tools/pl_actions.h"
@@ -87,7 +86,8 @@ int PL_DRAWING_TOOLS::PlaceItem( const TOOL_EVENT& aEvent )
 
     m_toolMgr->RunAction( ACTIONS::selectionClear );
 
-    m_frame->PushTool( aEvent );
+    TOOL_EVENT         originalEvent = aEvent;          // This can change out from under us when the event loop runs
+    SCOPED_TOOL_PUSHER raii( m_frame, originalEvent );
 
     auto setCursor =
             [&]()
@@ -108,30 +108,32 @@ int PL_DRAWING_TOOLS::PlaceItem( const TOOL_EVENT& aEvent )
                 }
             };
 
-    auto cleanup = [&]()
-    {
-        getView()->Remove( item->GetDrawItems()[0] );
-        item = nullptr;
-        m_pendingItem.reset();
-    };
+    auto cleanup =
+            [&]()
+            {
+                getView()->Remove( item->GetDrawItems()[0] );
+                item = nullptr;
+                m_pendingItem.reset();
+            };
 
-    auto createPending = [&]() -> bool
-    {
-        m_pendingItem.reset( m_frame->CreateDrawingSheetItem( type ) );
-        item = m_pendingItem.get();
+    auto createPending =
+            [&]() -> bool
+            {
+                m_pendingItem.reset( m_frame->CreateDrawingSheetItem( type ) );
+                item = m_pendingItem.get();
 
-        if( !item )
-            return false;
+                if( !item )
+                    return false;
 
-        item->MoveToIU( getViewControls()->GetCursorPosition() );
+                item->MoveToIU( getViewControls()->GetCursorPosition() );
 
-        DS_DRAW_ITEM_BASE* drawItem = item->GetDrawItems()[0];
-        drawItem->SetFlags( IS_NEW | IS_MOVING );
-        getView()->Update( drawItem );
+                DS_DRAW_ITEM_BASE* drawItem = item->GetDrawItems()[0];
+                drawItem->SetFlags( IS_NEW | IS_MOVING );
+                getView()->Update( drawItem );
 
-        setCursor();
-        return true;
-    };
+                setCursor();
+                return true;
+            };
 
     Activate();
     // Must be done after Activate() so that it gets set into the correct context
@@ -159,10 +161,7 @@ int PL_DRAWING_TOOLS::PlaceItem( const TOOL_EVENT& aEvent )
                 cleanup();
 
             if( isText || !wasPending )
-            {
-                m_frame->PopTool( aEvent );
                 break;
-            }
         }
         else if( evt->IsActivate() )
         {
@@ -171,14 +170,11 @@ int PL_DRAWING_TOOLS::PlaceItem( const TOOL_EVENT& aEvent )
 
             if( evt->IsMoveTool() )
             {
-                // leave ourselves on the stack so we come back after the move
-                break;
+                // Make sure we come back after the move tool runs
+                m_frame->PushTool( originalEvent );
             }
-            else
-            {
-                m_frame->PopTool( aEvent );
-                break;
-            }
+
+            break;
         }
         else if( evt->IsClick( BUT_LEFT ) )
         {
@@ -271,7 +267,8 @@ int PL_DRAWING_TOOLS::DrawShape( const TOOL_EVENT& aEvent )
 
     m_toolMgr->RunAction( ACTIONS::selectionClear );
 
-    m_frame->PushTool( aEvent );
+    TOOL_EVENT         originalEvent = aEvent;          // This can change out from under us when the event loop runs
+    SCOPED_TOOL_PUSHER raii( m_frame, originalEvent );
 
     auto setCursor =
             [&]()
@@ -323,7 +320,8 @@ int PL_DRAWING_TOOLS::DrawShape( const TOOL_EVENT& aEvent )
 
             if( evt->IsPointEditor() || evt->IsMoveTool() )
             {
-                // leave ourselves on the stack so we come back after the move
+                // Make sure we come back after the move tool is done
+                m_frame->PushTool( originalEvent );
                 break;
             }
         }
@@ -391,7 +389,65 @@ int PL_DRAWING_TOOLS::DrawShape( const TOOL_EVENT& aEvent )
     getViewControls()->SetAutoPan( false );
     getViewControls()->CaptureCursor( false );
     m_frame->GetCanvas()->SetCurrentCursor( KICURSOR::ARROW );
-    m_frame->PopTool( aEvent );
+    return 0;
+}
+
+
+int PL_DRAWING_TOOLS::PlaceImportedGraphics( const TOOL_EVENT& aEvent )
+{
+    auto importer = std::make_unique<GRAPHICS_IMPORTER_PL_EDITOR>();
+
+    // The dialog takes the importer, but the items have to be fetched back out of it.
+    GRAPHICS_IMPORTER_PL_EDITOR* sink = importer.get();
+
+    // A drawing sheet has nothing to group items into.
+    DIALOG_IMPORT_GFX dlg( m_frame, std::move( importer ), false );
+
+    if( aEvent.HasParameter() )
+        dlg.SetFilenameOverride( *aEvent.Parameter<wxString*>() );
+
+    if( dlg.ShowModal() != wxID_OK )
+        return 0;
+
+    std::vector<std::unique_ptr<DS_DATA_ITEM>>& items = sink->GetDataItems();
+
+    if( items.empty() )
+    {
+        DisplayInfoMessage( m_frame, _( "No graphic items found in file." ) );
+        return 0;
+    }
+
+    m_frame->SaveCopyInUndoList();
+
+    m_toolMgr->RunAction( ACTIONS::selectionClear );
+
+    for( std::unique_ptr<DS_DATA_ITEM>& item : items )
+    {
+        DS_DATA_ITEM* dataItem = item.release();
+
+        DS_DATA_MODEL::GetTheInstance().Append( dataItem );
+
+        // Builds the item's drawable shapes and puts them in the view.
+        m_frame->SyncDataItem( dataItem );
+
+        for( DS_DRAW_ITEM_BASE* drawItem : dataItem->GetDrawItems() )
+            m_selectionTool->AddItemToSel( drawItem, true );
+    }
+
+    items.clear();
+
+    m_frame->OnModify();
+    m_frame->GetCanvas()->Refresh();
+
+    PL_SELECTION& selection = m_selectionTool->GetSelection();
+
+    // Hand the items to the move tool the way Paste does, so they jump to the cursor.
+    if( dlg.IsPlacementInteractive() && !selection.Empty() )
+    {
+        selection.SetReferencePoint( selection.GetTopLeftItem()->GetPosition() );
+        m_toolMgr->PostAction( PL_ACTIONS::move );
+    }
+
     return 0;
 }
 
@@ -402,4 +458,5 @@ void PL_DRAWING_TOOLS::setTransitions()
     Go( &PL_DRAWING_TOOLS::DrawShape,           PL_ACTIONS::drawRectangle.MakeEvent() );
     Go( &PL_DRAWING_TOOLS::PlaceItem,           PL_ACTIONS::placeText.MakeEvent() );
     Go( &PL_DRAWING_TOOLS::PlaceItem,           PL_ACTIONS::placeImage.MakeEvent() );
+    Go( &PL_DRAWING_TOOLS::PlaceImportedGraphics, PL_ACTIONS::placeImportedGraphics.MakeEvent() );
 }

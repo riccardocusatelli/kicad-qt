@@ -15,12 +15,12 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <optional>
-
+#include <core/typeinfo.h>
 #include <math/box2.h>
 #include <math/vector2d.h>
 
@@ -51,20 +51,8 @@ LINE::LINE( const LINE& aOther ) :
     m_layers = aOther.m_layers;
 
     m_via = nullptr;
-
-    if( aOther.m_via )
-    {
-        if( aOther.m_via->BelongsTo( &aOther ) )
-        {
-            m_via = aOther.m_via->Clone();
-            m_via->SetOwner( this );
-            m_via->SetNet( m_net );
-        }
-        else
-        {
-            m_via = aOther.m_via;
-        }
-    }
+    m_ownsVia = false;
+    copyVia( aOther );
 
     m_marker = aOther.m_marker;
     m_rank = aOther.m_rank;
@@ -76,13 +64,45 @@ LINE::LINE( const LINE& aOther ) :
 
 LINE::~LINE()
 {
-    if( m_via && m_via->BelongsTo( this ) )
+    dropVia();
+}
+
+
+void LINE::copyVia( const LINE& aOther )
+{
+    if( !aOther.m_via )
+        return;
+
+    if( aOther.m_ownsVia )
+    {
+        m_via = aOther.m_via->Clone();
+        m_via->SetOwner( this );
+        m_via->SetNet( m_net );
+        m_ownsVia = true;
+    }
+    else
+    {
+        m_via = aOther.m_via;
+    }
+}
+
+
+void LINE::dropVia()
+{
+    // A borrowed via may already be freed, so only the flag says whose it is
+    if( m_ownsVia )
         delete m_via;
+
+    m_via = nullptr;
+    m_ownsVia = false;
 }
 
 
 LINE& LINE::operator=( const LINE& aOther )
 {
+    if( this == &aOther )
+        return *this;
+
     m_parent = aOther.m_parent;
     m_sourceItem = aOther.m_sourceItem;
 
@@ -92,21 +112,8 @@ LINE& LINE::operator=( const LINE& aOther )
     m_movable = aOther.m_movable;
     m_layers = aOther.m_layers;
 
-    m_via = nullptr;
-
-    if( aOther.m_via )
-    {
-        if( aOther.m_via->BelongsTo( &aOther ) )
-        {
-            m_via = aOther.m_via->Clone();
-            m_via->SetOwner( this );
-            m_via->SetNet( m_net );
-        }
-        else
-        {
-            m_via = aOther.m_via;
-        }
-    }
+    dropVia();
+    copyVia( aOther );
 
     m_marker = aOther.m_marker;
     m_rank = aOther.m_rank;
@@ -134,21 +141,8 @@ LINE& LINE::operator=( LINE&& aOther ) noexcept
        m_movable = aOther.m_movable;
        m_layers = aOther.m_layers;
 
-       m_via = nullptr;
-
-       if( aOther.m_via )
-       {
-           if( aOther.m_via->BelongsTo( &aOther ) )
-           {
-               m_via = aOther.m_via->Clone();
-               m_via->SetOwner( this );
-               m_via->SetNet( m_net );
-           }
-           else
-           {
-               m_via = aOther.m_via;
-           }
-       }
+       dropVia();
+       copyVia( aOther );
 
        m_marker = aOther.m_marker;
        m_rank = aOther.m_rank;
@@ -337,7 +331,7 @@ bool LINE::Walkaround( const SHAPE_LINE_CHAIN& aObstacle, SHAPE_LINE_CHAIN& aPat
         bool visited = false;
     };
 
-    SHAPE_LINE_CHAIN::INTERSECTIONS ips;
+    std::vector<SHAPE_LINE_CHAIN::INTERSECTION> ips;
 
     HullIntersection( aObstacle, line, ips );
 
@@ -1419,9 +1413,12 @@ void LINE::AppendVia( const VIA& aVia )
         Reverse();
     }
 
+    dropVia();
+
     m_via = aVia.Clone();
     m_via->SetOwner( this );
     m_via->SetNet( m_net );
+    m_ownsVia = true;
 }
 
 
@@ -1431,6 +1428,8 @@ void LINE::LinkVia( VIA* aVia )
     {
         Reverse();
     }
+
+    dropVia();
 
     m_via = aVia;
     Link( aVia );
@@ -1499,17 +1498,14 @@ void LINE::ClipVertexRange( int aStart, int aEnd )
 
     if( IsLinked() )
     {
+        auto oldLinks( m_links );
         KI_ASSERT( m_links.size() < INT_MAX );
         KI_ASSERT( static_cast<int>( m_links.size() ) >= ( lastLink - firstLink ) );
 
-        // Note: The range includes aEnd, but we have n-1 segments.
-        std::rotate(
-            m_links.begin(),
-            m_links.begin() + firstLink,
-            m_links.begin() + lastLink
-        );
 
-        m_links.resize( lastLink - firstLink + 1 );
+        m_links.clear();
+        for( int i = firstLink; i <= lastLink; i++ )
+            m_links.push_back( oldLinks[i] );
     }
 }
 
@@ -1645,15 +1641,10 @@ void LINE::Clear()
 
 void LINE::RemoveVia()
 {
-    if( m_via )
-    {
-        if( ContainsLink( m_via ) )
-            Unlink( m_via );
-        if( m_via->BelongsTo( this ) )
-            delete m_via;
-    }
+    if( m_via && ContainsLink( m_via ) )
+        Unlink( m_via );
 
-    m_via = nullptr;
+    dropVia();
 }
 
 
@@ -1677,6 +1668,39 @@ int LINE::FindSegment( const SEGMENT* aSeg ) const
 
     return -1;
 }
+
+
+SEGMENT* LINE::FindLinkedSegment( const SEG& aSeg ) const
+{
+    for( auto lnk : Links() )
+    {
+        if( auto seg = dyn_cast<SEGMENT*>( lnk ) )
+        {
+            if( seg->Seg() == aSeg || seg->Seg() == aSeg.Reversed() )
+                return seg;
+        }
+    }
+
+    return nullptr;
+}
+
+
+SEGMENT* LINE::FindLinkContainingVertex( const VECTOR2I& aP ) const
+{
+    for( auto lnk : Links() )
+    {
+        if( auto seg = dyn_cast<SEGMENT*>( lnk ) )
+        {
+            if( seg->Seg().Contains( aP ) )
+            {
+                return seg;
+            }
+        }
+    }
+
+    return nullptr;
+}
+
 
 }
 

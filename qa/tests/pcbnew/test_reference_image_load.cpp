@@ -14,23 +14,30 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <qa_utils/wx_utils/unit_test_utils.h>
 #include <boost/test/data/test_case.hpp>
+#include <qa_utils/wx_utils/unit_test_utils.h>
 
 #include <board.h>
 #include <kiid.h>
 #include <layer_ids.h>
 #include <pcb_reference_image.h>
+#include <reference_image.h>
+#include <bitmap_base.h>
+#include <pcb_io/kicad_sexpr/pcb_io_kicad_sexpr.h>
+#include <pcb_io/kicad_sexpr/pcb_io_kicad_sexpr_parser.h>
 #include <pcbnew_utils/board_file_utils.h>
 #include <pcbnew_utils/board_test_utils.h>
+#include <richio.h>
 #include <settings/settings_manager.h>
+
+#include <filesystem>
+#include <fstream>
+#include <sstream>
+
+#include <wx/image.h>
 
 namespace
 {
@@ -91,7 +98,6 @@ const std::vector<REFERENCE_IMAGE_LOAD_BOARD_TEST_CASE> ReferenceImageLoading_te
     },
 };
 
-
 // Minimal 1x1 RGB PNG with a pHYs chunk of 3780 pixels/meter in both axes.
 // 3780 PPM -> 37.8 px/cm -> 37.8 * 2.54 = 96.012 -> 96 PPI, but the pre-fix code truncated
 // "37.8" to 37 -> 94 PPI.
@@ -103,6 +109,27 @@ const std::vector<unsigned char> png_3780_ppm = {
     0x63, 0xF8, 0xCF, 0xC0, 0x00, 0x00, 0x03, 0x01, 0x01, 0x00, 0xF7, 0x03, 0x41, 0x43, 0x00, 0x00,
     0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82
 };
+
+
+std::unique_ptr<BOARD> parseBoardString( const std::string& aData )
+{
+    STRING_LINE_READER        reader( aData, wxT( "migration test board" ) );
+    PCB_IO_KICAD_SEXPR_PARSER parser( &reader, nullptr, nullptr );
+
+    return std::unique_ptr<BOARD>( dynamic_cast<BOARD*>( parser.Parse() ) );
+}
+
+
+double firstImageScale( const BOARD& aBoard )
+{
+    for( BOARD_ITEM* item : aBoard.Drawings() )
+    {
+        if( item->Type() == PCB_REFERENCE_IMAGE_T )
+            return static_cast<PCB_REFERENCE_IMAGE*>( item )->GetReferenceImage().GetImageScale();
+    }
+
+    return -1.0;
+}
 
 } // namespace
 
@@ -215,6 +242,54 @@ private:
 
 
 /**
+ * A board predating the PNG pixel-density fix stored an image scale that compensated for the
+ * truncated PPI. Loading it must re-scale by the corrected/truncated PPI ratio so the rendered
+ * size is preserved, while a current-version board is loaded verbatim.
+ */
+BOOST_FIXTURE_TEST_CASE( ReferenceImagePpiScaleMigration, REFERENCE_IMAGE_BOARD_FIXTURE )
+{
+    BOARD&               board = GetBoard();
+    PCB_REFERENCE_IMAGE& image = GetImage();
+
+    SetImageData( png_3780_ppm );
+
+    REFERENCE_IMAGE& refImage = image.GetReferenceImage();
+
+    BOOST_REQUIRE_EQUAL( refImage.GetImage().GetPPI(), 96 );
+    BOOST_REQUIRE_EQUAL( refImage.GetImage().GetLegacyPPI(), 94 );
+
+    refImage.SetImageScale( 2.0 );
+    image.SetLayer( F_Cu );
+
+    const std::string path = ( std::filesystem::temp_directory_path()
+                               / "issue23575_ppi_migration.kicad_pcb" ).string();
+    KI_TEST::DumpBoardToFile( board, path );
+
+    std::ifstream     in( path );
+    std::stringstream ss;
+    ss << in.rdbuf();
+    const std::string current = ss.str();
+
+    // Current format version: the stored scale is already correct, so it loads verbatim.
+    std::unique_ptr<BOARD> reloaded = parseBoardString( current );
+    BOOST_REQUIRE( reloaded );
+    BOOST_CHECK_CLOSE( firstImageScale( *reloaded ), 2.0, 1e-6 );
+
+    // Simulate a pre-fix file by lowering the format version below the migration cutoff.  Match
+    // the live version rather than a literal so a later format bump does not break this test.
+    std::string       legacy = current;
+    const std::string version = std::to_string( SEXPR_BOARD_FILE_VERSION );
+    const size_t      pos = legacy.find( version );
+    BOOST_REQUIRE( pos != std::string::npos );
+    legacy.replace( pos, version.size(), "20260512" );
+
+    std::unique_ptr<BOARD> migrated = parseBoardString( legacy );
+    BOOST_REQUIRE( migrated );
+    BOOST_CHECK_CLOSE( firstImageScale( *migrated ), 2.0 * 96.0 / 94.0, 1e-3 );
+}
+
+
+/**
  * Rotating a reference image must rotate the transform origin with the image
  * content, so the origin keeps pointing at the same pixel of the image.
  */
@@ -243,4 +318,53 @@ BOOST_FIXTURE_TEST_CASE( ReferenceImageRotateTransformOrigin, REFERENCE_IMAGE_BO
 
     BOOST_CHECK_EQUAL( refImage.GetPosition(), pos );
     BOOST_CHECK_EQUAL( refImage.GetTransformOriginOffset(), VECTOR2I( 100, -300 ) );
+}
+
+
+/**
+ * A rotation is stored on the image and applied when drawing, so the raster is never resampled
+ * and the bounding box follows the drawn orientation.
+ */
+BOOST_FIXTURE_TEST_CASE( ReferenceImageStoresRotation, REFERENCE_IMAGE_BOARD_FIXTURE )
+{
+    BOARD&               board = GetBoard();
+    PCB_REFERENCE_IMAGE& image = GetImage();
+
+    REFERENCE_IMAGE& refImage = image.GetReferenceImage();
+
+    wxImage raster( 42, 24 );
+    raster.SetRGB( wxRect( 0, 0, 42, 24 ), 0, 0, 0 );
+    BOOST_REQUIRE( refImage.SetImage( raster ) );
+
+    refImage.SetPosition( VECTOR2I( 1000, 2000 ) );
+
+    const VECTOR2I pos = refImage.GetPosition();
+    const VECTOR2I size = refImage.GetSize();
+
+    BOOST_REQUIRE( size.x != size.y );
+
+    refImage.Rotate( pos, ANGLE_45 );
+
+    BOOST_CHECK_EQUAL( refImage.GetOrientation(), ANGLE_45 );
+    BOOST_CHECK_EQUAL( refImage.GetPosition(), pos );
+    BOOST_CHECK_EQUAL( refImage.GetSize(), size );
+
+    // The axis-aligned box of a rotated rectangle spans |w cos| + |h sin|.
+    BOOST_CHECK_CLOSE( refImage.GetBoundingBox().GetWidth(), ( size.x + size.y ) * M_SQRT1_2, 0.001 );
+    BOOST_CHECK_CLOSE( refImage.GetBoundingBox().GetHeight(), ( size.x + size.y ) * M_SQRT1_2, 0.001 );
+
+    // A quarter turn is stored too, rather than messing with pixel data.
+    refImage.Rotate( pos, ANGLE_45 );
+
+    BOOST_CHECK_EQUAL( refImage.GetOrientation(), ANGLE_90 );
+    BOOST_CHECK_EQUAL( refImage.GetSize(), size );
+    // box is rotated 90 degrees, so width and height are swapped.
+    BOOST_CHECK_EQUAL( refImage.GetBoundingBox().GetWidth(), size.y );
+    BOOST_CHECK_EQUAL( refImage.GetBoundingBox().GetHeight(), size.x );
+
+    // Rotating back restores the unrotated extent.
+    refImage.Rotate( pos, ANGLE_270 );
+
+    BOOST_CHECK_EQUAL( refImage.GetOrientation(), ANGLE_0 );
+    BOOST_CHECK_EQUAL( refImage.GetBoundingBox().GetSize(), size );
 }

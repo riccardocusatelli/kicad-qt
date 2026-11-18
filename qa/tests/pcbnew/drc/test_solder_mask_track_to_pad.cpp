@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -101,9 +97,8 @@ BOOST_FIXTURE_TEST_CASE( DRCTrackToPadBridgeTest, DRC_TRACK_TO_PAD_BRIDGE_FIXTUR
     // We expect at least one violation: track from netB is within clearance of pad from netA
     BOOST_CHECK_GE( violations.size(), 1 );
 
-    // Verify the violation involves the track by checking item IDs in the cache
+    // Verify the violation involves the track by resolving the item IDs through the board
     bool foundTrackViolation = false;
-    const auto& itemCache = m_board->GetItemByIdCache();
 
     for( const DRC_ITEM& item : violations )
     {
@@ -114,20 +109,10 @@ BOOST_FIXTURE_TEST_CASE( DRCTrackToPadBridgeTest, DRC_TRACK_TO_PAD_BRIDGE_FIXTUR
         BOARD_ITEM* auxItem = nullptr;
 
         if( mainId != niluuid )
-        {
-            auto it = itemCache.find( mainId );
-
-            if( it != itemCache.end() )
-                mainItem = it->second;
-        }
+            mainItem = m_board->ResolveItem( mainId, true );
 
         if( auxId != niluuid )
-        {
-            auto it = itemCache.find( auxId );
-
-            if( it != itemCache.end() )
-                auxItem = it->second;
-        }
+            auxItem = m_board->ResolveItem( auxId, true );
 
         BOOST_TEST_MESSAGE( wxString::Format( "Violation: main=%s aux=%s",
                                               mainItem ? mainItem->GetClass() : wxString( "null" ),

@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef _SETTINGS_MANAGER_H
@@ -35,12 +35,11 @@ class KIWAY_SERVICES;
 class PROJECT;
 class PROJECT_FILE;
 class REPORTER;
-class wxSingleInstanceChecker;
 class wxFileName;
 class LOCKFILE;
 
 
-/// Project settings path will be <projectname> + this
+/// Project settings path will be \<projectname\> + this
 #define PROJECT_BACKUPS_DIR_SUFFIX wxT( "-backups" )
 
 #define DEFAULT_THEME wxString( wxT( "user" ) )
@@ -76,6 +75,7 @@ public:
      * Take ownership of the pointer passed in.
      *
      * @param aSettings is a settings object to register.
+     * @param aLoadNow loads the settings on registration when true.
      * @return a handle to the owned pointer.
      */
     template<typename T>
@@ -95,7 +95,8 @@ public:
     /**
      * If the given settings object is registered, save it to disk and unregister it.
      *
-     * @param aSettings is the object to release
+     * @param aSettings is the object to release.
+     * @param aSave performs a save to file when true.
      */
     void FlushAndRelease( JSON_SETTINGS* aSettings, bool aSave = true );
 
@@ -296,9 +297,11 @@ public:
      *
      * @param aFullPath is the full path to the project.
      * @param aSetActive if true will set the loaded project as the active project.
+     * @param aOverrideLock if true, an active load takes the project lock even when another
+     *                      session holds it.  Callers use this once the user has agreed to it.
      * @return true if the #PROJECT_FILE was successfully loaded from disk.
      */
-    bool LoadProject( const wxString& aFullPath, bool aSetActive = true );
+    bool LoadProject( const wxString& aFullPath, bool aSetActive = true, bool aOverrideLock = false );
 
     /**
      * Save, unload and unregister the given #PROJECT.
@@ -308,6 +311,14 @@ public:
      * @return true if the #PROJECT file was successfully saved.
      */
     bool UnloadProject( PROJECT* aProject, bool aSave = true );
+
+    /**
+     * Give up the lock of every loaded project without unloading it.
+     *
+     * Releasing a lock deletes its lock file through wxWidgets, so a project that is still loaded
+     * when the application exits must let go of it before static destruction begins.
+     */
+    void ReleaseProjectLocks();
 
     /**
      * Helper for checking if we have a project open.
@@ -341,6 +352,13 @@ public:
     PROJECT* GetProject( const wxString& aFullPath ) const;
 
     /**
+     * True if @p aProject is still owned by the manager. Compares pointers only and
+     * never dereferences @p aProject, so it is safe to call with a possibly-stale
+     * pointer to guard against unloading a project that was evicted underneath us.
+     */
+    bool IsProjectLoaded( PROJECT* aProject ) const;
+
+    /**
      * Return the active project iff its path matches @p aProjectPath, else nullptr.
      * Lets backup/history helpers feed the right PROJECT* into per-project path
      * resolvers without falling back to Prj() for an unrelated project.
@@ -351,6 +369,11 @@ public:
      * @return a list of open projects.
      */
     std::vector<wxString> GetOpenProjects() const;
+
+    /**
+     * Synchronize the global field name templates into every loaded project.
+     */
+    void SyncGlobalFieldNameTemplatesToProjects();
 
     /**
      * Save a loaded project.
@@ -379,8 +402,9 @@ public:
      *
      * @param aFullPath is the full filename to set for the project.
      * @param aProject is the project to save, or nullptr to save the active project (Prj() return).
+     * @return true if both the project file and the local settings were written.
      */
-    void SaveProjectCopy( const wxString& aFullPath, PROJECT* aProject = nullptr );
+    bool SaveProjectCopy( const wxString& aFullPath, PROJECT* aProject = nullptr );
 
     /**
      * @return the full path to where project backups should be stored.
@@ -539,7 +563,10 @@ private:
      */
     bool unloadProjectFile( PROJECT* aProject, bool aSave );
 
-    ///< Helper to create built-in colors and register them.
+    /// Cancels and joins every library preload and async load, so none can touch Prj() during a project change
+    void stopLibraryLoads();
+
+    /// Helper to create built-in colors and register them.
     void registerBuiltinColorSettings();
 
 private:

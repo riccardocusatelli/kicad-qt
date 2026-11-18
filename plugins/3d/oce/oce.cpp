@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /*
@@ -29,11 +25,11 @@
 #include <wx/filename.h>
 #include "plugins/3d/3d_plugin.h"
 #include "plugins/3dapi/ifsg_all.h"
+#include "loadmodel.h"
+#include <advanced_config.h>
 
 #include <string>
 #include <vector>
-
-SCENEGRAPH* LoadModel( char const* filename );
 
 #define PLUGIN_OCE_MAJOR 1
 #define PLUGIN_OCE_MINOR 4
@@ -143,5 +139,9 @@ SCENEGRAPH* Load( char const* aFileName )
     if( !wxFileName::FileExists( fname ) )
         return nullptr;
 
-    return LoadModel( aFileName );
+    S3D::MODEL_IMPORT_OPTIONS options;
+    options.stepLinearDeflection = ADVANCED_CFG::GetCfg().m_OcePluginLinearDeflection;
+    options.stepAngularDeflectionDegrees = ADVANCED_CFG::GetCfg().m_OcePluginAngularDeflection;
+
+    return LoadModel( aFileName, &options );
 }

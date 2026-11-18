@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <wx/filename.h>
@@ -30,7 +26,7 @@
 
 #include <notifications_manager.h>
 #include <widgets/kistatusbar.h>
-
+#include <widgets/kistatusbar_popup.h>
 #include "notifications_list.h"
 
 #include <algorithm>
@@ -42,6 +38,7 @@
 
 #include <algorithm>
 #include <fstream>
+#include <list>
 #include <map>
 #include <optional>
 #include <tuple>
@@ -67,7 +64,7 @@ void NOTIFICATIONS_MANAGER::Load()
     {
         saved_json_stream >> saved_json;
 
-        m_notifications = saved_json.get<std::vector<NOTIFICATION>>();
+        m_notifications = saved_json.get<std::list<NOTIFICATION>>();
     }
     catch( std::exception& )
     {
@@ -106,25 +103,26 @@ void NOTIFICATIONS_MANAGER::CreateOrUpdate( const wxString& aKey,
                                 return noti.key == aKey;
                             } );
 
+    NOTIFICATION* noti = nullptr;
+
     if( it != m_notifications.end() )
     {
-        NOTIFICATION& noti = *it;
-
-        noti.title = aTitle;
-        noti.description = aDescription;
-        noti.href = aHref;
+        noti = &*it;
+        noti->title = aTitle;
+        noti->description = aDescription;
+        noti->href = aHref;
     }
     else
     {
-        m_notifications.emplace_back( NOTIFICATION{ aTitle, aDescription, aHref,
-                                                    aKey, wxEmptyString } );
+        noti = &m_notifications.emplace_back( NOTIFICATION{ aTitle, aDescription, aHref,
+                                                            aKey, wxEmptyString } );
     }
 
-    if( m_shownDialogs.size() > 0 )
+    // Replace an updated notification's panel rather than add a second one
+    for( NOTIFICATIONS_LIST* list : m_shownDialogs )
     {
-        // update dialogs
-        for( NOTIFICATIONS_LIST* list : m_shownDialogs )
-            list->Add( &m_notifications.back() );
+        list->Remove( noti );
+        list->Add( noti );
     }
 
     for( KISTATUSBAR* statusBar : m_statusBars )

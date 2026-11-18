@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -161,6 +157,22 @@ VERTEX* CACHED_CONTAINER::Allocate( unsigned int aSize )
 void CACHED_CONTAINER::Delete( VERTEX_ITEM* aItem )
 {
     assert( aItem != nullptr );
+
+    // The item being edited joins m_items only in FinishItem(), which an exception out of
+    // Allocate() skips, so it gives back the chunk reserved for it here
+    if( aItem == m_item )
+    {
+        if( m_chunkSize > 0 )
+            addFreeChunk( m_chunkOffset, m_chunkSize );
+
+        aItem->setSize( 0 );
+        m_items.erase( aItem );
+        m_item = nullptr;
+        m_chunkSize = 0;
+        m_chunkOffset = 0;
+        return;
+    }
+
     assert( m_items.find( aItem ) != m_items.end() || aItem->GetSize() == 0 );
 
     int size = aItem->GetSize();
@@ -207,10 +219,19 @@ void CACHED_CONTAINER::Clear()
 
     // Set the size of all the stored VERTEX_ITEMs to 0, so it is clear that they are not held
     // in the container anymore
-    for( ITEMS::iterator it = m_items.begin(); it != m_items.end(); ++it )
+    for( std::set<VERTEX_ITEM*>::iterator it = m_items.begin(); it != m_items.end(); ++it )
         ( *it )->setSize( 0 );
 
     m_items.clear();
+
+    // An item left mid-edit by a failed allocation is not in m_items
+    if( m_item )
+    {
+        m_item->setSize( 0 );
+        m_item = nullptr;
+        m_chunkSize = 0;
+        m_chunkOffset = 0;
+    }
 
     // Now there is only free space left
     m_freeChunks.clear();
@@ -292,8 +313,8 @@ bool CACHED_CONTAINER::reallocate( unsigned int aSize )
 void CACHED_CONTAINER::defragment( VERTEX* aTarget )
 {
     // Defragmentation
-    ITEMS::iterator it, it_end;
-    int             newOffset = 0;
+    std::set<VERTEX_ITEM*>::iterator it, it_end;
+    int                              newOffset = 0;
 
     [&]()
     {
@@ -324,8 +345,7 @@ void CACHED_CONTAINER::defragment( VERTEX* aTarget )
             // Move the current item and place it at the end
             if( m_item->GetSize() > 0 )
             {
-                memcpy( &aTarget[newOffset], &m_vertices[m_item->GetOffset()],
-                        m_item->GetSize() * VERTEX_SIZE );
+                memcpy( &aTarget[newOffset], &m_vertices[m_item->GetOffset()], m_item->GetSize() * VERTEX_SIZE );
                 m_item->setOffset( newOffset );
                 m_chunkOffset = newOffset;
             }
@@ -438,8 +458,8 @@ void CACHED_CONTAINER::test()
     assert( freeSpace == m_freeSpace );
 
     // Used space check
-    unsigned int    used_space = 0;
-    ITEMS::iterator itr;
+    unsigned int                     used_space = 0;
+    std::set<VERTEX_ITEM*>::iterator itr;
 
     for( itr = m_items.begin(); itr != m_items.end(); ++itr )
         used_space += ( *itr )->GetSize();

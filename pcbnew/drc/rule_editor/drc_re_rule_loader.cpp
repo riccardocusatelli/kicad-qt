@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "drc_re_rule_loader.h"
@@ -29,6 +25,11 @@
 #include <drc/drc_rule_parser.h>
 #include <drc/drc_rule_condition.h>
 #include <wx/ffile.h>
+
+#include <algorithm>
+#include <optional>
+#include <tuple>
+#include <utility>
 
 #include "drc_re_via_style_constraint_data.h"
 #include "drc_re_rtg_diff_pair_constraint_data.h"
@@ -89,6 +90,204 @@ static bool isSymmetricMinOptMax( const DRC_CONSTRAINT* aConstraint )
 }
 
 
+// The width and gap panels write min, opt and max around one optimum, so a range missing any of them
+// would be rewritten
+static bool isSymmetricTriple( const DRC_CONSTRAINT* aConstraint )
+{
+    if( !aConstraint )
+        return true;
+
+    const auto& value = aConstraint->GetValue();
+
+    return value.HasMin() && value.HasOpt() && value.HasMax() && isSymmetricMinOptMax( aConstraint );
+}
+
+
+// A panel writes the predicate it holds back as "predicate && rest", so it can only take a
+// condition that is already in that form
+static std::optional<wxString> takeLeadingPredicate( const wxString& aCondition, const wxString& aPredicate )
+{
+    wxString condition = aCondition;
+    condition.Trim( true ).Trim( false );
+
+    if( condition == aPredicate )
+        return wxString();
+
+    wxString rest;
+
+    if( !condition.StartsWith( aPredicate + wxS( " &&" ), &rest ) )
+        return std::nullopt;
+
+    rest.Trim( true ).Trim( false );
+
+    if( rest.IsEmpty() )
+        return std::nullopt;
+
+    return rest;
+}
+
+
+static bool isMinOnly( const DRC_CONSTRAINT* aConstraint )
+{
+    if( !aConstraint )
+        return true;
+
+    const auto& value = aConstraint->GetValue();
+
+    return value.HasMin() && !value.HasOpt() && !value.HasMax();
+}
+
+
+// An absent bound reads back as the largest value of its type, so a panel that writes a bound
+// out cannot be given a range that names only the other end.
+static bool hasBothBounds( const DRC_CONSTRAINT* aConstraint )
+{
+    return !aConstraint || ( aConstraint->GetValue().HasMin() && aConstraint->GetValue().HasMax() );
+}
+
+
+static bool hasMaxBound( const DRC_CONSTRAINT* aConstraint )
+{
+    return !aConstraint || aConstraint->GetValue().HasMax();
+}
+
+
+// The DRC lexer treats a line whose first non-blank character is # as a comment
+static bool isOnCommentLine( const wxString& aContent, size_t aPos )
+{
+    size_t lineStart = aPos == 0 ? wxString::npos : aContent.rfind( '\n', aPos - 1 );
+
+    for( size_t i = ( lineStart == wxString::npos ) ? 0 : lineStart + 1; i <= aPos; ++i )
+    {
+        if( !wxIsspace( aContent[i] ) )
+            return aContent[i] == '#';
+    }
+
+    return false;
+}
+
+
+// Offset of the paren closing the expression opened at aOpen, or npos when unbalanced
+static size_t findClosingParen( const wxString& aContent, size_t aOpen )
+{
+    int  parenCount = 0;
+    bool inString = false;
+    bool escaped = false;
+
+    for( size_t i = aOpen; i < aContent.length(); ++i )
+    {
+        wxUniChar c = aContent[i];
+
+        if( escaped )
+        {
+            escaped = false;
+            continue;
+        }
+
+        if( c == '\\' )
+        {
+            escaped = true;
+            continue;
+        }
+
+        if( c == '"' )
+        {
+            inString = !inString;
+            continue;
+        }
+
+        if( inString )
+            continue;
+
+        if( c == '#' && isOnCommentLine( aContent, i ) )
+        {
+            i = aContent.find( '\n', i );
+
+            if( i == wxString::npos )
+                break;
+        }
+        else if( c == '(' )
+        {
+            parenCount++;
+        }
+        else if( c == ')' )
+        {
+            if( --parenCount == 0 )
+                return i;
+        }
+    }
+
+    return wxString::npos;
+}
+
+
+// Span of the next top-level expression at or after aFrom, skipping comments
+static std::pair<size_t, size_t> findNextExpression( const wxString& aContent, size_t aFrom )
+{
+    for( size_t i = aFrom; i < aContent.length(); ++i )
+    {
+        if( aContent[i] == '#' && isOnCommentLine( aContent, i ) )
+        {
+            i = aContent.find( '\n', i );
+
+            if( i == wxString::npos )
+                break;
+        }
+        else if( aContent[i] == '(' )
+        {
+            size_t close = findClosingParen( aContent, i );
+
+            if( close == wxString::npos )
+                break;
+
+            return { i, close + 1 };
+        }
+    }
+
+    return { wxString::npos, wxString::npos };
+}
+
+
+static bool isVersionExpression( const wxString& aContent, size_t aOpen )
+{
+    size_t keyword = aOpen + 1;
+
+    while( keyword < aContent.length() )
+    {
+        if( aContent[keyword] == '#' && isOnCommentLine( aContent, keyword ) )
+            keyword = aContent.find( '\n', keyword );
+        else if( wxIsspace( aContent[keyword] ) )
+            keyword++;
+        else
+            break;
+    }
+
+    return keyword != wxString::npos && aContent.compare( keyword, 7, wxS( "version" ) ) == 0;
+}
+
+
+// Version clauses may repeat anywhere, so the next rule is the next expression that is not one
+static std::pair<size_t, size_t> findNextRule( const wxString& aContent, size_t aFrom )
+{
+    std::pair<size_t, size_t> span = findNextExpression( aContent, aFrom );
+
+    while( span.first != wxString::npos && isVersionExpression( aContent, span.first ) )
+        span = findNextExpression( aContent, span.second );
+
+    return span;
+}
+
+
+// No layer clause means all layers, which an entry stores as an empty set.
+static LSET ruleLayers( const DRC_RULE& aRule )
+{
+    if( aRule.m_LayerCondition == LSET::AllLayersMask() )
+        return LSET();
+
+    return aRule.m_LayerCondition;
+}
+
+
 static std::shared_ptr<DRC_RE_BASE_CONSTRAINT_DATA> makeCustomRuleData( const DRC_RULE& aRule )
 {
     auto customData = std::make_shared<DRC_RE_CUSTOM_RULE_CONSTRAINT_DATA>();
@@ -97,7 +296,7 @@ static std::shared_ptr<DRC_RE_BASE_CONSTRAINT_DATA> makeCustomRuleData( const DR
 }
 
 
-wxString DRC_RULE_LOADER::extractRuleBody( const wxString& aOriginalText )
+wxString DRC_RULE_LOADER::ExtractRuleBody( const wxString& aOriginalText )
 {
     // Comment lines live in the comment field, not in the body.
     wxArrayString kept;
@@ -121,18 +320,57 @@ wxString DRC_RULE_LOADER::extractRuleBody( const wxString& aOriginalText )
     if( bodyStart == (int) wxString::npos )
         return aOriginalText;
 
-    wxString body = text.Mid( bodyStart );
+    // Take the first clause from the start of its line so it keeps its indent beside the others
+    size_t lineStart = text.rfind( '\n', bodyStart );
+    lineStart = ( lineStart == wxString::npos ) ? 0 : lineStart + 1;
+
+    bool ownLine = text.find_first_not_of( wxS( " \t" ), lineStart ) == (size_t) bodyStart;
+
+    wxString body = text.Mid( ownLine ? lineStart : bodyStart );
     body.Trim( true );
 
     if( body.EndsWith( wxS( ")" ) ) )
         body = body.Left( body.Length() - 1 );
     body.Trim( true );
 
-    return body;
+    // The body is edited and saved without the indent the lines share; FormatRule puts one back
+    wxArrayString           lines = wxSplit( body, '\n', '\0' );
+    std::optional<wxString> indent;
+
+    for( size_t i = ownLine ? 0 : 1; i < lines.size(); ++i )
+    {
+        size_t textStart = lines[i].find_first_not_of( wxS( " \t" ) );
+
+        if( textStart == wxString::npos )
+            continue;
+
+        wxString lead = lines[i].Left( textStart );
+
+        if( !indent )
+            indent = lead;
+
+        size_t common = 0;
+
+        while( common < indent->length() && common < lead.length() && ( *indent )[common] == lead[common] )
+            ++common;
+
+        indent = indent->Left( common );
+    }
+
+    if( !indent || indent->IsEmpty() )
+        return body;
+
+    for( size_t i = ownLine ? 0 : 1; i < lines.size(); ++i )
+    {
+        if( lines[i].StartsWith( *indent ) )
+            lines[i] = lines[i].Mid( indent->length() );
+    }
+
+    return wxJoin( lines, '\n', '\0' );
 }
 
 
-wxString DRC_RULE_LOADER::extractRuleComment( const wxString& aOriginalText )
+wxString DRC_RULE_LOADER::ExtractRuleComment( const wxString& aOriginalText )
 {
     wxString      comment;
     wxArrayString lines = wxSplit( aOriginalText, '\n', '\0' );
@@ -205,37 +443,49 @@ DRC_RULE_LOADER::createConstraintData( DRC_RULE_EDITOR_CONSTRAINT_NAME   aPanel,
         if( viaDia )
         {
             data->SetMinViaDiameter( toMM( viaDia->GetValue().Min() ) );
-            data->SetMaxViaDiameter( toMM( viaDia->GetValue().Max() ) );
+
+            if( viaDia->GetValue().HasMax() )
+                data->SetMaxViaDiameter( toMM( viaDia->GetValue().Max() ) );
+
+            if( viaDia->GetValue().HasOpt() )
+                data->SetOptViaDiameter( toMM( viaDia->GetValue().Opt() ) );
         }
 
         if( holeSize )
         {
             data->SetMinViaHoleSize( toMM( holeSize->GetValue().Min() ) );
-            data->SetMaxViaHoleSize( toMM( holeSize->GetValue().Max() ) );
+
+            if( holeSize->GetValue().HasMax() )
+                data->SetMaxViaHoleSize( toMM( holeSize->GetValue().Max() ) );
+
+            if( holeSize->GetValue().HasOpt() )
+                data->SetOptViaHoleSize( toMM( holeSize->GetValue().Opt() ) );
         }
 
-        if( aRule.m_Condition )
+        wxString condition = aRule.m_Condition ? aRule.m_Condition->GetExpression() : wxString();
+
+        if( condition.Contains( wxS( "Via_Type" ) ) )
         {
-            wxString expr = aRule.m_Condition->GetExpression();
+            std::optional<wxString> rest;
 
-            if( expr.Contains( wxS( "'Micro'" ) ) )
-                data->SetViaType( VIA_STYLE_TYPE::MICRO );
-            else if( expr.Contains( wxS( "'Through'" ) ) )
-                data->SetViaType( VIA_STYLE_TYPE::THROUGH );
-            else if( expr.Contains( wxS( "'Blind'" ) ) )
-                data->SetViaType( VIA_STYLE_TYPE::BLIND );
-            else if( expr.Contains( wxS( "'Buried'" ) ) )
-                data->SetViaType( VIA_STYLE_TYPE::BURIED );
+            for( VIA_STYLE_TYPE type :
+                 { VIA_STYLE_TYPE::MICRO, VIA_STYLE_TYPE::THROUGH, VIA_STYLE_TYPE::BLIND, VIA_STYLE_TYPE::BURIED } )
+            {
+                data->SetViaType( type );
+                rest = takeLeadingPredicate( condition, data->GetConditionPredicate() );
 
-            // Strip the via type condition so it doesn't duplicate on save
-            wxString cleanedCondition = expr;
-            cleanedCondition.Replace( wxS( "A.Via_Type == 'Micro'" ), wxS( "" ) );
-            cleanedCondition.Replace( wxS( "A.Via_Type == 'Through'" ), wxS( "" ) );
-            cleanedCondition.Replace( wxS( "A.Via_Type == 'Blind'" ), wxS( "" ) );
-            cleanedCondition.Replace( wxS( "A.Via_Type == 'Buried'" ), wxS( "" ) );
+                if( rest )
+                    break;
+            }
 
-            data->SetRuleCondition( cleanStrippedCondition( cleanedCondition ) );
+            // The panel's choice cannot write back any other via type test
+            if( !rest )
+                return makeCustomRuleData( aRule );
+
+            condition = *rest;
         }
+
+        data->SetRuleCondition( condition );
 
         return data;
     }
@@ -246,10 +496,8 @@ DRC_RULE_LOADER::createConstraintData( DRC_RULE_EDITOR_CONSTRAINT_NAME   aPanel,
         const DRC_CONSTRAINT* diffGap = findConstraint( aRule, DIFF_PAIR_GAP_CONSTRAINT );
         const DRC_CONSTRAINT* uncoupled = findConstraint( aRule, MAX_UNCOUPLED_CONSTRAINT );
 
-        if( !isSymmetricMinOptMax( trackWidth ) || !isSymmetricMinOptMax( diffGap ) )
-        {
+        if( !isSymmetricTriple( trackWidth ) || !isSymmetricTriple( diffGap ) || !hasMaxBound( uncoupled ) )
             return makeCustomRuleData( aRule );
-        }
 
         auto data = std::make_shared<DRC_RE_ROUTING_DIFF_PAIR_CONSTRAINT_DATA>();
         data->SetRuleName( aRule.m_Name );
@@ -257,16 +505,18 @@ DRC_RULE_LOADER::createConstraintData( DRC_RULE_EDITOR_CONSTRAINT_NAME   aPanel,
 
         if( trackWidth )
         {
-            double opt = toMM( trackWidth->GetValue().Opt() );
+            double opt = toMM( trackWidth->GetValue().PinnedOpt() );
             double min = toMM( trackWidth->GetValue().Min() );
+
             data->SetOptWidth( opt );
             data->SetWidthTolerance( opt - min );
         }
 
         if( diffGap )
         {
-            double opt = toMM( diffGap->GetValue().Opt() );
+            double opt = toMM( diffGap->GetValue().PinnedOpt() );
             double min = toMM( diffGap->GetValue().Min() );
+
             data->SetOptGap( opt );
             data->SetGapTolerance( opt - min );
         }
@@ -281,12 +531,16 @@ DRC_RULE_LOADER::createConstraintData( DRC_RULE_EDITOR_CONSTRAINT_NAME   aPanel,
 
     case MINIMUM_TEXT_HEIGHT_AND_THICKNESS:
     {
+        const DRC_CONSTRAINT* textHeight = findConstraint( aRule, TEXT_HEIGHT_CONSTRAINT );
+        const DRC_CONSTRAINT* textThickness = findConstraint( aRule, LINE_WIDTH_CONSTRAINT );
+
+        // The panel saves only minimums, so a max or opt would be lost on edit
+        if( !isMinOnly( textHeight ) || !isMinOnly( textThickness ) )
+            return makeCustomRuleData( aRule );
+
         auto data = std::make_shared<DRC_RE_MINIMUM_TEXT_HEIGHT_THICKNESS_CONSTRAINT_DATA>();
         data->SetRuleName( aRule.m_Name );
         data->SetConstraintCode( "text_height" );
-
-        const DRC_CONSTRAINT* textHeight = findConstraint( aRule, TEXT_HEIGHT_CONSTRAINT );
-        const DRC_CONSTRAINT* textThickness = findConstraint( aRule, TEXT_THICKNESS_CONSTRAINT );
 
         if( textHeight )
             data->SetMinTextHeight( toMM( textHeight->GetValue().Min() ) );
@@ -301,7 +555,7 @@ DRC_RULE_LOADER::createConstraintData( DRC_RULE_EDITOR_CONSTRAINT_NAME   aPanel,
     {
         const DRC_CONSTRAINT* trackWidth = findConstraint( aRule, TRACK_WIDTH_CONSTRAINT );
 
-        if( !isSymmetricMinOptMax( trackWidth ) )
+        if( !isSymmetricTriple( trackWidth ) )
             return makeCustomRuleData( aRule );
 
         auto data = std::make_shared<DRC_RE_ROUTING_WIDTH_CONSTRAINT_DATA>();
@@ -310,7 +564,7 @@ DRC_RULE_LOADER::createConstraintData( DRC_RULE_EDITOR_CONSTRAINT_NAME   aPanel,
 
         if( trackWidth )
         {
-            double opt = toMM( trackWidth->GetValue().Opt() );
+            double opt = toMM( trackWidth->GetValue().PinnedOpt() );
             double min = toMM( trackWidth->GetValue().Min() );
 
             data->SetOptWidth( opt );
@@ -324,7 +578,7 @@ DRC_RULE_LOADER::createConstraintData( DRC_RULE_EDITOR_CONSTRAINT_NAME   aPanel,
     {
         const DRC_CONSTRAINT* length = findConstraint( aRule, LENGTH_CONSTRAINT );
 
-        if( !isSymmetricMinOptMax( length ) )
+        if( !isSymmetricMinOptMax( length ) || !hasBothBounds( length ) )
             return makeCustomRuleData( aRule );
 
         auto data = std::make_shared<DRC_RE_ABSOLUTE_LENGTH_TWO_CONSTRAINT_DATA>();
@@ -344,7 +598,7 @@ DRC_RULE_LOADER::createConstraintData( DRC_RULE_EDITOR_CONSTRAINT_NAME   aPanel,
             double max = convert( length->GetValue().Max() );
 
             // A rule without an optimum gets the window center, so saving keeps its min and max.
-            double opt = length->GetValue().HasOpt() ? convert( length->GetValue().Opt() ) : ( min + max ) / 2.0;
+            double opt = length->GetValue().HasOpt() ? convert( length->GetValue().PinnedOpt() ) : ( min + max ) / 2.0;
 
             data->SetTimeDomain( timeDomain );
             data->SetOptimumLength( opt );
@@ -357,8 +611,9 @@ DRC_RULE_LOADER::createConstraintData( DRC_RULE_EDITOR_CONSTRAINT_NAME   aPanel,
     case MATCHED_LENGTH_DIFF_PAIR:
     {
         const DRC_CONSTRAINT* length = findConstraint( aRule, LENGTH_CONSTRAINT );
+        const DRC_CONSTRAINT* skew = findConstraint( aRule, SKEW_CONSTRAINT );
 
-        if( !isSymmetricMinOptMax( length ) )
+        if( !isSymmetricMinOptMax( length ) || !hasBothBounds( length ) || !hasMaxBound( skew ) )
             return makeCustomRuleData( aRule );
 
         auto data = std::make_shared<DRC_RE_MATCHED_LENGTH_DIFF_PAIR_CONSTRAINT_DATA>();
@@ -368,13 +623,15 @@ DRC_RULE_LOADER::createConstraintData( DRC_RULE_EDITOR_CONSTRAINT_NAME   aPanel,
         if( length )
         {
             double minMM = toMM( length->GetValue().Min() );
-            double optMM = toMM( length->GetValue().Opt() );
             double maxMM = toMM( length->GetValue().Max() );
+
+            // A rule without an optimum gets the window center, so saving keeps its min and max
+            double optMM = length->GetValue().HasOpt() ? toMM( length->GetValue().PinnedOpt() )
+                                                       : ( minMM + maxMM ) / 2.0;
+
             data->SetOptimumLength( optMM );
             data->SetTolerance( ( maxMM - minMM ) / 2.0 );
         }
-
-        const DRC_CONSTRAINT* skew = findConstraint( aRule, SKEW_CONSTRAINT );
 
         if( skew )
         {
@@ -466,6 +723,14 @@ DRC_RULE_LOADER::createConstraintData( DRC_RULE_EDITOR_CONSTRAINT_NAME   aPanel,
         data->SetRuleName( aRule.m_Name );
         data->SetConstraintCode( wxS( "disallow_via" ) );
 
+        std::optional<wxString> rest = takeLeadingPredicate(
+                aRule.m_Condition ? aRule.m_Condition->GetExpression() : wxString(), data->GetConditionPredicate() );
+
+        if( !rest )
+            return makeCustomRuleData( aRule );
+
+        data->SetRuleCondition( *rest );
+
         const DRC_CONSTRAINT* constraint = findConstraint( aRule, DISALLOW_CONSTRAINT );
 
         if( constraint )
@@ -504,8 +769,10 @@ DRC_RULE_LOADER::createConstraintData( DRC_RULE_EDITOR_CONSTRAINT_NAME   aPanel,
 
                 if( constraint )
                 {
-                    if( type == VIA_COUNT_CONSTRAINT )
+                    if( type == VIA_COUNT_CONSTRAINT || type == MICROVIA_STACK_DEPTH_CONSTRAINT )
                         data->SetNumericInputValue( constraint->GetValue().Max() );
+                    else if( type == HOLE_ASPECT_RATIO_CONSTRAINT )
+                        data->SetNumericInputValue( constraint->GetValue().Max() / 1000.0 );
                     else if( type == MIN_RESOLVED_SPOKES_CONSTRAINT )
                         data->SetNumericInputValue( constraint->GetValue().Min() );
                     else
@@ -655,35 +922,33 @@ std::vector<DRC_RE_LOADED_PANEL_ENTRY> DRC_RULE_LOADER::LoadRule( const DRC_RULE
             constraintData->SetRuleCondition( cleanStrippedCondition( cleanedCondition ) );
         }
 
-        if( match.panelType == VIAS_UNDER_SMD )
-        {
-            wxString cleanedCondition = condition;
-
-            cleanedCondition.Replace( wxS( "A.Pad_Type == 'SMD'" ), wxS( "" ) );
-            cleanedCondition.Replace( wxS( "B.Pad_Type == 'SMD'" ), wxS( "" ) );
-
-            constraintData->SetRuleCondition( cleanStrippedCondition( cleanedCondition ) );
-        }
-
         if( match.panelType == CUSTOM_RULE && customFallback )
         {
-            customFallback->SetRuleText( extractRuleBody( aOriginalText ) );
+            customFallback->SetRuleText( ExtractRuleBody( aOriginalText ) );
         }
 
         if( match.panelType != VIA_STYLE && match.panelType != SILK_TO_SOLDERMASK_CLEARANCE
             && match.panelType != SILK_TO_SILK_CLEARANCE && match.panelType != VIAS_UNDER_SMD )
             constraintData->SetRuleCondition( condition );
 
-        DRC_RE_LOADED_PANEL_ENTRY entry( match.panelType, constraintData, aRule.m_Name, condition, aRule.m_Severity,
-                                         aRule.m_LayerCondition );
+        // The silk branches above moved the side of the board out of the condition and into the
+        // layers they own, so the entry takes what they wrote, not the text it was parsed from
+        bool stripped = match.panelType == SILK_TO_SOLDERMASK_CLEARANCE || match.panelType == SILK_TO_SILK_CLEARANCE;
+
+        wxString entryCondition = stripped ? constraintData->GetRuleCondition() : condition;
+        LSET     entryLayers = stripped ? LSET( constraintData->GetLayers() ) : ruleLayers( aRule );
+
+        DRC_RE_LOADED_PANEL_ENTRY entry( match.panelType, constraintData, aRule.m_Name, entryCondition,
+                                         aRule.m_Severity, entryLayers );
 
         // Preserve original layer source text for round-trip fidelity
         wxString source = aRule.m_LayerSource;
         if( source.StartsWith( wxS( "'" ) ) && source.EndsWith( wxS( "'" ) ) )
             source = source.Mid( 1, source.Length() - 2 );
-        entry.layerSource = source;
 
-        wxString comment = extractRuleComment( aOriginalText );
+        entry.layerSource = stripped ? constraintData->GetLayerSource() : source;
+
+        wxString comment = ExtractRuleComment( aOriginalText );
         if( !comment.IsEmpty() )
             constraintData->SetComment( comment );
 
@@ -694,6 +959,19 @@ std::vector<DRC_RE_LOADED_PANEL_ENTRY> DRC_RULE_LOADER::LoadRule( const DRC_RULE
         entries.push_back( std::move( entry ) );
     }
 
+    // Text holds the whole rule body, so beside a panel entry it would drop or revive clauses on save,
+    // and a predicate one part took out of the shared condition would leave it for the other parts
+    if( entries.size() > 1
+        && std::any_of( entries.begin(), entries.end(),
+                        []( const DRC_RE_LOADED_PANEL_ENTRY& aEntry )
+                        {
+                            return aEntry.panelType == CUSTOM_RULE
+                                   || !aEntry.constraintData->GetConditionPredicate().IsEmpty();
+                        } ) )
+    {
+        entries.clear();
+    }
+
     // If no matches, create a custom rule entry
     if( entries.empty() )
     {
@@ -701,14 +979,14 @@ std::vector<DRC_RE_LOADED_PANEL_ENTRY> DRC_RULE_LOADER::LoadRule( const DRC_RULE
         customData->SetRuleName( aRule.m_Name );
         customData->SetRuleCondition( condition );
 
-        wxString comment = extractRuleComment( aOriginalText );
+        wxString comment = ExtractRuleComment( aOriginalText );
         if( !comment.IsEmpty() )
             customData->SetComment( comment );
 
-        customData->SetRuleText( extractRuleBody( aOriginalText ) );
+        customData->SetRuleText( ExtractRuleBody( aOriginalText ) );
 
-        DRC_RE_LOADED_PANEL_ENTRY entry( CUSTOM_RULE, customData, aRule.m_Name, condition,
-                                         aRule.m_Severity, aRule.m_LayerCondition );
+        DRC_RE_LOADED_PANEL_ENTRY entry( CUSTOM_RULE, customData, aRule.m_Name, condition, aRule.m_Severity,
+                                         ruleLayers( aRule ) );
         wxString                  source = aRule.m_LayerSource;
         if( source.StartsWith( wxS( "'" ) ) && source.EndsWith( wxS( "'" ) ) )
             source = source.Mid( 1, source.Length() - 2 );
@@ -724,15 +1002,21 @@ std::vector<DRC_RE_LOADED_PANEL_ENTRY> DRC_RULE_LOADER::LoadRule( const DRC_RULE
 }
 
 
-std::vector<DRC_RE_LOADED_PANEL_ENTRY> DRC_RULE_LOADER::LoadFromString( const wxString& aRulesText )
+std::vector<DRC_RE_LOADED_PANEL_ENTRY> DRC_RULE_LOADER::LoadFromString( const wxString& aRulesText, bool* aParsed )
 {
     std::vector<DRC_RE_LOADED_PANEL_ENTRY> allEntries;
     std::vector<std::shared_ptr<DRC_RULE>> parsedRules;
 
-    wxString rulesText = aRulesText;
+    m_fileTrivia = DRC_RE_FILE_TRIVIA();
 
-    if( !rulesText.Contains( "(version" ) )
-        rulesText.Prepend( "(version 1)\n" );
+    wxString rulesText = aRulesText;
+    auto [start, end] = findNextExpression( rulesText, 0 );
+
+    if( start == wxString::npos || !isVersionExpression( rulesText, start ) )
+    {
+        rulesText.Prepend( "(version 2)\n" );
+        std::tie( start, end ) = findNextExpression( rulesText, 0 );
+    }
 
     try
     {
@@ -741,25 +1025,57 @@ std::vector<DRC_RE_LOADED_PANEL_ENTRY> DRC_RULE_LOADER::LoadFromString( const wx
     }
     catch( const IO_ERROR& )
     {
+        if( aParsed )
+            *aParsed = false;
+
         return allEntries;
     }
 
+    if( aParsed )
+        *aParsed = true;
+
+    // The parser accepted the text, so its non-version expressions are the rules in parse order
+    // and everything between them is kept verbatim for the saver
+    size_t pos = end;
+    m_fileTrivia.header = rulesText.Left( pos );
+
+    int ruleIndex = 0;
+
     for( const auto& rule : parsedRules )
     {
-        // Extract the actual original text from the file content
-        wxString originalText = extractRuleText( aRulesText, rule->m_Name );
+        wxString originalText;
+        wxString leadingTrivia;
+
+        std::tie( start, end ) = findNextRule( rulesText, pos );
+
+        if( start != wxString::npos )
+        {
+            originalText = rulesText.Mid( start, end - start );
+            leadingTrivia = rulesText.Mid( pos, start - pos );
+            pos = end;
+        }
+
+        m_fileTrivia.leadingTrivia.push_back( leadingTrivia );
 
         std::vector<DRC_RE_LOADED_PANEL_ENTRY> ruleEntries = LoadRule( *rule, originalText );
 
         for( auto& entry : ruleEntries )
+        {
+            entry.sourceRule = ruleIndex;
+            entry.ruleGroupId = ruleIndex + 1;
             allEntries.push_back( std::move( entry ) );
+        }
+
+        ruleIndex++;
     }
+
+    m_fileTrivia.trailer = rulesText.Mid( pos );
 
     return allEntries;
 }
 
 
-wxString DRC_RULE_LOADER::extractRuleText( const wxString& aContent, const wxString& aRuleName )
+wxString DRC_RULE_LOADER::ExtractRuleText( const wxString& aContent, const wxString& aRuleName )
 {
     // Search for the rule by name, handling both quoted and unquoted names.
     // The quoted form includes the closing quote as a boundary so partial
@@ -796,54 +1112,9 @@ wxString DRC_RULE_LOADER::extractRuleText( const wxString& aContent, const wxStr
     if( startPos == wxString::npos )
         return wxEmptyString;
 
-    // Find the matching closing parenthesis by counting balanced parens
-    int parenCount = 0;
-    size_t endPos = startPos;
-    bool inString = false;
-    bool escaped = false;
+    size_t endPos = findClosingParen( aContent, startPos );
 
-    for( size_t i = startPos; i < aContent.length(); ++i )
-    {
-        wxUniChar c = aContent[i];
-
-        if( escaped )
-        {
-            escaped = false;
-            continue;
-        }
-
-        if( c == '\\' )
-        {
-            escaped = true;
-            continue;
-        }
-
-        if( c == '"' )
-        {
-            inString = !inString;
-            continue;
-        }
-
-        if( inString )
-            continue;
-
-        if( c == '(' )
-        {
-            parenCount++;
-        }
-        else if( c == ')' )
-        {
-            parenCount--;
-
-            if( parenCount == 0 )
-            {
-                endPos = i;
-                break;
-            }
-        }
-    }
-
-    if( parenCount != 0 )
+    if( endPos == wxString::npos )
         return wxEmptyString;
 
     return aContent.Mid( startPos, endPos - startPos + 1 );
@@ -853,6 +1124,8 @@ wxString DRC_RULE_LOADER::extractRuleText( const wxString& aContent, const wxStr
 std::vector<DRC_RE_LOADED_PANEL_ENTRY> DRC_RULE_LOADER::LoadFile( const wxString& aPath )
 {
     std::vector<DRC_RE_LOADED_PANEL_ENTRY> allEntries;
+
+    m_fileTrivia = DRC_RE_FILE_TRIVIA();
 
     wxFFile file( aPath, "r" );
 

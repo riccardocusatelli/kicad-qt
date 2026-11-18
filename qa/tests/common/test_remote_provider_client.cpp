@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <boost/test/unit_test.hpp>
@@ -25,6 +25,7 @@
 #include <oauth/secure_token_store.h>
 #include <remote_provider_client.h>
 #include <wx/utils.h>
+#include <wx/filename.h>
 
 
 namespace
@@ -124,20 +125,43 @@ struct BUILD_DIR_FIXTURE
 {
     BUILD_DIR_FIXTURE()
     {
-        m_wasSet = wxGetEnv( wxS( "KICAD_RUN_FROM_BUILD_DIR" ), &m_oldValue );
+        m_runFromBuildDirWasSet = wxGetEnv( wxS( "KICAD_RUN_FROM_BUILD_DIR" ), &m_oldRunFromBuildDir );
 
-        if( !m_wasSet )
+#if defined( __WXMAC__ ) || defined( __WXMSW__ )
+        // Bare QA binaries need the source schema directory as their data home.
+        wxUnsetEnv( wxS( "KICAD_RUN_FROM_BUILD_DIR" ) );
+
+        wxFileName resourcesDir = wxFileName::DirName( wxString::FromUTF8( QA_SRC_ROOT ) );
+        resourcesDir.AppendDir( wxS( "resources" ) );
+        m_stockDataHomeWasSet = wxGetEnv( wxS( "KICAD_STOCK_DATA_HOME" ), &m_oldStockDataHome );
+        wxSetEnv( wxS( "KICAD_STOCK_DATA_HOME" ), resourcesDir.GetPath() );
+#else
+        if( !m_runFromBuildDirWasSet )
             wxSetEnv( wxS( "KICAD_RUN_FROM_BUILD_DIR" ), wxS( "1" ) );
+#endif
     }
 
     ~BUILD_DIR_FIXTURE()
     {
-        if( !m_wasSet )
+        if( m_runFromBuildDirWasSet )
+            wxSetEnv( wxS( "KICAD_RUN_FROM_BUILD_DIR" ), m_oldRunFromBuildDir );
+        else
             wxUnsetEnv( wxS( "KICAD_RUN_FROM_BUILD_DIR" ) );
+
+#if defined( __WXMAC__ ) || defined( __WXMSW__ )
+        if( m_stockDataHomeWasSet )
+            wxSetEnv( wxS( "KICAD_STOCK_DATA_HOME" ), m_oldStockDataHome );
+        else
+            wxUnsetEnv( wxS( "KICAD_STOCK_DATA_HOME" ) );
+#endif
     }
 
-    bool     m_wasSet;
-    wxString m_oldValue;
+    bool     m_runFromBuildDirWasSet = false;
+    wxString m_oldRunFromBuildDir;
+#if defined( __WXMAC__ ) || defined( __WXMSW__ )
+    bool     m_stockDataHomeWasSet = false;
+    wxString m_oldStockDataHome;
+#endif
 };
 
 } // namespace

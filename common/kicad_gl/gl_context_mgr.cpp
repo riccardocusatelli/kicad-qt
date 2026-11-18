@@ -16,13 +16,10 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <advanced_config.h>
 #include <kicad_gl/gl_context_mgr.h>
 #include <pgm_gui.h>
 #include <trace_helpers.h>
@@ -37,18 +34,61 @@ GL_CONTEXT_MANAGER* GL_CONTEXT_MANAGER::Get()
 }
 
 
+static bool resetRecoveryEnabled()
+{
+#ifdef __WXMAC__
+    return false;
+#else
+    return ADVANCED_CFG::GetCfg().m_EnableGLResetRecovery;
+#endif
+}
+
+
 KIGL_CONTEXT* GL_CONTEXT_MANAGER::CreateCtx( KIGL_CANVAS* aCanvas, const KIGL_CONTEXT* aOther )
 {
-    wxGLContext* context = new wxGLContext( aCanvas, aOther );
-    KI_CHECK( context, nullptr );
+    // Sharing fails between contexts with different reset strategies
+    bool         loseOnReset = aOther ? IsLoseOnReset( aOther ) : resetRecoveryEnabled();
+    wxGLContext* context = nullptr;
 
-    if( !context->IsOK() )
+    if( loseOnReset )
     {
-        delete context;
-        return nullptr;
+        wxGLContextAttrs attrs;
+        attrs.PlatformDefaults().LoseOnReset().EndList();
+
+        // wx reports a failed creation with wxLogMessage, which would show a dialog
+        wxLogNull quiet;
+        context = new wxGLContext( aCanvas, aOther, &attrs );
+
+        if( !context->IsOK() )
+        {
+            delete context;
+            context = nullptr;
+
+            if( aOther )
+                return nullptr;
+
+            loseOnReset = false;
+        }
     }
 
+    if( !context )
+    {
+        context = new wxGLContext( aCanvas, aOther );
+
+        if( !context->IsOK() )
+        {
+            delete context;
+            return nullptr;
+        }
+    }
+
+    KI_LOG_TRACE( traceGalContext, wxS( "Created GL context %p on canvas %p, lose on reset %d" ), context,
+                aCanvas, loseOnReset ? 1 : 0 );
+
     m_glContexts.insert( std::make_pair( context, aCanvas ) );
+
+    if( loseOnReset )
+        m_loseOnResetContexts.insert( context );
 
     return context;
 }
@@ -59,6 +99,7 @@ void GL_CONTEXT_MANAGER::DestroyCtx( KIGL_CONTEXT* aContext )
     if( m_glContexts.count( aContext ) )
     {
         m_glContexts.erase( aContext );
+        m_loseOnResetContexts.erase( aContext );
         delete aContext;
     }
     else
@@ -80,6 +121,7 @@ void GL_CONTEXT_MANAGER::DeleteAll()
         delete ctx.first;
 
     m_glContexts.clear();
+    m_loseOnResetContexts.clear();
     m_glCtx = nullptr;
     m_glCtxMutex.unlock();
 }
@@ -93,10 +135,15 @@ bool GL_CONTEXT_MANAGER::LockCtx( KIGL_CONTEXT* aContext, KIGL_CANVAS* aCanvas )
     KIGL_CANVAS* canvas = aCanvas ? aCanvas : m_glContexts.at( aContext );
     bool        current = false;
 
-#ifdef __WXGTK__
+#if defined( __WXMSW__ )
+    // Re-binding the current context makes the driver release it first, which hangs NVIDIA after a reset
+    if( wglGetCurrentContext() == aContext->GetGLRC() && wglGetCurrentDC() == canvas->GetHDC() )
+        current = true;
+    else
+#elif defined( __WXGTK__ )
     // Prevent assertion failure in wxGLContext::SetCurrent during GAL teardown
     if( canvas->GTKGetDrawingWindow() )
-#endif // __WXGTK__
+#endif
     {
         current = canvas->SetCurrent( *aContext );
     }

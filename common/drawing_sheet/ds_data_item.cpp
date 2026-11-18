@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -549,7 +545,11 @@ void DS_DATA_ITEM_TEXT::SyncDrawItems( DS_DRAW_ITEM_LIST* aCollector, KIGFX::VIE
         multilines = ReplaceAntiSlashSequence();
     }
 
-    if( pensize == 0 )
+    // Feed bold worksheet text an auto width so its Bold flag reproduces the historical bold
+    // pen size through the render-time multiplier; otherwise fall back to the default.
+    if( m_Bold )
+        pensize = 0;
+    else if( pensize == 0 )
         pensize = aCollector ? aCollector->GetDefaultPenSize() : 1;
 
     SetConstrainedTextSize();
@@ -557,9 +557,6 @@ void DS_DATA_ITEM_TEXT::SyncDrawItems( DS_DRAW_ITEM_LIST* aCollector, KIGFX::VIE
 
     textsize.x = KiROUND( m_ConstrainedTextSize.x * DS_DATA_MODEL::GetTheInstance().m_WSunits2Iu );
     textsize.y = KiROUND( m_ConstrainedTextSize.y * DS_DATA_MODEL::GetTheInstance().m_WSunits2Iu );
-
-    if( m_Bold )
-        pensize = GetPenSizeForBold( std::min( textsize.x, textsize.y ) );
 
     std::map<size_t, EDA_ITEM_FLAGS> itemFlags;
     DS_DRAW_ITEM_TEXT*               text = nullptr;

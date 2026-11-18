@@ -19,11 +19,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -87,6 +83,15 @@ public:
     /// Note: aMaxError is not used in Cairo, because Cairo can draw true arcs
     void DrawArcSegment( const VECTOR2D& aCenterPoint, double aRadius, const EDA_ANGLE& aStartAngle,
                          const EDA_ANGLE& aAngle, double aWidth, double aMaxError ) override;
+
+    /// @copydoc GAL::DrawEllipse()
+    void DrawEllipse( const VECTOR2D& aCenterPoint, double aMajorRadius, double aMinorRadius,
+                      const EDA_ANGLE& aRotation ) override;
+
+    /// @copydoc GAL::DrawEllipseArc()
+    void DrawEllipseArc( const VECTOR2D& aCenterPoint, double aMajorRadius, double aMinorRadius,
+                         const EDA_ANGLE& aRotation, const EDA_ANGLE& aStartAngle,
+                         const EDA_ANGLE& aEndAngle ) override;
 
     /// @copydoc GAL::DrawRectangle()
     void DrawRectangle( const VECTOR2D& aStartPoint, const VECTOR2D& aEndPoint ) override;
@@ -237,7 +242,7 @@ public:
 
     void EnableDepthTest( bool aEnabled = false ) override;
 
-    ///< @copydoc GAL::DrawGrid()
+    /// @copydoc GAL::DrawGrid()
     void DrawGrid() override;
 
     /// @copydoc GAL::BeginDrawing()
@@ -277,12 +282,26 @@ protected:
      *
      * @param aStartPoint is the start point of the line.
      * @param aEndPoint is the end point of the line.
+     * @param aColor is the colour to stroke it in.
      */
-    void drawGridLine( const VECTOR2D& aStartPoint, const VECTOR2D& aEndPoint );
-    void drawGridCross( const VECTOR2D& aPoint );
-    void drawGridPoint( const VECTOR2D& aPoint, double aWidth, double aHeight );
+    void drawGridLine( const VECTOR2D& aStartPoint, const VECTOR2D& aEndPoint,
+                       const COLOR4D& aColor );
+    void drawGridCross( const VECTOR2D& aPoint, const COLOR4D& aColor );
+    void drawGridPoint( const VECTOR2D& aPoint, double aWidth, double aHeight,
+                        const COLOR4D& aColor );
     void drawAxes( const VECTOR2D& aStartPoint, const VECTOR2D& aEndPoint );
 
+    /**
+     * Render m_gridSources precedence-ascending; each bounded source paints its coverage
+     * out first, so the last drawn wins.  Cairo has no stencil, so paint order stands in.
+     */
+    void drawGridSources();
+
+    /**
+     * Paint one source: coverage wash, grid content, then hairline.  The unbounded
+     * background source gets neither wash nor hairline.
+     */
+    void drawGridSource( const GRID_SOURCE& aSrc );
 
     void flushPath();
     void storePath();                           ///< Store the actual path

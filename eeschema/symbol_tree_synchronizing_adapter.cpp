@@ -16,28 +16,28 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "symbol_tree_synchronizing_adapter.h"
 
+#include <wx/log.h>
 #include <wx/settings.h>
 
 #include <core/throttle.h>
+#include <kiplatform/ui.h>
 #include <pgm_base.h>
+#include <settings/common_settings.h>
+#include <symbol_edit_frame.h>
 #include <project/project_file.h>
 #include <lib_symbol_library_manager.h>
 #include <tools/symbol_editor_control.h>
+#include <tool/tool_manager.h>
 #include <project_sch.h>
 #include <string_utils.h>
 #include <symbol_preview_widget.h>
 #include <libraries/symbol_library_adapter.h>
 #include <widgets/wx_panel.h>
-#include <kiplatform/ui.h>
 #include <core/ki_assert.h>
 
 
@@ -78,17 +78,22 @@ void SYMBOL_TREE_SYNCHRONIZING_ADAPTER::Sync( const wxString& aForceRefresh,
 {
     THROTTLE progressThrottle( std::chrono::milliseconds( 120 ) );
 
-    // Cancels a queued scroll; a frame-clock tick would else walk rows freed below
+    KI_LOG_TRACE( wxT( "KICAD_TABS_DBG" ), wxT( "SymbolSyncAdapter::Sync enter (forceRefresh='%s')" ),
+                aForceRefresh );
+
+    // Cancel any pending GtkTreeView scroll so it cannot touch rows freed by the rebuild below.
     KIPLATFORM::UI::CancelPendingScroll( m_widget );
 
-    // Detaches the model for the rebuild; a frame-clock tick during the progress dialog
-    // yield would else validate freed rows
+    // Detach the GtkTreeView from the model before freeing any node so no deferred tick can
+    // validate stale rows.
     ResetTreeView resetGuard( *this );
 
     m_lastSyncHash = m_libMgr->GetHash();
     int i = 0, max = GetLibrariesCount();
 
     SYMBOL_LIBRARY_ADAPTER* adapter = PROJECT_SCH::SymbolLibAdapter( &m_frame->Prj() );
+
+    KI_LOG_TRACE( wxT( "KICAD_TABS_DBG" ), wxT( "SymbolSyncAdapter::Sync freeing/updating nodes" ) );
 
     // Process already stored libraries
     for( auto it = m_tree.m_Children.begin(); it != m_tree.m_Children.end(); )
@@ -145,19 +150,26 @@ void SYMBOL_TREE_SYNCHRONIZING_ADAPTER::Sync( const wxString& aForceRefresh,
             if( progressThrottle.Ready() )
                 aProgressCallback( i++, max, libName );
 
-            auto optRow = adapter->GetRow( libName );
+            std::optional<LIBRARY_TABLE_ROW*> optRow = adapter->GetRow( libName );
             KI_CHECK2( optRow.has_value(), continue );
+
+            if( optRow.value()->Hidden() )
+                continue;
 
             bool pinned = alg::contains( cfg->m_Session.pinned_symbol_libs, libName )
                             || alg::contains( project.m_PinnedSymbolLibs, libName );
 
-            LIB_TREE_NODE_LIBRARY& lib_node = DoAddLibraryNode( libName, ( *optRow )->Description(), pinned );
+            wxString description = optRow.value()->Description();
+
+            LIB_TREE_NODE_LIBRARY& lib_node = DoAddLibraryNode( libName, description, pinned );
 
             updateLibrary( lib_node );
         }
     }
 
     m_tree.AssignIntrinsicRanks( m_shownColumns );
+
+    KI_LOG_TRACE( wxT( "KICAD_TABS_DBG" ), wxT( "SymbolSyncAdapter::Sync exit" ) );
 }
 
 
@@ -229,8 +241,8 @@ void SYMBOL_TREE_SYNCHRONIZING_ADAPTER::updateLibrary( LIB_TREE_NODE_LIBRARY& aL
 }
 
 
-LIB_TREE_NODE::PTR_VECTOR::iterator
-SYMBOL_TREE_SYNCHRONIZING_ADAPTER::deleteLibrary( LIB_TREE_NODE::PTR_VECTOR::iterator& aLibNodeIt )
+std::vector<std::unique_ptr<LIB_TREE_NODE>>::iterator
+SYMBOL_TREE_SYNCHRONIZING_ADAPTER::deleteLibrary( std::vector<std::unique_ptr<LIB_TREE_NODE>>::iterator& aLibNodeIt )
 {
     LIB_TREE_NODE* node = aLibNodeIt->get();
     m_libHashes.erase( node->m_Name );
@@ -257,7 +269,12 @@ void SYMBOL_TREE_SYNCHRONIZING_ADAPTER::GetValue( wxVariant& aVariant, wxDataVie
     }
 
     LIB_TREE_NODE* node = ToNode( aItem );
-    KI_ASSERT( node );
+
+    if( !node )
+    {
+        aVariant = wxEmptyString;
+        return;
+    }
 
     switch( aCol )
     {
@@ -304,9 +321,7 @@ void SYMBOL_TREE_SYNCHRONIZING_ADAPTER::GetValue( wxVariant& aVariant, wxDataVie
             const wxString& key = m_colIdxMap.at( aCol );
 
             if( m_frame->GetCurSymbol() && m_frame->GetCurSymbol()->GetLibId() == node->m_LibId )
-            {
-                node->m_Desc = m_frame->GetCurSymbol()->GetShownDescription();
-            }
+                node->m_Desc = m_frame->GetCurSymbol()->GetShownDescription( FOR_GUI );
 
             wxString valueStr;
 

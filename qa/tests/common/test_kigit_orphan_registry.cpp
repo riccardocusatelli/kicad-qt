@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
@@ -54,7 +50,7 @@ BOOST_AUTO_TEST_CASE( JoinAllCompletesFastWork )
 
     BOOST_CHECK_EQUAL( stuck, 0u );
     BOOST_CHECK_EQUAL( counter.load(), 4 );
-    BOOST_CHECK_EQUAL( registry.TrackedCount(), 0u );
+    BOOST_CHECK_EQUAL( registry.JoinAll( std::chrono::milliseconds( 0 ) ), 0u );
 }
 
 
@@ -65,6 +61,7 @@ BOOST_AUTO_TEST_CASE( JoinAllTimesOutOnStuckWork )
     std::condition_variable releaseCv;
     bool                    release = false;
     std::atomic<bool>       workerEntered{ false };
+    std::atomic<bool>       workerFinished{ false };
 
     registry.Register(
             "stuck",
@@ -74,6 +71,9 @@ BOOST_AUTO_TEST_CASE( JoinAllTimesOutOnStuckWork )
 
                 std::unique_lock<std::mutex> lock( releaseMutex );
                 releaseCv.wait( lock, [&]() { return release; } );
+                lock.unlock();
+
+                workerFinished.store( true, std::memory_order_release );
             } );
 
     // Wait until the worker is actually running so we're exercising the
@@ -89,9 +89,8 @@ BOOST_AUTO_TEST_CASE( JoinAllTimesOutOnStuckWork )
     BOOST_CHECK_EQUAL( stuck, 1u );
     BOOST_CHECK( elapsed < std::chrono::seconds( 2 ) );
 
-    // After JoinAll the registry is empty even though the thread kept
-    // running.  Release the worker now so it can exit cleanly; it was
-    // detached when JoinAll gave up on it.
+    // The detached worker no longer participates in joins.
+    BOOST_CHECK_EQUAL( registry.JoinAll( std::chrono::milliseconds( 0 ) ), 0u );
 
     {
         std::lock_guard<std::mutex> lock( releaseMutex );
@@ -100,11 +99,15 @@ BOOST_AUTO_TEST_CASE( JoinAllTimesOutOnStuckWork )
 
     releaseCv.notify_all();
 
-    // Give the detached worker a chance to finish before the test ends.
+    // Wait for the detached worker to actually return before this test
+    // function exits.  Otherwise the worker is still touching releaseMutex,
+    // releaseCv and release on the stack while the next test reuses that
+    // memory.
 
-    std::this_thread::sleep_for( std::chrono::milliseconds( 50 ) );
+    for( int i = 0; i < 1000 && !workerFinished.load( std::memory_order_acquire ); ++i )
+        std::this_thread::sleep_for( std::chrono::milliseconds( 5 ) );
 
-    BOOST_CHECK_EQUAL( registry.TrackedCount(), 0u );
+    BOOST_CHECK( workerFinished.load() );
 }
 
 
@@ -125,9 +128,14 @@ BOOST_AUTO_TEST_CASE( DestructorDetachesOutstandingThreads )
                 {
                     workerEntered.store( true, std::memory_order_release );
 
-                    std::unique_lock<std::mutex> lock( releaseMutex );
-                    releaseCv.wait( lock, [&]() { return release; } );
+                    {
+                        std::unique_lock<std::mutex> lock( releaseMutex );
+                        releaseCv.wait( lock, [&]() { return release; } );
+                    }
 
+                    // Set workerFinished after the unique_lock has destructed so the
+                    // test waiting on workerFinished cannot return while we're still
+                    // touching releaseMutex on the test's stack.
                     workerFinished.store( true, std::memory_order_release );
                 } );
 
@@ -146,9 +154,11 @@ BOOST_AUTO_TEST_CASE( DestructorDetachesOutstandingThreads )
 
     releaseCv.notify_all();
 
-    // Poll briefly for worker completion so a slow CI host doesn't flake.
+    // Wait for the detached worker to actually finish.  Under sanitizer slowdown
+    // this can take a noticeable fraction of a second; the loop is generous
+    // enough to keep the test from leaking the worker into the next test.
 
-    for( int i = 0; i < 200 && !workerFinished.load( std::memory_order_acquire ); ++i )
+    for( int i = 0; i < 1000 && !workerFinished.load( std::memory_order_acquire ); ++i )
         std::this_thread::sleep_for( std::chrono::milliseconds( 5 ) );
 
     BOOST_CHECK( workerFinished.load() );

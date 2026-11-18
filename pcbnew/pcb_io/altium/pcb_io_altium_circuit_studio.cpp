@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -33,16 +29,8 @@
 #include <pcb_io_altium_circuit_studio.h>
 #include <pcb_io_altium_designer.h>
 #include <altium_pcb.h>
-#include <altium_pcb_compound_file.h>
-#include <io/altium/altium_binary_parser.h>
-#include <io/altium/altium_project_variants.h>
 #include <pcb_io/pcb_io.h>
 #include <reporter.h>
-
-#include <board.h>
-
-#include <compoundfilereader.h>
-#include <utf.h>
 
 PCB_IO_ALTIUM_CIRCUIT_STUDIO::PCB_IO_ALTIUM_CIRCUIT_STUDIO() :
         PCB_IO( wxS( "Altium Circuit Studio" ) )
@@ -65,20 +53,14 @@ bool PCB_IO_ALTIUM_CIRCUIT_STUDIO::CanReadBoard( const wxString& aFileName ) con
 }
 
 
-BOARD* PCB_IO_ALTIUM_CIRCUIT_STUDIO::LoadBoard( const wxString& aFileName, BOARD* aAppendToMe,
-                                                const std::map<std::string, UTF8>* aProperties,
-                                                PROJECT*               aProject )
+void PCB_IO_ALTIUM_CIRCUIT_STUDIO::loadBoard( const wxString& aFileName, BOARD& aBoard, bool aIsNewLoad,
+                                              const std::map<std::string, UTF8>* aProperties, PROJECT* aProject )
 {
     m_props = aProperties;
-
-    m_board = aAppendToMe ? aAppendToMe : new BOARD();
+    m_board = &aBoard;
 
     // Collect the font substitution warnings (RAII - automatically reset on scope exit)
     FONTCONFIG_REPORTER_SCOPE fontconfigScope( &LOAD_INFO_REPORTER::GetInstance() );
-
-    // Give the filename to the board if it's new
-    if( !aAppendToMe )
-        m_board->SetFileName( aFileName );
 
     // clang-format off
     const std::map<ALTIUM_PCB_DIR, std::string> mapping = {
@@ -105,31 +87,6 @@ BOARD* PCB_IO_ALTIUM_CIRCUIT_STUDIO::LoadBoard( const wxString& aFileName, BOARD
     };
     // clang-format on
 
-    ALTIUM_PCB_COMPOUND_FILE altiumPcbFile( aFileName );
-
-    try
-    {
-        // Parse File
-        ALTIUM_PCB pcb( m_board, m_progressReporter, m_layer_mapping_handler, m_reporter );
-        pcb.Parse( altiumPcbFile, mapping, m_props );
-    }
-    catch( CFB::CFBException& exception )
-    {
-        THROW_IO_ERROR( exception.what() );
-    }
-
-    if( m_props && m_props->count( "project_file" ) )
-    {
-        const wxString& projectFile = m_props->at( "project_file" );
-
-        auto variants = ParseAltiumProjectVariants( projectFile );
-
-        if( !variants.empty() )
-            ApplyAltiumProjectVariantsToBoard( m_board, variants );
-
-        ApplyAltiumProjectParametersToProject( aProject,
-                                               ParseAltiumProjectParameters( projectFile ) );
-    }
-
-    return m_board;
+    LoadAltiumBoard( aFileName, m_board, mapping, m_props, aProject,
+                     m_progressReporter, m_layer_mapping_handler, m_reporter );
 }

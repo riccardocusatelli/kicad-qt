@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -33,7 +29,9 @@
 #include <board_commit.h>
 #include <board_item.h>
 #include <eda_group.h>
+#include <kiid.h>
 #include <lset.h>
+#include <map>
 #include <unordered_set>
 
 namespace KIGFX
@@ -54,8 +52,9 @@ class PCB_GROUP : public BOARD_ITEM, public EDA_GROUP
 public:
     PCB_GROUP( BOARD_ITEM* aParent );
 
-    void Serialize( google::protobuf::Any &aContainer ) const override;
-    bool Deserialize( const google::protobuf::Any &aContainer ) override;
+    void Serialize( google::protobuf::Any& aContainer ) const override;
+    bool Deserialize( const google::protobuf::Any& aContainer ) override;
+    bool DeserializeGroup( const google::protobuf::Any& aContainer, COMMIT* aCommit ) override;
 
     EDA_ITEM* AsEdaItem() override { return this; }
 
@@ -71,16 +70,16 @@ public:
 
     std::unordered_set<BOARD_ITEM*> GetBoardItems() const;
 
-    /*
+    /**
      * Search for highest level group inside of aScope, containing item.
      *
      * @param aScope restricts the search to groups within the group scope.
      * @param isFootprintEditor true if we should stop promoting at the footprint level
      * @return group inside of aScope, containing item, if exists, otherwise, nullptr
      */
-    static EDA_GROUP* TopLevelGroup( BOARD_ITEM* aItem, EDA_GROUP* aScope, bool isFootprintEditor );
+    static EDA_GROUP* TopLevelGroup( const BOARD_ITEM& aItem, const EDA_GROUP* aScope, bool isFootprintEditor );
 
-    static bool WithinScope( BOARD_ITEM* aItem, PCB_GROUP* aScope, bool isFootprintEditor );
+    static bool WithinScope( const BOARD_ITEM& aItem, const PCB_GROUP* aScope, bool isFootprintEditor );
 
     double Similarity( const BOARD_ITEM& aOther ) const override;
 
@@ -100,8 +99,17 @@ public:
     /// @copydoc EDA_ITEM::SetPosition
     void SetPosition( const VECTOR2I& aNewpos ) override;
 
+    PCB_LAYER_ID GetLayer() const override
+    {
+        KI_FAIL_MSG( wxT( "PCB_GROUP::GetLayer() isn't well-defined.  Don't call it." ) );
+        return UNDEFINED_LAYER;
+    }
+
     /// @copydoc BOARD_ITEM::GetLayerSet
     LSET GetLayerSet() const override;
+
+    /// @copydoc BOARD_ITEM::IsLayerAgnostic
+    bool IsLayerAgnostic() const override { return true; }
 
     /// @copydoc BOARD_ITEM::SetLayer
     void SetLayer( PCB_LAYER_ID aLayer ) override
@@ -130,19 +138,23 @@ public:
      *
      * @param addToParentGroup if the original is part of a group then the new member will also
      *                         be added to said group
+     * @param aKIIDMap if non-null orig-to-dupe KIID map for group and descendants captured at
+     *                 clone time members iterate unordered so this is the only reliable pairing
+     *                 eg for re-pointing constraints
      */
-    PCB_GROUP* DeepDuplicate( bool addToParentGroup, BOARD_COMMIT* aCommit = nullptr ) const;
+    PCB_GROUP* DeepDuplicate( bool addToParentGroup, BOARD_COMMIT* aCommit = nullptr,
+                              std::map<KIID, KIID>* aKIIDMap = nullptr ) const;
 
     /// @copydoc BOARD_ITEM::IsOnLayer
     bool IsOnLayer( PCB_LAYER_ID aLayer ) const override;
 
+    double GetCoverageArea( int aTextMargin ) const override;
+
     /// @copydoc EDA_ITEM::HitTest
     bool HitTest( const VECTOR2I& aPosition, int aAccuracy = 0 ) const override;
 
-    /// @copydoc EDA_ITEM::HitTest
     bool HitTest( const BOX2I& aRect, bool aContained, int aAccuracy = 0 ) const override;
 
-    /// @copydoc EDA_ITEM::HitTest
     bool HitTest( const SHAPE_LINE_CHAIN& aPoly, bool aContained ) const override;
 
     /// @copydoc EDA_ITEM::GetBoundingBox
@@ -150,16 +162,15 @@ public:
 
     // @copydoc BOARD_ITEM::GetEffectiveShape
     std::shared_ptr<SHAPE> GetEffectiveShape( PCB_LAYER_ID aLayer = UNDEFINED_LAYER,
-                                              FLASHING aFlash = FLASHING::DEFAULT ) const override;
+                                              FLASHING aFlash = FLASHING::DEFAULT,
+                                              DRC_CONSTRAINT_T aUsage = NULL_CONSTRAINT ) const override;
 
     /// @copydoc EDA_ITEM::Visit
     INSPECT_RESULT Visit( INSPECTOR aInspector, void* aTestData,
                           const std::vector<KICAD_T>& aScanTypes ) override;
 
-    /// @copydoc VIEW_ITEM::ViewGetLayers
     std::vector<int> ViewGetLayers() const override;
 
-    /// @copydoc VIEW_ITEM::ViewGetLOD
     double ViewGetLOD( int aLayer, const KIGFX::VIEW* aView ) const override;
 
     /// @copydoc BOARD_ITEM::Move
@@ -173,6 +184,8 @@ public:
 
     /// @copydoc BOARD_ITEM::Mirror
     void Mirror( const VECTOR2I& aCentre, FLIP_DIRECTION aFlipDirection ) override;
+
+    void Mirror( const SEG& aAxis ) override;
 
     /// @copydoc EDA_ITEM::GetItemDescription
     wxString GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool aFull ) const override;
@@ -194,6 +207,15 @@ protected:
 
     /// @copydoc BOARD_ITEM::swapData
     void swapData( BOARD_ITEM* aImage ) override;
+
+    /**
+     * Re-point the children of this group and @a aImage at whichever group now holds them.
+     *
+     * swapData() exchanges the member set with the undo image, but the children's
+     * parentGroup back-pointers are not part of that swap and are left naming the wrong
+     * group. Subclasses that swap their own derived data must call this afterwards.
+     */
+    void swapChildOwnership( PCB_GROUP* aImage );
 };
 
 #endif // CLASS_PCB_GROUP_H_

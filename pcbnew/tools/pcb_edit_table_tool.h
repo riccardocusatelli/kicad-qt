@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PCB_EDIT_TABLE_TOOL_H
@@ -55,10 +51,12 @@ public:
     int ExportTableToCSV( const TOOL_EVENT& aEvent );
 
 private:
-    ///< Set up handlers for various events.
+    /// Set up handlers for various events.
     void setTransitions() override;
 
 private:
+    bool canEditTableStructure( const PCB_TABLE* aTable ) const override { return !aTable->IsGenerated(); }
+
     TOOL_MANAGER* getToolMgr() override { return m_toolMgr; }
     BASE_SCREEN* getScreen() override { return nullptr; }
 

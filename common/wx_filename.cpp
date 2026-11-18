@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <wx_filename.h>
@@ -105,19 +101,19 @@ void WX_FILENAME::ResolvePossibleSymlinks( wxFileName& aFilename )
 }
 
 
-bool WX_FILENAME::SplitArchiveEntryName( const wxString& aEntryName, wxArrayString& aParts )
+static bool splitSafeRelativePath( const wxString& aPath, wxArrayString& aParts )
 {
     aParts.Clear();
 
-    if( aEntryName.IsEmpty() )
+    if( aPath.IsEmpty() )
         return false;
 
     // A NUL is truncated by the OS: what gets validated would not be what gets written.
-    if( aEntryName.find( wxUniChar( 0 ) ) != wxString::npos )
+    if( aPath.find( wxUniChar( 0 ) ) != wxString::npos )
         return false;
 
     // A ZIP written on Windows can carry backslashes, normalize
-    wxString name = aEntryName;
+    wxString name = aPath;
     name.Replace( wxT( "\\" ), wxT( "/" ) );
 
     // Archive members are relative.  Check DOS volumes everywhere so POSIX rejects "C:/evil".
@@ -152,6 +148,20 @@ bool WX_FILENAME::SplitArchiveEntryName( const wxString& aEntryName, wxArrayStri
     }
 
     return !aParts.IsEmpty();
+}
+
+
+bool WX_FILENAME::SplitArchiveEntryName( const wxString& aEntryName, wxArrayString& aParts )
+{
+    return splitSafeRelativePath( aEntryName, aParts );
+}
+
+
+bool WX_FILENAME::IsSafeChildPath( const wxString& aChild )
+{
+    wxArrayString parts;
+
+    return splitSafeRelativePath( aChild, parts ) && parts.GetCount() == 1 && parts[0] == aChild;
 }
 
 

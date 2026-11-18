@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -44,14 +40,13 @@ class SCH_PREVIEW_PANEL : public EDA_DRAW_PANEL_GAL
 public:
     SCH_PREVIEW_PANEL( TOOLKIT_WINDOW_ARG aParentWindow, wxWindowID aWindowId, const wxPoint& aPosition,
                        const wxSize& aSize, KIGFX::GAL_DISPLAY_OPTIONS& aOptions,
-                       GAL_TYPE aGalType = GAL_TYPE_OPENGL );
+                       GAL_TYPE aGalType = GAL_TYPE_MODERN );
 
     ~SCH_PREVIEW_PANEL() override;
 
-    ///< @copydoc EDA_DRAW_PANEL_GAL::OnShow()
+    /// @copydoc EDA_DRAW_PANEL_GAL::OnShow()
     void OnShow() override;
 
-    /// @copydoc wxWindow::Refresh()
     void Refresh( bool aEraseBackground, const wxRect* aRect ) override;
 
     SCH_RENDER_SETTINGS* GetRenderSettings() const;
@@ -62,10 +57,10 @@ protected:
 
     KIGFX::SCH_VIEW* view() const;
 
-    ///< Reassign layer order to the initial settings.
+    /// Reassign layer order to the initial settings.
     void setDefaultLayerOrder();
 
-    ///< Set rendering targets & dependencies for layers.
+    /// Set rendering targets & dependencies for layers.
     void setDefaultLayerDeps();
 };
 

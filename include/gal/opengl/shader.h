@@ -19,11 +19,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef SHADER_H_
@@ -232,10 +228,10 @@ private:
     bool                active;             ///< Is any of shaders used?
     GLuint              maximumVertices;    ///< The maximum of vertices to be generated
 
-    ///< Input type [e.g. GL_LINES, GL_TRIANGLES, GL_QUADS etc.]
+    /// Input type [e.g. GL_LINES, GL_TRIANGLES, GL_QUADS etc.]
     GLuint              geomInputType;
 
-    ///< Output type [e.g. GL_LINES, GL_TRIANGLES, GL_QUADS etc.]
+    /// Output type [e.g. GL_LINES, GL_TRIANGLES, GL_QUADS etc.]
     GLuint              geomOutputType;
     std::deque<GLint>   parameterLocation;  ///< Location of the parameter
 };

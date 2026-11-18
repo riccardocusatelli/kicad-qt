@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <class_draw_panel_gal.h>
@@ -61,7 +61,7 @@ void ZOOM_TOOL::Reset( RESET_REASON aReason )
 
 int ZOOM_TOOL::Main( const TOOL_EVENT& aEvent )
 {
-    m_frame->PushTool( aEvent );
+    SCOPED_TOOL_PUSHER raii( m_frame, aEvent );
 
     auto setCursor =
         [&]()
@@ -98,7 +98,6 @@ int ZOOM_TOOL::Main( const TOOL_EVENT& aEvent )
 
     // Exit zoom tool
     m_frame->GetCanvas()->SetCurrentCursor( KICURSOR::ARROW );
-    m_frame->PopTool( aEvent );
     return 0;
 }
 

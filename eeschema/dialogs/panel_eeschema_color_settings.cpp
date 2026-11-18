@@ -14,12 +14,13 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <regex>
 
+#include <class_draw_panel_gal.h>
 #include <eeschema_settings.h>
 #include <gal/gal_display_options.h>
 #include <gal/graphics_abstraction_layer.h>
@@ -95,7 +96,7 @@ PANEL_EESCHEMA_COLOR_SETTINGS::PANEL_EESCHEMA_COLOR_SETTINGS( wxWindow* aParent 
     m_galDisplayOptions.ReadConfig( *common_settings, app_settings->m_Window, this );
     m_galDisplayOptions.m_forceDisplayCursor = false;
 
-    m_galType = static_cast<EDA_DRAW_PANEL_GAL::GAL_TYPE>( common_settings->m_Graphics.canvas_type );
+    m_galType = EDA_DRAW_PANEL_GAL::ResolveStoredCanvasType( common_settings->m_Graphics.canvas_type );
 }
 
 
@@ -238,6 +239,7 @@ void PANEL_EESCHEMA_COLOR_SETTINGS::createSwatches()
 
 void PANEL_EESCHEMA_COLOR_SETTINGS::onNewThemeSelected()
 {
+    updateAllowedSwatches();
     updatePreview();
 }
 

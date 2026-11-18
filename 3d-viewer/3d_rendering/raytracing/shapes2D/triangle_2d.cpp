@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -126,7 +122,7 @@ void ConvertPolygonToTriangles( const SHAPE_POLY_SET& aPolyList, CONTAINER_2D_BA
     VECTOR2I b;
     VECTOR2I c;
 
-    const_cast<SHAPE_POLY_SET&>( aPolyList ).CacheTriangulation( false );
+    const_cast<SHAPE_POLY_SET&>( aPolyList ).CacheTriangulation();
     const double conver_d = (double)aBiuTo3dUnitsScale;
 
     for( unsigned int j = 0; j < aPolyList.TriangulatedPolyCount(); j++ )

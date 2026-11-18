@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef ALTIUM_PARSER_UTILS_H
@@ -32,16 +28,37 @@
 
 #include <iostream>
 #include <math/vector2d.h>
+#include <set>
 
 LIB_ID AltiumToKiCadLibID( const wxString& aLibName, const wxString& aLibReference );
 
 wxString AltiumPropertyToKiCadString( const wxString& aString );
 
-wxString AltiumSchSpecialStringsToKiCadVariables( const wxString&                     aString,
-                                                  const std::map<wxString, wxString>& aOverrides );
+/**
+ * Escape the KiCad variables and expressions in literal Altium text, which Altium shows as typed.
+ */
+wxString AltiumEscapeTextVars( const wxString& aText );
 
+/**
+ * Convert the special strings in Altium schematic text to KiCad variables.
+ *
+ * Literal text is escaped, since Altium shows a ${ or @{ in it as typed.
+ *
+ * @param[out] aUnmapped, when not null, collects each variable that is not an override.
+ */
+wxString AltiumSchSpecialStringsToKiCadVariables( const wxString&                     aString,
+                                                  const std::map<wxString, wxString>& aOverrides,
+                                                  std::set<wxString>*                 aUnmapped = nullptr );
+
+/**
+ * Convert the special strings in Altium PCB text to KiCad variables.
+ *
+ * @param[out] aUnmapped, when not null, collects each variable that is not an override, which KiCad
+ *             cannot resolve by itself.
+ */
 wxString AltiumPcbSpecialStringsToKiCadStrings( const wxString&                     aString,
-                                                const std::map<wxString, wxString>& aOverrides );
+                                                const std::map<wxString, wxString>& aOverrides,
+                                                std::set<wxString>*                 aUnmapped = nullptr );
 
 wxString AltiumPinNamesToKiCad( wxString& aString );
 

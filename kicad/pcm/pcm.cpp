@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 // kicad_curl.h *must be* included before any wxWidgets header to avoid conflicts
@@ -411,6 +411,17 @@ bool PLUGIN_CONTENT_MANAGER::VerifyHash( std::istream& aStream, const wxString& 
 }
 
 
+STRING_TUPLE_LIST::const_iterator
+PLUGIN_CONTENT_MANAGER::findRepository( const wxString& aRepositoryId ) const
+{
+    return std::find_if( m_repository_list.begin(), m_repository_list.end(),
+                         [&aRepositoryId]( const std::tuple<wxString, wxString, wxString>& aRepo )
+                         {
+                             return std::get<0>( aRepo ) == aRepositoryId;
+                         } );
+}
+
+
 const PCM_REPOSITORY&
 PLUGIN_CONTENT_MANAGER::getCachedRepository( const wxString& aRepositoryId ) const
 {
@@ -426,12 +437,7 @@ bool PLUGIN_CONTENT_MANAGER::CacheRepository( const wxString& aRepositoryId )
     if( m_repository_cache.find( aRepositoryId ) != m_repository_cache.end() )
         return true;
 
-    const auto repository_tuple =
-            std::find_if( m_repository_list.begin(), m_repository_list.end(),
-                          [&aRepositoryId]( const std::tuple<wxString, wxString, wxString>& t )
-                          {
-                              return std::get<0>( t ) == aRepositoryId;
-                          } );
+    const auto repository_tuple = findRepository( aRepositoryId );
 
     if( repository_tuple == m_repository_list.end() )
         return false;
@@ -644,7 +650,7 @@ void PLUGIN_CONTENT_MANAGER::updateInstalledPackagesMetadata( const wxString& aR
                                   return version.version == entry.current_version;
                               } );
 
-        if( current_version_it == entry.package.versions.end() )
+        if( current_version_it == entry.package.versions.end() && current_version )
         {
             entry.package.versions.emplace_back( *current_version );
 
@@ -725,6 +731,10 @@ void PLUGIN_CONTENT_MANAGER::PreparePackage( PCM_PACKAGE& aPackage )
         {
             ver.compatible = false;
         }
+        else if( UsesSWIGRuntime( aPackage, ver.version ) )
+        {
+            ver.compatible = false;
+        }
     }
 
     // Sort by descending version
@@ -733,6 +743,24 @@ void PLUGIN_CONTENT_MANAGER::PreparePackage( PCM_PACKAGE& aPackage )
                {
                    return a.parsed_version > b.parsed_version;
                } );
+}
+
+
+bool PLUGIN_CONTENT_MANAGER::UsesSWIGRuntime( const PCM_PACKAGE& aPackage, const wxString& aVersion )
+{
+    if( !( aPackage.type == PT_PLUGIN || aPackage.type == PT_FAB ) )
+        return false;
+
+    auto ver_it = std::find_if( aPackage.versions.begin(), aPackage.versions.end(),
+                                [&]( const PACKAGE_VERSION& ver )
+                                {
+                                    return ver.version == aVersion;
+                                } );
+
+    if( ver_it == aPackage.versions.end() )
+        return false;
+
+    return ver_it->runtime.value_or( PCM_PACKAGE_RUNTIME::PPR_SWIG ) == PCM_PACKAGE_RUNTIME::PPR_SWIG;
 }
 
 
@@ -791,7 +819,34 @@ void PLUGIN_CONTENT_MANAGER::DiscardRepositoryCache( const wxString& aRepository
     repo_cache.AppendDir( aRepositoryId );
 
     if( repo_cache.DirExists() )
-        repo_cache.Rmdir( wxPATH_RMDIR_RECURSIVE );
+    {
+        if( !repo_cache.Rmdir( wxPATH_RMDIR_RECURSIVE ) )
+        {
+            // best efforts
+        }
+    }
+}
+
+
+void PLUGIN_CONTENT_MANAGER::DiscardAllRepositoryCaches()
+{
+    for( const auto& [repositoryId, cache] : m_repository_cache )
+    {
+        wxFileName repo_cache = wxFileName( PATHS::GetUserCachePath(), "" );
+        repo_cache.AppendDir( wxT( "pcm" ) );
+        repo_cache.AppendDir( repositoryId );
+
+        if( repo_cache.DirExists() )
+        {
+            if( !repo_cache.Rmdir( wxPATH_RMDIR_RECURSIVE ) )
+            {
+                // best efforts
+            }
+        }
+    }
+
+    m_repository_cache.clear();
+
 }
 
 
@@ -892,6 +947,87 @@ PCM_PACKAGE_STATE PLUGIN_CONTENT_MANAGER::GetPackageState( const wxString& aRepo
 }
 
 
+wxString PLUGIN_CONTENT_MANAGER::ResolveRepositoryId(
+        const wxString& aPackageId, const wxString& aRecordedName,
+        const STRING_TUPLE_LIST& aRepositoryList,
+        const std::unordered_map<wxString, PCM_REPOSITORY>& aCache )
+{
+    std::vector<wxString> publishers;
+    std::vector<wxString> nameMatches;
+
+    for( const auto& [id, name, url] : aRepositoryList )
+    {
+        auto cached = aCache.find( id );
+
+        if( cached == aCache.end() || cached->second.package_map.count( aPackageId ) == 0 )
+            continue;
+
+        publishers.push_back( id );
+
+        // MarkInstalled records the name a repository gives itself, so the recorded name has
+        // to be compared against that and not against the locally configured alias
+        if( cached->second.name == aRecordedName )
+            nameMatches.push_back( id );
+    }
+
+    if( nameMatches.size() == 1 )
+        return nameMatches.front();
+
+    // Choosing between several publishers by list order would hand the package to a source
+    // the user never picked
+    if( publishers.size() == 1 )
+        return publishers.front();
+
+    return wxString();
+}
+
+
+bool PLUGIN_CONTENT_MANAGER::resolveInstalledPackageRepository( PCM_INSTALLATION_ENTRY& aEntry )
+{
+    // An id that still names a configured repository is authoritative. Widening the search
+    // because its download happened to fail would hand the package to another publisher
+    if( findRepository( aEntry.repository_id ) != m_repository_list.end() )
+    {
+        if( !CacheRepository( aEntry.repository_id ) )
+            return false;
+
+        return getCachedRepository( aEntry.repository_id )
+                       .package_map.count( aEntry.package.identifier ) > 0;
+    }
+
+    for( const auto& [id, name, url] : m_repository_list )
+        CacheRepository( id );
+
+    wxString resolved = ResolveRepositoryId( aEntry.package.identifier, aEntry.repository_name,
+                                             m_repository_list, m_repository_cache );
+
+    if( resolved.IsEmpty() )
+    {
+        KI_LOG_TRACE( tracePcm, wxS( "Package %s is not published by any configured repository" ),
+                    aEntry.package.identifier );
+        return false;
+    }
+
+    KI_LOG_TRACE( tracePcm, wxS( "Package %s repository id repaired from '%s' to '%s'" ),
+                aEntry.package.identifier, aEntry.repository_id, resolved );
+
+    aEntry.repository_id = resolved;
+    aEntry.repository_name = getCachedRepository( resolved ).name;
+
+    // The entry was skipped by every metadata refresh done under its stale id
+    updateInstalledPackagesMetadata( resolved );
+
+    return true;
+}
+
+
+void PLUGIN_CONTENT_MANAGER::ResolveInstalledPackageRepositories()
+{
+    for( std::pair<const wxString, PCM_INSTALLATION_ENTRY>& pair : m_installed )
+        resolveInstalledPackageRepository( pair.second );
+}
+
+
 const wxString PLUGIN_CONTENT_MANAGER::GetPackageUpdateVersion( const PCM_PACKAGE& aPackage )
 {
     KI_ASSERT_MSG( m_installed.find( aPackage.identifier ) != m_installed.end(),
@@ -906,8 +1042,8 @@ const wxString PLUGIN_CONTENT_MANAGER::GetPackageUpdateVersion( const PCM_PACKAG
                 return ver.version == entry.current_version;
             } );
 
-    KI_ASSERT_MSG( installed_ver_it != entry.package.versions.end(),
-                  wxT( "Installed package version not found" ) );
+    KI_CHECK_MSG( installed_ver_it != entry.package.versions.end(), wxEmptyString,
+                 wxT( "Installed package version not found" ) );
 
     auto ver_it = std::find_if( aPackage.versions.begin(), aPackage.versions.end(),
                                 [&]( const PACKAGE_VERSION& ver )
@@ -1220,12 +1356,12 @@ void PLUGIN_CONTENT_MANAGER::RunBackgroundUpdate()
 
                     m_updateBackgroundJob->m_reporter->AdvancePhase();
 
-                    if( m_repository_cache.find( entry.repository_id ) != m_repository_cache.end() )
+                    if( !entry.pinned && resolveInstalledPackageRepository( entry ) )
                     {
                         PCM_PACKAGE_STATE state = GetPackageState( entry.repository_id,
                                                                    entry.package.identifier );
 
-                        if( state == PPS_UPDATE_AVAILABLE && !entry.pinned )
+                        if( state == PPS_UPDATE_AVAILABLE )
                             availableUpdateCount++;
                     }
 

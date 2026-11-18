@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <pcad/pcad_pad.h>
@@ -64,7 +60,7 @@ void PCAD_PAD::Parse( XNODE* aNode, const wxString& aDefaultUnits,
     XNODE*          lNode;
     XNODE*          cNode;
     long            num;
-    wxString        propValue, str, emsg;
+    wxString        propValue, str;
     PCAD_PAD_SHAPE* padShape;
 
     m_Rotation = ANGLE_0;
@@ -146,7 +142,7 @@ void PCAD_PAD::Parse( XNODE* aNode, const wxString& aDefaultUnits,
     }
 
     if ( !lNode )
-        THROW_IO_ERROR( wxString::Format( wxT( "Unable to find padStyleDef " ) + m_Name.text ) );
+        THROW_IO_ERRORF( wxT( "Unable to find padStyleDef %s" ), m_Name.text );
 
     cNode = FindNode( lNode, wxT( "holeDiam" ) );
 
@@ -192,20 +188,21 @@ void PCAD_PAD::Flip()
 
 
 void PCAD_PAD::AddToFootprint( FOOTPRINT* aFootprint, const EDA_ANGLE& aRotation,
-                              bool aEncapsulatedPad )
+                               bool aEncapsulatedPad )
 {
     PCAD_PAD_SHAPE*  padShape;
-    wxString        padShapeName = wxT( "Ellipse" );
-    PAD_ATTRIB      padType;
-    int             i;
-    int             width = 0;
-    int             height = 0;
+    wxString         padShapeName = wxT( "Ellipse" );
+    PAD_ATTRIB       padType;
+    int              i;
+    int              width = 0;
+    int              height = 0;
 
     PAD* pad = new PAD( aFootprint );
 
     if( !m_IsHolePlated && m_Hole )
     {
         // mechanical hole
+        pad->SetPadstackMode( PADSTACK::MODE::NORMAL );     // PCAD doesn't have complex padstacks
         pad->SetShape( PADSTACK::ALL_LAYERS, PAD_SHAPE::CIRCLE );
         pad->SetAttribute( PAD_ATTRIB::NPTH );
 
@@ -264,6 +261,7 @@ void PCAD_PAD::AddToFootprint( FOOTPRINT* aFootprint, const EDA_ANGLE& aRotation
             pad->SetLayerSet( LSET::AllCuMask() | LSET( { B_Mask, F_Mask } ) );
 
         pad->SetNumber( m_Name.text );
+        pad->SetPadstackMode( PADSTACK::MODE::NORMAL );     // PCAD doesn't have complex padstacks
 
         if( padShapeName.IsSameAs( wxT( "Oval" ), false )
             || padShapeName.IsSameAs( wxT( "Ellipse" ), false )
@@ -359,6 +357,7 @@ void PCAD_PAD::AddToBoard( FOOTPRINT* aFootprint )
             via->SetPosition( VECTOR2I( m_PositionX, m_PositionY ) );
             via->SetEnd( VECTOR2I( m_PositionX, m_PositionY ) );
 
+            via->SetPadstackMode( PADSTACK::MODE::NORMAL );     // PCAD doesn't have complex padstacks
             via->SetWidth( PADSTACK::ALL_LAYERS, height );
             via->SetViaType( VIATYPE::THROUGH );
             via->SetLayerPair( F_Cu, B_Cu );

@@ -18,11 +18,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <core/typeinfo.h>
@@ -38,9 +34,12 @@
 #include <sch_screen.h>
 #include <sch_shape.h>
 #include <schematic.h>
+#include <schematic_text_var_adapter.h>
+#include <text_var_dependency.h>
 #include <string_utils.h>
 
 #include "sch_view.h"
+#include <advanced_config.h>
 #include <core/ki_assert.h>
 
 
@@ -56,6 +55,21 @@ SCH_VIEW::SCH_VIEW( SCH_VIEW_HOST* aHost ) :
 
 SCH_VIEW::~SCH_VIEW()
 {
+    DetachTextVarTracker();
+}
+
+
+void SCH_VIEW::DetachTextVarTracker()
+{
+    if( m_drawingSheet )
+        m_drawingSheet->AttachToTracker( nullptr );
+
+    if( m_textVarListenerTracker && m_textVarListenerHandle != TEXT_VAR_TRACKER::INVALID_LISTENER )
+    {
+        m_textVarListenerTracker->RemoveInvalidateListener( m_textVarListenerHandle );
+        m_textVarListenerHandle = TEXT_VAR_TRACKER::INVALID_LISTENER;
+        m_textVarListenerTracker = nullptr;
+    }
 }
 
 
@@ -120,16 +134,8 @@ void SCH_VIEW::DisplaySheet( const SCH_SCREEN *aScreen )
                                                   &aScreen->Schematic()->Project(),
                                                   &aScreen->GetTitleBlock(),
                                                   aScreen->Schematic()->GetProperties() ) );
-    m_drawingSheet->SetPageNumber( TO_UTF8( aScreen->GetPageNumber() ) );
-    m_drawingSheet->SetSheetCount( aScreen->GetPageCount() );
-    m_drawingSheet->SetFileName( TO_UTF8( aScreen->GetFileName() ) );
     m_drawingSheet->SetColorLayer( LAYER_SCHEMATIC_DRAWINGSHEET );
     m_drawingSheet->SetPageBorderColorLayer( LAYER_SCHEMATIC_PAGE_LIMITS );
-
-    wxString currentVariant = aScreen->Schematic()->GetCurrentVariant();
-    wxString variantDesc = aScreen->Schematic()->GetVariantDescription( currentVariant );
-    m_drawingSheet->SetVariantName( TO_UTF8( currentVariant ) );
-    m_drawingSheet->SetVariantDesc( TO_UTF8( variantDesc ) );
 
     SCH_CURRENT_SHEET_INFO currentSheet;
 
@@ -143,12 +149,67 @@ void SCH_VIEW::DisplaySheet( const SCH_SCREEN *aScreen )
     }
     else
     {
+        m_drawingSheet->SetPageNumber( TO_UTF8( aScreen->GetPageNumber() ) );
+        m_drawingSheet->SetSheetCount( aScreen->GetPageCount() );
+        m_drawingSheet->SetFileName( TO_UTF8( aScreen->GetFileName() ) );
         m_drawingSheet->SetIsFirstPage( aScreen->GetVirtualPageNumber() == 1 );
         m_drawingSheet->SetSheetName( "" );
         m_drawingSheet->SetSheetPath( "" );
+        m_drawingSheet->SetVariantName( "" );
+        m_drawingSheet->SetVariantDesc( "" );
     }
 
     Add( m_drawingSheet.get() );
+
+    // Reactive title-block repaint: register this proxy with the schematic's
+    // text-var tracker. The listener that routes invalidations to VIEW::Update
+    // is installed lazily here too; it outlives individual proxy instances
+    // since it re-reads the current drawing sheet on every fire.
+    if( aScreen->Schematic() )
+    {
+        if( SCHEMATIC_TEXT_VAR_ADAPTER* adapter = aScreen->Schematic()->GetTextVarAdapter() )
+        {
+            m_drawingSheet->AttachToTracker( &adapter->Tracker() );
+
+            TEXT_VAR_TRACKER* tracker = &adapter->Tracker();
+
+            if( m_textVarListenerTracker != tracker
+                && m_textVarListenerHandle != TEXT_VAR_TRACKER::INVALID_LISTENER )
+            {
+                m_textVarListenerTracker->RemoveInvalidateListener( m_textVarListenerHandle );
+                m_textVarListenerHandle = TEXT_VAR_TRACKER::INVALID_LISTENER;
+                m_textVarListenerTracker = nullptr;
+            }
+
+            if( m_textVarListenerHandle == TEXT_VAR_TRACKER::INVALID_LISTENER )
+            {
+                m_textVarListenerTracker = tracker;
+                m_textVarListenerHandle = tracker->AddInvalidateListener(
+                        [this]( EDA_ITEM* aDep, const TEXT_VAR_REF_KEY& )
+                        {
+                            if( !aDep )
+                                return;
+
+                            if( m_drawingSheet && aDep == m_drawingSheet.get() )
+                            {
+                                RefreshDrawingSheetPageInfo();
+                                return;
+                            }
+
+                            if( aDep->IsSCH_ITEM() )
+                            {
+                                if( SCH_TEXT* text = dynamic_cast<SCH_TEXT*>( aDep ) )
+                                {
+                                    text->ClearRenderCache();
+                                    text->ClearBoundingBoxCache();
+                                }
+
+                                Update( aDep, KIGFX::GEOMETRY | KIGFX::REPAINT );
+                            }
+                        } );
+            }
+        }
+    }
 
     InitPreview();
 
@@ -174,6 +235,15 @@ void SCH_VIEW::syncDrawingSheetToCurrentSheet( const SCH_CURRENT_SHEET_INFO& aIn
     m_drawingSheet->SetIsFirstPage( aInfo.m_VirtualPageNumber == 1 );
     m_drawingSheet->SetSheetName( TO_UTF8( aInfo.m_Name ) );
     m_drawingSheet->SetSheetPath( TO_UTF8( aInfo.m_Path ) );
+
+    if( SCHEMATIC* schematic = screen->Schematic() )
+    {
+        wxString currentVariant = schematic->GetCurrentVariant();
+        wxString variantDesc = schematic->GetVariantDescription( currentVariant );
+
+        m_drawingSheet->SetVariantName( TO_UTF8( currentVariant ) );
+        m_drawingSheet->SetVariantDesc( TO_UTF8( variantDesc ) );
+    }
 }
 
 
@@ -285,14 +355,16 @@ void SCH_VIEW::UpdateHopOveredWires( SCH_ITEM* aItem )
 }
 
 
-void SCH_VIEW::UpdateConnectionChanges( SCH_SCREEN* aScreen )
+void SCH_VIEW::UpdateConnectionChanges( SCH_SCREEN* aScreen, bool aForce, const std::set<KIID>* aRepaintItems )
 {
+    const bool useEngine = ADVANCED_CFG::GetCfg().m_ConnectivityEngine;
+
     UpdateAllItemsConditionally(
             [&]( KIGFX::VIEW_ITEM* aItem ) -> int
             {
-                int             flags = 0;
+                int             flags = aForce ? KIGFX::REPAINT : 0;
                 SCH_ITEM*       item = dynamic_cast<SCH_ITEM*>( aItem );
-                SCH_CONNECTION* connection = item ? item->Connection() : nullptr;
+                SCH_CONNECTION* connection = item && !useEngine ? item->Connection() : nullptr;
 
                 auto invalidateTextVars =
                         [&flags]( EDA_TEXT* text )
@@ -311,6 +383,9 @@ void SCH_VIEW::UpdateConnectionChanges( SCH_SCREEN* aScreen )
                     flags |= KIGFX::REPAINT;
                 }
 
+                if( item && aRepaintItems && aRepaintItems->contains( item->m_Uuid ) )
+                    flags |= KIGFX::REPAINT;
+
                 if( item )
                 {
                     item->RunOnChildren(
@@ -322,7 +397,7 @@ void SCH_VIEW::UpdateConnectionChanges( SCH_SCREEN* aScreen )
                             RECURSE_MODE::NO_RECURSE );
 
                     if( flags & KIGFX::GEOMETRY )
-                        aScreen->Update( item, false );     // Refresh RTree
+                        aScreen->UpdateDisplayBounds( item );
                 }
 
                 if( EDA_TEXT* text = dynamic_cast<EDA_TEXT*>( aItem ) )
@@ -363,7 +438,7 @@ void SCH_VIEW::SetDefaultLayerOrder()
 }
 
 
-void SCH_VIEW::SetDefaultLayerDeps( bool aCached )
+void SCH_VIEW::SetDefaultLayerDeps( bool aCached, bool aRetainedScene )
 {
     // caching makes no sense for Cairo and other software renderers
     RENDER_TARGET target = aCached ? TARGET_CACHED : TARGET_NONCACHED;
@@ -374,8 +449,8 @@ void SCH_VIEW::SetDefaultLayerDeps( bool aCached )
     SetLayerTarget( LAYER_SCHEMATIC_ANCHOR, TARGET_NONCACHED );
     SetLayerDisplayOnly( LAYER_SCHEMATIC_ANCHOR );
 
-    // Bitmaps are draw on a non cached GAL layer:
-    SetLayerTarget( LAYER_DRAW_BITMAPS, TARGET_NONCACHED );
+    // A retained scene draws cached bitmaps in their layer's place rather than above everything
+    SetLayerTarget( LAYER_DRAW_BITMAPS, aRetainedScene ? TARGET_CACHED : TARGET_NONCACHED );
 
     // Some draw layers need specific settings
     SetLayerTarget( LAYER_GP_OVERLAY, TARGET_OVERLAY );

@@ -16,21 +16,14 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef NETLIST_EXPORT_XML_H
-#define NETLIST_EXPORT_XML_H
+#pragma once
 
 #include <netlist_exporter_base.h>
-
 #include <project.h>
 #include <unordered_set>
-
 
 class CONNECTION_GRAPH;
 class XNODE;
@@ -61,9 +54,9 @@ enum GNL_T
 class NETLIST_EXPORTER_XML : public NETLIST_EXPORTER_BASE
 {
 public:
-    NETLIST_EXPORTER_XML( SCHEMATIC* aSchematic ) :
-            NETLIST_EXPORTER_BASE( aSchematic ),
-            m_resolveTextVars( true )
+    NETLIST_EXPORTER_XML( SCHEMATIC* aSchematic, KIWAY* aKiway ) :
+            NETLIST_EXPORTER_BASE( aSchematic, aKiway ),
+            m_resolveTextVars( RESOLVED )
     {}
 
     /**
@@ -71,16 +64,16 @@ public:
      *
      * @param aOutFileName is the file name to write.
      * @param aNetlistOptions are the options used to control the netlist output.
+     * @param aReporter is the #REPORTER object to write save status information.
      *
      * @return true if the netlist was written successfully.
      */
-    bool WriteNetlist( const wxString& aOutFileName, unsigned aNetlistOptions,
-                       REPORTER& aReporter ) override;
+    bool writeNetlist( const wxString& aOutFileName, unsigned aNetlistOptions, REPORTER& aReporter ) override;
 
 #define GNL_ALL     ( GNL_LIBRARIES | GNL_SYMBOLS | GNL_PARTS | GNL_HEADER | GNL_NETS )
 
 protected:
-   /**
+    /**
      * A convenience function that creates a new XNODE with an optional textual child.
      * It also provides some insulation from a possible change in XML library.
      *
@@ -132,6 +125,8 @@ protected:
      */
     XNODE* makeListOfNets( unsigned aCtl );
 
+    XNODE* makeNetChains();
+
     /**
      * Fill out an XML node with a list of used libraries and returns it.
      * Must have called makeGenericLibParts() before this function.
@@ -140,25 +135,24 @@ protected:
     XNODE* makeLibraries();
 
     void addSymbolFields( XNODE* aNode, SCH_SYMBOL* aSymbol, const SCH_SHEET_PATH& aSheet,
-                          const SCH_SHEET_LIST& aSheetList);
+                          const SCH_SHEET_LIST& aSheetList );
 
     /**
      * Finds all component class names attached to any sub-unit of a given symbol
      */
-    std::vector<wxString>
-    getComponentClassNamesForAllSymbolUnits( SCH_SYMBOL*           aSymbol,
-                                             const SCH_SHEET_PATH& aSymbolSheet,
-                                             const SCH_SHEET_LIST& aSheetList );
-
-    bool                m_resolveTextVars;   // Export textVar references resolved
+    std::vector<wxString> getComponentClassNamesForAllSymbolUnits( SCH_SYMBOL* aSymbol,
+                                                                   const SCH_SHEET_PATH& aSymbolSheet,
+                                                                   const SCH_SHEET_LIST& aSheetList );
 
 private:
     void getSheetComponentClasses();
 
+protected:
+    RESOLUTION_CONTEXT  m_resolveTextVars;   // Export textVar references resolved
+
+private:
     std::set<wxString>  m_libraries;         // Set of library nicknames.
 
     /// Map of all sheets to component classes covering the whole sheet
     std::map<SCH_SHEET_PATH, std::unordered_set<wxString>> m_sheetComponentClasses;
 };
-
-#endif

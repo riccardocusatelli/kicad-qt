@@ -58,10 +58,15 @@ void EDA_3D_VIEWER_FRAME::setupWindow( EDA_3D_VIEWER_SETTINGS* aCfg )
     SetIcon( icon );
 
     // Create the status line
-    static const int status_dims[5] = { -1, 170, 130, 130, 130 };
+    std::vector<int> status_dims{ -1,
+                                  -1,
+                                  -1,
+                                  GetTextExtent( wxS( "dx -88.88" ) ).x + 10,
+                                  GetTextExtent( wxS( "dy -88.88" ) ).x + 10,
+                                  GetTextExtent( wxS( "zoom -88.88" ) ).x + 10 };
 
-    wxStatusBar *status_bar = CreateStatusBar( arrayDim( status_dims ) );
-    SetStatusWidths( arrayDim( status_dims ), status_dims );
+    wxStatusBar* status_bar = CreateStatusBar( status_dims.size() );
+    SetStatusWidths( status_dims.size(), status_dims.data() );
 
     m_infoBar = new WX_INFOBAR( this, &m_auimgr );
 
@@ -133,6 +138,7 @@ void EDA_3D_VIEWER_FRAME::ShowChangedLanguage()
     }
 
     SetStatusText( wxEmptyString, ACTIVITY );
+    SetStatusText( wxEmptyString, RENDER_TIME );
     SetStatusText( wxEmptyString, HOVERED_ITEM );
 }
 

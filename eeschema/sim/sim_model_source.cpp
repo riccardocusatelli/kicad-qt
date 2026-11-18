@@ -15,18 +15,14 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <sim/sim_model_source.h>
 
 #include <cctype>
 #include <cstring>
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <core/ki_assert.h>
 
 
@@ -54,8 +50,9 @@ namespace
             const char c = aBrace[pos];
             const bool prevIsWord = pos > 0 && isWordChar( aBrace[pos - 1] );
             const bool digitStart = std::isdigit( static_cast<unsigned char>( c ) ) != 0;
-            const bool dotDigitStart = c == '.' && pos + 1 < aBrace.size()
-                                       && std::isdigit( static_cast<unsigned char>( aBrace[pos + 1] ) ) != 0;
+            const bool dotDigitStart = c == '.'
+                                        && pos + 1 < aBrace.size()
+                                        && std::isdigit( static_cast<unsigned char>( aBrace[pos + 1] ) ) != 0;
 
             if( prevIsWord || ( !digitStart && !dotDigitStart ) )
             {
@@ -98,9 +95,9 @@ namespace
             // Optional single-letter SI prefix.  Reject when followed by another alpha char,
             // since that means the prefix is the start of an identifier (e.g. "1Meg" — leave
             // ngspice's spelling untouched).
-            if( pos < aBrace.size() && std::strchr( "afpnumkKMGTPE", aBrace[pos] ) != nullptr
-                && ( pos + 1 >= aBrace.size()
-                     || !std::isalpha( static_cast<unsigned char>( aBrace[pos + 1] ) ) ) )
+            if( pos < aBrace.size()
+                    && std::strchr( "afpnumkKMGTPE", aBrace[pos] ) != nullptr
+                    && ( pos + 1 >= aBrace.size() || !std::isalpha( static_cast<unsigned char>( aBrace[pos + 1] ) ) ) )
             {
                 ++pos;
             }
@@ -124,10 +121,11 @@ namespace
         std::string result;
         std::size_t pos = 0;
 
-        auto isSpace = []( char c )
-        {
-            return std::isspace( static_cast<unsigned char>( c ) ) != 0;
-        };
+        auto isSpace =
+                []( char c )
+                {
+                    return std::isspace( static_cast<unsigned char>( c ) ) != 0;
+                };
 
         while( pos < aInput.size() )
         {
@@ -217,8 +215,8 @@ std::string SPICE_GENERATOR_SOURCE::ItemLine( const SPICE_ITEM& aItem ) const
     }
 
     if( m_model.GetSpiceInfo().functionName != ""
-        && m_model.GetType() != SIM_MODEL::TYPE::V   // DC-only sources are already processed
-        && m_model.GetType() != SIM_MODEL::TYPE::I )
+            && m_model.GetType() != SIM_MODEL::TYPE::V   // DC-only sources are already processed
+            && m_model.GetType() != SIM_MODEL::TYPE::I )
     {
         std::string args = "";
 
@@ -255,14 +253,12 @@ std::string SPICE_GENERATOR_SOURCE::ItemLine( const SPICE_ITEM& aItem ) const
 
         case SIM_MODEL::TYPE::V_RANDUNIFORM:
         case SIM_MODEL::TYPE::I_RANDUNIFORM:
-        {
             args.append( "1 " );
             args.append( getParamValueString( "ts", "0" ) + " " );
             args.append( getParamValueString( "td", "0" ) + " " );
             args.append( getParamValueString( "range", "1" ) + " " );
             args.append( getParamValueString( "offset", "0" ) + " " );
             break;
-        }
 
         case SIM_MODEL::TYPE::V_RANDGAUSSIAN:
         case SIM_MODEL::TYPE::I_RANDGAUSSIAN:
@@ -310,7 +306,7 @@ std::string SPICE_GENERATOR_SOURCE::ItemLine( const SPICE_ITEM& aItem ) const
             // PER or NP, force a single pulse by appending PER=0 (lets ngspice apply its
             // internal default) and NP=1.
             if( m_model.GetType() == SIM_MODEL::TYPE::V_PULSE
-                || m_model.GetType() == SIM_MODEL::TYPE::I_PULSE )
+                    || m_model.GetType() == SIM_MODEL::TYPE::I_PULSE )
             {
                 const SIM_MODEL::PARAM* perParam = m_model.FindParam( "per" );
                 const SIM_MODEL::PARAM* npParam  = m_model.FindParam( "np" );
@@ -331,12 +327,11 @@ std::string SPICE_GENERATOR_SOURCE::ItemLine( const SPICE_ITEM& aItem ) const
     else
     {
         switch( m_model.GetType() )
+        {
         case SIM_MODEL::TYPE::V_VCL:
         case SIM_MODEL::TYPE::I_VCL:
-        {
             item.modelName += fmt::format( "{} ", getParamValueString( "gain", "1.0" ) );
             emptyLine = false;
-
             break;
 
         case SIM_MODEL::TYPE::V_CCL:
@@ -382,9 +377,7 @@ std::string SPICE_GENERATOR_SOURCE::ItemLine( const SPICE_ITEM& aItem ) const
     }
 
     if( emptyLine )
-    {
         item.modelName = SIM_VALUE::ToSpice( m_model.GetParam( 0 ).value );
-    }
 
     return SPICE_GENERATOR::ItemLine( item );
 }
@@ -421,9 +414,7 @@ void SIM_MODEL_SOURCE::doSetParamValue( int aParamIndex, const std::string& aVal
     if( aValue.empty() )
     {
         for( int paramIndex = aParamIndex; paramIndex < GetParamCount(); ++paramIndex )
-        {
             m_params.at( aParamIndex ).value = "";
-        }
     }
     else
     {

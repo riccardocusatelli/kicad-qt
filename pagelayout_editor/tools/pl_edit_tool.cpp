@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <raster_image_wx.h>
@@ -128,7 +124,7 @@ int PL_EDIT_TOOL::Main( const TOOL_EVENT& aEvent )
         unique_peers.insert( drawItem->GetPeer() );
     }
 
-    m_frame->PushTool( aEvent );
+    SCOPED_TOOL_PUSHER raii( m_frame, aEvent );
 
     Activate();
     // Must be done after Activate() so that it gets set into the correct context
@@ -149,8 +145,7 @@ int PL_EDIT_TOOL::Main( const TOOL_EVENT& aEvent )
         }
         catch( const fmt::format_error& exc )
         {
-            wxLogWarning( wxS( "Exception \"%s\" serializing string ocurred." ),
-                          exc.what() );
+            wxLogWarning( wxS( "Exception \"%s\" serializing string ocurred." ), exc.what() );
             return 1;
         }
     }
@@ -160,7 +155,9 @@ int PL_EDIT_TOOL::Main( const TOOL_EVENT& aEvent )
     {
         m_frame->GetCanvas()->SetCurrentCursor( KICURSOR::MOVING );
 
-        if( evt->IsAction( &PL_ACTIONS::move ) || evt->IsMotion() || evt->IsDrag( BUT_LEFT )
+        if( evt->IsAction( &PL_ACTIONS::move )
+            || evt->IsMotion()
+            || evt->IsDrag( BUT_LEFT )
             || evt->IsAction( &ACTIONS::refreshPreview ) )
         {
             //------------------------------------------------------------------------
@@ -287,7 +284,7 @@ int PL_EDIT_TOOL::Main( const TOOL_EVENT& aEvent )
         //------------------------------------------------------------------------
         // Handle drop
         //
-        else if( evt->IsMouseUp( BUT_LEFT ) || evt->IsClick( BUT_LEFT ) )
+        else if( evt->IsMouseUp( BUT_LEFT ) || evt->IsClick( BUT_LEFT ) || evt->IsAction( &ACTIONS::cursorClick ) )
         {
             break; // Finish
         }
@@ -323,7 +320,6 @@ int PL_EDIT_TOOL::Main( const TOOL_EVENT& aEvent )
         m_toolMgr->PostEvent( EVENTS::SelectedEvent );
 
     m_moveInProgress = false;
-    m_frame->PopTool( aEvent );
     return 0;
 }
 

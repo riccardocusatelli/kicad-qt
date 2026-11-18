@@ -17,8 +17,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PROPERTY_MGR_H
@@ -28,6 +28,7 @@
 
 #include <wx/string.h>
 
+#include <algorithm>
 #include <functional>
 #include <list>
 #include <map>
@@ -43,10 +44,14 @@ class ORIGIN_TRANSFORMS;
 class INSPECTABLE;
 class COMMIT;
 
-///< Unique type identifier
+/// Unique type identifier
 using TYPE_ID = size_t;
 
 using PROPERTY_LISTENER = std::function<void( INSPECTABLE*, PROPERTY_BASE*, COMMIT* )>;
+
+/// Opaque handle returned by RegisterListener so a specific registration can
+/// be removed without disturbing others on the same TYPE_ID.
+using PROPERTY_LISTENER_HANDLE = std::size_t;
 
 class PROPERTY_COMMIT_HANDLER
 {
@@ -54,6 +59,9 @@ public:
     PROPERTY_COMMIT_HANDLER( COMMIT* aCommit );
 
     ~PROPERTY_COMMIT_HANDLER();
+
+private:
+    bool m_ownsCommit = false;
 };
 
 /**
@@ -99,12 +107,35 @@ public:
     PROPERTY_BASE* GetProperty( TYPE_ID aType, const wxString& aProperty ) const;
 
     /**
+     * Return a property for a specific object instance, checking its static
+     * (class-level) properties first and its dynamic (per-object) properties
+     * second.
+     *
+     * @param aObject is the object to look up the property on.
+     * @param aProperty is the property name.
+     * @return Requested property or null pointer if requested property does not exist.
+     */
+    PROPERTY_BASE* GetProperty( const INSPECTABLE* aObject, const wxString& aProperty ) const;
+
+    /**
      * Return all properties for a specific type.
      *
      * @param aType is the type identifier (obtained using TYPE_HASH()).
      * @return Vector storing all properties of the requested type.
      */
     const std::vector<PROPERTY_BASE*>& GetProperties( TYPE_ID aType ) const;
+
+    /**
+     * Return all properties applicable to a specific object instance,
+     * including both static (class-level) and dynamic (per-object) properties.
+     */
+    std::vector<PROPERTY_BASE*> GetProperties( const INSPECTABLE* aObject ) const;
+
+    /**
+     * Return the dynamic properties of the first object whose names every other object also has,
+     * in the first object's order.  Each object's dynamic properties are queried once.
+     */
+    std::vector<PROPERTY_BASE*> GetCommonDynamicProperties( const std::vector<const INSPECTABLE*>& aObjects ) const;
 
     const std::map<PROPERTY_BASE*, int>& GetDisplayOrder( TYPE_ID aType ) const;
 
@@ -235,9 +266,7 @@ public:
         std::vector<PROPERTY_BASE*> properties;
     };
 
-    typedef std::vector<CLASS_INFO> CLASSES_INFO;
-
-    CLASSES_INFO GetAllClasses();
+    std::vector<CLASS_INFO> GetAllClasses();
 
     /**
      * Callback to alert the notification system that a property has changed
@@ -247,19 +276,24 @@ public:
     void PropertyChanged( INSPECTABLE* aObject, PROPERTY_BASE* aProperty );
 
     /**
-     * Registers a listener for the given type
-     * @param aType is the type to add the listener for
-     * @param aListenerFunc will be called every time a property on aType is changed
+     * Register a listener for the given type and return a move-only subscription
+     * that auto-unregisters in its destructor. Store the result as a member of
+     * the listening object — when the object is destroyed the subscription
+     * lapses on its own.
      */
-    void RegisterListener( TYPE_ID aType, PROPERTY_LISTENER aListenerFunc )
-    {
-        m_listeners[aType].emplace_back( aListenerFunc );
-    }
+    [[nodiscard]] class PROPERTY_LISTENER_SUBSCRIPTION
+            RegisterListener( TYPE_ID aType, PROPERTY_LISTENER aListenerFunc );
 
-    void UnregisterListeners( TYPE_ID aType )
-    {
-        m_listeners[aType].clear();
-    }
+    /// Remove a single listener registration by its handle. Prefer the
+    /// PROPERTY_LISTENER_SUBSCRIPTION returned by RegisterListener; this entry
+    /// point exists for the subscription wrapper itself.
+    ///
+    /// Defined out-of-line in property_mgr.cpp so consumers of this header
+    /// (e.g. classes that hold a PROPERTY_LISTENER_SUBSCRIPTION member) don't
+    /// have to fully instantiate PROPERTY_MANAGER — that would in turn
+    /// require complete PROPERTY_BASE / TYPE_CAST_BASE for the unique_ptr
+    /// members inside CLASS_DESC.
+    void UnregisterListener( TYPE_ID aType, PROPERTY_LISTENER_HANDLE aHandle );
 
 private:
     PROPERTY_MANAGER() :
@@ -268,92 +302,150 @@ private:
     {
     }
 
-    ~PROPERTY_MANAGER();
+    // Explicit noexcept on this user-declared destructor short-circuits the
+    // implicit noexcept computation the compiler would otherwise perform by
+    // walking every member's destructor. That walk reaches the
+    // `std::map<wxString, std::unique_ptr<PROPERTY_BASE>>` member inside
+    // CLASS_DESC and, since this header only forward-declares PROPERTY_BASE
+    // / TYPE_CAST_BASE, fails with an "incomplete type" diagnostic at every
+    // TU that includes property_mgr.h. The destructor body in
+    // property_mgr.cpp sees the complete types via the property.h include
+    // there.
+    ~PROPERTY_MANAGER() noexcept;
 
     friend class PROPERTY_COMMIT_HANDLER;
 
-    ///< Structure holding type meta-data
+    /// Structure holding type meta-data
     struct CLASS_DESC
     {
-        CLASS_DESC( TYPE_ID aId )
-            : m_id( aId )
-        {
-            m_groupDisplayOrder.emplace_back( wxEmptyString );
-            m_groups.insert( wxEmptyString );
-        }
+        // Constructor body lives in property_mgr.cpp so it doesn't force
+        // every TU including this header to instantiate the destructors of
+        // `std::map<X, std::unique_ptr<PROPERTY_BASE>>` and
+        // `std::map<X, std::unique_ptr<TYPE_CAST_BASE>>` (which require
+        // complete PROPERTY_BASE / TYPE_CAST_BASE — only forward-declared
+        // here). Same applies to the destructor and the defaulted move
+        // operations.
+        CLASS_DESC( TYPE_ID aId );
+        ~CLASS_DESC() noexcept;
+        CLASS_DESC( CLASS_DESC&& ) noexcept;
 
-        ~CLASS_DESC();
-
-        CLASS_DESC( CLASS_DESC&& ) = default;
-
-        ///< Unique type identifier (obtained using TYPE_HASH)
+        /// Unique type identifier (obtained using TYPE_HASH)
         const TYPE_ID m_id;
 
-        ///< Types after which this type inherits
+        /// Types after which this type inherits
         std::vector<std::reference_wrapper<CLASS_DESC>> m_bases;
 
-        ///< Properties unique to this type (i.e. not inherited)
+        /// Properties unique to this type (i.e. not inherited)
         std::map<wxString, std::unique_ptr<PROPERTY_BASE>> m_ownProperties;
 
-        ///< Type converters available for this type
+        /// Type converters available for this type
         std::map<TYPE_ID, std::unique_ptr<TYPE_CAST_BASE>> m_typeCasts;
 
-        ///< Properties from bases that should be masked (hidden) on this subclass
+        /// Properties from bases that should be masked (hidden) on this subclass
         std::set<std::pair<size_t, wxString>> m_maskedBaseProperties;
 
-        ///< Overrides for base class property availabilities
+        /// Overrides for base class property availabilities
         std::map<std::pair<size_t, wxString>, std::function<bool( INSPECTABLE* )>> m_availabilityOverrides;
 
-        ///< Overrides for base class property writeable status
+        /// Overrides for base class property writeable status
         std::map<std::pair<size_t, wxString>, std::function<bool( INSPECTABLE* )>> m_writeabilityOverrides;
 
-        ///< All properties (both unique to the type and inherited)
+        /// All properties (both unique to the type and inherited)
         std::vector<PROPERTY_BASE*> m_allProperties;
 
-        ///< Compiled display order for all properties
+        /// Compiled display order for all properties
         std::map<PROPERTY_BASE*, int> m_displayOrder;
 
-        ///< List of property groups provided by this class in display order
+        /// List of property groups provided by this class in display order
         std::vector<wxString> m_groupDisplayOrder;
 
-        ///< Non-owning list of classes's direct properties in display order
+        /// Non-owning list of classes's direct properties in display order
         std::vector<PROPERTY_BASE*> m_ownDisplayOrder;
 
-        ///< The property groups provided by this class
+        /// The property groups provided by this class
         std::set<wxString> m_groups;
 
-        ///< Replaced properties (TYPE_ID / name)
+        /// Replaced properties (TYPE_ID / name)
         std::set<std::pair<size_t, wxString>> m_replaced;
 
-        ///< Recreates the list of properties
+        /// Recreates the list of properties
         void rebuild();
 
-        ///< Traverses the class inheritance hierarchy bottom-to-top, gathering
-        ///< all properties available to a type
+        /// Traverses the class inheritance hierarchy bottom-to-top, gathering
+        /// all properties available to a type
         void collectPropsRecur( std::vector<PROPERTY_BASE*>& aResult,
                                 std::set<std::pair<size_t, wxString>>& aReplaced,
                                 std::map<PROPERTY_BASE*, int>& aDisplayOrder,
                                 std::set<std::pair<size_t, wxString>>& aMasked ) const;
     };
 
-    ///< Returns metadata for a specific type
+    /// Returns metadata for a specific type
     CLASS_DESC& getClass( TYPE_ID aTypeId );
 
     std::unordered_map<TYPE_ID, wxString> m_classNames;
 
-    ///< Map of all available types
+    /// Map of all available types
     std::unordered_map<TYPE_ID, CLASS_DESC> m_classes;
 
     /// Flag indicating that the list of properties needs to be rebuild (RebuildProperties())
     bool m_dirty;
 
-    std::map<TYPE_ID, std::vector<PROPERTY_LISTENER>> m_listeners;
+    std::map<TYPE_ID,
+             std::vector<std::pair<PROPERTY_LISTENER_HANDLE, PROPERTY_LISTENER>>> m_listeners;
+
+    PROPERTY_LISTENER_HANDLE m_nextListenerHandle = 0;
 
     COMMIT* m_managedCommit;
 };
 
 
-///< Helper macro to map type hashes to names
+/// Helper macro to map type hashes to names
 #define REGISTER_TYPE(x) PROPERTY_MANAGER::Instance().RegisterType(TYPE_HASH(x), TYPE_NAME(x))
+
+
+/**
+ * Move-only RAII wrapper around a single listener registration. Returned by
+ * PROPERTY_MANAGER::RegisterListener so the listening object can keep the
+ * subscription as a member and let its destructor unregister automatically.
+ */
+class PROPERTY_LISTENER_SUBSCRIPTION
+{
+public:
+    PROPERTY_LISTENER_SUBSCRIPTION() = default;
+
+    PROPERTY_LISTENER_SUBSCRIPTION( TYPE_ID aType, PROPERTY_LISTENER_HANDLE aHandle ) :
+            m_type( aType ),
+            m_handle( aHandle )
+    {
+    }
+
+    // Destructor + reset() are out-of-line so the chain reset() ->
+    // PROPERTY_MANAGER::UnregisterListener doesn't force consumers of this
+    // header to fully instantiate PROPERTY_MANAGER (which would require
+    // complete PROPERTY_BASE / TYPE_CAST_BASE for the unique_ptr members
+    // inside CLASS_DESC). Holders of this subscription as a class member
+    // (e.g. SCHEMATIC) therefore only see the declarations here, not the
+    // implicit PROPERTY_MANAGER destructor instantiation.
+    ~PROPERTY_LISTENER_SUBSCRIPTION();
+
+    PROPERTY_LISTENER_SUBSCRIPTION( const PROPERTY_LISTENER_SUBSCRIPTION& ) = delete;
+    PROPERTY_LISTENER_SUBSCRIPTION& operator=( const PROPERTY_LISTENER_SUBSCRIPTION& ) = delete;
+
+    PROPERTY_LISTENER_SUBSCRIPTION( PROPERTY_LISTENER_SUBSCRIPTION&& aOther ) noexcept :
+            m_type( aOther.m_type ),
+            m_handle( aOther.m_handle )
+    {
+        aOther.m_handle = 0;
+    }
+
+    PROPERTY_LISTENER_SUBSCRIPTION& operator=( PROPERTY_LISTENER_SUBSCRIPTION&& aOther ) noexcept;
+
+    void reset();
+
+private:
+    TYPE_ID                  m_type   = 0;
+    PROPERTY_LISTENER_HANDLE m_handle = 0;
+};
+
 
 #endif /* PROPERTY_MGR_H */

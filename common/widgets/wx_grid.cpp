@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <wx/colour.h>
@@ -30,6 +26,7 @@
 
 #include <widgets/indicator_icon.h>
 #include <widgets/grid_text_helpers.h>
+#include <widgets/grid_combobox.h>
 #include <widgets/wx_grid.h>
 #include <widgets/ui_common.h>
 #include <algorithm>
@@ -89,6 +86,54 @@ void WX_GRID::CellEditorTransformSizeRect( wxRect& aRect )
 #if defined( __WXMSW__ ) || defined( __WXGTK__ )
     aRect.Deflate( 2 );
 #endif
+}
+
+
+int WX_GRID::CapHeightToVisibleRows( int aMinHeight, int aHeaderHeight,
+                                     const std::vector<int>& aRowHeights, int aMaxRows )
+{
+    if( aMaxRows < 0 )
+        return aMinHeight;
+
+    int rowsHeight = aHeaderHeight;
+    int count = std::min( aMaxRows, (int) aRowHeights.size() );
+
+    for( int row = 0; row < count; ++row )
+        rowsHeight += aRowHeights[row];
+
+    return std::min( aMinHeight, rowsHeight );
+}
+
+
+void WX_GRID::SetMinVisibleRows( wxWindow* aDialog, int aMinRows )
+{
+    aDialog->Layout();
+
+    std::vector<int> rowHeights;
+    rowHeights.reserve( GetNumberRows() );
+
+    int allRowsHeight = GetColLabelSize();
+
+    for( int row = 0; row < GetNumberRows(); ++row )
+    {
+        rowHeights.push_back( GetRowSize( row ) );
+        allRowsHeight += rowHeights.back();
+    }
+
+    // Floor the grid at a few rows, then re-derive the dialog's minimum so it can be shrunk down to
+    // that floor with the grid scrolling past it.
+    SetMinSize( wxSize( GetMinSize().x, CapHeightToVisibleRows( allRowsHeight, GetColLabelSize(),
+                                                               rowHeights, aMinRows ) ) );
+
+    aDialog->SetMinSize( wxDefaultSize );
+    aDialog->InvalidateBestSize();
+    aDialog->SetMinSize( aDialog->GetBestSize() );
+
+    // Open tall enough to show every row; Show() clamps the result to the monitor work area.
+    int grow = allRowsHeight - GetSize().y;
+
+    if( grow > 0 )
+        aDialog->SetSize( aDialog->GetSize().x, aDialog->GetSize().y + grow );
 }
 
 
@@ -255,7 +300,34 @@ void WX_GRID::onDPIChanged(wxDPIChangedEvent& aEvt)
             hiddenCols.push_back( col );
     }
 
+#ifdef wxHAS_DPI_INDEPENDENT_PIXELS
+    const wxGridSizesInfo savedColSizes = GetColSizes();
+    const wxGridSizesInfo savedRowSizes = GetRowSizes();
+#endif
+
     aEvt.Skip();
+
+#ifdef wxHAS_DPI_INDEPENDENT_PIXELS
+    CallAfter(
+            [this, savedColSizes, savedRowSizes]()
+            {
+                BeginBatch();
+
+                for( const auto& [col, size] : savedColSizes.m_customSizes )
+                {
+                    if( size > 0 && static_cast<int>( col ) < GetNumberCols() )
+                        SetColSize( col, size );
+                }
+
+                for( const auto& [row, size] : savedRowSizes.m_customSizes )
+                {
+                    if( size > 0 && static_cast<int>( row ) < GetNumberRows() )
+                        SetRowSize( row, size );
+                }
+
+                EndBatch();
+            } );
+#endif
 
     if( !hiddenCols.empty() )
     {
@@ -360,6 +432,12 @@ void WX_GRID::EnableAlternateRowColors( bool aEnable )
 
 void WX_GRID::onGridCellSelect( wxGridEvent& aEvent )
 {
+    if( m_useNativeSelection )
+    {
+        aEvent.Skip();
+        return;
+    }
+
     // Highlight the selected cell.
     // Calling SelectBlock() allows a visual effect when cells are selected by tab or arrow keys.
     // Otherwise, one cannot really know what actual cell is selected.
@@ -381,6 +459,9 @@ void WX_GRID::onGridCellSelect( wxGridEvent& aEvent )
         {
             SelectBlock( 0, col, GetNumberRows() - 1, col, false );
         }
+
+        if( m_cursorRowColumnHighlight )
+            ForceRefresh();
     }
 }
 
@@ -426,7 +507,14 @@ void WX_GRID::onCellEditorShown( wxGridEvent& aEvent )
 
 void WX_GRID::onCellEditorHidden( wxGridEvent& aEvent )
 {
-    const int col = aEvent.GetCol();
+    EvaluateCell( aEvent.GetRow(), aEvent.GetCol() );
+    aEvent.Skip();
+}
+
+
+void WX_GRID::EvaluateCell( int aRow, int aCol )
+{
+    const int col = aCol;
 
     if( alg::contains( m_autoEvalCols, col ) )
     {
@@ -438,7 +526,7 @@ void WX_GRID::onCellEditorHidden( wxGridEvent& aEvent )
 
         m_eval->SetDefaultUnits( cellUnits );
 
-        const int row = aEvent.GetRow();
+        const int row = aRow;
 
         // Determine if this cell is marked as holding nullable values
         bool              isNullable = false;
@@ -501,8 +589,6 @@ void WX_GRID::onCellEditorHidden( wxGridEvent& aEvent )
                     }
                 } );
     }
-
-    aEvent.Skip();
 }
 
 
@@ -648,6 +734,34 @@ void WX_GRID::DrawRowLabel( wxDC& dc, int row )
 
     rend.DrawBorder( *this, dc, rect );
 
+    if( auto* table = dynamic_cast<WX_GRID_TABLE_BASE*>( GetTable() ); table && table->HasRowLabelExpanders() )
+    {
+        ROW_STATE state = table->GetRowState( row );
+
+        if( IsRowCollapsed( state ) || IsRowExpanded( state ) )
+        {
+            wxBitmap bitmap = m_rowIconProvider->GetIndicatorIcon( IsRowCollapsed( state ) ? ROW_ICON_PROVIDER::CLOSED
+                                                                                           : ROW_ICON_PROVIDER::OPEN );
+            bitmap.SetScaleFactor( KIPLATFORM::UI::GetPixelScaleFactor( this ) );
+
+            dc.DrawBitmap( bitmap, rect.GetLeft() + ( rect.GetWidth() - bitmap.GetLogicalWidth() ) / 2,
+                           rect.GetTop() + ( rect.GetHeight() - bitmap.GetLogicalHeight() ) / 2, true );
+        }
+        else if( state == ROW_STATE::EXPANDED_CHILD )
+        {
+            // Keep the hierarchy in the gutter so all field text stays aligned.
+            wxDCPenChanger setPen( dc, wxPen( GetLabelTextColour(), FromDIP( 1 ) ) );
+            wxPoint        center( rect.GetLeft() + rect.GetWidth() / 2, rect.GetTop() + rect.GetHeight() / 2 );
+            bool           moreChildren = row + 1 < GetNumberRows()
+                                          && table->GetRowState( row + 1 ) == ROW_STATE::EXPANDED_CHILD;
+
+            dc.DrawLine( center.x, rect.GetTop(), center.x, moreChildren ? rect.GetBottom() + 1 : center.y );
+            dc.DrawLine( center.x, center.y, rect.GetRight() - FromDIP( 4 ), center.y );
+        }
+
+        return;
+    }
+
     // Make sure fonts get scaled correctly on GTK HiDPI monitors
     dc.SetFont( GetLabelFont() );
 
@@ -775,35 +889,7 @@ void WX_GRID::OnDeleteRows( const std::function<void( int row )>& aDeleter )
 void WX_GRID::OnDeleteRows( const std::function<bool( int row )>& aFilter,
                             const std::function<void( int row )>& aDeleter )
 {
-    wxArrayInt selectedRows = GetSelectedRows();
-
-    auto addSelectedRow = [&]( int row )
-    {
-        for( size_t i = 0; i < selectedRows.size(); ++i )
-        {
-            if( selectedRows[i] == row )
-                return;
-        }
-
-        selectedRows.push_back( row );
-    };
-
-    wxGridCellCoordsArray topLeft = GetSelectionBlockTopLeft();
-    wxGridCellCoordsArray botRight = GetSelectionBlockBottomRight();
-
-    for( size_t i = 0; i < std::min( topLeft.Count(), botRight.Count() ); ++i )
-    {
-        for( int row = topLeft[i].GetRow(); row <= botRight[i].GetRow(); ++row )
-            addSelectedRow( row );
-    }
-
-    wxGridCellCoordsArray cells = GetSelectedCells();
-
-    for( size_t i = 0; i < cells.Count(); ++i )
-        addSelectedRow( cells[i].GetRow() );
-
-    if( selectedRows.empty() && GetGridCursorRow() >= 0 )
-        selectedRows.push_back( GetGridCursorRow() );
+    std::vector<int> selectedRows = GetSelectedRowIndices();
 
     if( selectedRows.empty() )
         return;
@@ -818,11 +904,7 @@ void WX_GRID::OnDeleteRows( const std::function<bool( int row )>& aFilter,
         return;
 
     // Reverse sort so deleting a row doesn't change the indexes of the other rows.
-    selectedRows.Sort(
-            []( int* first, int* second )
-            {
-                return *second - *first;
-            } );
+    std::sort( selectedRows.rbegin(), selectedRows.rend() );
 
     int nextSelRow = selectedRows.back() - 1;
 
@@ -834,6 +916,31 @@ void WX_GRID::OnDeleteRows( const std::function<bool( int row )>& aFilter,
 
     for( int row : selectedRows )
         aDeleter( row );
+}
+
+
+std::vector<int> WX_GRID::GetSelectedRowIndices() const
+{
+    std::vector<bool> selected( GetNumberRows(), false );
+
+    for( const wxGridBlockCoords& block : GetSelectedBlocks() )
+    {
+        for( int row = block.GetTopRow(); row <= block.GetBottomRow(); ++row )
+            selected[row] = true;
+    }
+
+    std::vector<int> rows;
+
+    for( int row = 0; row < GetNumberRows(); ++row )
+    {
+        if( selected[row] )
+            rows.push_back( row );
+    }
+
+    if( rows.empty() && GetGridCursorRow() >= 0 )
+        rows.push_back( GetGridCursorRow() );
+
+    return rows;
 }
 
 
@@ -1131,7 +1238,23 @@ void WX_GRID::RecomputeGridWidths()
             if( GetColSize( colIndex ) != 0 )
             {
                 AutoSizeColumn( colIndex );
-                const int colSize = GetColSize( colIndex );
+                int colSize = GetColSize( colIndex );
+
+                // Give a bit more width to columns that have editors with graphic widgets
+                if( GetNumberRows() > 0 )
+                {
+                    if( wxGridCellEditor* editor = GetCellEditor( 0, colIndex ) )
+                    {
+                        if( dynamic_cast<wxGridCellChoiceEditor*>( editor )
+                            || dynamic_cast<GRID_CELL_TEXT_BUTTON*>( editor )
+                            || dynamic_cast<GRID_CELL_COMBOBOX*>( editor ) )
+                        {
+                            colSize += 40;
+                        }
+
+                        editor->DecRef();
+                    }
+                }
 
                 int minWidthScaled = FromDIP( minWidth );
                 SetColSize( colIndex, std::max( minWidthScaled, colSize ) );

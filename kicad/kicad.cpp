@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -36,6 +32,7 @@
 #include <wx/msgdlg.h>
 #include <wx/cmdline.h>
 
+#include <api/api_server.h>
 #include <common.h>
 #include <env_vars.h>
 #include <file_history.h>
@@ -53,21 +50,25 @@
 #include <trace_helpers.h>
 #include <wildcards_and_files_ext.h>
 #include <confirm.h>
+#if defined( KICAD_NATIVE_MODEL_PREVIEW ) && defined( __WINDOWS__ )
+#include <model_preview_manager.h>
+#endif
 
 #include <git/git_backend.h>
 #include <git/libgit_backend.h>
-#include <stdexcept>
+#include <cstdlib>
 
 #include "pgm_kicad.h"
 #include "kicad_manager_frame.h"
+#include "mergetool_frame.h"
+
+#include <wx/crt.h>
+#include <wx/evtloop.h>
+#include <wx/weakref.h>
 
 #include <kiplatform/app.h>
 #include <kiplatform/environment.h>
 #include <core/ki_log.h>
-
-#ifdef KICAD_IPC_API
-#include <api/api_server.h>
-#endif
 
 // a dummy to quiet linking with EDA_BASE_FRAME::config();
 #include <kiface_base.h>
@@ -77,12 +78,18 @@
 
 KIFACE_BASE& Kiface()
 {
-    // This function should never be called.  It is only referenced from
-    // EDA_BASE_FRAME::config() and this is only provided to satisfy the linker,
-    // not to be actually called.
-    wxLogFatalError( wxT( "Unexpected call to Kiface() in kicad/kicad.cpp" ) );
-
-    throw std::logic_error( "Unexpected call to Kiface() in kicad/kicad.cpp" );
+    // This function should never be called. It is only referenced from
+    // EDA_BASE_FRAME::config() and this is only provided to satisfy the
+    // linker, not to be actually called. Print the diagnostic to stderr
+    // and abort — throwing here lets wxApp's top-level exception handler
+    // pop a second modal dialog, which defeats the point of moving the
+    // diagnostic to the terminal in the first place.
+    wxFprintf( stderr,
+               wxT( "Unexpected call to Kiface() in kicad/kicad.cpp — a "
+                    "project-manager-process code path is reaching into a "
+                    "kiface stub. Re-run with KICAD_TRACE=KICAD for a "
+                    "backtrace.\n" ) );
+    std::abort();
 }
 
 
@@ -116,6 +123,10 @@ bool PGM_KICAD::OnPgmInit()
         { wxCMD_LINE_OPTION, "f", "frame", "Frame to load", wxCMD_LINE_VAL_STRING, 0 },
         { wxCMD_LINE_SWITCH, "n", "new", "New instance of KiCad, does not attempt to load previously open files",
           wxCMD_LINE_VAL_NONE, 0 },
+        { wxCMD_LINE_SWITCH, nullptr, "mergetool",
+          "Launch the 3-way merge tool. Expects four positional args: "
+          "ANCESTOR OURS THEIRS MERGED. Intended as a `git mergetool` driver.",
+          wxCMD_LINE_VAL_NONE, 0 },
 #ifndef __WXOSX__
         { wxCMD_LINE_SWITCH, nullptr, "software-rendering", "Use software rendering instead of OpenGL",
           wxCMD_LINE_VAL_NONE, 0 },
@@ -129,20 +140,31 @@ bool PGM_KICAD::OnPgmInit()
     parser.SetDesc( desc );
     parser.Parse( false );
 
-    FRAME_T appType = KICAD_MAIN_FRAME_T;
+    bool mergetoolMode = parser.FoundSwitch( "mergetool" ) == wxCMD_SWITCH_ON;
+
+    if( mergetoolMode && parser.GetParamCount() != 4 )
+    {
+        wxFprintf( stderr,
+                   wxT( "kicad --mergetool expects four positional arguments: "
+                        "ANCESTOR OURS THEIRS MERGED\n" ) );
+        return false;
+    }
+
+    FRAME_T appType = mergetoolMode ? FRAME_MERGETOOL : KICAD_MAIN_FRAME_T;
 
     const struct
     {
         wxString name;
         FRAME_T  type;
+        // clang-format off
     } frameTypes[] = { { wxT( "pcb" ), FRAME_PCB_EDITOR },
                        { wxT( "fpedit" ), FRAME_FOOTPRINT_EDITOR },
                        { wxT( "sch" ), FRAME_SCH },
                        { wxT( "calc" ), FRAME_CALC },
-                       { wxT( "bm2cmp" ), FRAME_BM2CMP },
                        { wxT( "ds" ), FRAME_PL_EDITOR },
                        { wxT( "gerb" ), FRAME_GERBER },
                        { wxT( "" ), FRAME_T_COUNT } };
+    // clang-format on
 
     wxString frameName;
 
@@ -159,8 +181,6 @@ bool PGM_KICAD::OnPgmInit()
         if( appType == FRAME_T_COUNT )
         {
             wxLogError( wxT( "Unknown frame: %s" ), frameName );
-            // Clean up
-            OnPgmExit();
             return false;
         }
     }
@@ -181,13 +201,7 @@ bool PGM_KICAD::OnPgmInit()
     }
 #endif
 
-    bool skipPythonInit = false;
-
-    if( appType == FRAME_BM2CMP || appType == FRAME_PL_EDITOR || appType == FRAME_GERBER
-        || appType == FRAME_CALC )
-        skipPythonInit = true;
-
-    if( !InitPgm( false, skipPythonInit ) )
+    if( !InitPgm( false ) )
         return false;
 
 
@@ -255,11 +269,39 @@ bool PGM_KICAD::OnPgmInit()
             insertExpanded( it->second.GetValue() );
     }
 
-    wxFrame*      frame = nullptr;
-    KIWAY_PLAYER* playerFrame = nullptr;
-    KICAD_MANAGER_FRAME* managerFrame = nullptr;
+    wxFrame*              frame         = nullptr;
+    KIWAY_PLAYER*         playerFrame   = nullptr;
+    KICAD_MANAGER_FRAME*  managerFrame  = nullptr;
+    MERGETOOL_FRAME*      mergetoolFrame = nullptr;
 
-    if( appType == KICAD_MAIN_FRAME_T )
+    // Editor frames register their API handlers in their constructors, so the API server must
+    // be live before any frame is built.  The short-lived --mergetool driver skips it to avoid
+    // contending for the singleton IPC socket.
+    if( appType != FRAME_MERGETOOL )
+    {
+        m_api_server = std::make_unique<KICAD_API_SERVER>();
+        m_api_common_handler = std::make_unique<API_HANDLER_COMMON>();
+        m_api_server->RegisterHandler( m_api_common_handler.get() );
+        m_api_libraries_handler = std::make_unique<API_HANDLER_LIBRARIES>(
+                LIBRARY_TABLE_TYPE::DESIGN_BLOCK );
+        m_api_server->RegisterHandler( m_api_libraries_handler.get() );
+    }
+
+    if( appType == FRAME_MERGETOOL )
+    {
+        // A later project load can change the working directory, so resolve git's relative paths now
+        auto absolute = [&]( size_t aIndex )
+        {
+            wxFileName fn( parser.GetParam( aIndex ) );
+            fn.MakeAbsolute();
+            return fn.GetFullPath();
+        };
+
+        MERGETOOL_PATHS paths{ absolute( 0 ), absolute( 1 ), absolute( 2 ), absolute( 3 ) };
+        mergetoolFrame = new MERGETOOL_FRAME( &Kiway, nullptr, paths );
+        frame          = mergetoolFrame;
+    }
+    else if( appType == KICAD_MAIN_FRAME_T )
     {
         managerFrame = new KICAD_MANAGER_FRAME( nullptr, wxT( "KiCad" ), wxDefaultPosition,
                                                 wxWindow::FromDIP( wxSize( 775, -1 ), NULL ) );
@@ -295,12 +337,6 @@ bool PGM_KICAD::OnPgmInit()
     KICAD_SETTINGS* settings = static_cast<KICAD_SETTINGS*>( PgmSettings() );
 
     GetLibraryManager().LoadGlobalTables();
-
-#ifdef KICAD_IPC_API
-    m_api_server = std::make_unique<KICAD_API_SERVER>();
-    m_api_common_handler = std::make_unique<API_HANDLER_COMMON>();
-    m_api_server->RegisterHandler( m_api_common_handler.get() );
-#endif
 
     wxString projToLoad;
 
@@ -345,11 +381,6 @@ bool PGM_KICAD::OnPgmInit()
         {
             // OpenProjectFiles() API asks that it report failure to the UI.
             // Nothing further to say here.
-
-            // We've already initialized things at this point, but wx won't call OnExit if
-            // we fail out. Call our own cleanup routine here to ensure the relevant resources
-            // are freed at the right time (if they aren't, segfaults will occur).
-            OnPgmExit();
 
             // Fail the process startup if the file could not be opened,
             // although this is an optional choice, one that can be reversed
@@ -410,12 +441,48 @@ bool PGM_KICAD::OnPgmInit()
             managerFrame->PreloadAllLibraries();
     }
 
-    frame->Show( true );
-    frame->Raise();
+    if( mergetoolFrame )
+    {
+        // Closing the host frame must not replace the merge result with an exit code of zero.
+        App().SetExitOnFrameDelete( false );
 
-#ifdef KICAD_IPC_API
-    m_api_server->SetReadyToReply();
+        // Stay hidden; the merge dialog is its own modal. The frame just needs
+        // to be the wxApp top window so the modal has a parent and the wxApp
+        // loop has something to drive. Defer the run via CallAfter so the
+        // event loop is up before ShowModal spins its nested loop. The
+        // wxWeakRef guards against the frame being destroyed (window-manager
+        // close, fatal init) before the callback fires.
+        wxWeakRef<MERGETOOL_FRAME> mergeToolFrameRef( mergetoolFrame );
+
+        mergetoolFrame->CallAfter(
+                [mergeToolFrameRef]() mutable
+                {
+                    if( !mergeToolFrameRef || mergeToolFrameRef->IsBeingDeleted() )
+                        return;
+
+                    int exitCode = mergeToolFrameRef->RunMerge();
+
+                    // Propagate the merge JOB's exit code to the kicad
+                    // process exit status so `git mergetool` sees a non-zero
+                    // status on unresolved conflicts.
+                    if( wxEventLoopBase* loop = wxTheApp->GetMainLoop() )
+                        loop->ScheduleExit( exitCode );
+
+                    mergeToolFrameRef->Close( true );
+                } );
+    }
+    else
+    {
+        frame->Show( true );
+        frame->Raise();
+
+#if defined( KICAD_NATIVE_MODEL_PREVIEW ) && defined( __WINDOWS__ )
+        frame->CallAfter( [frame] { MaybeShowModelPreviewSetupPrompt( frame ); } );
 #endif
+    }
+
+    if( m_api_server )
+        m_api_server->SetReadyToReply();
 
     return true;
 }
@@ -429,17 +496,21 @@ int PGM_KICAD::OnPgmRun()
 
 void PGM_KICAD::OnPgmExit()
 {
-    CancelDesignBlockPreload();
+    // Signal all background library preloads to abort before waiting for the thread pool.
+    // The design block preload runs on the global thread pool and checks this flag; without
+    // setting it here the pool wait below can block for up to 120 seconds.
+    m_libraryPreloadAbort.store( true );
 
-    // Abort and wait on any background jobs
-    GetKiCadThreadPool().purge();
-    GetKiCadThreadPool().wait();
+    // Abort and wait on any background jobs, if InitPgm() got far enough to start the pool
+    if( m_singleton.m_ThreadPool )
+    {
+        GetKiCadThreadPool().purge();
+        GetKiCadThreadPool().wait();
+    }
 
     Kiway.OnKiwayEnd();
 
-#ifdef KICAD_IPC_API
     m_api_server.reset();
-#endif
 
     if( m_settings_manager && m_settings_manager->IsOK() )
     {
@@ -447,13 +518,15 @@ void PGM_KICAD::OnPgmExit()
         m_settings_manager->Save();
     }
 
-    // Destroy everything in PGM_KICAD,
-    // especially wxSingleInstanceCheckerImpl earlier than wxApp and earlier
-    // than static destruction would.
+    // Destroy PGM_KICAD earlier than wxApp and static destruction would
     Destroy();
-    GetGitBackend()->Shutdown();
-    delete GetGitBackend();
-    SetGitBackend( nullptr );
+
+    if( GIT_BACKEND* backend = GetGitBackend() )
+    {
+        backend->Shutdown();
+        delete backend;
+        SetGitBackend( nullptr );
+    }
 }
 
 
@@ -533,13 +606,19 @@ struct APP_KICAD : public wxApp
         }
 #endif
 
-        if( !program.OnPgmInit() )
+        // An escaping exception would skip OnPgmExit() and crash the static teardown
+        try
         {
-            program.OnPgmExit();
-            return false;
+            if( program.OnPgmInit() )
+                return true;
+        }
+        catch( ... )
+        {
+            Pgm().HandleException( std::current_exception() );
         }
 
-        return true;
+        program.OnPgmExit();
+        return false;
     }
 
     int OnExit() override
@@ -555,22 +634,28 @@ struct APP_KICAD : public wxApp
         wxLog::EnableLogging( false );
 
         program.OnPgmExit();
+        program.ExitIfTeardownUnsafe();
+
         return ret;
     }
 
 
     int OnRun() override
     {
+        int ret = -1;
+
         try
         {
-            return wxApp::OnRun();
+            ret = wxApp::OnRun();
         }
         catch(...)
         {
             Pgm().HandleException( std::current_exception() );
         }
 
-        return -1;
+        program.SetRunResult( ret );
+
+        return ret;
     }
 
 
@@ -582,33 +667,7 @@ struct APP_KICAD : public wxApp
 
     int FilterEvent( wxEvent& aEvent ) override
     {
-        if( aEvent.GetEventType() == wxEVT_SHOW )
-        {
-            wxShowEvent& event = static_cast<wxShowEvent&>( aEvent );
-            wxDialog*    dialog = dynamic_cast<wxDialog*>( event.GetEventObject() );
-
-            std::vector<void*>& dlgs = PgmGui().m_ModalDialogs;
-
-            if( dialog )
-            {
-                if( event.IsShown() && dialog->IsModal() )
-                {
-                    dlgs.push_back( dialog );
-                }
-                // Under GTK, sometimes the modal flag is cleared before hiding
-                else if( !event.IsShown() && !dlgs.empty() )
-                {
-                    // If we close the expected dialog, remove it from our stack
-                    if( dlgs.back() == dialog )
-                        dlgs.pop_back();
-                    // If an out-of-order, remove all dialogs added after the closed one
-                    else if( auto it = std::find( dlgs.begin(), dlgs.end(), dialog ) ; it != dlgs.end() )
-                        dlgs.erase( it, dlgs.end() );
-                }
-            }
-        }
-
-        return Event_Skip;
+        return PgmGui().FilterAppEvent( aEvent );
     }
 
 #if defined( DEBUG )
@@ -674,4 +733,3 @@ PROJECT& Prj()
 {
     return Kiway.Prj();
 }
-

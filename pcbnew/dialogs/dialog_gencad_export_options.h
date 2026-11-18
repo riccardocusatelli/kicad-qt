@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -38,7 +34,7 @@ class wxTextCtrl;
 class STD_BITMAP_BUTTON;
 class PCB_EDIT_FRAME;
 
-///< Settings for GenCAD exporter
+/// Settings for GenCAD exporter
 enum GENCAD_EXPORT_OPT
 {
     FLIP_BOTTOM_PADS,       // flip bottom components padstacks geometry
@@ -57,10 +53,10 @@ public:
     DIALOG_GENCAD_EXPORT_OPTIONS( PCB_EDIT_FRAME* aParent, const wxString& aTitle, JOB_EXPORT_PCB_GENCAD* aJob );
     ~DIALOG_GENCAD_EXPORT_OPTIONS();
 
-    ///< Check whether an option has been selected.
+    /// Check whether an option has been selected.
     bool GetOption( GENCAD_EXPORT_OPT aOption ) const;
 
-    ///< Return the selected file path.
+    /// Return the selected file path.
     wxString GetFileName() const;
 
 protected:
@@ -69,7 +65,7 @@ protected:
 
     virtual void onBrowseClicked( wxCommandEvent& aEvent );
 
-    ///< Create checkboxes for GenCAD export options.
+    /// Create checkboxes for GenCAD export options.
     void createOptCheckboxes();
 
 protected:

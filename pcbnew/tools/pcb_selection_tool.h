@@ -18,11 +18,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PCB_SELECTION_TOOL_H
@@ -67,6 +63,9 @@ namespace KIGFX
 class PCB_SELECTION_TOOL : public SELECTION_TOOL
 {
 public:
+    /// Called with the drag box every time it changes, before anything is selected.
+    using AREA_PREVIEW = std::function<void( KIGFX::PREVIEW::SELECTION_AREA& aArea )>;
+
     PCB_SELECTION_TOOL();
     ~PCB_SELECTION_TOOL();
 
@@ -103,24 +102,24 @@ public:
      */
     PCB_SELECTION& RequestSelection( CLIENT_SELECTION_FILTER aClientFilter );
 
-    ///< Select a single item under cursor event handler.
+    /// Select a single item under cursor event handler.
     int CursorSelection( const TOOL_EVENT& aEvent );
 
     int SelectColumns( const TOOL_EVENT& aEvent );
     int SelectRows( const TOOL_EVENT& aEvent );
     int SelectTable( const TOOL_EVENT& aEvent );
 
-    ///< Clear current selection event handler.
+    /// Clear current selection event handler.
     int ClearSelection( const TOOL_EVENT& aEvent );
     void ClearSelection( bool aQuietMode = false );
 
-    ///< Select all items on the board
+    /// Select all items on the board
     int SelectAll( const TOOL_EVENT& aEvent );
 
-    ///< Unselect all items on the board
+    /// Unselect all items on the board
     int UnselectAll( const TOOL_EVENT& aEvent );
 
-    ///< Change the selection mode
+    /// Change the selection mode
     int SetSelectRect( const TOOL_EVENT& aEvent );
     int SetSelectPoly( const TOOL_EVENT& aEvent );
 
@@ -132,12 +131,44 @@ public:
     int SelectRectArea( const TOOL_EVENT& aEvent );
 
     /**
+     * Drive the rectangle drag-selection loop from another tool's event loop.
+     *
+     * Wait() suspends the coroutine of the tool it is invoked on, so a tool that owns the
+     * event stream must pump this loop itself rather than call SelectRectArea().
+     *
+     * @param aTool is the tool currently owning the event stream.
+     * @param aPreview is called with the box each time it changes.
+     * @return true if the operation was canceled (i.e. a CancelEvent was received).
+     */
+    bool DragSelectionArea( TOOL_INTERACTIVE& aTool, AREA_PREVIEW aPreview = nullptr );
+
+    /**
      * Handles drawing a lasso selection area that allows multiple items to be selected
      * simultaneously.
      *
      * @return true if the operation was canceled (i.e. a CancelEvent was received).
      */
     int SelectPolyArea( const TOOL_EVENT& aEvent );
+
+    /**
+     * The items a click at aWhere would consider, best first.
+     *
+     * Runs the same guide, filters and heuristics as selectPoint() but changes nothing, so a
+     * tool that shows what a click would take cannot drift from what it does.
+     *
+     * @param aWhere is the point to test, in board coordinates.
+     * @param aClientFilter narrows the candidates before the heuristics run.
+     */
+    std::vector<BOARD_ITEM*> CollectPoint( const VECTOR2I& aWhere,
+                                           CLIENT_SELECTION_FILTER aClientFilter = nullptr );
+
+    /**
+     * The items a drag over aArea would take, in the order SelectMultiple() would take them.
+     *
+     * Splitting this out keeps a live drag preview honest: whatever shows this way is what the
+     * mouse-up actually selects, however the group, pad and hierarchy filters fall.
+     */
+    std::vector<BOARD_ITEM*> CollectMultiple( KIGFX::PREVIEW::SELECTION_AREA& aArea );
 
     /**
      * Selects multiple PCB items within a specified area.
@@ -179,6 +210,7 @@ public:
     /**
      * @return true if @a aPad is drawn on at least one shown layer.
      *
+     * @param aPad is the #PAD to test for visibility.
      * @param aVisibleLayers is the shown layer set, as returned by resolveVisibleLayers().
      */
     static bool isPadVisible( const PAD& aPad, const LSET& aVisibleLayers );
@@ -213,13 +245,13 @@ public:
         return m_filter;
     }
 
-    ///< Set up handlers for various events.
+    /// Set up handlers for various events.
     void setTransitions() override;
 
-    ///< Zoom the screen to center and fit the current selection.
+    /// Zoom the screen to center and fit the current selection.
     void zoomFitSelection();
 
-    ///< Zoom the screen to fit the bounding box for cross probing/selection sync.
+    /// Zoom the screen to fit the bounding box for cross probing/selection sync.
     void ZoomFitCrossProbeBBox( const BOX2I& bbox );
 
     /**
@@ -239,6 +271,12 @@ public:
      */
     PCB_GROUP* GetEnteredGroup() { return m_enteredGroup; }
 
+    /**
+     * Tell the painter whether items outside the entered group should be dimmed, and recolour
+     * the board if that changed.
+     */
+    void SetGroupEditModeActive( bool aActive );
+
     PCB_LAYER_ID GetActiveLayer() { return m_frame->GetActiveLayer(); }
 
     enum STOP_CONDITION
@@ -250,10 +288,13 @@ public:
          * on another layer as well, but a via with only one connection will be selected.
          */
         STOP_AT_JUNCTION,
+
         /** Stop when reaching a segment (next track/arc/via). */
         STOP_AT_SEGMENT,
+
         /** Stop when reaching a pad. */
         STOP_AT_PAD,
+
         /** Select the entire net. */
         STOP_NEVER
     };
@@ -261,6 +302,7 @@ public:
     /**
      * Select connected tracks and vias.
      *
+     * @param aStartItems
      * @param aStopCondition Indicates where to stop selecting more items.
      */
     void selectAllConnectedTracks( const std::vector<BOARD_CONNECTED_ITEM*>& aStartItems,
@@ -276,10 +318,17 @@ public:
      * footprint move rigidly with it, so only descendants outside a parent footprint count
      * (group members, see issue 6841).
      */
-    static bool HasLockedDescendant( const BOARD_ITEM* aItem );
+    static bool HasLockedDescendant( const BOARD_ITEM& aItem );
 
-    /// True if aItem may be selected while aEnteredGroup is entered (24967).
-    static bool isWithinEnteredGroup( BOARD_ITEM* aItem, PCB_GROUP* aEnteredGroup, bool aIsFootprintEditor );
+    /**
+     * True if an item may be selected by connection expansion.
+     *
+     * While @a aEnteredGroup is entered, @a aItem qualifies only if it is within that group's scope.
+     * Otherwise, it qualifies if it belongs to no group, or if its parent group is a generator
+     * that opts in through PCB_GENERATOR::IsSelectableAsConnected().
+     */
+    static bool itemIsSelectableAsConnected( const BOARD_ITEM& aItem, const PCB_GROUP* aEnteredGroup,
+                                             bool aIsFootprintEditor );
 
     /**
      * True if the Render tab's Footprints Front/Back switches leave aItem drawn, mirroring the
@@ -326,9 +375,16 @@ public:
 
     /**
      * Drop footprints that are not directly selected
-    */
+     */
     void FilterCollectorForFootprints( GENERAL_COLLECTOR& aCollector,
                                        const VECTOR2I& aWhere ) const;
+
+    /**
+     * @return true if the given point is contained in any of selected items' bounding boxes.
+     */
+    bool SelectionContains( const VECTOR2I& aPoint ) const;
+
+    SELECTION_MODE GetSelectionMode() const { return m_selectionMode; }
 
 protected:
     KIGFX::PCB_VIEW* view() const
@@ -367,6 +423,14 @@ protected:
 
 private:
     /**
+     * Select the generated table row under a point, when the table itself is what is selected.
+     */
+    bool selectGeneratedTableRow( const VECTOR2I& aPosition );
+
+    /// True when a selection mode switch must keep the point editor's block handles alive.
+    bool keepsBlockHandles() const;
+
+    /**
      * Select an item pointed by the parameter \a aWhere.
      *
      * If there is more than one item at that place, there is a menu displayed that allows
@@ -383,6 +447,30 @@ private:
     bool selectPoint( const VECTOR2I& aWhere, bool aOnDrag = false,
                       bool* aSelectionCancelledFlag = nullptr,
                       CLIENT_SELECTION_FILTER aClientFilter = nullptr );
+
+    /// What one point collection needs beyond the point, and the one count it reports back.
+    struct POINT_COLLECT
+    {
+        bool                          m_OnDrag = false;        ///< Locked items cannot be dragged.
+        bool                          m_SelectedOnly = false;  ///< Subtracting takes only selected.
+        PCB_SELECTION_FILTER_OPTIONS* m_Rejected = nullptr;    ///< What the Selection Filter took.
+        size_t                        m_PreFilterCount = 0;    ///< Count before that filter, out.
+    };
+
+    /**
+     * Collect the items at aWhere and narrow them the way a click does.
+     *
+     * Shared by selectPoint() and CollectPoint() so that what a hover shows and what a click
+     * takes cannot drift apart.
+     *
+     * @param aWhere is the point to test, in board coordinates.
+     * @param aCollector receives the surviving candidates, best first.
+     * @param aOptions carries the caller's variations and returns the pre-filter count.
+     * @param aClientFilter narrows the candidates before the heuristics run.
+     * @return false if the disambiguation heuristics threw.
+     */
+    bool collectAtPoint( const VECTOR2I& aWhere, GENERAL_COLLECTOR& aCollector,
+                         POINT_COLLECT& aOptions, CLIENT_SELECTION_FILTER aClientFilter );
 
     /**
      * Select an item under the cursor unless there is something already selected.
@@ -469,6 +557,11 @@ private:
     int selectNet( const TOOL_EVENT& aEvent );
 
     /**
+     * Select all copper connections belonging to every net in the selected item's net chain.
+     */
+    int selectNetChain( const TOOL_EVENT& aEvent );
+
+    /**
      * Select nearest unconnected footprints on same net as selected items.
      */
     int selectUnconnected( const TOOL_EVENT& aEvent );
@@ -502,23 +595,23 @@ private:
      */
     void selectAllItemsOnSheet( wxString& aSheetPath );
 
-    ///< Select all footprints belonging to same sheet, from Eeschema using cross-probing.
+    /// Select all footprints belonging to same sheet, from Eeschema using cross-probing.
     int selectSheetContents( const TOOL_EVENT& aEvent );
 
-    ///< Select all footprints belonging to same hierarchical sheet as the selected footprint
-    ///< (same sheet path).
+    /// Select all footprints belonging to same hierarchical sheet as the selected footprint
+    /// (same sheet path).
     int selectSameSheet( const TOOL_EVENT& aEvent );
 
-    ///< Set selection to items passed by parameter and connected nets (optionally).
-    ///< Zooms to fit, if enabled
+    /// Set selection to items passed by parameter and connected nets (optionally).
+    /// Zooms to fit, if enabled
     int  syncSelection( const TOOL_EVENT& aEvent );
     int  syncSelectionWithNets( const TOOL_EVENT& aEvent );
     void doSyncSelection( const std::vector<BOARD_ITEM*>& aItems, bool aWithNets );
 
-    ///< Invoke filter dialog and modify current selection
+    /// Invoke filter dialog and modify current selection
     int filterSelection( const TOOL_EVENT& aEvent );
 
-    ///< Return true if the given item passes the current SELECTION_FILTER_OPTIONS.
+    /// Return true if the given item passes the current SELECTION_FILTER_OPTIONS.
     bool itemPassesFilter( BOARD_ITEM* aItem, bool aMultiSelect,
                            PCB_SELECTION_FILTER_OPTIONS* aRejected = nullptr );
 
@@ -548,11 +641,6 @@ private:
     void unhighlight( EDA_ITEM* aItem, int aHighlightMode, SELECTION* aGroup = nullptr ) override;
 
     /**
-     * @return true if the given point is contained in any of selected items' bounding boxes.
-     */
-    bool selectionContains( const VECTOR2I& aPoint ) const;
-
-    /**
      * @return the distance from \a aWhere to \a aItem, up to and including \a aMaxDistance.
      */
     int hitTestDistance( const VECTOR2I& aWhere, BOARD_ITEM* aItem, int aMaxDistance ) const;
@@ -572,31 +660,26 @@ private:
     void unhighlightInternal( EDA_ITEM* aItem, int aHighlightMode, bool aUsingOverlay );
 
 private:
-    PCB_BASE_FRAME*          m_frame;                // Pointer to the parent frame
+    PCB_BASE_FRAME*          m_frame;                ///< Pointer to the parent frame
     bool                     m_isFootprintEditor;
 
-    PCB_SELECTION            m_selection;            // Current state of selection
+    PCB_SELECTION            m_selection;            ///< Current state of selection
 
-    PCB_SELECTION m_blockedSelection; // Empty selection returned when locked items
-                                      // block an action, real selection stays intact
+    PCB_SELECTION            m_blockedSelection;     ///< Empty selection returned when locked items block an action,
+                                                     ///<   real selection stays intact
 
     PCB_SELECTION_FILTER_OPTIONS m_filter;
 
-    KICURSOR                 m_nonModifiedCursor;    // Cursor in the absence of shift/ctrl/alt
+    PCB_GROUP*               m_enteredGroup;         ///< If non-null, selections are limited to members of this group
+    KIGFX::VIEW_GROUP        m_enteredGroupOverlay;  ///< Overlay for the entered group's frame.
 
-    PCB_GROUP*               m_enteredGroup;         // If non-null, selections are limited to
-                                                     // members of this group
-    KIGFX::VIEW_GROUP        m_enteredGroupOverlay;  // Overlay for the entered group's frame.
-
-    SELECTION_MODE           m_selectionMode;        // Current selection mode
+    SELECTION_MODE           m_selectionMode;        ///< Current selection mode
 
     bool                     m_lockedItemsFiltered;
 
-    // Anchor cell for shift+click range selection in a PCB_TABLE
-    PCB_TABLECELL*           m_previousFirstCell;
+    PCB_TABLECELL*           m_previousFirstCell;    ///< Anchor cell for shift+click range selection in a PCB_TABLE.
 
-    /// Private state (opaque pointer/compilation firewall)
-    class PRIV;
+    class PRIV;                                      ///< Private state (opaque pointer/compilation firewall)
     std::unique_ptr<PRIV>    m_priv;
 };
 

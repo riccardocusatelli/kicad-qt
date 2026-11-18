@@ -18,11 +18,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <core/kicad_algo.h>
@@ -137,13 +133,7 @@ bool CN_ZONE_LAYER::HasSingleConnection()
 
 void CN_ITEM::RemoveInvalidRefs()
 {
-    for( auto it = m_connected.begin(); it != m_connected.end(); /* increment in loop */ )
-    {
-        if( !(*it)->Valid() )
-            it = m_connected.erase( it );
-        else
-            ++it;
-    }
+    std::erase_if( m_connected, []( const CN_ITEM* item ) { return !item->Valid(); } );
 }
 
 
@@ -171,6 +161,7 @@ CN_ITEM* CN_LIST::Add( PAD* pad )
      case PAD_ATTRIB::SMD:
      case PAD_ATTRIB::NPTH:
      case PAD_ATTRIB::CONN:
+     case PAD_ATTRIB::NON_COMPONENT:
      {
         LSEQ lmsk = pad->GetLayerSet().CuStack();
 
@@ -185,7 +176,7 @@ CN_ITEM* CN_LIST::Add( PAD* pad )
      }
 
      addItemtoTree( item );
-     m_items.push_back( item );
+     appendItem( item );
 
      // Re-mark dirty after tree insertion since BBox() clears the dirty flag
      item->SetDirty( true );
@@ -197,7 +188,7 @@ CN_ITEM* CN_LIST::Add( PAD* pad )
 CN_ITEM* CN_LIST::Add( PCB_TRACK* track )
 {
     CN_ITEM* item = new CN_ITEM( track, true );
-    m_items.push_back( item );
+    appendItem( item );
     item->AddAnchor( track->GetStart() );
     item->AddAnchor( track->GetEnd() );
     item->SetLayer( track->GetLayer() );
@@ -213,7 +204,7 @@ CN_ITEM* CN_LIST::Add( PCB_TRACK* track )
 CN_ITEM* CN_LIST::Add( PCB_ARC* aArc )
 {
     CN_ITEM* item = new CN_ITEM( aArc, true );
-    m_items.push_back( item );
+    appendItem( item );
     item->AddAnchor( aArc->GetStart() );
     item->AddAnchor( aArc->GetEnd() );
     item->SetLayer( aArc->GetLayer() );
@@ -230,7 +221,7 @@ CN_ITEM* CN_LIST::Add( PCB_VIA* via )
 {
     CN_ITEM* item = new CN_ITEM( via, !via->GetIsFree(), 1 );
 
-    m_items.push_back( item );
+    appendItem( item );
     item->AddAnchor( via->GetStart() );
 
     item->SetLayers( via->TopLayer(), via->BottomLayer() );
@@ -253,7 +244,7 @@ const std::vector<CN_ITEM*> CN_LIST::Add( ZONE* zone, PCB_LAYER_ID aLayer )
     {
         CN_ZONE_LAYER* zitem = new CN_ZONE_LAYER( zone, aLayer, j );
 
-        zitem->BuildRTree();
+        zitem->BuildIndexes();
 
         for( const VECTOR2I& pt : zone->GetFilledPolysList( aLayer )->COutline( j ).CPoints() )
             zitem->AddAnchor( pt );
@@ -267,7 +258,7 @@ const std::vector<CN_ITEM*> CN_LIST::Add( ZONE* zone, PCB_LAYER_ID aLayer )
 
 CN_ITEM* CN_LIST::Add( CN_ZONE_LAYER* zitem )
 {
-    m_items.push_back( zitem );
+    appendItem( zitem );
     addItemtoTree( zitem );
 
     // Re-mark dirty after tree insertion since BBox() clears the dirty flag
@@ -280,7 +271,7 @@ CN_ITEM* CN_LIST::Add( CN_ZONE_LAYER* zitem )
 CN_ITEM* CN_LIST::Add( PCB_SHAPE* shape )
 {
     CN_ITEM* item = new CN_ITEM( shape, true );
-    m_items.push_back( item );
+    appendItem( item );
 
     for( const VECTOR2I& point : shape->GetConnectionPoints() )
         item->AddAnchor( point );
@@ -313,6 +304,10 @@ void CN_LIST::RemoveInvalidItems( std::vector<CN_ITEM*>& aGarbage )
                                     } );
 
     m_items.resize( lastItem - m_items.begin() );
+
+    // Compaction shifted everything past the first hole, so restamp before anything reads
+    for( size_t ii = 0; ii < m_items.size(); ++ii )
+        m_items[ii]->SetListIndex( static_cast<int>( ii ) );
 
     for( CN_ITEM* item : aGarbage )
         m_index.Remove( item );

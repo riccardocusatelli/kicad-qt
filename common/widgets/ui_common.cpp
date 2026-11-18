@@ -13,10 +13,11 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <wx/arrstr.h>
 #include <wx/dcclient.h>
 #include <wx/checkbox.h>
 #include <wx/choice.h>
@@ -31,6 +32,8 @@
 #include <wx/stc/stc.h>
 #include <wx/scrolbar.h>
 #include <wx/grid.h>
+#include <wx/hyperlink.h>
+#include <wx/notebook.h>
 #include <widgets/ui_common.h>
 #include <ui_theme.h>
 
@@ -42,7 +45,6 @@
 #include <settings/common_settings.h>
 #include <bitmaps/bitmap_types.h>
 #include <string_utils.h>
-#include <wx/hyperlink.h>
 
 
 const wxString KIUI::s_FocusStealableInputName = wxS( "KI_NOFOCUS" );
@@ -70,9 +72,12 @@ wxSize KIUI::GetTextSize( const wxString& aSingleLine, wxWindow* aWindow )
 }
 
 
-wxFont KIUI::GetMonospacedUIFont()
+wxFont KIUI::GetMonospacedUIFont( int aRelativeSize )
 {
     wxFont font = UI_THEME::GetMonoFont();
+
+    if( aRelativeSize != 0 )
+        font.SetPointSize( font.GetPointSize() + aRelativeSize );
 
 #ifdef __WXMAC__
     // https://trac.wxwidgets.org/ticket/19210
@@ -178,6 +183,32 @@ bool KIUI::EnsureTextCtrlWidth( wxTextCtrl* aCtrl, const wxString* aString )
 }
 
 
+void KIUI::FollowSystemLinkColour( wxHyperlinkCtrl* aLink )
+{
+#ifdef __WXMAC__
+    // The visited purple is fixed for both themes, so a clicked link takes the link colour too
+    auto apply = [aLink]()
+    {
+        wxColour colour = wxSystemSettings::GetColour( wxSYS_COLOUR_HOTLIGHT );
+
+        aLink->SetNormalColour( colour );
+        aLink->SetVisitedColour( colour );
+    };
+
+    apply();
+
+    aLink->Bind( wxEVT_SYS_COLOUR_CHANGED,
+                 [apply]( wxSysColourChangedEvent& aEvent )
+                 {
+                     apply();
+                     aEvent.Skip();
+                 } );
+#else
+    wxUnusedVar( aLink );
+#endif
+}
+
+
 wxString KIUI::EllipsizeStatusText( wxWindow* aWindow, const wxString& aString )
 {
     wxString msg = UnescapeString( aString );
@@ -195,6 +226,64 @@ wxString KIUI::EllipsizeStatusText( wxWindow* aWindow, const wxString& aString )
     return wxControl::Ellipsize( msg, dc, wxELLIPSIZE_END, textWidth );
 }
 
+
+
+wxString KIUI::WrapText( wxWindow* aWindow, const wxString& aText, int aWidth )
+{
+    wxClientDC dc( aWindow );
+    dc.SetFont( aWindow->GetFont() );
+
+    auto measure =
+            [&]( const wxString& aLine )
+            {
+                return dc.GetTextExtent( aLine ).x;
+            };
+
+    wxString wrapped;
+
+    for( const wxString& line : wxSplit( aText, '\n', '\0' ) )
+    {
+        wxString current;
+
+        for( wxString word : wxSplit( line, ' ', '\0' ) )
+        {
+            const bool isPath = word.Contains( wxS( "/" ) ) || word.Contains( wxS( "\\" ) );
+
+            if( isPath && measure( word ) > aWidth )
+                word = wxControl::Ellipsize( word, dc, wxELLIPSIZE_MIDDLE, aWidth, wxELLIPSIZE_FLAGS_NONE );
+
+            const wxString joined = current.IsEmpty() ? word : current + wxS( " " ) + word;
+
+            if( measure( joined ) <= aWidth )
+            {
+                current = joined;
+                continue;
+            }
+
+            if( !current.IsEmpty() )
+            {
+                wrapped += current + wxS( "\n" );
+                current.clear();
+            }
+
+            for( const wxString& cluster : SplitGraphemeClusters( word ) )
+            {
+                if( !current.IsEmpty() && measure( current + cluster ) > aWidth )
+                {
+                    wrapped += current + wxS( "\n" );
+                    current.clear();
+                }
+
+                current += cluster;
+            }
+        }
+
+        wrapped += current + wxS( "\n" );
+    }
+
+    wrapped.RemoveLast();
+    return wrapped;
+}
 
 
 void KIUI::SelectReferenceNumber( wxTextEntry* aTextEntry )
@@ -432,4 +521,18 @@ wxMenuItem* KIUI::AddMenuItem( wxMenu* aMenu, wxMenu* aSubMenu, int aId, const w
     aMenu->Append( item );
 
     return item;
+}
+
+
+int FindNotebookPage( wxNotebook* aNotebook, wxWindow* aChildWindow )
+{
+    wxWindow* candidate = aChildWindow;
+
+    while( candidate && candidate->GetParent() != aNotebook )
+        candidate = candidate->GetParent();
+
+    if ( candidate )
+        return aNotebook->FindPage( candidate );
+
+    return 0;
 }

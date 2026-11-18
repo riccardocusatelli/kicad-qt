@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <pgm_base.h>
@@ -39,6 +35,8 @@
 #include <dialogs/panel_printer_list.h>
 
 #include <advanced_config.h>
+#include <reporter.h>
+#include <gestfich.h>
 #include <printing.h>
 #include <sch_plotter.h>
 
@@ -53,16 +51,14 @@
 class SCH_PREVIEW_FRAME : public wxPreviewFrame
 {
 public:
-    SCH_PREVIEW_FRAME( wxPrintPreview* aPreview, wxWindow* aParent,
-                       const wxString& aTitle, const wxPoint& aPos = wxDefaultPosition,
-                       const wxSize& aSize = wxDefaultSize ) :
-            wxPreviewFrame( aPreview, aParent, aTitle, aPos, aSize )
+    SCH_PREVIEW_FRAME( wxPrintPreview* aPreview, wxWindow* aParent, const wxString& aTitle ) :
+            wxPreviewFrame( aPreview, aParent, aTitle )
     {
     }
 
     bool Show( bool show ) override
     {
-        bool        ret;
+        bool ret;
 
         // Show or hide the window.  If hiding, save current position and size.
         // If showing, use previous position and size.
@@ -102,7 +98,7 @@ DIALOG_PRINT::DIALOG_PRINT( SCH_EDIT_FRAME* aParent ) :
     KI_ASSERT( aParent );
 
     // Show m_panelPrinters only if there are printers to list:
-    m_panelPrinters->Show( m_panelPrinters->AsPrintersAvailable() );
+    m_panelPrinters->Show( m_panelPrinters->HasPrintersAvailable() );
 
     SetupStandardButtons( { { wxID_OK,     _( "Print" )         },
                             { wxID_APPLY,  _( "Print Preview" ) },
@@ -118,10 +114,12 @@ DIALOG_PRINT::DIALOG_PRINT( SCH_EDIT_FRAME* aParent ) :
     m_sdbSizerApply->Hide();
 #endif
 
-    // New printing subsystem has print preview on all platforms
-#if defined( _MSC_VER )
+#ifndef __MINGW32__
     if( ADVANCED_CFG::GetCfg().m_UsePdfPrint )
     {
+        // The native print dialog owns the printer, paper and preview
+        m_panelPrinters->Hide();
+        m_buttonPageSetup->Hide();
         m_sdbSizerApply->Hide();
     }
 #endif
@@ -238,8 +236,7 @@ void DIALOG_PRINT::SavePrintOptions()
 
     cfg->m_Printing.use_theme   = m_checkUseColorTheme->IsChecked();
 
-    COLOR_SETTINGS* theme = static_cast<COLOR_SETTINGS*>(
-            m_colorTheme->GetClientData( m_colorTheme->GetSelection() ) );
+    COLOR_SETTINGS* theme = static_cast<COLOR_SETTINGS*>( m_colorTheme->GetClientData( m_colorTheme->GetSelection() ) );
 
     if( theme && m_checkUseColorTheme->IsChecked() )
         cfg->m_Printing.color_theme = theme->GetFilename();
@@ -313,47 +310,7 @@ bool DIALOG_PRINT::TransferDataFromWindow()
 
 #ifndef __MINGW32__
     if( ADVANCED_CFG::GetCfg().m_UsePdfPrint )
-    {
-        EESCHEMA_SETTINGS* cfg = m_parent->eeconfig();
-
-        SCH_RENDER_SETTINGS renderSettings( *m_parent->GetRenderSettings() );
-        renderSettings.m_ShowHiddenPins = false;
-        renderSettings.m_ShowHiddenFields = false;
-
-        COLOR_SETTINGS* cs = ::GetColorSettings( cfg->m_Printing.use_theme
-                                                ? cfg->m_Printing.color_theme
-                                                : cfg->m_ColorTheme );
-        renderSettings.LoadColors( cs );
-
-        SCH_PLOT_OPTS plotOpts;
-        plotOpts.m_plotDrawingSheet = cfg->m_Printing.title_block;
-        plotOpts.m_blackAndWhite = cfg->m_Printing.monochrome;
-        plotOpts.m_useBackgroundColor = cfg->m_Printing.background;
-        plotOpts.m_theme = cfg->m_Printing.use_theme ? cfg->m_Printing.color_theme
-                                                     : cfg->m_ColorTheme;
-
-        wxFileName tmp = wxFileName::CreateTempFileName( wxS( "eeschema_print" ) );
-        wxRemoveFile( tmp.GetFullPath() );
-        tmp.SetExt( wxS( "pdf" ) );
-        plotOpts.m_outputFile = tmp.GetFullPath();
-
-        SCH_PLOTTER plotter( &m_parent->Schematic() );
-
-        PgmGui().m_Printing = true;
-        plotter.Plot( PLOT_FORMAT::PDF, plotOpts, &renderSettings, nullptr );
-        PgmGui().m_Printing = false;
-
-        KIPLATFORM::PRINTING::PRINT_RESULT result =
-                KIPLATFORM::PRINTING::PrintPDF( TO_UTF8( plotter.GetLastOutputFilePath() ) );
-
-        if( result != KIPLATFORM::PRINTING::PRINT_RESULT::OK &&
-            result != KIPLATFORM::PRINTING::PRINT_RESULT::CANCELLED )
-        {
-            DisplayError( this, KIPLATFORM::PRINTING::PrintResultToString( result ) );
-        }
-
-        return true;
-    }
+        return printViaPdf();
 #endif
 
     int sheet_count = m_parent->Schematic().Root().CountSheets();
@@ -375,7 +332,8 @@ bool DIALOG_PRINT::TransferDataFromWindow()
     bool            havePaperType = false;
 
     // clang-format off
-    std::set<wxPaperSize> letterSizes = {
+    std::set<wxPaperSize> letterSizes =
+    {
         // na_letter
         wxPAPER_LETTER,
         wxPAPER_LETTERSMALL,
@@ -384,12 +342,14 @@ bool DIALOG_PRINT::TransferDataFromWindow()
         wxPAPER_LETTER_ROTATED
     };
 
-    std::set<wxPaperSize> legalSizes = {
+    std::set<wxPaperSize> legalSizes =
+    {
         // na_legal
         wxPAPER_LEGAL
     };
 
-    std::set<wxPaperSize> a4Sizes = {
+    std::set<wxPaperSize> a4Sizes =
+    {
         // iso_a4
         wxPAPER_A4,
         wxPAPER_A4SMALL,
@@ -419,11 +379,15 @@ bool DIALOG_PRINT::TransferDataFromWindow()
         PAGE_INFO pageInfo( paperType, data.GetOrientation() == wxPORTRAIT );
 
         if( pageInfo.IsPortrait() )
+        {
             data.SetPaperSize( wxSize( EDA_UNIT_UTILS::Mils2mm( pageInfo.GetWidthMils() ),
                                        EDA_UNIT_UTILS::Mils2mm( pageInfo.GetHeightMils() ) ) );
+        }
         else
+        {
             data.SetPaperSize( wxSize( EDA_UNIT_UTILS::Mils2mm( pageInfo.GetHeightMils() ),
                                        EDA_UNIT_UTILS::Mils2mm( pageInfo.GetWidthMils() ) ) );
+        }
 
         data.SetOrientation( pageInfo.GetWxOrientation() );
         data.SetPaperId( wxPAPER_NONE );
@@ -434,6 +398,7 @@ bool DIALOG_PRINT::TransferDataFromWindow()
 
     if( m_panelPrinters )
         selectedPrinterName = m_panelPrinters->GetSelectedPrinterName();
+
     data.SetPrinterName( selectedPrinterName );
 
     wxPrintDialogData printDialogData( data );
@@ -462,4 +427,72 @@ bool DIALOG_PRINT::TransferDataFromWindow()
     PgmGui().m_Printing = false;
 
     return true;
+}
+
+
+bool DIALOG_PRINT::printViaPdf()
+{
+#ifdef __MINGW32__
+    return false;
+#else
+    EESCHEMA_SETTINGS* cfg = m_parent->eeconfig();
+
+    SCH_RENDER_SETTINGS renderSettings( *m_parent->GetRenderSettings() );
+    renderSettings.m_ShowHiddenPins = false;
+    renderSettings.m_ShowHiddenFields = false;
+
+    wxString themeName = cfg->m_Printing.use_theme ? cfg->m_Printing.color_theme : cfg->m_ColorTheme;
+    renderSettings.LoadColors( ::GetColorSettings( themeName ) );
+
+    SCH_PLOT_OPTS plotOpts;
+    plotOpts.m_plotDrawingSheet = cfg->m_Printing.title_block;
+    plotOpts.m_blackAndWhite = cfg->m_Printing.monochrome;
+    plotOpts.m_useBackgroundColor = cfg->m_Printing.background;
+    plotOpts.m_theme = themeName;
+
+    // The platform names the print job and any print-to-file output after the PDF
+    SCOPED_TEMP_PATH tmpDir;
+    wxString         jobName = wxFileName( m_parent->Schematic().GetFileName() ).GetName();
+
+    if( !tmpDir.MakeDirectory( wxS( "eeschema_print" ), wxS_IRUSR | wxS_IWUSR | wxS_IXUSR ) )
+    {
+        DisplayError( this, _( "Failed to create a temporary folder for printing." ) );
+        return false;
+    }
+
+    wxFileName tmp( tmpDir.Path(), jobName.IsEmpty() ? wxString( wxS( "schematic" ) ) : jobName, wxS( "pdf" ) );
+    plotOpts.m_outputFile = tmp.GetFullPath();
+
+    // Locate the edited sheet in the plotter's page order so the system dialog can offer it as the current page
+    SCH_SHEET_LIST sheets;
+    sheets.BuildSheetList( &m_parent->Schematic().Root(), true );
+    sheets.SortByHierarchicalPageNumbers( false );
+
+    auto sheetIt = std::find( sheets.begin(), sheets.end(), m_parent->GetCurrentSheet() );
+    int  currentPage = sheetIt == sheets.end() ? 0 : static_cast<int>( sheetIt - sheets.begin() ) + 1;
+
+    SCH_PLOTTER        plotter( &m_parent->Schematic() );
+    WX_STRING_REPORTER reporter;
+
+    PgmGui().m_Printing = true;
+    plotter.Plot( PLOT_FORMAT::PDF, plotOpts, &renderSettings, &reporter );
+    PgmGui().m_Printing = false;
+
+    if( reporter.HasMessageOfSeverity( RPT_SEVERITY_ERROR ) )
+    {
+        DisplayErrorMessage( this, _( "Failed to prepare the schematic for printing." ), reporter.GetMessages() );
+        return false;
+    }
+
+    KIPLATFORM::PRINTING::PRINT_RESULT result =
+            KIPLATFORM::PRINTING::PrintPDF( TO_UTF8( tmp.GetFullPath() ), currentPage );
+
+    if( result != KIPLATFORM::PRINTING::PRINT_RESULT::OK && result != KIPLATFORM::PRINTING::PRINT_RESULT::CANCELLED )
+    {
+        DisplayError( this, KIPLATFORM::PRINTING::PrintResultToString( result ) );
+        return false;
+    }
+
+    return true;
+#endif
 }

@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -33,9 +29,13 @@ class FOOTPRINT;
 /**
  * Footprints (after loaded by reading a netlist for instance) are moved
  * to be in a small free area (outside the current board) without overlapping.
- * @param aFootprints: a list of footprints to be spread out.
+ *
+ * @param[in] aFootprints: a list of footprints to be spread out.
  * @param aTargetBoxPosition the position of the upper left corner of the
  *        area allowed to spread footprints
+ * @param aGroupBySheet is a flag to determine if \a aFootprints should be grouped by sheet.
+ * @param aComponentGap is the keepout gap to place footprints.
+ * @param aGroupGap is the gap to maintain between footprint groups.
  */
 void SpreadFootprints( std::vector<FOOTPRINT*>* aFootprints, const VECTOR2I& aTargetBoxPosition,
                        bool aGroupBySheet = true, int aComponentGap = pcbIUScale.mmToIU( 1 ),

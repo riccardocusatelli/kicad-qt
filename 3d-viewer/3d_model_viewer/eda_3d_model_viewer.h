@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -48,8 +44,9 @@ public:
     /**
      *  Create a new 3D Canvas with a attribute list.
      *
-     *  @param aParent the parent creator of this canvas.
-     *  @param aGLAttribs openGL attributes created by #OGL_ATT_LIST::GetAttributesList.
+     * @param aParent the parent creator of this canvas.
+     * @param aGLAttribs openGL attributes created by #OGL_ATT_LIST::GetAttributesList.
+     * @param aCacheManager is the 3D object cache manager.
      */
     EDA_3D_MODEL_VIEWER( TOOLKIT_WINDOW* aParent, const KIGL_ATTRIBUTES& aGLAttribs,
                          S3D_CACHE* aCacheManager = nullptr );
@@ -78,7 +75,7 @@ public:
     void Clear3DModel();
 
 private:
-    void ogl_initialize();
+    bool ogl_initialize();
     void ogl_set_arrow_material();
 
     void onPaint() override;
@@ -102,6 +99,7 @@ private:
 
     /// Flag if open gl was initialized
     bool m_ogl_initialized;
+    bool m_ogl_init_failed = false;
 
     /// factor to convert the model or any other items to keep it in relation to
     /// the +/-RANGE_SCALE_3D

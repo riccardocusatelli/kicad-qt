@@ -15,9 +15,7 @@
 #  GNU General Public License for more details.
 #
 #  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software
-#  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-#  MA 02110-1301, USA.
+#  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
 import pytest
@@ -81,16 +79,19 @@ class KiTestFixture:
 
         return Path(base_data_path).joinpath(file)
 
-    def add_attachment( self, path: Path ) -> None:
+    def add_attachment( self, path ) -> None:
         """Prints the attachment message line for junit reports"""
 
         if not self._junit:
             return
 
+        # Coerce at the boundary so callers passing either Path or str both work.
+        # Without this, str arguments crash on .relative_to() only when running
+        # under GitLab CI (where self._junit is True and CI_PROJECT_DIR is set).
+        attach_src_path = Path( path )
+
         # Make the attachment path relative, gitlab in particular wants it
-        # relative tot he CI_PROJECT_DIR variable
-        attach_src_path = path
-        attach_path: Path = None
+        # relative to the CI_PROJECT_DIR variable
         if self._ci_project_dir is not None:
             attach_path = attach_src_path.relative_to( self._ci_project_dir )
         else:

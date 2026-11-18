@@ -14,22 +14,20 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
 #include "widgets/filter_combobox.h"
 
+#include <wx/dc.h>
 #include <wx/textctrl.h>
-#include <wx/listbox.h>
+#include <wx/vlbox.h>
 #include <wx/settings.h>
 #include <wx/sizer.h>
 #include <wx/stattext.h>
 #include <wx/valtext.h>
+#include <wx/listbox.h>
 
 #include <kiplatform/ui.h>
 #include <widgets/ui_common.h>
@@ -52,6 +50,87 @@ wxDEFINE_EVENT( FILTERED_ITEM_SELECTED, wxCommandEvent );
 #endif
 
 
+void FILTER_COMBOPOPUP_LISTBOX::SetDisplayStyleCallback( const std::function<int( const wxString& aItem )>& aCallback )
+{
+    m_displayStyleCallback = aCallback;
+}
+
+
+wxCoord FILTER_COMBOPOPUP_LISTBOX::OnMeasureItem( size_t aItem ) const
+{
+    return GetFont().GetPixelSize().GetHeight() + 4;
+}
+
+
+void FILTER_COMBOPOPUP_LISTBOX::OnDrawItem( wxDC& aDC, const wxRect& aRect, size_t aItem ) const
+{
+    wxFont   font = aDC.GetFont();
+    wxString item = GetString( aItem );
+
+    font.SetStyle( wxFONTSTYLE_NORMAL );
+    font.SetWeight( wxFONTWEIGHT_NORMAL );
+
+    if( int style = m_displayStyleCallback( item ) )
+    {
+        if( style & ITALIC )
+            font.SetStyle( wxFONTSTYLE_ITALIC );
+
+        if( style & BOLD )
+            font.SetWeight( wxFONTWEIGHT_BOLD );
+    }
+
+    aDC.SetFont(font);
+
+    if( IsSelected( aItem ) )
+    {
+        aDC.SetTextForeground( wxSystemSettings::GetColour( wxSYS_COLOUR_LISTBOXHIGHLIGHTTEXT ) );
+    }
+    else
+    {
+        aDC.SetTextForeground( wxListBox::GetClassDefaultAttributes( GetWindowVariant() ).colFg );
+    }
+
+    // Draw the text inside the item bounds
+    aDC.DrawText( item, aRect.x + 2, aRect.y + 2);
+}
+
+
+void FILTER_COMBOPOPUP_LISTBOX::OnDrawBackground( wxDC& aDC, const wxRect& aRect, size_t aItem ) const
+{
+    // Letting wxVList do this itself results in a darker highlight (at least on OSX) than our other
+    // listboxes use.  wxSYS_COLOUR_HIGHLIGHT, on the other hand, uses a much lighter colour --
+    // which matches the OSX native look -- just not any of the other dropdowns in KiCad.  If other
+    // platforms need something different than wxSYS_COLOUR_HOTLIGHT, please if-def it.
+
+    wxColour background;
+
+    if( IsSelected( aItem ) )
+    {
+        background = wxSystemSettings::GetColour( wxSYS_COLOUR_HOTLIGHT );
+    }
+    else
+    {
+        background = wxListBox::GetClassDefaultAttributes( GetWindowVariant() ).colBg;
+    }
+
+    aDC.SetBrush( wxBrush( background ) );
+    aDC.SetPen( wxPen( background ) );
+    aDC.DrawRectangle( aRect );
+}
+
+
+int FILTER_COMBOPOPUP_LISTBOX::HitTest(const wxPoint& aPoint) const
+{
+    for( size_t ii = 0; ii < m_choices.size(); ++ii )
+    {
+        if( GetItemRect( ii ).Contains( aPoint ) )
+            return (int) ii;
+    }
+
+    return -1;
+}
+
+
 FILTER_COMBOPOPUP::FILTER_COMBOPOPUP() :
         m_filterValidator( nullptr ),
         m_filterCtrl( nullptr ),
@@ -60,6 +139,11 @@ FILTER_COMBOPOPUP::FILTER_COMBOPOPUP() :
         m_maxPopupHeight( 1000 ),
         m_focusHandler( nullptr )
 {
+    m_displayStyleCallback =
+            []( const wxString& aItem ) -> int
+            {
+                return 0;
+            };
 }
 
 
@@ -80,8 +164,8 @@ bool FILTER_COMBOPOPUP::Create( wxWindow* aParent )
     m_filterCtrl->SetValidator( *m_filterValidator );
     mainSizer->Add( m_filterCtrl, 0, wxEXPAND, 0 );
 
-    m_listBox = new wxListBox( this, wxID_ANY, wxDefaultPosition, wxDefaultSize, 0, nullptr,
-                               wxLB_SINGLE | wxLB_NEEDED_SB );
+    m_listBox = new FILTER_COMBOPOPUP_LISTBOX( this, wxID_ANY, wxDefaultPosition, wxDefaultSize,
+                                               wxLB_SINGLE | wxLB_NEEDED_SB );
     mainSizer->Add( m_listBox, 1, wxEXPAND | wxTOP, 2 );
 
     SetSizer( mainSizer );
@@ -129,6 +213,13 @@ void FILTER_COMBOPOPUP::SetSelectedString( const wxString& aString )
 {
     m_selectedString = aString;
     GetComboCtrl()->SetValue( m_selectedString );
+}
+
+
+void FILTER_COMBOPOPUP::SetDisplayStyleCallback( const std::function<int( const wxString& aItem )>& aCallback )
+{
+    m_displayStyleCallback = aCallback;
+    m_listBox->SetDisplayStyleCallback( aCallback );
 }
 
 
@@ -185,11 +276,21 @@ wxSize FILTER_COMBOPOPUP::GetAdjustedSize( int aMinWidth, int aPrefHeight, int a
 
 void FILTER_COMBOPOPUP::getListContent( wxArrayString& aListContent )
 {
-    const wxString filterString = getFilterValue();
+    wxString filterString = getFilterValue();
+    bool     excludeItalicItems = false;
+
+    if( filterString.StartsWith( wxT( "::" ) ) )
+    {
+        excludeItalicItems = true;
+        filterString = filterString.Mid( 2 );
+    }
 
     // Simple substring, case-insensitive search
     for( const wxString& str : m_stringList )
     {
+        if( excludeItalicItems && ( m_displayStyleCallback( str ) & ITALIC ) != 0 )
+            continue;
+
         if( filterString.IsEmpty() || str.Lower().Contains( filterString.Lower() ) )
             aListContent.push_back( str );
     }
@@ -376,6 +477,12 @@ void FILTER_COMBOPOPUP::onKeyDown( wxKeyEvent& aEvent )
 
     // Everything else goes to the filter textbox
     default:
+        if( aEvent.ControlDown() || aEvent.CmdDown() )
+        {
+            aEvent.Skip();
+            return;
+        }
+
         if( !m_filterCtrl->HasFocus() )
         {
             doSetFocus( m_filterCtrl );
@@ -506,6 +613,13 @@ void FILTER_COMBOBOX::SetSelectedString( const wxString& aString )
 }
 
 
+void FILTER_COMBOBOX::SetDisplayStyleCallback( const std::function<int( const wxString& aItem )>& aCallback )
+{
+    if( m_filterPopup )
+        m_filterPopup->SetDisplayStyleCallback( aCallback );
+}
+
+
 void FILTER_COMBOBOX::setFilterPopup( FILTER_COMBOPOPUP* aPopup )
 {
     m_filterPopup = aPopup;
@@ -535,7 +649,10 @@ void FILTER_COMBOBOX::onKeyDown( wxKeyEvent& aEvt )
         Popup();
     }
     // Non-control characters go to filterbox in popup for read-only controls
-    else if( key > WXK_SPACE && key < WXK_START && ( GetWindowStyleFlag() & wxCB_READONLY ) )
+    else if( key > WXK_SPACE
+                && key < WXK_START && ( GetWindowStyleFlag() & wxCB_READONLY )
+                && !aEvt.ControlDown()
+                && !aEvt.CmdDown() )
     {
         Popup();
         m_filterPopup->OnStartingKey( aEvt );

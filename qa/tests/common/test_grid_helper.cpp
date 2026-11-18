@@ -12,18 +12,51 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #define BOOST_TEST_NO_MAIN
 #include <boost/test/unit_test.hpp>
 
 #include <tool/grid_helper.h>
+#include <tool/snap_frame.h>
 
 void TEST_CLEAR_ANCHORS( GRID_HELPER& helper )
 {
     helper.clearAnchors();
 }
+
+
+namespace
+{
+class TEST_GRID_HELPER : public GRID_HELPER
+{
+public:
+    using GRID_HELPER::addAnchor;
+    using GRID_HELPER::applySnapResultGuides;
+
+    const std::vector<SEG>& DimensionBrackets() { return getSnapManager().GetViewItem().DimensionBrackets(); }
+
+    size_t AnchorCount() const { return m_anchors.size(); }
+
+    void RetainSnapForTest( const VECTOR2I& aPosition )
+    {
+        m_snapItem.emplace( aPosition, ANCHOR_FLAGS::SNAPPABLE, POINT_TYPE::PT_NONE, std::vector<EDA_ITEM*>{} );
+    }
+
+    /// Positions the mask actually admitted, in the order production accepted them.
+    std::vector<VECTOR2I> AnchorPositions() const
+    {
+        std::vector<VECTOR2I> positions;
+
+        for( const ANCHOR& anchor : m_anchors )
+            positions.push_back( anchor.pos );
+
+        return positions;
+    }
+};
+} // namespace
+
 
 BOOST_AUTO_TEST_SUITE( GridHelperTest )
 
@@ -48,6 +81,66 @@ BOOST_AUTO_TEST_CASE( DefaultConstructor )
     BOOST_CHECK_EQUAL( origin.x, 50 );
     BOOST_CHECK_EQUAL( origin.y, 50 );
 }
+
+
+BOOST_AUTO_TEST_CASE( SnapResultGuideUpdateClearsStaleDimensionBrackets )
+{
+    TEST_GRID_HELPER helper;
+    SNAP_RESULT      equalGap;
+    equalGap.guides = { { { 0, 0 }, { 5, 0 }, SNAP_GUIDE_STYLE::DIMENSION_BRACKET },
+                        { { 10, 0 }, { 15, 0 }, SNAP_GUIDE_STYLE::DIMENSION_BRACKET } };
+
+    helper.applySnapResultGuides( equalGap );
+    BOOST_REQUIRE_EQUAL( helper.DimensionBrackets().size(), 2 );
+
+    SNAP_RESULT alignment;
+    alignment.guides = { { { 0, 0 }, { 0, 10 }, SNAP_GUIDE_STYLE::SNAP_LINE } };
+    helper.applySnapResultGuides( alignment );
+    BOOST_CHECK( helper.DimensionBrackets().empty() );
+}
+
+
+BOOST_AUTO_TEST_CASE( SnapFrameSelectsPayloadForAcceptedId )
+{
+    const SNAP_STABLE_ID  rejectedId = MakePointSnapId( SNAP_ID_KIND::INTRINSIC_ANCHOR, { 10, 10 }, 1 );
+    const SNAP_STABLE_ID  acceptedId = MakePointSnapId( SNAP_ID_KIND::INTRINSIC_ANCHOR, { 10, 10 }, 2 );
+    SNAP_FRAME_INPUT<int> input;
+    input.context.sourcePoint = { 9, 9 };
+    input.candidates.push_back( SNAP_CANDIDATE::Point( rejectedId, SNAP_PRIORITY_TIER::OBJECT,
+                                                       SNAP_CANDIDATE_SUBTYPE::INTRINSIC_ANCHOR, { 10, 10 }, 0.1 ) );
+    input.candidates.push_back( SNAP_CANDIDATE::Point( acceptedId, SNAP_PRIORITY_TIER::OBJECT,
+                                                       SNAP_CANDIDATE_SUBTYPE::INTRINSIC_ANCHOR, { 10, 10 }, 0.1 ) );
+    input.presentation.emplace( rejectedId, 1 );
+    input.presentation.emplace( acceptedId, 2 );
+    input.feasibility =
+            [rejectedId]( const SNAP_SOURCE_CONTEXT& aContext, const std::vector<SNAP_CANDIDATE>& aCandidates )
+    {
+        SNAP_RESULT result;
+        result.position = aContext.sourcePoint;
+
+        if( aCandidates.empty() )
+            return result;
+
+        if( aCandidates.back().id == rejectedId )
+        {
+            result.status = SNAP_RESULT_STATUS::INCOMPATIBLE;
+            return result;
+        }
+
+        result.position = { 10, 10 };
+        result.remainingDof = 0;
+        return result;
+    };
+
+    SNAP_FRAME_OUTPUT<int> output = ResolveSnapFrame( std::move( input ) );
+
+    BOOST_REQUIRE_EQUAL( output.result.accepted.size(), 1 );
+    BOOST_CHECK( output.result.accepted.front() == acceptedId );
+    BOOST_REQUIRE( output.presentation );
+    BOOST_CHECK( output.presentation->id == acceptedId );
+    BOOST_CHECK_EQUAL( output.presentation->payload, 2 );
+}
+
 
 BOOST_AUTO_TEST_CASE( AlignBasic )
 {
@@ -204,26 +297,86 @@ BOOST_AUTO_TEST_CASE( SnapFlags )
 
 BOOST_AUTO_TEST_CASE( MaskOperations )
 {
-    GRID_HELPER helper;
+    TEST_GRID_HELPER helper;
 
-    // Test mask operations
+    // An anchor is admitted only when the mask allows every one of its flags
     helper.SetMask( GRID_HELPER::CORNER | GRID_HELPER::OUTLINE );
-    helper.SetMaskFlag( GRID_HELPER::SNAPPABLE );
-    helper.ClearMaskFlag( GRID_HELPER::CORNER );
 
-    // These don't have getters, so we can't verify the mask state directly
-    // but we can verify the methods don't crash
+    helper.addAnchor( VECTOR2I( 10, 10 ), GRID_HELPER::CORNER, nullptr );
+    BOOST_CHECK_EQUAL( helper.AnchorCount(), 1 );
+
+    helper.addAnchor( VECTOR2I( 20, 20 ), GRID_HELPER::SNAPPABLE, nullptr );
+    BOOST_CHECK_EQUAL( helper.AnchorCount(), 1 );
+
+    // A partially allowed anchor is rejected as a whole
+    helper.addAnchor( VECTOR2I( 30, 30 ), GRID_HELPER::CORNER | GRID_HELPER::SNAPPABLE, nullptr );
+    BOOST_CHECK_EQUAL( helper.AnchorCount(), 1 );
+
+    helper.SetMask( GRID_HELPER::ALL );
+    helper.addAnchor( VECTOR2I( 40, 40 ), GRID_HELPER::SNAPPABLE, nullptr );
+    BOOST_REQUIRE_EQUAL( helper.AnchorCount(), 2 );
+
+    helper.ClearMaskFlag( GRID_HELPER::SNAPPABLE );
+    helper.addAnchor( VECTOR2I( 50, 50 ), GRID_HELPER::SNAPPABLE, nullptr );
+    BOOST_CHECK_EQUAL( helper.AnchorCount(), 2 );
+
+    const std::vector<VECTOR2I> admitted = helper.AnchorPositions();
+    BOOST_CHECK( admitted == std::vector<VECTOR2I>( { VECTOR2I( 10, 10 ), VECTOR2I( 40, 40 ) } ) );
 }
 
 BOOST_AUTO_TEST_CASE( SkipPoint )
 {
     GRID_HELPER helper;
-
-    // Test skip point operations
-    helper.SetSkipPoint( VECTOR2I( 100, 100 ) );
+    helper.SetGridSize( VECTOR2D( 100, 100 ) );
+    helper.SetOrigin( VECTOR2I( 0, 0 ) );
+    helper.SetGridSnapping( true );
     helper.ClearSkipPoint();
 
-    // These methods should not crash
+    // A horizontal construction line snaps to the grid column nearest the cursor, held at the
+    // line's own height
+    const VECTOR2D grid( 100, 100 );
+    const VECTOR2I cursor( 720, 510 );
+
+    helper.SetSnapLineOrigin( VECTOR2I( 500, 500 ) );
+    helper.SetSnapLineDirections( { VECTOR2I( 1, 0 ) } );
+
+    const VECTOR2I nearestGrid = helper.AlignGrid( cursor );
+
+    std::optional<VECTOR2I> snap = helper.SnapToConstructionLines( cursor, nearestGrid, grid, 50.0 );
+
+    BOOST_REQUIRE( snap.has_value() );
+    BOOST_CHECK_EQUAL( snap->x, 700 );
+    BOOST_CHECK_EQUAL( snap->y, 500 );
+
+    helper.SetSkipPoint( *snap );
+    BOOST_CHECK( !helper.SnapToConstructionLines( cursor, nearestGrid, grid, 50.0 ).has_value() );
+
+    // A skip point elsewhere leaves the candidate alone
+    helper.SetSkipPoint( VECTOR2I( 800, 500 ) );
+    BOOST_CHECK( helper.SnapToConstructionLines( cursor, nearestGrid, grid, 50.0 ) == snap );
+
+    helper.ClearSkipPoint();
+    BOOST_CHECK( helper.SnapToConstructionLines( cursor, nearestGrid, grid, 50.0 ) == snap );
+}
+
+BOOST_AUTO_TEST_CASE( SkipPointDefaultsToUnreachable )
+{
+    GRID_HELPER helper;
+    helper.SetGridSize( VECTOR2D( 100, 100 ) );
+    helper.SetOrigin( VECTOR2I( 0, 0 ) );
+    helper.SetGridSnapping( true );
+
+    // No ClearSkipPoint() here: a helper nobody has configured must still snap to the origin
+    helper.SetSnapLineOrigin( VECTOR2I( 0, 0 ) );
+    helper.SetSnapLineDirections( { VECTOR2I( 1, 0 ) } );
+
+    const VECTOR2I          cursor( 10, 5 );
+    std::optional<VECTOR2I> snap =
+            helper.SnapToConstructionLines( cursor, helper.AlignGrid( cursor ), VECTOR2D( 100, 100 ), 50.0 );
+
+    BOOST_REQUIRE( snap.has_value() );
+    BOOST_CHECK_EQUAL( snap->x, 0 );
+    BOOST_CHECK_EQUAL( snap->y, 0 );
 }
 
 BOOST_AUTO_TEST_CASE( GridTypeAlignment )
@@ -296,7 +449,7 @@ BOOST_AUTO_TEST_CASE( VisibleGrid )
 
 BOOST_AUTO_TEST_CASE( SnapPointManagement )
 {
-    GRID_HELPER helper;
+    TEST_GRID_HELPER helper;
 
     // Initially should have no snapped point
     auto snappedPoint = helper.GetSnappedPoint();
@@ -306,6 +459,12 @@ BOOST_AUTO_TEST_CASE( SnapPointManagement )
     TEST_CLEAR_ANCHORS( helper );
     snappedPoint = helper.GetSnappedPoint();
     BOOST_CHECK( !snappedPoint.has_value() );
+
+    helper.RetainSnapForTest( { 100, 200 } );
+    BOOST_REQUIRE( helper.GetSnappedPoint().has_value() );
+
+    helper.FullReset();
+    BOOST_CHECK( !helper.GetSnappedPoint().has_value() );
 }
 
 
@@ -464,9 +623,8 @@ BOOST_AUTO_TEST_CASE( MovementFromOffGridAnchor )
             VECTOR2D offsetD( 0, 0 );
 
             // Simulate the cursor snapping to grid at the target mouse position. This is
-            // what BestSnapAnchor does during the move loop.
-            VECTOR2I snappedTarget = helper.AlignGrid( VECTOR2I( tc.mouseTargetX, tc.mouseTargetY ),
-                                                       gridD, offsetD );
+            // what ResolveSnap does during the move loop.
+            VECTOR2I snappedTarget = helper.AlignGrid( VECTOR2I( tc.mouseTargetX, tc.mouseTargetY ), gridD, offsetD );
 
             // The movement delta starts from the actual anchor (off-grid), not a grid-snapped ref
             VECTOR2I anchor( tc.anchorX, tc.anchorY );

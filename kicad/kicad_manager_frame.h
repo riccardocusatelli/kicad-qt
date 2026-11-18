@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef KICAD_H
@@ -37,6 +33,7 @@ class PLUGIN_CONTENT_MANAGER;
 class PROJECT_TREE;
 class PROJECT_TREE_PANE;
 class LOCAL_HISTORY_PANE;
+class GIT_COMMIT_PANE;
 class UPDATE_MANAGER;
 
 /**
@@ -64,8 +61,18 @@ public:
     void ToggleLocalHistory();
     bool HistoryPanelShown();
 
+    void ToggleGitCommitPane();
+    bool GitCommitPaneShown();
+
+    /// Open the advanced Git window on its History page, run through the docked panel.
+    void ShowGitHistory();
+
     void OnOpenFileInTextEditor( wxCommandEvent& event );
     void OnEditAdvancedCfg( wxCommandEvent& event );
+
+    /// Open DIALOG_GIT_MR_REVIEW so the user can pick two refs and review
+    /// the changed-file list between them.
+    void OnCompareProjectBranches( wxCommandEvent& event );
 
     void OnFileHistory( wxCommandEvent& event );
     void OnClearFileHistory( wxCommandEvent& aEvent );
@@ -129,11 +136,28 @@ public:
      *  Open dialog to import PADS Logic schematic and PCB files.
      */
     void OnImportPadsProjectFiles( wxCommandEvent& event );
+    void OnImportPcadProjectFiles( wxCommandEvent& event );
 
     /**
      *  Open dialog to import gEDA/gaf schematic and PCB files.
      */
     void OnImportGedaFiles( wxCommandEvent& event );
+
+    /**
+     *  Open dialog to import DipTrace schematic and board files.
+     */
+    void OnImportDipTraceFiles( wxCommandEvent& event );
+
+    /**
+     *  Open dialog to import an Easy-PC / DesignSpark PCB project, schematic or board.
+     */
+    void OnImportEasyPcFiles( wxCommandEvent& event );
+    void OnImportTarget3001Files( wxCommandEvent& event );
+
+    /**
+     *  Open dialog to import an OrCAD schematic file.
+     */
+    void OnImportOrcadFiles( wxCommandEvent& event );
 
     /**
      * Prints the current working directory name and the project name on the text panel.
@@ -250,16 +274,21 @@ private:
     /// Show the recent projects home when no project is open, the file tree otherwise.
     void updateProjectPanes();
 
+    /// Reread the project and local settings files after a history restore rewrote them.
+    void reloadProjectSettings();
+
 private:
     bool                  m_openSavedWindows;
     bool                  m_restoredFromHistory;  ///< Set after restore to mark editors dirty
     int                   m_leftWinWidth;
     bool                  m_active_project;
     bool                  m_showHistoryPanel;
+    bool                  m_showGitCommitPanel;
 
     PROJECT_TREE_PANE*    m_projectTreePane;
     LOCAL_HISTORY_PANE*   m_historyPane;
     PANEL_RECENT_PROJECTS* m_recentProjectsPane;
+    GIT_COMMIT_PANE*      m_gitCommitPane;
     wxAuiNotebook*        m_notebook;
     PANEL_KICAD_LAUNCHER* m_launcher;
     int                   m_lastToolbarIconSize;

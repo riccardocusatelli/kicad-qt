@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef BASE_EDIT_FRAME_H
@@ -41,6 +37,7 @@ class PCB_SHAPE;
 class FILEDLG_HOOK_NEW_LIBRARY;
 struct PCB_SELECTION_FILTER_OPTIONS;
 class PCB_BARCODE;
+class PCB_GRID_ITEM;
 class PCB_VERTEX_EDITOR_PANE;
 class ACTION_TOOLBAR;
 class PCB_LAYER_BOX_SELECTOR;
@@ -80,9 +77,9 @@ public:
      *
      * @param aDialogTitle title for the dialog window
      * @param aListLabel label for the list of libraries
-     * @param aExtraCheckboxes [optional] list of label/valuePointer pairs from which to construct extra
-     *                         checkboxes in the dialog.  Values are written back to the pointers when
-     *                         the dialog is finished.
+     * @param aExtraCheckboxes list of label/valuePointer pairs from which to construct extra checkboxes
+     *                         in the dialog.  Values are written back to the pointers when the dialog is
+     *                         finished.
      * @return the library or wxEmptyString on abort.
      */
     wxString SelectLibrary( const wxString& aDialogTitle, const wxString& aListLabel,
@@ -91,7 +88,9 @@ public:
     /**
      * Add an existing library to either the global or project library table.
      *
-     * @param aFileName the library to add; a file open dialog will be displayed if empty.
+     * @param aDialogTitle is the dialog title.
+     * @param aLibName the library to add; a file open dialog will be displayed if empty.
+     * @param aScope
      * @return true if successfully added.
      */
     bool AddLibrary( const wxString& aDialogTitle, const wxString& aLibName = wxEmptyString,
@@ -100,7 +99,6 @@ public:
     /**
      * Install the corresponding dialog editor for the given item.
      *
-     * @param aDC the current device context.
      * @param aItem a pointer to the BOARD_ITEM to edit.
      */
     virtual void OnEditItemRequest( BOARD_ITEM* aItem ) {};
@@ -157,8 +155,13 @@ public:
      * Put data pointed by List in the previous state, i.e. the state memorized by \a aList.
      *
      * @param aList a PICKED_ITEMS_LIST pointer to the list of items to undo/redo.
+<<<<<<< b2e17e0a
      * @param aRehatchShapes rehatch the shapes if items that can change them were restored.
      * @return true if items that can change the board outline or the hatching were restored.
+||||||| 1304b76aad
+=======
+     * @param aRehatchShapes is true to rehatch shapes on undo/redo.
+>>>>>>> ed8c16703e
      */
     bool PutDataInPreviousState( PICKED_ITEMS_LIST* aList, bool aRehatchShapes = true );
 
@@ -197,6 +200,7 @@ public:
     void ShowTextPropertiesDialog( PCB_TEXT* aText );
     int ShowTextBoxPropertiesDialog( PCB_TEXTBOX* aTextBox );
     void ShowGraphicItemPropertiesDialog( PCB_SHAPE* aShape );
+    void ShowGridItemPropertiesDialog( PCB_GRID_ITEM* aGridItem );
 
     void OpenVertexEditor( BOARD_ITEM* aItem );
     void CloseVertexEditor();
@@ -204,10 +208,18 @@ public:
     void OnVertexEditorPaneClosed( PCB_VERTEX_EDITOR_PANE* aPane );
     static wxString VertexEditorPaneName();
 
+<<<<<<< b2e17e0a
     ///< @copydoc EDA_DRAW_FRAME::UseGalCanvas()
+||||||| 1304b76aad
+    wxAuiManager& GetAuiManager() { return m_auimgr; }
+
+    ///< @copydoc EDA_DRAW_FRAME::UseGalCanvas()
+=======
+    wxAuiManager& GetAuiManager() { return m_auimgr; }
+
+>>>>>>> ed8c16703e
     void ActivateGalCanvas() override;
 
-    ///< @copydoc PCB_BASE_FRAME::SetBoard()
     virtual void SetBoard( BOARD* aBoard, PROGRESS_REPORTER* aReporter = nullptr ) override;
 
     COLOR_SETTINGS* GetColorSettings( bool aForceRefresh = false ) const override;
@@ -227,24 +239,16 @@ public:
      * remove old commands.
      *
      * @param whichList the #UNDO_REDO_CONTAINER to clear.
-     * @param aItemCount the count of items to remove. < 0 for all items.
+     * @param aItemCount the count of items to remove. \< 0 for all items.
      */
     void ClearUndoORRedoList( UNDO_REDO_LIST whichList, int aItemCount = -1 ) override;
 
     void ClearListAndDeleteItems( PICKED_ITEMS_LIST* aList );
 
-    /**
-     * Return the absolute path to the design rules file for the currently-loaded board.
-     *
-     * @note There is no guarantee that this file actually exists and can be opened!  It only
-     *       makes sense from PcbNew but is needed in #PCB_BASE_EDIT_FRAME::SetBoard.
-     */
-    wxString GetDesignRulesPath();
-
     APPEARANCE_CONTROLS* GetAppearancePanel() { return m_appearancePanel; }
 
     /**
-     * Acess to the layer pair settings controller of the board, if available
+     * Access to the layer pair settings controller of the board, if available
      */
     LAYER_PAIR_SETTINGS* GetLayerPairSettings() { return m_layerPairSettings.get(); }
 
@@ -275,6 +279,7 @@ protected:
 
     void unitsChangeRefresh() override;
 
+<<<<<<< b2e17e0a
     /// Update the colors of the panels with the ones of the system (dark mode toggled).
     void HandleSystemColorChange() override;
 
@@ -285,6 +290,13 @@ private:
 
     /// Add the layer selector (#m_SelLayerBox) to a toolbar.
     void addLayerSelector( ACTION_TOOLBAR* aToolbar );
+||||||| 1304b76aad
+    void onDarkModeToggle( wxSysColourChangedEvent& aEvent );
+=======
+    const TOOL_ACTION* drawArcAction( ARC_DRAW_MODE aMode ) const override;
+
+    void onDarkModeToggle( wxSysColourChangedEvent& aEvent );
+>>>>>>> ed8c16703e
 
 protected:
     bool                    m_undoRedoBlocked;
@@ -296,6 +308,14 @@ protected:
     PCB_VERTEX_EDITOR_PANE* m_vertexEditorPane;
 
     PCB_LAYER_BOX_SELECTOR* m_SelLayerBox; // a combo box to display and select active layer
+<<<<<<< b2e17e0a
+||||||| 1304b76aad
+
+    wxAuiNotebook*          m_tabbedPanel;        /// Panel with Layers and Object Inspector tabs
+=======
+
+    wxAuiNotebook*          m_tabbedPanel;        ///< Panel with Layers and Object Inspector tabs
+>>>>>>> ed8c16703e
 };
 
 #endif

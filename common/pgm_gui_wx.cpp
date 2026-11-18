@@ -20,6 +20,8 @@
 // The parts of PGM_GUI with wxWidgets: the toolkit, the dialogs, the splash screen.
 
 #include <wx/app.h>
+#include <wx/dialog.h>
+#include <wx/eventfilter.h>
 #include <wx/filedlg.h>
 #include <wx/msgdlg.h>
 #include <wx/propgrid/propgrid.h>
@@ -28,11 +30,14 @@
 #include <wx/utils.h>
 
 #include <advanced_config.h>
+#include <bitmap_store.h>
 #include <build_version.h>
 #include <core/ki_assert.h>
 #include <pgm_gui.h>
 #include <raster_image_wx.h>
 #include <ui_theme.h>
+
+#include <algorithm>
 
 
 void PGM_GUI::initGuiToolkit()
@@ -53,7 +58,6 @@ void PGM_GUI::initGuiToolkit()
 
 void PGM_GUI::configureGuiToolkit( bool aHeadless )
 {
-    wxString pgm_name = programName();
 
 #ifdef __WXGTK__
     switch( wxGetDisplayInfo().type )
@@ -65,29 +69,36 @@ void PGM_GUI::configureGuiToolkit( bool aHeadless )
     }
 #endif
 
-#if wxCHECK_VERSION( 3, 3, 1 ) && defined( __WXGTK__ ) && defined( KICAD_DESKTOP_APP_NAME )
-    // wxGTK feeds the class name to gdk_wayland_window_set_application_id(), so setting it
-    // to the installed desktop file basename lets Wayland compositors resolve the correct
-    // window icon and launch feedback. The prefix varies by build (regular, Flatpak, Nightly)
-    // and is supplied by CMake. The main manager keeps the bare app name; the other GUI apps
-    // are prefixed. Executables without a desktop file (pl_editor, kicad-cli) are left alone.
-    wxString desktopId;
+#if defined( __WXGTK__ ) && defined( KICAD_DESKTOP_APP_NAME )
+    // On wx >= 3.3.1 wxGTK feeds the class name to gdk_wayland_window_set_application_id(),
+    // which lets Wayland compositors resolve the correct window icon and launch feedback. The
+    // X11 WM_CLASS is applied per window in EDA_BASE_FRAME instead, because wxGTK derives it
+    // from the (human-facing) app display name and would otherwise not match the launcher.
+    if( !GetDesktopAppId().IsEmpty() )
+        App().SetClassName( GetDesktopAppId() );
+#endif
 
-    if( pgm_name == wxT( "kicad" ) )
+#if defined( __WXMSW__ ) || defined( __WXOSX__ )
+    // wx ends a session by closing the top window with an ordinary close event. Calling wx's handler
+    // here instead of Skip() keeps that close inside the flag's scope
+    if( !aHeadless )
     {
-        desktopId = wxT( KICAD_DESKTOP_APP_NAME );
-    }
-    else if( pgm_name == wxT( "eeschema" ) || pgm_name == wxT( "pcbnew" )
-             || pgm_name == wxT( "gerbview" ) || pgm_name == wxT( "bitmap2component" )
-             || pgm_name == wxT( "pcb_calculator" ) )
-    {
-        // pcb_calculator installs as pcbcalculator to satisfy freedesktop naming rules.
-        wxString appName = pgm_name == wxT( "pcb_calculator" ) ? wxT( "pcbcalculator" ) : pgm_name;
-        desktopId = wxString( wxT( KICAD_DESKTOP_APP_PREFIX ) ) + wxT( "." ) + appName;
-    }
+        App().Bind( wxEVT_QUERY_END_SESSION,
+                    [this]( wxCloseEvent& aEvent )
+                    {
+                        SetSessionEnding( true );
+                        App().OnQueryEndSession( aEvent );
+                        SetSessionEnding( false );
+                    } );
 
-    if( !desktopId.IsEmpty() )
-        App().SetClassName( desktopId );
+        App().Bind( wxEVT_END_SESSION,
+                    [this]( wxCloseEvent& aEvent )
+                    {
+                        SetSessionEnding( true );
+                        App().OnEndSession( aEvent );
+                        SetSessionEnding( false );
+                    } );
+    }
 #endif
 
     // This sets the maximum tooltip display duration to 10s (up from 5) but only affects
@@ -170,4 +181,38 @@ void PGM_GUI::HideSplash()
     m_splash->Close( true );
     m_splash->Destroy();
     m_splash = nullptr;
+}
+
+
+int PGM_GUI::FilterAppEvent( wxEvent& aEvent )
+{
+    // Windows hear a theme switch in no set order, and each reloads its icons from the store
+    if( aEvent.GetEventType() == wxEVT_SYS_COLOUR_CHANGED )
+        GetBitmapStore()->ThemeChanged();
+
+    if( aEvent.GetEventType() == wxEVT_SHOW )
+    {
+        wxShowEvent& event = static_cast<wxShowEvent&>( aEvent );
+        wxDialog*    dialog = dynamic_cast<wxDialog*>( event.GetEventObject() );
+
+        if( dialog )
+        {
+            if( event.IsShown() && dialog->IsModal() )
+            {
+                m_ModalDialogs.push_back( dialog );
+            }
+            // Under GTK, sometimes the modal flag is cleared before hiding
+            else if( !event.IsShown() && !m_ModalDialogs.empty() )
+            {
+                // If we close the expected dialog, remove it from our stack
+                if( m_ModalDialogs.back() == dialog )
+                    m_ModalDialogs.pop_back();
+                // If an out-of-order, remove all dialogs added after the closed one
+                else if( auto it = std::ranges::find( m_ModalDialogs, dialog ); it != m_ModalDialogs.end() )
+                    m_ModalDialogs.erase( it, m_ModalDialogs.end() );
+            }
+        }
+    }
+
+    return wxEventFilter::Event_Skip;
 }

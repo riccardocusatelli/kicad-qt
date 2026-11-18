@@ -124,6 +124,13 @@ private:
     /// The grid of the GUI toolkit, for the toolkit-independent logic of the panel
     void                              setCaption( const wxString& aCaption );
     void                              gridReset();
+
+    // The hooks of the wx panel for its category buttons: the Qt grid has none
+    bool                              deferRebuild() { return false; }
+    bool                              hasCategoryButton( const wxString& ) const { return false; }
+    void                              hideCategoryButtons() {}
+    void                              updateCategoryButtons() {}
+    void                              commitEditorIfSelected( TOOLKIT_PG_PROPERTY* aProp );
     std::vector<TOOLKIT_PG_PROPERTY*> gridProperties() const;
     void                              gridAppendCategory( const wxString& aCaption );
     void                              gridAppend( TOOLKIT_PG_PROPERTY* aProperty );

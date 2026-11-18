@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef __TOOL_EVENT_H
@@ -465,6 +461,21 @@ public:
     bool HasParameter() const
     {
         return m_param.has_value();
+    }
+
+    /**
+     * Return the parameter when it holds a @a T, or std::nullopt otherwise.
+     *
+     * Unlike Parameter(), a parameter of another type is not an error, so a tool can probe events from actions
+     * whose parameters differ in type.
+     */
+    template<typename T>
+    std::optional<T> ParameterIf() const
+    {
+        if( m_param.has_value() && m_param.type() == typeid( T ) )
+            return ki::any_cast<T>( m_param );
+
+        return std::nullopt;
     }
 
     /**

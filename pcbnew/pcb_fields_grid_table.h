@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef FP_TEXT_GRID_TABLE_H
@@ -85,6 +81,8 @@ public:
     void SetValueAsBool( int aRow, int aCol, bool aValue ) override;
     void SetValueAsLong( int aRow, int aCol, long aValue ) override;
 
+    bool DeleteRows( size_t aPos = 0, size_t aNumRows = 1 ) override;
+
 protected:
     void onUnitsChanged( wxCommandEvent& aEvent );
 
@@ -99,6 +97,7 @@ private:
     FIELD_VALIDATOR m_nonUrlValidator;
 
     wxGridCellAttr* m_readOnlyAttr;
+    wxGridCellAttr* m_fieldNameAttr;
     wxGridCellAttr* m_boolColAttr;
     wxGridCellAttr* m_orientationColAttr;
     wxGridCellAttr* m_layerColAttr;

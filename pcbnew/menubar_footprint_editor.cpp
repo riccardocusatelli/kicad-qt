@@ -17,16 +17,15 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "footprint_edit_frame.h"
 #include "pcbnew_id.h"
+
 #include <bitmaps.h>
+#include <pgm_base.h>
+#include <settings/common_settings.h>
 #include <tool/actions.h>
 #include <tool/action_menu.h>
 #include <tool/tool_manager.h>
@@ -75,12 +74,17 @@ void FOOTPRINT_EDIT_FRAME::doReCreateMenuBar()
     submenuExport->SetIcon( BITMAPS::export_file );
 
     submenuExport->Add( PCB_ACTIONS::exportFootprint, ACTION_MENU::NORMAL, _( "Footprint..." ) );
+    submenuExport->Add( PCB_ACTIONS::exportFootprintAsSVG, ACTION_MENU::NORMAL, _( "Footprint as &SVG..." ) );
+    submenuExport->Add( ACTIONS::exportForOlderVersion, ACTION_MENU::NORMAL, _( "For Older KiCad Version..." ) );
     submenuExport->Add( _( "View as &PNG..." ),
                         _( "Create a PNG file from the current view" ),
                         ID_FPEDIT_SAVE_PNG,
                         BITMAPS::export_png );
 
     fileMenu->Add( submenuExport );
+
+    fileMenu->AppendSeparator();
+    fileMenu->Add( PCB_ACTIONS::compareFpLibraryWithFile );
 
     fileMenu->AppendSeparator();
     fileMenu->Add( PCB_ACTIONS::footprintProperties );
@@ -119,8 +123,11 @@ void FOOTPRINT_EDIT_FRAME::doReCreateMenuBar()
 
     editMenu->AppendSeparator();
     editMenu->Add( PCB_ACTIONS::editTextAndGraphics );
+    editMenu->Add( PCB_ACTIONS::mirrorInteractive );
+    editMenu->Add( PCB_ACTIONS::showLibFootprintFieldsTable );
     editMenu->Add( PCB_ACTIONS::padTable );
-    editMenu->Add( PCB_ACTIONS::defaultPadProperties );
+    editMenu->Add( PCB_ACTIONS::extendGraphic );
+    editMenu->Add( PCB_ACTIONS::trimGraphic );
     editMenu->Add( PCB_ACTIONS::enumeratePads );
     editMenu->Add( ACTIONS::gridOrigin );
 
@@ -135,6 +142,11 @@ void FOOTPRINT_EDIT_FRAME::doReCreateMenuBar()
     showHidePanels->Add( ACTIONS::showLibraryTree,       ACTION_MENU::CHECK );
     showHidePanels->Add( PCB_ACTIONS::showLayersManager, ACTION_MENU::CHECK );
     viewMenu->Add( showHidePanels );
+    viewMenu->AppendSeparator();
+
+    viewMenu->Add( PCB_ACTIONS::nextFootprintTab );
+    viewMenu->Add( PCB_ACTIONS::prevFootprintTab );
+    viewMenu->Add( PCB_ACTIONS::closeFootprintTab );
     viewMenu->AppendSeparator();
 
     viewMenu->Add( ACTIONS::showFootprintBrowser );
@@ -183,6 +195,8 @@ void FOOTPRINT_EDIT_FRAME::doReCreateMenuBar()
     placeMenu->Add( PCB_ACTIONS::drawArc );
     placeMenu->Add( PCB_ACTIONS::drawRectangle );
     placeMenu->Add( PCB_ACTIONS::drawCircle );
+    placeMenu->Add( PCB_ACTIONS::drawEllipse );
+    placeMenu->Add( PCB_ACTIONS::drawEllipseArc );
     placeMenu->Add( PCB_ACTIONS::drawPolygon );
     placeMenu->Add( PCB_ACTIONS::drawBezier );
     placeMenu->Add( PCB_ACTIONS::placeReferenceImage );
@@ -214,6 +228,7 @@ void FOOTPRINT_EDIT_FRAME::doReCreateMenuBar()
 
     inspectMenu->AppendSeparator();
     inspectMenu->Add( PCB_ACTIONS::checkFootprint );
+    inspectMenu->Add( PCB_ACTIONS::showFootprintUsers );
 
     inspectMenu->AppendSeparator();
     inspectMenu->Add( PCB_ACTIONS::showDatasheet );
@@ -230,6 +245,18 @@ void FOOTPRINT_EDIT_FRAME::doReCreateMenuBar()
     toolsMenu->Add( PCB_ACTIONS::cleanupGraphics );
     toolsMenu->Add( PCB_ACTIONS::repairFootprint );
 
+    ACTION_MENU* submenuActionPlugins = new ACTION_MENU( false, selTool );
+    submenuActionPlugins->SetTitle( _( "External Plugins" ) );
+    submenuActionPlugins->SetIcon( BITMAPS::puzzle_piece );
+
+    if( Pgm().GetCommonSettings()->m_Api.enable_server && AddApiPluginMenuItems( submenuActionPlugins ) > 0 )
+        submenuActionPlugins->AppendSeparator();
+
+    submenuActionPlugins->Add( ACTIONS::pluginsReload );
+    submenuActionPlugins->Add( ACTIONS::pluginsShowFolder );
+
+    toolsMenu->AppendSeparator();
+    toolsMenu->Add( submenuActionPlugins );
 
     //-- Preferences menu -------------------------------------------------
     //

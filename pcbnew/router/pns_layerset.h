@@ -16,8 +16,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef __PNS_LAYERSET_H
@@ -125,7 +125,7 @@ public:
         return overlap;
     }
 
-    ///< Shortcut for comparisons/overlap tests
+    /// Shortcut for comparisons/overlap tests
     static PNS_LAYER_RANGE All()
     {
         return PNS_LAYER_RANGE( 0, 256 ); // fixme: use layer IDs header

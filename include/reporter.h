@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef _REPORTER_H_
@@ -30,6 +26,7 @@
 #include <mutex>
 
 #include <eda_units.h>
+#include <ki_error.h>
 #include <widgets/report_severity.h>
 #include <kicommon.h>
 
@@ -106,6 +103,15 @@ public:
     }
 
     /**
+     * Report a structured #KI_ERROR.
+     *
+     * The default implementation flattens the error onto #Report(const wxString&, SEVERITY).
+     * Reporters that want to render the title / description / debug hierarchy separately
+     * override this.
+     */
+    virtual REPORTER& Report( const KI_ERROR& aError );
+
+    /**
      * Places the report at the end of the list, for objects that support report ordering
      */
     virtual REPORTER& ReportTail( const wxString& aText,
@@ -154,6 +160,8 @@ public:
         m_reportedSeverityMask = 0;
     }
 
+    virtual void Finalize() {};
+
 private:
     int m_reportedSeverityMask;
 };
@@ -163,15 +171,16 @@ private:
  * A thread-safe REPORTER wrapper that serializes forwarding to an underlying reporter.
  *
  * Use it when several worker threads may report concurrently through one reporter that is not
- * itself thread-safe.  The wrapped reporter must outlive this object.  This only guards against
- * data races on the wrapped reporter's state, it does not marshal calls onto a UI thread, so the
- * wrapped reporter must be safe to touch from a background thread.
+ * itself thread-safe.  The wrapped reporter must outlive this object unless
+ * #SetNullReporter has been called.  This only guards against data races on the wrapped
+ * reporter's state; it does not marshal calls onto a UI thread, so the wrapped reporter must
+ * be safe to touch from a background thread (or use CallAfter itself).
  */
 class KICOMMON_API SYNC_REPORTER : public REPORTER
 {
 public:
     SYNC_REPORTER( REPORTER& aReporter ) :
-            m_reporter( aReporter )
+            m_reporter( &aReporter )
     { }
 
     REPORTER& Report( const wxString& aText, SEVERITY aSeverity = RPT_SEVERITY_UNDEFINED ) override;
@@ -188,8 +197,12 @@ public:
 
     void Clear() override;
 
+    void Finalize() override;
+
+    void SetNullReporter();
+
 protected:
-    REPORTER&          m_reporter;
+    REPORTER*          m_reporter;
     mutable std::mutex m_mutex;
 };
 

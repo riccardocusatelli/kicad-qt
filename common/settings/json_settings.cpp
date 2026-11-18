@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <algorithm>
@@ -77,7 +77,10 @@ JSON_SETTINGS::JSON_SETTINGS( const wxString& aFilename, SETTINGS_LOC aLocation,
         m_createIfDefault( aCreateIfDefault ),
         m_writeFile( aWriteFile ),
         m_modified( false ),
+        m_fileSynced( false ),
+        m_lastSaveFailed( false ),
         m_deleteLegacyAfterMigration( true ),
+        m_writeImplicitly( true ),
         m_resetParamsIfMissing( true ),
         m_schemaVersion( aSchemaVersion ),
         m_isFutureFormat( false ),
@@ -91,18 +94,23 @@ JSON_SETTINGS::JSON_SETTINGS( const wxString& aFilename, SETTINGS_LOC aLocation,
     }
     catch( ... )
     {
-        KI_LOG_TRACE( traceSettings, wxT( "Error: Could not create filename field for %s" ),
-                    GetFullFilename() );
+        KI_LOG_TRACE( traceSettings, wxT( "Error: Could not create filename field for %s" ), GetFullFilename() );
     }
 
 
-    m_params.emplace_back( new PARAM<int>( "meta.version", &m_schemaVersion, m_schemaVersion,
-                                           true ) );
+    m_params.emplace_back( new PARAM<int>( "meta.version", &m_schemaVersion, m_schemaVersion, true ) );
 }
 
 
 JSON_SETTINGS::~JSON_SETTINGS()
 {
+    // ReleaseNestedSettings erases from m_nested_settings, so snapshot first to avoid
+    // iterating an invalidated container
+    std::vector<NESTED_SETTINGS*> nestedToRelease( m_nested_settings );
+
+    for( NESTED_SETTINGS* nested : nestedToRelease )
+        ReleaseNestedSettings( nested );
+
     for( PARAM_BASE* param: m_params )
         delete param;
 
@@ -180,8 +188,7 @@ bool JSON_SETTINGS::LoadFromFile( const wxString& aDirectory )
 
                     if( !wxCopyFile( aPath.GetFullPath(), temp.GetFullPath() ) )
                     {
-                        KI_LOG_TRACE( traceSettings,
-                                    wxT( "%s: could not create temp file for migration" ),
+                        KI_LOG_TRACE( traceSettings, wxT( "%s: could not create temp file for migration" ),
                                     GetFullFilename() );
                     }
                     else
@@ -194,23 +201,20 @@ bool JSON_SETTINGS::LoadFromFile( const wxString& aDirectory )
                 wxLogNull doNotLog;
 
                 wxConfigBase::DontCreateOnDemand();
-                auto cfg = std::make_unique<wxFileConfig>( wxT( "" ), wxT( "" ),
-                                                           aPath.GetFullPath() );
+                auto cfg = std::make_unique<wxFileConfig>( wxT( "" ), wxT( "" ), aPath.GetFullPath() );
 
                 // If migrate fails or is not implemented, fall back to built-in defaults that
                 // were already loaded above
                 if( !MigrateFromLegacy( cfg.get() ) )
                 {
                     success = false;
-                    KI_LOG_TRACE( traceSettings,
-                                wxT( "%s: migrated; not all settings were found in legacy file" ),
+                    KI_LOG_TRACE( traceSettings, wxT( "%s: migrated; not all settings were found in legacy file" ),
                                 GetFullFilename() );
                 }
                 else
                 {
                     success = true;
-                    KI_LOG_TRACE( traceSettings, wxT( "%s: migrated from legacy format" ),
-                                GetFullFilename() );
+                    KI_LOG_TRACE( traceSettings, wxT( "%s: migrated from legacy format" ), GetFullFilename() );
                 }
 
                 if( backed_up )
@@ -219,16 +223,13 @@ bool JSON_SETTINGS::LoadFromFile( const wxString& aDirectory )
 
                     if( !wxCopyFile( temp.GetFullPath(), aPath.GetFullPath() ) )
                     {
-                        KI_LOG_TRACE( traceSettings,
-                                    wxT( "migrate; copy temp file %s to %s failed" ),
-                                    temp.GetFullPath(),
-                                    aPath.GetFullPath() );
+                        KI_LOG_TRACE( traceSettings, wxT( "migrate; copy temp file %s to %s failed" ),
+                                    temp.GetFullPath(), aPath.GetFullPath() );
                     }
 
                     if( !wxRemoveFile( temp.GetFullPath() ) )
                     {
-                        KI_LOG_TRACE( traceSettings,
-                                    wxT( "migrate; failed to remove temp file %s" ),
+                        KI_LOG_TRACE( traceSettings, wxT( "migrate; failed to remove temp file %s" ),
                                     temp.GetFullPath() );
                     }
                  }
@@ -276,76 +277,31 @@ bool JSON_SETTINGS::LoadFromFile( const wxString& aDirectory )
         if( !path.IsFileWritable() )
             m_writeFile = false;
 
-        try
-        {
-            wxFFileInputStream fp( path.GetFullPath(), wxT( "rt" ) );
-            wxStdInputStream fstream( fp );
-
-            if( fp.IsOk() )
-            {
-                *static_cast<nlohmann::json*>( m_internals.get() ) =
-                        nlohmann::json::parse( fstream, nullptr,
-                                               /* allow_exceptions = */ true,
-                                               /* ignore_comments  = */ true );
-
-                // Save whatever we loaded, before doing any migration etc
-                m_internals->m_original = *static_cast<nlohmann::json*>( m_internals.get() );
-
-                // If parse succeeds, check if schema migration is required
-                int filever = -1;
-
-                try
+        bool parseError = false;
+        bool parsed = parseAndMigrate(
+                [&]( nlohmann::json& aDoc )
                 {
-                    filever = m_internals->Get<int>( "meta.version" );
-                }
-                catch( ... )
-                {
-                    KI_LOG_TRACE( traceSettings, wxT( "%s: file version could not be read!" ),
-                                GetFullFilename() );
-                    success = false;
-                }
+                    wxFFileInputStream fp( path.GetFullPath(), wxT( "rt" ) );
+                    wxStdInputStream   fstream( fp );
 
-                if( filever >= 0 && filever < m_schemaVersion )
-                {
-                    KI_LOG_TRACE( traceSettings, wxT( "%s: attempting migration from version "
-                                                    "%d to %d" ),
-                                GetFullFilename(),
-                                filever,
-                                m_schemaVersion );
-
-                    if( Migrate() )
+                    if( !fp.IsOk() )
                     {
-                        migrated = true;
-                    }
-                    else
-                    {
-                        KI_LOG_TRACE( traceSettings, wxT( "%s: migration failed!" ),
+                        KI_LOG_TRACE( traceSettings, wxT( "%s exists but can't be opened for read" ),
                                     GetFullFilename() );
+                        return false;
                     }
-                }
-                else if( filever > m_schemaVersion )
-                {
-                    KI_LOG_TRACE( traceSettings,
-                                wxT( "%s: warning: file version %d is newer than latest (%d)" ),
-                                GetFullFilename(),
-                                filever,
-                                m_schemaVersion );
-                    m_isFutureFormat = true;
-                }
-            }
-            else
-            {
-                KI_LOG_TRACE( traceSettings, wxT( "%s exists but can't be opened for read" ),
-                            GetFullFilename() );
-            }
-        }
-        catch( nlohmann::json::parse_error& error )
-        {
+
+                    aDoc = nlohmann::json::parse( fstream, nullptr, ALLOW_EXCEPTIONS, IGNORE_COMMENTS );
+                    return true;
+                },
+                migrated, parseError );
+
+        if( !parsed )
             success = false;
-            KI_LOG_TRACE( traceSettings, wxT( "Json parse error reading %s: %s" ),
-                        path.GetFullPath(), error.what() );
-            KI_LOG_TRACE( traceSettings, wxT( "Attempting migration in case file is in legacy "
-                                            "format" ) );
+
+        if( parseError )
+        {
+            KI_LOG_TRACE( traceSettings, wxT( "Attempting migration in case file is in legacy format" ) );
             migrateFromLegacy( path );
         }
     }
@@ -357,16 +313,24 @@ bool JSON_SETTINGS::LoadFromFile( const wxString& aDirectory )
     for( NESTED_SETTINGS* settings : m_nested_settings )
         settings->LoadFromFile();
 
-    KI_LOG_TRACE( traceSettings, wxT( "Loaded <%s> with schema %d" ),
-                GetFullFilename(),
-                m_schemaVersion );
+    KI_LOG_TRACE( traceSettings, wxT( "Loaded <%s> with schema %d" ), GetFullFilename(), m_schemaVersion );
+
+    // Settle migration and default fill in the store so that only a later change is a modification
+    if( !m_writeImplicitly )
+        Store();
 
     m_modified = false;
+
+    // A missing backing file leaves the store empty, which must not count as synchronized
+    m_fileSynced = success;
+
+    // Skip writeback when running QA tests
+    bool doWrite = m_writeFile && m_writeImplicitly && !wxGetEnv( wxT( "KICAD_INHIBIT_SETTINGS_WRITES" ), nullptr );
 
     // If we migrated, clean up the legacy file (with no extension). Save the migrated
     // contents FIRST so that if the save fails we still have the legacy file on disk to
     // fall back to -- otherwise a crash mid-migration leaves the user with neither copy.
-    if( m_writeFile && ( legacy_migrated || migrated ) )
+    if( doWrite && ( legacy_migrated || migrated ) )
     {
         if( m_deleteLegacyAfterMigration )
         {
@@ -374,17 +338,100 @@ bool JSON_SETTINGS::LoadFromFile( const wxString& aDirectory )
 
             if( savedMigrated && legacy_migrated && !wxRemoveFile( path.GetFullPath() ) )
             {
-                KI_LOG_TRACE( traceSettings, wxT( "Warning: could not remove legacy file %s" ),
-                            path.GetFullPath() );
+                KI_LOG_TRACE( traceSettings, wxT( "Warning: could not remove legacy file %s" ), path.GetFullPath() );
             }
             else if( !savedMigrated )
             {
-                KI_LOG_TRACE( traceSettings,
-                            wxT( "Migrated save of %s failed; leaving legacy file intact" ),
+                KI_LOG_TRACE( traceSettings, wxT( "Migrated save of %s failed; leaving legacy file intact" ),
                             GetFullFilename() );
             }
         }
     }
+
+    return success;
+}
+
+
+bool JSON_SETTINGS::parseAndMigrate( const std::function<bool( nlohmann::json& )>& aParse, bool& aMigrated,
+                                     bool& aParseError )
+{
+    bool success = true;
+
+    try
+    {
+        nlohmann::json& doc = *static_cast<nlohmann::json*>( m_internals.get() );
+
+        if( !aParse( doc ) )
+            return true;
+
+        // Save whatever we loaded, before doing any migration etc
+        m_internals->m_original = doc;
+
+        // If parse succeeds, check if schema migration is required
+        int filever = -1;
+
+        try
+        {
+            filever = m_internals->Get<int>( "meta.version" );
+        }
+        catch( ... )
+        {
+            KI_LOG_TRACE( traceSettings, wxT( "%s: file version could not be read!" ), GetFullFilename() );
+            success = false;
+        }
+
+        if( filever >= 0 && filever < m_schemaVersion )
+        {
+            KI_LOG_TRACE( traceSettings, wxT( "%s: attempting migration from version %d to %d" ), GetFullFilename(),
+                        filever, m_schemaVersion );
+
+            if( Migrate() )
+                aMigrated = true;
+            else
+                KI_LOG_TRACE( traceSettings, wxT( "%s: migration failed!" ), GetFullFilename() );
+        }
+        else if( filever > m_schemaVersion )
+        {
+            KI_LOG_TRACE( traceSettings, wxT( "%s: warning: file version %d is newer than latest (%d)" ),
+                        GetFullFilename(), filever, m_schemaVersion );
+            m_isFutureFormat = true;
+        }
+    }
+    catch( nlohmann::json::parse_error& error )
+    {
+        success = false;
+        aParseError = true;
+
+        // The message text can carry a token of the document, which may be a password
+        KI_LOG_TRACE( traceSettings, wxT( "Json parse error reading %s (id %d, byte %d)" ), GetFullFilename(),
+                    error.id, static_cast<int>( error.byte ) );
+    }
+
+    return success;
+}
+
+
+bool JSON_SETTINGS::LoadFromBuffer( const std::string& aContents )
+{
+    m_internals->clear();
+    Load();
+
+    // No LOCALE_IO here, this runs on library load threads and a wxLocale would race the GUI thread
+    bool migrated = false;
+    bool parseError = false;
+
+    bool success = parseAndMigrate(
+            [&]( nlohmann::json& aDoc )
+            {
+                aDoc = nlohmann::json::parse( aContents, nullptr, ALLOW_EXCEPTIONS, IGNORE_COMMENTS );
+                return true;
+            },
+            migrated, parseError );
+
+    Load();
+
+    m_modified = false;
+    m_fileSynced = success;
 
     return success;
 }
@@ -401,8 +448,7 @@ bool JSON_SETTINGS::Store()
         }
         catch( const std::exception& e )
         {
-            KI_LOG_TRACE( traceSettings, wxT( "param '%s' store err: %s" ),
-                        param->GetJsonPath().c_str(), e.what() );
+            KI_LOG_TRACE( traceSettings, wxT( "param '%s' store err: %s" ), param->GetJsonPath().c_str(), e.what() );
         }
     }
 
@@ -433,6 +479,8 @@ std::map<std::string, nlohmann::json> JSON_SETTINGS::GetFileHistories()
 
 bool JSON_SETTINGS::SaveToFile( const wxString& aDirectory, bool aForce )
 {
+    m_lastSaveFailed = false;
+
     if( !m_writeFile )
         return false;
 
@@ -461,34 +509,16 @@ bool JSON_SETTINGS::SaveToFile( const wxString& aDirectory, bool aForce )
         return false;
     }
 
-    // Ensure the path exists, and create it if not.
-    if( !path.DirExists() && !path.Mkdir() )
-    {
-        KI_LOG_TRACE( traceSettings, wxT( "Warning: could not create path %s, can't save %s" ),
-                    path.GetPath(), GetFullFilename() );
-        return false;
-    }
-
-    if( ( path.FileExists() && !path.IsFileWritable() ) ||
-        ( !path.FileExists() && !path.IsDirWritable() ) )
-    {
-        KI_LOG_TRACE( traceSettings, wxT( "File for %s is read-only; not saving" ),
-                    GetFullFilename() );
-        return false;
-    }
-
     bool modified = flushToStore();
 
     if( !modified && !aForce && path.FileExists() )
     {
-        KI_LOG_TRACE( traceSettings, wxT( "%s contents not modified, skipping save" ),
-                    GetFullFilename() );
+        KI_LOG_TRACE( traceSettings, wxT( "%s contents not modified, skipping save" ), GetFullFilename() );
         return false;
     }
     else if( !modified && !aForce && !m_createIfDefault )
     {
-        KI_LOG_TRACE( traceSettings,
-                    wxT( "%s contents still default and m_createIfDefault == false; not saving" ),
+        KI_LOG_TRACE( traceSettings, wxT( "%s contents still default and m_createIfDefault == false; not saving" ),
                     GetFullFilename() );
         return false;
     }
@@ -519,8 +549,7 @@ bool JSON_SETTINGS::SaveToFile( const wxString& aDirectory, bool aForce )
                 // and write, preferring data safety over avoiding a rewrite.
                 if( !existing.bad() && current == payload )
                 {
-                    KI_LOG_TRACE( traceSettings,
-                                wxT( "%s on-disk contents match payload, skipping write" ),
+                    KI_LOG_TRACE( traceSettings, wxT( "%s on-disk contents match payload, skipping write" ),
                                 GetFullFilename() );
 
                     m_modified = false;
@@ -530,18 +559,31 @@ bool JSON_SETTINGS::SaveToFile( const wxString& aDirectory, bool aForce )
             }
         }
 
-        if( !KIPLATFORM::IO::AtomicWriteFile( path.GetFullPath(), payload.data(), payload.size(),
-                                              &writeError ) )
+        // The destination is only checked once there is something to write, so that a store with
+        // no changes is skipped rather than reported as a failure to save
+        if( !path.DirExists() && !path.Mkdir() )
         {
-            KI_LOG_TRACE( traceSettings, wxT( "Warning: could not save %s: %s" ), GetFullFilename(),
-                        writeError );
+            KI_LOG_TRACE( traceSettings, wxT( "Warning: could not create path %s, can't save %s" ),
+                        path.GetPath(), GetFullFilename() );
+            success = false;
+        }
+        else if(   ( path.FileExists() && !path.IsFileWritable() )
+                || ( !path.FileExists() && !path.IsDirWritable() ) )
+        {
+            KI_LOG_TRACE( traceSettings, wxT( "File for %s is read-only; not saving" ), GetFullFilename() );
+            success = false;
+        }
+        else if( !KIPLATFORM::IO::AtomicWriteFile( path.GetFullPath(), payload.data(), payload.size(),
+                                                   &writeError ) )
+        {
+            KI_LOG_TRACE( traceSettings, wxT( "Warning: could not save %s: %s" ), GetFullFilename(), writeError );
             success = false;
         }
     }
     catch( nlohmann::json::exception& error )
     {
-        KI_LOG_TRACE( traceSettings, wxT( "Catch error: could not save %s. Json error %s" ),
-                    GetFullFilename(), error.what() );
+        KI_LOG_TRACE( traceSettings, wxT( "Catch error: could not save %s. Json error %s" ), GetFullFilename(),
+                    error.what() );
         success = false;
     }
     catch( ... )
@@ -551,7 +593,12 @@ bool JSON_SETTINGS::SaveToFile( const wxString& aDirectory, bool aForce )
     }
 
     if( success )
+    {
         m_modified = false;
+        m_fileSynced = true;
+    }
+
+    m_lastSaveFailed = !success;
 
     return success;
 }
@@ -571,6 +618,12 @@ bool JSON_SETTINGS::flushToStore()
     modified |= Store();
 
     return modified;
+}
+
+
+const nlohmann::json& JSON_SETTINGS::originalJson() const
+{
+    return m_internals->m_original;
 }
 
 
@@ -618,10 +671,9 @@ bool JSON_SETTINGS::LoadFromRawFile( const wxString& aPath )
 
         if( fp.IsOk() )
         {
-            *static_cast<nlohmann::json*>( m_internals.get() ) =
-                    nlohmann::json::parse( fstream, nullptr,
-                                           /* allow_exceptions = */ true,
-                                           /* ignore_comments  = */ true );
+            *static_cast<nlohmann::json*>( m_internals.get() ) = nlohmann::json::parse( fstream, nullptr,
+                                                                                        ALLOW_EXCEPTIONS,
+                                                                                        IGNORE_COMMENTS );
         }
         else
         {
@@ -630,7 +682,8 @@ bool JSON_SETTINGS::LoadFromRawFile( const wxString& aPath )
     }
     catch( nlohmann::json::parse_error& error )
     {
-        KI_LOG_TRACE( traceSettings, wxT( "Json parse error reading %s: %s" ), aPath, error.what() );
+        KI_LOG_TRACE( traceSettings, wxT( "Json parse error reading %s (id %d, byte %d)" ), aPath, error.id,
+                    static_cast<int>( error.byte ) );
 
         return false;
     }
@@ -751,8 +804,7 @@ bool JSON_SETTINGS::Migrate()
 
         if( !m_migrators.count( filever ) )
         {
-            KI_LOG_TRACE( traceSettings, wxT( "Migrator missing for %s version %d!" ),
-                        typeid( *this ).name(),
+            KI_LOG_TRACE( traceSettings, wxT( "Migrator missing for %s version %d!" ), typeid( *this ).name(),
                         filever );
             return false;
         }
@@ -761,19 +813,15 @@ bool JSON_SETTINGS::Migrate()
 
         if( pair.second() )
         {
-            KI_LOG_TRACE( traceSettings, wxT( "Migrated %s from %d to %d" ),
-                        typeid( *this ).name(),
-                        filever,
+            KI_LOG_TRACE( traceSettings, wxT( "Migrated %s from %d to %d" ), typeid( *this ).name(), filever,
                         pair.first );
             filever = pair.first;
             m_internals->At( "meta.version" ) = filever;
         }
         else
         {
-            KI_LOG_TRACE( traceSettings, wxT( "Migration failed for %s from %d to %d" ),
-                        typeid( *this ).name(),
-                        filever,
-                        pair.first );
+            KI_LOG_TRACE( traceSettings, wxT( "Migration failed for %s from %d to %d" ), typeid( *this ).name(),
+                        filever, pair.first );
             return false;
         }
     }
@@ -784,14 +832,12 @@ bool JSON_SETTINGS::Migrate()
 
 bool JSON_SETTINGS::MigrateFromLegacy( wxConfigBase* aLegacyConfig )
 {
-    KI_LOG_TRACE( traceSettings, wxT( "MigrateFromLegacy() not implemented for %s" ),
-                typeid( *this ).name() );
+    KI_LOG_TRACE( traceSettings, wxT( "MigrateFromLegacy() not implemented for %s" ), typeid( *this ).name() );
     return false;
 }
 
 
-bool JSON_SETTINGS::SetIfPresent( const nlohmann::json& aObj, const std::string& aPath,
-                                  wxString& aTarget )
+bool JSON_SETTINGS::SetIfPresent( const nlohmann::json& aObj, const std::string& aPath, wxString& aTarget )
 {
     nlohmann::json::json_pointer ptr = JSON_SETTINGS_INTERNALS::PointerFromString( aPath );
 
@@ -805,8 +851,7 @@ bool JSON_SETTINGS::SetIfPresent( const nlohmann::json& aObj, const std::string&
 }
 
 
-bool JSON_SETTINGS::SetIfPresent( const nlohmann::json& aObj, const std::string& aPath,
-                                  bool& aTarget )
+bool JSON_SETTINGS::SetIfPresent( const nlohmann::json& aObj, const std::string& aPath, bool& aTarget )
 {
     nlohmann::json::json_pointer ptr = JSON_SETTINGS_INTERNALS::PointerFromString( aPath );
 
@@ -820,8 +865,7 @@ bool JSON_SETTINGS::SetIfPresent( const nlohmann::json& aObj, const std::string&
 }
 
 
-bool JSON_SETTINGS::SetIfPresent( const nlohmann::json& aObj, const std::string& aPath,
-                                  int& aTarget )
+bool JSON_SETTINGS::SetIfPresent( const nlohmann::json& aObj, const std::string& aPath, int& aTarget )
 {
     nlohmann::json::json_pointer ptr = JSON_SETTINGS_INTERNALS::PointerFromString( aPath );
 
@@ -835,8 +879,7 @@ bool JSON_SETTINGS::SetIfPresent( const nlohmann::json& aObj, const std::string&
 }
 
 
-bool JSON_SETTINGS::SetIfPresent( const nlohmann::json& aObj, const std::string& aPath,
-                                  unsigned int& aTarget )
+bool JSON_SETTINGS::SetIfPresent( const nlohmann::json& aObj, const std::string& aPath, unsigned int& aTarget )
 {
     nlohmann::json::json_pointer ptr = JSON_SETTINGS_INTERNALS::PointerFromString( aPath );
 
@@ -851,8 +894,7 @@ bool JSON_SETTINGS::SetIfPresent( const nlohmann::json& aObj, const std::string&
 
 
 template<typename ValueType>
-bool JSON_SETTINGS::fromLegacy( wxConfigBase* aConfig, const std::string& aKey,
-                             const std::string& aDest )
+bool JSON_SETTINGS::fromLegacy( wxConfigBase* aConfig, const std::string& aKey, const std::string& aDest )
 {
     ValueType val;
 
@@ -878,20 +920,16 @@ bool JSON_SETTINGS::fromLegacy( wxConfigBase* aConfig, const std::string& aKey,
 // Explicitly declare these because we only support a few types anyway, and it means we can keep
 // wxConfig detail out of the header file
 template
-KICOMMON_API bool JSON_SETTINGS::fromLegacy<int>( wxConfigBase*, const std::string&,
-                                                  const std::string& );
+KICOMMON_API bool JSON_SETTINGS::fromLegacy<int>( wxConfigBase*, const std::string&, const std::string& );
 
 template
-KICOMMON_API bool JSON_SETTINGS::fromLegacy<double>( wxConfigBase*, const std::string&,
-                                                     const std::string& );
+KICOMMON_API bool JSON_SETTINGS::fromLegacy<double>( wxConfigBase*, const std::string&, const std::string& );
 
 template
-KICOMMON_API bool JSON_SETTINGS::fromLegacy<bool>( wxConfigBase*, const std::string&,
-                                                   const std::string& );
+KICOMMON_API bool JSON_SETTINGS::fromLegacy<bool>( wxConfigBase*, const std::string&, const std::string& );
 
 
-bool JSON_SETTINGS::fromLegacyString( wxConfigBase* aConfig, const std::string& aKey,
-                                      const std::string& aDest )
+bool JSON_SETTINGS::fromLegacyString( wxConfigBase* aConfig, const std::string& aKey, const std::string& aDest )
 {
     wxString str;
 
@@ -914,8 +952,7 @@ bool JSON_SETTINGS::fromLegacyString( wxConfigBase* aConfig, const std::string& 
 }
 
 
-bool JSON_SETTINGS::fromLegacyColor( wxConfigBase* aConfig, const std::string& aKey,
-    const std::string& aDest )
+bool JSON_SETTINGS::fromLegacyColor( wxConfigBase* aConfig, const std::string& aKey, const std::string& aDest )
 {
     wxString str;
 
@@ -1014,11 +1051,9 @@ ResultType JSON_SETTINGS::fetchOrDefault( const nlohmann::json& aJson, const std
 
 
 template
-KICOMMON_API std::string JSON_SETTINGS::fetchOrDefault( const nlohmann::json& aJson,
-                                                        const std::string& aKey,
+KICOMMON_API std::string JSON_SETTINGS::fetchOrDefault( const nlohmann::json& aJson, const std::string& aKey,
                                                         std::string aDefault );
 
 
 template
-KICOMMON_API bool JSON_SETTINGS::fetchOrDefault( const nlohmann::json& aJson,
-                                                 const std::string& aKey, bool aDefault );
+KICOMMON_API bool JSON_SETTINGS::fetchOrDefault( const nlohmann::json& aJson, const std::string& aKey, bool aDefault );

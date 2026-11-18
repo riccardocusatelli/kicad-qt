@@ -16,15 +16,11 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
- * @file symbol_library.h
+ * @file legacy_symbol_library.h
  * @brief Definition for symbol library class.
  */
 
@@ -50,10 +46,10 @@ class PROGRESS_REPORTER;
 
 
 /**
- * A collection of #SYMBOL_LIB objects.
+ * A collection of #LIB_SYMBOL objects.
  *
- * It extends from PROJECT::_ELEM so it can be hung in the PROJECT.  It does not use any
- * UI calls, but rather simply throws an IO_ERROR when there is a problem.
+ * It extends from #PROJECT::_ELEM so it can be hung in the #PROJECT.  It does not use any
+ * UI calls, but rather simply throws an #IO_ERROR when there is a problem.
  */
 class LEGACY_SYMBOL_LIBS : public boost::ptr_vector<LEGACY_SYMBOL_LIB>, public PROJECT::_ELEM
 {
@@ -257,17 +253,6 @@ public:
      * @return The next entry in the library or NULL if the library is empty.
      */
     LIB_SYMBOL* RemoveSymbol( LIB_SYMBOL* aEntry );
-
-    /**
-     * Replace an existing symbol entry in the library.
-     *
-     * @note A symbol can have an alias list so these aliases will be added in library and
-     *       previously existing alias removed.
-     *
-     * @param aOldSymbol is the symbol to replace.
-     * @param aNewSymbol is the new symbol.
-     */
-    LIB_SYMBOL* ReplaceSymbol( LIB_SYMBOL* aOldSymbol, LIB_SYMBOL* aNewSymbol );
 
     /**
      * Return the file name without path or extension.

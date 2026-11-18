@@ -157,7 +157,7 @@ using nanodbc::wide_string;
  *
  * KICAD-SPECIFIC ADDITION
  *
- * If we are compiling on Apple with Clang >= 17, the version of LLVM no longer includes a generic template for
+ * If we are compiling against libc++ >= 19, the version of LLVM no longer includes a generic template for
  * char_traits for char types which are not specified in the C++ standard. We define our own here for types required by
  * the database library.
  *
@@ -169,8 +169,8 @@ using nanodbc::wide_string;
  *
  **********************************************************************************************************************/
 
-#ifdef __APPLE__
-#if __clang_major__ >= 17
+#if defined( _LIBCPP_VERSION )
+#if _LIBCPP_VERSION >= 190102
 
 template <>
 struct std::char_traits<NANODBC_SQLCHAR>
@@ -389,8 +389,14 @@ constexpr std::size_t size(const T (&array)[N]) noexcept
 template <std::size_t N>
 inline std::size_t size(NANODBC_SQLCHAR const (&array)[N]) noexcept
 {
-    auto const n = std::char_traits<NANODBC_SQLCHAR>::length(array);
+    std::size_t len = 0;
+    NANODBC_SQLCHAR const* s = array;
+    for (; *s != '\0'; ++s)
+        ++len;
+
+    std::size_t const n = len;
     NANODBC_ASSERT(n < N);
+
     return n < N ? n : N - 1;
 }
 
@@ -540,8 +546,8 @@ recent_error(SQLHANDLE handle, SQLSMALLINT handle_type, long& native, std::strin
     if (size(sql_state) > 0)
     {
         state.clear();
-        state.reserve(size(sql_state) - 1);
-        for (std::size_t idx = 0; idx != size(sql_state) - 1; ++idx)
+        state.reserve(size(sql_state));
+        for (std::size_t idx = 0; idx != size(sql_state); ++idx)
         {
             state.push_back(static_cast<char>(sql_state[idx]));
         }
@@ -882,6 +888,32 @@ inline void deallocate_handle(SQLHANDLE& handle, short handle_type)
     handle = nullptr;
 }
 
+// Drivers without login timeout support report HYC00 or HY092; connect without it
+inline bool login_timeout_unsupported(SQLHANDLE dbc)
+{
+    NANODBC_SQLCHAR sql_state[6] = {0};
+    SQLINTEGER native_error = 0;
+    SQLSMALLINT total_bytes = 0;
+    RETCODE rc;
+    NANODBC_CALL_RC(
+        NANODBC_FUNC(SQLGetDiagRec),
+        rc,
+        SQL_HANDLE_DBC,
+        dbc,
+        (SQLSMALLINT)1,
+        sql_state,
+        &native_error,
+        0,
+        0,
+        &total_bytes);
+    if (!success(rc))
+        return false;
+
+    std::string state;
+    convert(nanodbc::string(sql_state, sql_state + 5), state);
+    return state == "HYC00" || state == "HY092";
+}
+
 inline void allocate_env_handle(SQLHENV& env)
 {
     if (env)
@@ -1102,7 +1134,7 @@ public:
                 SQL_LOGIN_TIMEOUT,
                 (SQLPOINTER)(std::intptr_t)timeout,
                 0);
-            if (!success(rc))
+            if (!success(rc) && !login_timeout_unsupported(dbc_))
                 NANODBC_THROW_DATABASE_ERROR(dbc_, SQL_HANDLE_DBC);
         }
 
@@ -1151,7 +1183,7 @@ public:
                 SQL_LOGIN_TIMEOUT,
                 (SQLPOINTER)(std::intptr_t)timeout,
                 0);
-            if (!success(rc))
+            if (!success(rc) && !login_timeout_unsupported(dbc_))
                 NANODBC_THROW_DATABASE_ERROR(dbc_, SQL_HANDLE_DBC);
         }
 
@@ -3720,9 +3752,8 @@ std::list<datasource> list_datasources()
                 "incompatible SQLCHAR and string::value_type");
 
             datasource dsn;
-            dsn.name = string(&name[0], &name[std::char_traits<NANODBC_SQLCHAR>::length(name)]);
-            dsn.driver =
-                string(&driver[0], &driver[std::char_traits<NANODBC_SQLCHAR>::length(driver)]);
+            dsn.name = string(&name[0], &name[size(name)]);
+            dsn.driver = string(&driver[0], &driver[size(driver)]);
 
             dsns.push_back(std::move(dsn));
             direction = SQL_FETCH_NEXT;
@@ -3773,7 +3804,7 @@ std::list<driver> list_drivers()
                 "incompatible SQLCHAR and string::value_type");
 
             driver drv;
-            drv.name = string(&descr[0], &descr[std::char_traits<NANODBC_SQLCHAR>::length(descr)]);
+            drv.name = string(&descr[0], &descr[size(descr)]);
 
             // Split "Key1=Value1\0Key2=Value2\0\0" into list of key-value pairs
             auto beg = &attrs[0];
@@ -4869,8 +4900,8 @@ string catalog::columns::type_name() const
 
 long catalog::columns::column_size() const
 {
-    // COLUMN_SIZE
-    return result_.get<long>(6);
+    // COLUMN_SIZE might be NULL
+    return result_.get<long>( 6, 0 );
 }
 
 long catalog::columns::buffer_length() const

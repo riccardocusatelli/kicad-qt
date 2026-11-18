@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef SCH_IO_LTSPICE_H_
@@ -48,6 +48,8 @@ public:
     {
         return IO_BASE::IO_FILE_DESC( _HKI( "LTspice schematic files" ), { "asc" } );
     }
+
+    bool CanReadSchematicFile( const wxString& aFileName ) const override;
 
     const IO_BASE::IO_FILE_DESC GetLibraryDesc() const override
     {

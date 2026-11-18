@@ -41,6 +41,7 @@
 #include <kiface_base.h>
 #include <kiface_ids.h>
 #include <kiface_netlist.h>
+#include <kiface_services.h>
 #include <pgm_base.h>
 #include <settings/settings_manager.h>
 #include <symbol_editor_settings.h>
@@ -94,7 +95,7 @@ static struct IFACE : public KIFACE_BASE
         switch( aDataId )
         {
         case KIFACE_NETLIST_SCHEMATIC:
-            return (void*) GenerateSchematicNetlist;
+            return KifaceServiceAddress<KIFACE_NETLIST_SCHEMATIC_SERVICE>( &GenerateSchematicNetlist );
 
 #ifdef KICAD_QT_MODULE
         case KIFACE_QT_DOCUMENT_FACTORY:

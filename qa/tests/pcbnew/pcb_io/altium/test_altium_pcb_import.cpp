@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -40,6 +36,7 @@
 #include <compoundfilereader.h>
 
 #include <board.h>
+#include <convert_shape_list_to_polygon.h>
 #include <board_design_settings.h>
 #include <footprint.h>
 #include <board_stackup_manager/board_stackup.h>
@@ -176,8 +173,7 @@ BOOST_AUTO_TEST_CASE( FootprintMountingStyleDerivedFromPads )
 {
     std::string dataPath = KI_TEST::GetPcbnewTestDataDir() + "plugins/altium/HiFive/HiFive1.B01.PcbDoc";
 
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
-    m_altiumPlugin.LoadBoard( dataPath, board.get(), nullptr );
+    std::unique_ptr<BOARD> board = m_altiumPlugin.LoadBoard( dataPath, nullptr );
     BOOST_REQUIRE( board );
     BOOST_REQUIRE( !board->Footprints().empty() );
 
@@ -315,16 +311,85 @@ BOOST_AUTO_TEST_CASE( BoardLoadNoAssertions )
     std::string dataPath = KI_TEST::GetPcbnewTestDataDir()
                            + "plugins/altium/eDP_adapter_dvt1_source/eDP_adapter_dvt1.PcbDoc";
 
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
-
     // Load the board - should not trigger any assertions
-    m_altiumPlugin.LoadBoard( dataPath, board.get(), nullptr );
+    std::unique_ptr<BOARD> board = m_altiumPlugin.LoadBoard( dataPath, nullptr );
 
     BOOST_REQUIRE( board );
 
     // Basic sanity checks
     BOOST_CHECK( board->GetNetCount() > 0 );
     BOOST_CHECK( board->Footprints().size() > 0 );
+}
+
+
+// A courtyard must be one closed outline, so stray open pieces cannot stay on the courtyard layer
+BOOST_AUTO_TEST_CASE( CourtyardsAreClosed )
+{
+    int closed = 0;
+
+    for( const char* name : { "HiFive/HiFive1.B01.PcbDoc", "eDP_adapter_dvt1_source/eDP_adapter_dvt1.PcbDoc",
+                              "issue24456/Fastino_Ground_Isolator.PcbDoc", "issue25362/OpenRex_V1I1_PCB_reduced.PcbDoc" } )
+    {
+        std::unique_ptr<BOARD> board = m_altiumPlugin.LoadBoard( KI_TEST::GetPcbnewTestDataDir() + "plugins/altium/" + name,
+                                                                  nullptr );
+
+        BOOST_REQUIRE( board );
+
+        int open = 0;
+
+        for( FOOTPRINT* footprint : board->Footprints() )
+        {
+            OUTLINE_ERROR_HANDLER onError = [&]( const wxString&, BOARD_ITEM*, BOARD_ITEM*, const VECTOR2I& )
+            {
+                open++;
+            };
+
+            footprint->BuildCourtyardCaches( &onError );
+
+            closed += footprint->GetCourtyard( F_CrtYd ).OutlineCount();
+            closed += footprint->GetCourtyard( B_CrtYd ).OutlineCount();
+        }
+
+        BOOST_TEST_CONTEXT( name ) { BOOST_CHECK_EQUAL( open, 0 ); }
+    }
+
+    // An outline moved off the layer would also report no error, so closed outlines must remain
+    BOOST_CHECK_GT( closed, 0 );
+}
+
+
+// A board outline with jogs from rounding in the file must still build into one closed shape
+BOOST_AUTO_TEST_CASE( OutlineBuilds )
+{
+    for( const char* name : { "HiFive/HiFive1.B01.PcbDoc", "eDP_adapter_dvt1_source/eDP_adapter_dvt1.PcbDoc",
+                              "issue13750/altium2kicad_region_soldermask_expansion.PcbDoc",
+                              "issue24456/Fastino_Ground_Isolator.PcbDoc", "issue24654/PCB1.PcbDoc",
+                              "issue24847/PCB1.PcbDoc", "issue25362/OpenRex_V1I1_PCB_reduced.PcbDoc" } )
+    {
+        std::unique_ptr<BOARD> board = m_altiumPlugin.LoadBoard( KI_TEST::GetPcbnewTestDataDir() + "plugins/altium/" + name,
+                                                                  nullptr );
+
+        BOOST_REQUIRE( board );
+
+        int            errors = 0;
+        SHAPE_POLY_SET outline;
+
+        OUTLINE_ERROR_HANDLER onError = [&]( const wxString&, BOARD_ITEM*, BOARD_ITEM*, const VECTOR2I& )
+        {
+            errors++;
+        };
+
+        // An inferred outline would hide an import that lost the edge shapes
+        const bool built = BuildBoardPolygonOutlines( board.get(), outline, pcbIUScale.mmToIU( 0.05 ),
+                                                      board->GetOutlinesChainingEpsilon(), false, &onError );
+
+        BOOST_TEST_CONTEXT( name )
+        {
+            BOOST_CHECK( built );
+            BOOST_CHECK_GT( outline.OutlineCount(), 0 );
+            BOOST_CHECK_EQUAL( errors, 0 );
+        }
+    }
 }
 
 
@@ -335,8 +400,7 @@ BOOST_AUTO_TEST_CASE( CachedLibraryFootprintsAreOwnedCopies )
     std::string dataPath =
             KI_TEST::GetPcbnewTestDataDir() + "plugins/altium/HiFive/HiFive1.B01.PcbDoc";
 
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
-    m_altiumPlugin.LoadBoard( dataPath, board.get(), nullptr );
+    std::unique_ptr<BOARD> board = m_altiumPlugin.LoadBoard( dataPath, nullptr );
 
     BOOST_REQUIRE( board );
     BOOST_REQUIRE_GT( board->Footprints().size(), 0 );
@@ -383,8 +447,7 @@ BOOST_AUTO_TEST_CASE( UnusedInternalPlanesNotMapped )
                 return PCB_IO_ALTIUM_DESIGNER::DefaultLayerMappingCallback( aLayers );
             } );
 
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
-    m_altiumPlugin.LoadBoard( dataPath, board.get(), nullptr );
+    std::unique_ptr<BOARD> board = m_altiumPlugin.LoadBoard( dataPath, nullptr );
 
     BOOST_REQUIRE( board );
     BOOST_CHECK( mappedLayerNames.count( wxS( "Internal Plane 1" ) ) );
@@ -411,8 +474,7 @@ BOOST_AUTO_TEST_CASE( KeepoutRestrictionsImpliedByLayer )
     std::string dataPath =
             KI_TEST::GetPcbnewTestDataDir() + "plugins/altium/eDP_adapter_dvt1_source/eDP_adapter_dvt1.PcbDoc";
 
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
-    m_altiumPlugin.LoadBoard( dataPath, board.get(), nullptr );
+    std::unique_ptr<BOARD> board = m_altiumPlugin.LoadBoard( dataPath, nullptr );
 
     BOOST_REQUIRE( board );
 
@@ -453,8 +515,7 @@ BOOST_AUTO_TEST_CASE( ExplicitKeepoutRestrictionMaskIsRead )
 {
     std::string dataPath = KI_TEST::GetPcbnewTestDataDir() + "plugins/altium/issue24456/Fastino_Ground_Isolator.PcbDoc";
 
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
-    m_altiumPlugin.LoadBoard( dataPath, board.get(), nullptr );
+    std::unique_ptr<BOARD> board = m_altiumPlugin.LoadBoard( dataPath, nullptr );
 
     BOOST_REQUIRE( board );
 
@@ -491,9 +552,7 @@ BOOST_AUTO_TEST_CASE( NetclassAssignment )
     // HiFive1.B01.PcbDoc has Altium netclass definitions
     std::string dataPath = KI_TEST::GetPcbnewTestDataDir() + "plugins/altium/HiFive/HiFive1.B01.PcbDoc";
 
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
-
-    m_altiumPlugin.LoadBoard( dataPath, board.get(), nullptr );
+    std::unique_ptr<BOARD> board = m_altiumPlugin.LoadBoard( dataPath, nullptr );
 
     BOOST_REQUIRE( board );
 
@@ -593,8 +652,7 @@ BOOST_AUTO_TEST_CASE( RulesPopulateNetclasses )
     std::string dataPath =
             KI_TEST::GetPcbnewTestDataDir() + "plugins/altium/issue24456/Fastino_Ground_Isolator.PcbDoc";
 
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
-    m_altiumPlugin.LoadBoard( dataPath, board.get(), nullptr );
+    std::unique_ptr<BOARD> board = m_altiumPlugin.LoadBoard( dataPath, nullptr );
 
     std::shared_ptr<NET_SETTINGS> netSettings = board->GetDesignSettings().m_NetSettings;
     std::shared_ptr<NETCLASS>     defaultNetclass = netSettings->GetDefaultNetclass();
@@ -626,8 +684,8 @@ BOOST_AUTO_TEST_CASE( UnresolvedNetclassRulesAreReported )
                 KI_TEST::CAPTURING_REPORTER reporter;
                 m_altiumPlugin.SetReporter( &reporter );
 
-                std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
-                m_altiumPlugin.LoadBoard( KI_TEST::GetPcbnewTestDataDir() + aRelativePath, board.get(), nullptr );
+                std::unique_ptr<BOARD> board =
+                        m_altiumPlugin.LoadBoard( KI_TEST::GetPcbnewTestDataDir() + aRelativePath, nullptr );
                 m_altiumPlugin.SetReporter( nullptr );
 
                 std::vector<wxString> hits;
@@ -712,8 +770,7 @@ static void checkAllCopperFillZonesHaveClearance( PCB_IO_ALTIUM_DESIGNER& aPlugi
 {
     std::string dataPath = KI_TEST::GetPcbnewTestDataDir() + aRelativePath;
 
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
-    aPlugin.LoadBoard( dataPath, board.get(), nullptr );
+    std::unique_ptr<BOARD> board = aPlugin.LoadBoard( dataPath, nullptr );
 
     BOOST_REQUIRE( board );
 
@@ -858,9 +915,7 @@ BOOST_AUTO_TEST_CASE( Via_HoleReferencedMaskTenting )
     std::string dataPath = KI_TEST::GetPcbnewTestDataDir()
                            + "plugins/altium/issue24456/Fastino_Ground_Isolator.PcbDoc";
 
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
-
-    m_altiumPlugin.LoadBoard( dataPath, board.get(), nullptr );
+    std::unique_ptr<BOARD> board = m_altiumPlugin.LoadBoard( dataPath, nullptr );
 
     BOOST_REQUIRE( board );
 
@@ -942,9 +997,7 @@ BOOST_AUTO_TEST_CASE( StackupDielectricLossTangent )
     std::string dataPath = KI_TEST::GetPcbnewTestDataDir()
                            + "plugins/altium/issue24456/Fastino_Ground_Isolator.PcbDoc";
 
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
-
-    m_altiumPlugin.LoadBoard( dataPath, board.get(), nullptr );
+    std::unique_ptr<BOARD> board = m_altiumPlugin.LoadBoard( dataPath, nullptr );
 
     BOOST_REQUIRE( board );
 
@@ -1012,9 +1065,7 @@ BOOST_AUTO_TEST_CASE( ProjectParametersToTextVars )
     std::map<std::string, UTF8> props;
     props["project_file"] = prjPcb;
 
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
-
-    m_altiumPlugin.LoadBoard( pcbDoc, board.get(), &props, &project );
+    std::unique_ptr<BOARD> board = m_altiumPlugin.LoadBoard( pcbDoc, &props, &project );
 
     const std::map<wxString, wxString>& textVars = project.GetTextVars();
 
@@ -1029,7 +1080,7 @@ BOOST_AUTO_TEST_CASE( ProjectParametersToTextVars )
     BOOST_CHECK_EQUAL( textVars.at( wxS( "YEAR" ) ), wxS( "2026" ) );
 
     // Board text referencing the special string now resolves through the project variable.
-    wxString resolved = ExpandTextVars( wxS( "${PCB_REVISION}" ), &project );
+    wxString resolved = ExpandTextVars( wxS( "${PCB_REVISION}" ), &project, INTERNAL );
     BOOST_CHECK_EQUAL( resolved, wxS( "A" ) );
 
     // End-to-end: an actual imported board text that references ${PCB_REVISION} must render its
@@ -1045,7 +1096,7 @@ BOOST_AUTO_TEST_CASE( ProjectParametersToTextVars )
 
         if( text && text->GetText().Contains( wxS( "${PCB_REVISION}" ) ) )
         {
-            wxString shown = text->GetShownText( false );
+            wxString shown = text->GetShownText( INTERNAL );
             BOOST_CHECK( !shown.Contains( wxS( "${PCB_REVISION}" ) ) );
             BOOST_CHECK( shown.Contains( wxS( "A" ) ) );
             sawResolvedBoardText = true;
@@ -1074,9 +1125,7 @@ BOOST_AUTO_TEST_CASE( ProjectParametersPreserveExisting )
     std::map<std::string, UTF8> props;
     props["project_file"] = prjPcb;
 
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
-
-    m_altiumPlugin.LoadBoard( pcbDoc, board.get(), &props, &project );
+    std::unique_ptr<BOARD> board = m_altiumPlugin.LoadBoard( pcbDoc, &props, &project );
 
     // A pre-existing variable wins over the imported parameter.
     BOOST_CHECK_EQUAL( project.GetTextVars().at( wxS( "PCB_REVISION" ) ), wxS( "user-set" ) );
@@ -1101,8 +1150,7 @@ BOOST_AUTO_TEST_CASE( CopperAndMaskTextCoincide )
     std::string dataPath = KI_TEST::GetPcbnewTestDataDir()
                            + "plugins/altium/issue24456/Fastino_Ground_Isolator.PcbDoc";
 
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
-    m_altiumPlugin.LoadBoard( dataPath, board.get(), nullptr );
+    std::unique_ptr<BOARD> board = m_altiumPlugin.LoadBoard( dataPath, nullptr );
     BOOST_REQUIRE( board );
 
     std::vector<PCB_TEXT*> copperTexts;
@@ -1179,8 +1227,7 @@ BOOST_AUTO_TEST_CASE( LengthTuningPatterns )
     std::string dataPath =
             KI_TEST::GetPcbnewTestDataDir() + "plugins/altium/issue24654/PCB1.PcbDoc";
 
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
-    m_altiumPlugin.LoadBoard( dataPath, board.get(), nullptr );
+    std::unique_ptr<BOARD> board = m_altiumPlugin.LoadBoard( dataPath, nullptr );
 
     BOOST_REQUIRE( board );
 
@@ -1267,8 +1314,7 @@ BOOST_AUTO_TEST_CASE( LengthTuningPatternsAreSelectable )
     std::string dataPath =
             KI_TEST::GetPcbnewTestDataDir() + "plugins/altium/issue24654/PCB1.PcbDoc";
 
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
-    m_altiumPlugin.LoadBoard( dataPath, board.get(), nullptr );
+    std::unique_ptr<BOARD> board = m_altiumPlugin.LoadBoard( dataPath, nullptr );
 
     BOOST_REQUIRE( board );
 
@@ -1336,8 +1382,7 @@ BOOST_AUTO_TEST_CASE( Issue24847_FootprintKeepoutPlacement )
     std::string dataPath = KI_TEST::GetPcbnewTestDataDir()
                            + "plugins/altium/issue24847/PCB1.PcbDoc";
 
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
-    m_altiumPlugin.LoadBoard( dataPath, board.get(), nullptr );
+    std::unique_ptr<BOARD> board = m_altiumPlugin.LoadBoard( dataPath, nullptr );
 
     BOOST_REQUIRE( board );
     BOOST_REQUIRE_GT( board->Footprints().size(), 0 );
@@ -1376,106 +1421,6 @@ BOOST_AUTO_TEST_CASE( Issue24847_FootprintKeepoutPlacement )
 }
 
 
-// The importer recentres the board on the page after parsing and shifts both origins by that same
-// vector, so only the origin's offset from the board outline survives the move
-static void checkImportedOriginOffset( PCB_IO_ALTIUM_DESIGNER& aPlugin,
-                                       const std::string& aRelativePath,
-                                       double aExpectedXmm, double aExpectedYmm )
-{
-    std::string dataPath = KI_TEST::GetPcbnewTestDataDir() + aRelativePath;
-
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
-    aPlugin.LoadBoard( dataPath, board.get(), nullptr );
-
-    BOOST_REQUIRE( board );
-
-    const BOARD_DESIGN_SETTINGS& bds = board->GetDesignSettings();
-
-    // Altium carries a single relative origin, so both KiCad origins have to land on it
-    BOOST_CHECK( bds.GetGridOrigin() == bds.GetAuxOrigin() );
-
-    BOX2I outline = board->GetBoardEdgesBoundingBox();
-
-    BOOST_REQUIRE_GT( outline.GetArea(), 0 );
-
-    double offsetXmm = pcbIUScale.IUTomm( bds.GetGridOrigin().x - outline.GetLeft() );
-    double offsetYmm = pcbIUScale.IUTomm( bds.GetGridOrigin().y - outline.GetTop() );
-
-    // Absorbs the edge-cut stroke width the bounding box adds, far below the tens of millimetres
-    // separating the relative origin from the sheet corner on these boards
-    const double toleranceMm = 1.0;
-
-    BOOST_CHECK_MESSAGE( std::abs( offsetXmm - aExpectedXmm ) < toleranceMm,
-                         wxString::Format( "%s: origin sits %.3f mm right of the outline corner, "
-                                           "expected %.3f",
-                                           aRelativePath, offsetXmm, aExpectedXmm ) );
-
-    BOOST_CHECK_MESSAGE( std::abs( offsetYmm - aExpectedYmm ) < toleranceMm,
-                         wxString::Format( "%s: origin sits %.3f mm below the outline corner, "
-                                           "expected %.3f",
-                                           aRelativePath, offsetYmm, aExpectedYmm ) );
-}
-
-
-// https://gitlab.com/kicad/code/kicad/-/issues/25057
-BOOST_AUTO_TEST_CASE( RelativeOriginNotSheetCorner )
-{
-    // The sheet corner would land 186.600/142.375 mm from these offsets
-    checkImportedOriginOffset( m_altiumPlugin,
-                               "plugins/altium/eDP_adapter_dvt1_source/eDP_adapter_dvt1.PcbDoc",
-                               46.300, 7.400 );
-
-    // Origin sits on the left edge; the sheet corner would land 51.308/50.165 mm away
-    checkImportedOriginOffset( m_altiumPlugin, "plugins/altium/issue24847/PCB1.PcbDoc", 0.000,
-                               15.000 );
-}
-
-
-// https://gitlab.com/kicad/code/kicad/-/issues/25362
-// FB36 has two component bodies naming one model; the importer used to hash and link the
-// freed duplicate that AddFile() had already dropped
-BOOST_AUTO_TEST_CASE( SharedComponentBodyModelEmbeddedOnce )
-{
-    std::string dataPath = KI_TEST::GetPcbnewTestDataDir()
-                           + "plugins/altium/issue25362/OpenRex_V1I1_PCB_reduced.PcbDoc";
-
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
-    m_altiumPlugin.LoadBoard( dataPath, board.get(), nullptr );
-
-    BOOST_REQUIRE_EQUAL( board->Footprints().size(), 1 );
-
-    FOOTPRINT*            footprint = board->Footprints().front();
-    const EMBEDDED_FILES* files = footprint->GetEmbeddedFiles();
-
-    BOOST_REQUIRE_EQUAL( files->EmbeddedFileMap().size(), 1 );
-
-    const std::shared_ptr<EMBEDDED_FILES::EMBEDDED_FILE>& file =
-            files->EmbeddedFileMap().begin()->second;
-
-    BOOST_CHECK_EQUAL( file->name, wxString( wxS( "C0603.step" ) ) );
-    BOOST_CHECK( file->type == EMBEDDED_FILES::EMBEDDED_FILE::FILE_TYPE::MODEL );
-
-    // A freed file yields garbage here rather than the STEP payload, and the exact length plus
-    // the closing tag pin the inflate loop against silently truncating a model
-    const std::string step( file->decompressedData.begin(), file->decompressedData.end() );
-
-    BOOST_REQUIRE_EQUAL( step.size(), 126391u );
-    BOOST_CHECK( step.starts_with( "ISO-10303-21;" ) );
-    BOOST_CHECK( step.ends_with( "END-ISO-10303-21;\r\n" ) );
-
-    // CompressAndEncode runs on a worker thread against the file AddFile() handed back, so an
-    // empty payload means that thread wrote into freed memory instead
-    BOOST_CHECK_GT( file->compressedEncodedData.size(), 0 );
-    BOOST_CHECK( file->Validate() );
-
-    // Both bodies keep their own placement but must resolve to the one embedded model
-    BOOST_REQUIRE_EQUAL( footprint->Models().size(), 2 );
-
-    for( const FP_3DMODEL& model : footprint->Models() )
-        BOOST_CHECK_EQUAL( model.m_Filename, file->GetLink() );
-}
-
-
 // https://gitlab.com/kicad/code/kicad/-/issues/13750
 // Copper regions can carry a soldermask relief; the importer dropped it, losing the aperture
 BOOST_AUTO_TEST_CASE( RegionSolderMaskExpansion )
@@ -1484,8 +1429,7 @@ BOOST_AUTO_TEST_CASE( RegionSolderMaskExpansion )
                            + "plugins/altium/issue13750/"
                              "altium2kicad_region_soldermask_expansion.PcbDoc";
 
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
-    m_altiumPlugin.LoadBoard( dataPath, board.get(), nullptr );
+    std::unique_ptr<BOARD> board = m_altiumPlugin.LoadBoard( dataPath, nullptr );
     BOOST_REQUIRE( board );
 
     std::vector<PCB_SHAPE*> copperPolys;
@@ -1539,8 +1483,7 @@ BOOST_AUTO_TEST_CASE( ComponentCopperRegionNets )
     std::string dataPath =
             KI_TEST::GetPcbnewTestDataDir() + "plugins/altium/issue24456/Fastino_Ground_Isolator.PcbDoc";
 
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
-    m_altiumPlugin.LoadBoard( dataPath, board.get(), nullptr );
+    std::unique_ptr<BOARD> board = m_altiumPlugin.LoadBoard( dataPath, nullptr );
 
     int regionCount = 0;
     int connectedCount = 0;
@@ -1576,8 +1519,7 @@ BOOST_AUTO_TEST_CASE( ComponentCopperJoinsItsPad )
     std::string dataPath =
             KI_TEST::GetPcbnewTestDataDir() + "plugins/altium/issue24456/Fastino_Ground_Isolator.PcbDoc";
 
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
-    m_altiumPlugin.LoadBoard( dataPath, board.get(), nullptr );
+    std::unique_ptr<BOARD> board = m_altiumPlugin.LoadBoard( dataPath, nullptr );
 
     int joined = 0;
 
@@ -1595,6 +1537,7 @@ BOOST_AUTO_TEST_CASE( ComponentCopperJoinsItsPad )
         }
     }
 
+    BOOST_TEST_MESSAGE( "joined " << joined );
     BOOST_CHECK_GT( joined, 0 );
 }
 
@@ -1609,8 +1552,7 @@ BOOST_AUTO_TEST_CASE( ComponentCopperRegionOrientation )
     std::string dataPath =
             KI_TEST::GetPcbnewTestDataDir() + "plugins/altium/issue24456/Fastino_Ground_Isolator.PcbDoc";
 
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
-    m_altiumPlugin.LoadBoard( dataPath, board.get(), nullptr );
+    std::unique_ptr<BOARD> board = m_altiumPlugin.LoadBoard( dataPath, nullptr );
 
     int regionCount = 0;
 
@@ -1642,6 +1584,104 @@ BOOST_AUTO_TEST_CASE( ComponentCopperRegionOrientation )
     }
 
     BOOST_REQUIRE_GT( regionCount, 0 );
+}
+
+
+// The importer recentres the board on the page after parsing and shifts both origins by that same
+// vector, so only the origin's offset from the board outline survives the move
+static void checkImportedOriginOffset( PCB_IO_ALTIUM_DESIGNER& aPlugin,
+                                       const std::string& aRelativePath,
+                                       double aExpectedXmm, double aExpectedYmm )
+{
+    std::string dataPath = KI_TEST::GetPcbnewTestDataDir() + aRelativePath;
+
+    std::unique_ptr<BOARD> board = aPlugin.LoadBoard( dataPath, nullptr );
+
+    BOOST_REQUIRE( board );
+
+    const BOARD_DESIGN_SETTINGS& bds = board->GetDesignSettings();
+
+    // Altium carries a single relative origin, so both KiCad origins have to land on it
+    BOOST_CHECK( bds.GetGridOrigin() == bds.GetAuxOrigin() );
+
+    BOX2I outline = board->GetBoardEdgesBoundingBox();
+
+    BOOST_REQUIRE_GT( outline.GetArea(), 0 );
+
+    double offsetXmm = pcbIUScale.IUTomm( bds.GetGridOrigin().x - outline.GetLeft() );
+    double offsetYmm = pcbIUScale.IUTomm( bds.GetGridOrigin().y - outline.GetTop() );
+
+    // Absorbs the edge-cut stroke width the bounding box adds, far below the tens of millimetres
+    // separating the relative origin from the sheet corner on these boards
+    const double toleranceMm = 1.0;
+
+    BOOST_CHECK_MESSAGE( std::abs( offsetXmm - aExpectedXmm ) < toleranceMm,
+                         wxString::Format( "%s: origin sits %.3f mm right of the outline corner, "
+                                           "expected %.3f",
+                                           aRelativePath, offsetXmm, aExpectedXmm ) );
+
+    BOOST_CHECK_MESSAGE( std::abs( offsetYmm - aExpectedYmm ) < toleranceMm,
+                         wxString::Format( "%s: origin sits %.3f mm below the outline corner, "
+                                           "expected %.3f",
+                                           aRelativePath, offsetYmm, aExpectedYmm ) );
+}
+
+
+// https://gitlab.com/kicad/code/kicad/-/issues/25057
+BOOST_AUTO_TEST_CASE( RelativeOriginNotSheetCorner )
+{
+    // The sheet corner would land 186.600/142.375 mm from these offsets
+    checkImportedOriginOffset( m_altiumPlugin,
+                               "plugins/altium/eDP_adapter_dvt1_source/eDP_adapter_dvt1.PcbDoc",
+                               46.300, 7.400 );
+
+    // Origin sits on the left edge; the sheet corner would land 51.308/50.165 mm away
+    checkImportedOriginOffset( m_altiumPlugin, "plugins/altium/issue24847/PCB1.PcbDoc", 0.000,
+                               15.000 );
+}
+
+
+// https://gitlab.com/kicad/code/kicad/-/issues/25362
+// FB36 has two component bodies naming one model; the importer used to hash and link the
+// freed duplicate that AddFile() had already dropped
+BOOST_AUTO_TEST_CASE( SharedComponentBodyModelEmbeddedOnce )
+{
+    std::string dataPath = KI_TEST::GetPcbnewTestDataDir()
+                           + "plugins/altium/issue25362/OpenRex_V1I1_PCB_reduced.PcbDoc";
+
+    std::unique_ptr<BOARD> board = m_altiumPlugin.LoadBoard( dataPath, nullptr );
+
+    BOOST_REQUIRE_EQUAL( board->Footprints().size(), 1 );
+
+    FOOTPRINT*            footprint = board->Footprints().front();
+    const EMBEDDED_FILES* files = footprint->GetEmbeddedFiles();
+
+    BOOST_REQUIRE_EQUAL( files->EmbeddedFileMap().size(), 1 );
+
+    const std::shared_ptr<EMBEDDED_FILES::EMBEDDED_FILE>& file =
+            files->EmbeddedFileMap().begin()->second;
+
+    BOOST_CHECK_EQUAL( file->name, wxString( wxS( "C0603.step" ) ) );
+    BOOST_CHECK( file->type == EMBEDDED_FILES::EMBEDDED_FILE::FILE_TYPE::MODEL );
+
+    // A freed file yields garbage here rather than the STEP payload, and the exact length plus
+    // the closing tag pin the inflate loop against silently truncating a model
+    const std::string step( file->decompressedData.begin(), file->decompressedData.end() );
+
+    BOOST_REQUIRE_EQUAL( step.size(), 126391u );
+    BOOST_CHECK( step.starts_with( "ISO-10303-21;" ) );
+    BOOST_CHECK( step.ends_with( "END-ISO-10303-21;\r\n" ) );
+
+    // CompressAndEncode runs on a worker thread against the file AddFile() handed back, so an
+    // empty payload means that thread wrote into freed memory instead
+    BOOST_CHECK_GT( file->compressedEncodedData.size(), 0 );
+    BOOST_CHECK( file->Validate() );
+
+    // Both bodies keep their own placement but must resolve to the one embedded model
+    BOOST_REQUIRE_EQUAL( footprint->Models().size(), 2 );
+
+    for( const FP_3DMODEL& model : footprint->Models() )
+        BOOST_CHECK_EQUAL( model.m_Filename, file->GetLink() );
 }
 
 
@@ -1708,8 +1748,7 @@ BOOST_AUTO_TEST_CASE( NetNamesTakeSchematicCase )
     props["sch0"] = dataDir + "altium_import_netname.SchDoc";
 
     PCB_IO_ALTIUM_CIRCUIT_STUDIO plugin;
-    std::unique_ptr<BOARD>       board = std::make_unique<BOARD>();
-    plugin.LoadBoard( dataDir + "altium_import_netname.CSPcbDoc", board.get(), &props, nullptr );
+    std::unique_ptr<BOARD>       board = plugin.LoadBoard( dataDir + "altium_import_netname.CSPcbDoc", &props );
 
     BOOST_CHECK( board->FindNet( wxT( "all_low_letter" ) ) );
     BOOST_CHECK( board->FindNet( wxT( "UperCamelCase" ) ) );
@@ -1719,8 +1758,7 @@ BOOST_AUTO_TEST_CASE( NetNamesTakeSchematicCase )
     BOOST_CHECK( !board->FindNet( wxT( "ALL_LOW_LETTER" ) ) );
 
     PCB_IO_ALTIUM_CIRCUIT_STUDIO standalonePlugin;
-    std::unique_ptr<BOARD>       standaloneBoard = std::make_unique<BOARD>();
-    standalonePlugin.LoadBoard( dataDir + "altium_import_netname.CSPcbDoc", standaloneBoard.get(), nullptr, nullptr );
+    std::unique_ptr<BOARD> standaloneBoard = standalonePlugin.LoadBoard( dataDir + "altium_import_netname.CSPcbDoc" );
 
     BOOST_CHECK( standaloneBoard->FindNet( wxT( "ALL_LOW_LETTER" ) ) );
     BOOST_CHECK( !standaloneBoard->FindNet( wxT( "all_low_letter" ) ) );

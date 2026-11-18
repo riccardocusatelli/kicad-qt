@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -35,13 +31,14 @@
 
 
 #include <typeinfo>
+#include <wx/app.h>
 #include <wx/cmdline.h>
 #include <wx/dialog.h>
 #include <wx/filename.h>
 #include <wx/stdpaths.h>
-#include <wx/snglinst.h>
 #include <wx/html/htmlwin.h>
 
+#include <api/api_server.h>
 #include <kiway.h>
 #include <build_version.h>
 #include <pgm_base.h>
@@ -61,6 +58,8 @@
 #include <kiplatform/environment.h>
 
 #include <git2.h>
+#include <git/git_backend.h>
+#include <git/libgit_backend.h>
 #include <thread_pool.h>
 
 #include <libraries/library_manager.h>
@@ -68,10 +67,6 @@
 
 #ifdef KICAD_USE_SENTRY
 #include <sentry.h>
-#endif
-
-#ifdef KICAD_IPC_API
-#include <api/api_server.h>
 #endif
 
 // Only a single KIWAY is supported in this single_top top level component,
@@ -90,17 +85,15 @@ static struct PGM_SINGLE_TOP : public PGM_GUI
 
     void OnPgmExit()
     {
-        CancelDesignBlockPreload();
-
         // Abort and wait on any background jobs
         GetKiCadThreadPool().purge();
         GetKiCadThreadPool().wait();
 
+        // Library preloads aren't in the threadpool, but KIWAY::OnKifaceEnd() will cancel them
+
         Kiway.OnKiwayEnd();
 
-#ifdef KICAD_IPC_API
         m_api_server.reset();
-#endif
 
         if( m_settings_manager && m_settings_manager->IsOK() )
         {
@@ -108,10 +101,15 @@ static struct PGM_SINGLE_TOP : public PGM_GUI
             m_settings_manager->Save();
         }
 
-        // Destroy everything in PGM_BASE, especially wxSingleInstanceCheckerImpl
-        // earlier than wxApp and earlier than static destruction would.
+        // Destroy PGM_BASE earlier than wxApp and static destruction would
         PGM_BASE::Destroy();
-        git_libgit2_shutdown();
+
+        if( GIT_BACKEND* backend = GetGitBackend() )
+        {
+            backend->Shutdown();
+            delete backend;
+            SetGitBackend( nullptr );
+        }
     }
 
     void MacOpenFile( const wxString& aFileName )   override
@@ -239,6 +237,8 @@ struct APP_SINGLE_TOP : public wxApp
         // pointer out from under them. See https://gitlab.com/kicad/code/kicad/-/issues/23373
         int ret = wxApp::OnExit();
         program.OnPgmExit();
+        program.ExitIfTeardownUnsafe();
+
         return ret;
     }
 
@@ -255,38 +255,14 @@ struct APP_SINGLE_TOP : public wxApp
             Pgm().HandleException( std::current_exception() );
         }
 
+        program.SetRunResult( ret );
+
         return ret;
     }
 
     int FilterEvent( wxEvent& aEvent ) override
     {
-        if( aEvent.GetEventType() == wxEVT_SHOW )
-        {
-            wxShowEvent& event = static_cast<wxShowEvent&>( aEvent );
-            wxDialog*    dialog = dynamic_cast<wxDialog*>( event.GetEventObject() );
-
-            std::vector<void*>& dlgs = PgmGui().m_ModalDialogs;
-
-            if( dialog )
-            {
-                if( event.IsShown() && dialog->IsModal() )
-                {
-                    dlgs.push_back( dialog );
-                }
-                // Under GTK, sometimes the modal flag is cleared before hiding
-                else if( !event.IsShown() && !dlgs.empty()  )
-                {
-                    // If we close the expected dialog, remove it from our stack
-                    if( dlgs.back() == dialog )
-                        dlgs.pop_back();
-                    // If an out-of-order, remove all dialogs added after the closed one
-                    else if( auto it = std::find( dlgs.begin(), dlgs.end(), dialog ); it != dlgs.end() )
-                        dlgs.erase( it, dlgs.end() );
-                }
-            }
-        }
-
-        return Event_Skip;
+        return PgmGui().FilterAppEvent( aEvent );
     }
 
     void OnUnhandledException() override
@@ -349,10 +325,11 @@ bool PGM_SINGLE_TOP::OnPgmInit()
     }
 #endif
 
-    // Initialize the git library before trying to initialize individual programs
-    int gitInit = git_libgit2_init();
+    // Initialize the git backend before trying to initialize individual programs
+    SetGitBackend( new LIBGIT_BACKEND() );
+    GetGitBackend()->Init();
 
-    if( gitInit < 0 )
+    if( !GetGitBackend()->IsLibraryAvailable() )
     {
         const git_error* err = git_error_last();
         wxString         msg = wxS( "Failed to initialize git library" );
@@ -364,16 +341,7 @@ bool PGM_SINGLE_TOP::OnPgmInit()
         return false;
     }
 
-    // Not all KiCad applications use the python stuff. skip python init
-    // for these apps.
-    bool skip_python_initialization = false;
-
-#if defined( BITMAP_2_CMP ) || defined( PL_EDITOR ) || defined( GERBVIEW ) || \
-    defined( PCB_CALCULATOR_BUILD )
-    skip_python_initialization = true;
-#endif
-
-    if( !InitPgm( false, skip_python_initialization ) )
+    if( !InitPgm( false ) )
     {
         // Clean up
         OnPgmExit();
@@ -382,9 +350,9 @@ bool PGM_SINGLE_TOP::OnPgmInit()
 
 #if !defined(BUILD_KIWAY_DLL)
 
-    // Only bitmap2component and pcb_calculator use this code currently, as they
-    // are not split to use single_top as a link image separate from a *.kiface.
-    // i.e. they are single part link images so don't need to load a *.kiface.
+    // Only pcb_calculator uses this code currently, as it is not split to use
+    // single_top as a link image separate from a *.kiface.
+    // i.e. it is a single part link image so doesn't need to load a *.kiface.
 
     // Get the getter, it is statically linked into this binary image.
     KIFACE_GETTER_FUNC* ki_getter = &KIFACE_GETTER;
@@ -413,10 +381,8 @@ bool PGM_SINGLE_TOP::OnPgmInit()
             KIPLATFORM::APP::EnableDarkMode( false );
     }
 
-#ifdef KICAD_IPC_API
     // Create the API server thread once the app event loop exists
     m_api_server = std::make_unique<KICAD_API_SERVER>();
-#endif
 
     // Use KIWAY to create a top window, which registers its existence also.
     // "TOP_FRAME" is a macro that is passed on compiler command line from CMake,
@@ -507,9 +473,7 @@ bool PGM_SINGLE_TOP::OnPgmInit()
 
     PreloadDesignBlockLibraries( &Kiway );
 
-#ifdef KICAD_IPC_API
     m_api_server->SetReadyToReply();
-#endif
 
     return true;
 }

@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -47,6 +47,8 @@ public:
     void AddTable( LIBRARY_TABLE* table, const wxString& aTitle, bool aClosable );
     void OpenTable( const std::shared_ptr<LIBRARY_TABLE>& table, const wxString& aTitle );
 
+    wxAuiNotebook* GetNotebook() const { return m_notebook; }
+
 private:
     /**
      * Trim important fields, removes blank row entries, and checks for duplicates.
@@ -57,6 +59,12 @@ private:
 
     // Bound by the panel itself (the button of the base is a SPLIT_BUTTON without event)
     void browseLibrariesHandler( wxCommandEvent& event );
+
+    /// Creates or opens a .kicad_dbl in the settings editor and adds it to the current table
+    void newDatabaseLibraryHandler( wxCommandEvent& event );
+
+    /// Appends a row for aFilePath, storing the path relative to an environment variable if possible
+    void appendLibraryRow( const wxString& aNickname, SCH_IO_MGR::SCH_FILE_T aType, const wxString& aFilePath );
     void appendRowHandler( wxCommandEvent& event ) override;
     void deleteRowHandler( wxCommandEvent& event ) override;
     void moveUpHandler( wxCommandEvent& event ) override;

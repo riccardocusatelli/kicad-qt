@@ -15,13 +15,10 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <memory>
 #include <optional>
 #include <wx/dataview.h>
@@ -31,7 +28,11 @@
 #include <wx/wupdlock.h>
 #include <pcb_edit_frame.h>
 #include <wx/string.h>
-#include <board_commit.h>
+#include <pcb_draw_panel_gal.h>
+#include <tool/tool_manager.h>
+#include <tools/pcb_selection_tool.h>
+#include <view/view.h>
+#include <widgets/appearance_controls.h>
 #include <widgets/std_bitmap_button.h>
 #include <widgets/wx_progress_reporters.h>
 #include <zone.h>
@@ -54,7 +55,9 @@ DIALOG_ZONE_MANAGER::DIALOG_ZONE_MANAGER( PCB_BASE_FRAME* aParent ) :
         m_zoneSettingsBag( aParent->GetBoard() ),
         m_priorityDragIndex( {} ),
         m_isFillingZones( false ),
-        m_zoneFillComplete( false )
+        m_zoneFillComplete( false ),
+        m_zonesToDelete(),
+        m_canvasSelectReady( false )
 {
 #ifdef __APPLE__
     m_sizerZoneOP->InsertSpacer( m_sizerZoneOP->GetItemCount(), 5 );
@@ -64,6 +67,7 @@ DIALOG_ZONE_MANAGER::DIALOG_ZONE_MANAGER( PCB_BASE_FRAME* aParent ) :
     m_btnMoveUp->SetBitmap( KiBitmapBundle( BITMAPS::small_up ) );
     m_btnMoveDown->SetBitmap( KiBitmapBundle( BITMAPS::small_down ) );
     m_btnMoveBottom->SetBitmap( KiBitmapBundle( BITMAPS::small_bottom ) );
+    m_btnDelete->SetBitmap( KiBitmapBundle( BITMAPS::small_trash ) );
     m_btnAutoAssign->SetBitmap( KiBitmapBundle( BITMAPS::small_sort_desc ) );
 
     m_panelZoneProperties = new PANEL_ZONE_PROPERTIES( m_zonePanel, aParent, m_zoneSettingsBag );
@@ -103,22 +107,6 @@ DIALOG_ZONE_MANAGER::DIALOG_ZONE_MANAGER( PCB_BASE_FRAME* aParent ) :
     m_modelZonesOverview->SetLayerFilter( UNDEFINED_LAYER );
     m_layerFilter->SetSelection( 0 );
 
-    m_modelZonesOverview->ApplyFilter( m_filterCtrl->GetValue(), m_viewZonesOverview->GetSelection() );
-
-    if( m_modelZonesOverview->GetCount() )
-        SelectZoneTableItem( m_modelZonesOverview->GetItem( 0 ) );
-    else
-        m_panelZoneProperties->SetZone( nullptr );
-
-    // Control values set before the dialog is shown may not render, so re-apply them once
-    // it is on screen (issue 24797).
-    CallAfter(
-            [this]()
-            {
-                if( m_panelZoneProperties->GetZone() )
-                    m_panelZoneProperties->TransferZoneSettingsToWindow();
-            } );
-
     Layout();
     m_MainBoxSizer->Fit( this );
     finishDialogSettings();
@@ -143,8 +131,11 @@ DIALOG_ZONE_MANAGER::DIALOG_ZONE_MANAGER( PCB_BASE_FRAME* aParent ) :
           [this]( wxNotebookEvent& aEvent )
           {
               Layout();
+              SelectZoneOnCanvas( m_panelZoneProperties->GetZone(), m_zonePreviewNotebook->GetCurrentLayer() );
           },
           m_zonePreviewNotebook->GetId() );
+
+    m_canvasSelectReady = true;
 }
 
 
@@ -153,6 +144,22 @@ DIALOG_ZONE_MANAGER::~DIALOG_ZONE_MANAGER() = default;
 
 bool DIALOG_ZONE_MANAGER::TransferDataToWindow()
 {
+    m_modelZonesOverview->ApplyFilter( m_filterCtrl->GetValue(), m_viewZonesOverview->GetSelection() );
+
+    if( m_modelZonesOverview->GetCount() )
+        SelectZoneTableItem( m_modelZonesOverview->GetItem( 0 ) );
+    else
+        m_panelZoneProperties->SetZone( nullptr );
+
+    // Control values set before the dialog is shown may not render, so re-apply them once
+    // it is on screen (issue 24797).
+    CallAfter(
+            [this]()
+            {
+                if( m_panelZoneProperties->GetZone() )
+                    m_panelZoneProperties->TransferZoneSettingsToWindow();
+            } );
+
     return true;
 }
 
@@ -200,17 +207,11 @@ void DIALOG_ZONE_MANAGER::GenericProcessChar( wxKeyEvent& aEvent )
 void DIALOG_ZONE_MANAGER::OnDialogCharHook( wxKeyEvent& aEvent )
 {
     if( aEvent.GetKeyCode() == WXK_UP )
-    {
         NavigateZoneSelection( -1 );
-    }
     else if( aEvent.GetKeyCode() == WXK_DOWN )
-    {
         NavigateZoneSelection( 1 );
-    }
     else
-    {
         aEvent.Skip();
-    }
 }
 
 
@@ -269,6 +270,58 @@ void DIALOG_ZONE_MANAGER::OnZoneSelectionChanged( ZONE* zone )
     m_zonePreviewNotebook->OnZoneSelectionChanged( zone );
 
     Layout();
+
+    SelectZoneOnCanvas( zone );
+}
+
+
+ZONE* DIALOG_ZONE_MANAGER::GetOriginalZone( ZONE* aClone )
+{
+    for( const auto& [orig, clone] : m_zoneSettingsBag.GetZonesCloneMap() )
+    {
+        if( clone.get() == aClone )
+            return orig;
+    }
+
+    return nullptr;
+}
+
+
+void DIALOG_ZONE_MANAGER::SelectZoneOnCanvas( ZONE* aClone, PCB_LAYER_ID aLayer )
+{
+    if( !m_canvasSelectReady || !m_checkAutoSelect->IsChecked() || !aClone )
+        return;
+
+    ZONE* originalZone = GetOriginalZone( aClone );
+
+    if( !originalZone )
+        return;
+
+    PCB_LAYER_ID layer = aLayer;
+
+    if( layer == UNDEFINED_LAYER || !originalZone->GetLayerSet().Contains( layer ) )
+    {
+        layer = m_pcbFrame->GetActiveLayer();
+
+        if( !originalZone->GetLayerSet().Contains( layer ) )
+            layer = originalZone->GetFirstLayer();
+    }
+
+    m_pcbFrame->SetActiveLayer( layer );
+
+    if( PCB_BASE_EDIT_FRAME* editFrame = dynamic_cast<PCB_BASE_EDIT_FRAME*>( m_pcbFrame ) )
+    {
+        if( APPEARANCE_CONTROLS* appearance = editFrame->GetAppearancePanel() )
+            appearance->SetLayerVisible( layer, true );
+    }
+
+    if( PCB_SELECTION_TOOL* selTool = m_pcbFrame->GetToolManager()->GetTool<PCB_SELECTION_TOOL>() )
+    {
+        selTool->ClearSelection();
+        selTool->AddItemToSel( originalZone, true );
+    }
+
+    m_pcbFrame->FocusOnItem( originalZone, layer );
 }
 
 
@@ -404,6 +457,90 @@ void DIALOG_ZONE_MANAGER::OnMoveBottomClick( wxCommandEvent& aEvent )
 }
 
 
+void DIALOG_ZONE_MANAGER::OnDeleteClick( wxCommandEvent& aEvent )
+{
+    if( !m_viewZonesOverview->HasSelection() )
+        return;
+
+    const wxDataViewItem selectedItem = m_viewZonesOverview->GetSelection();
+
+    if( !selectedItem.IsOk() )
+        return;
+
+    ZONE* selectedZone = m_modelZonesOverview->GetZone( selectedItem );
+
+    if( !selectedZone )
+        return;
+
+    ZONE* originalZone = GetOriginalZone( selectedZone );
+
+    if( !originalZone )
+        return;
+
+    if( std::find( m_zonesToDelete.begin(), m_zonesToDelete.end(), originalZone ) != m_zonesToDelete.end() )
+        return;
+
+    wxString msg = wxString::Format( _( "Delete zone '%s'?" ), originalZone->GetZoneName() );
+
+    if( !IsOK( this, msg ) )
+        return;
+
+    m_zonesToDelete.push_back( originalZone );
+
+    m_zoneSettingsBag.RemoveZone( originalZone );
+
+    if( originalZone->IsSelected() )
+    {
+        if( PCB_SELECTION_TOOL* selTool = m_pcbFrame->GetToolManager()->GetTool<PCB_SELECTION_TOOL>() )
+        {
+            selTool->RemoveItemFromSel( originalZone );
+        }
+    }
+
+    if( KIGFX::VIEW* view = m_pcbFrame->GetCanvas()->GetView() )
+        view->Hide( originalZone, true );
+
+    m_pcbFrame->GetCanvas()->Refresh();
+
+    wxString     currentFilter = m_filterCtrl->GetValue();
+    PCB_LAYER_ID layerFilter = UNDEFINED_LAYER;
+    bool         nameFilter = m_checkName->IsChecked();
+    bool         netFilter = m_checkNet->IsChecked();
+
+    if( m_layerFilter->GetSelection() > 0 )   // 0 is "All Layers" (ie: no filter)
+    {
+        void* data = m_layerFilter->GetClientData( m_layerFilter->GetSelection() );
+        layerFilter = static_cast<PCB_LAYER_ID>( reinterpret_cast<intptr_t>( data ) );
+    }
+
+    m_modelZonesOverview = new MODEL_ZONES_OVERVIEW( this, m_pcbFrame, m_zoneSettingsBag );
+    m_viewZonesOverview->AssociateModel( m_modelZonesOverview.get() );
+
+    if( layerFilter != UNDEFINED_LAYER )
+        m_modelZonesOverview->SetLayerFilter( layerFilter );
+
+    if( nameFilter )
+        m_modelZonesOverview->EnableFilterByName( true );
+
+    if( netFilter )
+        m_modelZonesOverview->EnableFilterByNet( true );
+
+    if( !currentFilter.IsEmpty() )
+        m_modelZonesOverview->ApplyFilter( currentFilter, wxDataViewItem() );
+
+    if( m_modelZonesOverview->GetCount() > 0 )
+    {
+        wxDataViewItem firstItem = m_modelZonesOverview->GetItem( 0 );
+        PostProcessZoneViewSelChange( firstItem );
+    }
+    else
+    {
+        m_zonePreviewNotebook->OnZoneSelectionChanged( nullptr );
+        m_panelZoneProperties->SetZone( nullptr );
+    }
+}
+
+
 void DIALOG_ZONE_MANAGER::OnAutoAssignClick( wxCommandEvent& aEvent )
 {
     BOARD* board = m_pcbFrame->GetBoard();
@@ -424,9 +561,8 @@ void DIALOG_ZONE_MANAGER::OnAutoAssignClick( wxCommandEvent& aEvent )
             m_zoneSettingsBag.SetZonePriority( clone.get(), newPri );
         }
 
-        PostProcessZoneViewSelChange(
-                m_modelZonesOverview->ApplyFilter( m_filterCtrl->GetValue(),
-                                                   m_viewZonesOverview->GetSelection() ) );
+        PostProcessZoneViewSelChange( m_modelZonesOverview->ApplyFilter( m_filterCtrl->GetValue(),
+                                                                         m_viewZonesOverview->GetSelection() ) );
     }
 
     for( auto& [zone, priority] : savedPriorities )
@@ -480,9 +616,8 @@ void DIALOG_ZONE_MANAGER::OnLayerFilterChanged( wxCommandEvent& aEvent )
         m_modelZonesOverview->SetLayerFilter( layer );
     }
 
-    PostProcessZoneViewSelChange(
-            m_modelZonesOverview->ApplyFilter( m_filterCtrl->GetValue(),
-                                               m_viewZonesOverview->GetSelection() ) );
+    PostProcessZoneViewSelChange( m_modelZonesOverview->ApplyFilter( m_filterCtrl->GetValue(),
+                                                                     m_viewZonesOverview->GetSelection() ) );
 }
 
 
@@ -552,11 +687,8 @@ void DIALOG_ZONE_MANAGER::OnZonesTableRowCountChange( wxCommandEvent& aEvent )
 {
     unsigned count = aEvent.GetInt();
 
-    for( STD_BITMAP_BUTTON* btn : { m_btnMoveTop, m_btnMoveUp, m_btnMoveDown, m_btnMoveBottom,
-                                    m_btnAutoAssign } )
-    {
+    for( STD_BITMAP_BUTTON* btn : { m_btnMoveTop, m_btnMoveUp, m_btnMoveDown, m_btnMoveBottom, m_btnAutoAssign } )
         btn->Enable( count > 1 );
-    }
 }
 
 
@@ -565,12 +697,15 @@ void DIALOG_ZONE_MANAGER::OnCheckBoxClicked( wxCommandEvent& aEvent )
     const wxObject* sender = aEvent.GetEventObject();
 
     if( aEvent.GetEventObject() == m_checkName )
-        m_modelZonesOverview->EnableFitterByName( aEvent.IsChecked() );
+        m_modelZonesOverview->EnableFilterByName( aEvent.IsChecked() );
     else if( aEvent.GetEventObject() == m_checkNet )
-        m_modelZonesOverview->EnableFitterByNet( aEvent.IsChecked() );
+        m_modelZonesOverview->EnableFilterByNet( aEvent.IsChecked() );
 
     if( ( sender == m_checkName || sender == m_checkNet ) && !m_filterCtrl->IsEmpty() )
         m_modelZonesOverview->ApplyFilter( m_filterCtrl->GetValue(), m_viewZonesOverview->GetSelection() );
+
+    if( sender == m_checkAutoSelect && aEvent.IsChecked() )
+        SelectZoneOnCanvas( m_panelZoneProperties->GetZone(), m_zonePreviewNotebook->GetCurrentLayer() );
 }
 
 

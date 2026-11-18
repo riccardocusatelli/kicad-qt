@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef GENERATOR_TOOL_PNS_PROXY_H
@@ -28,6 +24,7 @@
 #include <router/pns_tool_base.h>
 
 class BOARD_ITEM;
+class BOARD_COMMIT;
 
 
 struct GENERATOR_PNS_CHANGES
@@ -51,6 +48,9 @@ public:
 
     void                                      ClearRouterChanges();
     const std::vector<GENERATOR_PNS_CHANGES>& GetRouterChanges();
+
+    /// Use the generator's commit for changes made to existing board items by PNS.
+    void SetRouterCommit( BOARD_COMMIT* aCommit );
 
     /// Returns true if the given board item was created by the router interface during the
     /// current generator edit session

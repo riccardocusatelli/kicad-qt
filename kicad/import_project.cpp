@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -171,6 +167,7 @@ void KICAD_MANAGER_FRAME::ImportNonKiCadProject( const wxString& aWindowTitle,
     else
         importProj.ImportFiles( aSchFileType, aPcbFileType );
 
+    importProj.SaveImportedFiles();
     ReCreateTreePrj();
     m_active_project = true;
 }
@@ -193,6 +190,14 @@ void KICAD_MANAGER_FRAME::OnImportCadstarArchiveFiles( wxCommandEvent& event )
 }
 
 
+void KICAD_MANAGER_FRAME::OnImportPcadProjectFiles( wxCommandEvent& event )
+{
+    ImportNonKiCadProject( _( "Import P-CAD Project Files" ), FILEEXT::PcadFilesWildcard(),
+                           { "sch", "SCH" }, { "pcb", "PCB" }, SCH_IO_MGR::SCH_PCAD,
+                           PCB_IO_MGR::PCAD );
+}
+
+
 void KICAD_MANAGER_FRAME::OnImportEagleFiles( wxCommandEvent& event )
 {
     ImportNonKiCadProject( _( "Import Eagle Project Files" ), FILEEXT::EagleFilesWildcard(), { "sch" },
@@ -209,6 +214,7 @@ void KICAD_MANAGER_FRAME::OnImportEasyEdaFiles( wxCommandEvent& event )
 
 void KICAD_MANAGER_FRAME::OnImportEasyEdaProFiles( wxCommandEvent& event )
 {
+    // Keep a single menu entry and route to v2 or v3 after file selection.
     ImportNonKiCadProject( _( "Import EasyEDA Pro Project" ), FILEEXT::EasyEdaProFileWildcard(), { "INPUT" },
                            { "INPUT" }, SCH_IO_MGR::SCH_EASYEDAPRO, PCB_IO_MGR::EASYEDAPRO );
 }
@@ -227,4 +233,38 @@ void KICAD_MANAGER_FRAME::OnImportGedaFiles( wxCommandEvent& event )
     ImportNonKiCadProject( _( "Import gEDA / Lepton EDA Project Files" ),
                            FILEEXT::GedaProjectFilesWildcard(), { "prj", "sch" }, { "pcb" },
                            SCH_IO_MGR::SCH_GEDA, PCB_IO_MGR::GEDA_PCB );
+}
+
+
+void KICAD_MANAGER_FRAME::OnImportDipTraceFiles( wxCommandEvent& event )
+{
+    ImportNonKiCadProject( _( "Import DipTrace Project Files" ),
+                           FILEEXT::DipTraceFilesWildcard(), { "dch" }, { "dip" },
+                           SCH_IO_MGR::SCH_DIPTRACE, PCB_IO_MGR::DIPTRACE );
+}
+
+
+void KICAD_MANAGER_FRAME::OnImportEasyPcFiles( wxCommandEvent& event )
+{
+    ImportNonKiCadProject( _( "Import Easy-PC / DesignSpark PCB Project Files" ),
+                           FILEEXT::EasyPcFilesWildcard(), { "prj", "sch" }, { "pcb" },
+                           SCH_IO_MGR::SCH_EASYPC, PCB_IO_MGR::EASYPC );
+}
+
+
+void KICAD_MANAGER_FRAME::OnImportTarget3001Files( wxCommandEvent& event )
+{
+    // One project file carries both the schematic and the board
+    ImportNonKiCadProject( _( "Import TARGET 3001! Project" ), FILEEXT::Target3001FilesWildcard(), { "INPUT" },
+                           { "INPUT" }, SCH_IO_MGR::SCH_TARGET3001, PCB_IO_MGR::TARGET3001 );
+}
+
+
+void KICAD_MANAGER_FRAME::OnImportOrcadFiles( wxCommandEvent& event )
+{
+    // OrCAD handler imports .dsn schematic then offers associated Allegro board, so no
+    // PCB extension registered here
+    ImportNonKiCadProject( _( "Import OrCAD Project Files" ),
+                           FILEEXT::OrCadSchematicFilesWildcard(), { "dsn" }, {},
+                           SCH_IO_MGR::SCH_ORCAD, PCB_IO_MGR::FILE_TYPE_NONE );
 }

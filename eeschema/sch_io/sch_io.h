@@ -16,14 +16,15 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef SCH_IO_H_
 #define SCH_IO_H_
 
 #include <io/io_base.h>
+#include <memory>
 #include <sch_io/sch_io_mgr.h>
 #include <import_export.h>
 #include <map>
@@ -94,8 +95,7 @@ public:
      * @param aFileName is the name of the file to use as input and may be foreign in
      *                  nature or native in nature.
      *
-     * @param aKiway is the #KIWAY object used to access the symbol libraries loaded
-     *               by the project.
+     * @param aSchematic is the #SCHEMATIC object to load the schematic into.
      *
      * @param aAppendToMe is an existing #SCH_SHEET to append to, but if NULL then this means
      *                    "do not append, rather load anew".
@@ -115,8 +115,17 @@ public:
      *                 possible.
      */
     virtual SCH_SHEET* LoadSchematicFile( const wxString& aFileName, SCHEMATIC* aSchematic,
-                                          SCH_SHEET*             aAppendToMe = nullptr,
+                                          SCH_SHEET* aAppendToMe = nullptr,
                                           const std::map<std::string, UTF8>* aProperties = nullptr );
+
+    /**
+     * Return the canonical symbol definitions produced by the last LoadSchematicFile().
+     *
+     * An importer implements this so a caller can materialize a project symbol library through
+     * #SYMBOL_IMPORT_RECONCILER instead of the importer writing one itself.  Ownership of the
+     * returned symbols passes to the caller.
+     */
+    virtual std::vector<LIB_SYMBOL*> GetImportedCachedLibrarySymbols();
 
     /**
      * Write \a aSchematic to a storage file in a format that this #SCH_IO implementation
@@ -138,7 +147,7 @@ public:
      *                    tuning arguments that the plugin is known to support.  The caller
      *                    continues to own this object (plugin may not delete it), and plugins
      *                    should expect it to be optionally NULL.  Set the
-     *                    #PropSaveCurrentSheetOnly property to only save the current sheet.
+     *                    \"PropSaveCurrentSheetOnly\" property to only save the current sheet.
      *                    Otherwise, all hierarchical sheets are saved.
      *
      * @throw IO_ERROR if there is a problem saving or exporting.
@@ -169,8 +178,8 @@ public:
     /**
      * Populate a list of #LIB_SYMBOL aliases contained within the library \a aLibraryPath.
      *
-     * @note It is the responsibility of the caller to delete the returned object from the heap.
-     *       Failure to do this will result in memory leaks.
+     * @note The returned #LIB_SYMBOL objects are owned by the plugin's library cache; callers
+     *       must copy them if they need a symbol that outlives the plugin.
      *
      * @param aSymbolList is an array to populate with the #LIB_SYMBOL pointers associated with
      *                    the library.
@@ -244,8 +253,9 @@ public:
      * @param aLibraryPath is a locator for the "library", usually a directory, file,
      *                     or URL containing several symbols.
      *
-     * @param aSymbol is what to store in the library.  The library is refreshed and the
-     *                caller must update any #LIB_SYMBOL pointers that may have changed.
+     * @param aSymbol is what to store in the library. Ownership is transferred to the plugin,
+     *                which may retain or destroy the symbol: the caller must not use it after
+     *                this call.
      *
      * @param aProperties is an associative array that can be used to tell the
      *                    saver how to save the symbol, because it can take any number of
@@ -255,7 +265,7 @@ public:
      *
      * @throw IO_ERROR if there is a problem saving.
      */
-    virtual void SaveSymbol( const wxString& aLibraryPath, const LIB_SYMBOL* aSymbol,
+    virtual void SaveSymbol( const wxString& aLibraryPath, std::unique_ptr<LIB_SYMBOL> aSymbol,
                              const std::map<std::string, UTF8>* aProperties = nullptr );
 
     /**

@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PCB_FIELD_H
@@ -41,6 +37,8 @@ public:
     PCB_FIELD( FOOTPRINT* aParent, FIELD_T aFieldId, const wxString& aName = wxEmptyString );
 
     PCB_FIELD( const PCB_TEXT& aText, FIELD_T aFieldId, const wxString& aName = wxEmptyString );
+
+    PCB_FIELD( const PCB_FIELD& aField );
 
     void Serialize( google::protobuf::Any &aContainer ) const override;
     bool Deserialize( const google::protobuf::Any &aContainer ) override;
@@ -79,6 +77,8 @@ public:
     bool IsValue() const { return m_id == FIELD_T::VALUE; }
     bool IsDatasheet() const { return m_id == FIELD_T::DATASHEET; }
     bool IsComponentClass() const { return GetName() == wxT( "Component Class" ); }
+    bool IsPrivate() const { return m_private; }
+    void SetPrivate( bool aPrivate ) { m_private = aPrivate; }
 
     bool IsMandatory() const;
 
@@ -110,12 +110,13 @@ public:
     wxString GetName( bool aUseDefaultName = true ) const;
 
     /**
-     * Get a non-language-specific name for a field which can be used for storage, variable
-     * look-up, etc.
+     * Get the untranslated field name for storage, variable look-up, etc.
      */
-    wxString GetCanonicalName() const;
+    wxString GetUntranslatedName() const;
 
-    wxString GetShownText( bool aAllowExtraText, int aDepth = 0 ) const override;
+    wxString GetShownText( RESOLUTION_CONTEXT aContext, int aDepth = 0 ) const override;
+    wxString GetShownText( const wxString& aVariantName, RESOLUTION_CONTEXT aContext,
+                           int aDepth = 0 ) const;
 
     void SetName( const wxString& aName ) { m_name = aName; }
 
@@ -125,9 +126,9 @@ public:
     {
         return IsMandatory() ? (int) m_id : m_ordinal;
     }
-    void SetOrdinal( int aOrdinal )
+    void SetOrdinal( int aOrdinal, FIELD_T aType )
     {
-        m_id = FIELD_T::USER;
+        m_id = aType;
         m_ordinal = aOrdinal;
     }
 
@@ -146,6 +147,7 @@ private:
     FIELD_T  m_id;           ///< Field id, @see enum FIELD_T
     int      m_ordinal;      ///< Sort order for non-mandatory fields
     wxString m_name;
+    bool     m_private = false; ///< Not fully implemented yet, used in the fields data model
 };
 
 #endif

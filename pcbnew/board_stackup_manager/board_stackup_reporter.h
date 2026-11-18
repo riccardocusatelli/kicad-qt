@@ -2,6 +2,7 @@
  * This program source code file is part of KiCad, a free EDA CAD application.
  *
  * Copyright (C) 2019 Jean-Pierre Charras, jp.charras at wanadoo.fr
+ * Copyright (C) 2026 Krishna Swaroop <krishna.swaroop@pixxel.co.in>
  * Copyright The KiCad Developers, see AUTHORS.txt for contributors.
  *
  * This program is free software; you can redistribute it and/or
@@ -15,14 +16,10 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
- /**
+/**
   * @file board_stackup_reporter.h
   */
 #ifndef BOARD_STACKUP_REPORTER_H
@@ -32,6 +29,23 @@
 
 class BOARD_STACKUP;
 
+/**
+ * Options controlling which stackup fields are included in CSV exports.
+ */
+struct STACKUP_CSV_OPTIONS
+{
+    bool includeColor = true;
+    bool includeMaterial = true;
+    bool includeThickness = true;
+    bool includeEpsilonR = true;
+    bool includeLossTangent = true;
+    bool includeFinish = true;
+    bool includeBoardOptions = true;
+};
+
 wxString BuildStackupReport( BOARD_STACKUP& aStackup, EDA_UNITS aUnits );
 
-#endif      // #ifndef BOARD_STACKUP_REPORTER_H
+wxString BuildStackupCsv( BOARD_STACKUP& aStackup, EDA_UNITS aUnits,
+                          const STACKUP_CSV_OPTIONS& aOptions = STACKUP_CSV_OPTIONS() );
+
+#endif // #ifndef BOARD_STACKUP_REPORTER_H

@@ -15,11 +15,7 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, you may find one here:
-# http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-# or you may search the http://www.gnu.org website for the version 2 license,
-# or you may write to the Free Software Foundation, Inc.,
-# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 find_package(Boost COMPONENTS unit_test_framework REQUIRED)
 find_package( wxWidgets 3.0.0 COMPONENTS gl aui adv html core net base xml stc REQUIRED )
@@ -30,6 +26,8 @@ add_compile_definitions( BOOST_TEST_DYN_LINK PCBNEW DRC_PROTO TEST_APP_NO_MAIN)
 add_executable( drc_proto
     drc_proto_test.cpp
     drc_proto.cpp
+    ../../../pcbnew/net_chain_bridging.cpp
+    ../../../pcbnew/drc/drc_creepage_engine.cpp
     ../../../pcbnew/drc/drc_creepage_utils.cpp
     ../../../pcbnew/drc/drc_rule.cpp
     ../../../pcbnew/drc/drc_rule_condition.cpp
@@ -53,6 +51,7 @@ add_executable( drc_proto
     ../../../pcbnew/drc/drc_test_provider_silk_clearance.cpp
     ../../../pcbnew/drc/drc_test_provider_matched_length.cpp
     ../../../pcbnew/drc/drc_test_provider_diff_pair_coupling.cpp
+    ../../../pcbnew/drc/drc_chain_topology.cpp
     ../../../pcbnew/drc/drc_engine.cpp
     ../../../pcbnew/drc/drc_item.cpp
     ../../qa_utils/mocks.cpp
@@ -99,11 +98,9 @@ target_link_libraries( drc_proto
     tinyspline_lib
     nanosvg
     markdown_lib
-    idf3
     Boost::headers
     ${PCBNEW_IO_LIBRARIES}
     ${wxWidgets_LIBRARIES}
     ${GDI_PLUS_LIBRARIES}
-    ${PYTHON_LIBRARIES}
     ${PCBNEW_EXTRA_LIBS}    # -lrt must follow Boost
 )

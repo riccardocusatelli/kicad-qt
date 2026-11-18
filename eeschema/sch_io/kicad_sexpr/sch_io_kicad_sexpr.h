@@ -16,8 +16,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef SCH_IO_KICAD_SEXPR_H_
@@ -122,7 +122,7 @@ public:
                              const std::map<std::string, UTF8>*         aProperties = nullptr ) override;
     LIB_SYMBOL* LoadSymbol( const wxString& aLibraryPath, const wxString& aAliasName,
                             const std::map<std::string, UTF8>* aProperties = nullptr ) override;
-    void SaveSymbol( const wxString& aLibraryPath, const LIB_SYMBOL* aSymbol,
+    void SaveSymbol( const wxString& aLibraryPath, std::unique_ptr<LIB_SYMBOL> aSymbol,
                      const std::map<std::string, UTF8>* aProperties = nullptr ) override;
     void DeleteSymbol( const wxString& aLibraryPath, const wxString& aSymbolName,
                        const std::map<std::string, UTF8>* aProperties = nullptr ) override;
@@ -136,6 +136,8 @@ public:
     bool CanReadLibrary( const wxString& aLibraryPath ) const override;
 
     bool IsLibraryWritable( const wxString& aLibraryPath ) override;
+
+    void LeakCacheAtExit() override { m_leakCacheAtExit = true; }
 
     void GetAvailableSymbolFields( std::vector<wxString>& aNames ) override;
     void GetDefaultSymbolFields( std::vector<wxString>& aNames ) override;
@@ -189,6 +191,7 @@ protected:
     SCHEMATIC*              m_schematic = nullptr;  ///< init() reads this before assigning it.
     OUTPUTFORMATTER*        m_out;              ///< The formatter for saving SCH_SCREEN objects.
     SCH_IO_KICAD_SEXPR_LIB_CACHE* m_cache;
+    bool                    m_leakCacheAtExit = false;
 
     /// initialize PLUGIN like a constructor would.
     void init( SCHEMATIC* aSchematic, const std::map<std::string, UTF8>* aProperties = nullptr );

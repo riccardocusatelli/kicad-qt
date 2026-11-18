@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <cctype>
@@ -82,8 +78,8 @@ public:
 class HK_PROMPT_DIALOG : public DIALOG_SHIM
 {
 public:
-    HK_PROMPT_DIALOG( wxWindow* aParent, wxWindowID aId, const wxString& aTitle,
-                      const wxString& aName, const wxString& aCurrentKey ) :
+    HK_PROMPT_DIALOG( wxWindow* aParent, wxWindowID aId, const wxString& aTitle, const wxString& aName,
+                      const wxString& aCurrentKey ) :
             DIALOG_SHIM( aParent, aId, aTitle, wxDefaultPosition, wxDefaultSize )
     {
         wxBoxSizer* mainSizer = new wxBoxSizer( wxVERTICAL );
@@ -99,8 +95,7 @@ public:
          * key_label_0      key_label_1         /
          */
 
-        wxStaticText* inst_label = new wxStaticText( this, wxID_ANY, wxEmptyString,
-                                                     wxDefaultPosition, wxDefaultSize,
+        wxStaticText* inst_label = new wxStaticText( this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize,
                                                      wxALIGN_CENTRE_HORIZONTAL );
 
         inst_label->SetLabelText( _( "Press a new hotkey, or press Esc to cancel..." ) );
@@ -153,8 +148,7 @@ public:
         SetInitialFocus( panelDisplayCurrent );
     }
 
-    static std::optional<long> PromptForKey( wxWindow* aParent, const wxString& aName,
-                                             const wxString& aCurrentKey )
+    static std::optional<long> PromptForKey( wxWindow* aParent, const wxString& aName, const wxString& aCurrentKey )
     {
         HK_PROMPT_DIALOG dialog( aParent, wxID_ANY, _( "Set Hotkey" ), aName, aCurrentKey );
 
@@ -345,20 +339,37 @@ void WIDGET_HOTKEY_LIST::updateFromClientData()
 
 void WIDGET_HOTKEY_LIST::changeHotkey( HOTKEY& aHotkey, long aKey, bool alternate )
 {
+    int& keycode = alternate ? aHotkey.m_EditKeycodeAlt : aHotkey.m_EditKeycode;
+
+    if( keycode == aKey )
+        return;
+
+    if( aKey == 0 )
+    {
+        keycode = 0;
+        return;
+    }
+
     // See if this key code is handled in hotkeys names list
     bool exists;
     KeyNameFromKeyCode( aKey, &exists );
 
-    if( exists && aHotkey.m_EditKeycode != aKey )
-    {
-        if( aKey == 0 || resolveKeyConflicts( aHotkey.m_Actions[ 0 ], aKey ) )
-        {
-            if( alternate )
-                aHotkey.m_EditKeycodeAlt = aKey;
-            else
-                aHotkey.m_EditKeycode = aKey;
-        }
-    }
+    if( exists && resolveKeyConflicts( aHotkey.m_Actions[0], aKey ) )
+        keycode = aKey;
+}
+
+
+bool WIDGET_HOTKEY_LIST::IsReservedHotkey( long aKey, wxString* aKeyName ) const
+{
+    auto it = m_reservedHotkeys.find( aKey );
+
+    if( it == m_reservedHotkeys.end() )
+        return false;
+
+    if( aKeyName )
+        *aKeyName = it->second;
+
+    return true;
 }
 
 
@@ -378,13 +389,12 @@ void WIDGET_HOTKEY_LIST::editItem( wxTreeListItem aItem, int aEditId )
     // An empty optional means don't change the key
     if( key.has_value() )
     {
-        auto it = m_reservedHotkeys.find( key.value() );
+        wxString reservedKeyName;
 
-        if( it != m_reservedHotkeys.end() )
+        if( IsReservedHotkey( key.value(), &reservedKeyName ) )
         {
-            wxString msg = wxString::Format( _( "'%s' is a reserved hotkey in KiCad and cannot "
-                                                "be assigned." ),
-                                             it->second );
+            wxString msg = wxString::Format( _( "'%s' is a reserved hotkey in KiCad and cannot be assigned." ),
+                                             reservedKeyName );
 
             DisplayErrorMessage( this, msg );
             return;
@@ -408,7 +418,7 @@ void WIDGET_HOTKEY_LIST::resetItem( wxTreeListItem aItem, int aResetId )
     if( aResetId == ID_RESET )
     {
         changeHotkey( changed_hk, changed_hk.m_Actions[0]->GetHotKey(), false );
-        changeHotkey( changed_hk, changed_hk.m_Actions[0]->GetHotKey(), true );
+        changeHotkey( changed_hk, changed_hk.m_Actions[0]->GetHotKeyAlt(), true );
     }
     else if( aResetId == ID_CLEAR )
     {
@@ -447,11 +457,11 @@ void WIDGET_HOTKEY_LIST::onContextMenu( wxTreeListEvent& aEvent )
     if( hkdata )
     {
         menu.Append( ID_EDIT_HOTKEY, _( "Edit..." ) );
-        menu.Append( ID_EDIT_ALT, _( "Edit Alternate..." ) );
-        menu.Append( ID_RESET, _( "Undo Changes" ) );
-        menu.Append( ID_CLEAR, _( "Clear Assigned Hotkey" ) );
-        menu.Append( ID_CLEAR_ALT, _( "Clear Assigned Alternate" ) );
-        menu.Append( ID_DEFAULT, _( "Restore Defaults" ) );
+        menu.Append( ID_EDIT_ALT,    _( "Edit Alternate..." ) );
+        menu.Append( ID_RESET,       _( "Undo Changes" ) );
+        menu.Append( ID_CLEAR,       _( "Clear Assigned Hotkey" ) );
+        menu.Append( ID_CLEAR_ALT,   _( "Clear Assigned Alternate" ) );
+        menu.Append( ID_DEFAULT,     _( "Restore Defaults" ) );
         menu.Append( wxID_SEPARATOR );
 
         PopupMenu( &menu );
@@ -509,9 +519,9 @@ bool WIDGET_HOTKEY_LIST::resolveKeyConflicts( TOOL_ACTION* aAction, long aKey )
         return true;
 
     TOOL_ACTION* conflictingAction = conflictingHotKey->m_Actions[ 0 ];
-    wxString     msg = wxString::Format( _( "'%s' is already assigned to '%s' in section '%s'. "
-                                                "Both bindings are kept, but only one runs per key "
-                                                "press. Continue?" ),
+    wxString     msg = wxString::Format( _( "'%s' is already assigned to '%s' in section '%s'.  Both "
+                                            "bindings will be kept, but only one will run per key press.  "
+                                            "Continue?" ),
                                          KeyNameFromKeyCode( aKey ), conflictingAction->GetFriendlyName(),
                                          HOTKEY_STORE::GetSectionName( conflictingAction ) );
 

@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
@@ -31,6 +27,7 @@
 #include <core/ignore.h>
 #include <kiway.h>
 #include <pgm_base.h>
+#include <lib_symbol.h>
 #include <sch_io/sch_io.h>
 #include <schematic.h>
 #include <sch_sheet.h>
@@ -40,10 +37,13 @@
 #include <sch_label.h>
 #include <sch_line.h>
 #include <sch_sheet_path.h>
+#include <connection_graph.h>
+#include <sch_connection.h>
 #include <settings/settings_manager.h>
 #include <wildcards_and_files_ext.h>
 #include <wx/filename.h>
 #include <wx/stdpaths.h>
+#include <wx/utils.h>
 #include <libraries/library_manager.h>
 
 /**
@@ -288,13 +288,13 @@ BOOST_AUTO_TEST_CASE( LabelsRemainGlobalForFlatNamespace )
 
 
 /**
- * Verify that the Eagle "@<tag>" linking hint on a pin name is stripped from the displayed
- * pin name while still resolving the device <connect> mapping correctly.
+ * Verify that the Eagle "\<tag\>" linking hint on a pin name is stripped from the displayed
+ * pin name while still resolving the device \<connect\> mapping correctly.
  *
  * Regression test for issue #24483: Eagle disambiguates duplicate pin names within a symbol
- * with a trailing "@<tag>" (e.g. "IN@1", "IN@2", "NC@3").  This tag is metadata used only to
- * link pins to pads via <connect>; it should not appear as visible pin text.  The importer
- * was setting the raw Eagle name as the KiCad pin name, leaking "@1"/"@2"/"@3" into the
+ * with a trailing "\<tag>" (e.g. "IN\@1", "IN\@2", "NC\@3").  This tag is metadata used only to
+ * link pins to pads via \<connect\>; it should not appear as visible pin text.  The importer
+ * was setting the raw Eagle name as the KiCad pin name, leaking "\@1"/"\@2"/"\@3" into the
  * schematic.
  */
 BOOST_AUTO_TEST_CASE( PinNameTagStripped )
@@ -451,4 +451,360 @@ BOOST_AUTO_TEST_CASE( DetachedLabelProjectsOntoWire )
     BOOST_CHECK_MESSAGE( std::abs( offsetMM - 10.0 ) < 1.0,
                          "Label projected to " << offsetMM
                                                << " mm from the wire's left end, expected 10 mm" );
+}
+
+
+// issue 24829 dropped net labels under the raw netbuslabel element name
+// and lost symbols whose variant ordinal above 127 sign-extended negative
+BOOST_AUTO_TEST_CASE( BinaryNetLabelAndHighVariantImported )
+{
+    const wxFileName eagleFn = getEagleTestSchematic( "issue24829_brenner.sch" );
+    BOOST_REQUIRE( wxFileExists( eagleFn.GetFullPath() ) );
+
+    std::unique_ptr<SCHEMATIC> schematic;
+    loadEagleSchematic( eagleFn, wxS( "eagle_brenner_24829" ), schematic );
+
+    int symbolCount = 0;
+    SCH_SYMBOL* c4 = nullptr;
+    SCH_LABEL_BASE* vssLabel = nullptr;
+
+    for( const SCH_SHEET_PATH& sheetPath : schematic->BuildSheetListSortedByPageNumbers() )
+    {
+        SCH_SCREEN* screen = sheetPath.LastScreen();
+
+        if( !screen )
+            continue;
+
+        for( SCH_ITEM* item : screen->Items() )
+        {
+            if( item->Type() == SCH_LABEL_T || item->Type() == SCH_GLOBAL_LABEL_T
+                || item->Type() == SCH_HIER_LABEL_T )
+            {
+                SCH_LABEL_BASE* label = static_cast<SCH_LABEL_BASE*>( item );
+
+                if( label->GetText() == wxS( "VSS" ) )
+                    vssLabel = label;
+            }
+            else if( item->Type() == SCH_SYMBOL_T )
+            {
+                ++symbolCount;
+                SCH_SYMBOL* sym = static_cast<SCH_SYMBOL*>( item );
+
+                if( sym->GetField( FIELD_T::REFERENCE )->GetText() == wxS( "C4" ) )
+                    c4 = sym;
+            }
+        }
+    }
+
+    // placed net label on VSS, previously dropped entirely; a dropped one comes back as a generated 40 mil label
+    BOOST_REQUIRE_MESSAGE( vssLabel, "VSS net label was not imported" );
+    BOOST_CHECK_NE( vssLabel->GetTextSize().x, schIUScale.MilsToIU( 40 ) );
+
+    // 36 placed instances, C4 is CPOL-EU with variant ordinal 131
+    BOOST_CHECK_EQUAL( symbolCount, 36 );
+    BOOST_REQUIRE_MESSAGE( c4, "CPOL-EU symbol C4 (variant ordinal 131) was not imported" );
+    BOOST_CHECK( c4->GetLibSymbolRef() != nullptr );
+}
+
+
+// a lone wired segment of an Eagle-generated N$ net needs no label, so every N$ label joins at least two places
+BOOST_AUTO_TEST_CASE( AutoNamedNetsLabelledOnlyWhenJoinedByName )
+{
+    const wxFileName eagleFn = getEagleTestSchematic( "issue24829_brenner.sch" );
+    BOOST_REQUIRE( wxFileExists( eagleFn.GetFullPath() ) );
+
+    std::unique_ptr<SCHEMATIC> schematic;
+    loadEagleSchematic( eagleFn, wxS( "eagle_auto_net_labels" ), schematic );
+
+    std::map<wxString, int> autoLabelCounts;
+
+    for( const SCH_SHEET_PATH& sheetPath : schematic->BuildSheetListSortedByPageNumbers() )
+    {
+        SCH_SCREEN* screen = sheetPath.LastScreen();
+
+        if( !screen )
+            continue;
+
+        for( SCH_ITEM* item : screen->Items().OfType( SCH_GLOBAL_LABEL_T ) )
+        {
+            const wxString& text = static_cast<SCH_LABEL_BASE*>( item )->GetText();
+
+            if( text.StartsWith( wxS( "N$" ) ) )
+                autoLabelCounts[text]++;
+        }
+    }
+
+    for( const auto& [text, count] : autoLabelCounts )
+        BOOST_CHECK_MESSAGE( count > 1, text << " labels a lone wired segment" );
+}
+
+
+/**
+ * An Eagle ">NAME"/">VALUE" text only says where and how a field is drawn, so it must not
+ * replace the reference prefix that the deviceset declares
+ */
+BOOST_AUTO_TEST_CASE( LibrarySymbolFieldsKeepTheirText )
+{
+    const wxFileName eagleFn = getEagleTestSchematic( "issue24829_brenner.sch" );
+    BOOST_REQUIRE( wxFileExists( eagleFn.GetFullPath() ) );
+
+    std::unique_ptr<SCHEMATIC> schematic;
+    loadEagleSchematic( eagleFn, wxS( "eagle_field_text" ), schematic );
+
+    std::map<wxString, LIB_SYMBOL*> libSymbolByRef;
+
+    for( const SCH_SHEET_PATH& sheetPath : schematic->BuildSheetListSortedByPageNumbers() )
+    {
+        SCH_SCREEN* screen = sheetPath.LastScreen();
+
+        if( !screen )
+            continue;
+
+        for( SCH_ITEM* item : screen->Items().OfType( SCH_SYMBOL_T ) )
+        {
+            SCH_SYMBOL* sym = static_cast<SCH_SYMBOL*>( item );
+
+            if( sym->GetLibSymbolRef() )
+                libSymbolByRef[sym->GetField( FIELD_T::REFERENCE )->GetText()] = sym->GetLibSymbolRef().get();
+        }
+    }
+
+    BOOST_REQUIRE_GT( libSymbolByRef.size(), 0 );
+
+    int prefixCount = 0;
+
+    for( const auto& [ref, libSymbol] : libSymbolByRef )
+    {
+        const wxString libRef = libSymbol->GetReferenceField().GetText();
+        const wxString libValue = libSymbol->GetValueField().GetText();
+
+        BOOST_CHECK_MESSAGE( !libRef.Contains( wxS( "${" ) ),
+                             ref.ToStdString() << " library reference prefix is '"
+                             << libRef.ToStdString() << "'" );
+        BOOST_CHECK_MESSAGE( !libValue.Contains( wxS( "${" ) ),
+                             ref.ToStdString() << " library value is '"
+                             << libValue.ToStdString() << "'" );
+
+        // A deviceset can declare no prefix, which correctly leaves the field empty
+        if( libRef.IsEmpty() )
+            continue;
+
+        // Eagle names each part from the deviceset prefix and a number
+        wxString expectedPrefix = ref;
+
+        while( !expectedPrefix.IsEmpty() && wxIsdigit( expectedPrefix.Last() ) )
+            expectedPrefix.RemoveLast();
+
+        BOOST_CHECK_MESSAGE( libRef == expectedPrefix,
+                             ref.ToStdString() << " library reference prefix is '"
+                             << libRef.ToStdString() << "', expected '"
+                             << expectedPrefix.ToStdString() << "'" );
+
+        ++prefixCount;
+    }
+
+    // Keep the prefix check from becoming vacuous if the fields come back empty
+    BOOST_CHECK_GT( prefixCount, 30 );
+}
+
+
+// A binary schematic's free-text blob can pass 32 KiB, and losing it drops every package name
+BOOST_AUTO_TEST_CASE( BinaryLargeFreeTextKeepsPackages )
+{
+    wxString corpus;
+
+    if( !wxGetEnv( wxS( "KICAD_IMPORT_CORPUS" ), &corpus ) )
+    {
+        BOOST_TEST_MESSAGE( "KICAD_IMPORT_CORPUS is not set" );
+        return;
+    }
+
+    const wxFileName eagleFn( corpus + wxS( "/Other/OLINUXINO/HARDWARE/A20-OLinuXino-MICRO/2. Older hardware "
+                                            "revisions/Hardware revision L1/T2-OLINUXINO-MICRO_Rev_L1.sch" ) );
+
+    if( !eagleFn.FileExists() )
+    {
+        BOOST_TEST_MESSAGE( "T2-OLINUXINO-MICRO_Rev_L1.sch is not in KICAD_IMPORT_CORPUS" );
+        return;
+    }
+
+    std::unique_ptr<SCHEMATIC> schematic;
+    loadEagleSchematic( eagleFn, wxS( "eagle_large_free_text" ), schematic );
+
+    SCH_SYMBOL* c1 = nullptr;
+
+    for( const SCH_SHEET_PATH& sheetPath : schematic->BuildSheetListSortedByPageNumbers() )
+    {
+        for( SCH_ITEM* item : sheetPath.LastScreen()->Items().OfType( SCH_SYMBOL_T ) )
+        {
+            SCH_SYMBOL* sym = static_cast<SCH_SYMBOL*>( item );
+
+            if( sym->GetField( FIELD_T::REFERENCE )->GetText() == wxS( "C1" ) )
+                c1 = sym;
+        }
+    }
+
+    BOOST_REQUIRE( c1 );
+    BOOST_CHECK( !c1->GetField( FIELD_T::FOOTPRINT )->GetText().IsEmpty() );
+}
+
+
+BOOST_AUTO_TEST_CASE( BinaryBusNamesKeepLongStringsAligned )
+{
+    wxString corpus;
+
+    if( !wxGetEnv( wxS( "KICAD_IMPORT_CORPUS" ), &corpus ) )
+    {
+        BOOST_TEST_MESSAGE( "KICAD_IMPORT_CORPUS is not set" );
+        return;
+    }
+
+    const wxFileName eagleFn( corpus + wxS( "/Other/OLINUXINO/HARDWARE/A20-OLinuXino-LIME2/2. Older hardware "
+                                            "revisions/A20-OLinuXino-LIME2 hardware revision G2/"
+                                            "A20-OLinuXino-Lime2_Rev_G2.sch" ) );
+
+    if( !eagleFn.FileExists() )
+    {
+        BOOST_TEST_MESSAGE( "A20-OLinuXino-Lime2_Rev_G2.sch is not in KICAD_IMPORT_CORPUS" );
+        return;
+    }
+
+    std::unique_ptr<SCHEMATIC> schematic;
+    loadEagleSchematic( eagleFn, wxS( "eagle_bus_names" ), schematic );
+
+    int symbols = 0;
+
+    for( const SCH_SHEET_PATH& sheetPath : schematic->BuildSheetListSortedByPageNumbers() )
+    {
+        for( SCH_ITEM* item : sheetPath.LastScreen()->Items().OfType( SCH_SYMBOL_T ) )
+        {
+            SCH_SYMBOL* sym = static_cast<SCH_SYMBOL*>( item );
+
+            // Missing bus names shift the strings so GND supplies take a capacitor value
+            BOOST_CHECK_MESSAGE( !sym->GetField( FIELD_T::REFERENCE )->GetText().Contains( wxS( "22uF" ) ),
+                                 sym->GetField( FIELD_T::REFERENCE )->GetText() );
+            symbols++;
+        }
+    }
+
+    BOOST_CHECK_GT( symbols, 0 );
+}
+
+
+BOOST_AUTO_TEST_CASE( BinaryLongStringsFollowRecordOrder )
+{
+    wxString corpus;
+
+    if( !wxGetEnv( wxS( "KICAD_IMPORT_CORPUS" ), &corpus ) )
+    {
+        BOOST_TEST_MESSAGE( "KICAD_IMPORT_CORPUS is not set" );
+        return;
+    }
+
+    const wxFileName eagleFn( corpus + wxS( "/Other/OLINUXINO/HARDWARE/A20-OLinuXino-LIME2/2. Older hardware "
+                                            "revisions/A20-OLinuXino-LIME2 hardware revision K2/"
+                                            "A20-OLinuXino-Lime2_Rev_K2.sch" ) );
+
+    if( !eagleFn.FileExists() )
+    {
+        BOOST_TEST_MESSAGE( "A20-OLinuXino-Lime2_Rev_K2.sch is not in KICAD_IMPORT_CORPUS" );
+        return;
+    }
+
+    std::unique_ptr<SCHEMATIC> schematic;
+    loadEagleSchematic( eagleFn, wxS( "eagle_long_string_order" ), schematic );
+
+    SCH_SYMBOL* led = nullptr;
+
+    for( const SCH_SHEET_PATH& sheetPath : schematic->BuildSheetListSortedByPageNumbers() )
+    {
+        for( SCH_ITEM* item : sheetPath.LastScreen()->Items().OfType( SCH_SYMBOL_T ) )
+        {
+            SCH_SYMBOL* sym = static_cast<SCH_SYMBOL*>( item );
+
+            if( sym->GetField( FIELD_T::VALUE )->GetText() == wxS( "LED/RED/0603" ) )
+                led = sym;
+        }
+    }
+
+    // The blob holds a part's long value before its long name
+    BOOST_REQUIRE( led );
+    BOOST_CHECK( led->GetField( FIELD_T::REFERENCE )->GetText().StartsWith( wxS( "PWR_LED" ) ) );
+}
+
+
+// Name of the net a symbol pin sits on, after the connection graph has been built
+static wxString eagleNetOf( const SCH_SHEET_LIST& aSheets, const wxString& aRef, const wxString& aPinNumber )
+{
+    for( const SCH_SHEET_PATH& sheetPath : aSheets )
+    {
+        for( SCH_ITEM* item : sheetPath.LastScreen()->Items().OfType( SCH_SYMBOL_T ) )
+        {
+            SCH_SYMBOL* symbol = static_cast<SCH_SYMBOL*>( item );
+
+            if( symbol->GetRef( &sheetPath ) != aRef )
+                continue;
+
+            for( SCH_PIN* pin : symbol->GetPins( &sheetPath ) )
+            {
+                if( pin->GetNumber() == aPinNumber && pin->Connection( &sheetPath ) )
+                    return pin->Connection( &sheetPath )->Name();
+            }
+        }
+    }
+
+    BOOST_ERROR( "pin has no connection" );
+
+    return wxString();
+}
+
+
+// a wire end of one Eagle net landing mid-wire on another must not merge the two nets in KiCad
+BOOST_AUTO_TEST_CASE( TouchingWireEndsKeepNetsSeparate )
+{
+    const wxFileName eagleFn = getEagleTestSchematic( "issue24829_brenner.sch" );
+    BOOST_REQUIRE( wxFileExists( eagleFn.GetFullPath() ) );
+
+    std::unique_ptr<SCHEMATIC> schematic;
+    loadEagleSchematic( eagleFn, wxS( "eagle_touching_nets" ), schematic );
+
+    // The editor joins a wire end lying on another wire the same way when it cleans up after import
+    schematic->FixupJunctionsAfterImport();
+
+    const SCH_SHEET_LIST sheets = schematic->BuildSheetListSortedByPageNumbers();
+    schematic->ConnectionGraph()->Recalculate( sheets, true );
+
+    auto netOf = [&]( const wxString& aRef, const wxString& aPinNumber )
+    {
+        return eagleNetOf( sheets, aRef, aPinNumber );
+    };
+
+    BOOST_CHECK_EQUAL( netOf( wxS( "R13" ), wxS( "1" ) ), wxString( wxS( "VPP_8_14_18" ) ) );
+    BOOST_CHECK_EQUAL( netOf( wxS( "IC1" ), wxS( "7" ) ), wxString( wxS( "VPP_8_14_18" ) ) );
+    BOOST_CHECK_EQUAL( netOf( wxS( "Q5" ), wxS( "E" ) ), wxString( wxS( "VDD" ) ) );
+}
+
+
+// a pin lying on a wire of another Eagle net must not join the two nets in KiCad
+BOOST_AUTO_TEST_CASE( WireOverForeignPinKeepsNetsSeparate )
+{
+    const wxFileName eagleFn = getEagleTestSchematic( "issue26039_wire_over_pin.sch" );
+    BOOST_REQUIRE( wxFileExists( eagleFn.GetFullPath() ) );
+
+    std::unique_ptr<SCHEMATIC> schematic;
+    loadEagleSchematic( eagleFn, wxS( "eagle_wire_over_pin" ), schematic );
+
+    schematic->FixupJunctionsAfterImport();
+
+    const SCH_SHEET_LIST sheets = schematic->BuildSheetListSortedByPageNumbers();
+    schematic->ConnectionGraph()->Recalculate( sheets, true );
+
+    // R1.2 ends one wire on the wire running R3 to R4, R5.1 ends one on the wire running R7 to R8
+    BOOST_CHECK_EQUAL( eagleNetOf( sheets, wxS( "R1" ), wxS( "2" ) ), eagleNetOf( sheets, wxS( "R2" ), wxS( "1" ) ) );
+    BOOST_CHECK_EQUAL( eagleNetOf( sheets, wxS( "R3" ), wxS( "1" ) ), eagleNetOf( sheets, wxS( "R4" ), wxS( "2" ) ) );
+    BOOST_CHECK_NE( eagleNetOf( sheets, wxS( "R1" ), wxS( "2" ) ), eagleNetOf( sheets, wxS( "R3" ), wxS( "1" ) ) );
+
+    BOOST_CHECK_EQUAL( eagleNetOf( sheets, wxS( "R5" ), wxS( "1" ) ), eagleNetOf( sheets, wxS( "R6" ), wxS( "2" ) ) );
+    BOOST_CHECK_EQUAL( eagleNetOf( sheets, wxS( "R7" ), wxS( "1" ) ), eagleNetOf( sheets, wxS( "R8" ), wxS( "2" ) ) );
+    BOOST_CHECK_NE( eagleNetOf( sheets, wxS( "R5" ), wxS( "1" ) ), eagleNetOf( sheets, wxS( "R7" ), wxS( "1" ) ) );
 }

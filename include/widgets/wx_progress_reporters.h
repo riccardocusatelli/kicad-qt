@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef WX_PROGRESS_REPORTERS_H
@@ -67,7 +63,8 @@ public:
      *   of a virtual zone fills 0 to 1/n progress bar full size of the nth virtual zone index
      * @param aCanAbort indicates if the Cancel button should be shown
      * @param aReserveSpaceForMessage will ensure that the dialog is laid out for status messages,
-     *        preventing layout issues on Windows when reporting a message after the initial layout
+     *        preventing layout issues on Windows when reporting a message after the initial layout.
+     *        Will also cause the messages to be ellipsized.
      */
     WX_PROGRESS_REPORTER( wxWindow* aParent, const wxString& aTitle, int aNumPhases, int aCanAbort,
                           bool aReserveSpaceForMessage = true );
@@ -91,6 +88,8 @@ public:
         WX_PROGRESS_REPORTER_BASE::Show( aVisible );
     }
 
+    void SetIndeterminate( bool aIndeterminate ) override { m_indeterminate.store( aIndeterminate ); }
+
     ///< Gate expensive dialog work while always allowing the final tick.
     static bool shouldRefresh( int aProgress, int aMaxProgress, int aPhase, int aNumPhases,
                                THROTTLE& aThrottle )
@@ -100,16 +99,17 @@ public:
         return finalTick || aThrottle.Ready();
     }
 
-private:
+protected:
     bool updateUI() override;
 
 private:
     wxAppProgressIndicator m_appProgressIndicator;
-    int                    m_messageWidth;
+    bool                   m_reservedSize;
 
     // Rate-limit expensive dialog repaint and event draining.
     THROTTLE               m_updateThrottle;
     std::atomic_bool       m_lastUpdateResult;
+    std::atomic_bool       m_indeterminate;
 };
 
 

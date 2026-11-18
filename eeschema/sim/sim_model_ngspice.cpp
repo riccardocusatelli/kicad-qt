@@ -15,17 +15,13 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "sim/sim_model_ngspice.h"
 
 #include <boost/algorithm/string.hpp>
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <ki_exception.h>
 #include <core/ki_assert.h>
 
@@ -63,7 +59,7 @@ std::vector<std::string> SPICE_GENERATOR_NGSPICE::CurrentNames( const SPICE_ITEM
 
 
 SIM_MODEL_NGSPICE::SIM_MODEL_NGSPICE( TYPE aType ) :
-    SIM_MODEL_SPICE( aType, std::make_unique<SPICE_GENERATOR_NGSPICE>( *this ) )
+        SIM_MODEL_SPICE( aType, std::make_unique<SPICE_GENERATOR_NGSPICE>( *this ) )
 {
     const MODEL_INFO& modelInfo = ModelInfo( getModelType() );
 
@@ -71,8 +67,8 @@ SIM_MODEL_NGSPICE::SIM_MODEL_NGSPICE( TYPE aType ) :
     {
         // For now, only the geometry and flags parameters.
         if( paramInfo.category == SIM_MODEL::PARAM::CATEGORY::PRINCIPAL
-            || paramInfo.category == SIM_MODEL::PARAM::CATEGORY::GEOMETRY
-            || paramInfo.category == SIM_MODEL::PARAM::CATEGORY::FLAGS )
+                || paramInfo.category == SIM_MODEL::PARAM::CATEGORY::GEOMETRY
+                || paramInfo.category == SIM_MODEL::PARAM::CATEGORY::FLAGS )
         {
             AddParam( paramInfo );
         }
@@ -85,7 +81,7 @@ SIM_MODEL_NGSPICE::SIM_MODEL_NGSPICE( TYPE aType ) :
 
 int SIM_MODEL_NGSPICE::doFindParam( const std::string& aParamName ) const
 {
-    for( int ii = 0; ii < (int) GetParamCount(); ++ii )
+    for( int ii = 0; ii < GetParamCount(); ++ii )
     {
         const PARAM& param = GetParam( ii );
 
@@ -94,7 +90,7 @@ int SIM_MODEL_NGSPICE::doFindParam( const std::string& aParamName ) const
     }
 
     // Look for escaped param names as a second pass (as they're less common)
-    for( int ii = 0; ii < (int) GetParamCount(); ++ii )
+    for( int ii = 0; ii < GetParamCount(); ++ii )
     {
         const PARAM& param = GetParam( ii );
 
@@ -121,7 +117,7 @@ void SIM_MODEL_NGSPICE::SetParamFromSpiceCode( const std::string& aParamName,
     // First we try to use the name as is. Note that you can't set instance parameters from this
     // function, it's for ".model" cards, not for instantiations.
 
-    for( int ii = 0; ii < (int) GetParamCount(); ++ii )
+    for( int ii = 0; ii < GetParamCount(); ++ii )
     {
         const PARAM& param = GetParam( ii );
 
@@ -136,7 +132,7 @@ void SIM_MODEL_NGSPICE::SetParamFromSpiceCode( const std::string& aParamName,
     }
 
     // Look for escaped param names as a second pass (as they're less common)
-    for( int ii = 0; ii < (int) GetParamCount(); ++ii )
+    for( int ii = 0; ii < GetParamCount(); ++ii )
     {
         const PARAM& param = GetParam( ii );
 
@@ -164,7 +160,7 @@ void SIM_MODEL_NGSPICE::SetParamFromSpiceCode( const std::string& aParamName,
         {
             // Find an actual parameter with the same id.  Even if the ngspiceParam was
             // superfluous, its alias target might not be.
-            for( int ii = 0; ii < (int) GetParamCount(); ++ii )
+            for( int ii = 0; ii < GetParamCount(); ++ii )
             {
                 const PARAM::INFO& paramInfo = GetParam( ii ).info;
 
@@ -183,7 +179,7 @@ void SIM_MODEL_NGSPICE::SetParamFromSpiceCode( const std::string& aParamName,
     }
 
     if( !canSilentlyIgnoreParam( aParamName ) )
-        THROW_IO_ERROR( wxString::Format( "Unknown simulation model parameter '%s'", aParamName ) );
+        THROW_IO_ERRORF( _( "Unknown simulation model parameter '%s'" ), aParamName );
 }
 
 
@@ -321,28 +317,15 @@ SIM_MODEL_NGSPICE::MODEL_TYPE SIM_MODEL_NGSPICE::getModelType() const
 }
 
 
-static std::mutex                              s_ModelInfoMapMutex;
-static std::unique_ptr<NGSPICE_MODEL_INFO_MAP> s_ModelInfoMap;
-
 const SIM_MODEL_NGSPICE::MODEL_INFO& SIM_MODEL_NGSPICE::ModelInfo( MODEL_TYPE aType )
 {
-    // Because spice netlisting has paralleizing, and we can encounter a first init of
-    // s_ModelInfoMap as a result
-    // Note, we could just init this at the static variable declaration above
-    // or do away with making it a unique_ptr altogether and static decl the map directly
-    // but its a real big boi if you look at what it will contain
-    // so lets avoid pulling it to memory if a user isn't simming
-    if( !s_ModelInfoMap )
-    {
-        std::lock_guard<std::mutex> lock( s_ModelInfoMapMutex );
+    // Lazy first-touch init.  Spice library parsing parallelizes via the thread pool,
+    // so multiple threads can race to construct this; rely on the C++11 thread-safe
+    // function-local static instead of a hand-rolled double-checked unique_ptr.
+    // The map is large, so we still want lazy init when the user never sims.
+    static const NGSPICE_MODEL_INFO_MAP s_ModelInfoMap;
 
-        // Someone else may have filled it in while we were waiting for the lock, so
-        // check it again.
-        if( !s_ModelInfoMap )
-            s_ModelInfoMap = std::make_unique<NGSPICE_MODEL_INFO_MAP>();
-    }
-
-    return s_ModelInfoMap->modelInfos.at( aType );
+    return s_ModelInfoMap.modelInfos.at( aType );
 }
 
 

@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <fmt/format.h>
@@ -65,13 +65,11 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::Load()
         m_libFileName.AssignDir( m_libFileName.GetFullPath() );
 
     if( !isLibraryPathValid() )
-    {
-        THROW_IO_ERROR( wxString::Format( _( "Library '%s' not found." ), m_libFileName.GetFullPath() ) );
-    }
+        THROW_IO_ERRORF( _( "Library '%s' not found." ), m_libFileName.GetFullPath() );
 
     KI_CHECK_RET( m_libFileName.IsAbsolute(),
-                 wxString::Format( "Cannot use relative file paths in sexpr plugin to "
-                                   "open library '%s'.", m_libFileName.GetFullPath() ) );
+                 wxString::Format( wxT( "Cannot use relative file paths in sexpr plugin to open library '%s'." ),
+                                   m_libFileName.GetFullPath() ) );
 
     if( !m_libFileName.IsDir() )
     {
@@ -218,11 +216,10 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::Save( const std::optional<bool>& aOpt )
     // lose all symbols after the error point. See issue #22241.
     if( HasParseError() )
     {
-        THROW_IO_ERROR( wxString::Format(
-                _( "Cannot save library '%s' because it had a parse error during loading.\n\n"
-                   "Saving would permanently lose symbols that could not be loaded.\n"
-                   "Please fix the library file manually before saving." ),
-                m_libFileName.GetFullPath() ) );
+        THROW_IO_ERRORF( _( "Cannot save library '%s' because it had a parse error during loading.\n\n"
+                            "Saving would permanently lose symbols that could not be loaded.\n"
+                            "Please fix the library file manually before saving." ),
+                         m_libFileName.GetFullPath() );
     }
 
     // Write through symlinks, don't replace them.
@@ -272,7 +269,22 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::Save( const std::optional<bool>& aOpt )
         if( !fn.DirExists() )
         {
             if( !fn.Mkdir( wxS_DIR_DEFAULT, wxPATH_MKDIR_FULL ) )
-                THROW_IO_ERROR( wxString::Format( _( "Cannot create symbol library path '%s'." ), fn.GetPath() ) );
+                THROW_IO_ERRORF( _( "Cannot create symbol library path '%s'." ), fn.GetPath() );
+        }
+
+        // Detect renamed symbols whose old source file entries are now orphaned.
+        // Schedule the old files for deletion so they don't linger on disk.
+        for( auto it = m_symbolSourceFiles.begin(); it != m_symbolSourceFiles.end(); )
+        {
+            if( m_symbols.find( it->first ) == m_symbols.end() )
+            {
+                m_pendingFileDeletes.insert( it->second );
+                it = m_symbolSourceFiles.erase( it );
+            }
+            else
+            {
+                ++it;
+            }
         }
 
         // Group symbols by their source file to preserve multi-symbol files
@@ -299,16 +311,17 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::Save( const std::optional<bool>& aOpt )
         }
 
         // Sort each file's symbols by inheritance depth
-        auto sortByInheritance = []( LIB_SYMBOL* aLhs, LIB_SYMBOL* aRhs )
-        {
-            unsigned int lhDepth = aLhs->GetInheritanceDepth();
-            unsigned int rhDepth = aRhs->GetInheritanceDepth();
+        auto sortByInheritance =
+                []( LIB_SYMBOL* aLhs, LIB_SYMBOL* aRhs )
+                {
+                    unsigned int lhDepth = aLhs->GetInheritanceDepth();
+                    unsigned int rhDepth = aRhs->GetInheritanceDepth();
 
-            if( lhDepth == rhDepth )
-                return aLhs->GetName() < aRhs->GetName();
+                    if( lhDepth == rhDepth )
+                        return aLhs->GetName() < aRhs->GetName();
 
-            return lhDepth < rhDepth;
-        };
+                    return lhDepth < rhDepth;
+                };
 
         // Write each file
         for( auto& [ filePath, symbols ] : symbolsByFile )
@@ -415,7 +428,7 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::SaveSymbol( LIB_SYMBOL* aSymbol, OUTPUTFORMAT
             aFormatter.Print( "(pin_numbers (hide yes))" );
 
         if( aSymbol->GetPinNameOffset() != schIUScale.MilsToIU( DEFAULT_PIN_NAME_OFFSET )
-          || !aSymbol->GetShowPinNames() )
+                || !aSymbol->GetShowPinNames() )
         {
             aFormatter.Print( "(pin_names" );
 
@@ -440,17 +453,17 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::SaveSymbol( LIB_SYMBOL* aSymbol, OUTPUTFORMAT
         KICAD_FORMAT::FormatBool( &aFormatter, "duplicate_pin_numbers_are_jumpers",
                                   aSymbol->GetDuplicatePinNumbersAreJumpers() );
 
-        const std::vector<std::set<wxString>>& jumperGroups = aSymbol->JumperPinGroups();
+        const JUMPER_GROUP_SET& jumperGroups = aSymbol->JumperPinGroups();
 
-        if( !jumperGroups.empty() )
+        if( !jumperGroups.IsEmpty() )
         {
             aFormatter.Print( "(jumper_pin_groups" );
 
-            for( const std::set<wxString>& group : jumperGroups )
+            for( const JUMPER_GROUP& group : jumperGroups.GetAll() )
             {
                 aFormatter.Print( "(" );
 
-                for( const wxString& padName : group )
+                for( const wxString& padName : group.GetNames() )
                     aFormatter.Print( "%s ", aFormatter.Quotew( padName ).c_str() );
 
                 aFormatter.Print( ")" );
@@ -479,18 +492,9 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::SaveSymbol( LIB_SYMBOL* aSymbol, OUTPUTFORMAT
 
         saveDcmInfoAsFields( aSymbol, aFormatter );
 
-        // Save the draw items grouped by units.
-        std::vector<LIB_SYMBOL_UNIT> units = aSymbol->GetUnitDrawItems();
-        std::sort( units.begin(), units.end(),
-                   []( const LIB_SYMBOL_UNIT& a, const LIB_SYMBOL_UNIT& b )
-                   {
-                        if( a.m_unit == b.m_unit )
-                            return a.m_bodyStyle < b.m_bodyStyle;
+        savePinMapData( aSymbol, aFormatter );
 
-                        return a.m_unit < b.m_unit;
-                   } );
-
-        for( const LIB_SYMBOL_UNIT& unit : units )
+        for( const LIB_SYMBOL_UNIT& unit : aSymbol->GetUnitDrawItems() )
         {
             // Add quotes and escape chars like ") to the UTF8 unitName string
             name = aFormatter.Quotes( unitName );
@@ -537,9 +541,21 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::SaveSymbol( LIB_SYMBOL* aSymbol, OUTPUTFORMAT
 
         KI_ASSERT( parent );
 
+        // Prefer the recorded parent name over dereferencing the live parent pointer. The parent
+        // LIB_SYMBOL uses a null_deleter shared_ptr, so the weak_ptr's control block can outlive the
+        // parent object (for example when a derived symbol is copied to another library and the
+        // buffered parent is freed before this symbol is serialized). In that state GetParent().lock()
+        // can return a non-null but dangling pointer, and reading parent->GetName() is a use-after-
+        // free that crashes release builds while only tripping the assertion above in debug builds.
+        // The recorded parent name is a value member and is always safe to read.
+        wxString parentName = aSymbol->GetParentName();
+
+        if( parentName.IsEmpty() && parent )
+            parentName = parent->GetName();
+
         aFormatter.Print( "(symbol %s (extends %s)",
                           name.c_str(),
-                          aFormatter.Quotew( parent->GetName() ).c_str() );
+                          aFormatter.Quotew( parentName ).c_str() );
 
         aSymbol->GetFields( orderedFields );
 
@@ -547,6 +563,8 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::SaveSymbol( LIB_SYMBOL* aSymbol, OUTPUTFORMAT
             saveField( field, aFormatter );
 
         saveDcmInfoAsFields( aSymbol, aFormatter );
+
+        savePinMapData( aSymbol, aFormatter );
 
         KICAD_FORMAT::FormatBool( &aFormatter, "embedded_fonts", aSymbol->GetAreFontsEmbedded() );
 
@@ -563,15 +581,15 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::saveDcmInfoAsFields( LIB_SYMBOL* aSymbol,
 {
     KI_CHECK_RET( aSymbol, "Invalid LIB_SYMBOL pointer." );
 
-    if( !aSymbol->GetKeyWords().IsEmpty() )
+    if( !aSymbol->GetRawKeyWords().IsEmpty() )
     {
         SCH_FIELD keywords( nullptr, FIELD_T::USER, wxString( "ki_keywords" ) );
         keywords.SetVisible( false );
-        keywords.SetText( aSymbol->GetKeyWords() );
+        keywords.SetText( aSymbol->GetRawKeyWords() );
         saveField( &keywords, aFormatter );
     }
 
-    wxArrayString fpFilters = aSymbol->GetFPFilters();
+    const wxArrayString& fpFilters = aSymbol->GetRawFPFilters();
 
     if( !fpFilters.IsEmpty() )
     {
@@ -592,6 +610,57 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::saveDcmInfoAsFields( LIB_SYMBOL* aSymbol,
         description.SetVisible( false );
         description.SetText( tmp );
         saveField( &description, aFormatter );
+    }
+}
+
+
+void SCH_IO_KICAD_SEXPR_LIB_CACHE::savePinMapData( LIB_SYMBOL* aSymbol, OUTPUTFORMATTER& aFormatter )
+{
+    KI_CHECK_RET( aSymbol, "Invalid LIB_SYMBOL pointer." );
+
+    // Emit only the symbol's own bundle; derived symbols inheriting the parent's maps write
+    // nothing here so the inheritance is preserved on round-trip.
+    const std::vector<ASSOCIATED_FOOTPRINT>& associations = aSymbol->GetAssociatedFootprints();
+
+    if( !associations.empty() )
+    {
+        aFormatter.Print( "(associated_footprints" );
+
+        for( const ASSOCIATED_FOOTPRINT& assoc : associations )
+        {
+            aFormatter.Print( "(footprint %s",
+                              aFormatter.Quotew( assoc.m_FootprintLibId.GetUniStringLibId() ).c_str() );
+
+            if( !assoc.m_MapName.IsEmpty() )
+                aFormatter.Print( "(map %s)", aFormatter.Quotew( assoc.m_MapName ).c_str() );
+
+            aFormatter.Print( ")" );
+        }
+
+        aFormatter.Print( ")" );
+    }
+
+    const std::vector<PIN_MAP>& maps = aSymbol->GetPinMaps().GetAll();
+
+    if( !maps.empty() )
+    {
+        aFormatter.Print( "(pin_maps" );
+
+        for( const PIN_MAP& map : maps )
+        {
+            aFormatter.Print( "(pin_map %s", aFormatter.Quotew( map.GetName() ).c_str() );
+
+            for( const PIN_MAP_ENTRY& entry : map.GetEntries() )
+            {
+                aFormatter.Print( "(entry %s %s)",
+                                  aFormatter.Quotew( entry.m_PinNumber ).c_str(),
+                                  aFormatter.Quotew( entry.m_PadNumber ).c_str() );
+            }
+
+            aFormatter.Print( ")" );
+        }
+
+        aFormatter.Print( ")" );
     }
 }
 
@@ -632,6 +701,14 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::saveSymbolDrawItem( SCH_ITEM* aItem, OUTPUTFO
             formatPoly( &aFormatter, shape, isPrivate, stroke, fillMode, fillColor, true );
             break;
 
+        case SHAPE_T::ELLIPSE:
+            formatEllipse( &aFormatter, shape, isPrivate, stroke, fillMode, fillColor, true );
+            break;
+
+        case SHAPE_T::ELLIPSE_ARC:
+            formatEllipseArc( &aFormatter, shape, isPrivate, stroke, fillMode, fillColor, true );
+            break;
+
         default:
             UNIMPLEMENTED_FOR( shape->SHAPE_T_asString() );
         }
@@ -664,16 +741,14 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::saveField( SCH_FIELD* aField, OUTPUTFORMATTER
     wxString fieldName = aField->GetName();
 
     if( aField->IsMandatory() )
-        fieldName = GetCanonicalFieldName( aField->GetId() );
+        fieldName = GetDefaultFieldName( aField->GetId(), UNTRANSLATED );
 
     aFormatter.Print( "(property %s %s %s (at %s %s %s)",
                       aField->IsPrivate() ? "private" : "",
                       aFormatter.Quotew( fieldName ).c_str(),
                       aFormatter.Quotew( aField->GetText() ).c_str(),
-                      EDA_UNIT_UTILS::FormatInternalUnits( schIUScale,
-                                                           aField->GetPosition().x ).c_str(),
-                      EDA_UNIT_UTILS::FormatInternalUnits( schIUScale,
-                                                           -aField->GetPosition().y ).c_str(),
+                      EDA_UNIT_UTILS::FormatInternalUnits( schIUScale, aField->GetPosition().x ).c_str(),
+                      EDA_UNIT_UTILS::FormatInternalUnits( schIUScale, -aField->GetPosition().y ).c_str(),
                       fmt::format( "{:g}", aField->GetTextAngle().AsDegrees() ).c_str() );
 
     KICAD_FORMAT::FormatBool( &aFormatter, "show_name", aField->IsNameShown() );
@@ -684,6 +759,7 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::saveField( SCH_FIELD* aField, OUTPUTFORMATTER
         KICAD_FORMAT::FormatBool( &aFormatter, "hide", true );
 
     aField->Format( &aFormatter, 0 );
+    KICAD_FORMAT::FormatCustomProperties( &aFormatter, *aField );
     aFormatter.Print( ")" );
 }
 
@@ -697,13 +773,10 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::savePin( SCH_PIN* aPin, OUTPUTFORMATTER& aFor
     aFormatter.Print( "(pin %s %s (at %s %s %s) (length %s)",
                       getPinElectricalTypeToken( aPin->GetType() ),
                       getPinShapeToken( aPin->GetShape() ),
-                      EDA_UNIT_UTILS::FormatInternalUnits( schIUScale,
-                                                           aPin->GetPosition().x ).c_str(),
-                      EDA_UNIT_UTILS::FormatInternalUnits( schIUScale,
-                                                           -aPin->GetPosition().y ).c_str(),
+                      EDA_UNIT_UTILS::FormatInternalUnits( schIUScale, aPin->GetPosition().x ).c_str(),
+                      EDA_UNIT_UTILS::FormatInternalUnits( schIUScale, -aPin->GetPosition().y ).c_str(),
                       EDA_UNIT_UTILS::FormatAngle( getPinAngle( aPin->GetOrientation() ) ).c_str(),
-                      EDA_UNIT_UTILS::FormatInternalUnits( schIUScale,
-                                                           aPin->GetLength() ).c_str() );
+                      EDA_UNIT_UTILS::FormatInternalUnits( schIUScale, aPin->GetLength() ).c_str() );
 
     if( !aPin->IsVisible() )
         KICAD_FORMAT::FormatBool( &aFormatter, "hide", true );
@@ -711,17 +784,13 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::savePin( SCH_PIN* aPin, OUTPUTFORMATTER& aFor
     // This follows the EDA_TEXT effects formatting for future expansion.
     aFormatter.Print( "(name %s (effects (font (size %s %s))))",
                       aFormatter.Quotew( aPin->GetName() ).c_str(),
-                      EDA_UNIT_UTILS::FormatInternalUnits( schIUScale,
-                                                           aPin->GetNameTextSize() ).c_str(),
-                      EDA_UNIT_UTILS::FormatInternalUnits( schIUScale,
-                                                           aPin->GetNameTextSize() ).c_str() );
+                      EDA_UNIT_UTILS::FormatInternalUnits( schIUScale, aPin->GetNameTextSize() ).c_str(),
+                      EDA_UNIT_UTILS::FormatInternalUnits( schIUScale, aPin->GetNameTextSize() ).c_str() );
 
     aFormatter.Print( "(number %s (effects (font (size %s %s))))",
                       aFormatter.Quotew( aPin->GetNumber() ).c_str(),
-                      EDA_UNIT_UTILS::FormatInternalUnits( schIUScale,
-                                                           aPin->GetNumberTextSize() ).c_str(),
-                      EDA_UNIT_UTILS::FormatInternalUnits( schIUScale,
-                                                           aPin->GetNumberTextSize() ).c_str() );
+                      EDA_UNIT_UTILS::FormatInternalUnits( schIUScale, aPin->GetNumberTextSize() ).c_str(),
+                      EDA_UNIT_UTILS::FormatInternalUnits( schIUScale, aPin->GetNumberTextSize() ).c_str() );
 
 
     for( const std::pair<const wxString, SCH_PIN::ALT>& alt : aPin->GetAlternates() )
@@ -738,6 +807,7 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::savePin( SCH_PIN* aPin, OUTPUTFORMATTER& aFor
                           getPinShapeToken( alt.second.m_Shape ) );
     }
 
+    KICAD_FORMAT::FormatCustomProperties( &aFormatter, *aPin );
     aFormatter.Print( ")" );
 }
 
@@ -749,13 +819,12 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::saveText( SCH_TEXT* aText, OUTPUTFORMATTER& a
     aFormatter.Print( "(text %s %s (at %s %s %d)",
                       aText->IsPrivate() ? "private" : "",
                       aFormatter.Quotew( aText->GetText() ).c_str(),
-                      EDA_UNIT_UTILS::FormatInternalUnits( schIUScale,
-                                                           aText->GetPosition().x ).c_str(),
-                      EDA_UNIT_UTILS::FormatInternalUnits( schIUScale,
-                                                           -aText->GetPosition().y ).c_str(),
+                      EDA_UNIT_UTILS::FormatInternalUnits( schIUScale, aText->GetPosition().x ).c_str(),
+                      EDA_UNIT_UTILS::FormatInternalUnits( schIUScale, -aText->GetPosition().y ).c_str(),
                       aText->GetTextAngle().AsTenthsOfADegree() );
 
     aText->EDA_TEXT::Format( &aFormatter, 0 );
+    KICAD_FORMAT::FormatCustomProperties( &aFormatter, *aText );
     aFormatter.Print( ")" );
 }
 
@@ -785,6 +854,7 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::saveTextBox( SCH_TEXTBOX* aTextBox, OUTPUTFOR
     aTextBox->GetStroke().Format( &aFormatter, schIUScale );
     formatFill( &aFormatter, aTextBox->GetFillMode(), aTextBox->GetFillColor() );
     aTextBox->EDA_TEXT::Format( &aFormatter, 0 );
+    KICAD_FORMAT::FormatCustomProperties( &aFormatter, *aTextBox );
     aFormatter.Print( ")" );
 }
 
@@ -794,8 +864,7 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::DeleteSymbol( const wxString& aSymbolName )
     LIB_SYMBOL_MAP::iterator it = m_symbols.find( aSymbolName );
 
     if( it == m_symbols.end() )
-        THROW_IO_ERROR( wxString::Format( _( "library %s does not contain a symbol named %s" ),
-                                          m_libFileName.GetFullName(), aSymbolName ) );
+        THROW_IO_ERRORF( _( "library %s does not contain a symbol named %s" ), m_libFileName.GetFullName(), aSymbolName );
 
     LIB_SYMBOL* symbol = it->second;
 

@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef NESTED_SETTINGS_H_
@@ -43,9 +43,10 @@ public:
     bool LoadFromFile( const wxString& aDirectory = "" ) override;
 
     /**
-     * Calls Store() and then saves the JSON document contents into the parent JSON_SETTINGS
-     * @param aDirectory is ignored
-     * @return true if the document contents were updated
+     * Calls Store() and then saves the JSON document contents into the parent JSON_SETTINGS.
+     * @param aDirectory is ignored.
+     * @param aForce is a flag to force the save.
+     * @return true if the document contents were updated.
      */
     bool SaveToFile( const wxString& aDirectory = "", bool aForce = false ) override;
 

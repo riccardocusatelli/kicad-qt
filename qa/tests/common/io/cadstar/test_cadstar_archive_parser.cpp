@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -34,6 +30,9 @@
 #include <geometry/shape_line_chain.h>
 #include <geometry/shape_arc.h> // For SHAPE_ARC::DefaultAccuracyForPCB()
 #include <wx/log.h>
+
+#include <ki_exception.h>
+#include <xnode.h>
 
 
 BOOST_AUTO_TEST_SUITE( CadstartArchiveParser )
@@ -144,6 +143,27 @@ BOOST_AUTO_TEST_CASE( AppendToChain )
 
 }
 
+/**
+ * A malformed child node deep in the archive must surface an error that identifies the
+ * enclosing section, not just the leaf node, so the failure can be located in a large design.
+ */
+BOOST_AUTO_TEST_CASE( ParseChildErrorContext )
+{
+    XNODE parent( wxXML_ELEMENT_NODE, wxT( "VERTICES" ) );
+
+    // A "PT" node missing its required coordinate attributes triggers a parse failure.
+    new XNODE( &parent, wxXML_ELEMENT_NODE, wxT( "PT" ) );
+
+    auto messageMentionsSection =
+            []( const IO_ERROR& aError ) -> bool
+            {
+                return aError.What().Contains( wxT( "VERTICES" ) );
+            };
+
+    BOOST_CHECK_EXCEPTION(
+            CADSTAR_ARCHIVE_PARSER::ParseAllChildPoints( &parent, nullptr, true ),
+            IO_ERROR, messageMentionsSection );
+}
 
 /**
  * Helper to add "attr0", "attr1", ... attributes to an XNODE,
@@ -168,8 +188,6 @@ static void AddCadstarAttributes( XNODE* aNode, const std::vector<wxString>& aVa
  */
 BOOST_AUTO_TEST_CASE( UnknownNodeInHeaderDoesNotThrow )
 {
-    wxLogNull suppress; // Suppress wxLogWarning messages during this test
-
     XNODE headerNode( wxXML_ELEMENT_NODE, wxT( "HEADER" ) );
 
     XNODE* formatNode = new XNODE( wxXML_ELEMENT_NODE, wxT( "FORMAT" ) );
@@ -193,8 +211,6 @@ BOOST_AUTO_TEST_CASE( UnknownNodeInHeaderDoesNotThrow )
  */
 BOOST_AUTO_TEST_CASE( UnknownNodeInRouteCodeDoesNotThrow )
 {
-    wxLogNull suppress;
-
     XNODE routeCodeNode( wxXML_ELEMENT_NODE, wxT( "ROUTECODE" ) );
     AddCadstarAttributes( &routeCodeNode, { wxT( "RC1" ), wxT( "Default" ), wxT( "1000" ) } );
 
@@ -220,8 +236,6 @@ BOOST_AUTO_TEST_CASE( UnknownNodeInRouteCodeDoesNotThrow )
  */
 BOOST_AUTO_TEST_CASE( UnknownAlignmentReturnsDefault )
 {
-    wxLogNull suppress;
-
     XNODE alignNode( wxXML_ELEMENT_NODE, wxT( "ALIGN" ) );
     AddCadstarAttributes( &alignNode, { wxT( "FUTURE_ALIGNMENT" ) } );
 
@@ -238,8 +252,6 @@ BOOST_AUTO_TEST_CASE( UnknownAlignmentReturnsDefault )
  */
 BOOST_AUTO_TEST_CASE( UnknownReadabilityReturnsDefault )
 {
-    wxLogNull suppress;
-
     XNODE readNode( wxXML_ELEMENT_NODE, wxT( "READABILITY" ) );
     AddCadstarAttributes( &readNode, { wxT( "LEFT_TO_RIGHT" ) } );
 
@@ -257,8 +269,6 @@ BOOST_AUTO_TEST_CASE( UnknownReadabilityReturnsDefault )
  */
 BOOST_AUTO_TEST_CASE( CheckNoChildNodesWarnsInsteadOfThrowing )
 {
-    wxLogNull suppress;
-
     XNODE parentNode( wxXML_ELEMENT_NODE, wxT( "PARENT" ) );
     XNODE* childNode = new XNODE( wxXML_ELEMENT_NODE, wxT( "UNEXPECTED" ) );
     parentNode.AddChild( childNode );
@@ -269,8 +279,6 @@ BOOST_AUTO_TEST_CASE( CheckNoChildNodesWarnsInsteadOfThrowing )
 
 BOOST_AUTO_TEST_CASE( CheckNoNextNodesWarnsInsteadOfThrowing )
 {
-    wxLogNull suppress;
-
     XNODE parentNode( wxXML_ELEMENT_NODE, wxT( "PARENT" ) );
     XNODE* child1 = new XNODE( wxXML_ELEMENT_NODE, wxT( "CHILD1" ) );
     XNODE* child2 = new XNODE( wxXML_ELEMENT_NODE, wxT( "CHILD2" ) );
@@ -286,8 +294,6 @@ BOOST_AUTO_TEST_CASE( CheckNoNextNodesWarnsInsteadOfThrowing )
  */
 BOOST_AUTO_TEST_CASE( UnknownUnitsReturnsDefault )
 {
-    wxLogNull suppress;
-
     XNODE unitsNode( wxXML_ELEMENT_NODE, wxT( "UNITS" ) );
     AddCadstarAttributes( &unitsNode, { wxT( "FUTURISTIC_UNIT" ) } );
 
@@ -304,8 +310,6 @@ BOOST_AUTO_TEST_CASE( UnknownUnitsReturnsDefault )
  */
 BOOST_AUTO_TEST_CASE( UnknownPinTypeReturnsDefault )
 {
-    wxLogNull suppress;
-
     XNODE pinTypeNode( wxXML_ELEMENT_NODE, wxT( "PINTYPE" ) );
     AddCadstarAttributes( &pinTypeNode, { wxT( "FUTURE_PIN_TYPE" ) } );
 

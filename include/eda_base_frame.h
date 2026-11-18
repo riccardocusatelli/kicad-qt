@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -54,6 +50,7 @@
 #include <undo_redo_container.h>
 #include <units_provider.h>
 #include <origin_transforms.h>
+#include <scoped_set_reset.h>
 #include <ui_events.h>
 #include <toolkit/close_request.h>
 #include <frame_panes.h>
@@ -139,6 +136,10 @@ public:
 
     ~EDA_BASE_FRAME();
 
+    /// Named here rather than beside the editors' other panes, because the project manager
+    /// docks this one too.
+    static const wxString GitCommitPaneName() { return wxS( "GitCommitPane" ); }
+
     void ChangeUserUnits( EDA_UNITS aUnits );
 
     /**
@@ -216,10 +217,10 @@ public:
      *
      * @param aEvent is the wxUpdateUIEvent to be processed.
      * @param aFrame is the frame to get the selection from
-     * @param aCond are the #UI SELECTION_CONDITIONS used
+     * @param aCond are the UI #ACTION_CONDITIONS used.
      */
     static void HandleUpdateUIEvent( wxUpdateUIEvent& aEvent, EDA_BASE_FRAME* aFrame,
-                                     ACTION_CONDITIONS aCond );
+                                     ACTION_CONDITIONS& aCond );
 
     virtual void OnMove( wxMoveEvent& aEvent )
     {
@@ -258,7 +259,7 @@ public:
      * Display the preferences and settings of all opened editors paged dialog, starting with
      * a particular page
      */
-    void ShowPreferences( wxString aStartPage, wxString aStartParentPage );
+    void ShowPreferences( const wxString& aStartPage, const wxString& aStartParentPage );
 
     void PrintMsg( const wxString& text );
 
@@ -281,6 +282,7 @@ public:
      *
      * @param aErrorMsg is the message to display.
      * @param aShowCloseButton true to show a close button on the right of the #WX_INFOBAR.
+     * @param aType is the type of infobar message to show.
      */
     void ShowInfoBarError( const wxString& aErrorMsg, bool aShowCloseButton = false,
                            INFOBAR_MESSAGE_TYPE aType = INFOBAR_MESSAGE_TYPE::GENERIC );
@@ -308,7 +310,7 @@ public:
      *
      * The infobar will be closed after a timeout.
      *
-     * @param aErrorMsg is the message to display.
+     * @param aWarningMsg is the message to display.
      * @param aShowCloseButton true to show a close button on the right of the #WX_INFOBAR.
      */
     void ShowInfoBarWarning( const wxString& aWarningMsg, bool aShowCloseButton = false );
@@ -319,7 +321,7 @@ public:
      *
      * The infobar will be closed after a timeout.
      *
-     * @param aErrorMsg is the message to display.
+     * @param aMsg is the message to display.
      * @param aShowCloseButton true to show a close button on the right of the #WX_INFOBAR.
      */
     void ShowInfoBarMsg( const wxString& aMsg, bool aShowCloseButton = false );
@@ -421,7 +423,7 @@ public:
      * Fetch the file name from the file history list.
      *
      * This removes the selected file, if this file does not exist.  The menu is also updated,
-     * if #FILE_HISTORY::UseMenu was called at initialization time.
+     * if #FILE_HISTORY::AddFilesToMenu was called at initialization time.
      *
      * @param cmdId The command ID associated with the \a aFileHistory object.
      * @param type Please document me!
@@ -705,7 +707,9 @@ public:
 
     bool NonUserClose( bool aForce )
     {
-        m_isNonUserClose = true;
+        // Close() runs the whole close synchronously, so a vetoed or re-entrant close cannot leave the flag set
+        SCOPED_SET_RESET<bool> nonUserClose( m_isNonUserClose, true );
+
         return Close( aForce );
     }
 
@@ -731,6 +735,9 @@ protected:
     virtual void doReCreateMenuBar() {}
 
     virtual void configureToolbars();
+
+    /// Called after the toolbars are rebuilt so a frame can select the group entries that reflect its saved state.
+    virtual void syncToolbarSelections() {}
 
     /**
      * Handle the auto save timer event.
@@ -806,7 +813,7 @@ protected:
      *                     extensions are considered. PCB editor passes kicad_pcb,
      *                     schematic editor passes kicad_sch.
      */
-    void CheckForAutosaveFiles( const wxString& aProjectPath, const std::vector<wxString>& aExtensions );
+    void CheckForAutosaveFiles( const wxString& aProjectPath, const std::vector<wxString>& aExtensions, int aCtl );
 
     /**
      * Ask the frame if it can close (for example after saving the changes).
@@ -816,6 +823,13 @@ protected:
      */
     virtual bool canCloseWindow( CLOSE_REQUEST& aRequest ) { return true; }
     virtual void doCloseWindow() { }
+
+    /**
+     * Return true when the session is ending on a platform that shows a shutdown block reason.
+     * A frame with unsaved changes then vetoes the close without prompting, and the OS shows
+     * the reason set by KIPLATFORM::APP::SetShutdownBlockReason().
+     */
+    bool isBlockableSessionEnd() const;
 
     void onSystemColorChange( wxSysColourChangedEvent& aEvent );
 
@@ -1096,19 +1110,6 @@ public:
         DockFixed( true );
         Movable( false );
         Resizable( true );      // expand to fit available space
-        return *this;
-    }
-
-    /**
-     * Turn *this into a infobar for KiCad.
-     */
-    EDA_PANE& InfoBar()
-    {
-        CaptionVisible( false );
-        Movable( false );
-        Resizable( true );
-        PaneBorder( false );
-        DockFixed( true );
         return *this;
     }
 };

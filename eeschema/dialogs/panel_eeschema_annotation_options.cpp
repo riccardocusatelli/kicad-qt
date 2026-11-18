@@ -15,13 +15,10 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <bitmaps.h>
 #include <pgm_base.h>
 #include <refdes_tracker.h>
 #include <settings/settings_manager.h>
@@ -85,7 +82,10 @@ void PANEL_EESCHEMA_ANNOTATION_OPTIONS::loadEEschemaSettings( SCHEMATIC_SETTINGS
         }
     }
 
-    m_checkReuseRefdes->SetValue( aCfg->m_refDesTracker->GetReuseRefDes() );
+    m_checkReuseRefdes->SetValue( aCfg->m_refDesTracker ? aCfg->m_refDesTracker->GetReuseRefDes() : false );
+    m_rbSuffixInstances->SetValue( aCfg->m_AnnotateReusedSheetSuffixes );
+    m_rbSeparateInstances->SetValue( !aCfg->m_AnnotateReusedSheetSuffixes );
+    m_checkIncrementPastedSuffix->SetValue( aCfg->m_IncrementPastedSuffix );
 }
 
 
@@ -116,6 +116,8 @@ bool PANEL_EESCHEMA_ANNOTATION_OPTIONS::TransferDataFromWindow()
 
         projSettings.m_AnnotateStartNum = EDA_UNIT_UTILS::UI::ValueFromString( m_textNumberAfter->GetValue() );
         projSettings.m_refDesTracker->SetReuseRefDes( m_checkReuseRefdes->GetValue() );
+        projSettings.m_AnnotateReusedSheetSuffixes = m_rbSuffixInstances->GetValue();
+        projSettings.m_IncrementPastedSuffix = m_checkIncrementPastedSuffix->GetValue();
 
         switch( m_choiceSeparatorRefId->GetSelection() )
         {

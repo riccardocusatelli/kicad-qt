@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <sch_edit_frame.h>
@@ -35,11 +35,14 @@ SCH_SEARCH_PANE::SCH_SEARCH_PANE( SCH_EDIT_FRAME* aFrame ) :
     m_schFrame->Bind( EDA_EVT_SCHEMATIC_CHANGING, &SCH_SEARCH_PANE::onSchChanging, this );
     m_schFrame->Bind( EDA_EVT_SCHEMATIC_CHANGED, &SCH_SEARCH_PANE::onSchChanged, this );
 
-    AddSearcher( std::make_shared<SYMBOL_SEARCH_HANDLER>( aFrame ) );
-    AddSearcher( std::make_shared<POWER_SEARCH_HANDLER>( aFrame ) );
-    AddSearcher( std::make_shared<TEXT_SEARCH_HANDLER>( aFrame ) );
-    AddSearcher( std::make_shared<LABEL_SEARCH_HANDLER>( aFrame ) );
-    AddSearcher( std::make_shared<GROUP_SEARCH_HANDLER>( aFrame ) );
+    m_searchHandlers = { std::make_shared<SYMBOL_SEARCH_HANDLER>( aFrame ),
+                         std::make_shared<POWER_SEARCH_HANDLER>( aFrame ),
+                         std::make_shared<TEXT_SEARCH_HANDLER>( aFrame ),
+                         std::make_shared<LABEL_SEARCH_HANDLER>( aFrame ),
+                         std::make_shared<GROUP_SEARCH_HANDLER>( aFrame ) };
+
+    for( const auto& handler : m_searchHandlers )
+        AddSearcher( handler );
 }
 
 
@@ -61,6 +64,11 @@ void SCH_SEARCH_PANE::onUnitsChanged( wxCommandEvent& event )
 
 void SCH_SEARCH_PANE::onSchChanging( wxCommandEvent& event )
 {
+    if( m_sch )
+        m_sch->RemoveListener( this );
+
+    m_sch = nullptr;
+    invalidateSearchResults();
     ClearAllResults();
     event.Skip();
 }
@@ -81,26 +89,46 @@ void SCH_SEARCH_PANE::onSchChanged( wxCommandEvent& event )
 
 void SCH_SEARCH_PANE::OnSchItemsAdded( SCHEMATIC& aBoard, std::vector<SCH_ITEM*>& aBoardItems )
 {
-    if( !IsShownOnScreen() )
-        return;
-
-    RefreshSearch();
+    queueSearchRefresh();
 }
 
 
 void SCH_SEARCH_PANE::OnSchItemsRemoved( SCHEMATIC& aBoard, std::vector<SCH_ITEM*>& aBoardItems )
 {
-    if( !IsShownOnScreen() )
-        return;
-
-    RefreshSearch();
+    queueSearchRefresh();
 }
 
 
 void SCH_SEARCH_PANE::OnSchItemsChanged( SCHEMATIC& aBoard, std::vector<SCH_ITEM*>& aBoardItems )
 {
-    if( !IsShownOnScreen() )
+    queueSearchRefresh();
+}
+
+
+void SCH_SEARCH_PANE::invalidateSearchResults()
+{
+    for( const auto& handler : m_searchHandlers )
+        handler->InvalidateResults();
+}
+
+
+void SCH_SEARCH_PANE::queueSearchRefresh()
+{
+    invalidateSearchResults();
+
+    if( m_refreshPending || !m_sch || !IsShownOnScreen() )
         return;
 
-    RefreshSearch();
+    m_refreshPending = true;
+
+    // Item notifications precede cleanup and connectivity publication; search their final state once.
+    CallAfter( [this]()
+    {
+        m_refreshPending = false;
+
+        if( !m_sch || m_schFrame->IsClosing() || !IsShownOnScreen() )
+            return;
+
+        RefreshSearch();
+    } );
 }

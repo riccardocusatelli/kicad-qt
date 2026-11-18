@@ -16,13 +16,11 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <dialogs/dialog_export_older_version.h>
+#include <jobs/job_pcb_downgrade.h>
 #include "board_editor_control.h"
 
 #include <algorithm>
@@ -42,6 +40,7 @@
 #include <collectors.h>
 #include <project/net_settings.h>
 #include <pcb_generator.h>
+#include <pcb_grid_item.h>
 #include <footprint.h>
 #include <pad.h>
 #include <pcb_target.h>
@@ -52,8 +51,9 @@
 #include <dialogs/dialog_page_settings.h>
 #include <dialogs/dialog_update_pcb.h>
 #include <dialogs/dialog_assign_netclass.h>
+#include <dialogs/dialog_footprint_fields_table.h>
 #include <dialog_plot.h>
-#include <dialogs/rule_editor_dialog_base.h>
+#include <dialogs/dialog_find_by_properties.h>
 #include <kiface_base.h>
 #include <kiway.h>
 #include <netlist_reader/pcb_netlist.h>
@@ -119,11 +119,12 @@ std::vector<ZONE*> getOverlappingZones( BOARD* aBoard, ZONE* aZone )
             continue;
 
         // Check edge collision and containment (one zone entirely inside another)
-        if( aZone->Outline()->Collide( candidate->Outline() )
-            || ( candidate->Outline()->TotalVertices() > 0
-                 && aZone->Outline()->Contains( candidate->Outline()->CVertex( 0 ) ) )
-            || ( aZone->Outline()->TotalVertices() > 0
-                 && candidate->Outline()->Contains( aZone->Outline()->CVertex( 0 ) ) ) )
+        SHAPE_POLY_SET aOutline = aZone->GetBoardOutline();
+        SHAPE_POLY_SET candidateOutline = candidate->GetBoardOutline();
+
+        if( aOutline.Collide( &candidateOutline )
+            || ( candidateOutline.TotalVertices() > 0 && aOutline.Contains( candidateOutline.CVertex( 0 ) ) )
+            || ( aOutline.TotalVertices() > 0 && candidateOutline.Contains( aOutline.CVertex( 0 ) ) ) )
         {
             overlapping.push_back( candidate );
         }
@@ -471,27 +472,48 @@ bool BOARD_EDITOR_CONTROL::Init()
 }
 
 
-int BOARD_EDITOR_CONTROL::Save( const TOOL_EVENT& aEvent )
+int BOARD_EDITOR_CONTROL::ExportForOlderVersion( const TOOL_EVENT& aEvent )
 {
-    wxWindow* focus = wxWindow::FindFocus();
+    const wxString title = _( "Export for Older KiCad Version" );
 
-    if( focus )
+    // The export reads the files on disk, so they have to match what is on screen.
+    if( m_frame->IsContentModified() )
     {
-        wxWindow* topLevel = focus;
+        int answer = wxMessageBox( _( "You have unsaved changes. Save them before exporting?" ), title,
+                                   wxYES_NO | wxCANCEL | wxICON_WARNING, m_frame );
 
-        while( topLevel && !topLevel->IsTopLevel() )
-            topLevel = topLevel->GetParent();
+        if( answer == wxCANCEL )
+            return 0;
 
-        RULE_EDITOR_DIALOG_BASE* reDlg = dynamic_cast<RULE_EDITOR_DIALOG_BASE*>( topLevel );
-
-        if( reDlg )
+        if( answer == wxYES && !m_frame->SaveBoard() )
         {
-            wxCommandEvent evt;
-            reDlg->OnSave( evt );
+            wxMessageBox( _( "The board was not saved. Nothing was exported." ), title, wxOK | wxICON_ERROR, m_frame );
             return 0;
         }
     }
 
+    const wxString board = m_frame->GetBoard()->GetFileName();
+
+    RunExportForOlderVersion(
+            m_frame,
+            [&]( const DOWNGRADE_EXPORT_PASS& aPass, DOWNGRADE_EXPORT_RESULT& aResult ) -> bool
+            {
+                JOB_PCB_DOWNGRADE job;
+                job.m_filename = board;
+                job.m_variant = aPass.m_variant;
+
+                if( !aPass.m_dryRun )
+                    job.m_outputFile = wxFileName( aPass.m_folder, wxFileName( board ).GetFullName() ).GetFullPath();
+
+                return RunDowngradeJob( m_frame->Kiway(), KIWAY::FACE_PCB, job, aPass, aResult );
+            } );
+
+    return 0;
+}
+
+
+int BOARD_EDITOR_CONTROL::Save( const TOOL_EVENT& aEvent )
+{
     m_frame->SaveBoard();
     return 0;
 }
@@ -568,6 +590,44 @@ int BOARD_EDITOR_CONTROL::Plot( const TOOL_EVENT& aEvent )
 }
 
 
+int BOARD_EDITOR_CONTROL::EditFootprintFields( const TOOL_EVENT& aEvent )
+{
+    DIALOG_FOOTPRINT_FIELDS_TABLE* dlg = m_frame->GetFootprintFieldsTableDialog();
+
+    if( !dlg )
+        return 0;
+
+    // Needed at least on Windows. Raise() is not enough
+    dlg->Show( true );
+
+    // Bring it to the top if already open.  Dual monitor users need this.
+    dlg->Raise();
+
+    dlg->ShowEditTab();
+
+    return 0;
+}
+
+
+int BOARD_EDITOR_CONTROL::GenerateBOM( const TOOL_EVENT& aEvent )
+{
+    DIALOG_FOOTPRINT_FIELDS_TABLE* dlg = m_frame->GetFootprintFieldsTableDialog();
+
+    if( !dlg )
+        return 0;
+
+    // Needed at least on Windows. Raise() is not enough
+    dlg->Show( true );
+
+    // Bring it to the top if already open.  Dual monitor users need this.
+    dlg->Raise();
+
+    dlg->ShowExportTab();
+
+    return 0;
+}
+
+
 int BOARD_EDITOR_CONTROL::Search( const TOOL_EVENT& aEvent )
 {
     m_frame->ToggleSearch();
@@ -589,9 +649,23 @@ int BOARD_EDITOR_CONTROL::FindNext( const TOOL_EVENT& aEvent )
 }
 
 
+int BOARD_EDITOR_CONTROL::FindByProperties( const TOOL_EVENT& aEvent )
+{
+    m_frame->ShowFindByPropertiesDialog();
+    return 0;
+}
+
+
 int BOARD_EDITOR_CONTROL::BoardSetup( const TOOL_EVENT& aEvent )
 {
     getEditFrame<PCB_EDIT_FRAME>()->ShowBoardSetupDialog();
+    return 0;
+}
+
+
+int BOARD_EDITOR_CONTROL::DesignRules( const TOOL_EVENT& aEvent )
+{
+    getEditFrame<PCB_EDIT_FRAME>()->ShowBoardSetupDialog( _( "Clearance" ) );
     return 0;
 }
 
@@ -710,7 +784,7 @@ int BOARD_EDITOR_CONTROL::ExportNetlist( const TOOL_EVENT& aEvent )
         {
             KI_CHECK2( field, continue );
 
-            fields[field->GetCanonicalName()] = field->GetText();
+            fields[field->GetUntranslatedName()] = field->GetText();
         }
 
         component->SetFields( fields );
@@ -926,18 +1000,7 @@ int BOARD_EDITOR_CONTROL::ShowEeschema( const TOOL_EVENT& aEvent )
                     // On Windows, it happens always after the library editor was called,
                     // and the dialog field editor was used
                     if( !frame )
-                    {
-                        try
-                        {
-                            frame = boardFrame->Kiway().Player( FRAME_SCH, true );
-                        }
-                        catch( const IO_ERROR& err )
-                        {
-                            DisplayErrorMessage( boardFrame,
-                                                 _( "Eeschema failed to load." ) + wxS( "\n" ) + err.What() );
-                            return;
-                        }
-                    }
+                        frame = boardFrame->Kiway().Player( FRAME_SCH, true );
 
                     wxEventBlocker blocker( boardFrame );
 
@@ -993,6 +1056,13 @@ int BOARD_EDITOR_CONTROL::ToggleNetInspector( const TOOL_EVENT& aEvent )
 }
 
 
+int BOARD_EDITOR_CONTROL::ToggleGitCommitPane( const TOOL_EVENT& aEvent )
+{
+    getEditFrame<PCB_EDIT_FRAME>()->ToggleGitCommitPane();
+    return 0;
+}
+
+
 int BOARD_EDITOR_CONTROL::ToggleLibraryTree( const TOOL_EVENT& aEvent )
 {
     getEditFrame<PCB_EDIT_FRAME>()->ToggleLibraryTree();
@@ -1007,9 +1077,9 @@ int BOARD_EDITOR_CONTROL::ToggleSearch( const TOOL_EVENT& aEvent )
 }
 
 
-int BOARD_EDITOR_CONTROL::TogglePythonConsole( const TOOL_EVENT& aEvent )
+int BOARD_EDITOR_CONTROL::ToggleConstraintsPanel( const TOOL_EVENT& aEvent )
 {
-    m_frame->ScriptingConsoleEnableDisable();
+    getEditFrame<PCB_EDIT_FRAME>()->ToggleConstraintsPanel();
     return 0;
 }
 
@@ -1057,11 +1127,7 @@ int BOARD_EDITOR_CONTROL::TrackWidthInc( const TOOL_EVENT& aEvent )
     if( routerTool && routerTool->IsToolActive()
         && routerTool->Router()->Mode() == PNS::PNS_MODE_ROUTE_DIFF_PAIR )
     {
-        int widthIndex = bds.GetDiffPairIndex() + 1;
-
-        // If we go past the last track width entry in the list, start over at the beginning
-        if( widthIndex >= (int) bds.m_DiffPairDimensionsList.size() )
-            widthIndex = 0;
+        int widthIndex = bds.GetNextDiffPairIndex( bds.GetDiffPairIndex(), true );
 
         bds.SetDiffPairIndex( widthIndex );
         bds.UseCustomDiffPairDimensions( false );
@@ -1070,24 +1136,16 @@ int BOARD_EDITOR_CONTROL::TrackWidthInc( const TOOL_EVENT& aEvent )
     }
     else
     {
-        int widthIndex = bds.GetTrackWidthIndex();
-
+        // Issue #24644: stepping the index unconditionally lets the first press both enter the
+        // connected-width override and advance into the list, instead of no-op'ing.
         if( routerTool && routerTool->IsToolActive()
             && routerTool->Router()->GetState() == PNS::ROUTER::RouterState::ROUTE_TRACK
             && bds.m_UseConnectedTrackWidth && !bds.m_TempOverrideTrackWidth )
         {
             bds.m_TempOverrideTrackWidth = true;
         }
-        else
-        {
-            widthIndex++;
-        }
 
-        // If we go past the last track width entry in the list, start over at the beginning
-        if( widthIndex >= (int) bds.m_TrackWidthList.size() )
-            widthIndex = 0;
-
-        bds.SetTrackWidthIndex( widthIndex );
+        bds.SetTrackWidthIndex( bds.GetNextTrackWidthIndex( bds.GetTrackWidthIndex(), true ) );
         bds.UseCustomTrackViaSize( false );
 
         m_toolMgr->RunAction( PCB_ACTIONS::trackViaSizeChanged );
@@ -1139,11 +1197,7 @@ int BOARD_EDITOR_CONTROL::TrackWidthDec( const TOOL_EVENT& aEvent )
     if( routerTool && routerTool->IsToolActive()
             && routerTool->Router()->Mode() == PNS::PNS_MODE_ROUTE_DIFF_PAIR )
     {
-        int widthIndex = bds.GetDiffPairIndex() - 1;
-
-        // If we get to the lowest entry start over at the highest
-        if( widthIndex < 0 )
-            widthIndex = bds.m_DiffPairDimensionsList.size() - 1;
+        int widthIndex = bds.GetNextDiffPairIndex( bds.GetDiffPairIndex(), false );
 
         bds.SetDiffPairIndex( widthIndex );
         bds.UseCustomDiffPairDimensions( false );
@@ -1152,24 +1206,16 @@ int BOARD_EDITOR_CONTROL::TrackWidthDec( const TOOL_EVENT& aEvent )
     }
     else
     {
-        int widthIndex = bds.GetTrackWidthIndex();
-
+        // Issue #24644: mirror TrackWidthInc so the first invocation also advances into the
+        // predefined list instead of merely flipping the override flag.
         if( routerTool && routerTool->IsToolActive()
             && routerTool->Router()->GetState() == PNS::ROUTER::RouterState::ROUTE_TRACK
             && bds.m_UseConnectedTrackWidth && !bds.m_TempOverrideTrackWidth )
         {
             bds.m_TempOverrideTrackWidth = true;
         }
-        else
-        {
-            widthIndex--;
-        }
 
-        // If we get to the lowest entry start over at the highest
-        if( widthIndex < 0 )
-            widthIndex = (int) bds.m_TrackWidthList.size() - 1;
-
-        bds.SetTrackWidthIndex( widthIndex );
+        bds.SetTrackWidthIndex( bds.GetNextTrackWidthIndex( bds.GetTrackWidthIndex(), false ) );
         bds.UseCustomTrackViaSize( false );
 
         m_toolMgr->RunAction( PCB_ACTIONS::trackViaSizeChanged );
@@ -1187,6 +1233,8 @@ int BOARD_EDITOR_CONTROL::ViaSizeInc( const TOOL_EVENT& aEvent )
     if( m_frame->ToolStackIsEmpty()
         && SELECTION_CONDITIONS::OnlyTypes( { PCB_TRACE_T, PCB_ARC_T, PCB_VIA_T } )( selection ) )
     {
+        int          complexPadstacks = 0;
+        int          incremented = 0;
         BOARD_COMMIT commit( this );
 
         for( EDA_ITEM* item : selection )
@@ -1194,6 +1242,12 @@ int BOARD_EDITOR_CONTROL::ViaSizeInc( const TOOL_EVENT& aEvent )
             if( item->Type() == PCB_VIA_T )
             {
                 PCB_VIA* via = static_cast<PCB_VIA*>( item );
+
+                if( via->Padstack().Mode() != PADSTACK::MODE::NORMAL )
+                {
+                    complexPadstacks++;
+                    continue;
+                }
 
                 for( int i = 0; i < (int) bds.m_ViasDimensionsList.size(); ++i )
                 {
@@ -1203,27 +1257,29 @@ int BOARD_EDITOR_CONTROL::ViaSizeInc( const TOOL_EVENT& aEvent )
                     if( i> 0 )
                         dims = bds.m_ViasDimensionsList[ i ];
 
-                    // TODO(JE) padstacks
                     if( dims.m_Diameter > via->GetWidth( PADSTACK::ALL_LAYERS ) )
                     {
                         commit.Modify( via );
                         via->SetWidth( PADSTACK::ALL_LAYERS, dims.m_Diameter );
                         via->SetDrill( dims.m_Drill );
+                        incremented++;
                         break;
                     }
                 }
             }
         }
 
-        commit.Push( _( "Increase Via Size" ) );
+        if( incremented == 0 && complexPadstacks > 0 )
+        {
+            m_frame->ShowInfoBarError( wxString::Format( _( "%s not supported on complex padstacks." ),
+                                                         PCB_ACTIONS::viaSizeInc.GetFriendlyName() ) );
+        }
+
+        commit.Push( PCB_ACTIONS::viaSizeInc.GetFriendlyName() );
     }
     else
     {
-        int sizeIndex = bds.GetViaSizeIndex() + 1;
-
-        // If we go past the last via entry in the list, start over at the beginning
-        if( sizeIndex >= (int) bds.m_ViasDimensionsList.size() )
-            sizeIndex = 0;
+        int sizeIndex = bds.GetNextViaSizeIndex( bds.GetViaSizeIndex(), true );
 
         bds.SetViaSizeIndex( sizeIndex );
         bds.UseCustomTrackViaSize( false );
@@ -1243,6 +1299,8 @@ int BOARD_EDITOR_CONTROL::ViaSizeDec( const TOOL_EVENT& aEvent )
     if( m_frame->ToolStackIsEmpty()
         && SELECTION_CONDITIONS::OnlyTypes( { PCB_TRACE_T, PCB_ARC_T, PCB_VIA_T } )( selection ) )
     {
+        int          complexPadstacks = 0;
+        int          decremented = 0;
         BOARD_COMMIT commit( this );
 
         for( EDA_ITEM* item : selection )
@@ -1250,6 +1308,12 @@ int BOARD_EDITOR_CONTROL::ViaSizeDec( const TOOL_EVENT& aEvent )
             if( item->Type() == PCB_VIA_T )
             {
                 PCB_VIA* via = static_cast<PCB_VIA*>( item );
+
+                if( via->Padstack().Mode() != PADSTACK::MODE::NORMAL )
+                {
+                    complexPadstacks++;
+                    continue;
+                }
 
                 for( int i = (int) bds.m_ViasDimensionsList.size() - 1; i >= 0; --i )
                 {
@@ -1259,19 +1323,25 @@ int BOARD_EDITOR_CONTROL::ViaSizeDec( const TOOL_EVENT& aEvent )
                     if( i > 0 )
                         dims = bds.m_ViasDimensionsList[ i ];
 
-                    // TODO(JE) padstacks
                     if( dims.m_Diameter < via->GetWidth( PADSTACK::ALL_LAYERS ) )
                     {
                         commit.Modify( via );
                         via->SetWidth( PADSTACK::ALL_LAYERS, dims.m_Diameter );
                         via->SetDrill( dims.m_Drill );
+                        decremented++;
                         break;
                     }
                 }
             }
         }
 
-        commit.Push( "Decrease Via Size" );
+        if( decremented == 0 && complexPadstacks > 0 )
+        {
+            m_frame->ShowInfoBarError( wxString::Format( _( "%s not supported on complex padstacks." ),
+                                                         PCB_ACTIONS::viaSizeDec.GetFriendlyName() ) );
+        }
+
+        commit.Push( PCB_ACTIONS::viaSizeDec.GetFriendlyName() );
     }
     else
     {
@@ -1279,13 +1349,7 @@ int BOARD_EDITOR_CONTROL::ViaSizeDec( const TOOL_EVENT& aEvent )
 
         // If there are more, cycle through them backwards
         if( bds.m_ViasDimensionsList.size() > 0 )
-        {
-            sizeIndex = bds.GetViaSizeIndex() - 1;
-
-            // If we get to the lowest entry start over at the highest
-            if( sizeIndex < 0 )
-                sizeIndex = bds.m_ViasDimensionsList.size() - 1;
-        }
+            sizeIndex = bds.GetNextViaSizeIndex( bds.GetViaSizeIndex(), false );
 
         bds.SetViaSizeIndex( sizeIndex );
         bds.UseCustomTrackViaSize( false );
@@ -1331,8 +1395,12 @@ int BOARD_EDITOR_CONTROL::PlaceFootprint( const TOOL_EVENT& aEvent )
 
     m_toolMgr->RunAction( ACTIONS::selectionClear );
 
-    TOOL_EVENT pushedEvent = aEvent;
-    m_frame->PushTool( aEvent );
+    TOOL_EVENT         originalEvent = aEvent;          // This can change out from under us when the event loop runs
+    SCOPED_TOOL_PUSHER raii( m_frame, originalEvent );
+
+    // Frame angle already applied to fp; recaptured whenever fp is (re)acquired, so
+    // stale state can never leak into the next placement.
+    EDA_ANGLE prevFrameAngle = ANGLE_0;
 
     auto setCursor =
             [&]()
@@ -1372,11 +1440,31 @@ int BOARD_EDITOR_CONTROL::PlaceFootprint( const TOOL_EVENT& aEvent )
     bool     ignorePrimePosition = false;
     bool     reselect = false;
 
+    auto applyPlacementFrameOrientation =
+            [&]()
+            {
+                if( !fp )
+                    return;
+
+                EDA_ANGLE newAngle = GridFrameAngleAt( *board, fp->GetPosition(), PCB_GRID_ROLE::PLACEMENT );
+                EDA_ANGLE delta = GridFrameRotationDelta( prevFrameAngle, newAngle, m_frame->GetRotationAngle() );
+
+                prevFrameAngle = newAngle;
+
+                if( !delta.IsZero() )
+                    fp->Rotate( fp->GetPosition(), delta );
+            };
+
     // Prime the pump
     if( fp )
     {
         m_placingFootprint = true;
+
+        // A footprint handed over from another command may already carry the frame
+        // rotation of the grid it sits in; count that as applied, like a move pick-up.
+        prevFrameAngle = GridFrameAngleAt( *board, fp->GetPosition(), PCB_GRID_ROLE::PLACEMENT );
         fp->SetPosition( cursorPos );
+        applyPlacementFrameOrientation();
         m_toolMgr->RunAction<EDA_ITEM*>( ACTIONS::selectItem, fp );
         m_toolMgr->PostAction( ACTIONS::refreshPreview );
     }
@@ -1402,14 +1490,9 @@ int BOARD_EDITOR_CONTROL::PlaceFootprint( const TOOL_EVENT& aEvent )
         if( evt->IsCancelInteractive() || ( fp && evt->IsAction( &ACTIONS::undo ) ) )
         {
             if( fp )
-            {
                 cleanup();
-            }
             else
-            {
-                m_frame->PopTool( pushedEvent );
                 break;
-            }
         }
         else if( evt->IsActivate() )
         {
@@ -1418,14 +1501,11 @@ int BOARD_EDITOR_CONTROL::PlaceFootprint( const TOOL_EVENT& aEvent )
 
             if( evt->IsMoveTool() )
             {
-                // leave ourselves on the stack so we come back after the move
-                break;
+                // Make sure we come back after the move tool is done
+                m_frame->PushTool( originalEvent );
             }
-            else
-            {
-                frame()->PopTool( pushedEvent );
-                break;
-            }
+
+            break;
         }
         else if( evt->IsClick( BUT_LEFT ) )
         {
@@ -1476,6 +1556,8 @@ int BOARD_EDITOR_CONTROL::PlaceFootprint( const TOOL_EVENT& aEvent )
 
                 fp->SetOrientation( ANGLE_0 );
                 fp->SetPosition( cursorPos );
+                prevFrameAngle = ANGLE_0;
+                applyPlacementFrameOrientation();
 
                 commit.Add( fp );
                 m_toolMgr->RunAction<EDA_ITEM*>( ACTIONS::selectItem, fp );
@@ -1497,6 +1579,7 @@ int BOARD_EDITOR_CONTROL::PlaceFootprint( const TOOL_EVENT& aEvent )
         else if( fp && ( evt->IsMotion() || evt->IsAction( &ACTIONS::refreshPreview ) ) )
         {
             fp->SetPosition( cursorPos );
+            applyPlacementFrameOrientation();
             selection().SetReferencePoint( cursorPos );
             getView()->Update( &selection() );
             getView()->Update( fp );
@@ -2092,6 +2175,7 @@ int BOARD_EDITOR_CONTROL::ZonePriorityMoveToBottom( const TOOL_EVENT& aEvent )
 
 int BOARD_EDITOR_CONTROL::CrossProbeToSch( const TOOL_EVENT& aEvent )
 {
+    m_frame->GetBoard()->OnBoardSelectionChanged();
     doCrossProbePcbToSch( aEvent, false );
     return 0;
 }
@@ -2296,6 +2380,7 @@ void BOARD_EDITOR_CONTROL::setTransitions()
     Go( &BOARD_EDITOR_CONTROL::New,                    ACTIONS::doNew.MakeEvent() );
     Go( &BOARD_EDITOR_CONTROL::Open,                   ACTIONS::open.MakeEvent() );
     Go( &BOARD_EDITOR_CONTROL::Save,                   ACTIONS::save.MakeEvent() );
+    Go( &BOARD_EDITOR_CONTROL::ExportForOlderVersion, ACTIONS::exportForOlderVersion.MakeEvent() );
     Go( &BOARD_EDITOR_CONTROL::SaveAs,                 ACTIONS::saveAs.MakeEvent() );
     Go( &BOARD_EDITOR_CONTROL::SaveCopy,               ACTIONS::saveCopy.MakeEvent() );
     Go( &BOARD_EDITOR_CONTROL::Revert,                 ACTIONS::revert.MakeEvent() );
@@ -2306,13 +2391,16 @@ void BOARD_EDITOR_CONTROL::setTransitions()
     Go( &BOARD_EDITOR_CONTROL::Find,                   ACTIONS::find.MakeEvent() );
     Go( &BOARD_EDITOR_CONTROL::FindNext,               ACTIONS::findNext.MakeEvent() );
     Go( &BOARD_EDITOR_CONTROL::FindNext,               ACTIONS::findPrevious.MakeEvent() );
+    Go( &BOARD_EDITOR_CONTROL::FindByProperties, PCB_ACTIONS::findByProperties.MakeEvent() );
 
     Go( &BOARD_EDITOR_CONTROL::OpenNonKicadBoard,      PCB_ACTIONS::openNonKicadBoard.MakeEvent() );
     Go( &BOARD_EDITOR_CONTROL::ExportFootprints,       PCB_ACTIONS::exportFootprints.MakeEvent() );
     Go( &BOARD_EDITOR_CONTROL::BoardSetup,             PCB_ACTIONS::boardSetup.MakeEvent() );
+    Go( &BOARD_EDITOR_CONTROL::DesignRules,            PCB_ACTIONS::drcRuleEditor.MakeEvent() );
     Go( &BOARD_EDITOR_CONTROL::ImportNetlist,          PCB_ACTIONS::importNetlist.MakeEvent() );
     Go( &BOARD_EDITOR_CONTROL::ImportSpecctraSession,  PCB_ACTIONS::importSpecctraSession.MakeEvent() );
     Go( &BOARD_EDITOR_CONTROL::ExportSpecctraDSN,      PCB_ACTIONS::exportSpecctraDSN.MakeEvent() );
+    Go( &BOARD_EDITOR_CONTROL::EditFootprintFields,    PCB_ACTIONS::editFootprintFields.MakeEvent() );
 
     if( ADVANCED_CFG::GetCfg().m_ShowPcbnewExportNetlist && m_frame && m_frame->GetExportNetlistAction() )
         Go( &BOARD_EDITOR_CONTROL::ExportNetlist, m_frame->GetExportNetlistAction()->MakeEvent() );
@@ -2322,7 +2410,8 @@ void BOARD_EDITOR_CONTROL::setTransitions()
     Go( &BOARD_EDITOR_CONTROL::GeneratePosFile,        PCB_ACTIONS::generatePosFile.MakeEvent() );
     Go( &BOARD_EDITOR_CONTROL::GenFootprintsReport,    PCB_ACTIONS::generateReportFile.MakeEvent() );
     Go( &BOARD_EDITOR_CONTROL::GenD356File,            PCB_ACTIONS::generateD356File.MakeEvent() );
-    Go( &BOARD_EDITOR_CONTROL::GenBOMFileFromBoard,    PCB_ACTIONS::generateBOM.MakeEvent() );
+    Go( &BOARD_EDITOR_CONTROL::GenerateBOM,            PCB_ACTIONS::generateBOM.MakeEvent() );
+    Go( &BOARD_EDITOR_CONTROL::GenBOMFileFromBoard,    PCB_ACTIONS::generateBOMLegacy.MakeEvent() );
     Go( &BOARD_EDITOR_CONTROL::GenIPC2581File,         PCB_ACTIONS::generateIPC2581File.MakeEvent() );
     Go( &BOARD_EDITOR_CONTROL::GenerateODBPPFiles,     PCB_ACTIONS::generateODBPPFile.MakeEvent() );
 
@@ -2377,9 +2466,10 @@ void BOARD_EDITOR_CONTROL::setTransitions()
     Go( &BOARD_EDITOR_CONTROL::ToggleLayersManager,    PCB_ACTIONS::showLayersManager.MakeEvent() );
     Go( &BOARD_EDITOR_CONTROL::ToggleProperties,       ACTIONS::showProperties.MakeEvent() );
     Go( &BOARD_EDITOR_CONTROL::ToggleNetInspector,     PCB_ACTIONS::showNetInspector.MakeEvent() );
+    Go( &BOARD_EDITOR_CONTROL::ToggleGitCommitPane, ACTIONS::showGitCommitPane.MakeEvent() );
     Go( &BOARD_EDITOR_CONTROL::ToggleLibraryTree,      PCB_ACTIONS::showDesignBlockPanel.MakeEvent() );
     Go( &BOARD_EDITOR_CONTROL::ToggleSearch,           PCB_ACTIONS::showSearch.MakeEvent() );
-    Go( &BOARD_EDITOR_CONTROL::TogglePythonConsole,    PCB_ACTIONS::showPythonConsole.MakeEvent() );
+    Go( &BOARD_EDITOR_CONTROL::ToggleConstraintsPanel, PCB_ACTIONS::showConstraintsPanel.MakeEvent() );
     Go( &BOARD_EDITOR_CONTROL::RepairBoard,            PCB_ACTIONS::repairBoard.MakeEvent() );
     // Line modes: explicit, next, and notification
     Go( &BOARD_EDITOR_CONTROL::ChangeLineMode,        PCB_ACTIONS::lineModeFree.MakeEvent() );

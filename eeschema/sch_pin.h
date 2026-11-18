@@ -17,20 +17,26 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
 
+#include <mutex>
 #include <memory>
+#include <set>
 #include <vector>
 
 #include <pin_type.h>
+#include <pin_comparison.h>
 #include <sch_item.h>
 
 class LIB_SYMBOL;
+class TRANSFORM;
 class SCH_SYMBOL;
+class LIB_ID;
+class SCH_SHEET_PATH;
 class PIN_LAYOUT_CACHE;
 
 namespace KIFONT
@@ -54,12 +60,9 @@ wxString FormatStackedPinForDisplay( const wxString& aPinNumber, int aPinLength,
 class SCH_PIN : public SCH_ITEM
 {
 public:
-    struct ALT
-    {
-        wxString            m_Name;
-        GRAPHIC_PINSHAPE    m_Shape;         // Shape drawn around pin
-        ELECTRICAL_PINTYPE  m_Type;          // Electrical type of the pin.
-    };
+    using ALT = PIN_ALTERNATE;
+
+    PIN_COMPARISON_DATA ComparisonData() const;
 
     SCH_PIN( LIB_SYMBOL* aParentSymbol );
 
@@ -84,6 +87,9 @@ public:
     ~SCH_PIN();
 
     SCH_PIN& operator=( const SCH_PIN& aPin );
+
+    void Serialize( google::protobuf::Any& aContainer ) const override;
+    bool Deserialize( const google::protobuf::Any& aContainer ) override;
 
     wxString GetClass() const override
     {
@@ -162,7 +168,46 @@ public:
      * auto‑generated net names.  For stacked pins this is the smallest logical
      * number; otherwise it is the shown number.
      */
-    wxString GetEffectivePadNumber() const;
+    wxString GetSmallestStackedPadNumber() const;
+
+    /// Outcome of pin-to-pad resolution (issue #2282).
+    enum class PAD_RESOLUTION
+    {
+        MAPPED,   ///< An explicit map entry (or instance edit) supplied the pad number.
+        IDENTITY, ///< No entry, but the footprint has a pad whose number equals the pin number.
+        UNMAPPED  ///< No entry and the footprint has no matching pad.
+    };
+
+    /**
+     * Resolve the footprint pad number this symbol pin lands on (issue #2282).
+     *
+     * This is the single resolution chokepoint every consumer (netlist, painter, ERC, IPC,
+     * cross-probe) routes through; GetNumber() semantics are unchanged.  MAPPED resolves with no
+     * footprint required; only the IDENTITY-vs-UNMAPPED split needs the footprint's pad numbers.
+     *
+     * The footprint is passed as its set of pad-number strings rather than a FOOTPRINT object so
+     * the resolver stays within the eeschema layer (FOOTPRINT lives in pcbcommon, which eeschema
+     * does not link).  Callers that have a footprint build the set from its pads; callers without
+     * one (the painter, which must not load footprints on every repaint) pass null, which yields
+     * the two-state form: MAPPED entries still resolve and everything else is assumed IDENTITY.
+     *
+     * @param aSheet                sheet path of the placement
+     * @param aVariantName          active variant (footprint and override are variant-scoped)
+     * @param aFootprintLibId       the footprint the pins resolve against
+     * @param aFootprintPadNumbers  the footprint's pad numbers, or null for the two-state form
+     * @param aState                optional out-parameter receiving the resolution state
+     * @return the resolved pad number (possibly a bracketed stacked list), or empty when UNMAPPED
+     */
+    wxString GetEffectivePadNumber( const SCH_SHEET_PATH& aSheet, const wxString& aVariantName,
+                                    const LIB_ID& aFootprintLibId, const std::set<wxString>* aFootprintPadNumbers,
+                                    PAD_RESOLUTION* aState = nullptr ) const;
+
+    /// Convenience overload using the parent symbol's current (variant-scoped) Footprint field
+    /// and no loaded footprint (two-state form).
+    wxString GetEffectivePadNumber( const SCH_SHEET_PATH& aSheet, const wxString& aVariantName = wxEmptyString ) const;
+
+    static bool HasIdentityPad( const wxString& aPinNumber, const std::set<wxString>& aPads );
+
     void SetNumber( const wxString& aNumber );
 
     int GetNameTextSize() const;
@@ -199,7 +244,7 @@ public:
      *       list of pin alternates, it's set to an empty string which results in the alternate
      *       being set to the default pin.
      *
-     * @param is the name of the pin alternate in #m_alternates.
+     * @param aAlt is the name of the pin alternate in #m_alternates.
      */
     void SetAlt( const wxString& aAlt );
 
@@ -240,6 +285,8 @@ public:
     /**
      * @param aIncludeLabelsOnInvisiblePins - if false, do not include labels for invisible pins
      *                                       in the calculation.
+     * @param aIncludeNameAndNumber includes the pin name and number in the bounding box when true.
+     * @param aIncludeElectricalType includes the pin electrical type indicator in the bounding box when true.
      */
     BOX2I GetBoundingBox( bool aIncludeLabelsOnInvisiblePins, bool aIncludeNameAndNumber,
                           bool aIncludeElectricalType ) const;
@@ -295,8 +342,14 @@ public:
     /**
      * Plot the pin name and number.
      *
+     * @param aPlotter is the plotter object to plot to.
+     * @param aPinPos is the position of the pin to plot.
+     * @param aPinOrient is the orientation of the pin to plot.
      * @param aTextInside - draw the names & numbers inside the symbol body (ie: in the opposite
      *                      direction of \a aPinOrient).
+     * @param aDrawPinNum
+     * @param aDrawPinName
+     * @param aDimmed
      */
     void PlotPinTexts( PLOTTER *aPlotter, const VECTOR2I &aPinPos, PIN_ORIENTATION aPinOrient,
                        int aTextInside, bool aDrawPinNum, bool aDrawPinName, bool aDimmed ) const;
@@ -332,6 +385,8 @@ public:
 
     bool IsConnectable() const override { return true; }
 
+    bool IsLocked() const override;
+
     bool HasConnectivityChanges( const SCH_ITEM* aItem,
                                  const SCH_SHEET_PATH* aInstance = nullptr ) const override;
 
@@ -339,7 +394,7 @@ public:
     wxString GetDefaultNetName( const SCH_SHEET_PATH& aPath, bool aForceNoConnect = false );
 
     bool IsDangling() const override;
-    void SetIsDangling( bool aIsDangling );
+    bool SetIsDangling( bool aIsDangling );
 
     /**
      * @param aPin Comparison Pin
@@ -358,6 +413,17 @@ public:
     void SetOperatingPoint( const wxString& aText ) { m_operatingPoint = aText; }
 
     /**
+     * Transient, render-only original pin number for a pad-remapped pin (issue #2282).
+     *
+     * Set by the painter on the temporary pin it draws when the effective pad differs from the
+     * symbol's pin number and the show-remapped-numbers preference is on.  The painter draws this
+     * as a dimmed secondary label beside the effective pad.  Empty means the pin is not remapped or
+     * the secondary label is not requested.  This is never serialized.
+     */
+    const wxString& GetRemappedFromNumber() const { return m_remappedFromNumber; }
+    void            SetRemappedFromNumber( const wxString& aNumber ) { m_remappedFromNumber = aNumber; }
+
+    /**
      * Transient, render-only hint that the symbol transform mirrors the stacked number
      * block side.  Set by the painter on its pre-transformed temp pins.  Never serialized.
      */
@@ -366,7 +432,11 @@ public:
 
     double Similarity( const SCH_ITEM& aOther ) const override;
 
-    bool operator>( const SCH_ITEM& aRhs ) const { return compare( aRhs, EQUALITY ) > 0; }
+    bool operator==( const SCH_ITEM& aPin ) const override;
+    bool operator==( const SCH_PIN& aPin ) const;
+
+    bool operator>( const SCH_ITEM& aRhs ) const { return compare( aRhs, ~COMPARE_FLAGS::UUID ) > 0; }
+    bool operator<( const SCH_ITEM& aRhs ) const override { return compare( aRhs, ~COMPARE_FLAGS::UUID ) < 0; }
 
     /**
      * Get the layout cache associated with this pin.
@@ -378,6 +448,8 @@ public:
     PIN_LAYOUT_CACHE& GetLayoutCache() const;
 
 protected:
+    void swapData( SCH_ITEM* aItem ) override;
+
     wxString getItemDescription( ALT* aAlt ) const;
 
     struct EXTENTS_CACHE
@@ -387,8 +459,7 @@ protected:
         VECTOR2I      m_Extents;
     };
 
-    void validateExtentsCache( KIFONT::FONT* aFont, int aSize, const wxString& aText,
-                               EXTENTS_CACHE* aCache ) const;
+    void validateExtentsCache( KIFONT::FONT* aFont, int aSize, const wxString& aText, EXTENTS_CACHE* aCache ) const;
 
     std::ostream& operator<<( std::ostream& aStream );
 
@@ -432,8 +503,11 @@ protected:
 
     wxString                m_operatingPoint;
 
+    /// Render-only original number for a pad-remapped pin; see GetRemappedFromNumber().  Not saved.
+    wxString                m_remappedFromNumber;
+
     /// Render-only stacked block side hint, see GetFlipStackedTextSide().  Not saved.
-    bool m_flipStackedTextSide = false;
+    bool                    m_flipStackedTextSide = false;
 
     bool                    m_isDangling;
 

@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "git_commit_handler.h"
@@ -33,11 +29,10 @@ GIT_COMMIT_HANDLER::~GIT_COMMIT_HANDLER()
 {}
 
 
-CommitResult
-GIT_COMMIT_HANDLER::PerformCommit( const std::vector<wxString>& aFiles,
-                                   const wxString&              aMessage,
-                                   const wxString&              aAuthorName,
-                                   const wxString&              aAuthorEmail )
+CommitResult GIT_COMMIT_HANDLER::PerformCommit( const std::vector<wxString>& aFiles,
+                                                const wxString&              aMessage,
+                                                const wxString&              aAuthorName,
+                                                const wxString&              aAuthorEmail )
 {
     return GetGitBackend()->Commit( this, aFiles, aMessage, aAuthorName, aAuthorEmail );
 }
@@ -50,13 +45,8 @@ CommitResult GIT_COMMIT_HANDLER::PerformAmend( const std::vector<wxString>& aFil
 }
 
 
-wxString GIT_COMMIT_HANDLER::GetErrorString() const
+UndoCommitResult GIT_COMMIT_HANDLER::PerformUndoLastCommit( const wxString& aExpectedBranch,
+                                                            const git_oid& aExpectedHead, wxString& aMessage )
 {
-    return m_errorString;
-}
-
-
-void GIT_COMMIT_HANDLER::AddErrorString( const wxString& aErrorString )
-{
-    m_errorString += aErrorString;
+    return GetGitBackend()->UndoLastCommit( this, aExpectedBranch, aExpectedHead, aMessage );
 }

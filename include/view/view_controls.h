@@ -18,11 +18,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  */
 
@@ -196,7 +192,7 @@ public:
     /**
      * Set the speed of autopanning.
      *
-     * @param aSpeed is a new speed for autopanning.
+     * @param aAcceleration is a new acceleration for autopanning.
      */
     virtual void SetAutoPanAcceleration( float aAcceleration )
     {
@@ -289,6 +285,8 @@ public:
      *
      * @param aPosition is the requested cursor position in the world coordinates.
      * @param aWarpView enables/disables view warp if the cursor is outside the current viewport.
+     * @param aTriggeredByArrows
+     * @param aArrowCommand
      */
     virtual void SetCursorPosition( const VECTOR2D& aPosition, bool aWarpView = true,
                                     bool aTriggeredByArrows = false, long aArrowCommand = 0 ) = 0;

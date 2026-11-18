@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <gal/opengl/cached_container_gpu.h>
@@ -72,7 +68,9 @@ CACHED_CONTAINER_GPU::CACHED_CONTAINER_GPU( unsigned int aSize ) :
         m_useCopyBuffer = false;
     }
 
-    KI_TRACE( traceGalProfile, "VBO initial size: %d\n", m_currentSize );
+#ifdef KICAD_GAL_PROFILE
+    KI_LOG_TRACE( traceGalProfile, "VBO initial size: %u", m_currentSize );
+#endif
 
     glGenBuffers( 1, &m_glBufferHandle );
     glBindBuffer( GL_ARRAY_BUFFER, m_glBufferHandle );
@@ -157,12 +155,10 @@ bool CACHED_CONTAINER_GPU::defragmentResize( unsigned int aNewSize )
     const size_t oldBytes = static_cast<size_t>( m_currentSize ) * VERTEX_SIZE;
     const size_t newBytes = static_cast<size_t>( aNewSize ) * VERTEX_SIZE;
 
-    switch( KIGFX::chooseResizeStrategy( KIGFX::queryFreeVideoMemoryBytes(), oldBytes, newBytes,
-                                         0.15 ) )
+    switch( KIGFX::chooseResizeStrategy( KIGFX::queryFreeVideoMemoryBytes(), oldBytes, newBytes, 0.15 ) )
     {
     case KIGFX::VRAM_RESIZE_STRATEGY::REFUSE:
-        throw KIGFX::GPU_OOM_ERROR( "Insufficient GPU memory to render this board; "
-                                    "switching to software rendering." );
+        throw KIGFX::GPU_OOM_ERROR( "Insufficient GPU memory to render this board; switching to software rendering." );
 
     case KIGFX::VRAM_RESIZE_STRATEGY::RAM_STAGE:
         return defragmentResizeStaged( aNewSize );
@@ -207,8 +203,8 @@ bool CACHED_CONTAINER_GPU::defragmentResize( unsigned int aNewSize )
     glBufferData( GL_ELEMENT_ARRAY_BUFFER, aNewSize * VERTEX_SIZE, nullptr, GL_DYNAMIC_DRAW );
     checkGlError( "creating buffer during defragmentation", __FILE__, __LINE__ );
 
-    ITEMS::iterator it, it_end;
-    int             newOffset = 0;
+    std::set<VERTEX_ITEM*>::iterator it, it_end;
+    int                              newOffset = 0;
 
     // Defragmentation
     for( it = m_items.begin(), it_end = m_items.end(); it != it_end; ++it )
@@ -274,7 +270,7 @@ bool CACHED_CONTAINER_GPU::defragmentResize( unsigned int aNewSize )
     m_freeSpace += ( aNewSize - m_currentSize );
     m_currentSize = aNewSize;
 
-    KI_TRACE( traceGalProfile, "VBO size %d used %d\n", m_currentSize, AllItemsSize() );
+    KI_LOG_TRACE( traceGalProfile, "VBO size %d used %d", m_currentSize, AllItemsSize() );
 
     // Now there is only one big chunk of free memory
     m_freeChunks.clear();
@@ -360,7 +356,7 @@ bool CACHED_CONTAINER_GPU::defragmentResizeMemcpy( unsigned int aNewSize )
     m_freeSpace += ( aNewSize - m_currentSize );
     m_currentSize = aNewSize;
 
-    KI_TRACE( traceGalProfile, "VBO size %d used: %d \n", m_currentSize, AllItemsSize() );
+    KI_LOG_TRACE( traceGalProfile, "VBO size %d used: %d", m_currentSize, AllItemsSize() );
 
     // Now there is only one big chunk of free memory
     m_freeChunks.clear();

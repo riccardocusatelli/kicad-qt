@@ -26,6 +26,7 @@
 #include <wx/dataview.h>
 #include <wx/settings.h>
 #include <widgets/ui_common.h>
+#include <widgets/wx_data_view_hyperlink_renderer.h>
 #include <widgets/rc_tree_model.h>
 #include <marker_base.h>
 #include <eda_draw_frame.h>
@@ -206,14 +207,17 @@ void RC_TREE_MODEL::rebuildModel( std::shared_ptr<RC_ITEMS_PROVIDER> aProvider, 
     m_view->AssociateModel( this );
 #endif
 
-    m_view->ClearColumns();
+    if( !m_enableHyperlinks )
+    {
+        m_view->ClearColumns();
 
-    int width = m_view->GetClientSize().GetWidth() - WX_DATAVIEW_WINDOW_PADDING;
+        int width = m_view->GetClientSize().GetWidth() - WX_DATAVIEW_WINDOW_PADDING;
 
-    if( width <= 0 )
-        width = 600;
+        if( width <= 0 )
+            width = 600;
 
-    m_view->AppendTextColumn( wxEmptyString, 0, wxDATAVIEW_CELL_INERT, width );
+        m_view->AppendTextColumn( wxEmptyString, 0, wxDATAVIEW_CELL_INERT, width );
+    }
 
     ExpandAll();
 
@@ -237,6 +241,31 @@ void RC_TREE_MODEL::rebuildModel( std::shared_ptr<RC_ITEMS_PROVIDER> aProvider, 
 void RC_TREE_MODEL::Update( std::shared_ptr<RC_ITEMS_PROVIDER> aProvider, int aSeverities )
 {
     rebuildModel( aProvider, aSeverities );
+}
+
+
+void RC_TREE_MODEL::EnableHyperlinks( bool aEnable )
+{
+    m_enableHyperlinks = aEnable;
+
+    if( !aEnable || !m_view || m_view->GetColumnCount() > 0 )
+        return;
+
+    HYPERLINK_DV_RENDERER* renderer = new HYPERLINK_DV_RENDERER();
+    m_hyperlinkColumn =
+            new wxDataViewColumn( wxEmptyString, renderer, 0, std::max( 200, m_view->GetClientSize().GetWidth() ),
+                                  wxALIGN_LEFT, wxDATAVIEW_COL_RESIZABLE );
+    m_view->AppendColumn( m_hyperlinkColumn );
+    m_view->Bind( wxEVT_SIZE, &RC_TREE_MODEL::onViewSize, this );
+}
+
+
+void RC_TREE_MODEL::onViewSize( wxSizeEvent& aEvent )
+{
+    aEvent.Skip();
+
+    if( m_view && m_hyperlinkColumn )
+        m_hyperlinkColumn->SetWidth( std::max( 200, m_view->GetClientSize().GetWidth() ) );
 }
 
 
@@ -519,7 +548,10 @@ void RC_TREE_MODEL::DeleteItems( bool aCurrentOnly, bool aIncludeExclusions, boo
 
         if( aCurrentOnly && rcItem != current_item )
         {
-            lastGood = i;
+            // Only displayed rows can become the new selection.
+            if( i < (int) m_tree.size() )
+                lastGood = i;
+
             continue;
         }
 

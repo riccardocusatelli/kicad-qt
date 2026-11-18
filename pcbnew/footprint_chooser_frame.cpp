@@ -15,17 +15,14 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <wx/button.h>
 #include <wx/checkbox.h>
 #include <wx/splitter.h>
 
+#include <bitmaps.h>
 #include <pgm_base.h>
 #include <kiface_base.h>
 #include <kiway.h>
@@ -338,6 +335,9 @@ void FOOTPRINT_CHOOSER_FRAME::quiescePreview()
         TOOLKIT::SetEventsEnabled( m_preview3DCanvas, false );
     }
 
+    if( EDA_3D_VIEWER_FRAME* our3DViewer = GetOur3DViewerFrame() )
+        our3DViewer->Close( true );
+
     if( m_chooserPanel )
     {
         FOOTPRINT_PREVIEW_WIDGET* viewerPanel = m_chooserPanel->GetViewerPanel();
@@ -363,13 +363,10 @@ void FOOTPRINT_CHOOSER_FRAME::onExternalViewer3DEnable( wxCommandEvent& aEvent )
         if( m_grButton3DView->IsChecked() )
             Show3DViewerFrame();        // show external 3D viewer
     }
-    else
+    else if( EDA_3D_VIEWER_FRAME* viewer3D = GetOur3DViewerFrame() )
     {
         // Close the external 3D viewer frame, if it is still enabled
-        EDA_3D_VIEWER_FRAME* viewer3D = Get3DViewerFrame();
-
-        if( viewer3D )
-            viewer3D->Close( true );
+        viewer3D->Close( true );
     }
 
     updatePanelsVisibility();
@@ -382,7 +379,7 @@ void FOOTPRINT_CHOOSER_FRAME::Show3DViewerFrame()
 
     // At EDA_3D_VIEWER_FRAME creation, the current board is loaded, so disable loading
     // the current board if the 3D frame is not yet created
-    if( Get3DViewerFrame() == nullptr )
+    if( GetOur3DViewerFrame() == nullptr )
         do_reload_board = false;
 
     EDA_3D_VIEWER_FRAME* draw3DFrame = CreateAndShow3D_Frame();
@@ -805,12 +802,12 @@ void FOOTPRINT_CHOOSER_FRAME::build3DCanvas()
     m_chooserPanel->m_RightPanelSizer->Add( m_preview3DCanvas, 1, wxEXPAND, 5 );
     m_chooserPanel->m_RightPanel->Layout();
 
-    BOARD_DESIGN_SETTINGS& dummy_bds = dummyBoard->GetDesignSettings();
-    dummy_bds.SetBoardThickness( pcbIUScale.mmToIU( 1.6 ) );
-    dummy_bds.SetEnabledLayers( LSET::FrontMask() | LSET::BackMask() );
+    BOARD_DESIGN_SETTINGS& dummyBoard_bds = dummyBoard->GetDesignSettings();
+    dummyBoard_bds.SetBoardThickness( pcbIUScale.mmToIU( 1.6 ) );
+    dummyBoard_bds.SetEnabledLayers( LSET::FrontMask() | LSET::BackMask() );
     BOARD_STACKUP& dummy_board_stackup = dummyBoard->GetDesignSettings().GetStackupDescriptor();
     dummy_board_stackup.RemoveAll();
-    dummy_board_stackup.BuildDefaultStackupList( &dummy_bds, 2 );
+    dummy_board_stackup.BuildDefaultStackupList( &dummyBoard_bds, 2 );
 }
 
 
@@ -866,13 +863,10 @@ void FOOTPRINT_CHOOSER_FRAME::on3DviewReq( wxCommandEvent& event )
         {
             Show3DViewerFrame();
         }
-        else
+        else if( EDA_3D_VIEWER_FRAME* viewer3D = GetOur3DViewerFrame() )
         {
             // Close 3D viewer frame, if it is still enabled
-            EDA_3D_VIEWER_FRAME* viewer3D = Get3DViewerFrame();
-
-            if( viewer3D )
-                viewer3D->Close( true );
+            viewer3D->Close( true );
         }
 
         m_show3DMode = true;
@@ -910,7 +904,7 @@ void FOOTPRINT_CHOOSER_FRAME::updateViews()
     if( m_quiesced )
         return;
 
-    EDA_3D_VIEWER_FRAME* viewer3D = Get3DViewerFrame();
+    EDA_3D_VIEWER_FRAME* viewer3D = GetOur3DViewerFrame();
 
     if( m_preview3DCanvas->IsShown() )
     {

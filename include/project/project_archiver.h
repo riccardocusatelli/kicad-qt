@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef KICAD_PROJECT_ARCHIVER_H
@@ -51,7 +51,7 @@ public:
     /**
      * Create an archive of the project.
      *
-     * @param aSrcFile is the full path to the project to be archived.
+     * @param aSrcDir is the full path to the project to be archived.
      * @param aDestFile is the full path to the zip file to be created.
      * @param aReporter is used to report status.
      * @param aVerbose controls the verbosity of reported status messages.

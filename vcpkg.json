@@ -8,8 +8,10 @@
     "boost-bimap",
     "boost-filesystem",
     "boost-functional",
+    "boost-graph",
     "boost-iterator",
     "boost-locale",
+    "boost-math",
     "boost-optional",
     "boost-property-tree",
     "boost-ptr-container",
@@ -27,6 +29,8 @@
       "host": true
     },
     "harfbuzz",
+    "libiconv",
+    "libpng",
     "glm",
     {
       "name": "opencascade",
@@ -48,8 +52,28 @@
     },
     "nng",
     "protobuf",
+<<<<<<< b2e17e0a
     "zlib",
     "zstd"
+||||||| 1304b76aad
+    "zstd"
+=======
+    "zstd",
+    {
+      "name": "vulkan-headers",
+      "platform": "windows"
+    },
+    {
+      "name": "glslang",
+      "features": [ "tools" ],
+      "host": true
+    },
+    {
+      "name": "spirv-tools",
+      "features": [ "tools" ],
+      "host": true
+    }
+>>>>>>> ed8c16703e
   ],
   "default-features": [ "wx" ],
   "features": {
@@ -99,25 +123,17 @@
       "$comment": "Pinned due to bad vcpkg port updating to a non-real version"
     },
     {
-      "name": "python3",
-      "version": "3.11.5#0"
-    },
-    {
       "name": "wxwidgets-33",
-      "version": "3.3.3#2"
-    },
-    {
-      "name": "wxpython-33",
-      "version": "4.3.1#0"
+      "version": "3.3.4#0"
     },
     {
       "name": "ngspice",
-      "version": "46#0"
+      "version": "47#0"
     },
     {
       "name": "protobuf",
-      "version": "3.21.12#4",
-      "$comment": "Pinned until compat in kicad is improved"
+      "version": "6.33.4#2",
+      "$comment": "Pinned due to the MSVC C++20 linker mismatch with protobuf 7.36.2"
     }
   ]
 }

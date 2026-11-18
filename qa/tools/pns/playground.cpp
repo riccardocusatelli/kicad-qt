@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -279,19 +275,15 @@ int playground_main_func( int argc, char* argv[] )
     PAD pad1( nullptr );
     pad1.SetX( pcbIUScale.mmToIU( 84.0 ) );
     pad1.SetY( pcbIUScale.mmToIU( 66.0 ) );
-    pad1.SetSizeX( pcbIUScale.mmToIU( 7.0 ) );
-    pad1.SetSizeY( pcbIUScale.mmToIU( 7.0 ) );
-    pad1.SetDrillSizeX( pcbIUScale.mmToIU( 3.5 ) );
-    pad1.SetDrillSizeY( pcbIUScale.mmToIU( 3.5 ) );
+    pad1.SetSize( PADSTACK::ALL_LAYERS, VECTOR2I( pcbIUScale.mmToIU( 7.0 ), pcbIUScale.mmToIU( 7.0 ) ) );
+    pad1.SetDrillSize( VECTOR2I( pcbIUScale.mmToIU( 3.5 ), pcbIUScale.mmToIU( 3.5 ) ) );
     vp.Merge( pad1.GetBoundingBox() );
 
     PAD pad2( nullptr );
     pad2.SetX( pcbIUScale.mmToIU( 87.125 ) );
     pad2.SetY( pcbIUScale.mmToIU( 66.0 ) );
-    pad2.SetSizeX( pcbIUScale.mmToIU( 0.8 ) );
-    pad2.SetSizeY( pcbIUScale.mmToIU( 0.8 ) );
-    pad2.SetDrillSizeX( pcbIUScale.mmToIU( 0.5 ) );
-    pad2.SetDrillSizeY( pcbIUScale.mmToIU( 0.5 ) );
+    pad2.SetSize( PADSTACK::ALL_LAYERS, VECTOR2I( pcbIUScale.mmToIU( 0.8 ), pcbIUScale.mmToIU( 0.8 ) ) );
+    pad2.SetDrillSize( VECTOR2I( pcbIUScale.mmToIU( 0.5 ), pcbIUScale.mmToIU( 0.5 ) ) );
     vp.Merge( pad2.GetBoundingBox() );
 
     SHAPE_POLY_SET pad1Outline;

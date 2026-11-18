@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef __FOOTPRINT_PREVIEW_PANEL_H
@@ -85,8 +85,9 @@ private:
     /**
      * Create a new panel
      *
-     * @param aKiway the connected KIWAY
+     * @param aKiway the connected #KIWAY
      * @param aParent the owning WX window
+     * @param aUnitsProvider
      * @param aOpts the GAL options (ownership is assumed)
      * @param aGalType the displayed GAL type
      */

@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -136,8 +132,7 @@ void ValidatorTransferToWindowWithoutEvents( wxValidator& aValidator );
  * A text control validator used for validating the text allowed in fields.
  *
  * - The reference field does not accept spaces.
- * - The value field does not accept spaces in the symbol library editor because in symbol
- *   libraries, the value field is the symbol name in the library.
+ * - The sheet name field does not accept forward slashes.
  */
 class FIELD_VALIDATOR : public wxTextValidator
 {

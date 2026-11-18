@@ -14,18 +14,13 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "drc_re_permitted_layers_overlay_panel.h"
 #include "drc_re_permitted_layers_constraint_data.h"
 #include "drc_rule_editor_utils.h"
 
-#include <dialogs/rule_editor_dialog_base.h>
 #include <wx/checkbox.h>
 
 
@@ -46,18 +41,8 @@ DRC_RE_PERMITTED_LAYERS_OVERLAY_PANEL::DRC_RE_PERMITTED_LAYERS_OVERLAY_PANEL(
     DRC_RE_OVERLAY_FIELD* bottomField = AddCheckbox( wxS( "bottom_layer" ), positions[1] );
     m_bottomLayerCheckbox = static_cast<wxCheckBox*>( bottomField->GetControl() );
 
-    auto notifyModified = [this]( wxCommandEvent& )
-    {
-        RULE_EDITOR_DIALOG_BASE* dlg = RULE_EDITOR_DIALOG_BASE::GetDialog( this );
-        if( dlg )
-            dlg->SetModified();
-    };
-
-    m_topLayerCheckbox->Bind( wxEVT_CHECKBOX, notifyModified );
-    m_bottomLayerCheckbox->Bind( wxEVT_CHECKBOX, notifyModified );
-
-    PositionFields();
     TransferDataToWindow();
+    PositionFields();
 }
 
 

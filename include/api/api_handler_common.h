@@ -14,28 +14,62 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef KICAD_API_HANDLER_COMMON_H
 #define KICAD_API_HANDLER_COMMON_H
+
+#include <functional>
 
 #include <google/protobuf/empty.pb.h>
 
 #include <api/api_handler.h>
 #include <api/common/commands/base_commands.pb.h>
 #include <api/common/commands/project_commands.pb.h>
+#include <api/common/tasks.pb.h>
 
 using namespace kiapi::common;
+using kiapi::common::types::ProjectSpecifier;
 using google::protobuf::Empty;
 
 class API_HANDLER_COMMON : public API_HANDLER
 {
 public:
+    using OPEN_DOCUMENT_HANDLER = std::function<HANDLER_RESULT<commands::OpenDocumentResponse>(
+            const commands::OpenDocument& )>;
+    using CREATE_DOCUMENT_HANDLER = std::function<HANDLER_RESULT<commands::OpenDocumentResponse>(
+            const commands::CreateDocument& )>;
+    using CLOSE_DOCUMENT_HANDLER = std::function<HANDLER_RESULT<Empty>(
+            const commands::CloseDocument& )>;
+    using CLOSE_ALL_DOCUMENTS_HANDLER = std::function<HANDLER_RESULT<Empty>(
+            const commands::CloseAllDocuments& )>;
+
+
     API_HANDLER_COMMON();
 
     ~API_HANDLER_COMMON() override {}
+
+    void SetOpenDocumentHandler( OPEN_DOCUMENT_HANDLER aHandler )
+    {
+        m_openDocumentHandler = std::move( aHandler );
+    }
+
+    void SetCloseDocumentHandler( CLOSE_DOCUMENT_HANDLER aHandler )
+    {
+        m_closeDocumentHandler = std::move( aHandler );
+    }
+
+    void SetCloseAllDocumentsHandler( CLOSE_ALL_DOCUMENTS_HANDLER aHandler )
+    {
+        m_closeAllDocumentsHandler = std::move( aHandler );
+    }
+
+    void SetCreateDocumentHandler( CREATE_DOCUMENT_HANDLER aHandler )
+    {
+        m_createDocumentHandler = std::move( aHandler );
+    }
 
 private:
     HANDLER_RESULT<commands::GetVersionResponse> handleGetVersion(
@@ -44,11 +78,20 @@ private:
     HANDLER_RESULT<commands::PathResponse> handleGetKiCadBinaryPath(
         const HANDLER_CONTEXT<commands::GetKiCadBinaryPath>& aCtx );
 
+    HANDLER_RESULT<commands::GetPathsResponse> handleGetPaths(
+        const HANDLER_CONTEXT<commands::GetPaths>& aCtx );
+
     HANDLER_RESULT<commands::NetClassesResponse> handleGetNetClasses(
         const HANDLER_CONTEXT<commands::GetNetClasses>& aCtx );
 
     HANDLER_RESULT<Empty> handleSetNetClasses(
         const HANDLER_CONTEXT<commands::SetNetClasses>& aCtx );
+
+    HANDLER_RESULT<commands::NetClassAssignmentsResponse> handleGetNetClassAssignments(
+        const HANDLER_CONTEXT<commands::GetNetClassAssignments>& aCtx );
+
+    HANDLER_RESULT<Empty> handleSetNetClassAssignments(
+        const HANDLER_CONTEXT<commands::SetNetClassAssignments>& aCtx );
 
     HANDLER_RESULT<Empty> handlePing( const HANDLER_CONTEXT<commands::Ping>& aCtx );
 
@@ -69,6 +112,30 @@ private:
 
     HANDLER_RESULT<Empty> handleSetTextVariables(
         const HANDLER_CONTEXT<commands::SetTextVariables>& aCtx );
+
+    HANDLER_RESULT<commands::OpenDocumentResponse> handleOpenDocument(
+        const HANDLER_CONTEXT<commands::OpenDocument>& aCtx );
+
+    HANDLER_RESULT<commands::OpenDocumentResponse> handleCreateDocument(
+        const HANDLER_CONTEXT<commands::CreateDocument>& aCtx );
+
+    HANDLER_RESULT<Empty> handleCloseDocument(
+        const HANDLER_CONTEXT<commands::CloseDocument>& aCtx );
+
+    HANDLER_RESULT<Empty> handleCloseAllDocuments(
+        const HANDLER_CONTEXT<commands::CloseAllDocuments>& aCtx );
+
+    HANDLER_RESULT<tasks::TaskStatusResponse> handleGetTaskStatus(
+        const HANDLER_CONTEXT<tasks::GetTaskStatus>& aCtx );
+
+private:
+    static tl::expected<bool, ApiResponseStatus> validateProject( const ProjectSpecifier& aProject,
+                                                                  bool aAllowEmpty = false );
+
+    OPEN_DOCUMENT_HANDLER m_openDocumentHandler;
+    CLOSE_ALL_DOCUMENTS_HANDLER m_closeAllDocumentsHandler;
+    CLOSE_DOCUMENT_HANDLER m_closeDocumentHandler;
+    CREATE_DOCUMENT_HANDLER m_createDocumentHandler;
 };
 
 #endif //KICAD_API_HANDLER_COMMON_H

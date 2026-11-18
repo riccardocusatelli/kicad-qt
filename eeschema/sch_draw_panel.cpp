@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -133,6 +129,17 @@ bool SCH_DRAW_PANEL::SwitchBackend( GAL_TYPE aGalType )
     setDefaultLayerDeps();
     m_gal->SetWorldUnitLength( SCH_WORLD_UNIT );
 
+    // Items carried over from the previous GAL have stale caches. The rebuild waits for startup
+    // events to settle, since a partial redraw would clobber the GPU buffers.
+    if( rv && aGalType == GAL_TYPE_MODERN )
+    {
+        CallAfter( [this]()
+        {
+            if( EDA_DRAW_FRAME* frame = GetParentEDAFrame() )
+                frame->HardRedraw();
+        } );
+    }
+
     Refresh();
 
     return rv;
@@ -142,38 +149,13 @@ bool SCH_DRAW_PANEL::SwitchBackend( GAL_TYPE aGalType )
 void SCH_DRAW_PANEL::setDefaultLayerDeps()
 {
     // caching makes no sense for Cairo and other software renderers
-    GetView()->SetDefaultLayerDeps( m_backend == GAL_TYPE_OPENGL );
+    GetView()->SetDefaultLayerDeps( IsAccelerated( m_backend ), m_gal && m_gal->HasRetainedScene() );
 }
 
 
 KIGFX::SCH_VIEW* SCH_DRAW_PANEL::GetView() const
 {
     return static_cast<KIGFX::SCH_VIEW*>( m_view );
-}
-
-
-void SCH_DRAW_PANEL::OnShow()
-{
-    SCH_BASE_FRAME* frame = dynamic_cast<SCH_BASE_FRAME*>( GetParentEDAFrame() );
-
-    try
-    {
-        // Check if the current rendering backend can be properly initialized
-        m_view->UpdateItems();
-    }
-    catch( const std::runtime_error& e )
-    {
-        DisplayInfoMessage( frame, e.what() );
-
-        // Use fallback if one is available
-        if( GAL_FALLBACK != m_backend )
-        {
-            SwitchBackend( GAL_FALLBACK );
-
-            if( frame )
-                frame->ActivateGalCanvas();
-        }
-    }
 }
 
 

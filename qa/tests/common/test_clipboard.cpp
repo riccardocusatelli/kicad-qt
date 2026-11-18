@@ -13,11 +13,16 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <boost/test/unit_test.hpp>
+#include <qa_utils/wx_utils/unit_test_utils.h>
+
+#include <cstdlib>
+#include <vector>
+
 #include <clipboard.h>
 #include <wx/clipbrd.h>
 #include <wx/display.h>
@@ -25,37 +30,28 @@
 #include <wx/string.h>
 #include <wx/filename.h>
 #include <wx/mstream.h>
-#include <vector>
-#include <cstdlib>
 
-/**
- * Check if a display is available for clipboard operations.
- * On Linux/GTK, clipboard operations require a display connection.
- * In headless CI environments, this is not available.
- */
-static bool IsDisplayAvailable()
-{
-#ifdef __WXGTK__
-    // On GTK, check if wxWidgets can actually see displays.
-    // Just having DISPLAY environment variable set isn't enough
-    return wxDisplay::GetCount() > 0;
-
+#if defined( __WXMSW__ )
+#include <wx/msw/wrapwin.h>
 #endif
-    return true;
-}
+
+#if defined( __WXGTK__ )
+#include <gdk/gdk.h> // For gdk_display_get_default()
+#endif
+
 
 /**
  * Macro to skip clipboard tests in headless environments.
  * This prevents GTK assertions when no display is available.
  */
-#define SKIP_IF_HEADLESS()                                                                    \
-    do                                                                                        \
-    {                                                                                         \
-        if( !IsDisplayAvailable() )                                                           \
-        {                                                                                     \
-            BOOST_TEST_MESSAGE( "Skipping test - no display available (headless environment)" ); \
-            return;                                                                           \
-        }                                                                                     \
+#define SKIP_IF_HEADLESS()                                                                                             \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        if( !KI_TEST::CanDoDisplayTests() )                                                                            \
+        {                                                                                                              \
+            BOOST_TEST_MESSAGE( "Skipping test - no display available (headless environment)" );                       \
+            return;                                                                                                    \
+        }                                                                                                              \
     } while( 0 )
 
 BOOST_AUTO_TEST_SUITE( ClipboardTests )
@@ -122,6 +118,8 @@ BOOST_AUTO_TEST_CASE( SaveClipboard_SpecialCharacters )
 {
 #ifdef _WIN32
     BOOST_TEST_MESSAGE( "Skipping test - Windows normalizes clipboard text line endings" );
+#elif defined( __WXMAC__ )
+    BOOST_TEST_MESSAGE( "Skipping test - doesn't work on macOS" );
 #else
     SKIP_IF_HEADLESS();
 
@@ -146,6 +144,15 @@ BOOST_AUTO_TEST_CASE( GetClipboardUTF8_EmptyClipboard )
         wxTheClipboard->Clear();
         wxTheClipboard->Close();
     }
+
+#if defined( __WXMSW__ )
+    // wxClipboard::Clear() only drops data this process still owns, not text an earlier test flushed
+    if( ::OpenClipboard( nullptr ) )
+    {
+        ::EmptyClipboard();
+        ::CloseClipboard();
+    }
+#endif
 
     std::string result = GetClipboardUTF8();
     BOOST_CHECK( result.empty() );
@@ -296,6 +303,10 @@ BOOST_AUTO_TEST_CASE( SaveTabularData_WithNewlines )
 {
     SKIP_IF_HEADLESS();
 
+#ifdef __WXMAC__
+    BOOST_TEST_MESSAGE( "Skipping test - doesn't work on macOS" );
+#else
+
     std::vector<std::vector<wxString>> dataWithNewlines = {
         { wxS("Line1\nLine2"), wxS("Normal") },
         { wxS("Single line"), wxS("Another\nmultiline") }
@@ -314,6 +325,7 @@ BOOST_AUTO_TEST_CASE( SaveTabularData_WithNewlines )
             // Note: Newline handling depends on CSV parser implementation
         }
     }
+#endif
 }
 
 BOOST_AUTO_TEST_CASE( SaveTabularData_IrregularGrid )

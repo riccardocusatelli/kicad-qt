@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -35,7 +35,7 @@
 #include <dialog_design_inspector_base.h>
 #include "design_inspector.h"
 #include "pl_editor_frame.h"
-#include "properties_frame.h"
+#include "widgets/pl_properties_panel.h"
 #include "tools/pl_actions.h"
 #include "tools/pl_selection_tool.h"
 
@@ -351,7 +351,7 @@ void DIALOG_INSPECTOR::onCellClicked( wxGridEvent& event )
     EDA_ITEM* draw_item = item->GetDrawItems()[0];
     selectionTool->AddItemToSel( draw_item );
     m_editorFrame->GetCanvas()->Refresh();
-    m_editorFrame->GetPropertiesFrame()->CopyPrmsFromItemToPanel( item );
+    m_editorFrame->GetPropertiesPanel()->UpdateData();
 }
 
 

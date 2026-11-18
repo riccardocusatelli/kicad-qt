@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef ALTIUM_PARSER_PCB_H
@@ -268,9 +264,11 @@ struct ALTIUM_VERTICE
 /**
  * Read the VX/VY/KIND/R/SA/EA/CX/CY vertex series out of a polygon or board outline record.
  *
- * @param aDiscarded, when given, counts the vertices dropped because a coordinate did not fit
- *                    the KiCad int range.  Those are clamps rather than places, and an outline
- *                    built from one spans the whole coordinate space.
+ * @param aProps
+ * @param aVertices
+ * @param aDiscarded when given, counts the vertices dropped because a coordinate did not fit
+ *                   the KiCad int range.  Those are clamps rather than places, and an outline
+ *                   built from one spans the whole coordinate space.
  */
 void altium_parse_polygons( std::map<wxString, wxString>& aProps,
                             std::vector<ALTIUM_VERTICE>& aVertices, int* aDiscarded = nullptr );
@@ -553,6 +551,7 @@ struct ACOMPONENT6
     bool         locked;
     bool         nameon;
     bool         commenton;
+    int          height;
     wxString     sourceUniqueID;
     wxString     sourceHierachicalPath;
     wxString     sourcedesignator;

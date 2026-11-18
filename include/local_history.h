@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -40,6 +36,14 @@
 #include <wx/string.h>
 
 class PROGRESS_REPORTER;
+class PROJECT;
+
+enum class SNAPSHOT_COMMIT_RESULT
+{
+    Error,
+    NoChanges,
+    Committed
+};
 
 
 /**
@@ -55,6 +59,7 @@ struct KICOMMON_API HISTORY_FILE_DATA
     wxString    sourcePath;     ///< For file-copy savers (small files like .kicad_pro)
     bool        prettify = false;
     KICAD_FORMAT::FORMAT_MODE formatMode = KICAD_FORMAT::FORMAT_MODE::NORMAL;
+    bool        removed = false; ///< The file no longer exists and leaves the snapshot
 };
 
 struct KICOMMON_API LOCAL_HISTORY_SNAPSHOT_INFO
@@ -105,6 +110,10 @@ public:
             const std::function<void( const wxString&, std::vector<HISTORY_FILE_DATA>& )>& aSaver,
             const std::weak_ptr<void>& aLifetime = {} );
 
+    /** Register \a aProject's own files (project, rules and library tables) for history snapshots.
+     *  Every editor may call this; the project is registered once. */
+    void RegisterProjectSaver( PROJECT* aProject );
+
     /** Unregister a previously registered saver callback.
      *  @param aSaverObject The object pointer that was used to register the saver */
     void UnregisterSaver( const void* aSaverObject );
@@ -144,6 +153,15 @@ public:
      */
     std::vector<std::pair<wxString, wxString>> FindStaleAutosaveFiles( const wxString&              aProjectPath,
                                                                        const std::vector<wxString>& aExtensions ) const;
+
+    /**
+     * Resolve the autosaves a document load must offer for recovery.  A revert discards the
+     * edits the autosaves hold, so the autosaves of @p aExtensions are removed and nothing is
+     * returned; any other load returns FindStaleAutosaveFiles().
+     */
+    std::vector<std::pair<wxString, wxString>> ResolveAutosavesForLoad( const wxString&              aProjectPath,
+                                                                        const std::vector<wxString>& aExtensions,
+                                                                        bool                         aReverting ) const;
 
     /**
      * Enumerate every (autosave, source) pair found under @p aAutosaveRoot for the project
@@ -222,19 +240,51 @@ public:
     bool RestoreCommit( const wxString& aProjectPath, const wxString& aHash,
                         const RESTORE_HOOKS* aHooks = nullptr );
 
+    /** Snapshots (commits) for the project, newest first. */
+    std::vector<LOCAL_HISTORY_SNAPSHOT_INFO> GetSnapshots( const wxString& aProjectPath );
+
+    /** Write files recorded at aHash into aDestDir, recreating the project's
+     *  relative folder structure. Used to reconstruct a multi-file document (e.g.
+     *  a schematic hierarchy) at a commit. When aExtensions is non-empty only
+     *  files ending in one of them are written, so a compare can skip large
+     *  unrelated files (3D models, gerbers, the other editor's document). */
+    bool ExtractAllFilesAtCommit( const wxString& aProjectPath, const wxString& aHash, const wxString& aDestDir,
+                                  const std::vector<wxString>& aExtensions = {} );
+
+    /** Fingerprint of all files ending in aExtension recorded by commit aHash
+     *  (sorted path:blob pairs). Empty when the commit has no such file. Two
+     *  commits with equal fingerprints hold identical content for that type, so
+     *  callers can collapse consecutive duplicates into one revision. */
+    wxString TreeFingerprint( const wxString& aProjectPath, const wxString& aHash, const wxString& aExtension );
+
     /** Block until any pending background save completes.  Call before reading repo
      *  state (HeadNewerThanLastSave / GetHeadHash) at close time so an in-flight
      *  autosave can't leave the close path with a stale view of HEAD. */
     void WaitForPendingSave();
 
+    /** True while a background compaction started by autosave is still running. */
+    bool IsCompacting() const;
+
+    /** Run EnforceSizeLimit without a reporter on a background thread, after any running
+     *  compaction.  Compaction only packs, so it never trims history down to the limit. */
+    void EnforceSizeLimitInBackground( const wxString& aProjectPath, size_t aMaxBytes );
+
     /** Return the snapshots recorded for the project, newest first. */
     std::vector<LOCAL_HISTORY_SNAPSHOT_INFO> LoadSnapshots( const wxString& aProjectPath );
 
 private:
+    /** EnforceSizeLimit with the history directory already resolved, so it can run off the UI thread. */
+    bool enforceSizeLimit( const wxString& aProjectPath, const wxString& aHistoryPath, size_t aMaxBytes,
+                           PROGRESS_REPORTER* aReporter );
 
     /** Execute file writes and git commit on a background thread. */
-    bool commitInBackground( const wxString& aProjectPath, const wxString& aTitle,
-                             const std::vector<HISTORY_FILE_DATA>& aFileData, bool aIsManualSave );
+    SNAPSHOT_COMMIT_RESULT commitInBackground( const wxString& aProjectPath, const wxString& aTitle,
+                                               const std::vector<HISTORY_FILE_DATA>& aFileData,
+                                               bool aIsManualSave );
+
+    /** Start packing loose history objects on a background thread once they exceed @p aLooseLimit
+     *  bytes, so the close-time size check rarely finds anything to do. */
+    void scheduleCompaction( const wxString& aProjectPath, size_t aLooseLimit );
 
     /** Drop tracked savers whose owning document has been freed, before any saver runs. */
     void pruneExpiredSavers();
@@ -254,5 +304,8 @@ private:
 
     std::atomic<bool> m_saveInProgress{ false };
     std::future<bool> m_pendingFuture;
+
+    std::atomic<bool> m_cancelCompaction{ false };
+    std::future<void> m_compactFuture;
 };
 

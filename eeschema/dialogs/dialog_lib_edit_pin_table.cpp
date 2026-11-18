@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "dialog_lib_edit_pin_table.h"
@@ -28,10 +24,12 @@
 #include <wx/msgdlg.h>
 #include <wx/tokenzr.h>
 
-#include "grid_tricks.h"
+#include <column_formatter.h>
+#include <grid_tricks.h>
 #include <richio.h>
 #include <sch_pin.h>
 #include <pin_numbers.h>
+#include <reporter.h>
 #include "pgm_base.h"
 #include <base_units.h>
 #include <bitmaps.h>
@@ -50,12 +48,10 @@
 #include <settings/settings_manager.h>
 #include <tool/action_menu.h>
 #include <tool/tool_manager.h>
+#include <table_io.h>
 #include <tools/sch_selection_tool.h>
 #include <string_utils.h>
 #include <core/ki_assert.h>
-
-#define BOOL_TRUE _HKI( "True" )
-#define BOOL_FALSE _HKI( "False" )
 
 
 /**
@@ -86,13 +82,6 @@ static wxString GetPinTableColLabel( int aCol )
 }
 
 
-static bool MatchTranslationOrNative( const wxString& aStr, const wxString& aNativeLabel, bool aCaseSensitive )
-{
-    return wxGetTranslation( aNativeLabel ).IsSameAs( aStr, aCaseSensitive )
-           || aStr.IsSameAs( aNativeLabel, aCaseSensitive );
-}
-
-
 static COL_ORDER GetColTypeForString( const wxString& aStr )
 {
     for( int i = 0; i < COL_COUNT; i++ )
@@ -107,21 +96,12 @@ static COL_ORDER GetColTypeForString( const wxString& aStr )
  * Class that handles conversion of various pin data fields into strings for display in the
  * UI or serialisation to formats like CSV.
  */
-class PIN_INFO_FORMATTER
+class PIN_INFO_FORMATTER : public COLUMN_FORMATTER
 {
 public:
-    enum class BOOL_FORMAT
-    {
-        ZERO_ONE,
-        TRUE_FALSE,
-    };
-
     PIN_INFO_FORMATTER( UNITS_PROVIDER& aUnitsProvider, bool aIncludeUnits, BOOL_FORMAT aBoolFormat,
                         REPORTER& aReporter ) :
-            m_unitsProvider( aUnitsProvider ),
-            m_includeUnits( aIncludeUnits ),
-            m_boolFormat( aBoolFormat ),
-            m_reporter( aReporter )
+            COLUMN_FORMATTER( aUnitsProvider, aIncludeUnits, aBoolFormat, aReporter )
     {
     }
 
@@ -176,7 +156,7 @@ public:
                     return wxGetTranslation( UNITS_ALL );
             }
 
-            if( aPin.GetUnit() == 0 )
+            if( aPin.GetUnit() == ALL_UNITS )
                 return wxGetTranslation( UNITS_ALL );
             else
                 return aPin.GetUnitDisplayName( aPin.GetUnit(), true );
@@ -188,7 +168,7 @@ public:
                     return wxGetTranslation( UNITS_ALL );
             }
 
-            if( aPin.GetBodyStyle() == 0 )
+            if( aPin.GetBodyStyle() == ALL_BODY_STYLES )
                 return wxGetTranslation( DEMORGAN_ALL );
             else
                 return aPin.GetBodyStyleDescription( aPin.GetBodyStyle(), true );
@@ -219,19 +199,19 @@ public:
 
         case COL_TYPE:
             if( PinTypeNames().Index( aValue, false ) != wxNOT_FOUND )
-                aPin.SetType( (ELECTRICAL_PINTYPE) PinTypeNames().Index( aValue ) );
+                aPin.SetType( (ELECTRICAL_PINTYPE) PinTypeNames().Index( aValue, false ) );
 
             break;
 
         case COL_SHAPE:
             if( PinShapeNames().Index( aValue, false ) != wxNOT_FOUND )
-                aPin.SetShape( (GRAPHIC_PINSHAPE) PinShapeNames().Index( aValue ) );
+                aPin.SetShape( (GRAPHIC_PINSHAPE) PinShapeNames().Index( aValue, false ) );
 
             break;
 
         case COL_ORIENTATION:
             if( PinOrientationNames().Index( aValue, false ) != wxNOT_FOUND )
-                aPin.SetOrientation( (PIN_ORIENTATION) PinOrientationNames().Index( aValue ) );
+                aPin.SetOrientation( (PIN_ORIENTATION) PinOrientationNames().Index( aValue, false ) );
 
             break;
 
@@ -314,89 +294,17 @@ public:
             break;
         }
     }
-
-private:
-    wxString stringFromBool( bool aValue ) const
-    {
-        switch( m_boolFormat )
-        {
-        case BOOL_FORMAT::ZERO_ONE:
-            return aValue ? wxT( "1" ) : wxT( "0" );
-        case BOOL_FORMAT::TRUE_FALSE:
-            return wxGetTranslation( aValue ? BOOL_TRUE : BOOL_FALSE );
-        default:
-            KI_FAIL_MSG( "Invalid BOOL_FORMAT" );
-            return wxEmptyString;
-        }
-
-    }
-
-    bool boolFromString( const wxString& aValue, REPORTER& aReporter ) const
-    {
-        if( aValue == wxS( "1" ) )
-            return true;
-        else if( aValue == wxS( "0" ) )
-            return false;
-        else if( MatchTranslationOrNative( aValue, BOOL_TRUE, false ) )
-            return true;
-        else if( MatchTranslationOrNative( aValue, BOOL_FALSE, false ) )
-            return false;
-
-        aReporter.Report( wxString::Format( _( "The value '%s' can't be converted to boolean correctly, "
-                                               "it has been interpreted as 'False'" ),
-                                            aValue ),
-                          RPT_SEVERITY_ERROR );
-        return false;
-    }
-
-    UNITS_PROVIDER& m_unitsProvider;
-    bool            m_includeUnits;
-    BOOL_FORMAT     m_boolFormat;
-    REPORTER&       m_reporter;
 };
-
-
-void getSelectedArea( WX_GRID* aGrid, int* aRowStart, int* aRowCount )
-{
-    wxGridCellCoordsArray topLeft  = aGrid->GetSelectionBlockTopLeft();
-    wxGridCellCoordsArray botRight = aGrid->GetSelectionBlockBottomRight();
-
-    wxArrayInt  cols = aGrid->GetSelectedCols();
-    wxArrayInt  rows = aGrid->GetSelectedRows();
-
-    if( topLeft.Count() && botRight.Count() )
-    {
-        *aRowStart = topLeft[0].GetRow();
-        *aRowCount = botRight[0].GetRow() - *aRowStart + 1;
-    }
-    else if( cols.Count() )
-    {
-        *aRowStart = 0;
-        *aRowCount = aGrid->GetNumberRows();
-    }
-    else if( rows.Count() )
-    {
-        *aRowStart = rows[0];
-        *aRowCount = rows.Count();
-    }
-    else
-    {
-        *aRowStart = aGrid->GetGridCursorRow();
-        *aRowCount = *aRowStart >= 0 ? 1 : 0;
-    }
-}
 
 
 class PIN_TABLE_DATA_MODEL : public WX_GRID_TABLE_BASE
 {
 public:
-    PIN_TABLE_DATA_MODEL( SYMBOL_EDIT_FRAME* aFrame,
-                          DIALOG_LIB_EDIT_PIN_TABLE* aPinTable,
-                          LIB_SYMBOL* aSymbol,
+    PIN_TABLE_DATA_MODEL( SYMBOL_EDIT_FRAME* aFrame, DIALOG_LIB_EDIT_PIN_TABLE* aPinTable, LIB_SYMBOL* aSymbol,
                           const std::vector<SCH_PIN*>& aOrigSelectedPins ) :
             m_frame( aFrame ),
-            m_unitFilter( -1 ),
-            m_bodyStyleFilter( -1 ),
+            m_unitFilter( ALL_UNITS ),
+            m_bodyStyleFilter( ALL_BODY_STYLES ),
             m_filterBySelection( false ),
             m_edited( false ),
             m_pinTable( aPinTable ),
@@ -683,14 +591,9 @@ public:
                 for( SCH_PIN* pin : aPins )
                     pin->ClearTempFlags();
 
-                int firstSelectedRow;
-                int selectedRowCount;
-
-                getSelectedArea( grid, &firstSelectedRow, &selectedRowCount );
-
-                for( int ii = 0; ii < selectedRowCount; ++ii )
+                for( int row : grid->GetSelectedRowIndices() )
                 {
-                    for( SCH_PIN* pin : m_rows[ firstSelectedRow + ii ] )
+                    for( SCH_PIN* pin : m_rows[row] )
                     {
                         pin->SetFlags( CANDIDATE );
                         clear_flags.push_back( pin );
@@ -743,10 +646,14 @@ public:
 
         for( SCH_PIN* pin : aPins )
         {
-            const bool includedByUnit = m_unitFilter <= 0 || pin->GetUnit() == 0 || pin->GetUnit() == m_unitFilter;
-            const bool includedByBodyStyle =
-                    m_bodyStyleFilter <= 0 || pin->GetBodyStyle() == 0 || pin->GetBodyStyle() == m_bodyStyleFilter;
-            const bool includedBySelection = !m_filterBySelection || pinIsInEditorSelection( pin );
+            const bool includedByUnit = m_unitFilter == ALL_UNITS
+                                            || pin->GetUnit() == ALL_UNITS
+                                            || pin->GetUnit() == m_unitFilter;
+            const bool includedByBodyStyle = m_bodyStyleFilter == ALL_BODY_STYLES
+                                                || pin->GetBodyStyle() == ALL_BODY_STYLES
+                                                || pin->GetBodyStyle() == m_bodyStyleFilter;
+            const bool includedBySelection = !m_filterBySelection
+                                                || pinIsInEditorSelection( pin );
 
             if( includedByUnit && includedByBodyStyle && includedBySelection )
             {
@@ -825,6 +732,8 @@ public:
             wxGridTableMessage msg( this, wxGRIDTABLE_NOTIFY_ROWS_APPENDED, 1 );
             GetView()->ProcessTableMessage( msg );
         }
+
+        m_edited = true;
     }
 
     std::vector<SCH_PIN*> RemoveRow( int aRow )
@@ -839,6 +748,7 @@ public:
             GetView()->ProcessTableMessage( msg );
         }
 
+        m_edited = true;
         return removedRow;
     }
 
@@ -859,8 +769,8 @@ private:
     // data model is a 2D vector.  If we're in the single pin case, each row's SCH_PINs
     // contains only a single pin.
     std::vector<std::vector<SCH_PIN*>> m_rows;
-    int                                m_unitFilter;      // 0 or -1 to show pins for all units
-    int                                m_bodyStyleFilter; // 0 or -1 to show all body styles
+    int                                m_unitFilter;         // 0 to show pins for all units
+    int                                m_bodyStyleFilter;    // 0 to show all body styles
     bool                               m_filterBySelection;
 
     bool                               m_edited;
@@ -873,186 +783,6 @@ private:
 
     std::unique_ptr<NUMERIC_EVALUATOR> m_eval;
     std::map< std::pair<std::vector<SCH_PIN*>, int>, wxString > m_evalOriginal;
-};
-
-
-class PIN_TABLE_EXPORT
-{
-public:
-    PIN_TABLE_EXPORT( UNITS_PROVIDER& aUnitsProvider ) :
-            m_unitsProvider( aUnitsProvider )
-    {
-    }
-
-    void ExportData( std::vector<SCH_PIN*>& aPins, const wxString& aToFile ) const
-    {
-        std::vector<int> exportCols {
-            COL_NUMBER,
-            COL_NAME,
-            COL_TYPE,
-            COL_SHAPE,
-            COL_ORIENTATION,
-            COL_NUMBER_SIZE,
-            COL_NAME_SIZE,
-            COL_LENGTH,
-            COL_POSX,
-            COL_POSY,
-            COL_VISIBLE,
-            COL_UNIT,
-            COL_BODY_STYLE,
-        };
-
-        std::vector<std::vector<wxString>> exportTable;
-        exportTable.reserve( aPins.size() + 1 );
-
-        std::vector<wxString> headers;
-        for( int col : exportCols )
-        {
-            headers.push_back( wxGetTranslation( GetPinTableColLabel( col ) ) );
-        }
-        exportTable.emplace_back( std::move( headers ) );
-
-        NULL_REPORTER      reporter;
-        PIN_INFO_FORMATTER formatter( m_unitsProvider, false, PIN_INFO_FORMATTER::BOOL_FORMAT::TRUE_FALSE, reporter );
-
-        for( const SCH_PIN* pin : aPins )
-        {
-            std::vector<wxString>& cols = exportTable.emplace_back( 0 );
-            cols.reserve( exportCols.size() );
-            for( int col : exportCols )
-            {
-                cols.emplace_back( formatter.Format( *pin, col ) );
-            }
-        }
-
-        if( !aToFile.IsEmpty() )
-        {
-            wxFileOutputStream os( aToFile );
-            CSV_WRITER         writer( os );
-            writer.WriteLines( exportTable );
-        }
-        else
-        {
-            SaveTabularDataToClipboard( exportTable );
-        }
-    }
-
-private:
-    UNITS_PROVIDER& m_unitsProvider;
-};
-
-
-class PIN_TABLE_IMPORT
-{
-public:
-    PIN_TABLE_IMPORT( EDA_BASE_FRAME& aFrame, REPORTER& aReporter ) :
-            m_frame( aFrame ),
-            m_reporter( aReporter )
-    {
-    }
-
-    std::vector<std::unique_ptr<SCH_PIN>> ImportData( bool aFromFile, LIB_SYMBOL& aSym ) const
-    {
-        wxString path;
-
-        if( aFromFile )
-        {
-            path = promptForFile();
-
-            if( path.IsEmpty() )
-                return {};
-        }
-
-        std::vector<std::vector<wxString>> csvData;
-        bool                               ok = false;
-
-        if( !path.IsEmpty() )
-        {
-            // Read file content
-            wxString csvFileContent = SafeReadFile( path, "r" );
-            ok = AutoDecodeCSV( csvFileContent, csvData );
-        }
-        else
-        {
-            ok = GetTabularDataFromClipboard( csvData );
-        }
-
-        std::vector<std::unique_ptr<SCH_PIN>> pins;
-
-        PIN_INFO_FORMATTER formatter( m_frame, false, PIN_INFO_FORMATTER::BOOL_FORMAT::TRUE_FALSE, m_reporter );
-
-        if( ok )
-        {
-            // The first thing we need to do is map the CSV columns to the pin table columns
-            // (in case the user reorders them)
-            std::vector<COL_ORDER> headerCols = getColOrderFromCSV( csvData[0] );
-
-            for( size_t i = 1; i < csvData.size(); ++i )
-            {
-                std::vector<wxString>& cols = csvData[i];
-
-                std::unique_ptr<SCH_PIN> pin = std::make_unique<SCH_PIN>( &aSym );
-
-                // Ignore cells that stick out to the right of the headers
-                size_t maxCol = std::min( headerCols.size(), cols.size() );
-
-                for( size_t j = 0; j < maxCol; ++j )
-                {
-                    // Skip unrecognised columns
-                    if( headerCols[j] == COL_COUNT )
-                        continue;
-
-                    formatter.UpdatePin( *pin, cols[j], headerCols[j], aSym );
-                }
-
-                pins.emplace_back( std::move( pin ) );
-            }
-        }
-
-        return pins;
-    }
-
-private:
-    wxString promptForFile() const
-    {
-        wxFileDialog dlg( &m_frame, _( "Select pin data file" ), "", "", FILEEXT::CsvTsvFileWildcard(),
-                          wxFD_OPEN | wxFD_FILE_MUST_EXIST );
-
-        KIPLATFORM::UI::AllowNetworkFileSystems( &dlg );
-
-        if( dlg.ShowModal() == wxID_CANCEL )
-            return wxEmptyString;
-
-        return dlg.GetPath();
-    }
-
-    std::vector<COL_ORDER> getColOrderFromCSV( const std::vector<wxString>& aHeaderRow ) const
-    {
-        std::vector<COL_ORDER> colOrder;
-        wxArrayString          unknownHeaders;
-
-        for( size_t i = 0; i < aHeaderRow.size(); ++i )
-        {
-            COL_ORDER col = GetColTypeForString( aHeaderRow[i] );
-
-            if( col >= COL_COUNT )
-                unknownHeaders.push_back( aHeaderRow[i] );
-
-            colOrder.push_back( col );
-        }
-
-        if( unknownHeaders.size() )
-        {
-            wxString msg = wxString::Format( _( "Unknown columns in data: %s. These columns will be ignored." ),
-                                             AccumulateDescriptions( unknownHeaders ) );
-            m_reporter.Report( msg, RPT_SEVERITY_ERROR );
-        }
-
-        return colOrder;
-    }
-
-    EDA_BASE_FRAME& m_frame;
-    REPORTER&       m_reporter;
 };
 
 
@@ -1069,10 +799,13 @@ DIALOG_LIB_EDIT_PIN_TABLE::DIALOG_LIB_EDIT_PIN_TABLE( SYMBOL_EDIT_FRAME* parent,
         m_originalColWidths[ i ] = m_grid->GetColSize( i );
 
     m_grid->SetTable( m_dataModel );
-    m_grid->PushEventHandler( new GRID_TRICKS( m_grid, [this]( wxCommandEvent& aEvent )
-                                                       {
-                                                           OnAddRow( aEvent );
-                                                       } ) );
+    GRID_TRICKS* gridTricks = new GRID_TRICKS( m_grid,
+                                               [this]( wxCommandEvent& aEvent )
+                                               {
+                                                   OnAddRow( aEvent );
+                                               } );
+    gridTricks->EnableColumnBulkEdit();
+    m_grid->PushEventHandler( gridTricks );
     m_grid->SetSelectionMode( wxGrid::wxGridSelectCells );
     m_grid->ShowHideColumns( "0 1 2 3 4 5 9 10" );
     m_columnsShown = m_grid->GetShownColumns();
@@ -1159,11 +892,9 @@ DIALOG_LIB_EDIT_PIN_TABLE::DIALOG_LIB_EDIT_PIN_TABLE( SYMBOL_EDIT_FRAME* parent,
     const int summaryW = m_pin_numbers_summary->GetCharWidth() * 30;
 
     m_pin_numbers_summary->SetWindowStyleFlag( m_pin_numbers_summary->GetWindowStyleFlag() | wxST_ELLIPSIZE_END );
-    m_pin_numbers_summary->SetMinSize( wxSize( summaryW, -1 ) );
     m_pin_numbers_summary->SetMaxSize( wxSize( summaryW, -1 ) );
 
     m_duplicate_pins->SetWindowStyleFlag( m_duplicate_pins->GetWindowStyleFlag() | wxST_ELLIPSIZE_END );
-    m_duplicate_pins->SetMinSize( wxSize( summaryW, -1 ) );
     m_duplicate_pins->SetMaxSize( wxSize( summaryW, -1 ) );
 
     GetSizer()->SetSizeHints(this);
@@ -1211,8 +942,12 @@ DIALOG_LIB_EDIT_PIN_TABLE::DIALOG_LIB_EDIT_PIN_TABLE( SYMBOL_EDIT_FRAME* parent,
 
     SetupStandardButtons();
 
-    if( !parent->IsSymbolEditable() || parent->IsSymbolAlias() )
+    if( !parent->IsSymbolGraphicallyEditable() )
     {
+        // Export is OK, but Import is just going to produce frustration
+        m_btnImportFromClipboard->Enable( false );
+        m_btnImportFromFile->Enable( false );
+
         m_ButtonsCancel->SetDefault();
         m_ButtonsOK->SetLabel( _( "Read Only" ) );
         m_ButtonsOK->Enable( false );
@@ -1306,6 +1041,9 @@ bool DIALOG_LIB_EDIT_PIN_TABLE::TransferDataFromWindow()
 
 void DIALOG_LIB_EDIT_PIN_TABLE::OnColSort( wxGridEvent& aEvent )
 {
+    if( !m_grid->CommitPendingChanges() )
+        return;
+
     int sortCol = aEvent.GetCol();
     bool ascending;
 
@@ -1398,7 +1136,8 @@ void DIALOG_LIB_EDIT_PIN_TABLE::RemovePin( SCH_PIN* pin )
 
 void DIALOG_LIB_EDIT_PIN_TABLE::OnCellEdited( wxGridEvent& event )
 {
-    updateSummary();
+    // A bulk edit sends one event per row, so rebuild the summary once from OnUpdateUI
+    m_summaryDirty = true;
 }
 
 
@@ -1433,9 +1172,7 @@ void DIALOG_LIB_EDIT_PIN_TABLE::OnCellSelected( wxGridEvent& event )
         m_editFrame->GetCanvas()->Refresh();
     }
 
-    // Let WX_GRID run its editor-positioning handler
-    if( event.GetEventType() == wxEVT_GRID_EDITOR_SHOWN )
-        event.Skip();
+    event.Skip();
 }
 
 
@@ -1447,6 +1184,9 @@ bool DIALOG_LIB_EDIT_PIN_TABLE::IsDisplayGrouped()
 
 void DIALOG_LIB_EDIT_PIN_TABLE::OnGroupSelected( wxCommandEvent& event )
 {
+    if( !m_grid->CommitPendingChanges() )
+        return;
+
     m_cbGroup->SetValue( false );
 
     m_dataModel->RebuildRows( m_pins, false, true );
@@ -1523,7 +1263,7 @@ void DIALOG_LIB_EDIT_PIN_TABLE::OnFilterCheckBox( wxCommandEvent& event )
         }
         else
         {
-            m_dataModel->SetBodyStyleFilter( -1 );
+            m_dataModel->SetBodyStyleFilter( ALL_BODY_STYLES );
             m_bodyStyleFilter->SetSelection( -1 );
         }
     }
@@ -1541,12 +1281,12 @@ void DIALOG_LIB_EDIT_PIN_TABLE::OnFilterChoice( wxCommandEvent& event )
     if( event.GetEventObject() == m_unitFilter )
     {
         m_cbFilterByUnit->SetValue( true );
-        m_dataModel->SetUnitFilter( m_unitFilter->GetSelection() );
+        m_dataModel->SetUnitFilter( std::max( m_unitFilter->GetSelection(), ALL_UNITS ) );
     }
     else if( event.GetEventObject() == m_bodyStyleFilter )
     {
         m_cbFilterByBodyStyle->SetValue( true );
-        m_dataModel->SetBodyStyleFilter( m_bodyStyleFilter->GetSelection() );
+        m_dataModel->SetBodyStyleFilter( std::max( m_bodyStyleFilter->GetSelection(), ALL_BODY_STYLES ) );
     }
 
     OnRebuildRows( event );
@@ -1555,13 +1295,78 @@ void DIALOG_LIB_EDIT_PIN_TABLE::OnFilterChoice( wxCommandEvent& event )
 
 void DIALOG_LIB_EDIT_PIN_TABLE::OnImportButtonClick( wxCommandEvent& event )
 {
+    if( !m_grid->CommitPendingChanges() )
+        return;
+
     bool fromFile = event.GetEventObject() == m_btnImportFromFile;
     bool replaceAll = m_rbReplaceAll->GetValue();
 
     WX_STRING_REPORTER reporter;
-    PIN_TABLE_IMPORT   importer( *m_editFrame, reporter );
 
-    std::vector<std::unique_ptr<SCH_PIN>> newPins = importer.ImportData( fromFile, *m_symbol );
+    PIN_INFO_FORMATTER fmt( *m_editFrame, false, PIN_INFO_FORMATTER::BOOL_FORMAT::TRUE_FALSE, reporter );
+
+    auto updateFn =
+            [&]( SCH_PIN& aPin, const wxString& aVal, COL_ORDER aCol )
+            {
+                fmt.UpdatePin( aPin, aVal, aCol, *m_symbol );
+            };
+
+    auto createFn =
+            []( LIB_SYMBOL& aSym )
+            {
+                return std::make_unique<SCH_PIN>( &aSym );
+            };
+
+    auto colLabelToEnumFn =
+            []( const wxString& aStr ) -> COL_ORDER
+            {
+                return GetColTypeForString( aStr );
+            };
+
+    std::optional<std::vector<std::vector<wxString>>> csvData = ReadTableFromFileOrClipboard( *m_editFrame, fromFile );
+
+    std::vector<std::unique_ptr<SCH_PIN>> newPins;
+
+    if( csvData && csvData->size() >= 2 )
+    {
+        std::vector<COL_ORDER> headerCols;
+        wxArrayString          unknownHeaders;
+
+        for( const wxString& label : ( *csvData )[0] )
+        {
+            COL_ORDER col = colLabelToEnumFn( label );
+
+            if( col >= COL_COUNT )
+                unknownHeaders.push_back( label );
+
+            headerCols.push_back( col );
+        }
+
+        if( !unknownHeaders.IsEmpty() )
+        {
+            wxString msg = wxString::Format( _( "Unknown columns in data: %s. These columns will be ignored." ),
+                                             AccumulateDescriptions( unknownHeaders ) );
+            reporter.Report( msg, RPT_SEVERITY_ERROR );
+        }
+
+        for( size_t i = 1; i < csvData->size(); ++i )
+        {
+            const std::vector<wxString>& cols = ( *csvData )[i];
+            std::unique_ptr<SCH_PIN>     item = createFn( *m_symbol );
+
+            size_t maxCol = std::min( headerCols.size(), cols.size() );
+
+            for( size_t j = 0; j < maxCol; ++j )
+            {
+                if( headerCols[j] == COL_COUNT )
+                    continue;
+
+                updateFn( *item, cols[j], headerCols[j] );
+            }
+
+            newPins.emplace_back( std::move( item ) );
+        }
+    }
 
     if( reporter.HasMessage() )
     {
@@ -1589,6 +1394,7 @@ void DIALOG_LIB_EDIT_PIN_TABLE::OnImportButtonClick( wxCommandEvent& event )
 
     m_cbGroup->SetValue( false );
     m_dataModel->RebuildRows( m_pins, false, false );
+    m_modified = true;
 
     updateSummary();
 }
@@ -1596,6 +1402,9 @@ void DIALOG_LIB_EDIT_PIN_TABLE::OnImportButtonClick( wxCommandEvent& event )
 
 void DIALOG_LIB_EDIT_PIN_TABLE::OnExportButtonClick( wxCommandEvent& event )
 {
+    if( !m_grid->CommitPendingChanges() )
+        return;
+
     bool toFile = event.GetEventObject() == m_btnExportToFile;
     bool onlyShown = m_rbExportOnlyShownPins->GetValue();
 
@@ -1631,8 +1440,46 @@ void DIALOG_LIB_EDIT_PIN_TABLE::OnExportButtonClick( wxCommandEvent& event )
         pinsToExport = m_pins;
     }
 
-    PIN_TABLE_EXPORT exporter( *m_editFrame );
-    exporter.ExportData( pinsToExport, filePath );
+    static const std::vector<COL_ORDER> exportCols {
+        COL_NUMBER,
+        COL_NAME,
+        COL_TYPE,
+        COL_SHAPE,
+        COL_ORIENTATION,
+        COL_NUMBER_SIZE,
+        COL_NAME_SIZE,
+        COL_LENGTH,
+        COL_POSX,
+        COL_POSY,
+        COL_VISIBLE,
+        COL_UNIT,
+        COL_BODY_STYLE,
+    };
+
+    NULL_REPORTER      reporter;
+    PIN_INFO_FORMATTER fmt( *m_editFrame, false, PIN_INFO_FORMATTER::BOOL_FORMAT::TRUE_FALSE, reporter );
+
+    std::vector<std::vector<wxString>> table;
+    table.reserve( pinsToExport.size() + 1 );
+
+    std::vector<wxString> header;
+    header.reserve( exportCols.size() );
+
+    for( COL_ORDER col : exportCols )
+        header.emplace_back( wxGetTranslation( GetPinTableColLabel( static_cast<int>( col ) ) ) );
+
+    table.emplace_back( std::move( header ) );
+
+    for( const SCH_PIN* pin : pinsToExport )
+    {
+        std::vector<wxString>& row = table.emplace_back();
+        row.reserve( exportCols.size() );
+
+        for( COL_ORDER col : exportCols )
+            row.emplace_back( fmt.Format( *pin, static_cast<int>( col ) ) );
+    }
+
+    WriteTableToFileOrClipboard( filePath, table );
 }
 
 
@@ -1701,10 +1548,13 @@ void DIALOG_LIB_EDIT_PIN_TABLE::OnUpdateUI( wxUpdateUIEvent& event )
             adjustGridColumns();
     }
 
-    int firstSelectedRow;
-    int selectedRowCount;
+    if( m_summaryDirty )
+    {
+        m_summaryDirty = false;
+        updateSummary();
+    }
 
-    getSelectedArea( m_grid, &firstSelectedRow, &selectedRowCount );
+    const size_t selectedRowCount = m_grid->GetSelectedRowIndices().size();
 
     if( ( selectedRowCount > 1 ) != m_groupSelected->IsEnabled() )
         m_groupSelected->Enable( selectedRowCount > 1 );
@@ -1719,12 +1569,16 @@ void DIALOG_LIB_EDIT_PIN_TABLE::OnCancel( wxCommandEvent& event )
 
 void DIALOG_LIB_EDIT_PIN_TABLE::OnClose( wxCloseEvent& event )
 {
-    // This is a cancel, so commit quietly as we're going to throw the results away anyway.
-    m_grid->CommitPendingChanges( true );
+    // Closing can still save, so a pending bulk edit needs the events a quiet commit skips
+    if( !m_grid->CommitPendingChanges() && event.CanVeto() )
+    {
+        event.Veto();
+        return;
+    }
 
     int retval = wxID_CANCEL;
 
-    if( m_dataModel->IsEdited() )
+    if( ( m_modified || m_dataModel->IsEdited() ) && m_ButtonsOK->IsEnabled() )
     {
         if( HandleUnsavedChanges( this, _( "Save changes?" ),
                                   [&]() -> bool
@@ -1738,11 +1592,7 @@ void DIALOG_LIB_EDIT_PIN_TABLE::OnClose( wxCloseEvent& event )
                                       return false;
                                   } ) )
         {
-            if( IsQuasiModal() )
-                EndQuasiModal( retval );
-            else
-                EndDialog( retval );
-
+            EndDialogShim( retval );
             return;
         }
         else
@@ -1753,10 +1603,7 @@ void DIALOG_LIB_EDIT_PIN_TABLE::OnClose( wxCloseEvent& event )
     }
 
     // No change in dialog: we can close it
-    if( IsQuasiModal() )
-        EndQuasiModal( retval );
-    else
-        EndDialog( retval );
+    EndDialogShim( retval );
 }
 
 

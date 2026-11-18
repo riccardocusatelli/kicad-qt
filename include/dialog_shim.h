@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef DIALOG_SHIM_
@@ -30,6 +26,7 @@
 #include <kiway_holder.h>
 #include <wx/dialog.h>
 #include <map>
+#include <optional>
 #include <set>
 #include <vector>
 #include <wx/variant.h>
@@ -160,9 +157,18 @@ public:
     void LoadControlState();
 
     /**
-     * Save control values and geometry to the current project's local settings.
+     * While we did this in LoadControlState(), we need to re-apply if after setting
+     * the dialog size.  Well, sometimes we need to re-apply it.
      */
-    void SaveControlState();
+    void ReloadSashPositions();
+
+    /**
+     * Save control values and geometry to the current project's local settings.
+     *
+     * @param aPosition the restorable position captured while the dialog was still shown.  Without
+     *                  it a hidden dialog keeps its previously saved geometry.
+     */
+    void SaveControlState( const std::optional<wxPoint>& aPosition = std::nullopt );
 
     /**
      * Opt out of control state saving.
@@ -197,6 +203,20 @@ public:
      * @param aUnitBinder the binder being destroyed
      */
     void UnregisterUnitBinder( UNIT_BINDER* aUnitBinder );
+
+    /**
+     * A mode agnostic way to close a dialog.
+     *
+     * This replaces the protected method wxDialog::EndDialog() which unfortunately was not made virtual
+     * and knows nothing of our custom QuasiModal behavior.
+     *
+     * @warning Do not call EndModal or EndQuasimodal directly.  This is a bug because it's not
+     *          known in advance how the dialog was opened and cannot be guaranteed not to change in
+     *          the future.
+     *
+     * @param aReturnCode is the return code from ending Modal and QuasiModal dialogs.
+     */
+    void EndDialogShim( int aReturnCode );
 
 protected:
     /**
@@ -261,24 +281,14 @@ protected:
      */
     virtual void TearDownQuasiModal() {}
 
-    /**                                                                                                               
-     * Reset undo/redo tracking after dynamically replacing child panels.
-     *                                                                                                                
-     * Clears the undo/redo stacks and current value baselines, then registers
-     * undo/redo event handlers on the new children.
+    /**
+     * Tell the undo mechanism to snapshot the current value of a control and record it
+     * as an undo step when the value changes.
      *
-     * @param aChildren The child window list of the newly created panel.
+     * If you call this from an event handler that generates multiple change events,
+     * they will be coalesced into a single undo step.
      */
-    void resetUndoRedoForNewContent( wxWindowList& aChildren ); 
-
-    /**                                                                                                                   
-     * Remove UNIT_BINDER registrations for a window and all its descendants.
-     *
-     * Call before destroying a panel whose children have registered unit binders.
-     *
-     * @param aWindow The root window whose subtree should be unregistered.
-     */
-    void unregisterUnitBinders( wxWindow* aWindow );
+    void recordControlChange( wxWindow* aCtrl );
 
 private:
     /**
@@ -321,15 +331,6 @@ private:
     std::string generateKey( const wxWindow* aWin ) const;
 
     void registerUndoRedoHandlers( wxWindowList& aChildren );
-
-    /**
-     * Tell the undo mechanism to snapshot the current value of a control and record it
-     * as an undo step when the value changes.
-     *
-     * If you call this from an event handler that generates multiple change events,
-     * they will be coalesced into a single undo step.
-     */
-    void recordControlChange( wxWindow* aCtrl );
 
     /**
      * Apply outstanding control changes to the undo stack, and clear the pending list.

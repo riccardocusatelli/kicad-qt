@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -41,6 +37,7 @@
 #include <app_monitor.h>
 #include <build_version.h>
 #include <common.h>
+#include <database/access_fast_exit.h>
 #include <core/arraydim.h>
 #include <core/ki_assert.h>
 #include <core/ki_log.h>
@@ -94,6 +91,7 @@ LANGUAGE_DESCR LanguagesList[] =
     { wxLANGUAGE_CROATIAN,   ID_LANGUAGE_CROATIAN,   wxT( "Hrvatski" ), true },
     { wxLANGUAGE_KOREAN,     ID_LANGUAGE_KOREAN,     wxT( "한국어"),       true },
     { wxLANGUAGE_ITALIAN,    ID_LANGUAGE_ITALIAN,    wxT( "Italiano" ), true },
+    { wxLANGUAGE_LAOTHIAN,   ID_LANGUAGE_LAOTHIAN,   wxT( "ພາສາລາວ" ), true  },
     { wxLANGUAGE_LATVIAN,    ID_LANGUAGE_LATVIAN,    wxT( "Latviešu" ), true },
     { wxLANGUAGE_LITHUANIAN, ID_LANGUAGE_LITHUANIAN, wxT( "Lietuvių" ), true },
     { wxLANGUAGE_HUNGARIAN,  ID_LANGUAGE_HUNGARIAN,  wxT( "Magyar" ),   true },
@@ -138,6 +136,7 @@ PGM_BASE::PGM_BASE()
 {
     m_locale = nullptr;
     m_Quitting = false;
+    m_sessionEnding = false;
     m_argcUtf8 = 0;
     m_argvUtf8 = nullptr;
 
@@ -165,6 +164,19 @@ PGM_BASE::~PGM_BASE()
 
 void PGM_BASE::Destroy()
 {
+    // The preload reads the design block libraries, so it has to stop before they go
+    if( m_libraryPreloadReturn.valid() )
+    {
+        if( m_libraryPreloadInProgress.load() )
+            m_libraryPreloadAbort.store( true );
+
+        m_libraryPreloadReturn.wait();
+    }
+
+    // Freeing thousands of cached libraries one item at a time would hold up the exit for seconds
+    if( m_library_manager )
+        m_library_manager->LeakCachesAtExit();
+
     // Clean up library IO plugins before static destruction
     m_library_manager.reset();
 
@@ -176,6 +188,11 @@ void PGM_BASE::Destroy()
     winrt::uninit_apartment();
 #endif
 
+    // A project that failed to unload still holds its lock, and removing the lock file during
+    // static destruction would run after wxWidgets has torn down its filename conversion.
+    if( m_settings_manager )
+        m_settings_manager->ReleaseProjectLocks();
+
     // Shut down the thread pool explicitly here, before static destruction begins.
     // On macOS, if the thread pool destructor runs during static destruction
     // (via __cxa_finalize_ranges), the condition variables may be in an invalid state,
@@ -184,6 +201,11 @@ void PGM_BASE::Destroy()
     m_singleton.Shutdown();
 }
 
+
+void PGM_BASE::ExitIfTeardownUnsafe()
+{
+    ExitFastIfAccessWorkerAbandoned( m_runResult );
+}
 
 
 void PGM_BASE::SetTextEditor( const wxString& aFileName )
@@ -230,8 +252,29 @@ void PGM_BASE::reportInitError( const wxString& aMessage )
 }
 
 
+wxString PGM_BASE::DesktopAppIdForProgram( const wxString& aPgmName )
+{
+#if ( defined( __WXGTK__ ) || ( defined( KICAD_WX_FREE ) && defined( __linux__ ) ) ) \
+        && defined( KICAD_DESKTOP_APP_NAME )
+    // The prefix varies by build (regular, Flatpak, Nightly) and is supplied by CMake. The main
+    // manager keeps the bare app name; the other GUI apps are prefixed.
+    if( aPgmName == wxT( "kicad" ) )
+        return wxT( KICAD_DESKTOP_APP_NAME );
 
-bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
+    if( aPgmName == wxT( "eeschema" ) || aPgmName == wxT( "pcbnew" ) || aPgmName == wxT( "gerbview" )
+        || aPgmName == wxT( "pcb_calculator" ) )
+    {
+        // pcb_calculator installs as pcbcalculator to satisfy freedesktop naming rules.
+        wxString appName = aPgmName == wxT( "pcb_calculator" ) ? wxT( "pcbcalculator" ) : aPgmName;
+        return wxString( wxT( KICAD_DESKTOP_APP_PREFIX ) ) + wxT( "." ) + appName;
+    }
+#endif
+
+    return wxEmptyString;
+}
+
+
+bool PGM_BASE::InitPgm( bool aHeadless, bool aIsUnitTest )
 {
 #if defined( __WXMAC__ )
     // Set the application locale to the system default
@@ -282,6 +325,8 @@ bool PGM_BASE::InitPgm( bool aHeadless, bool aSkipPyInit, bool aIsUnitTest )
         app->SetVendorName( wxT( "KiCad" ) );
         app->SetAppName( pgm_name );
     }
+
+    m_desktopAppId = DesktopAppIdForProgram( pgm_name );
 
     // Analyze the command line & initialize the binary path
     wxString tmp;
@@ -386,7 +431,7 @@ void PGM_BASE::SaveCommonSettings()
 {
     // GetCommonSettings() is not initialized until fairly late in the
     // process startup: InitPgm(), so test before using:
-    if( GetCommonSettings() )
+    if( GetCommonSettings() && IsGUI() )
         GetCommonSettings()->m_System.working_dir = wxGetCwd();
 }
 
@@ -580,7 +625,7 @@ void PGM_BASE::SetLanguagePath()
 #endif
     wxLocale::AddCatalogLookupPathPrefix( PATHS::GetLocaleDataPath() );
 
-    if( wxGetEnv( wxT( "KICAD_RUN_FROM_BUILD_DIR" ), nullptr ) )
+    if( PATHS::RunningFromBuildDir() )
     {
         wxFileName fn( GetExecutablePath() );
         fn.RemoveLastDir();

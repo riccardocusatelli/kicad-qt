@@ -17,8 +17,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PROPERTY_H
@@ -55,7 +55,7 @@ class PROPERTY_BASE;
 template<typename T>
 class ENUM_MAP;
 
-///< Common property types
+/// Common property types
 enum PROPERTY_DISPLAY
 {
     PT_DEFAULT,    ///< Default property for a given type
@@ -65,11 +65,11 @@ enum PROPERTY_DISPLAY
     PT_DEGREE,     ///< Angle expressed in degrees
     PT_DECIDEGREE, ///< Angle expressed in decidegrees
     PT_RATIO,
-    PT_TIME, ///< Time expressed in ps
+    PT_TIME,       ///< Time expressed in ps
     PT_NET,        ///< Net selection property
 };
 
-///< Macro to generate unique identifier for a type
+/// Macro to generate unique identifier for a type
 #define TYPE_HASH( x ) typeid( x ).hash_code()
 #define TYPE_NAME( x ) typeid( x ).name()
 //#define TYPE_HASH( x ) typeid( std::decay<x>::type ).hash_code()
@@ -194,7 +194,7 @@ public:
 class PROPERTY_BASE
 {
 private:
-    ///< Used to generate unique IDs.  Must come up front so it's initialized before ctor.
+    /// Used to generate unique IDs.  Must come up front so it's initialized before ctor.
 
 public:
     PROPERTY_BASE( const wxString& aName, PROPERTY_DISPLAY aDisplay = PT_DEFAULT,
@@ -206,6 +206,7 @@ public:
             m_hideFromLibraryEditors( false ),
             m_hideFromDesignEditors( false ),
             m_hideFromRulesEditor( false ),
+            m_copyable( false ),
             m_availFunc( [](INSPECTABLE*)->bool { return true; } ),
             m_writeableFunc( [](INSPECTABLE*)->bool { return true; } ),
             m_validator( NullValidator )
@@ -217,6 +218,18 @@ public:
     }
 
     const wxString& Name() const { return m_name; }
+
+    const wxString& HelpString() const { return m_helpString; }
+
+    /**
+     * Set untranslated help text, marked with _HKI for translation extraction.
+     * An empty string makes the property grid use the property name as its help text.
+     */
+    PROPERTY_BASE& SetHelpString( const wxString& aHelpString )
+    {
+        m_helpString = aHelpString;
+        return *this;
+    }
 
     /**
      * Return a limited set of possible values (e.g. enum). Check with HasChoices() if a particular
@@ -278,6 +291,11 @@ public:
         return *this;
     }
 
+    virtual bool IgnoreValue() const
+    {
+        return false;
+    }
+
     virtual bool Writeable( INSPECTABLE* aObject ) const
     {
         return m_writeableFunc( aObject );
@@ -286,6 +304,23 @@ public:
     PROPERTY_BASE& SetWriteableFunc( std::function<bool(INSPECTABLE*)> aFunc )
     {
         m_writeableFunc = std::move( aFunc );
+        return *this;
+    }
+
+    /**
+     * Return true if aObject holds several values for this property, so it has no single value to show.
+     */
+    bool IsIndeterminate( INSPECTABLE* aObject ) const
+    {
+        return m_indeterminateFunc && m_indeterminateFunc( aObject );
+    }
+
+    /**
+     * Set a callback function to determine whether an object's value for this property is mixed.
+     */
+    PROPERTY_BASE& SetIndeterminateFunc( std::function<bool(INSPECTABLE*)> aFunc )
+    {
+        m_indeterminateFunc = std::move( aFunc );
         return *this;
     }
 
@@ -342,6 +377,19 @@ public:
         return *this;
     }
 
+    /**
+     * True for a property that says how an item looks, not what or where it is.
+     *
+     * Opt-in.  The safe answer for anything unexamined is no.  Identity, position, size and
+     * connectivity stay off.  Copying those between items would move or rewire them.
+     */
+    bool IsCopyable() const { return m_copyable; }
+    PROPERTY_BASE& SetIsCopyable( bool aIsCopyable = true )
+    {
+        m_copyable = aIsCopyable;
+        return *this;
+    }
+
     wxString Group() const { return m_group; }
     PROPERTY_BASE& SetGroup( const wxString& aGroup ) { m_group = aGroup; return *this; }
 
@@ -381,23 +429,25 @@ protected:
             }
             else if( pv.CheckType<std::optional<int>>() )
             {
-                auto* data = static_cast<STD_OPTIONAL_INT_VARIANT_DATA*>( var.GetData() );
-                a = data->Value();
+                if( var.IsNull() )
+                    return;
+
+                a = static_cast<STD_OPTIONAL_INT_VARIANT_DATA*>( var.GetData() )->OptValue();
             }
             else if( pv.CheckType<std::optional<double>>() )
             {
-                auto* data = static_cast<STD_OPTIONAL_DOUBLE_VARIANT_DATA*>( var.GetData() );
-                a = data->Value();
+                if( var.IsNull() )
+                    return;
+
+                a = static_cast<STD_OPTIONAL_DOUBLE_VARIANT_DATA*>( var.GetData() )->OptValue();
             }
             else if( pv.CheckType<EDA_ANGLE>() )
             {
-                EDA_ANGLE_VARIANT_DATA* ad = static_cast<EDA_ANGLE_VARIANT_DATA*>( var.GetData() );
-                a = ad->Angle();
+                a = static_cast<EDA_ANGLE_VARIANT_DATA*>( var.GetData() )->Angle();
             }
             else if( pv.CheckType<KIGFX::COLOR4D>() )
             {
-                COLOR4D_VARIANT_DATA* cd = static_cast<COLOR4D_VARIANT_DATA*>( var.GetData() );
-                a = cd->Color();
+                a = static_cast<COLOR4D_VARIANT_DATA*>( var.GetData() )->Color();
             }
         }
 
@@ -411,7 +461,12 @@ protected:
 
         // We don't currently have a bool type, so change it to a numeric
         if( a.CheckType<bool>() )
-            a = a.RawAs<bool>() ? 1 : 0;
+        {
+            if constexpr( std::is_same_v<T, bool> )
+                return a.RawAs<bool>();
+            else
+                a = a.RawAs<bool>() ? 1 : 0;
+        }
 
         if ( !( std::is_enum<T>::value && a.CheckType<int>() ) && !a.CheckType<T>() )
             throw std::invalid_argument( "Invalid requested type" );
@@ -431,6 +486,9 @@ private:
      */
     const wxString m_name;
 
+    /// Optional help text, translated when the property grid control is created.
+    wxString m_helpString;
+
     /// The display style controls how properties are edited in the properties manager GUI
     PROPERTY_DISPLAY m_display;
 
@@ -443,6 +501,7 @@ private:
     bool m_hideFromDesignEditors;       // Do not show in Properties Manager of schematic or
                                         //   board editors
     bool m_hideFromRulesEditor;         // Do not show in Custom Rules editor autocomplete
+    bool m_copyable;                    // May be copied from one item to another
 
     /// Optional group identifier
     wxString m_group;
@@ -452,6 +511,8 @@ private:
     std::function<bool(INSPECTABLE*)> m_writeableFunc;   ///< Eval to determine if prop is read-only
 
     std::function<PROPERTY_CHOICES(INSPECTABLE*)> m_choicesFunc;
+
+    std::function<bool(INSPECTABLE*)> m_indeterminateFunc;   ///< Eval to determine if the value is mixed
 
     PROPERTY_VALIDATOR_FN m_validator;
 
@@ -547,20 +608,49 @@ protected:
         return res;
     }
 
-    ///< Set method
+    /// Set method
     std::unique_ptr<SETTER_BASE<Owner, T>> m_setter;
 
-    ///< Get method
+    /// Get method
     std::unique_ptr<GETTER_BASE<Owner, T>> m_getter;
 
-    ///< Owner class type-id
+    /// Owner class type-id
     const size_t m_ownerHash;
 
-    ///< Base class type-id
+    /// Base class type-id
     const size_t m_baseHash;
 
-    ///< Property value type-id
+    /// Property value type-id
     const size_t m_typeHash;
+};
+
+
+template<typename Owner, typename T, typename Base = Owner>
+class DUMMY_PROPERTY : public PROPERTY_BASE
+{
+public:
+    using BASE_TYPE = typename std::decay<T>::type;
+
+    DUMMY_PROPERTY( const wxString& aName ) :
+            PROPERTY_BASE( aName )
+    {
+    }
+
+    size_t OwnerHash() const override { return TYPE_HASH( Owner ); }
+    size_t BaseHash() const override { return TYPE_HASH( Base ); }
+    size_t TypeHash() const override { return TYPE_HASH( BASE_TYPE ); }
+
+    bool IgnoreValue() const override { return true; }
+
+protected:
+    void setter( void* obj, wxAny& v ) override
+    {
+    }
+
+    wxAny getter( const void* obj ) const override
+    {
+        return wxAny();
+    }
 };
 
 
@@ -824,7 +914,7 @@ private:
     DECLARE_ENUM_TO_WXANY( type )                                                           \
     IMPLEMENT_ENUM_TO_WXANY( type )
 
-///< Macro to define read-only fields (no setter method available)
+/// Macro to define read-only fields (no setter method available)
 #define NO_SETTER( owner, type ) ( ( void ( owner::* )( type ) ) nullptr )
 
 /*

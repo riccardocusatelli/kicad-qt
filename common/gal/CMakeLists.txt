@@ -15,6 +15,7 @@ set( GAL_MODEL_SRCS
     ../callback_gal.cpp
     painter.cpp
     gal_display_options.cpp
+    bitmap_texture.cpp
     graphics_abstraction_layer.cpp
 
     ../view/view.cpp
@@ -66,6 +67,9 @@ set( GAL_SRCS
     cairo/cairo_gal.cpp
     cairo/cairo_print.cpp
     cairo/cairo_print_ctx_wx.cpp
+
+    # Modern RHI GAL
+    gal_modern.cpp
     )
 
 add_library( gal_model SHARED ${GAL_MODEL_SRCS} )
@@ -110,6 +114,7 @@ target_link_libraries( gal
     kicommon
     kimath
     kiplatform
+    rhi
     nlohmann_json
     ${CAIRO_LIBRARIES}
     ${PIXMAN_LIBRARIES}

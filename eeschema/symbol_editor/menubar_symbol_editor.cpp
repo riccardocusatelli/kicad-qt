@@ -16,16 +16,15 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <bitmaps.h>
+#include <pgm_base.h>
+#include <settings/common_settings.h>
 #include <tool/action_menu.h>
 #include <tool/tool_manager.h>
+#include <tool/actions.h>
 #include <tools/sch_actions.h>
 #include <tools/sch_selection_tool.h>
 #include <symbol_library_manager.h>
@@ -79,13 +78,17 @@ void SYMBOL_EDIT_FRAME::doReCreateMenuBar()
     submenuExport->Add( SCH_ACTIONS::exportSymbol,      ACTION_MENU::NORMAL, _( "Symbol..." ) );
     submenuExport->Add( SCH_ACTIONS::exportSymbolView,  ACTION_MENU::NORMAL, _( "View as PNG..." ) );
     submenuExport->Add( SCH_ACTIONS::exportSymbolAsSVG, ACTION_MENU::NORMAL, _( "Symbol as SVG..." ) );
+    submenuExport->Add( ACTIONS::exportForOlderVersion, ACTION_MENU::NORMAL, _( "For Older KiCad Version..." ) );
     fileMenu->Add( submenuExport );
+
+    fileMenu->AppendSeparator();
+    fileMenu->Add( SCH_ACTIONS::compareLibraryWithFile );
 
     fileMenu->AppendSeparator();
     fileMenu->Add( SCH_ACTIONS::symbolProperties );
 
     fileMenu->AppendSeparator();
-    fileMenu->AddClose( _( "Library Editor" ) );
+    fileMenu->AddClose( _( "Symbol Editor" ) );
 
 
     //-- Edit menu -----------------------------------------------
@@ -113,6 +116,7 @@ void SYMBOL_EDIT_FRAME::doReCreateMenuBar()
 
     editMenu->AppendSeparator();
     editMenu->Add( SCH_ACTIONS::pinTable );
+    editMenu->Add( SCH_ACTIONS::editSymbolPinMaps );
     editMenu->Add( SCH_ACTIONS::updateSymbolFields );
 
 
@@ -141,6 +145,11 @@ void SYMBOL_EDIT_FRAME::doReCreateMenuBar()
     viewMenu->Add( SCH_ACTIONS::showHiddenFields,  ACTION_MENU::CHECK );
     viewMenu->Add( SCH_ACTIONS::togglePinAltIcons, ACTION_MENU::CHECK );
 
+    viewMenu->AppendSeparator();
+    viewMenu->Add( SCH_ACTIONS::nextSymbolTab );
+    viewMenu->Add( SCH_ACTIONS::prevSymbolTab );
+    viewMenu->Add( SCH_ACTIONS::closeSymbolTab );
+
 
     //-- Place menu -----------------------------------------------
     //
@@ -151,6 +160,8 @@ void SYMBOL_EDIT_FRAME::doReCreateMenuBar()
     placeMenu->Add( SCH_ACTIONS::drawSymbolTextBox );
     placeMenu->Add( SCH_ACTIONS::drawRectangle );
     placeMenu->Add( SCH_ACTIONS::drawCircle );
+    placeMenu->Add( SCH_ACTIONS::drawEllipse );
+    placeMenu->Add( SCH_ACTIONS::drawEllipseArc );
     placeMenu->Add( SCH_ACTIONS::drawArc );
     placeMenu->Add( SCH_ACTIONS::drawBezier );
     placeMenu->Add( SCH_ACTIONS::drawSymbolLines );
@@ -178,6 +189,21 @@ void SYMBOL_EDIT_FRAME::doReCreateMenuBar()
     prefsMenu->AppendSeparator();
     AddMenuLanguageList( prefsMenu, selTool );
 
+    //-- Tools menu -----------------------------------------------
+    //
+    ACTION_MENU* toolsMenu = new ACTION_MENU( false, selTool );
+
+    ACTION_MENU* submenuActionPlugins = new ACTION_MENU( false, selTool );
+    submenuActionPlugins->SetTitle( _( "External Plugins" ) );
+    submenuActionPlugins->SetIcon( BITMAPS::puzzle_piece );
+
+    if( Pgm().GetCommonSettings()->m_Api.enable_server && AddApiPluginMenuItems( submenuActionPlugins ) > 0 )
+        submenuActionPlugins->AppendSeparator();
+
+    submenuActionPlugins->Add( ACTIONS::pluginsReload );
+    submenuActionPlugins->Add( ACTIONS::pluginsShowFolder );
+
+    toolsMenu->Add( submenuActionPlugins );
 
     //-- Menubar -------------------------------------------------------------
     //
@@ -185,6 +211,7 @@ void SYMBOL_EDIT_FRAME::doReCreateMenuBar()
     menuBar->Append( editMenu,    _( "&Edit" ) );
     menuBar->Append( viewMenu,    _( "&View" ) );
     menuBar->Append( placeMenu,   _( "&Place" ) );
+    menuBar->Append( toolsMenu,   _( "&Tools" ) );
     menuBar->Append( inspectMenu, _( "&Inspect" ) );
     menuBar->Append( prefsMenu,   _( "P&references" ) );
     AddStandardHelpMenu( menuBar );

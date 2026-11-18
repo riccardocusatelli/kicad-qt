@@ -14,8 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 // Regression test for https://gitlab.com/kicad/code/kicad/-/issues/24330
@@ -45,15 +44,14 @@ struct ISSUE24330_FIXTURE
 
 
 template <typename Exporter>
-static wxString writeAndReadNetlist( SCHEMATIC* aSch, const wxString& aSuffix,
-                                     const wxString& aExt )
+static wxString writeAndReadNetlist( SCHEMATIC* aSch, const wxString& aSuffix, const wxString& aExt )
 {
     wxFileName netFile = aSch->Project().GetProjectFullName();
     netFile.SetName( netFile.GetName() + aSuffix );
     netFile.SetExt( aExt );
 
     WX_STRING_REPORTER       reporter;
-    std::unique_ptr<Exporter> exporter = std::make_unique<Exporter>( aSch );
+    std::unique_ptr<Exporter> exporter = std::make_unique<Exporter>( aSch, nullptr );
 
     BOOST_REQUIRE( exporter->WriteNetlist( netFile.GetFullPath(), 0, reporter ) );
     BOOST_REQUIRE( reporter.GetMessages().IsEmpty() );

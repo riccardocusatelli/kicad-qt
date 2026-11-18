@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -231,17 +227,36 @@ public:
      * @note Do not initialize anything relating to DSOs or projects.
      *
      * @param aHeadless If true, run in headless mode (e.g. for unit tests)
-     * @param aSkipPyInit If true, do not init python stuff.
      * Useful in application that do not use python, to disable python dependency at run time
+     * @param aIsUnitTest indicates whether or not the running application is a unit test.
      * @return true if success, false if failure and program is to terminate.
      */
-    virtual bool InitPgm( bool aHeadless = false, bool aSkipPyInit = false,
-                          bool aIsUnitTest = false );
+    virtual bool InitPgm( bool aHeadless = false, bool aIsUnitTest = false );
+
+    /**
+     * Map a program name (argv[0] basename, lowercased) to the freedesktop application id of
+     * its installed .desktop launcher, e.g. "eeschema" -> "org.kicad.eeschema".
+     *
+     * @return the reverse-DNS application id, or an empty string for programs without a desktop
+     *         launcher (pl_editor, kicad-cli) or on platforms that do not use desktop files.
+     */
+    static wxString DesktopAppIdForProgram( const wxString& aPgmName );
+
+    const wxString& GetDesktopAppId() const { return m_desktopAppId; }
 
     // The PGM_* classes can have difficulties at termination if they
     // are not destroyed soon enough.  Relying on a static destructor can be
-    // too late for contained objects like wxSingleInstanceChecker.
+    // too late for the objects they contain.
     virtual void Destroy();
+
+    /// Records the code the application's run loop returned, which a fast exit still reports
+    void SetRunResult( int aResult ) { m_runResult = aResult; }
+
+    /**
+     * Ends the process at once when a worker abandoned inside a native driver makes the rest of the teardown
+     * unsafe, and returns otherwise.  The application calls it last in OnExit(), after OnPgmExit().
+     */
+    void ExitIfTeardownUnsafe();
 
     /**
      * Save the program (process) settings subset which are stored .kicad_common.
@@ -254,6 +269,7 @@ public:
      * The purpose is to have a central place to log a wxWidgets error message and/or sentry report.
      *
      * @param aPtr Pass the std::current_exception() from within the catch block.
+     * @param aUnhandled
      */
     void HandleException( std::exception_ptr aPtr, bool aUnhandled = false );
 
@@ -292,6 +308,15 @@ public:
      */
     virtual void SafeYield() {}
 
+    /**
+     * Return true while the operating system is closing the application because the user
+     * session is ending, so close handlers can tell it apart from a close the user asked for.
+     */
+    bool IsSessionEnding() const { return m_sessionEnding; }
+
+    /// The toolkit glue sets this while it handles a session-end request.
+    void SetSessionEnding( bool aEnding ) { m_sessionEnding = aEnding; }
+
     bool m_Quitting;
 
 protected:
@@ -318,6 +343,8 @@ protected:
 
     wxString        m_kicad_env;              ///< The KICAD system environment variable.
 
+    wxString        m_desktopAppId;           ///< freedesktop app id of this process, or empty.
+
     wxLocale*       m_locale;
     int             m_language_id;
 
@@ -325,6 +352,7 @@ protected:
     wxString        m_pdf_browser;            ///< Filename of the app selected for browsing PDFs.
 
     wxString        m_text_editor;
+    bool            m_sessionEnding;          ///< Set while wx handles a session-end event.
 
     KICAD_SINGLETON m_singleton;
 
@@ -342,6 +370,8 @@ protected:
     char** m_argvUtf8;
 
     int m_argcUtf8;
+
+    int m_runResult = 0;
 };
 
 

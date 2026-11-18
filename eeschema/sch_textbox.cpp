@@ -14,14 +14,14 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <google/protobuf/any.pb.h>
+
 #include <advanced_config.h>
+#include <api/api_enums.h>
+#include <api/api_utils.h>
 #include <base_units.h>
 #include <pgm_base.h>
 #include <plotters/plotter.h>
@@ -36,9 +36,11 @@
 #include <trigo.h>
 #include <geometry/geometry_utils.h>
 #include <sch_textbox.h>
+#include <tool/tool_manager.h>
 #include <markup_parser.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
+#include <api/schematic/schematic_types.pb.h>
 #include <core/ki_assert.h>
 #include <sch_sheet.h>
 #include <msg_panel_context.h>
@@ -74,6 +76,174 @@ SCH_TEXTBOX::SCH_TEXTBOX( const SCH_TEXTBOX& aText ) :
     m_marginTop = aText.m_marginTop;
     m_marginRight = aText.m_marginRight;
     m_marginBottom = aText.m_marginBottom;
+}
+
+
+void SCH_TEXTBOX::Serialize( kiapi::schematic::types::SchematicTextBox& aOutput, const EDA_IU_SCALE& aScale ) const
+{
+    using namespace kiapi::common;
+
+    aOutput.mutable_id()->set_value( m_Uuid.AsStdString() );
+    aOutput.set_locked( IsLocked() ? types::LockedState::LS_LOCKED : types::LockedState::LS_UNLOCKED );
+    aOutput.set_exclude_from_sim( GetExcludedFromSim() );
+    PackDistance( *aOutput.mutable_margin_left(), GetMarginLeft(), aScale );
+    PackDistance( *aOutput.mutable_margin_top(), GetMarginTop(), aScale );
+    PackDistance( *aOutput.mutable_margin_right(), GetMarginRight(), aScale );
+    PackDistance( *aOutput.mutable_margin_bottom(), GetMarginBottom(), aScale );
+
+    types::TextBox& text = *aOutput.mutable_textbox();
+    PackVector2( *text.mutable_top_left(), GetPosition(), aScale );
+    PackVector2( *text.mutable_bottom_right(), GetEnd(), aScale );
+    text.set_text( GetText().ToUTF8() );
+    text.set_border_enabled( GetStroke().GetWidth() >= 0 );
+
+    types::TextAttributes* attrs = text.mutable_attributes();
+
+    if( GetFont() )
+        attrs->set_font_name( GetFont()->GetName().ToUTF8() );
+
+    attrs->set_horizontal_alignment( ToProtoEnum<GR_TEXT_H_ALIGN_T, types::HorizontalAlignment>( GetHorizJustify() ) );
+    attrs->set_vertical_alignment( ToProtoEnum<GR_TEXT_V_ALIGN_T, types::VerticalAlignment>( GetVertJustify() ) );
+    attrs->mutable_angle()->set_value_degrees( GetTextAngleDegrees() );
+    attrs->set_line_spacing( GetLineSpacing() );
+    PackDistance( *attrs->mutable_stroke_width(), GetTextThickness(), aScale );
+    attrs->set_italic( IsItalic() );
+    attrs->set_bold( IsBold() );
+    attrs->set_underlined( GetAttributes().m_Underlined );
+    attrs->set_mirrored( IsMirrored() );
+    attrs->set_multiline( IsMultilineAllowed() );
+    attrs->set_keep_upright( IsKeepUpright() );
+    PackVector2( *attrs->mutable_size(), GetTextSize(), aScale );
+
+    if( GetTextColor() != COLOR4D::UNSPECIFIED )
+        PackColor( *attrs->mutable_color(), GetTextColor() );
+
+    types::StrokeAttributes* stroke = aOutput.mutable_graphic_attributes()->mutable_stroke();
+    PackDistance( *stroke->mutable_width(), GetStroke().GetWidth(), aScale );
+    stroke->set_style( ToProtoEnum<LINE_STYLE, types::StrokeLineStyle>( GetStroke().GetLineStyle() ) );
+
+    if( GetStroke().GetColor() != COLOR4D::UNSPECIFIED )
+        PackColor( *stroke->mutable_color(), GetStroke().GetColor() );
+
+    types::GraphicFillAttributes* fill = aOutput.mutable_graphic_attributes()->mutable_fill();
+    fill->set_fill_type( ToProtoEnum<FILL_T, types::GraphicFillType>( GetFillMode() ) );
+
+    if( GetFillColor() != COLOR4D::UNSPECIFIED )
+        PackColor( *fill->mutable_color(), GetFillColor() );
+
+    PackCustomProperties( aOutput.mutable_custom_properties(), *this );
+}
+
+
+void SCH_TEXTBOX::Serialize( google::protobuf::Any& aContainer ) const
+{
+    kiapi::schematic::types::SchematicTextBox textBox;
+    Serialize( textBox, schIUScale );
+
+    if( !aContainer.PackFrom( textBox ) )
+        KI_FAIL_MSG( wxT( "Failed to pack SCH_TEXTBOX" ) );
+}
+
+
+bool SCH_TEXTBOX::Deserialize( const kiapi::schematic::types::SchematicTextBox& aInput, const EDA_IU_SCALE& aScale )
+{
+    using namespace kiapi::common;
+
+    const_cast<KIID&>( m_Uuid ) = KIID( aInput.id().value() );
+    SetLocked( aInput.locked() == types::LockedState::LS_LOCKED );
+    SetExcludedFromSim( aInput.exclude_from_sim() );
+    SetPosition( UnpackVector2( aInput.textbox().top_left(), aScale ) );
+    SetEnd( UnpackVector2( aInput.textbox().bottom_right(), aScale ) );
+    SetText( wxString::FromUTF8( aInput.textbox().text() ) );
+    UnpackCustomProperties( aInput.custom_properties(), *this );
+
+    if( aInput.has_margin_left() )
+        SetMarginLeft( UnpackDistance( aInput.margin_left(), aScale ) );
+
+    if( aInput.has_margin_top() )
+        SetMarginTop( UnpackDistance( aInput.margin_top(), aScale ) );
+
+    if( aInput.has_margin_right() )
+        SetMarginRight( UnpackDistance( aInput.margin_right(), aScale ) );
+
+    if( aInput.has_margin_bottom() )
+        SetMarginBottom( UnpackDistance( aInput.margin_bottom(), aScale ) );
+
+    if( aInput.textbox().has_attributes() )
+    {
+        TEXT_ATTRIBUTES attrs = GetAttributes();
+
+        attrs.m_Bold = aInput.textbox().attributes().bold();
+        attrs.m_Italic = aInput.textbox().attributes().italic();
+        attrs.m_Underlined = aInput.textbox().attributes().underlined();
+        attrs.m_Mirrored = aInput.textbox().attributes().mirrored();
+        attrs.m_Multiline = aInput.textbox().attributes().multiline();
+        attrs.m_KeepUpright = aInput.textbox().attributes().keep_upright();
+        attrs.m_Size = UnpackVector2( aInput.textbox().attributes().size(), aScale );
+
+        if( aInput.textbox().attributes().has_color() )
+            attrs.m_Color = UnpackColor( aInput.textbox().attributes().color() );
+        else
+            attrs.m_Color = COLOR4D::UNSPECIFIED;
+
+        if( !aInput.textbox().attributes().font_name().empty() )
+        {
+            attrs.m_Font = KIFONT::FONT::GetFont( wxString::FromUTF8( aInput.textbox().attributes().font_name() ),
+                                                  attrs.m_Bold, attrs.m_Italic );
+        }
+
+        attrs.m_Angle = EDA_ANGLE( aInput.textbox().attributes().angle().value_degrees(), DEGREES_T );
+
+        if( aInput.textbox().attributes().has_line_spacing() )
+            attrs.m_LineSpacing = aInput.textbox().attributes().line_spacing();
+        else
+            attrs.m_LineSpacing = 1.0;
+
+        attrs.m_StrokeWidth = UnpackDistance( aInput.textbox().attributes().stroke_width(), aScale );
+        attrs.m_Halign = FromProtoEnum<GR_TEXT_H_ALIGN_T, types::HorizontalAlignment>(
+                aInput.textbox().attributes().horizontal_alignment() );
+        attrs.m_Valign = FromProtoEnum<GR_TEXT_V_ALIGN_T, types::VerticalAlignment>(
+                aInput.textbox().attributes().vertical_alignment() );
+
+        SetAttributes( attrs );
+    }
+
+    if( aInput.has_graphic_attributes() )
+    {
+        if( aInput.graphic_attributes().stroke().has_color() )
+            m_stroke.SetColor( UnpackColor( aInput.graphic_attributes().stroke().color() ) );
+        else
+            m_stroke.SetColor( COLOR4D::UNSPECIFIED );
+
+        if( aInput.graphic_attributes().fill().has_color() )
+            SetFillColor( UnpackColor( aInput.graphic_attributes().fill().color() ) );
+        else
+            SetFillColor( COLOR4D::UNSPECIFIED );
+
+        SetWidth( UnpackDistance( aInput.graphic_attributes().stroke().width(), aScale ) );
+
+        if( !aInput.textbox().border_enabled() )
+            SetWidth( -1 );
+        else
+            SetWidth( std::max( 0, GetStroke().GetWidth() ) );
+
+        SetLineStyle(
+                FromProtoEnum<LINE_STYLE, types::StrokeLineStyle>( aInput.graphic_attributes().stroke().style() ) );
+        SetFillMode( FromProtoEnum<FILL_T, types::GraphicFillType>( aInput.graphic_attributes().fill().fill_type() ) );
+    }
+
+    return true;
+}
+
+
+bool SCH_TEXTBOX::Deserialize( const google::protobuf::Any& aContainer )
+{
+    kiapi::schematic::types::SchematicTextBox textBox;
+
+    if( !aContainer.UnpackTo( &textBox ) )
+        return false;
+
+    return Deserialize( textBox, schIUScale );
 }
 
 
@@ -204,6 +374,7 @@ void SCH_TEXTBOX::swapData( SCH_ITEM* aItem )
 
     SCH_TEXTBOX* item = static_cast<SCH_TEXTBOX*>( aItem );
 
+    std::swap( m_excludedFromSim, item->m_excludedFromSim );
     std::swap( m_marginLeft, item->m_marginLeft );
     std::swap( m_marginTop, item->m_marginTop );
     std::swap( m_marginRight, item->m_marginRight );
@@ -243,7 +414,7 @@ bool SCH_TEXTBOX::operator<( const SCH_ITEM& aItem ) const
         return GetMarginBottom() < other->GetMarginBottom();
 
     if( GetExcludedFromSim() != other->GetExcludedFromSim() )
-        return GetExcludedFromSim() - other->GetExcludedFromSim();
+        return GetExcludedFromSim();
 
     return GetText() < other->GetText();
 }
@@ -260,8 +431,8 @@ KIFONT::FONT* SCH_TEXTBOX::GetDrawFont( const RENDER_SETTINGS* aSettings ) const
 }
 
 
-wxString SCH_TEXTBOX::GetShownText( const RENDER_SETTINGS* aSettings, const SCH_SHEET_PATH* aPath, bool aAllowExtraText,
-                                    int aDepth ) const
+wxString SCH_TEXTBOX::GetShownText( const RENDER_SETTINGS* aSettings, const SCH_SHEET_PATH* aPath,
+                                    RESOLUTION_CONTEXT aContext, int aDepth ) const
 {
     // Use local depth counter so each text element starts fresh
     int depth = 0;
@@ -271,36 +442,39 @@ wxString SCH_TEXTBOX::GetShownText( const RENDER_SETTINGS* aSettings, const SCH_
     if( aPath )
         sheet = aPath->Last();
 
-    std::function<bool( wxString* )> textResolver = [&]( wxString* token ) -> bool
+    std::function<bool( wxString* )> textResolver =
+            [&]( wxString* token ) -> bool
+            {
+                if( sheet )
+                {
+                    if( sheet->ResolveTextVar( aPath, token, depth + 1 ) )
+                        return true;
+                }
+
+                return false;
+            };
+
+    wxString text = EDA_TEXT::GetShownText( aContext, depth );
+
+    if( HasTextVars() && aContext != RAW_VALUE )
     {
-        if( sheet )
-        {
-            if( sheet->ResolveTextVar( aPath, token, depth + 1 ) )
-                return true;
-        }
-
-        return false;
-    };
-
-    wxString text = EDA_TEXT::GetShownText( aAllowExtraText, depth );
-
-    if( HasTextVars() )
         text = ResolveTextVars( text, &textResolver, depth );
+        FinalizeTextVarExpansion( text, aContext );
+    }
 
-    VECTOR2I size = GetEnd() - GetStart();
-    int      colWidth;
+    if( aDepth == 0 )
+    {
+        VECTOR2I size = GetEnd() - GetStart();
+        int      colWidth;
 
-    if( GetTextAngle().IsVertical() )
-        colWidth = abs( size.y ) - ( GetMarginTop() + GetMarginBottom() );
-    else
-        colWidth = abs( size.x ) - ( GetMarginLeft() + GetMarginRight() );
+        if( GetTextAngle().IsVertical() )
+            colWidth = abs( size.y ) - ( GetMarginTop() + GetMarginBottom() );
+        else
+            colWidth = abs( size.x ) - ( GetMarginLeft() + GetMarginRight() );
 
-    GetDrawFont( aSettings )
-            ->LinebreakText( text, colWidth, GetTextSize(), GetEffectiveTextPenWidth(), IsBold(), IsItalic() );
-
-    // Convert escape markers back to literals for final display
-    text.Replace( wxT( "<<<ESC_DOLLAR:" ), wxT( "${" ) );
-    text.Replace( wxT( "<<<ESC_AT:" ), wxT( "@{" ) );
+        GetDrawFont( aSettings )->LinebreakText( text, colWidth, GetTextSize(), GetEffectiveTextPenWidth(),
+                                                 IsBold(), IsItalic() );
+    }
 
     return text;
 }
@@ -358,8 +532,8 @@ wxString SCH_TEXTBOX::GetHypertextTarget() const
 
 wxString SCH_TEXTBOX::GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool aFull ) const
 {
-    return wxString::Format( _( "Text box '%s'" ),
-                             aFull ? GetShownText( false ) : EllipsizeMenuText( GetText() ) );
+    return wxString::Format( _( "Text box '%s'" ), aFull ? GetShownText( FOR_GUI )
+                                                         : EllipsizeMenuText( GetText() ) );
 }
 
 
@@ -413,7 +587,7 @@ void SCH_TEXTBOX::Plot( PLOTTER* aPlotter, bool aBackground, const SCH_PLOT_OPTS
     std::vector<VECTOR2I> positions;
     wxArrayString         strings_list;
 
-    wxStringSplit( GetShownText( renderSettings, sheet, true ), strings_list, '\n' );
+    wxStringSplit( GetShownText( renderSettings, sheet, FOR_CANVAS ), strings_list, '\n' );
     positions.reserve( strings_list.Count() );
 
     if( renderSettings->m_Transform != TRANSFORM() || aOffset != VECTOR2I() )
@@ -421,9 +595,7 @@ void SCH_TEXTBOX::Plot( PLOTTER* aPlotter, bool aBackground, const SCH_PLOT_OPTS
         SCH_TEXTBOX temp( *this );
 
         if( renderSettings->m_Transform.y1 )
-        {
             temp.SetTextAngle( temp.GetTextAngle() == ANGLE_HORIZONTAL ? ANGLE_VERTICAL : ANGLE_HORIZONTAL );
-        }
 
         temp.SetStart( renderSettings->TransformCoordinate( m_start ) + aOffset );
         temp.SetEnd( renderSettings->TransformCoordinate( m_end ) + aOffset );
@@ -538,7 +710,7 @@ double SCH_TEXTBOX::Similarity( const SCH_ITEM& aOther ) const
 
 int SCH_TEXTBOX::compare( const SCH_ITEM& aOther, int aCompareFlags ) const
 {
-    KI_ASSERT( aOther.Type() == SCH_TEXTBOX_T );
+    KI_ASSERT( aOther.Type() == SCH_TEXTBOX_T || aOther.Type() == SCH_TABLECELL_T );
 
     int retv = SCH_SHAPE::compare( aOther, aCompareFlags );
 
@@ -609,22 +781,22 @@ static struct SCH_TEXTBOX_DESC
 
         const wxString marginProps = _( "Margins" );
 
-        propMgr.AddProperty( new PROPERTY<SCH_TEXTBOX, int>( _HKI( "Margin Left" ), &SCH_TEXTBOX::SetMarginLeft,
-                                                             &SCH_TEXTBOX::GetMarginLeft, PROPERTY_DISPLAY::PT_SIZE ),
-                             marginProps );
-        propMgr.AddProperty( new PROPERTY<SCH_TEXTBOX, int>( _HKI( "Margin Top" ), &SCH_TEXTBOX::SetMarginTop,
-                                                             &SCH_TEXTBOX::GetMarginTop, PROPERTY_DISPLAY::PT_SIZE ),
-                             marginProps );
-        propMgr.AddProperty( new PROPERTY<SCH_TEXTBOX, int>( _HKI( "Margin Right" ), &SCH_TEXTBOX::SetMarginRight,
-                                                             &SCH_TEXTBOX::GetMarginRight, PROPERTY_DISPLAY::PT_SIZE ),
-                             marginProps );
-        propMgr.AddProperty( new PROPERTY<SCH_TEXTBOX, int>( _HKI( "Margin Bottom" ), &SCH_TEXTBOX::SetMarginBottom,
-                                                             &SCH_TEXTBOX::GetMarginBottom, PROPERTY_DISPLAY::PT_SIZE ),
-                             marginProps );
+        propMgr.AddProperty( new PROPERTY<SCH_TEXTBOX, int>( _HKI( "Margin Left" ),
+                    &SCH_TEXTBOX::SetMarginLeft, &SCH_TEXTBOX::GetMarginLeft, PROPERTY_DISPLAY::PT_SIZE ),
+                    marginProps );
+        propMgr.AddProperty( new PROPERTY<SCH_TEXTBOX, int>( _HKI( "Margin Top" ),
+                    &SCH_TEXTBOX::SetMarginTop, &SCH_TEXTBOX::GetMarginTop, PROPERTY_DISPLAY::PT_SIZE ),
+                    marginProps );
+        propMgr.AddProperty( new PROPERTY<SCH_TEXTBOX, int>( _HKI( "Margin Right" ),
+                    &SCH_TEXTBOX::SetMarginRight, &SCH_TEXTBOX::GetMarginRight, PROPERTY_DISPLAY::PT_SIZE ),
+                    marginProps );
+        propMgr.AddProperty( new PROPERTY<SCH_TEXTBOX, int>( _HKI( "Margin Bottom" ),
+                    &SCH_TEXTBOX::SetMarginBottom, &SCH_TEXTBOX::GetMarginBottom, PROPERTY_DISPLAY::PT_SIZE ),
+                    marginProps );
 
-        propMgr.AddProperty( new PROPERTY<SCH_TEXTBOX, int>( _HKI( "Text Size" ), &SCH_TEXTBOX::SetSchTextSize,
-                                                             &SCH_TEXTBOX::GetSchTextSize, PROPERTY_DISPLAY::PT_SIZE ),
-                             _HKI( "Text Properties" ) );
+        propMgr.AddProperty( new PROPERTY<SCH_TEXTBOX, int>( _HKI( "Text Size" ),
+                    &SCH_TEXTBOX::SetSchTextSize, &SCH_TEXTBOX::GetSchTextSize, PROPERTY_DISPLAY::PT_SIZE ),
+                    _HKI( "Text Properties" ) );
 
         propMgr.Mask( TYPE_HASH( SCH_TEXTBOX ), TYPE_HASH( EDA_TEXT ), _HKI( "Orientation" ) );
     }

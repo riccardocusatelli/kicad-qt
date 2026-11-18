@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef KICAD_GRAPHICS_CLEANER_H
@@ -41,10 +37,15 @@ public:
 
     /**
      * the cleanup function.
+     *
+     * @param aDryRun performs a dry run clean up if true.
+     * @param aItemsList is the list of items cleaned up.
      * @param aMergeRects = merge for segments forming a rectangle into a rect
      * @param aDeleteRedundant = true to delete null graphics and duplicated graphics
      * @param aMergePads = true to apply Pad Editor's merge algorithm to all pads in footprint
      *                     (it is assumed this will only be run on FPEditor boards)
+     * @param aFixBoardOutlines fixes board outlines one clean up if true.
+     * @param aTolerance
      */
     void CleanupBoard( bool aDryRun, std::vector<std::shared_ptr<CLEANUP_ITEM>>* aItemsList,
                        bool aMergeRects, bool aDeleteRedundant, bool aMergePads,

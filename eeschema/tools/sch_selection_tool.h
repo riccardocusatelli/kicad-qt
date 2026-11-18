@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef SCH_SELECTION_TOOL_H
@@ -65,6 +61,8 @@ public:
     static SELECTION_CONDITION MultipleSymbolsOrPower;
     static SELECTION_CONDITION AllPins;
     static SELECTION_CONDITION AllPinsOrSheetPins;
+    static SELECTION_CONDITION HasLockedItems;
+    static SELECTION_CONDITION HasUnlockedItems;
 };
 
 
@@ -87,7 +85,7 @@ public:
 
     void OnIdle( wxIdleEvent& aEvent );
 
-    ///< Zoom the screen to fit the bounding box for cross probing/selection sync.
+    /// Zoom the screen to fit the bounding box for cross probing/selection sync.
     void ZoomFitCrossProbeBBox( const BOX2I& aBBox );
 
     /**
@@ -177,19 +175,25 @@ public:
     int SelectRows( const TOOL_EVENT& aEvent );
     int SelectTable( const TOOL_EVENT& aEvent );
 
-    ///< Clear current selection event handler.
+    /**
+     * Stop the pending disambiguation timer so its menu cannot fire.  Used by other tools (e.g.
+     * the point editor) that take over the drag once Ctrl is held for grid-snap override.
+     */
+    void CancelDisambiguation() { m_disambiguateTimer.Stop(); }
+
+    /// Clear current selection event handler.
     int ClearSelection( const TOOL_EVENT& aEvent );
 
-    ///< Select all visible items in sheet
+    /// Select all visible items in sheet
     int SelectAll( const TOOL_EVENT& aEvent );
 
-    ///< Unselect all visible items in sheet
+    /// Unselect all visible items in sheet
     int UnselectAll( const TOOL_EVENT& aEvent );
 
-    ///< Select next net item
+    /// Select next net item
     int SelectNext( const TOOL_EVENT& aEvent );
 
-    ///< Select previous net item
+    /// Select previous net item
     int SelectPrevious( const TOOL_EVENT& aEvent );
 
     void ClearSelection( bool aQuietMode = false );
@@ -226,12 +230,18 @@ public:
     bool CollectHits( SCH_COLLECTOR& aCollector, const VECTOR2I& aWhere,
                       const std::vector<KICAD_T>& aScanTypes = { SCH_LOCATE_ANY_T } );
 
-    ///< Set selection to items passed by parameter.
-    ///< Zooms to fit, if enabled.
+    /// Set selection to items passed by parameter.
+    /// Zooms to fit, if enabled.
     void SyncSelection( const std::optional<SCH_SHEET_PATH>& targetSheetPath, SCH_ITEM* focusItem,
                         const std::vector<SCH_ITEM*>& items );
 
     SCH_SELECTION_FILTER_OPTIONS& GetFilter() { return m_filter; }
+
+    /**
+     * Remove locked items from the current selection.
+     * Used by tools that should not operate on locked items (move, rotate, delete, etc.)
+     */
+    void FilterSelectionForLockedItems();
 
 protected:
     SELECTION& selection() override { return m_selection; }
@@ -243,7 +253,7 @@ private:
     {
         STOP_AT_JUNCTION,   ///< Stop at the first junction, label, or pin reached
         STOP_AT_PIN,        ///< Walk through junctions and labels but stop at pins
-        STOP_NEVER          ///< Walk the entire connected sub-net
+        STOP_NEVER          ///< Include the whole net on the current sheet
     };
 
     std::set<SCH_ITEM*> expandConnectionWithGraph( const SCH_SELECTION& aItems,
@@ -254,25 +264,25 @@ private:
      * Apply rules to narrow the collection down to selectable objects, and then heuristics
      * to try and narrow it to a single object.
      *
-     * @param aCollector [in, out] Provides collection conditions and stores collected items.
+     * @param[in, out] aCollector Provides collection conditions and stores collected items.
      * @param aWhere point where we should narrow (if relevant)
-     * @param aCheckLocked If false, remove locked elements from #collector
-     * @param aSelectedOnly If true, remove non-selected items from #collector
+     * @param aCheckLocked If false, remove locked elements from #SCH_COLLECTOR
+     * @param aSelectedOnly If true, remove non-selected items from #SCH_COLLECTOR
+     * @param aRejected
      */
-    void narrowSelection( SCH_COLLECTOR& collector, const VECTOR2I& aWhere, bool aCheckLocked,
+    void narrowSelection( SCH_COLLECTOR& aCollector, const VECTOR2I& aWhere, bool aCheckLocked,
                           bool aSelectedOnly = false,
                           SCH_SELECTION_FILTER_OPTIONS* aRejected = nullptr );
 
     /**
      * Perform a click-type selection at a point (usually the cursor position).
      *
-     * @param aCollector [in, out] Provides collection conditions and stores collected items.
+     * @param[in, out] aCollector Provides collection conditions and stores collected items.
      * @param aWhere Point from which the selection should be made.
-     * @param aItem [out, optional] The newly selected item if only one was selected, otherwise
-     *              unchanged.
-     * @param aSelectionCancelledFlag [out] Allows the function to inform its caller that a
-     *                                selection was canceled (for instance, by clicking outside of
-     *                                the disambiguation menu).
+     * @param[out] aItem The newly selected item if only one was selected, otherwise unchanged.
+     * @param[out] aSelectionCancelledFlag Allows the function to inform its caller that a
+     *                                     selection was canceled (for instance, by clicking outside of
+     *                                     the disambiguation menu).
      * @param aAdd Indicates if found item(s) should be added to the selection.
      * @param aSubtract Indicates if found item(s) should be subtracted from the selection.
      * @param aExclusiveOr Indicates if found item(s) should be toggle in the selection.
@@ -377,7 +387,7 @@ private:
 
     void filterCollectedItems( SCH_COLLECTOR& aCollector, bool aMultiSelect );
 
-    ///< Set up handlers for various events.
+    /// Set up handlers for various events.
     void setTransitions() override;
 
 private:

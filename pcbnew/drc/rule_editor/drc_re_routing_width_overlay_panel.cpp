@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "drc_re_routing_width_overlay_panel.h"
@@ -31,7 +27,6 @@
 
 #include <wx/textctrl.h>
 #include <wx/stattext.h>
-#include <dialogs/rule_editor_dialog_base.h>
 #include <eda_base_frame.h>
 
 
@@ -58,7 +53,6 @@ DRC_RE_ROUTING_WIDTH_OVERLAY_PANEL::DRC_RE_ROUTING_WIDTH_OVERLAY_PANEL(
         }
     }
 
-
     // Create opt width field
     auto* optWidthField = AddField<wxTextCtrl>( wxS( "opt_width" ), positions[0], wxTE_CENTRE | wxTE_PROCESS_ENTER );
     m_optWidthBinder =
@@ -76,29 +70,10 @@ DRC_RE_ROUTING_WIDTH_OVERLAY_PANEL::DRC_RE_ROUTING_WIDTH_OVERLAY_PANEL(
     widthTolField->SetUnitBinder( m_widthToleranceBinder.get() );
     widthTolField->GetControl()->SetValidator( VALIDATOR_NUMERIC_CTRL( false, false ) );
 
-    auto notifyModified = [this]( wxCommandEvent& )
-    {
-        RULE_EDITOR_DIALOG_BASE* dlg = RULE_EDITOR_DIALOG_BASE::GetDialog( this );
-        if( dlg )
-            dlg->SetModified();
-    };
-
-    optWidthField->GetControl()->Bind( wxEVT_TEXT, notifyModified );
-    widthTolField->GetControl()->Bind( wxEVT_TEXT, notifyModified );
-
-    auto notifySave = [this]( wxCommandEvent& aEvent )
-    {
-        RULE_EDITOR_DIALOG_BASE* dlg = RULE_EDITOR_DIALOG_BASE::GetDialog( this );
-        if( dlg )
-            dlg->OnSave( aEvent );
-    };
-
-    optWidthField->GetControl()->Bind( wxEVT_TEXT_ENTER, notifySave );
-    widthTolField->GetControl()->Bind( wxEVT_TEXT_ENTER, notifySave );
 
     // Position all fields and update the panel layout
-    PositionFields();
     TransferDataToWindow();
+    PositionFields();
 }
 
 

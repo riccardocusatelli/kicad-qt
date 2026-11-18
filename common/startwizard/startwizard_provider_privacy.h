@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef STARTWIZARD_PROVIDER_PCM_H
@@ -29,6 +29,7 @@ struct STARTWIZARD_PROVIDER_PRIVACY_MODEL
     bool m_autoUpdateKiCad = true;
     bool m_autoUpdatePCM   = true;
     bool m_enableSentry    = false;
+    bool m_enableApi       = true;
 };
 
 class STARTWIZARD_PROVIDER_PRIVACY : public STARTWIZARD_PROVIDER

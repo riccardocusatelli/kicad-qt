@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <algorithm>
@@ -41,6 +37,10 @@ bool SELECTION::operator==( const SELECTION& aOther ) const
 
 void SELECTION::Add( EDA_ITEM* aItem )
 {
+    // Consumers dereference selection members unconditionally, so a null faults far from its source
+    if( !aItem )
+        return;
+
     // We're not sorting here; this is just a time-optimized way to do an
     // inclusion check.  std::lower_bound will return the first i >= aItem
     // and the second i > aItem check rules out i == aItem.
@@ -93,6 +93,11 @@ VECTOR2I SELECTION::GetCenter() const
 {
     static const std::vector<KICAD_T> textTypes = { SCH_TEXT_T, SCH_LABEL_LOCATE_ANY_T };
     bool                              hasOnlyText = true;
+
+    // GetCenter() has no meaning for an empty selection, but that's no reason to go on and
+    // divide by zero
+    if( m_items.empty() )
+        return VECTOR2I();
 
     // If the selection contains only texts calculate the center as the mean of all positions
     // instead of using the center of the total bounding box. Otherwise rotating the selection will
@@ -191,7 +196,8 @@ const std::vector<KIGFX::VIEW_ITEM*> SELECTION::updateDrawList() const
 {
     std::vector<VIEW_ITEM*> items;
 
-    for( EDA_ITEM* item : m_items )
+    // m_items is ordered by address, which would make the draw order vary from run to run
+    for( EDA_ITEM* item : GetItemsSortedBySelectionOrder() )
         items.push_back( item );
 
     return items;
@@ -200,6 +206,9 @@ const std::vector<KIGFX::VIEW_ITEM*> SELECTION::updateDrawList() const
 
 bool SELECTION::AreAllItemsIdentical() const
 {
+    if( m_items.empty() )
+        return true;
+
     return std::all_of( m_items.begin() + 1, m_items.end(),
             [&]( const EDA_ITEM* r )
             {

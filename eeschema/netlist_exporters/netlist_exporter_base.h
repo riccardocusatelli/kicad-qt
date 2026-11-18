@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef NETLIST_EXPORTER_H
@@ -29,9 +25,17 @@
 #include <schematic.h>
 #include <core/ki_assert.h>
 
+#include <functional>
+#include <map>
+#include <set>
+#include <optional>
+#include <unordered_map>
+
 class SCH_SYMBOL;
+class SCH_PIN;
 class LIB_SYMBOL;
 class REPORTER;
+class KIWAY;
 
 /**
  * Track unique wxStrings and is useful in telling if a string has been seen before.
@@ -72,28 +76,37 @@ struct LIB_SYMBOL_LESS_THAN
 
 struct PIN_INFO
 {
-    PIN_INFO( const wxString& aPinNumber, const wxString& aNetName, const wxString& aPinName ) :
+    PIN_INFO( const wxString& aPinNumber, const wxString& aNetName, const wxString& aPinName,
+              const wxString& aSourcePin = wxEmptyString ) :
             num( aPinNumber ),
             netName( aNetName ),
-            pinName( aPinName )
+            pinName( aPinName ),
+            srcPin( aSourcePin )
     {}
 
-    wxString num;
+    wxString num; ///< Resolved footprint pad number.
     wxString netName;
     wxString pinName;
+    wxString srcPin; ///< Original symbol pin number that mapped to this pad (issue #2282).
 };
 
 
 /**
  * An abstract class used for the netlist exporters that Eeschema supports.
  */
+using EXPORT_EXCLUSION = std::function<bool( const SCH_SYMBOL*, const SCH_SHEET_PATH& )>;
+
+
 class NETLIST_EXPORTER_BASE
 {
 public:
-    NETLIST_EXPORTER_BASE( SCHEMATIC* aSchematic ) :
-        m_schematic( aSchematic )
+    NETLIST_EXPORTER_BASE( SCHEMATIC* aSchematic, KIWAY* aKiway ) :
+            m_schematic( aSchematic ),
+            m_kiway( aKiway )
     {
         KI_ASSERT( aSchematic );
+
+        m_exportVariant = aSchematic->GetCurrentVariant();
     }
 
     virtual ~NETLIST_EXPORTER_BASE() = default;
@@ -101,11 +114,7 @@ public:
     /**
      * Write to specified output file.
      */
-    virtual bool WriteNetlist( const wxString& aOutFileName, unsigned aNetlistOptions,
-                               REPORTER& aReporter )
-    {
-        return false;
-    }
+    bool WriteNetlist( const wxString& aOutFileName, unsigned aNetlistOptions, REPORTER& aReporter );
 
     /**
      * Build up a string that describes a command line for executing a child process.
@@ -141,17 +150,45 @@ public:
                                      const wxString& aProjectDirectory );
 
 protected:
+    class CONNECTIVITY_SCOPE
+    {
+    public:
+        explicit CONNECTIVITY_SCOPE( NETLIST_EXPORTER_BASE& aExporter );
+        ~CONNECTIVITY_SCOPE();
+        CONNECTIVITY_SCOPE( const CONNECTIVITY_SCOPE& ) = delete;
+        CONNECTIVITY_SCOPE& operator=( const CONNECTIVITY_SCOPE& ) = delete;
+
+    private:
+        NETLIST_EXPORTER_BASE& m_exporter;
+    };
+
+    virtual bool writeNetlist( const wxString& aOutFileName, unsigned aNetlistOptions, REPORTER& aReporter )
+    {
+        return false;
+    }
+
+    struct EXPORT_NET
+    {
+        wxString name;
+        bool hasNoConnect = false;
+        std::vector<std::pair<SCH_PIN*, SCH_SHEET_PATH>> pins;
+    };
+
+    void rebuildConnectivity();
+    std::optional<wxString> itemNetName( const SCH_ITEM& aItem, const SCH_SHEET_PATH& aPath ) const;
+    SCH_SHEET_LIST m_exportSheets;
+    std::vector<EXPORT_NET> m_exportNets;
+    std::map<SCH_SHEET_PATH, std::unordered_map<KIID, wxString>> m_exportItemNets;
+    unsigned m_connectivityDepth = 0;
+
     /**
      * Find a symbol from the DrawList and builds its pin list.
      *
      * This list is sorted by pin number. The symbol is the next actual symbol after \a aSymbol.
      * Power symbols and virtual symbols that have their reference designators starting with
      * '#' are skipped.
-     * if aKeepUnconnectedPins = false, unconnected pins will be removed from list
-     * but usually we need all pins in netlists.
      */
-    std::vector<PIN_INFO> CreatePinList( SCH_SYMBOL* aSymbol, const SCH_SHEET_PATH& aSheetPath,
-                                         bool aKeepUnconnectedPins );
+    std::vector<PIN_INFO> CreatePinList( SCH_SYMBOL* aSymbol, const SCH_SHEET_PATH& aSheetPath );
 
     /**
      * Check if the given symbol should be processed for netlisting.
@@ -160,9 +197,22 @@ protected:
      *
      * @param aItem is a symbol to check
      * @param aSheetPath is the sheet to check the symbol for
+     * @param aExcluded tells which symbol instances the export leaves out, so they never claim a package
      * @return the symbol if it should be processed, or nullptr
      */
-    SCH_SYMBOL* findNextSymbol( EDA_ITEM* aItem, const SCH_SHEET_PATH& aSheetPath );
+    SCH_SYMBOL* findNextSymbol( EDA_ITEM* aItem, const SCH_SHEET_PATH& aSheetPath,
+                                const EXPORT_EXCLUSION& aExcluded = nullptr );
+
+    /**
+     * @return true if an exported unit on the sheet whose suffix names this package owns its footprint.
+     */
+    bool packageOwnedElsewhere( const SCH_SYMBOL* aSymbol, const SCH_SHEET_PATH& aSheetPath,
+                                const EXPORT_EXCLUSION& aExcluded ) const;
+
+    /**
+     * @return the exclusion of footprint exporters, which leave out symbols excluded from the board.
+     */
+    EXPORT_EXCLUSION boardExclusion() const;
 
     /**
      * Erase duplicate pins.
@@ -176,26 +226,38 @@ protected:
      */
     void eraseDuplicatePins( std::vector<PIN_INFO>& pins );
 
+    /// Resolve @a aPin to its pad number(s) and append a PIN_INFO for each (issue #2282).
+    void appendResolvedPins( std::vector<PIN_INFO>& aPins, const SCH_PIN* aPin, const SCH_SHEET_PATH& aSheetPath,
+                             const wxString& aNetName );
+
+    /// Resolve @a aPin to its effective pad number(s) for every netlist path (issue #2282).
+    std::vector<wxString> resolvePadNumbers( const SCH_PIN* aPin, const SCH_SHEET_PATH& aSheetPath ) const;
+
+    const std::set<wxString>& footprintPads( const wxString& aFootprintId ) const;
+
     /**
      * Find all units for symbols with multiple symbols per package.
      *
      * Search the entire design for all units of \a aSymbol based on matching reference
      * designator, and for each unit, add all its pins to the sorted pin list.
-     * if aKeepUnconnectedPins = false, unconnected pins will be removed from list
-     * but usually we need all pins in netlists.
      */
     void findAllUnitsOfSymbol( SCH_SYMBOL* aSchSymbol, const SCH_SHEET_PATH& aSheetPath,
-                               std::vector<PIN_INFO>& aPins, bool aKeepUnconnectedPins );
+                               std::vector<PIN_INFO>& aPins );
 
-    /// Used for "multiple symbols per package" symbols to avoid processing a lib symbol more than
-    /// once
-    UNIQUE_STRINGS        m_referencesAlreadyFound;
+protected:
+    /// Used for "multiple symbols per package" symbols to avoid processing a lib symbol more than once
+    UNIQUE_STRINGS                              m_referencesAlreadyFound;
 
     /// unique library symbols used. LIB_SYMBOL items are sorted by names
     std::set<LIB_SYMBOL*, LIB_SYMBOL_LESS_THAN> m_libParts;
 
-    /// The schematic we're generating a netlist for
-    SCHEMATIC*      m_schematic;
+
+    SCHEMATIC*      m_schematic;        /// The schematic we're generating a netlist for
+    wxString        m_exportVariant;    /// The variant of the schematic to export
+
+    KIWAY*          m_kiway = nullptr;
+
+    mutable std::map<wxString, std::set<wxString>> m_footprintPadCache;
 };
 
 #endif

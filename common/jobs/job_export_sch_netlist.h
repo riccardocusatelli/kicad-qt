@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef JOB_EXPORT_SCH_NETLIST_H
@@ -48,6 +48,10 @@ public:
     wxString GetSettingsDialogTitle() const override;
 
     wxString m_filename;
+
+    // Netlist taken as a step of an import: the schematic is dropped afterwards, for a caller that unloads the
+    // project before the process ends, and an unannotated symbol is not reported
+    bool m_forImport = false;
 
     FORMAT format;
 

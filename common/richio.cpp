@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -59,13 +55,13 @@ wxString SafeReadFile( const wxString& aFilePath, const wxString& aReadType )
     // the IsOpened check would be logical, but on linux you can fopen (in read mode) a directory
     // And then everything else in here will barf
     if( !wxFileExists( aFilePath ) )
-        THROW_IO_ERROR( wxString::Format( _( "File '%s' does not exist." ), aFilePath ) );
+        THROW_IO_ERRORF( _( "File '%s' does not exist." ), aFilePath );
 
     wxString contents;
     wxFFile  ff( aFilePath );
 
     if( !ff.IsOpened() )
-        THROW_IO_ERROR( wxString::Format( _( "Cannot open file '%s'." ), aFilePath ) );
+        THROW_IO_ERRORF( _( "Cannot open file '%s'." ), aFilePath );
 
     // Try to determine encoding
     char bytes[2]{ 0 };
@@ -88,7 +84,7 @@ wxString SafeReadFile( const wxString& aFilePath, const wxString& aReadType )
     }
 
     if( contents.empty() )
-        THROW_IO_ERROR( wxString::Format( _( "Unable to read file '%s'." ), aFilePath ) );
+        THROW_IO_ERRORF( _( "Unable to read file '%s'." ), aFilePath );
 
     // I'm not sure what the source of this style of line-endings is, but it can be
     // found in some Fairchild Semiconductor SPICE files.
@@ -163,11 +159,7 @@ FILE_LINE_READER::FILE_LINE_READER( const wxString& aFileName, unsigned aStartin
     m_fp = KIPLATFORM::IO::SeqFOpen( aFileName, wxT( "rt" ) );
 
     if( !m_fp )
-    {
-        wxString msg = wxString::Format( _( "Unable to open %s for reading." ),
-                                         aFileName.GetData() );
-        THROW_IO_ERROR( msg );
-    }
+        THROW_IO_ERRORF( _( "Unable to open %s for reading." ), aFileName.GetData() );
 
     m_source  = aFileName;
     m_lineNum = aStartingLineNumber;
@@ -422,31 +414,35 @@ int OUTPUTFORMATTER::sprint( const char* fmt, ... )
 }
 
 
-int OUTPUTFORMATTER::Print( int nestLevel, const char* fmt, ... )
+int OUTPUTFORMATTER::Indent( int aNestLevel )
 {
 #define NESTWIDTH           2   ///< how many spaces per nestLevel
 
+    int total = 0;
+
+    for( int i = 0; i < aNestLevel; ++i )
+    {
+        // no error checking needed, an exception indicates an error.
+        total += sprint( "%*c", NESTWIDTH, ' ' );
+    }
+
+    return total;
+}
+
+
+int OUTPUTFORMATTER::Print( int nestLevel, const char* fmt, ... )
+{
     va_list     args;
 
     va_start( args, fmt );
 
-    int result = 0;
-    int total  = 0;
-
-    for( int i = 0; i < nestLevel; ++i )
-    {
-        // no error checking needed, an exception indicates an error.
-        result = sprint( "%*c", NESTWIDTH, ' ' );
-
-        total += result;
-    }
+    int total = Indent( nestLevel );
 
     // no error checking needed, an exception indicates an error.
-    result = vprint( fmt, args );
+    total += vprint( fmt, args );
 
     va_end( args );
 
-    total += result;
     return total;
 }
 

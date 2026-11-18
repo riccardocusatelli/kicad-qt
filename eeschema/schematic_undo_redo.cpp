@@ -15,14 +15,11 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <sch_actions.h>
+#include <advanced_config.h>
 #include <sch_edit_frame.h>
 #include <tool/tool_manager.h>
 #include <schematic.h>
@@ -34,6 +31,7 @@
 #include <sch_line.h>
 #include <sch_sheet_pin.h>
 #include <sch_table.h>
+#include <variant_proxy_undo_item.h>
 #include <tools/sch_selection_tool.h>
 #include <drawing_sheet/ds_proxy_undo_item.h>
 #include <tool/actions.h>
@@ -223,6 +221,7 @@ void SCH_EDIT_FRAME::SaveCopyInUndoList( const PICKED_ITEMS_LIST& aItemsList, UN
         case UNDO_REDO::DELETED:
         case UNDO_REDO::PAGESETTINGS:
         case UNDO_REDO::REPEAT_ITEM:
+        case UNDO_REDO::VARIANTS:
             break;
 
         default:
@@ -310,8 +309,18 @@ void SCH_EDIT_FRAME::PutDataInPreviousState( PICKED_ITEMS_LIST* aList )
 
     GetCanvas()->GetView()->ClearHiddenFlags();
 
-    if( result.connectablesChanged )
+    if( result.connectablesChanged && !ADVANCED_CFG::GetCfg().m_ConnectivityEngine )
         m_highlightedConnChanged = true;
+
+    if( result.variantsRestored )
+    {
+        SyncVariantUI();
+        SetCurrentVariant( Schematic().GetCurrentVariant() );
+    }
+
+    // Undo can restore a suffix while one of its child sheets is on screen
+    if( result.refSuffixChanged )
+        RefreshComposedReferences();
 
     if( result.connectivityChanged )
     {
@@ -348,7 +357,7 @@ void SCH_EDIT_FRAME::PutDataInPreviousState( PICKED_ITEMS_LIST* aList )
     if( result.variantsChanged && m_schematic )
     {
         m_schematic->LoadVariants();
-        UpdateVariantSelectionCtrl( m_schematic->GetVariantNamesForUI() );
+        SyncVariantUI();
     }
 }
 
@@ -404,5 +413,3 @@ void SCH_EDIT_FRAME::ClearUndoORRedoList( UNDO_REDO_LIST whichList, int aItemCou
         }
     }
 }
-
-

@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <board_design_settings.h>
@@ -29,22 +25,15 @@
 #include <pcb_plot_params.h>
 #include <pcb_plot_params_parser.h>
 #include <plotters/plotter.h>
+#include <plotters/plotter_png.h>
 #include <io/kicad/kicad_io_utils.h>
 #include <settings/color_settings.h>
 #include <lseq.h>
+#include <jobs/job_export_pcb_drill.h>
+#include <jobs/job_export_pcb_svg.h>
 
 
 #define PLOT_LINEWIDTH_DEFAULT    ( DEFAULT_TEXT_WIDTH * IU_PER_MM )
-
-#define SVG_PRECISION_MIN         3U
-#define SVG_PRECISION_MAX         6U
-#define SVG_PRECISION_DEFAULT     4
-
-
-// default trailing digits in Gerber coordinates, when units are mm
-// This is also the max usable precision (i.e. internal Pcbnew Units)
-static const int gbrDefaultPrecision = 6;
-
 
 using namespace PCBPLOTPARAMS_T;
 
@@ -62,13 +51,15 @@ PCB_PLOT_PARAMS::PCB_PLOT_PARAMS()
     m_useGerberX2format          = true;
     m_includeGerberNetlistInfo   = true;
     m_createGerberJobFile        = true;
-    m_gerberPrecision            = gbrDefaultPrecision;
+    m_gerberPrecision            = GBR_DEFAULT_PRECISION;
     m_dashedLineDashRatio        = 12.0;   // From ISO 128-2
     m_dashedLineGapRatio         = 3.0;    // From ISO 128-2
 
     // we used 0.1mils for SVG step before, but nm precision is more accurate, so we use nm
     m_svgPrecision               = SVG_PRECISION_DEFAULT;
     m_svgFitPageToBoard          = false;
+    m_pngDPI                     = DEFAULT_PNG_DPI;
+    m_pngAntialias               = true;
     m_plotDrawingSheet           = false;
     m_DXFPlotMode                = FILLED;
     m_DXFPolygonMode             = true;
@@ -103,7 +94,7 @@ PCB_PLOT_PARAMS::PCB_PLOT_PARAMS()
     m_PDFBackFPPropertyPopups    = true;
     m_PDFMetadata                = true;
     m_PDFSingle                  = false;
-    m_PDFBackgroundColor         = COLOR4D::UNSPECIFIED;
+    m_backgroundColor            = COLOR4D::UNSPECIFIED;
 
     // This parameter controls if the NPTH pads will be plotted or not
     // it is a "local" parameter
@@ -128,8 +119,8 @@ void PCB_PLOT_PARAMS::SetGerberPrecision( int aPrecision )
     // or 5, min value for professional boards, when 6 creates problems
     // to board makers.
 
-    m_gerberPrecision = aPrecision == gbrDefaultPrecision-1 ? gbrDefaultPrecision-1 :
-                                      gbrDefaultPrecision;
+    m_gerberPrecision = aPrecision == GBR_DEFAULT_PRECISION-1 ? GBR_DEFAULT_PRECISION-1 :
+                                      GBR_DEFAULT_PRECISION;
 }
 
 
@@ -160,7 +151,7 @@ void PCB_PLOT_PARAMS::Format( OUTPUTFORMATTER* aFormatter ) const
 
     // save this option only if it is not the default value,
     // to avoid incompatibility with older Pcbnew version
-    if( m_gerberPrecision != gbrDefaultPrecision )
+    if( m_gerberPrecision != GBR_DEFAULT_PRECISION )
         aFormatter->Print( "(gerberprecision %d)", m_gerberPrecision );
 
     aFormatter->Print( "(dashed_line_dash_ratio %s)", FormatDouble2Str( GetDashedLineDashRatio() ).c_str() );
@@ -168,6 +159,10 @@ void PCB_PLOT_PARAMS::Format( OUTPUTFORMATTER* aFormatter ) const
 
     // SVG options
     aFormatter->Print( "(svgprecision %d)", m_svgPrecision );
+
+    // PNG options
+    aFormatter->Print( "(pngdpi %d)", m_pngDPI );
+    KICAD_FORMAT::FormatBool( aFormatter, "pngantialias", m_pngAntialias );
 
     KICAD_FORMAT::FormatBool( aFormatter, "plotframeref", m_plotDrawingSheet );
     aFormatter->Print( "(mode %d)", GetDXFPlotMode() == SKETCH ? 2 : 1 );
@@ -268,6 +263,12 @@ bool PCB_PLOT_PARAMS::IsSameAs( const PCB_PLOT_PARAMS &aPcbPlotParams ) const
     }
 
     if( m_svgPrecision != aPcbPlotParams.m_svgPrecision )
+        return false;
+
+    if( m_pngDPI != aPcbPlotParams.m_pngDPI )
+        return false;
+
+    if( m_pngAntialias != aPcbPlotParams.m_pngAntialias )
         return false;
 
     if( m_format != PLOT_FORMAT::POST )
@@ -665,8 +666,8 @@ void PCB_PLOT_PARAMS_PARSER::Parse( PCB_PLOT_PARAMS* aPcbPlotParams )
             break;
 
         case T_gerberprecision:
-            aPcbPlotParams->m_gerberPrecision = parseInt( gbrDefaultPrecision - 1,
-                                                          gbrDefaultPrecision);
+            aPcbPlotParams->m_gerberPrecision = parseInt( GBR_DEFAULT_PRECISION - 1,
+                                                          GBR_DEFAULT_PRECISION);
             break;
 
         case T_dashed_line_dash_ratio:
@@ -679,6 +680,14 @@ void PCB_PLOT_PARAMS_PARSER::Parse( PCB_PLOT_PARAMS* aPcbPlotParams )
 
         case T_svgprecision:
             aPcbPlotParams->m_svgPrecision = parseInt( SVG_PRECISION_MIN, SVG_PRECISION_MAX );
+            break;
+
+        case T_pngdpi:
+            aPcbPlotParams->m_pngDPI = parseInt( MIN_PNG_DPI, MAX_PNG_DPI );
+            break;
+
+        case T_pngantialias:
+            aPcbPlotParams->m_pngAntialias = parseBool();
             break;
 
         case T_svguseinch:

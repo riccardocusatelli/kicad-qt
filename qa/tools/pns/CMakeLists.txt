@@ -15,11 +15,7 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, you may find one here:
-# http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-# or you may search the http://www.gnu.org website for the version 2 license,
-# or you may write to the Free Software Foundation, Inc.,
-# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
 find_package(Boost COMPONENTS unit_test_framework REQUIRED)
@@ -29,7 +25,9 @@ add_compile_definitions( BOOST_TEST_DYN_LINK PCBNEW USE_TOOL_MANAGER)
 
 
 set( COMMON_SRCS
+    ../../../pcbnew/net_chain_bridging.cpp
     ../../../pcbnew/drc/drc_creepage_utils.cpp
+    ../../../pcbnew/drc/drc_creepage_engine.cpp
     ../../../pcbnew/drc/drc_rule.cpp
     ../../../pcbnew/drc/drc_rule_condition.cpp
     ../../../pcbnew/drc/drc_rule_parser.cpp
@@ -51,6 +49,7 @@ set( COMMON_SRCS
     ../../../pcbnew/drc/drc_test_provider_silk_clearance.cpp
     ../../../pcbnew/drc/drc_test_provider_matched_length.cpp
     ../../../pcbnew/drc/drc_test_provider_diff_pair_coupling.cpp
+    ../../../pcbnew/drc/drc_chain_topology.cpp
     ../../../pcbnew/drc/drc_engine.cpp
     ../../../pcbnew/drc/drc_item.cpp
     ../../../pcbnew/board_stackup_manager/stackup_predefined_prms.cpp
@@ -112,14 +111,12 @@ target_link_libraries( pns_debug_tool
     dxflib_qcad
     tinyspline_lib
     nanosvg
-    idf3
     pcbcommon
     markdown_lib
     3d-viewer
     ${PCBNEW_IO_LIBRARIES}
     ${wxWidgets_LIBRARIES}
     ${GDI_PLUS_LIBRARIES}
-    ${PYTHON_LIBRARIES}
     Boost::headers
     ${PCBNEW_EXTRA_LIBS}    # -lrt must follow Boost
 )
@@ -137,14 +134,12 @@ target_link_libraries( qa_pns_regressions
     dxflib_qcad
     tinyspline_lib
     nanosvg
-    idf3
     pcbcommon
     markdown_lib
     3d-viewer
     ${PCBNEW_IO_LIBRARIES}
     ${wxWidgets_LIBRARIES}
     ${GDI_PLUS_LIBRARIES}
-    ${PYTHON_LIBRARIES}
     Boost::headers
     ${PCBNEW_EXTRA_LIBS}    # -lrt must follow Boost
 )
@@ -168,4 +163,4 @@ include_directories(
     ${INC_AFTER}
 )
 
-# kicad_add_boost_test( qa_pns_regressions qa_pns_regressions )
+kicad_add_boost_test( qa_pns_regressions qa_pns_regressions )

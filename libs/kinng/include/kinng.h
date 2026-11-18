@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef KICAD_KINNG_H
@@ -61,6 +61,9 @@ private:
     std::string m_sharedMessage;
 
     std::string m_pendingReply;
+
+    /// Set by Reply(); an empty reply is valid, so emptiness cannot signal readiness
+    bool m_hasReply = false;
 
     std::condition_variable m_replyReady;
 

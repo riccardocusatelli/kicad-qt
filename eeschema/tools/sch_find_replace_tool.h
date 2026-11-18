@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -56,17 +52,18 @@ public:
     int UpdateFind( const TOOL_EVENT& aEvent );
 
 private:
-    ///< Set up handlers for various events.
+    /// Set up handlers for various events.
     void setTransitions() override;
 
     /**
      * Advance the search and returns the next matching item after \a aAfter.
      *
-     * @param aScreen Pointer to the screen used for searching
-     * @param aAfter Starting match to compare
-     * @param aData Search data to compare against or NULL to match the first item found
-     * @param reverse Search in reverse (find previous)
-     * @return pointer to the next search item found or NULL if nothing found
+     * @param aScreen Pointer to the screen used for searching.
+     * @param aSheet is the sheet path for item instances.
+     * @param aAfter Starting match to compare.
+     * @param aData Search data to compare against or NULL to match the first item found.
+     * @param reverse Search in reverse (find previous).
+     * @return pointer to the next search item found or NULL if nothing found.
      */
     SCH_ITEM* nextMatch( SCH_SCREEN* aScreen, SCH_SHEET_PATH* aSheet, SCH_ITEM* aAfter,
                          EDA_SEARCH_DATA& aData, bool reverse );

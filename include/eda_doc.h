@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -28,8 +24,7 @@
  * @see   common.h
  */
 
-#ifndef __INCLUDE__EDA_DOC_H__
-#define __INCLUDE__EDA_DOC_H__ 1
+#pragma once
 
 #include <kicommon.h>
 
@@ -39,17 +34,19 @@ class wxWindow;
 /**
  * Open a document (file) with the suitable browser.
  *
- * Environmental variables are substituted before the document name is resolved for
- * either browser or file.  If \a aDocName has an associated URI handler on the system,
- * the default handler will be launched.
+ * Environmental variables are substituted before the document name is resolved for either browser or
+ * file.  If \a aDocName has an associated URI handler on the system, the default handler will be launched.
  *
  * @param aParent main frame.
  * @param aDocName filename of file to open (Full filename or short filename).
- * @param aPaths Additional paths to search for local disk datasheet files
-*/
+ * @param aProject provides variable substitutions.
+ * @param aPaths Additional paths to search for local disk datasheet files.
+ * @param aFilesStack is the list of embedded files in most-global to most-local order.  The stack is
+ *                    searched from top to bottom (ie: in reverse std::vector order).
+ *
+ * @return True if the document was successfully opened. Otherwise, false.
+ */
 bool KIQT_COMMON_API GetAssociatedDocument( wxWindow* aParent, const wxString& aDocName,
                                             PROJECT* aProject, SEARCH_STACK* aPaths = nullptr,
                                             std::vector<EMBEDDED_FILES*> aFilesStack = {} );
 
-
-#endif /* __INCLUDE__EDA_DOC_H__ */

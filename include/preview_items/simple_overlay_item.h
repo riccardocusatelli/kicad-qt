@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PREVIEW_SIMPLE_OUTLINE_ITEM__H_
@@ -64,10 +60,10 @@ public:
     std::vector<int> ViewGetLayers() const override;
 
     /**
-     * Draw the preview - this is done by calling the two functions:
-     * setupGal() and drawPreviewShape(). If you need more than this,
-     * or direct access to the VIEW, you probably should make a new
-     *.
+     * Draw the preview.
+     *
+     * This is done by calling setupGal() and drawPreviewShape(). If you need more than this,
+     * or direct access to the #VIEW, you probably should make a new?.
      */
     void ViewDraw( int aLayer, KIGFX::VIEW* aView ) const override;
 
@@ -87,19 +83,19 @@ public:
         return "SIMPLE_OVERLAY_ITEM";
     }
 
-    ///< Set the stroke color to set before drawing preview
+    /// Set the stroke color to set before drawing preview
     void SetStrokeColor( const COLOR4D& aNewColor )
     {
         m_strokeColor = aNewColor;
     }
 
-    ///< Set the fill color to set before drawing preview
+    /// Set the fill color to set before drawing preview
     void SetFillColor( const COLOR4D& aNewColor )
     {
         m_fillColor = aNewColor;
     }
 
-    ///< Set the line width to set before drawing preview
+    /// Set the line width to set before drawing preview
     void SetLineWidth( double aNewWidth )
     {
         m_lineWidth = aNewWidth;
@@ -120,8 +116,7 @@ private:
     /**
      * Draw the preview onto the given GAL. setupGal() will be called before this function.
      *
-     * Subclasses should implement this in terms of their own graphical
-     * data.
+     * Subclasses should implement this in terms of their own graphical data.
      */
     virtual void drawPreviewShape( KIGFX::VIEW* aView ) const { };
 

@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PCB_VIEWER_TOOLS_H_
@@ -53,7 +49,7 @@ public:
     /// @copydoc TOOL_BASE::Reset()
     void Reset( RESET_REASON aReason ) override;
 
-    ///< Launch a tool to measure between points.
+    /// Launch a tool to measure between points.
     int MeasureTool( const TOOL_EVENT& aEvent );
     int NextLineMode( const TOOL_EVENT& aEvent );
 
@@ -69,7 +65,7 @@ public:
     /// Show the 3D viewer
     int Show3DViewer( const TOOL_EVENT& aEvent );
 
-    ///< Set up handlers for various events.
+    /// Set up handlers for various events.
     void setTransitions() override;
 
     /**
@@ -78,7 +74,7 @@ public:
      * When enabled, one may select parts of footprints individually (graphics, pads, etc.),
      * so they can be modified.
      *
-     * @param aEnabled decides if the mode should be enabled.
+     * @param aIsFrame decides if the mode should be enabled.
      */
     void SetFootprintFrame( bool aIsFrame )
     {

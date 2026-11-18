@@ -16,8 +16,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "settings/settings_manager.h"
@@ -100,7 +100,7 @@ DIALOG_CHANGE_SYMBOLS::DIALOG_CHANGE_SYMBOLS( SCH_EDIT_FRAME* aParent, SCH_SYMBO
     {
         int listIdx = (int) m_fieldsBox->GetCount();
 
-        m_fieldsBox->Append( GetDefaultFieldName( fieldId, DO_TRANSLATE ) );
+        m_fieldsBox->Append( GetDefaultFieldName( fieldId, TRANSLATED ) );
 
         // List boxes aren't currently handled in DIALOG_SHIM's control-state-save/restore
         if( fieldId == FIELD_T::REFERENCE )
@@ -124,6 +124,7 @@ DIALOG_CHANGE_SYMBOLS::DIALOG_CHANGE_SYMBOLS( SCH_EDIT_FRAME* aParent, SCH_SYMBO
     m_resetAttributes->SetValue(        ( m_mode == MODE::CHANGE ) ? true  : false );
     m_resetPinTextVisibility->SetValue( ( m_mode == MODE::CHANGE ) ? true  : false );
     m_resetAlternatePin->SetValue(      ( m_mode == MODE::CHANGE ) ? true  : false );
+    m_resetPinMapOverrides->SetValue( ( m_mode == MODE::CHANGE ) ? true : false );
 
     m_messagePanel->SetLazyUpdate( true );
     m_messagePanel->SetFileName( Prj().GetProjectPath() + wxT( "report.txt" ) );
@@ -423,6 +424,7 @@ void DIALOG_CHANGE_SYMBOLS::checkAll( bool aCheck )
     m_resetFieldPositions->SetValue( aCheck );
     m_resetPinTextVisibility->SetValue( aCheck );
     m_resetAlternatePin->SetValue( aCheck );
+    m_resetPinMapOverrides->SetValue( aCheck );
     m_resetAttributes->SetValue( aCheck );
     m_resetCustomPower->SetValue( aCheck );
 }
@@ -440,8 +442,7 @@ void DIALOG_CHANGE_SYMBOLS::onOkButtonClicked( wxCommandEvent& aEvent )
     m_messagePanel->Clear();
     m_messagePanel->Flush( false );
 
-    // Create the set of fields to be updated. Use non translated (canonical) names
-    // for mandatory fields
+    // Create the set of fields to be updated. Use untranslated names for mandatory fields.
     m_updateFields.clear();
 
     for( unsigned ii = 0; ii < m_fieldsBox->GetCount(); ++ii )
@@ -453,7 +454,7 @@ void DIALOG_CHANGE_SYMBOLS::onOkButtonClicked( wxCommandEvent& aEvent )
     for( FIELD_T fieldId : MANDATORY_FIELDS )
     {
         if( m_fieldsBox->IsChecked( m_mandatoryFieldListIndexes[fieldId] ) )
-            m_updateFields.insert( GetCanonicalFieldName( fieldId ) );
+            m_updateFields.insert( GetDefaultFieldName( fieldId, UNTRANSLATED ) );
     }
 
     if( processMatchingSymbols( &commit) )
@@ -628,6 +629,20 @@ int DIALOG_CHANGE_SYMBOLS::processSymbols( SCH_COMMIT* aCommit, const std::map<S
         }
     }
 
+    // Snapshot before symbols leave their screens so a prefix change cannot reuse a taken ref
+    std::set<wxString>           usedRefs;
+    std::map<wxString, wxString> renamedRefs;
+
+    for( const SCH_SHEET_PATH& path : frame->Schematic().Hierarchy() )
+    {
+        SCH_SCREEN* screen = path.LastScreen();
+
+        KI_CHECK2( screen, continue );
+
+        for( SCH_ITEM* item : screen->Items().OfType( SCH_SYMBOL_T ) )
+            usedRefs.insert( static_cast<SCH_SYMBOL*>( item )->GetBaseRef( &path ) );
+    }
+
     // Removing the symbol needs to be done before the LIB_SYMBOL is changed to prevent stale
     // library symbols in the schematic file.
     for( const auto& [ symbol, symbol_change_info ] : symbols )
@@ -658,7 +673,27 @@ int DIALOG_CHANGE_SYMBOLS::processSymbols( SCH_COMMIT* aCommit, const std::map<S
         std::unique_ptr<LIB_SYMBOL> flattenedSymbol = libSymbol->Flatten();
         SCH_SCREEN*                 screen = symbol_change_info.m_Instances[0].LastScreen();
 
+        const bool keepPinMaps = !m_resetPinMapOverrides->IsChecked();
+
+        PIN_MAP_SET                       savedPinMaps;
+        std::vector<ASSOCIATED_FOOTPRINT> savedAssociations;
+
+        if( keepPinMaps && symbol->GetLibSymbolRef() )
+        {
+            savedPinMaps = symbol->GetLibSymbolRef()->GetPinMaps();
+            savedAssociations = symbol->GetLibSymbolRef()->GetAssociatedFootprints();
+        }
+
         symbol->SetLibSymbol( flattenedSymbol.release() );
+
+        if( screen )
+            screen->IncludeVariantSymbols( *symbol, true );
+
+        if( keepPinMaps && symbol->GetLibSymbolRef() )
+        {
+            symbol->GetLibSymbolRef()->SetPinMaps( savedPinMaps );
+            symbol->GetLibSymbolRef()->SetAssociatedFootprints( savedAssociations );
+        }
 
         if( m_resetAttributes->GetValue() )
         {
@@ -687,9 +722,9 @@ int DIALOG_CHANGE_SYMBOLS::processSymbols( SCH_COMMIT* aCommit, const std::map<S
             SCH_FIELD* libField = nullptr;
             bool       doUpdate = field.IsPrivate();
 
-            // Mandatory fields always exist in m_updateFields, but these names can be translated.
-            // so use GetCanonicalName().
-            doUpdate |= alg::contains( m_updateFields, field.GetCanonicalName() );
+            // Mandatory fields always exist in m_updateFields, but these names can be translated,
+            // so use GetUntranslatedName().
+            doUpdate |= alg::contains( m_updateFields, field.GetUntranslatedName() );
 
             if( !doUpdate )
                 continue;
@@ -714,13 +749,34 @@ int DIALOG_CHANGE_SYMBOLS::processSymbols( SCH_COMMIT* aCommit, const std::map<S
 
                         for( const SCH_SHEET_PATH& instance : symbol_change_info.m_Instances )
                         {
-                            wxString ref = symbol->GetRef( &instance );
-                            int      number = UTIL::GetRefDesNumber( ref );
+                            wxString oldRef = symbol->GetBaseRef( &instance );
+                            int      number = UTIL::GetRefDesNumber( oldRef );
+                            wxString ref;
+                            auto     renamed = renamedRefs.find( oldRef );
 
-                            if( number >= 0 )
-                                ref.Printf( wxS( "%s%d" ), prefix, number );
-                            else
+                            if( number < 0 )
+                            {
                                 ref = UTIL::GetRefDesUnannotated( prefix );
+                            }
+                            else if( renamed != renamedRefs.end()
+                                     && UTIL::GetRefDesPrefix( renamed->second ) == prefix )
+                            {
+                                // Keep the units of a multi-unit symbol together
+                                ref = renamed->second;
+                            }
+                            else
+                            {
+                                ref.Printf( wxS( "%s%d" ), prefix, number );
+
+                                if( ref != oldRef )
+                                {
+                                    while( usedRefs.count( ref ) )
+                                        ref.Printf( wxS( "%s%d" ), prefix, ++number );
+
+                                    usedRefs.insert( ref );
+                                    renamedRefs[oldRef] = ref;
+                                }
+                            }
 
                             symbol->SetRef( &instance, ref );
                         }
@@ -770,7 +826,7 @@ int DIALOG_CHANGE_SYMBOLS::processSymbols( SCH_COMMIT* aCommit, const std::map<S
             if( libField->IsMandatory() )
                 continue;
 
-            if( !alg::contains( m_updateFields, libField->GetCanonicalName() ) )
+            if( !alg::contains( m_updateFields, libField->GetUntranslatedName() ) )
                 continue;
 
             if( !symbol->GetField( libField->GetName() ) )
@@ -824,6 +880,12 @@ int DIALOG_CHANGE_SYMBOLS::processSymbols( SCH_COMMIT* aCommit, const std::map<S
                     }
                 }
             }
+        }
+
+        if( m_resetPinMapOverrides->IsChecked() )
+        {
+            for( const SCH_SHEET_PATH& instance : symbol_change_info.m_Instances )
+                symbol->SetPinMapOverride( PIN_MAP_INSTANCE_OVERRIDE(), &instance );
         }
 
         frame->GetCanvas()->GetView()->Update( symbol );

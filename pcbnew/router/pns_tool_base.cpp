@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -61,6 +61,7 @@ TOOL_BASE::TOOL_BASE( const std::string& aToolName ) :
     m_gridHelper = nullptr;
 
     m_cancelled = false;
+    m_selectableItemMask = ITEM::ANY_T;
 }
 
 
@@ -109,8 +110,14 @@ void TOOL_BASE::Reset( RESET_REASON aReason )
 }
 
 
+void TOOL_BASE::setSelectableItemMask( int aMask )
+{
+    m_selectableItemMask = aMask;
+}
+
+
 ITEM* TOOL_BASE::pickSingleItem( const VECTOR2I& aWhere, NET_HANDLE aNet, int aLayer,
-                                 bool aIgnorePads, const std::vector<ITEM*> aAvoidItems )
+                                 bool aIgnorePads, const std::vector<ITEM*> aAvoidItems, int aPermittedItemMask )
 {
     int tl = aLayer > 0 ? aLayer
                         : m_router->GetInterface()->GetPNSLayerFromBoardLayer(
@@ -145,6 +152,9 @@ ITEM* TOOL_BASE::pickSingleItem( const VECTOR2I& aWhere, NET_HANDLE aNet, int aL
 
         for( ITEM* item : candidates.Items() )
         {
+            if( (item->Kind() & aPermittedItemMask ) == 0 )
+                continue;
+
             if( !item->IsRoutable() )
                 continue;
 
@@ -165,7 +175,7 @@ ITEM* TOOL_BASE::pickSingleItem( const VECTOR2I& aWhere, NET_HANDLE aNet, int aL
             {
                 continue;
             }
-            else if( m_router->GetInterface()->GetNetCode( aNet) <= 0 || item->Net() == aNet )
+            else if( m_router->Mode() == PNS::PNS_MODE_ROUTE_DIFF_PAIR || m_router->GetInterface()->GetNetCode( aNet) <= 0 || item->Net() == aNet )
             {
                 if( item->OfKind( ITEM::VIA_T | ITEM::SOLID_T ) )
                 {
@@ -299,14 +309,13 @@ bool TOOL_BASE::checkSnap( ITEM *aItem )
     // Sync PNS engine settings with the general PCB editor options.
     ROUTING_SETTINGS& pnss = m_router->Settings();
 
-    // If we're dragging a track segment, don't try to snap to items that are part of the original line.
+    // Don't snap to items that move with the drag, or the cursor sticks to their old position
     if( m_startItem && aItem && m_router->GetState() == ROUTER::DRAG_SEGMENT
         && m_router->GetDragger() )
     {
-        DRAGGER*     dragger = dynamic_cast<DRAGGER*>( m_router->GetDragger() );
-        LINKED_ITEM* linkedItem = dynamic_cast<LINKED_ITEM*>( aItem );
+        DRAGGER* dragger = dynamic_cast<DRAGGER*>( m_router->GetDragger() );
 
-        if( dragger && linkedItem && dragger->GetOriginalLine().ContainsLink( linkedItem ) )
+        if( dragger && dragger->IsDragOrigin( aItem ) )
             return false;
     }
 
@@ -332,8 +341,7 @@ bool TOOL_BASE::checkSnap( ITEM *aItem )
 
 void TOOL_BASE::updateStartItem( const TOOL_EVENT& aEvent, bool aIgnorePads )
 {
-    int tl = m_router->GetInterface()->GetPNSLayerFromBoardLayer(
-            static_cast<PCB_LAYER_ID>( getView()->GetTopLayer() ) );
+    int      tl = m_router->GetInterface()->GetPNSLayerFromBoardLayer( ToLAYER_ID( getView()->GetTopLayer() ) );
     GAL*     gal = m_toolMgr->GetView()->GetGAL();
     VECTOR2I pos = aEvent.HasPosition() ? (VECTOR2I) aEvent.Position() : m_startSnapPoint;
 
@@ -347,11 +355,14 @@ void TOOL_BASE::updateStartItem( const TOOL_EVENT& aEvent, bool aIgnorePads )
         return;
     }
 
+    // Snapping uses ViewGetLOD(), which use the layerVisibilityCache.  Make sure the cache is up-to-date.
+    m_toolMgr->GetView()->SyncLayerVisibilityCache();
+
     controls()->ForceCursorPosition( false );
     m_gridHelper->SetUseGrid( gal->GetGridSnapping() && !aEvent.DisableGridSnapping()  );
     m_gridHelper->SetSnap( !aEvent.Modifier( MD_SHIFT ) );
 
-    m_startItem = pickSingleItem( pos, nullptr, -1, aIgnorePads );
+    m_startItem = pickSingleItem( pos, nullptr, -1, aIgnorePads, {}, m_selectableItemMask );
 
     if( !m_gridHelper->GetUseGrid() && m_startItem && !m_startItem->Layers().Overlaps( tl ) )
         m_startItem = nullptr;
@@ -365,6 +376,9 @@ void TOOL_BASE::updateEndItem( const TOOL_EVENT& aEvent )
 {
     int  layer;
     GAL* gal = m_toolMgr->GetView()->GetGAL();
+
+    // Snapping uses ViewGetLOD(), which use the layerVisibilityCache.  Make sure the cache is up-to-date.
+    m_toolMgr->GetView()->SyncLayerVisibilityCache();
 
     m_gridHelper->SetUseGrid( gal->GetGridSnapping() && !aEvent.DisableGridSnapping()  );
     m_gridHelper->SetSnap( !aEvent.Modifier( MD_SHIFT ) );
@@ -402,7 +416,8 @@ void TOOL_BASE::updateEndItem( const TOOL_EVENT& aEvent )
 
     for( NET_HANDLE net : nets )
     {
-        endItem = pickSingleItem( mousePos, net, layer, false, { m_startItem } );
+        
+        endItem = pickSingleItem( mousePos, net, layer, false, {}, m_selectableItemMask ); //{ m_startItem } );
 
         if( endItem )
             break;

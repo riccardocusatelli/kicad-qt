@@ -14,15 +14,13 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef HISTORY_LOCK_H
 #define HISTORY_LOCK_H
+
+#include <kicommon.h>
 
 #include <memory>
 #include <wx/string.h>
@@ -57,7 +55,7 @@ class LOCKFILE;
  *   // Lock automatically released when object goes out of scope
  * @endcode
  */
-class HISTORY_LOCK_MANAGER
+class KICOMMON_API HISTORY_LOCK_MANAGER
 {
 public:
     /**
@@ -69,6 +67,12 @@ public:
      *                         ADVANCED_CFG::m_HistoryLockStaleTimeout (default: 0 = use config)
      */
     HISTORY_LOCK_MANAGER( const wxString& aProjectPath, int aStaleTimeoutSec = 0 );
+
+    /**
+     * As above, with the history directory already resolved.  Background work must use this, since
+     * resolving reads the settings manager's project list, which the UI thread changes on load
+     */
+    HISTORY_LOCK_MANAGER( const wxString& aProjectPath, const wxString& aHistoryPath, int aStaleTimeoutSec = 0 );
 
     /**
      * Destructor releases all locks and closes git repository.
@@ -126,8 +130,8 @@ public:
     static bool IsLockStale( const wxString& aProjectPath, int aStaleTimeoutSec = 0 );
 
     /**
-     * Forcibly remove a stale lock file.
-     * Should only be called after confirming with user or if IsLockStale() returns true.
+     * Claim and remove an abandoned lock belonging to this user.
+     * A lock held by another process or user is never removed.
      *
      * @param aProjectPath Path to project directory
      * @return true if lock was removed successfully

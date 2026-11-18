@@ -15,18 +15,14 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <sim/sim_model_raw_spice.h>
 #include <sim/sim_model_serializer.h>
 
 #include <boost/algorithm/string/predicate.hpp>
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <pegtl/contrib/parse_tree.hpp>
 
 
@@ -63,10 +59,10 @@ std::string SPICE_GENERATOR_RAW_SPICE::ItemPins( const SPICE_ITEM& aItem ) const
 
     if( !GetPins().empty() )
     {
-        for( const SIM_MODEL_PIN& pin : GetPins() )
+        for( const std::reference_wrapper<const SIM_MODEL_PIN>& pin : GetPins() )
         {
             auto it = std::find( aItem.pinNumbers.begin(), aItem.pinNumbers.end(),
-                                 pin.symbolPinNumber );
+                                 pin.get().symbolPinNumber );
 
             if( it != aItem.pinNumbers.end() )
             {
@@ -123,8 +119,8 @@ std::string SPICE_GENERATOR_RAW_SPICE::Preview( const SPICE_ITEM& aItem ) const
 
 
 SIM_MODEL_RAW_SPICE::SIM_MODEL_RAW_SPICE( const std::string& aSpiceSource ) :
-    SIM_MODEL( TYPE::RAWSPICE, std::make_unique<SPICE_GENERATOR_RAW_SPICE>( *this ) ),
-    m_spiceCode( aSpiceSource )
+        SIM_MODEL( TYPE::RAWSPICE, std::make_unique<SPICE_GENERATOR_RAW_SPICE>( *this ) ),
+        m_spiceCode( aSpiceSource )
 {
     static std::vector<PARAM::INFO> paramInfos = makeParamInfos();
 
@@ -148,6 +144,18 @@ void SIM_MODEL_RAW_SPICE::AssignSymbolPinNumberToModelPin( const std::string& aM
 
         m_modelPins[ --pinIndex /* convert to 0-based */ ].symbolPinNumber = aSymbolPinNumber;
     }
+}
+
+
+std::vector<wxString> SIM_MODEL_RAW_SPICE::GetSpiceIncludes( const SPICE_ITEM& aItem, SCHEMATIC* aSchematic,
+                                                             REPORTER& aReporter ) const
+{
+    wxString path = GetParam( static_cast<int>( SPICE_PARAM::LIB ) ).value;
+
+    if( path.IsEmpty() )
+        return {};
+
+    return { path };
 }
 
 

@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "netinfo.h"
@@ -32,8 +28,11 @@
 #include <pad.h>
 #include <pcb_shape.h>
 #include <pcb_track.h>
+#include <reporter.h>
 #include <string_utils.h>
+#include <trace_helpers.h>
 #include <zone.h>
+#include <unordered_map>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
 
@@ -61,6 +60,12 @@ void NETINFO_LIST::clear()
     for( it = m_netNames.begin(), itEnd = m_netNames.end(); it != itEnd; ++it )
         delete it->second;
 
+    detachAll();
+}
+
+
+void NETINFO_LIST::detachAll()
+{
     m_netNames.clear();
     m_netCodes.clear();
     m_newNetCode = 0;
@@ -148,16 +153,18 @@ void NETINFO_LIST::RemoveUnusedNets( BOARD_COMMIT* aCommit )
 }
 
 
-void NETINFO_LIST::AppendNet( NETINFO_ITEM* aNewElement )
+bool NETINFO_LIST::AppendNet( NETINFO_ITEM* aNewElement )
 {
-    // if there is a net with such name then just assign the correct number
     NETINFO_ITEM* sameName = GetNetItem( aNewElement->GetNetname() );
 
-    if( sameName != nullptr )
+    if( sameName == aNewElement )
     {
-        aNewElement->m_netCode = sameName->GetNetCode();
-
-        return;
+        return true;
+    }
+    else if( sameName != nullptr )
+    {
+        delete aNewElement;
+        return false;
     }
     else if( aNewElement->m_netCode != (int) m_netCodes.size() || aNewElement->m_netCode < 0 )
     {
@@ -175,14 +182,49 @@ void NETINFO_LIST::AppendNet( NETINFO_ITEM* aNewElement )
     m_netCodes.insert( std::make_pair( aNewElement->GetNetCode(), aNewElement ) );
 
     m_DisplayNetnamesDirty = true;
+    return true;
 }
 
 
 void NETINFO_LIST::buildListOfNets()
 {
-    // Restore the initial state of NETINFO_ITEMs
+    // Preserve any parsed net-chain names and terminal pad UUIDs before clearing. The GUI load
+    // path calls BuildListOfNets() after the board file is parsed (see files.cpp) which was
+    // unintentionally wiping the m_netChain field set by the (net_chains ...) section.  Cache and
+    // restore them so persisted chains survive the rebuild.
+    std::unordered_map<int, wxString> preservedNetChains;
+    std::unordered_map<int, KIID>     preservedPad0;
+    std::unordered_map<int, KIID>     preservedPad1;
+
+    preservedNetChains.reserve( GetNetCount() );
+    preservedPad0.reserve( GetNetCount() );
+    preservedPad1.reserve( GetNetCount() );
+
+    for( NETINFO_ITEM* net : *this )
+    {
+        preservedNetChains[ net->GetNetCode() ] = net->GetNetChain();
+        preservedPad0[ net->GetNetCode() ]    = net->GetTerminalPadUuid( 0 );
+        preservedPad1[ net->GetNetCode() ]    = net->GetTerminalPadUuid( 1 );
+    }
+
+    // Restore the initial state of NETINFO_ITEMs (except chains & terminal pad UUIDs which we reapply)
     for( NETINFO_ITEM* net : *this )
         net->Clear();
+
+    for( NETINFO_ITEM* net : *this )
+    {
+        auto it = preservedNetChains.find( net->GetNetCode() );
+        if( it != preservedNetChains.end() )
+            net->SetNetChain( it->second );
+
+        auto ip0 = preservedPad0.find( net->GetNetCode() );
+        if( ip0 != preservedPad0.end() )
+            net->SetTerminalPadUuid( 0, ip0->second );
+
+        auto ip1 = preservedPad1.find( net->GetNetCode() );
+        if( ip1 != preservedPad1.end() )
+            net->SetTerminalPadUuid( 1, ip1->second );
+    }
 
     m_parent->SynchronizeNetsAndNetClasses( false );
     m_parent->SetAreasNetCodesFromNetNames();
@@ -274,6 +316,74 @@ int NETINFO_LIST::getFreeNetCode()
     } while( m_netCodes.count( ++m_newNetCode ) != 0 );
 
     return m_newNetCode;
+}
+
+
+bool NETINFO_LIST::RenameNets( const std::map<wxString, wxString>& aNewNames, REPORTER& aReporter )
+{
+    if( aNewNames.empty() )
+        return true;
+
+    // Validate against a copy so a rejected batch leaves the live lookup untouched.
+    NETNAMES_MAP                                   finalNames = m_netNames;
+    std::vector<std::pair<NETINFO_ITEM*, wxString>> renames;
+    size_t                                         missing = 0;
+
+    for( const auto& [source, target] : aNewNames )
+    {
+        NETINFO_ITEM* net = GetNetItem( source );
+
+        if( !net )
+        {
+            // A caller may legitimately offer names for nets this board does not have, but a run
+            // where most names miss usually means the two sides qualify hierarchical names
+            // differently.
+            KI_LOG_TRACE( traceImportNetNames, wxS( "no net named '%s' to rename to '%s'" ), source,
+                        target );
+            ++missing;
+            continue;
+        }
+
+        if( net->GetNetCode() <= 0 || target.IsEmpty() )
+        {
+            aReporter.Report( wxString::Format( _( "Cannot rename net '%s' to '%s': net zero and empty "
+                                                   "names are reserved for unconnected items." ),
+                                                source, target ), RPT_SEVERITY_ERROR );
+            return false;
+        }
+
+        if( source == target )
+            continue;
+
+        renames.emplace_back( net, target );
+        finalNames.erase( source );
+    }
+
+    KI_LOG_TRACE( traceImportNetNames, wxS( "renaming %zu of %zu nets, %zu not on this board" ),
+                renames.size(), aNewNames.size(), missing );
+
+    if( renames.empty() )
+        return true;
+
+    for( const auto& [net, target] : renames )
+    {
+        if( !finalNames.emplace( target, net ).second )
+        {
+            aReporter.Report( wxString::Format( _( "Cannot rename net '%s' to '%s': another net would "
+                                                   "have the same name." ),
+                                                net->GetNetname(), target ), RPT_SEVERITY_ERROR );
+            return false;
+        }
+    }
+
+    // Removing and re-adding nets would disconnect copper and can reassign net codes.
+    for( const auto& [net, target] : renames )
+        net->SetNetname( target );
+
+    m_netNames.swap( finalNames );
+    m_DisplayNetnamesDirty = true;
+
+    return true;
 }
 
 

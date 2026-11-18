@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -347,44 +347,6 @@ BOOST_AUTO_TEST_CASE( Circle_Creation )
     BOOST_CHECK_EQUAL( circle->GetStart().x, schIUScale.MilsToIU( 0 ) );
     BOOST_CHECK_EQUAL( circle->GetStart().y, schIUScale.MilsToIU( 0 ) );
     BOOST_CHECK_EQUAL( circle->GetEnd().x, schIUScale.MilsToIU( radius ) );
-}
-
-
-/**
- * Test PNG alpha computation formula used in schematic export.
- */
-BOOST_AUTO_TEST_CASE( PngExport_AlphaComputation_Opaque )
-{
-    // Opaque pixel: same on white and black
-    int rW = 128, gW = 128, bW = 128;
-    int rB = 128, gB = 128, bB = 128;
-
-    int diffR = rW - rB;
-    int diffG = gW - gB;
-    int diffB = bW - bB;
-    int avgDiff = ( diffR + diffG + diffB ) / 3;
-    int alpha = 255 - avgDiff;
-
-    BOOST_CHECK_EQUAL( alpha, 255 );
-}
-
-
-/**
- * Test PNG alpha computation for transparent pixel.
- */
-BOOST_AUTO_TEST_CASE( PngExport_AlphaComputation_Transparent )
-{
-    // Transparent pixel: shows background
-    int rW = 255, gW = 255, bW = 255;
-    int rB = 0, gB = 0, bB = 0;
-
-    int diffR = rW - rB;
-    int diffG = gW - gB;
-    int diffB = bW - bB;
-    int avgDiff = ( diffR + diffG + diffB ) / 3;
-    int alpha = 255 - avgDiff;
-
-    BOOST_CHECK_EQUAL( alpha, 0 );
 }
 
 

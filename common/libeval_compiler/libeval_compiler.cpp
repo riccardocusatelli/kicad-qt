@@ -34,6 +34,7 @@
 #endif
 
 #include <libeval_compiler/libeval_compiler.h>
+#include <libeval/numeric_evaluator.h>
 
 /* The (generated) lemon parser is written in C.
  * In order to keep its symbol from the global namespace include the parser code with
@@ -458,7 +459,6 @@ bool COMPILER::lexDefault( T_TOKEN& aToken )
     T_TOKEN  retval;
     wxString current;
     int      convertFrom;
-    wxString msg;
 
     retval.value.str = nullptr;
     retval.value.num = 0.0;
@@ -471,18 +471,26 @@ bool COMPILER::lexDefault( T_TOKEN& aToken )
         return true;
     }
 
-    auto isDecimalSeparator =
-            [&]( wxUniChar ch ) -> bool
-            {
-                return ( ch == m_localeDecimalSeparator || ch == '.' || ch == ',' );
-            };
-
     // Lambda: get value as string, store into clToken.token and update current index.
     auto extractNumber =
             [&]()
             {
                 bool      haveSeparator = false;
+                bool      haveDigit = false;
                 wxUniChar ch = m_tokenizer.GetChar();
+
+                auto isDecimalSeparator =
+                        [&]( wxUniChar c ) -> bool
+                            {
+                                double dummy;
+
+                                if( c == m_localeDecimalSeparator || c == '.' || c == ',' )
+                                    return true;
+
+                                // Infix only between digits so 4k7 scales while 5mm and 100ps keep their units
+                                return haveDigit && wxIsdigit( m_tokenizer.GetChar( 1 ) )
+                                       && NUMERIC_EVALUATOR::IsOldSchoolDecimalSeparator( c, &dummy );
+                            };
 
                 do
                 {
@@ -493,15 +501,18 @@ bool COMPILER::lexDefault( T_TOKEN& aToken )
 
                     if( isDecimalSeparator( ch ) )
                         haveSeparator = true;
+                    else
+                        haveDigit = true;
 
                     m_tokenizer.NextChar();
                     ch = m_tokenizer.GetChar();
                 } while( isdigit( ch ) || isDecimalSeparator( ch ) );
 
-                // Ensure that the systems decimal separator is used
+                // Ensure that the systems decimal separator is used.  Keep infix for now, as we'll need it later
+                // to scale the number.
                 for( int i = current.length(); i; i-- )
                 {
-                    if( isDecimalSeparator( current[i - 1] ) )
+                    if( current[i - 1] == '.' || current[i - 1] == ',' )
                         current[i - 1] = m_localeDecimalSeparator;
                 }
             };
@@ -706,6 +717,17 @@ void CONTEXT::ReportError( const wxString& aErrorMsg )
 }
 
 
+void CONTEXT::stackOverflow()
+{
+    ReportError( _( "Expression evaluation stack overflow" ) );
+    throw STACK_OVERFLOW{};
+}
+
+#if defined( __MINGW64__ ) // needed on MINGW to avoid a link issue
+constexpr int CONTEXT::STACK_CAPACITY;
+#endif
+
+
 void COMPILER::reportError( COMPILATION_STAGE stage, const wxString& aErrorMsg, int aPos )
 {
     if( aPos == -1 )
@@ -830,6 +852,37 @@ static std::vector<TREE_NODE*> squashParamList( TREE_NODE* root )
 }
 
 
+// Flatten a pure identifier chain (e.g. "A" or "A.Parent") that forms the receiver of a
+// property or method access into a dotted variable name.  Returns false when the receiver
+// is anything else (for example the result of another method call), which is unsupported.
+// Every node consumed is marked visited so the code generator does not re-process it.
+static bool flattenVarChain( TREE_NODE* aNode, wxString& aResult )
+{
+    if( aNode->op == TR_IDENTIFIER )
+    {
+        aResult = formatNode( aNode );
+        aNode->isVisited = true;
+        return true;
+    }
+
+    if( aNode->op == TR_STRUCT_REF && aNode->leaf[0] && aNode->leaf[1]
+            && aNode->leaf[1]->op == TR_IDENTIFIER )
+    {
+        wxString base;
+
+        if( !flattenVarChain( aNode->leaf[0], base ) )
+            return false;
+
+        aResult = base + wxT( "." ) + formatNode( aNode->leaf[1] );
+        aNode->leaf[1]->isVisited = true;
+        aNode->isVisited = true;
+        return true;
+    }
+
+    return false;
+}
+
+
 bool COMPILER::generateUCode( UCODE* aCode, CONTEXT* aPreflightContext )
 {
     std::vector<TREE_NODE*> stack;
@@ -883,10 +936,12 @@ bool COMPILER::generateUCode( UCODE* aCode, CONTEXT* aPreflightContext )
 
         case TR_STRUCT_REF:
         {
-            // leaf[0]: object
+            // leaf[0]: object (a variable name, or a "." chain such as "A.Parent")
             // leaf[1]: field (TR_IDENTIFIER) or TR_OP_FUNC_CALL
 
-            if( node->leaf[0]->op != TR_IDENTIFIER )
+            wxString itemName;
+
+            if( !flattenVarChain( node->leaf[0], itemName ) )
             {
                 int pos = node->leaf[0]->srcPos;
 
@@ -910,7 +965,6 @@ bool COMPILER::generateUCode( UCODE* aCode, CONTEXT* aPreflightContext )
                     // leaf[0]: object
                     // leaf[1]: field
 
-                    wxString itemName = formatNode( node->leaf[0] );
                     wxString propName = formatNode( node->leaf[1] );
                     std::unique_ptr<VAR_REF> vref = aCode->CreateVarRef( itemName, propName );
 
@@ -925,7 +979,6 @@ bool COMPILER::generateUCode( UCODE* aCode, CONTEXT* aPreflightContext )
                         reportError( CST_CODEGEN, msg, node->leaf[1]->srcPos - (int) propName.length() );
                     }
 
-                    node->leaf[0]->isVisited = true;
                     node->leaf[1]->isVisited = true;
 
                     node->SetUop( TR_UOP_PUSH_VAR, std::move( vref ) );
@@ -939,7 +992,6 @@ bool COMPILER::generateUCode( UCODE* aCode, CONTEXT* aPreflightContext )
                     //    leaf[0]: function name
                     //    leaf[1]: parameter
 
-                    wxString                 itemName = formatNode( node->leaf[0] );
                     std::unique_ptr<VAR_REF> vref = aCode->CreateVarRef( itemName, "" );
 
                     if( !vref )
@@ -960,18 +1012,19 @@ bool COMPILER::generateUCode( UCODE* aCode, CONTEXT* aPreflightContext )
                         reportError( CST_CODEGEN, msg, node->leaf[0]->srcPos + 1 );
                     }
 
-                    if( func )
+                    // Expressions have no value until runtime; formatNode() would turn
+                    // them into empty strings and falsely report missing arguments
+                    const bool literalArgs = std::all_of( params.begin(), params.end(),
+                            []( const TREE_NODE* param )
+                            {
+                                return param->op == TR_STRING || param->op == TR_NUMBER;
+                            } );
+
+                    if( func && literalArgs )
                     {
-                        // Preflight the function call
+                        bool overflow = false;
 
-                        for( TREE_NODE* pnode : params )
-                        {
-                            VALUE*   param = aPreflightContext->AllocValue();
-                            param->Set( formatNode( pnode ) );
-                            aPreflightContext->Push( param );
-                        }
-
-                        aPreflightContext->SetErrorCallback(
+                        auto previousCallback = aPreflightContext->ExchangeErrorCallback(
                                 [&]( const wxString& aMessage, int aOffset )
                                 {
                                     size_t loc = node->leaf[1]->leaf[1]->srcPos;
@@ -980,12 +1033,31 @@ bool COMPILER::generateUCode( UCODE* aCode, CONTEXT* aPreflightContext )
 
                         try
                         {
+                            for( TREE_NODE* pnode : params )
+                            {
+                                VALUE* param = aPreflightContext->AllocValue();
+                                param->Set( formatNode( pnode ) );
+                                aPreflightContext->Push( param );
+                            }
+
                             func( aPreflightContext, vref.get() );
                             aPreflightContext->Pop();           // return value
+                        }
+                        catch( const CONTEXT::STACK_OVERFLOW& )
+                        {
+                            overflow = true;
                         }
                         catch( ... )
                         {
                         }
+
+                        // Each preflight checks one call.
+                        // Also reset the error callback, so we don't leak the local variables
+                        aPreflightContext->ClearStack();
+                        aPreflightContext->SetErrorCallback( std::move( previousCallback ) );
+
+                        if( overflow )
+                            return false;
                     }
 
                     node->leaf[0]->isVisited = true;
@@ -1011,7 +1083,6 @@ bool COMPILER::generateUCode( UCODE* aCode, CONTEXT* aPreflightContext )
                     // leaf[0]: object
                     // leaf[1]: malformed syntax
 
-                    wxString itemName = formatNode( node->leaf[0] );
                     wxString propName = formatNode( node->leaf[1] );
                     std::unique_ptr<VAR_REF> vref = aCode->CreateVarRef( itemName, propName );
 
@@ -1247,19 +1318,37 @@ int UOP::Exec( CONTEXT* ctx )
 
     if( m_op & TR_OP_BINARY_MASK )
     {
+        LIBEVAL::VALUE  autoConverted;
         LIBEVAL::VALUE* arg2 = ctx->Pop();
         LIBEVAL::VALUE* arg1 = ctx->Pop();
         double          result;
 
-        if( ctx->HasErrorCallback() )
+        if( arg1 && arg1->GetType() == VT_STRING && arg2 && arg2->GetType() == VT_NUMERIC )
         {
-            if( arg1 && arg1->GetType() == VT_STRING && arg2 && arg2->GetType() == VT_NUMERIC )
+            double doubleVal;
+
+            if( !arg1->StringIsLiteral() && QuacksLikeADuck( arg1->AsString(), &doubleVal ) )
+            {
+                autoConverted = LIBEVAL::VALUE( doubleVal );
+                arg1 = &autoConverted;
+            }
+            else if( ctx->HasErrorCallback() )
             {
                 ctx->ReportError( wxString::Format( _( "Type mismatch between '%s' and %lf" ),
                                                     arg1->AsString(),
                                                     arg2->AsDouble() ) );
             }
-            else if( arg1 && arg1->GetType() == VT_NUMERIC && arg2 && arg2->GetType() == VT_STRING )
+        }
+        else if( arg1 && arg1->GetType() == VT_NUMERIC && arg2 && arg2->GetType() == VT_STRING )
+        {
+            double doubleVal;
+
+            if( !arg2->StringIsLiteral() && QuacksLikeADuck( arg2->AsString(), &doubleVal ) )
+            {
+                autoConverted = LIBEVAL::VALUE( doubleVal );
+                arg2 = &autoConverted;
+            }
+            else if( ctx->HasErrorCallback() )
             {
                 ctx->ReportError( wxString::Format( _( "Type mismatch between %lf and '%s'" ),
                                                     arg1->AsDouble(),
@@ -1413,8 +1502,9 @@ VALUE* UCODE::Run( CONTEXT* ctx )
                 op->Exec( ctx );
         }
     }
-    catch(...)
+    catch( ... )
     {
+        ctx->ClearStack();
         // rules which fail outright should not be fired; return 0/false
         return ctx->StoreValue( new VALUE( 0 ) );
     }
@@ -1423,17 +1513,22 @@ VALUE* UCODE::Run( CONTEXT* ctx )
     {
         return ctx->Pop();
     }
-    else
-    {
-        // If stack is corrupted after execution it suggests a problem with the compiler, not
-        // the rule....
 
-        // do not use "assert"; it crashes outright on OSX
-        KI_ASSERT( ctx->SP() == 1 );
+    // Extra function arguments can leave values on the stack even without an overflow.
+    ctx->ClearStack();
+    ctx->ReportError( _( "Malformed expression" ) );
+    return ctx->StoreValue( new VALUE( 0 ) );
+}
 
-        // non-well-formed rules should not be fired on a release build
-        return ctx->StoreValue( new VALUE( 0 ) );
-    }
+
+std::optional<wxString> EscapeStringLiteral( const wxString& aText )
+{
+    if( aText.EndsWith( wxS( "\\" ) ) )
+        return std::nullopt;
+
+    wxString escaped = aText;
+    escaped.Replace( wxS( "'" ), wxS( "\\'" ) );
+    return escaped;
 }
 
 

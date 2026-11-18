@@ -16,8 +16,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <bitmaps.h>
@@ -27,6 +27,7 @@
 #include <sch_painter.h>
 #include <tool/action_menu.h>
 #include <tool/action_toolbar.h>
+#include <tool/tool_manager.h>
 #include <tools/sch_actions.h>
 #include <tools/symbol_editor_control.h>
 #include <widgets/wx_menubar.h>

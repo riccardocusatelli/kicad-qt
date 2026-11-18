@@ -13,25 +13,30 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
 #pragma once
 
+#include <memory>
 #include <widgets/paged_dialog.h>
 #include "panel_setup_formatting.h"
 
+class BOARD;
+class BOARD_DESIGN_SETTINGS;
 class PCB_EDIT_FRAME;
+class DRC_RULE_DOCUMENT;
 class PANEL_SETUP_CONSTRAINTS;
+class PANEL_SETUP_CONSTRAINT_RULES;
 class PANEL_SETUP_LAYERS;
 class PANEL_SETUP_DEFAULTS;
 class PANEL_SETUP_NETCLASSES;
 class PANEL_SETUP_RULES;
 class PANEL_SETUP_TRACKS_AND_VIAS;
 class PANEL_SETUP_MASK_AND_PASTE;
-class PANEL_SETUP_ZONE_HATCH_OFFSETS;
+class PANEL_SETUP_ZONES;
 class PANEL_SETUP_BOARD_STACKUP;
 class PANEL_SETUP_BOARD_FINISH;
 class PANEL_SETUP_SEVERITIES;
@@ -48,10 +53,15 @@ public:
 protected:
     // event handlers
     void onPageChanged( wxBookCtrlEvent& aEvent ) override;
-    void onPageChanging( wxBookCtrlEvent& aEvent ) override;
     void onAuxiliaryAction( wxCommandEvent& aEvent ) override;
     void onCancelButton( wxCommandEvent& aEvent );
     void onCloseWindow( wxCloseEvent& aEvent );
+
+    void refreshRulePage( size_t aPage );
+
+    /// Reads the staged settings back into the open pages of one Import Settings group
+    void refreshStagedPages( const wxString& aGroup );
+    void forEachOpenRulePage( const std::function<void( PANEL_SETUP_CONSTRAINT_RULES* )>& aAction );
 
     bool TransferDataFromWindow() override;
 
@@ -59,7 +69,7 @@ protected:
     PANEL_SETUP_LAYERS*                 m_layers;
     PANEL_SETUP_BOARD_FINISH*           m_boardFinish;
     PANEL_SETUP_BOARD_STACKUP*          m_physicalStackup;
-    PANEL_SETUP_ZONE_HATCH_OFFSETS*     m_zoneHatchOffsets;
+    PANEL_SETUP_ZONES*                  m_zones;
     PANEL_SETUP_TUNING_PROFILES*        m_tuningProfiles;
     PANEL_SETUP_NETCLASSES*             m_netClasses;
 
@@ -72,16 +82,23 @@ private:
     size_t m_boardFinishPage;
     size_t m_defaultsPage;
     size_t m_formattingPage;
-    size_t m_maskAndPastePage;
-    size_t m_zoneHatchOffsetsPage;
-    size_t m_constraintsPage;
+    size_t m_drillChartPage;
+    size_t m_customRulesPage;
     size_t m_tracksAndViasPage;
+    size_t m_viaStacksPage;
+    size_t m_zonesPage;
     size_t m_teardropsPage;
     size_t m_tuningPatternsPage;
     size_t m_netclassesPage;
     size_t m_componentClassesPage;
-    size_t m_customRulesPage;
     size_t m_severitiesPage;
     size_t m_embeddedFilesPage;
     size_t m_tuningProfilesPage;
+    bool   m_initComplete;
+
+    std::unique_ptr<DRC_RULE_DOCUMENT> m_ruleDocument;
+
+    /// The constraint, mask and rule pages edit one value from several pages, so they share this
+    /// copy, which an import also writes and which reaches the board only on OK
+    std::unique_ptr<BOARD_DESIGN_SETTINGS> m_stagedSettings;
 };

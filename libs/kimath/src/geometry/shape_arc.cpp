@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <core/kicad_algo.h>
@@ -962,10 +958,14 @@ const VECTOR2I& SHAPE_ARC::GetCenter() const
 
 double SHAPE_ARC::GetLength() const
 {
-    double radius = GetRadius();
     EDA_ANGLE includedAngle = GetCentralAngle();
 
-    return std::abs( radius * includedAngle.AsRadians() );
+    // A straight arc sweeps nothing, so radius times angle would report zero for a run of
+    // real length.  The chord is all the length it has
+    if( includedAngle == ANGLE_0 )
+        return GetChord().Length();
+
+    return std::abs( GetRadius() * includedAngle.AsRadians() );
 }
 
 
@@ -976,6 +976,12 @@ EDA_ANGLE SHAPE_ARC::GetCentralAngle() const
     // So return 360 degrees as central arc:
     if( m_start == m_end )
         return ANGLE_360;
+
+    // A straight arc has no circumcircle, so CalcArcCenter() hands back a bounded stand-in and
+    // any angle measured about it is fabricated.  The chord midpoint stand-in in particular
+    // puts start and end antipodal, which reads as a clean half turn
+    if( IsEffectiveLine() )
+        return ANGLE_0;
 
     VECTOR2L  center = GetCenter();
     EDA_ANGLE angle = EDA_ANGLE( m_end - center ) - EDA_ANGLE( m_start - center );
@@ -1023,7 +1029,8 @@ const SHAPE_LINE_CHAIN SHAPE_ARC::ConvertToPolyline( int aMaxError, int* aActual
     double external_radius = r + ( m_width / 2.0 );
     double effectiveError;
 
-    if( external_radius < halfMaxError
+    // A zero sweep would divide by zero below, and there is no curve left to approximate anyway
+    if( external_radius < halfMaxError || ca == ANGLE_0
         || startToEnd.Distance( GetArcMid() ) < halfMaxError ) // Should be a very rare case
     {
         // In this case, the arc is approximated by one segment, with a effective error

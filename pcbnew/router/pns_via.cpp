@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "pns_via.h"
@@ -135,6 +135,22 @@ bool VIA::PushoutForce( NODE* aNode, const ITEM* aOther, VECTOR2I& aForce )
 
         if( elementForce.SquaredEuclideanNorm() > aForce.SquaredEuclideanNorm() )
             aForce = elementForce;
+    }
+
+    // The vias hole clearance might be larger than the vias copper clearance
+    // So test against the holes clearance as well
+    if( m_hole )
+    {
+        int holeClearance = aNode->GetClearance( m_hole, aOther, false );
+
+        for( int layer : RelevantShapeLayers( aOther ) )
+        {
+            elementForce = VECTOR2I( 0, 0 );
+            aOther->Shape( layer )->Collide( m_hole->Shape( layer ), holeClearance, &elementForce );
+
+            if( elementForce.SquaredEuclideanNorm() > aForce.SquaredEuclideanNorm() )
+                aForce = elementForce;
+        }
     }
 
     return ( aForce != VECTOR2I( 0, 0 ) );
@@ -276,7 +292,7 @@ VIA* VIA::Clone() const
     v->m_secondaryDrill = m_secondaryDrill;
     v->m_primaryPostMachining = m_primaryPostMachining;
     v->m_secondaryPostMachining = m_secondaryPostMachining;
-    v->SetHole( HOLE::MakeCircularHole( m_pos, m_drill / 2, PNS_LAYER_RANGE() ) );
+    v->SetHole( HOLE::MakeCircularHole( m_pos, m_drill / 2, m_holeLayers ) );
     v->m_rank = m_rank;
     v->m_marker = m_marker;
     v->m_routable = m_routable;

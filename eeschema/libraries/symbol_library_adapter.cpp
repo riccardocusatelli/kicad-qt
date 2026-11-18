@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <magic_enum.hpp>
@@ -28,6 +28,7 @@
 
 #include <lib_symbol.h>
 #include <libraries/symbol_library_adapter.h>
+#include <sch_io/sch_io_mgr.h>
 
 #include <env_vars.h>
 #include <pgm_base.h>
@@ -46,7 +47,7 @@ const char* SYMBOL_LIBRARY_ADAPTER::PropNonPowerSymsOnly = "non_pwr_sym_only";
 
 LEAK_AT_EXIT<std::map<wxString, LIB_DATA>> SYMBOL_LIBRARY_ADAPTER::GlobalLibraries;
 
-std::shared_mutex SYMBOL_LIBRARY_ADAPTER::GlobalLibraryMutex;
+LEAK_AT_EXIT<std::shared_mutex> SYMBOL_LIBRARY_ADAPTER::GlobalLibraryMutex;
 
 
 SYMBOL_LIBRARY_ADAPTER::SYMBOL_LIBRARY_ADAPTER( LIBRARY_MANAGER& aManager ) :
@@ -57,8 +58,7 @@ SYMBOL_LIBRARY_ADAPTER::SYMBOL_LIBRARY_ADAPTER( LIBRARY_MANAGER& aManager ) :
 
 SYMBOL_LIBRARY_ADAPTER::~SYMBOL_LIBRARY_ADAPTER()
 {
-    resetProjectCache();
-    evictOwnedGlobalEntries();
+    retireAllLibraries();
 }
 
 
@@ -95,17 +95,30 @@ std::optional<LIB_STATUS> SYMBOL_LIBRARY_ADAPTER::LoadOne( LIB_DATA* aLib )
 
     std::map<std::string, UTF8> options = aLib->row->GetOptionsMap();
 
+    // Generation before flag, so both a cancel already running and one that starts later are seen
+    const unsigned abortGeneration = m_abortGeneration.load();
+    const bool     cancelling = m_cancelling.load();
+
     try
     {
         wxArrayString dummyList;
         schplugin( aLib )->EnumerateSymbolLib( dummyList, getUri( aLib->row ), &options );
         KI_LOG_TRACE( traceLibraries, "Sym: %s: library enumerated %zu items", aLib->row->Nickname(), dummyList.size() );
         aLib->status.load_status = LOAD_STATUS::LOADED;
+        aLib->status.error.reset();
     }
     catch( IO_ERROR& e )
     {
+        // A load the abort cut short is not a failure of the library
+        if( cancelling || m_cancelling.load() || m_abortGeneration.load() != abortGeneration )
+        {
+            aLib->status.load_status = LOAD_STATUS::INVALID;
+            aLib->status.error.reset();
+            return aLib->status;
+        }
+
         aLib->status.load_status = LOAD_STATUS::LOAD_ERROR;
-        aLib->status.error = LIBRARY_ERROR( { e.What() } );
+        aLib->status.error = LIBRARY_ERROR( e.Problem(), e.Where() );
         KI_LOG_TRACE( traceLibraries, "Sym: %s: plugin threw exception: %s", aLib->row->Nickname(), e.What() );
     }
 
@@ -125,11 +138,12 @@ std::optional<LIB_STATUS> SYMBOL_LIBRARY_ADAPTER::CheckLibrary( LIB_DATA* aLib )
     {
         schplugin( aLib )->CheckLibrary( getUri( aLib->row ), &options );
         aLib->status.load_status = LOAD_STATUS::LOADED;
+        aLib->status.error.reset();
     }
     catch( IO_ERROR& e )
     {
         aLib->status.load_status = LOAD_STATUS::LOAD_ERROR;
-        aLib->status.error = LIBRARY_ERROR( e.What() );
+        aLib->status.error = LIBRARY_ERROR( e.Problem(), e.Where() );
         KI_LOG_TRACE( traceLibraries, "Sym: %s: library check failed: %s", aLib->row->Nickname(), e.What() );
     }
 
@@ -156,7 +170,7 @@ LIBRARY_RESULT<IO_BASE*> SYMBOL_LIBRARY_ADAPTER::createPlugin( const LIBRARY_TAB
     if( type == SCH_IO_MGR::SCH_NESTED_TABLE )
     {
         wxString   msg;
-        wxFileName fileName( m_manager.GetFullURI( row, true ) );
+        wxFileName fileName( m_manager.GetFullURI( row, true, &m_manager.Project() ) );
 
         if( fileName.FileExists() )
             return tl::unexpected( LIBRARY_TABLE_OK() );
@@ -262,7 +276,9 @@ LIB_SYMBOL* SYMBOL_LIBRARY_ADAPTER::LoadSymbol( const wxString& aNickname, const
     {
         std::lock_guard pluginGuard( pluginMutex( aNickname ) );
 
-        if( LIB_SYMBOL* symbol = schplugin( *lib )->LoadSymbol( getUri( ( *lib )->row ), aName ) )
+        std::map<std::string, UTF8> options = ( *lib )->row->GetOptionsMap();
+
+        if( LIB_SYMBOL* symbol = schplugin( *lib )->LoadSymbol( getUri( ( *lib )->row ), aName, &options ) )
         {
             LIB_ID id = symbol->GetLibId();
             id.SetLibNickname( ( *lib )->row->Nickname() );
@@ -280,7 +296,7 @@ LIB_SYMBOL* SYMBOL_LIBRARY_ADAPTER::LoadSymbol( const wxString& aNickname, const
 
 
 SYMBOL_LIBRARY_ADAPTER::SAVE_T SYMBOL_LIBRARY_ADAPTER::SaveSymbol( const wxString& aNickname,
-                                                                   const LIB_SYMBOL* aSymbol, bool aOverwrite )
+                                                                   std::unique_ptr<LIB_SYMBOL> aSymbol, bool aOverwrite )
 {
     KI_CHECK( aSymbol, SAVE_SKIPPED );
 
@@ -304,14 +320,17 @@ SYMBOL_LIBRARY_ADAPTER::SAVE_T SYMBOL_LIBRARY_ADAPTER::SaveSymbol( const wxStrin
     SCH_IO* plugin = schplugin( lib );
     KI_CHECK( plugin, SAVE_SKIPPED );
 
+    std::lock_guard pluginGuard( pluginMutex( aNickname ) );
+
+    const wxString symbolName = aSymbol->GetName();
+
     std::map<std::string, UTF8> options = lib->row->GetOptionsMap();
 
     if( !aOverwrite )
     {
         try
         {
-            std::unique_ptr<LIB_SYMBOL> existing( plugin->LoadSymbol( getUri( lib->row ), aSymbol->GetName(),
-                                                                      &options ) );
+            LIB_SYMBOL* existing = plugin->LoadSymbol( getUri( lib->row ), symbolName, &options );
 
             if( existing )
                 return SAVE_SKIPPED;
@@ -319,18 +338,18 @@ SYMBOL_LIBRARY_ADAPTER::SAVE_T SYMBOL_LIBRARY_ADAPTER::SaveSymbol( const wxStrin
         catch( const IO_ERROR& e )
         {
             KI_LOG_TRACE( traceLibraries, "SaveSymbol: error checking for existing symbol %s:%s: %s", aNickname,
-                        aSymbol->GetName(), e.What() );
+                        symbolName, e.What() );
             return SAVE_SKIPPED;
         }
     }
 
     try
     {
-        plugin->SaveSymbol( getUri( lib->row ), aSymbol, &options );
+        plugin->SaveSymbol( getUri( lib->row ), std::move( aSymbol ), &options );
     }
     catch( const IO_ERROR& e )
     {
-        KI_LOG_TRACE( traceLibraries, "SaveSymbol: error saving %s:%s: %s", aNickname, aSymbol->GetName(), e.What() );
+        KI_LOG_TRACE( traceLibraries, "SaveSymbol: error saving %s:%s: %s", aNickname, symbolName, e.What() );
         return SAVE_SKIPPED;
     }
 
@@ -340,7 +359,20 @@ SYMBOL_LIBRARY_ADAPTER::SAVE_T SYMBOL_LIBRARY_ADAPTER::SaveSymbol( const wxStrin
 
 void SYMBOL_LIBRARY_ADAPTER::DeleteSymbol( const wxString& aNickname, const wxString& aSymbolName )
 {
-    KI_CHECK_MSG( false, /* void */, "Unimplemented!" );
+    LIBRARY_RESULT<LIB_DATA*> libResult = loadIfNeeded( aNickname );
+
+    if( !libResult.has_value() || !*libResult )
+    {
+        KI_LOG_TRACE( traceLibraries, "DeleteSymbol: unable to load library %s", aNickname );
+        return;
+    }
+
+    LIB_DATA* lib = *libResult;
+
+    std::lock_guard lock( pluginMutex( aNickname ) );
+
+    std::map<std::string, UTF8> options = lib->row->GetOptionsMap();
+    schplugin( lib )->DeleteSymbol( getUri( lib->row ), aSymbolName, &options );
 }
 
 
@@ -421,29 +453,53 @@ std::vector<SUB_LIBRARY> SYMBOL_LIBRARY_ADAPTER::GetSubLibraries( const wxString
 }
 
 
-bool SYMBOL_LIBRARY_ADAPTER::SupportsConfigurationDialog( const wxString& aNickname ) const
+bool SYMBOL_LIBRARY_ADAPTER::SupportsConfigurationDialog( const LIBRARY_TABLE_ROW& aRow ) const
 {
-    if( std::optional<const LIB_DATA*> result = fetchIfLoaded( aNickname ) )
-        return ( *result )->plugin->SupportsConfigurationDialog();
+    // Queried on every library table repaint, so ask each plugin type only once (UI thread only)
+    static std::map<SCH_IO_MGR::SCH_FILE_T, bool> s_supported;
 
-    return false;
+    SCH_IO_MGR::SCH_FILE_T type = SCH_IO_MGR::EnumFromStr( aRow.Type() );
+    auto                   it = s_supported.find( type );
+
+    if( it == s_supported.end() )
+    {
+        IO_RELEASER<SCH_IO> plugin( SCH_IO_MGR::FindPlugin( type ) );
+        it = s_supported.emplace( type, plugin && plugin->SupportsConfigurationDialog() ).first;
+    }
+
+    return it->second;
 }
 
 
-int SYMBOL_LIBRARY_ADAPTER::ShowConfigurationDialog( const wxString& aNickname, wxWindow* aParent ) const
+int SYMBOL_LIBRARY_ADAPTER::ShowConfigurationDialog( const LIBRARY_TABLE_ROW& aRow, LIBRARY_TABLE_SCOPE aScope,
+                                                     wxWindow* aParent )
 {
-    std::optional<const LIB_DATA*> optRow = fetchIfLoaded( aNickname );
+    IO_RELEASER<SCH_IO> plugin( SCH_IO_MGR::FindPlugin( SCH_IO_MGR::EnumFromStr( aRow.Type() ) ) );
 
-    if( !optRow )
+    if( !plugin || !plugin->SupportsConfigurationDialog() )
         return wxID_CANCEL;
 
-    if( !( *optRow )->plugin->SupportsConfigurationDialog() )
+    plugin->SetLibraryManagerAdapter( this );
+
+    // Resolved like a normal load so a relative URI and ${CWD} in the connection string agree
+    wxString           path = getUri( &aRow );
+    std::optional<int> result = plugin->ShowConfigurationDialog( aParent, path );
+
+    if( !result )
         return wxID_CANCEL;
 
-    ( *optRow )->plugin->ShowConfigurationDialog( aParent );
+    int ret = *result;
 
-    // The dialog result is not known here: let the caller reload the library
-    return wxID_OK;
+    if( ret == wxID_OK )
+    {
+        // An edited or new grid row is reloaded when the outer table is applied instead
+        std::optional<LIBRARY_TABLE_ROW*> committed = m_manager.GetRow( Type(), aRow.Nickname(), aScope );
+
+        if( committed && ( *committed )->URI() == aRow.URI() && ( *committed )->Type() == aRow.Type() )
+            ReloadLibraryEntry( aRow.Nickname(), aScope );
+    }
+
+    return ret;
 }
 
 

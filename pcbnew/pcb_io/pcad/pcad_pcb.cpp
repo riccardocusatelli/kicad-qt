@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <pcad/pcad_pcb.h>
@@ -32,6 +28,7 @@
 #include <pcad/pcad_via.h>
 
 #include <board.h>
+#include <reporter.h>
 #include <common.h>
 #include <xnode.h>
 
@@ -40,12 +37,19 @@
 namespace PCAD2KICAD {
 
 
+// Some writers reference layer numbers outside the layerDef table (typically
+// unused zero-size pad shape slots).  Falling back keeps the rest of the
+// design importable instead of aborting the whole file.
+
 PCB_LAYER_ID PCAD_PCB::GetKiCadLayer( int aPCadLayer ) const
 {
     auto it = m_LayersMap.find( aPCadLayer );
 
     if( it == m_LayersMap.end() )
-        THROW_IO_ERROR( wxString::Format( _( "Unknown PCad layer %u" ), unsigned( aPCadLayer ) ) );
+    {
+        reportUnknownLayer( aPCadLayer );
+        return Dwgs_User;
+    }
 
     return it->second.KiCadLayer;
 }
@@ -56,7 +60,10 @@ LAYER_TYPE_T PCAD_PCB::GetLayerType( int aPCadLayer ) const
     auto it = m_LayersMap.find( aPCadLayer );
 
     if( it == m_LayersMap.end() )
-        THROW_IO_ERROR( wxString::Format( _( "Unknown PCad layer %u" ), unsigned( aPCadLayer ) ) );
+    {
+        reportUnknownLayer( aPCadLayer );
+        return LAYER_TYPE_NONSIGNAL;
+    }
 
     return it->second.layerType;
 }
@@ -67,9 +74,26 @@ wxString PCAD_PCB::GetLayerNetNameRef( int aPCadLayer ) const
     auto it = m_LayersMap.find( aPCadLayer );
 
     if( it == m_LayersMap.end() )
-        THROW_IO_ERROR( wxString::Format( _( "Unknown PCad layer %u" ), unsigned( aPCadLayer ) ) );
+    {
+        reportUnknownLayer( aPCadLayer );
+        return wxEmptyString;
+    }
 
     return it->second.netNameRef;
+}
+
+
+void PCAD_PCB::reportUnknownLayer( int aPCadLayer ) const
+{
+    if( !m_reportedLayers.insert( aPCadLayer ).second )
+        return;
+
+    wxString msg = wxString::Format( _( "Undefined P-CAD layer %u substituted with the "
+                                        "drawings layer." ),
+                                     unsigned( aPCadLayer ) );
+
+    if( m_reporter )
+        m_reporter->Report( msg, RPT_SEVERITY_WARNING );
 }
 
 
@@ -555,7 +579,7 @@ void PCAD_PCB::MapLayer( XNODE* aNode )
         FindNode( aNode, wxT( "layerNum" ) )->GetNodeContent().ToLong( &num );
 
     if( num < 0 )
-        THROW_IO_ERROR( wxString::Format( wxT( "layerNum = %ld is out of range" ), num ) );
+        THROW_IO_ERRORF( wxT( "layerNum = %ld is out of range" ), num );
 
     TLAYER newlayer;
     newlayer.KiCadLayer = KiCadLayer;
@@ -1102,7 +1126,7 @@ void PCAD_PCB::AddToBoard( FOOTPRINT* )
     {
         net = m_PcbNetlist[i];
 
-        m_board->Add( new NETINFO_ITEM( m_board, net->m_Name, net->m_NetCode ) );
+        m_board->FindOrAddNet( net->m_Name, net->m_NetCode );
     }
 
     for( i = 0; i < (int) m_PcbComponents.GetCount(); i++ )

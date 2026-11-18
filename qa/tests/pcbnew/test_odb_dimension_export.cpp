@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <filesystem>
@@ -26,11 +22,12 @@
 #include <memory>
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
+#include <qa_utils/file_utils.h>
+#include <pcbnew_utils/board_file_utils.h>
 #include <boost/test/unit_test.hpp>
 
 #include <base_units.h>
 #include <board.h>
-#include <kiid.h>
 #include <pcb_dimension.h>
 #include <pcb_shape.h>
 #include <pcbnew/pcb_io/odbpp/pcb_io_odbpp.h>
@@ -101,66 +98,37 @@ static int countSilkLineRecords( const fs::path& aRoot, bool& aFoundFile )
 BOOST_AUTO_TEST_CASE( OdbDimensionExport )
 {
     SETTINGS_MANAGER       settingsManager;
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
+    std::unique_ptr<BOARD> board = KI_TEST::RequireBoardFromPcbnewQAData( "issue20249/dimension.kicad_pcb" );
 
-    const int side = pcbIUScale.mmToIU( 20 );
+    // A dimension with no geometry would export nothing and the test would pass
+    // for the wrong reason.
+    const PCB_DIMENSION_BASE* dimension = nullptr;
 
-    // Give the board a square Edge.Cuts outline so the export produces a valid board profile.  Edge
-    // cuts land in their own layer feature file, not the silkscreen one we inspect, so they cannot
-    // mask a dropped dimension.
-    auto addEdge = [&]( const VECTOR2I& aStart, const VECTOR2I& aEnd )
+    for( const BOARD_ITEM* item : board->Drawings() )
     {
-        PCB_SHAPE* edge = new PCB_SHAPE( board.get(), SHAPE_T::SEGMENT );
-        edge->SetLayer( Edge_Cuts );
-        edge->SetStart( aStart );
-        edge->SetEnd( aEnd );
-        edge->SetWidth( pcbIUScale.mmToIU( 0.1 ) );
-        board->Add( edge );
-    };
+        if( item->Type() == PCB_DIM_ALIGNED_T )
+            dimension = static_cast<const PCB_DIMENSION_BASE*>( item );
+    }
 
-    addEdge( { 0, 0 }, { side, 0 } );
-    addEdge( { side, 0 }, { side, side } );
-    addEdge( { side, side }, { 0, side } );
-    addEdge( { 0, side }, { 0, 0 } );
+    BOOST_REQUIRE( dimension );
+    BOOST_REQUIRE( !dimension->GetShapes().empty() );
 
-    // The item under test: an aligned dimension on the front silkscreen.
-    PCB_DIM_ALIGNED* dimension = new PCB_DIM_ALIGNED( board.get(), PCB_DIM_ALIGNED_T );
-    dimension->SetLayer( F_SilkS );
-    dimension->SetStart( { 0, 0 } );
-    dimension->SetEnd( { side, 0 } );
-    dimension->SetHeight( pcbIUScale.mmToIU( 3 ) );
-    dimension->SetLineThickness( pcbIUScale.mmToIU( 0.15 ) );
-
-    // Update() must run after the feature points are set to populate the geometry returned by
-    // GetShapes(); otherwise the dimension has no shapes to plot.
-    dimension->Update();
-
-    BOOST_REQUIRE_MESSAGE( !dimension->GetShapes().empty(),
-                           "Dimension produced no geometry to export" );
-
-    board->Add( dimension );
-
-    const fs::path outDir = fs::temp_directory_path()
-                            / ( "kicad_qa_odb_dimension_20249_" + KIID().AsString().ToStdString() );
-
-    BOOST_REQUIRE( fs::create_directory( outDir ) );
+    KI_TEST::SCOPED_TEMP_DIR outDir( wxT( "kicad_qa_odb_dimension_20249" ) );
 
     PCB_IO_ODBPP                odbExporter;
     std::map<std::string, UTF8> props;
     props["units"] = "mm";
     props["sigfig"] = "6";
 
-    BOOST_REQUIRE_NO_THROW( odbExporter.SaveBoard( outDir.string(), board.get(), &props ) );
+    BOOST_REQUIRE_NO_THROW( odbExporter.SaveBoard( outDir.Path().string(), *board, &props ) );
 
-    BOOST_REQUIRE_MESSAGE( fs::exists( outDir ), "ODB++ export produced no output tree" );
+    BOOST_REQUIRE_MESSAGE( fs::exists( outDir.Path() ), "ODB++ export produced no output tree" );
 
     bool foundSilk = false;
-    int  lineCount = countSilkLineRecords( outDir, foundSilk );
+    int  lineCount = countSilkLineRecords( outDir.Path(), foundSilk );
 
     BOOST_REQUIRE_MESSAGE( foundSilk, "ODB++ export produced no silkscreen features file" );
 
     BOOST_CHECK_MESSAGE( lineCount > 0,
                          "Dimensions were dropped from the ODB++ export (no line features emitted)" );
-
-    fs::remove_all( outDir );
 }

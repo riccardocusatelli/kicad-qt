@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
  /**
@@ -62,6 +58,15 @@ static void dbg_save_image( const wxString& aFileName, unsigned char* aRGBpixelB
 }
 
 
+/**
+ * The data given must have the size (width*height*3).
+ * The data must have been allocated with malloc(), NOT with operator new.
+ *
+ * @param aFileName is the file name to save the buffer to.
+ * @param aRGBpixelBuffer from the wxWidgets documentation.
+ * @param aXSize is the width of the buffer in pixels.
+ * @param aYSize is the height of the buffer in pixels.
+ */
 static void dbg_save_rgb_buffer( const wxString& aFileName, unsigned char *aRGBpixelBuffer,
                                  unsigned int aXSize, unsigned int aYSize )
 {

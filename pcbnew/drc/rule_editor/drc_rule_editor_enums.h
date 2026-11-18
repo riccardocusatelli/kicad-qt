@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef DRC_RULE_EDITOR_ENUMS_H_
@@ -64,15 +60,6 @@ struct RULE_GENERATION_CONTEXT
 };
 
 
-enum DRC_RULE_EDITOR_ITEM_TYPE
-{
-    ROOT = 0,
-    CATEGORY,
-    RULE_TYPE,
-    CONSTRAINT,
-    RULE,
-};
-
 enum DRC_RULE_EDITOR_CONSTRAINT_NAME
 {
     MINIMUM_CLEARANCE = 0,
@@ -103,6 +90,8 @@ enum DRC_RULE_EDITOR_CONSTRAINT_NAME
     PERMITTED_LAYERS,
     ALLOWED_ORIENTATION,
     VIAS_UNDER_SMD,
+    MICROVIA_STACK_DEPTH,
+    HOLE_ASPECT_RATIO,
     CUSTOM_RULE
 };
 

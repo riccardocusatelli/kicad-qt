@@ -14,15 +14,12 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <algorithm>
 
+#include <bitmaps.h>
 #include <widgets/unit_binder.h>
 #include <pcb_edit_frame.h>
 #include <board.h>
@@ -51,11 +48,15 @@ public:
     DIALOG_GLOBAL_EDIT_TEARDROPS( PCB_EDIT_FRAME* aParent );
     ~DIALOG_GLOBAL_EDIT_TEARDROPS() override;
 
+    bool TransferDataToWindow() override;
+    bool TransferDataFromWindow() override;
+
 protected:
     void onSpecifiedValuesUpdateUi( wxUpdateUIEvent& event ) override
     {
         event.Enable( m_specifiedValues->GetValue() );
     }
+
     void onFilterUpdateUi( wxUpdateUIEvent& event ) override
     {
         event.Enable( !m_trackToTrack->GetValue() );
@@ -78,10 +79,12 @@ protected:
     {
         m_netclassFilterOpt->SetValue( true );
     }
+
     void OnLayerFilterSelect( wxCommandEvent& event ) override
     {
         m_layerFilterOpt->SetValue( true );
     }
+
     void OnNetFilterSelect( wxCommandEvent& event )
     {
         m_netFilterOpt->SetValue( true );
@@ -106,10 +109,6 @@ protected:
     void visitItem( BOARD_COMMIT* aCommit, BOARD_CONNECTED_ITEM* aItem,bool aSelectAlways );
     void processItem( BOARD_COMMIT* aCommit, BOARD_CONNECTED_ITEM* aItem );
 
-    bool TransferDataToWindow() override;
-    bool TransferDataFromWindow() override;
-
-
     void onShowBoardSetup( wxHyperlinkEvent& event ) override
     {
         m_parent->ShowBoardSetupDialog( _( "Teardrops" ) );
@@ -120,7 +119,6 @@ protected:
 private:
     PCB_EDIT_FRAME* m_parent;
     BOARD*          m_brd;
-    PCB_SELECTION   m_selection;
 
     UNIT_BINDER     m_teardropHDPercent;
     UNIT_BINDER     m_teardropLenPercent;
@@ -258,37 +256,29 @@ void DIALOG_GLOBAL_EDIT_TEARDROPS::setSpecifiedParams( TEARDROP_PARAMETERS* targ
 void DIALOG_GLOBAL_EDIT_TEARDROPS::processItem( BOARD_COMMIT* aCommit, BOARD_CONNECTED_ITEM* aItem )
 {
     BOARD_DESIGN_SETTINGS& brdSettings = m_brd->GetDesignSettings();
-    TEARDROP_PARAMETERS*   targetParams = nullptr;
-
-    if( aItem->Type() == PCB_PAD_T )
-        targetParams = &static_cast<PAD*>( aItem )->GetTeardropParams();
-    else if( aItem->Type() == PCB_VIA_T )
-        targetParams = &static_cast<PCB_VIA*>( aItem )->GetTeardropParams();
-    else
-        return;
+    TEARDROP_PARAMETERS&   targetParams = aItem->GetTeardropParams();
 
     aCommit->Stage( aItem, CHT_MODIFY );
 
     if( m_removeTeardrops->GetValue() || m_removeAllTeardrops->GetValue() )
     {
-        targetParams->m_Enabled = false;
+        targetParams.m_Enabled = false;
     }
     else if( m_addTeardrops->GetValue() )
     {
-        // NOTE: This ignores possible padstack shape variation.
-        if( TEARDROP_MANAGER::IsRound( aItem, PADSTACK::ALL_LAYERS ) )
-            *targetParams = *brdSettings.GetTeadropParamsList()->GetParameters( TARGET_ROUND );
+        if( TEARDROP_MANAGER::IsUniformlyRound( aItem ) )
+            targetParams = *brdSettings.GetTeadropParamsList()->GetParameters( TARGET_ROUND );
         else
-            *targetParams = *brdSettings.GetTeadropParamsList()->GetParameters( TARGET_RECT );
+            targetParams = *brdSettings.GetTeadropParamsList()->GetParameters( TARGET_RECT );
 
-        targetParams->m_Enabled = true;
+        targetParams.m_Enabled = true;
     }
     else if( m_specifiedValues->GetValue() )
     {
-        setSpecifiedParams( targetParams );
+        setSpecifiedParams( &targetParams );
 
         if( !m_existingFilter->GetValue() )
-            targetParams->m_Enabled = true;
+            targetParams.m_Enabled = true;
     }
 }
 
@@ -316,7 +306,6 @@ void DIALOG_GLOBAL_EDIT_TEARDROPS::visitItem( BOARD_COMMIT* aCommit, BOARD_CONNE
         return;
     }
 
-
     if( m_netFilterOpt->GetValue() && m_netFilter->GetSelectedNetcode() >= 0 )
     {
         if( aItem->GetNetCode() != m_netFilter->GetSelectedNetcode() )
@@ -340,23 +329,14 @@ void DIALOG_GLOBAL_EDIT_TEARDROPS::visitItem( BOARD_COMMIT* aCommit, BOARD_CONNE
 
     if( m_roundPadsFilter->GetValue() )
     {
-        // TODO(JE) padstacks -- teardrops needs to support per-layer pad handling
-        if( !TEARDROP_MANAGER::IsRound( aItem, PADSTACK::ALL_LAYERS ) )
+        if( !TEARDROP_MANAGER::IsUniformlyRound( aItem ) )
             return;
     }
 
     if( m_existingFilter->GetValue() )
     {
-        if( aItem->Type() == PCB_PAD_T )
-        {
-            if( !static_cast<PAD*>( aItem )->GetTeardropParams().m_Enabled )
-                return;
-        }
-        else if( aItem->Type() == PCB_VIA_T )
-        {
-            if( !static_cast<PCB_VIA*>( aItem )->GetTeardropParams().m_Enabled )
-                return;
-        }
+        if( !aItem->GetTeardropParams().m_Enabled )
+            return;
     }
 
     processItem( aCommit, aItem );
@@ -405,7 +385,9 @@ bool DIALOG_GLOBAL_EDIT_TEARDROPS::TransferDataFromWindow()
                 visitItem( &commit, pad, false );
             }
             else if( m_smdPads->GetValue() && ( pad->GetAttribute() == PAD_ATTRIB::SMD
-                                                || pad->GetAttribute() == PAD_ATTRIB::CONN ) )
+                                                || pad->GetAttribute() == PAD_ATTRIB::CONN
+                                                || pad->GetAttribute() == PAD_ATTRIB::NON_COMPONENT
+                                             ) )
             {
                 visitItem( &commit, pad, false );
             }

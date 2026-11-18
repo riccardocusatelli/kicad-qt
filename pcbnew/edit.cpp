@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <kiface_base.h>
@@ -123,7 +119,7 @@ void PCB_EDIT_FRAME::OnEditItemRequest( BOARD_ITEM* aItem )
     }
 
     case PCB_PAD_T:
-        ShowPadPropertiesDialog( static_cast<PAD*>( aItem ) );
+        ShowPadPropertiesDialog( static_cast<PAD&>( *aItem ) );
         break;
 
     case PCB_FOOTPRINT_T:
@@ -132,6 +128,10 @@ void PCB_EDIT_FRAME::OnEditItemRequest( BOARD_ITEM* aItem )
 
     case PCB_TARGET_T:
         ShowTargetOptionsDialog( static_cast<PCB_TARGET*>( aItem ) );
+        break;
+
+    case PCB_GRIDITEM_T:
+        // TODO: Add Custom Dialog
         break;
 
     case PCB_DIM_ALIGNED_T:
@@ -178,4 +178,3 @@ void PCB_EDIT_FRAME::OnEditItemRequest( BOARD_ITEM* aItem )
         break;
     }
 }
-

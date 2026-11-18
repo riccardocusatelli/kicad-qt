@@ -15,14 +15,17 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <bitmaps.h>
 #include <widgets/properties_panel.h>
 #include <tool/selection.h>
 #include <eda_base_frame.h>
 #include <eda_item.h>
+#include <i18n_utility.h>
+#include <properties/pg_properties.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
 
@@ -35,28 +38,27 @@
 #include <wx/intl.h>
 
 
-class SUPPRESS_GRID_CHANGED_EVENTS
-{
-public:
-    SUPPRESS_GRID_CHANGED_EVENTS( PROPERTIES_PANEL* aPanel ) :
+SUPPRESS_GRID_CHANGED_EVENTS::SUPPRESS_GRID_CHANGED_EVENTS( PROPERTIES_PANEL* aPanel ) :
             m_panel( aPanel )
-    {
-        m_panel->m_SuppressGridChangeEvents++;
-    }
+{
+    m_panel->m_SuppressGridChangeEvents++;
+}
 
-    ~SUPPRESS_GRID_CHANGED_EVENTS()
-    {
-        m_panel->m_SuppressGridChangeEvents--;
-    }
 
-private:
-    PROPERTIES_PANEL* m_panel;
-};
+SUPPRESS_GRID_CHANGED_EVENTS::~SUPPRESS_GRID_CHANGED_EVENTS()
+{
+    m_panel->m_SuppressGridChangeEvents--;
+}
 
 
 void PROPERTIES_PANEL::rebuildProperties( const SELECTION& aSelection )
 {
     SUPPRESS_GRID_CHANGED_EVENTS raii( this );
+
+    // The grid of the toolkit may not be rebuilt now (wxPropertyGrid while it processes one of
+    // its events): it is rebuilt later
+    if( deferRebuild() )
+        return;
 
     auto reset =
             [&]()
@@ -67,6 +69,7 @@ void PROPERTIES_PANEL::rebuildProperties( const SELECTION& aSelection )
     if( aSelection.Empty() )
     {
         setCaption( _( "No objects selected" ) );
+        hideCategoryButtons();
         reset();
         return;
     }
@@ -117,11 +120,65 @@ void PROPERTIES_PANEL::rebuildProperties( const SELECTION& aSelection )
 
         for( auto it = commonProps.begin(); it != commonProps.end(); )
         {
-            if( !propMgr.GetProperty( type, it->first ) )
-                it = commonProps.erase( it );
-            else
+            if( PROPERTY_BASE* prop = propMgr.GetProperty( type, it->first ) )
+            {
+                // A dummy property won't have the enum values, etc., so replace them with a "real" property
+                if( it->second->IgnoreValue() )
+                    it->second = prop;
+
                 ++it;
+            }
+            else
+            {
+                it = commonProps.erase( it );
+            }
         }
+    }
+
+    std::vector<const INSPECTABLE*> inspectables( aSelection.begin(), aSelection.end() );
+
+    for( PROPERTY_BASE* prop : propMgr.GetCommonDynamicProperties( inspectables ) )
+    {
+        if( commonProps.contains( prop->Name() ) )
+            continue;
+
+        commonProps.emplace( prop->Name(), prop );
+
+        auto maxOrderIt = std::ranges::max_element( displayOrder,
+                                                    []( const auto& aL, const auto& aR )
+                                                    {
+                                                        return aL.second < aR.second;
+                                                    } );
+        int  nextOrder = maxOrderIt == displayOrder.end() ? 0 : maxOrderIt->second + 1;
+        displayOrder.emplace( prop->Name(), nextOrder );
+
+        if( const wxString& dynGroup = prop->Group(); !dynGroup.IsEmpty() && !groups.contains( dynGroup ) )
+        {
+            groupDisplayOrder.emplace_back( dynGroup );
+            groups.insert( dynGroup );
+        }
+    }
+
+    // Always show the Custom Properties group, even when it has no members, because it has the
+    // clearest path to add a custom property (the custom "+" button)
+    if( !groups.contains( _HKI( "Custom Properties" ) ) )
+    {
+        groupDisplayOrder.emplace_back( _HKI( "Custom Properties" ) );
+        groups.insert( _HKI( "Custom Properties" ) );
+    }
+
+    // Show category groups that have an action button if they are forced
+    // (e.g. we show "add custom property" even when no custom properties exist)
+    for( const CATEGORY_BUTTON& entry : m_categoryButtons )
+    {
+        if( !entry.forceCategory || groups.contains( entry.groupKey ) )
+            continue;
+
+        if( entry.enableFunc && !entry.enableFunc() )
+            continue;
+
+        groupDisplayOrder.emplace_back( entry.groupKey );
+        groups.insert( entry.groupKey );
     }
 
     bool isLibraryEditor = m_frame->IsType( FRAME_FOOTPRINT_EDITOR )
@@ -176,10 +233,18 @@ void PROPERTIES_PANEL::rebuildProperties( const SELECTION& aSelection )
 
         PGSetValue( pgProp, commonVal );
         PGSetReadOnly( pgProp, !writeable );
+
+        // If it's no longer writable any pending edits will be lost.  Life's tough.
+        if( !writeable )
+            commitEditorIfSelected( pgProp );
     }
 
     if( !existingProps.empty() && existingProps == availableProps )
+    {
+        // A deferred rebuild hid the buttons and ends up here when the selection is unchanged
+        updateCategoryButtons();
         return;
+    }
 
     // Some difference exists:  start from scratch
     reset();
@@ -215,11 +280,17 @@ void PROPERTIES_PANEL::rebuildProperties( const SELECTION& aSelection )
 
     for( const wxString& groupName : groupDisplayOrder )
     {
-        if( !pgPropGroups.count( groupName ) )
+        if( !pgPropGroups.contains( groupName ) && !hasCategoryButton( groupName ) )
+        {
             continue;
+        }
 
-        std::vector<TOOLKIT_PG_PROPERTY*>& properties = pgPropGroups[groupName];
-        wxString                           groupCaption = wxGetTranslation( groupName );
+        std::vector<TOOLKIT_PG_PROPERTY*> properties;
+
+        if( pgPropGroups.contains( groupName ) )
+            properties = pgPropGroups[groupName];
+
+        wxString groupCaption = wxGetTranslation( groupName );
 
         gridAppendCategory( groupName.IsEmpty() ? unspecifiedGroupCaption : groupCaption );
 
@@ -234,6 +305,7 @@ void PROPERTIES_PANEL::rebuildProperties( const SELECTION& aSelection )
     }
 
     RecalculateSplitterPos();
+    updateCategoryButtons();
 }
 
 
@@ -279,7 +351,7 @@ bool PROPERTIES_PANEL::extractValueAndWritability( const SELECTION& aSelection, 
 
     for( EDA_ITEM* item : aSelection )
     {
-        PROPERTY_BASE* property = propMgr.GetProperty( TYPE_HASH( *item ), aPropName );
+        PROPERTY_BASE* property = propMgr.GetProperty( item, aPropName );
 
         if( !property )
             return false;
@@ -289,6 +361,9 @@ bool PROPERTIES_PANEL::extractValueAndWritability( const SELECTION& aSelection, 
 
         if( property->IsHiddenFromPropertiesManager() )
             return false;
+
+        if( property->IgnoreValue() )
+            continue;
 
         PROPERTY_CHOICES choices = property->GetChoices( item );
 
@@ -315,7 +390,7 @@ bool PROPERTIES_PANEL::extractValueAndWritability( const SELECTION& aSelection, 
         if( getItemValue( item, property, value ) )
         {
             // Null value indicates different property values between items
-            if( !different && !aValue.IsNull() && value != aValue )
+            if( !different && ( property->IsIndeterminate( item ) || ( !aValue.IsNull() && value != aValue ) ) )
             {
                 different = true;
                 aValue.MakeNull();

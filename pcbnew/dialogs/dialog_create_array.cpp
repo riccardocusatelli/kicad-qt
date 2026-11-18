@@ -14,19 +14,16 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "dialogs/dialog_create_array.h"
 
+#include <set>
+
 #include <wx/msgdlg.h>
 
 #include <base_units.h>
-#include <confirm.h>
 #include <footprint.h>
 #include <pcb_edit_frame.h>
 #include <tools/pcb_actions.h>
@@ -371,13 +368,13 @@ static bool validateLongEntry( const wxTextEntry& entry, long& dest, const wxStr
 
 
 /**
- * Validates and saves (if valid) the type and offset of an array axis numbering
+ * Validate and save (if valid) the type and offset of an array axis numbering
  *
  * @param offsetEntry the entry of the offset (text)
  * @param typeEntry the entry of the axis nmbering scheme (choice)
- * @param type the destination of the type if valid
- * @param offset the destination of the offset if valid
- * @param errors error string accumulator
+ * @param aStepEntry
+ * @param aAxis
+ * @param errors is the list of error messages if any
  * @return if all valid
  */
 static bool validateAxisOptions( const wxTextCtrl& offsetEntry, const wxChoice& typeEntry,
@@ -414,12 +411,47 @@ static bool validateAxisOptions( const wxTextCtrl& offsetEntry, const wxChoice& 
 }
 
 
+/**
+ * Detect whether the array configuration would produce two or more items at the same
+ * position and rotation, i.e. visually stacked on top of one another. Uses the same
+ * transform path that array creation will use so partial-row/column overlaps and
+ * circular full-circle layouts are all classified correctly.
+ */
+static bool arrayHasStackedPositions( const ARRAY_OPTIONS& aOptions, const VECTOR2I& aPos )
+{
+    struct sort_placements
+    {
+        bool operator()( const std::pair<VECTOR2I, EDA_ANGLE>& lhs, const std::pair<VECTOR2I, EDA_ANGLE>& rhs ) const
+        {
+            if( lhs.first.x != rhs.first.x )
+                return lhs.first.x < rhs.first.x;
+
+            if( lhs.first.y != rhs.first.y )
+                return lhs.first.y < rhs.first.y;
+
+            return lhs.second < rhs.second;
+        }
+    };
+
+    std::set<std::pair<VECTOR2I, EDA_ANGLE>, sort_placements> placements;
+
+    for( int ii = 0; ii < aOptions.GetArraySize(); ++ii )
+    {
+        const ARRAY_OPTIONS::TRANSFORM xf = aOptions.GetTransform( ii, aPos );
+
+        if( !placements.emplace( xf.m_offset, xf.m_rotation ).second )
+            return true;
+    }
+
+    return false;
+}
+
+
 bool DIALOG_CREATE_ARRAY::TransferDataFromWindow()
 {
     std::unique_ptr<ARRAY_OPTIONS> newSettings;
 
     wxArrayString   errors;
-    wxArrayString   stackWarnings;
     const wxWindow* page = m_gridTypeNotebook->GetCurrentPage();
 
     if( page == m_gridPanel )
@@ -436,20 +468,6 @@ bool DIALOG_CREATE_ARRAY::TransferDataFromWindow()
 
         newGrid->m_offset.x = m_hOffset.GetIntValue();
         newGrid->m_offset.y = m_vOffset.GetIntValue();
-
-        // Collect (but don't block on) configurations that would stack items in place.
-        // The user is warned and asked to confirm after all settings are validated.
-        if( newGrid->m_nx > 1 && newGrid->m_delta.x == 0 && newGrid->m_offset.x == 0 )
-        {
-            stackWarnings.Add( wxString::Format( _( "horizontal delta of zero with %ld objects" ),
-                                                 newGrid->m_nx ) );
-        }
-
-        if( newGrid->m_ny > 1 && newGrid->m_delta.y == 0 && newGrid->m_offset.y == 0 )
-        {
-            stackWarnings.Add( wxString::Format( _( "vertical delta of zero with %ld objects" ),
-                                                 newGrid->m_ny ) );
-        }
 
         newGrid->m_centred = m_rbCentreOnSource->GetValue();
 
@@ -515,12 +533,6 @@ bool DIALOG_CREATE_ARRAY::TransferDataFromWindow()
         newCirc->m_rotateItems = m_entryRotateItemsCb->GetValue();
         newCirc->SetShouldNumber( m_isFootprintEditor );
 
-        if( newCirc->m_nPts > 1 && newCirc->m_angle.IsZero() )
-        {
-            stackWarnings.Add( wxString::Format( _( "angular delta of zero with %ld objects" ),
-                                                 newCirc->m_nPts ) );
-        }
-
         if( m_isFootprintEditor )
         {
             newCirc->SetNumberingStartIsSpecified( m_rbCircStartNumberingOpt->GetSelection() == 1 );
@@ -548,15 +560,18 @@ bool DIALOG_CREATE_ARRAY::TransferDataFromWindow()
     // Warn (but don't block) when the array would stack items on top of one another.
     // Zero-spacing arrays are legitimate when intentionally duplicating in place, but
     // accidental zero spacing on a large count can stamp out thousands of overlapping
-    // objects. Confirm before proceeding.
-    if( newSettings && !stackWarnings.IsEmpty() )
+    // objects (see issue 22669). Confirm the user wants to do this.
+    if( newSettings
+        && newSettings->GetArraySize() > 1
+        && arrayHasStackedPositions( *newSettings, m_originalItemPosition ) )
     {
-        wxString msg;
+        wxString msg = wxString::Format( _( "The array configuration would place %d "
+                                            "items at the same position and rotation, "
+                                            "stacking them on top of one another.\n\n"
+                                            "Proceed anyway?" ),
+                                         newSettings->GetArraySize() );
 
-        for( const wxString& warning : stackWarnings )
-            msg << warning << wxT( "\n" );
-
-        if( !IsOK( this, msg ) )
+        if( wxMessageBox( msg, _( "Confirm Array" ), wxYES_NO | wxICON_QUESTION, this ) != wxYES )
             return false;
     }
 

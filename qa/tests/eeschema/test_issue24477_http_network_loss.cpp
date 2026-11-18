@@ -39,26 +39,14 @@
 #include <wx/wfstream.h>
 
 #include <http_lib/http_lib_connection.h>
-#include <sch_io/http_lib/sch_io_http_lib.h>
 #include <libraries/library_manager.h>
 #include <libraries/symbol_library_adapter.h>
 #include <lib_symbol.h>
+#include <sch_io/http_lib/sch_io_http_lib.h>
 #include <ki_exception.h>
 
 
 BOOST_AUTO_TEST_SUITE( Issue24477HttpNetworkLoss )
-
-
-namespace
-{
-/// Concrete adapter so the plugin can be primed through its real entry points.  The base
-/// constructor is protected, so it is exposed through an inheriting using-declaration.
-class TEST_ADAPTER : public SYMBOL_LIBRARY_ADAPTER
-{
-public:
-    using SYMBOL_LIBRARY_ADAPTER::SYMBOL_LIBRARY_ADAPTER;
-};
-}
 
 
 /// Write a .kicad_httplib config pointing at an unreachable endpoint.
@@ -100,30 +88,43 @@ BOOST_AUTO_TEST_CASE( SubLibraryQueriesSurviveNetworkLoss )
 {
     wxFileName settings = writeUnreachableHttpLib();
 
-    SCH_IO_HTTP_LIB    plugin;
-    LIBRARY_MANAGER    manager;
-    TEST_ADAPTER       adapter( manager );
+    LIBRARY_MANAGER        manager;
+    SYMBOL_LIBRARY_ADAPTER adapter( manager );
 
+    SCH_IO_HTTP_LIB plugin;
     plugin.SetLibraryManagerAdapter( &adapter );
 
-    // Enumerating the configured library loads its settings and then fails to connect, which
-    // reproduces "HTTP library configured, network down": settings present, connection null.
+    // Opening the library caches its settings and then fails to connect, exactly as it does
+    // while a schematic referencing the library is opened with the network down.  This leaves
+    // the plugin with valid settings but a null connection, the state the tree build hit.
     std::vector<LIB_SYMBOL*> symbols;
-    BOOST_CHECK_THROW( plugin.EnumerateSymbolLib( symbols, settings.GetFullPath(), nullptr ), IO_ERROR );
+    BOOST_CHECK_THROW( plugin.EnumerateSymbolLib( symbols, settings.GetFullPath() ), IO_ERROR );
 
-    // GetSubLibraryNames previously dereferenced the null connection while building the tree.
-    // It must now fail gracefully and leave the result empty.
+    // GetSubLibraryNames previously dereferenced the null connection.  It must now fail
+    // gracefully and leave the result empty.
     std::vector<wxString> names = { wxS( "stale" ) };
     BOOST_REQUIRE_NO_THROW( plugin.GetSubLibraryNames( names ) );
     BOOST_CHECK( names.empty() );
 
-    // GetSubLibraryDescription dereferenced the connection with no connection guard at all.
-    // It must now return empty rather than crash.
+    // GetSubLibraryDescription dereferenced the connection with no settings/connection
+    // guard at all.  It must now return empty rather than crash.
     wxString desc;
     BOOST_REQUIRE_NO_THROW( desc = plugin.GetSubLibraryDescription( wxS( "anything" ) ) );
     BOOST_CHECK( desc.IsEmpty() );
 
     wxRemoveFile( settings.GetFullPath() );
+}
+
+
+// A source assembled in code carries only the fields the caller sets, and the connection
+// copies it wholesale.  Zero timeouts would expire the part cache on every lookup
+BOOST_AUTO_TEST_CASE( SourceDefaultsMatchSettingsDefaults )
+{
+    HTTP_LIB_SOURCE source{};
+
+    BOOST_CHECK( source.type == HTTP_LIB_SOURCE_TYPE::INVALID );
+    BOOST_CHECK_EQUAL( source.timeout_parts, 30 );
+    BOOST_CHECK_EQUAL( source.timeout_categories, 600 );
 }
 
 

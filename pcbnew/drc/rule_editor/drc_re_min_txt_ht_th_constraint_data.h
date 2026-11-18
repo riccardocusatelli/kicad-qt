@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef DRC_RE_MINIMUM_TEXT_HEIGHT_THICKNESS_CONSTRAINT_DATA_H_
@@ -38,12 +34,11 @@ public:
     {
     }
 
-    explicit DRC_RE_MINIMUM_TEXT_HEIGHT_THICKNESS_CONSTRAINT_DATA( int aId, int aParentId,
-                                                                   const wxString& aRuleName,
-                                                                   double   aMinTextHeight,
-                                                                   double   aMinTextThickness ) :
-            DRC_RE_BASE_CONSTRAINT_DATA( aId, aParentId, aRuleName ),
-            m_minTextHeight( aMinTextHeight ), m_minTextThickness( aMinTextThickness )
+    explicit DRC_RE_MINIMUM_TEXT_HEIGHT_THICKNESS_CONSTRAINT_DATA( int aId, const wxString& aRuleName,
+                                                                   double aMinTextHeight, double aMinTextThickness ) :
+            DRC_RE_BASE_CONSTRAINT_DATA( aId, aRuleName ),
+            m_minTextHeight( aMinTextHeight ),
+            m_minTextThickness( aMinTextThickness )
     {
     }
 
@@ -57,8 +52,9 @@ public:
     std::vector<DRC_RE_FIELD_POSITION> GetFieldPositions() const override
     {
         return {
-            { 208, 263, 94, 1, wxS( "mm" ), LABEL_POSITION::RIGHT }, // min_text_height
-            { 109, 164, 209, 2, wxS( "mm" ), LABEL_POSITION::RIGHT }, // min_text_thickness
+            { 208, 263, 94, wxS( "mm" ), LABEL_POSITION::RIGHT, _( "Minimum text height" ) }, // min_text_height
+            { 109, 164, 209, wxS( "mm" ), LABEL_POSITION::RIGHT,
+              _( "Minimum text stroke thickness" ) }, // min_text_thickness
         };
     }
 
@@ -93,7 +89,7 @@ public:
         wxString heightClause =
                 wxString::Format( wxS( "(constraint text_height (min %s))" ), formatDimension( m_minTextHeight ) );
 
-        wxString thicknessClause = wxString::Format( wxS( "(constraint text_thickness (min %s))" ),
+        wxString thicknessClause = wxString::Format( wxS( "(constraint line_width (min %s))" ),
                                                      formatDimension( m_minTextThickness ) );
 
         return { heightClause, thicknessClause };

@@ -14,17 +14,14 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <macros.h>
 #include <core/kicad_algo.h>
 
 #include <lib_symbol.h>
+#include <advanced_config.h>
 
 #include <sch_group.h>
 #include <sch_screen.h>
@@ -40,6 +37,8 @@
 #include <connection_graph.h>
 
 #include <functional>
+#include <memory>
+#include <set>
 #include <wx/log.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
@@ -69,6 +68,18 @@ COMMIT& SCH_COMMIT::Stage( EDA_ITEM *aItem, CHANGE_TYPE aChangeType, BASE_SCREEN
                            RECURSE_MODE aRecurse )
 {
     KI_CHECK( aItem, *this );
+
+    if( !m_isLibEditor )
+    {
+        SCH_ITEM*   item = dynamic_cast<SCH_ITEM*>( aItem );
+        SCH_SCREEN* screen = dynamic_cast<SCH_SCREEN*>( aScreen );
+
+        if( !screen && item )
+            screen = item->GetParentScreen();
+
+        if( screen && item && SCH_SCREEN::IsConnectivitySource( item ) )
+            screen->BumpConnectivityRevision( item->Type() );
+    }
 
     if( aRecurse == RECURSE_MODE::RECURSE )
     {
@@ -105,107 +116,194 @@ COMMIT& SCH_COMMIT::Stage( std::vector<EDA_ITEM*> &container, CHANGE_TYPE aChang
 }
 
 
+void SCH_COMMIT::RemovedForCleanup( SCH_ITEM* aItem, SCH_SCREEN* aScreen )
+{
+    KI_ASSERT( !aScreen->CheckIfOnDrawList( aItem ) );
+
+    if( COMMIT_LINE* entry = findEntry( aItem, aScreen ); entry && ( entry->m_type & CHT_TYPE ) == CHT_MODIFY )
+    {
+        // Staging REMOVE discards MODIFY, so preserve the original geometry on the removed item
+        // before its image is discarded. Cleanup must still skip it until the commit is processed.
+        aItem->SwapItemData( static_cast<SCH_ITEM*>( entry->m_copy ) );
+        aItem->SetFlags( STRUCT_DELETED );
+    }
+
+    Removed( aItem, aScreen );
+}
+
+
 void SCH_COMMIT::pushSchEdit( const wxString& aMessage, int aCommitFlags )
 {
     // Objects potentially interested in changes:
-    SCH_COMMIT_LISTENER*             listener = m_listener.get();
-    PICKED_ITEMS_LIST                undoList;
-    SCH_SCREEN*                      currentScreen = listener ? listener->CurrentScreen() : nullptr;
-    SCH_GROUP*                       enteredGroup = listener ? listener->EnteredGroup() : nullptr;
-    SCH_COMMIT_LISTENER::PUSH_RESULT result;
-    bool                             refreshHierarchy = false;
-    SCH_CLEANUP_FLAGS                connectivityCleanUp = NO_CLEANUP;
+    SCH_COMMIT_LISTENER* listener = m_listener.get();
+    PICKED_ITEMS_LIST   undoList;
+    SCH_SCREEN*         currentScreen = listener ? listener->CurrentScreen() : nullptr;
+    SCH_GROUP*          enteredGroup = listener ? listener->EnteredGroup() : nullptr;
+    bool                itemsDeselected = false;
+    bool                selectedModified = false;
+    bool                dirtyConnectivity = false;
+    bool                refreshConnectivity = false;
+    bool                refreshHierarchy = false;
+    bool                refSuffixChanged = false;
+    SCH_CLEANUP_FLAGS   connectivityCleanUp = NO_CLEANUP;
 
     if( Empty() )
+    {
         return;
+    }
+
+    // Without an editor there is no undo list to take the changes
+    if( !listener || !listener->HasEditor() )
+        aCommitFlags |= SKIP_UNDO;
 
     undoList.SetDescription( aMessage );
 
-    SCHEMATIC*             schematic = nullptr;
-    std::vector<SCH_ITEM*> bulkAddedItems;
-    std::vector<SCH_ITEM*> bulkRemovedItems;
-    std::vector<SCH_ITEM*> itemsChanged;
+    SCHEMATIC*                             schematic = nullptr;
+    std::vector<SCH_ITEM*>                 bulkAddedItems;
+    std::vector<SCH_ITEM*>                 bulkRemovedItems;
+    std::vector<SCH_ITEM*>                 itemsChanged;
+    std::vector<std::unique_ptr<SCH_ITEM>> cleanupRemovedItems;
+    std::set<SCH_SCREEN*>                  connectivityScreens;
+
+    auto notifyModel =
+            [&]()
+            {
+                if( !schematic )
+                    return;
+
+                if( !bulkAddedItems.empty() )
+                    schematic->OnItemsAdded( bulkAddedItems );
+
+                if( !bulkRemovedItems.empty() )
+                    schematic->OnItemsRemoved( bulkRemovedItems );
+
+                if( !itemsChanged.empty() )
+                    schematic->OnItemsChanged( itemsChanged );
+
+                if( refreshHierarchy )
+                    schematic->RefreshHierarchy();
+
+                bulkAddedItems.clear();
+                bulkRemovedItems.clear();
+                itemsChanged.clear();
+            };
 
     auto updateConnectivityFlag =
-            [&]( SCH_ITEM* schItem )
+            [&]( SCH_ITEM* schItem, SCH_SCREEN* screen, bool fullSheetUpdate = true )
             {
                 if( schItem->IsConnectable() || ( schItem->Type() == SCH_RULE_AREA_T ) )
                 {
-                    result.dirtyConnectivity = true;
+                    dirtyConnectivity = true;
+                    connectivityScreens.insert( screen );
 
                     // Do a local clean up if there are any connectable objects in the commit.
                     if( connectivityCleanUp == NO_CLEANUP )
                         connectivityCleanUp = LOCAL_CLEANUP;
 
-                    // Do a full rebuild of the connectivity if there is a sheet in the commit.
-                    if( schItem->Type() == SCH_SHEET_T )
+                    if( schItem->Type() == SCH_SHEET_T && fullSheetUpdate )
                         connectivityCleanUp = GLOBAL_CLEANUP;
                 }
             };
 
     // We don't know that anything will be added to the entered group, but it does no harm to
-    // add it to the commit anyway.
-    if( enteredGroup )
+    // add it to the commit anyway (well, as long as we're not trying to remove it).
+    if( enteredGroup && GetStatus( enteredGroup ) == 0 )
         Modify( enteredGroup, currentScreen );
 
-    // Handle wires with Hop Over shapes:
-    for( COMMIT_LINE& entry : m_entries )
+
+    // Handle wires with Hop Over shapes (view update only; skipped headless):
+    if( listener )
     {
-        if( !listener )
-            break;
+        for( COMMIT_LINE& entry : m_entries )
+        {
+            SCH_ITEM* schCopyItem = dynamic_cast<SCH_ITEM*>( entry.m_copy );
+            SCH_ITEM* schItem = dynamic_cast<SCH_ITEM*>( entry.m_item );
 
-        SCH_ITEM* schCopyItem = dynamic_cast<SCH_ITEM*>( entry.m_copy );
-        SCH_ITEM* schItem = dynamic_cast<SCH_ITEM*>( entry.m_item );
+            if( schCopyItem && schCopyItem->Type() == SCH_LINE_T )
+                listener->UpdateHopOveredWires( schCopyItem );
 
-        if( schCopyItem && schCopyItem->Type() == SCH_LINE_T )
-            listener->UpdateHopOveredWires( schCopyItem );
-
-        if( schItem && schItem->Type() == SCH_LINE_T )
-            listener->UpdateHopOveredWires( schItem );
+            if( schItem && schItem->Type() == SCH_LINE_T )
+                listener->UpdateHopOveredWires( schItem );
+        }
     }
 
+    auto stageRemovedGroups =
+            [&]()
+            {
+                // Modify() appends to m_entries, so collect before staging group changes.
+                std::vector<std::pair<EDA_GROUP*, BASE_SCREEN*>> removedItemGroups;
 
-    // Modify() appends to m_entries, so collect first and stage after the loop.
-    std::vector<std::pair<EDA_GROUP*, BASE_SCREEN*>> removedItemGroups;
+                for( COMMIT_LINE& entry : m_entries )
+                {
+                    SCH_ITEM* schItem = dynamic_cast<SCH_ITEM*>( entry.m_item );
+                    int       changeType = entry.m_type & CHT_TYPE;
 
-    for( COMMIT_LINE& entry : m_entries )
+                    KI_CHECK2( schItem, continue );
+
+                    if( changeType == CHT_REMOVE && schItem->GetParentGroup() )
+                        removedItemGroups.emplace_back( schItem->GetParentGroup(), entry.m_screen );
+                }
+
+                for( const auto& [group, screen] : removedItemGroups )
+                    Modify( group->AsEdaItem(), screen );
+            };
+
+    stageRemovedGroups();
+    bool cleanupPending = true;
+    std::set<SCH_SCREEN*> touchedScreens;
+
+    for( size_t index = 0; ; )
     {
-        SCH_ITEM* schItem = dynamic_cast<SCH_ITEM*>( entry.m_item );
-        int       changeType = entry.m_type & CHT_TYPE;
+        if( index == m_entries.size() )
+        {
+            if( !cleanupPending || !dirtyConnectivity || ( aCommitFlags & SKIP_CONNECTIVITY ) || !schematic )
+                break;
 
-        KI_CHECK2( schItem, continue );
+            cleanupPending = false;
+            notifyModel();
 
-        if( changeType == CHT_REMOVE && schItem->GetParentGroup() )
-            removedItemGroups.emplace_back( schItem->GetParentGroup(), entry.m_screen );
-    }
+            // Cleanup can replace a MODIFY with REMOVE. Keep its staging separate from processed
+            // entries while retaining their undo records, so both phases form one user action.
+            clear();
+            // Legacy cleanup stays schematic-wide; only the engine scopes it to the staged screens
+            schematic->CleanUpConnections( this, connectivityCleanUp,
+                                           ADVANCED_CFG::GetCfg().m_ConnectivityEngine ? connectivityScreens
+                                                                                       : std::set<SCH_SCREEN*>() );
 
-    for( const auto& [group, screen] : removedItemGroups )
-        Modify( group->AsEdaItem(), screen );
+            stageRemovedGroups();
+            index = 0;
+            continue;
+        }
 
-    for( COMMIT_LINE& entry : m_entries )
-    {
-        int         changeType = entry.m_type & CHT_TYPE;
-        int         changeFlags = entry.m_type & CHT_FLAGS;
-        SCH_ITEM*   schItem = dynamic_cast<SCH_ITEM*>( entry.m_item );
-        SCH_SCREEN* screen = dynamic_cast<SCH_SCREEN*>( entry.m_screen );
+        COMMIT_LINE& entry = m_entries[index++];
+        int          changeType = entry.m_type & CHT_TYPE;
+        int          changeFlags = entry.m_type & CHT_FLAGS;
+        SCH_ITEM*    schItem = dynamic_cast<SCH_ITEM*>( entry.m_item );
+        SCH_SCREEN*  screen = dynamic_cast<SCH_SCREEN*>( entry.m_screen );
 
         KI_CHECK2( schItem, continue );
         KI_CHECK2( screen, continue );
 
+        touchedScreens.insert( screen );
+
         if( !schematic )
             schematic = schItem->Schematic();
 
+        // Staging invalidates captured sources even when the final connectivity is unchanged
+        if( ADVANCED_CFG::GetCfg().m_ConnectivityEngine && SCH_SCREEN::IsConnectivitySource( schItem ) )
+            refreshConnectivity = true;
+
         if( schItem->IsSelected() )
         {
-            result.selectedModified = true;
+            selectedModified = true;
         }
         else
         {
             schItem->RunOnChildren(
-                    [&result]( SCH_ITEM* aChild )
+                    [&selectedModified]( SCH_ITEM* aChild )
                     {
                         if( aChild->IsSelected() )
-                            result.selectedModified = true;
+                            selectedModified = true;
                     },
                     RECURSE_MODE::NO_RECURSE );
         }
@@ -217,7 +315,7 @@ void SCH_COMMIT::pushSchEdit( const wxString& aMessage, int aCommitFlags )
             if( enteredGroup && schItem->IsGroupableType() && !schItem->GetParentGroup() )
                 enteredGroup->AddItem( schItem );
 
-            updateConnectivityFlag( schItem );
+            updateConnectivityFlag( schItem, screen );
 
             if( !( aCommitFlags & SKIP_UNDO ) )
                 undoList.PushItem( ITEM_PICKER( screen, schItem, UNDO_REDO::NEWITEM ) );
@@ -233,7 +331,7 @@ void SCH_COMMIT::pushSchEdit( const wxString& aMessage, int aCommitFlags )
 
             if( listener && screen == currentScreen )
                 listener->UpdateItem( schItem, screen, true );
-            else
+            else if( screen )
                 screen->Update( schItem );
 
             bulkAddedItems.push_back( schItem );
@@ -246,7 +344,7 @@ void SCH_COMMIT::pushSchEdit( const wxString& aMessage, int aCommitFlags )
 
         case CHT_REMOVE:
         {
-            updateConnectivityFlag( schItem );
+            updateConnectivityFlag( schItem, screen );
 
             if( !( aCommitFlags & SKIP_UNDO ) )
             {
@@ -261,7 +359,12 @@ void SCH_COMMIT::pushSchEdit( const wxString& aMessage, int aCommitFlags )
                 if( listener )
                     listener->Deselect( schItem );
 
-                result.itemsDeselected = true;
+                // In an undo we're going to re-create from the item, not the image.  That seems wrong, but
+                // it would be a big risky change to make it use the image, so let's just reset the selection
+                // flag for now (so that on undo it comes back selected).
+                schItem->SetFlags( SELECTED );
+
+                itemsDeselected = true;
             }
 
             if( schItem->Type() == SCH_FIELD_T )
@@ -269,6 +372,9 @@ void SCH_COMMIT::pushSchEdit( const wxString& aMessage, int aCommitFlags )
                 static_cast<SCH_FIELD*>( schItem )->SetVisible( false );
                 break;
             }
+
+            if( ( aCommitFlags & SKIP_UNDO ) && ( !cleanupPending || ( aCommitFlags & DELETE_REMOVED_ITEMS ) ) )
+                cleanupRemovedItems.emplace_back( schItem );
 
             if( EDA_GROUP* group = schItem->GetParentGroup() )
                 group->RemoveItem( schItem );
@@ -283,7 +389,7 @@ void SCH_COMMIT::pushSchEdit( const wxString& aMessage, int aCommitFlags )
 
             if( listener && screen == currentScreen )
                 listener->UpdateItem( schItem, screen, true );
-            else
+            else if( screen )
                 screen->Update( schItem );
 
             if( schItem->Type() == SCH_SHEET_T )
@@ -297,14 +403,40 @@ void SCH_COMMIT::pushSchEdit( const wxString& aMessage, int aCommitFlags )
         {
             const SCH_ITEM* itemCopy = static_cast<const SCH_ITEM*>( entry.m_copy );
             SCH_SHEET_PATH  currentSheet;
+            bool            fullSheetUpdate = true;
 
             if( listener )
                 listener->GetCurrentSheet( currentSheet );
 
+            if( schItem->Type() == SCH_SHEET_T )
+            {
+                const SCH_SHEET* modifiedSheet = static_cast<const SCH_SHEET*>( schItem );
+                const SCH_SHEET* originalSheet = static_cast<const SCH_SHEET*>( itemCopy );
+                const bool       hierarchyChanged = originalSheet->HasHierarchyChanges( *modifiedSheet );
+
+                refreshHierarchy |= hierarchyChanged;
+
+                if( hierarchyChanged && originalSheet->HasRefSuffixChanges( *modifiedSheet ) )
+                {
+                    static_cast<SCH_SHEET*>( schItem )->SetDescendantsModified();
+                    refSuffixChanged = true;
+                }
+
+                // Stable ports are invalidated through their containing screen, including shared instances
+                fullSheetUpdate = !ADVANCED_CFG::GetCfg().m_ConnectivityEngine
+                                      || hierarchyChanged
+                                      || originalSheet->HasPinIdentityChanges( *modifiedSheet );
+            }
+
             if( itemCopy->HasConnectivityChanges( schItem, &currentSheet )
                 || ( itemCopy->Type() == SCH_RULE_AREA_T ) )
             {
-                updateConnectivityFlag( schItem );
+                updateConnectivityFlag( schItem, screen, fullSheetUpdate );
+            }
+            else if( schItem->IsConnectable() && schItem->IsConnectivityDirty() )
+            {
+                // Move previews can change dangling flags without changing the final geometry.
+                refreshConnectivity = true;
             }
 
             if( schItem->Type() == SCH_SYMBOL_T )
@@ -312,8 +444,11 @@ void SCH_COMMIT::pushSchEdit( const wxString& aMessage, int aCommitFlags )
                 const SCH_SYMBOL* origSymbol = static_cast<const SCH_SYMBOL*>( itemCopy );
                 const SCH_SYMBOL* modSymbol = static_cast<const SCH_SYMBOL*>( schItem );
 
-                if( origSymbol->GetPins().size() != modSymbol->GetPins().size() )
+                if( origSymbol->GetPins( &currentSheet ).size() != modSymbol->GetPins( &currentSheet ).size() )
                     connectivityCleanUp = GLOBAL_CLEANUP;
+
+                if( origSymbol->GetSchSymbolLibraryName() != modSymbol->GetSchSymbolLibraryName() )
+                    screen->PruneUnusedLibSymbol( origSymbol->GetSchSymbolLibraryName() );
             }
 
             if( !( aCommitFlags & SKIP_UNDO ) )
@@ -337,19 +472,9 @@ void SCH_COMMIT::pushSchEdit( const wxString& aMessage, int aCommitFlags )
                 undoList.PushItem( itemWrapper );
             }
 
-            if( schItem->Type() == SCH_SHEET_T )
-            {
-                const SCH_SHEET* modifiedSheet = static_cast<const SCH_SHEET*>( schItem );
-                const SCH_SHEET* originalSheet = static_cast<const SCH_SHEET*>( itemCopy );
-                KI_CHECK2( modifiedSheet && originalSheet, continue );
-
-                if( originalSheet->HasPageNumberChanges( *modifiedSheet ) )
-                    refreshHierarchy = true;
-            }
-
             if( listener && screen == currentScreen )
                 listener->UpdateItem( schItem, screen, false );
-            else
+            else if( screen )
                 screen->Update( schItem );
 
             itemsChanged.push_back( schItem );
@@ -381,30 +506,47 @@ void SCH_COMMIT::pushSchEdit( const wxString& aMessage, int aCommitFlags )
         }
     }
 
-    if( schematic )
+    notifyModel();
+
+    // Mark the touched screens dirty so that the state is tracked even in headless API server mode
+    if( !( aCommitFlags & SKIP_SET_DIRTY ) )
     {
-        if( bulkAddedItems.size() > 0 )
-            schematic->OnItemsAdded( bulkAddedItems );
-
-        if( bulkRemovedItems.size() > 0 )
-            schematic->OnItemsRemoved( bulkRemovedItems );
-
-        if( itemsChanged.size() > 0 )
-            schematic->OnItemsChanged( itemsChanged );
-
-        if( refreshHierarchy )
-        {
-            schematic->RefreshHierarchy();
-
-            if( listener )
-                listener->HierarchyChanged();
-        }
+        for( SCH_SCREEN* screen : touchedScreens )
+            screen->SetContentModified();
     }
 
+    cleanupRemovedItems.clear();
+
+    SCH_COMMIT_LISTENER::PUSH_RESULT result;
+    result.itemsDeselected = itemsDeselected;
+    result.selectedModified = selectedModified;
     result.connectivityCleanUp = connectivityCleanUp;
 
+    if( ( dirtyConnectivity || refreshConnectivity ) && !( aCommitFlags & SKIP_CONNECTIVITY ) )
+    {
+        KI_LOG_TRACE( wxS( "CONN_PROFILE" ), wxS( "SCH_COMMIT::pushSchEdit() connectivity refresh, cleanup=%d." ),
+                      static_cast<int>( connectivityCleanUp ) );
+
+        // An editor refreshes its view with the connections; without one, only the model
+        if( listener && listener->HasEditor() )
+            result.dirtyConnectivity = true;
+        else if( schematic )
+            schematic->RecalculateConnections( this, connectivityCleanUp, nullptr, nullptr, nullptr, nullptr, true );
+    }
+
     if( listener )
+    {
+        // The listener takes the undo entries (the changes of the clean up included) and
+        // recalculates the connections
         listener->Pushed( *this, undoList, aCommitFlags, result );
+
+        if( refreshHierarchy )
+            listener->HierarchyChanged();
+
+        // An API edit can change a suffix while one of its child sheets is on screen
+        if( refSuffixChanged )
+            listener->RefSuffixChanged();
+    }
 }
 
 
@@ -440,7 +582,13 @@ EDA_ITEM* SCH_COMMIT::undoLevelItem( EDA_ITEM* aItem ) const
     EDA_ITEM* parent = aItem->GetParent();
 
     if( m_isLibEditor )
-        return m_listener->CurrentSymbol();
+    {
+        // Headless commits operate directly on the staged item
+        if( LIB_SYMBOL* symbol = m_listener ? m_listener->CurrentSymbol() : nullptr )
+            return symbol;
+
+        return aItem;
+    }
 
     if( parent && parent->IsType( { SCH_SYMBOL_T, SCH_TABLE_T, SCH_SHEET_T, SCH_LABEL_LOCATE_ANY_T } ) )
         return parent;
@@ -453,8 +601,11 @@ EDA_ITEM* SCH_COMMIT::makeImage( EDA_ITEM* aItem ) const
 {
     if( m_isLibEditor )
     {
-        LIB_SYMBOL*       symbol = m_listener->CurrentSymbol();
+        LIB_SYMBOL*       symbol = m_listener ? m_listener->CurrentSymbol() : nullptr;
         std::vector<KIID> selected;
+
+        if( !symbol )
+            return aItem->Clone();
 
         // Cloning will clear the selected flags, but we want to keep them.
         for( const SCH_ITEM& item : symbol->GetDrawItems() )
@@ -481,6 +632,12 @@ EDA_ITEM* SCH_COMMIT::makeImage( EDA_ITEM* aItem ) const
 
 void SCH_COMMIT::Revert()
 {
+    RevertToCheckpoint( 0 );
+}
+
+
+void SCH_COMMIT::RevertToCheckpoint( int aCheckpoint )
+{
     SCH_COMMIT_LISTENER* listener = m_listener.get();
     SCH_SHEET_LIST       sheets;
 
@@ -491,8 +648,15 @@ void SCH_COMMIT::Revert()
     {
         // Symbol editor just saves copies of the whole symbol, so grab the first and discard
         // the rest
-        KI_ASSERT( listener );
-        listener->SymbolReverted( dynamic_cast<LIB_SYMBOL*>( m_entries.front().m_copy ) );
+        LIB_SYMBOL* copy = dynamic_cast<LIB_SYMBOL*>( m_entries.front().m_copy );
+
+        m_entries.front().m_copy = nullptr;
+
+        if( listener )
+            listener->SymbolReverted( copy );
+        else
+            delete copy;
+
         clear();
         return;
     }
@@ -502,13 +666,26 @@ void SCH_COMMIT::Revert()
     std::vector<SCH_ITEM*> bulkRemovedItems;
     std::vector<SCH_ITEM*> itemsChanged;
 
-    for( COMMIT_LINE& ent : m_entries )
+    // Detach added groups before restoring any saved group memberships.
+    for( int ii = aCheckpoint; ii < (int) m_entries.size(); ++ii )
     {
-        int         changeType = ent.m_type & CHT_TYPE;
-        int         changeFlags = ent.m_type & CHT_FLAGS;
-        SCH_ITEM*   item = dynamic_cast<SCH_ITEM*>( ent.m_item );
-        SCH_ITEM*   copy = dynamic_cast<SCH_ITEM*>( ent.m_copy );
-        SCH_SCREEN* screen = dynamic_cast<SCH_SCREEN*>( ent.m_screen );
+        COMMIT_LINE& entry = m_entries[ii];
+
+        if( ( entry.m_type & CHT_TYPE ) == CHT_ADD )
+        {
+            if( SCH_GROUP* group = dynamic_cast<SCH_GROUP*>( entry.m_item ) )
+                group->RemoveAll();
+        }
+    }
+
+    for( int ii = aCheckpoint; ii < (int) m_entries.size(); ++ii )
+    {
+        COMMIT_LINE& entry = m_entries[ii];
+        int          changeType = entry.m_type & CHT_TYPE;
+        int          changeFlags = entry.m_type & CHT_FLAGS;
+        SCH_ITEM*    item = dynamic_cast<SCH_ITEM*>( entry.m_item );
+        SCH_ITEM*    copy = dynamic_cast<SCH_ITEM*>( entry.m_copy );
+        SCH_SCREEN*  screen = dynamic_cast<SCH_SCREEN*>( entry.m_screen );
 
         KI_CHECK2( item && screen, continue );
 
@@ -533,6 +710,8 @@ void SCH_COMMIT::Revert()
 
             if( !( changeFlags & CHT_DONE ) )
                 break;
+
+            item->ClearFlags( STRUCT_DELETED );
 
             if( listener )
                 listener->ItemAdded( item );
@@ -587,14 +766,24 @@ void SCH_COMMIT::Revert()
             if( item->Type() == SCH_SYMBOL_T )
             {
                 SCH_SYMBOL* symbol = static_cast<SCH_SYMBOL*>( item );
+                SCH_SYMBOL* symbolCopy = static_cast<SCH_SYMBOL*>( copy );
+
                 symbol->UpdatePins();
+
+                if( symbol->GetSchSymbolLibraryName() != symbolCopy->GetSchSymbolLibraryName() )
+                    screen->PruneUnusedLibSymbol( symbolCopy->GetSchSymbolLibraryName() );
 
                 CONNECTION_GRAPH* graph = schematic->ConnectionGraph();
 
-                SCH_SYMBOL* symbolCopy = static_cast<SCH_SYMBOL*>( copy );
                 graph->RemoveItem( symbolCopy );
 
-                for( SCH_PIN* pin : symbolCopy->GetPins() )
+                // Lazy eval of sheet list; this is expensive even when unsorted
+                if( sheets.empty() )
+                    sheets = schematic->Hierarchy();
+
+                SCH_SHEET_PATH sheet = sheets.FindSheetForScreen( screen );
+
+                for( SCH_PIN* pin : symbolCopy->GetPins( &sheet ) )
                     graph->RemoveItem( pin );
             }
 
@@ -603,7 +792,7 @@ void SCH_COMMIT::Revert()
             if( listener )
                 listener->ItemAdded( item );
 
-            delete copy;
+            itemsChanged.push_back( item );
             break;
         }
 
@@ -611,6 +800,9 @@ void SCH_COMMIT::Revert()
             KI_ASSERT( false );
             break;
         }
+
+        delete copy;
+        entry.m_copy = nullptr;
     }
 
     if( schematic )
@@ -628,6 +820,20 @@ void SCH_COMMIT::Revert()
     if( listener )
         listener->Reverted();
 
-    clear();
+    dropEntriesAfter( aCheckpoint );
 }
 
+
+EDA_ITEM* SCH_COMMIT::ResolveItem( KIID& aID )
+{
+    if( aID == niluuid )
+        return nullptr;
+
+    for( COMMIT_LINE& entry : m_entries )
+    {
+        if( entry.m_item && entry.m_item->IsSCH_ITEM() && entry.m_item->m_Uuid == aID )
+            return entry.m_item;
+    }
+
+    return nullptr;
+}

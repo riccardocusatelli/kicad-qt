@@ -39,6 +39,7 @@
 #include <wx/string.h>
 
 #include <import_export.h>
+#include <lib_id.h>
 #include <toolkit/toolkit_types.h>
 
 
@@ -54,8 +55,6 @@ struct KIWAY_FACES
         FACE_GERBVIEW,
         FACE_PL_EDITOR,
         FACE_PCB_CALCULATOR,
-        FACE_BMP2CMP,
-        FACE_PYTHON,
 
         KIWAY_FACE_COUNT
     };
@@ -69,7 +68,6 @@ struct KIWAY_FACES
 // be mangled.
 #define KIFACE_INSTANCE_NAME_AND_VERSION   "KIFACE_1"
 
-#ifndef SWIG
 #if defined(__linux__) || defined(__FreeBSD__)
  #define LIB_ENV_VAR    wxT( "LD_LIBRARY_PATH" )
 #elif defined(__WXMAC__) || defined(__APPLE__)
@@ -79,7 +77,6 @@ struct KIWAY_FACES
 #else
  #error Platform support missing
 #endif
-#endif  // SWIG
 
 class wxConfigBase;
 class PGM_BASE;
@@ -93,6 +90,7 @@ class REPORTER;
 class PROGRESS_REPORTER;
 class STARTWIZARD_PROVIDER;
 class LOCAL_HISTORY;
+class KICAD_API_SERVER;
 
 
 /**
@@ -109,6 +107,20 @@ class LOCAL_HISTORY;
  */
 struct KIFACE
 {
+    struct DOCUMENT_SPEC
+    {
+        enum class KIND
+        {
+            FILE_KIND,   ///< Open the file at #path.
+            LIBID_KIND,  ///< Open the library element named by #libId
+            CREATE_KIND, ///< Create a new document at #path and open it (in memory, not persisted)
+        };
+
+        KIND     kind = KIND::FILE_KIND;
+        wxString path;               ///< File path (KIND::FILE_KIND) or project path (KIND::LIBID_KIND).
+        LIB_ID   libId;              ///< Library identifier; valid when kind == KIND::LIBID_KIND.
+    };
+
     // The order of functions establishes the vtable sequence, do not change the
     // order of functions in this listing unless you recompile all clients of
     // this interface.
@@ -125,6 +137,7 @@ struct KIFACE
 
     /**
      * Called just once shortly after the DSO is loaded.
+     *
      * It is the second function called, immediately after the KIFACE_GETTER().  However
      * before either of those, static C++ constructors are called.  The DSO implementation
      * should do process level initialization here, not project specific since there will
@@ -132,6 +145,7 @@ struct KIFACE
      *
      * @param aProgram is the process block: #PGM_BASE*.
      * @param aCtlBits consists of bit flags from the set of KFCTL_* \#defines above.
+     * @param aKiway
      * @param aKiway is the KIWAY loading the DSO: a KIWAY in the GUI programs, a KIWAY_BASE
      *               in kicad-cli.
      * @return true if DSO initialized OK, false if not.  When returning false, the loader
@@ -216,11 +230,51 @@ struct KIFACE
         return 0;
     }
 
+    virtual bool HandleApiOpenDocument( const DOCUMENT_SPEC& aSpec,
+                                        KICAD_API_SERVER* aServer,
+                                        wxString* aError )
+    {
+        if( aError )
+            *aError = wxS( "OpenDocument is not implemented for this face" );
+
+        return false;
+    }
+
+    /**
+     * Close the document identified by \p aSpec.
+     *
+     * KIND::FILE_KIND and KIND::CREATE_KIND address the KIFACE's file-backed document
+     * (board or schematic); KIND::LIBID_KIND addresses a library item (footprint or
+     * symbol). For LIBID_KIND the spec's libId must match the open library item;
+     * for the file kinds, an empty path means "whatever document is open".
+     */
+    virtual bool HandleApiCloseDocument( const DOCUMENT_SPEC& aSpec, KICAD_API_SERVER* aServer, wxString* aError )
+    {
+        if( aError )
+            *aError = wxS( "CloseDocument is not implemented for this face" );
+
+        return false;
+    }
+
     virtual void PreloadLibraries( KIWAY* aKiway ) {}
 
     virtual void CancelPreload( bool aBlock = true ) {}
 
     virtual void ProjectChanged() {}
+
+    /**
+     * Register this face's library API handlers on the given server.  Called by the API
+     * server's library command handler after loading the kiface, so that library commands
+     * are available before any document is opened.  The kiface retains ownership.
+     */
+    virtual void RegisterLibraryHandlers( KICAD_API_SERVER* aServer ) {}
+
+    /**
+     * Starts a background load of all libraries of the type owned by this face.  Called by
+     * the API server's LoadAllLibraries handler after ensuring this kiface is loaded.
+     * Returns true if a load was started.
+     */
+    virtual bool LoadAllLibraries() { return false; }
 };
 
 

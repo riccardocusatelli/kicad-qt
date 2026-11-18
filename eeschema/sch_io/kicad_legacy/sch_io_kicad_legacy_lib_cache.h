@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef _SCH_LEGACY_LIB_PLUGIN_CACHE_
@@ -24,7 +24,7 @@
 
 #include <memory>
 
-#include <eda_shape.h>  // FILL_T
+#include <eda_fill.h>
 
 #include "sch_io/sch_io_lib_cache.h"
 

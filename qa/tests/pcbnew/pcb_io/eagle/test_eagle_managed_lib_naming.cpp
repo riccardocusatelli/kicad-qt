@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -67,12 +63,12 @@ BOOST_AUTO_TEST_CASE( FootprintNamesHaveNoUrnSuffix )
                            "Stale rules sidecar present before load: "
                                    + rulesFn.GetFullPath().ToStdString() );
 
-    PCB_IO_EAGLE eaglePlugin;
-    BOARD*       rawBoard = nullptr;
+    PCB_IO_EAGLE           eaglePlugin;
+    std::unique_ptr<BOARD> board;
 
     try
     {
-        rawBoard = eaglePlugin.LoadBoard( dataPath, nullptr, nullptr );
+        board = eaglePlugin.LoadBoard( dataPath );
     }
     catch( const IO_ERROR& e )
     {
@@ -82,8 +78,6 @@ BOOST_AUTO_TEST_CASE( FootprintNamesHaveNoUrnSuffix )
     {
         BOOST_FAIL( std::string( "Exception loading Eagle board: " ) + e.what() );
     }
-
-    std::unique_ptr<BOARD> board( rawBoard );
 
     BOOST_REQUIRE( board );
 

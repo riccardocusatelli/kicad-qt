@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef GRID_COMBOBOX_H
@@ -31,6 +27,20 @@
 
 
 class wxGrid;
+
+
+/// Renders a combobox cell's text with an always-visible dropdown arrow, so it reads as a
+/// dropdown even when it isn't currently being edited (matching GRID_CELL_COMBOBOX's editor).
+class KIQT_COMMON_API GRID_CELL_COMBOBOX_RENDERER : public wxGridCellStringRenderer
+{
+public:
+    wxGridCellRenderer* Clone() const override;
+
+    void Draw( wxGrid& aGrid, wxGridCellAttr& aAttr, wxDC& aDC, const wxRect& aRect, int aRow, int aCol,
+               bool isSelected ) override;
+
+    wxSize GetBestSize( wxGrid& aGrid, wxGridCellAttr& aAttr, wxDC& aDC, int aRow, int aCol ) override;
+};
 
 
 class KIQT_COMMON_API GRID_CELL_COMBOBOX : public wxGridCellEditor

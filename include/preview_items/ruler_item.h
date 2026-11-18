@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PREVIEW_ITEMS_RULER_ITEM_H
@@ -48,13 +44,12 @@ public:
     RULER_ITEM( const TWO_POINT_GEOMETRY_MANAGER& m_geomMgr, const EDA_IU_SCALE& aIuScale,
                 EDA_UNITS userUnits, bool aFlipX, bool aFlipY );
 
-    ///< @copydoc EDA_ITEM::ViewBBox()
+    /// @copydoc EDA_ITEM::ViewBBox()
     const BOX2I ViewBBox() const override;
 
-    ///< @copydoc EDA_ITEM::ViewGetLayers()
+    /// @copydoc EDA_ITEM::ViewGetLayers()
     std::vector<int> ViewGetLayers() const override;
 
-    ///< @copydoc EDA_ITEM::ViewDraw();
     void ViewDraw( int aLayer, KIGFX::VIEW* aView ) const override final;
 
     void SetColor( const COLOR4D& aColor ) { m_color = aColor; }

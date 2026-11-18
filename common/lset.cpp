@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <algorithm>
@@ -810,8 +806,8 @@ GAL_SET GAL_SET::DefaultVisible()
         LAYER_VIA_HOLEWALLS,
         LAYER_DRC_ERROR,
         LAYER_DRC_WARNING,
-        LAYER_DRC_SHAPES,
         // LAYER_DRC_EXCLUSION,      // DRC exclusions hidden by default
+        LAYER_DRC_HIGHLIGHTED,
         LAYER_DRAWINGSHEET,
         LAYER_GP_OVERLAY,
         LAYER_SELECT_OVERLAY,
@@ -825,7 +821,10 @@ GAL_SET GAL_SET::DefaultVisible()
         LAYER_LOCKED_ITEM_SHADOW,
         // LAYER_BOARD_OUTLINE_AREA,    // currently hidden by default
         LAYER_CONFLICTS_SHADOW,
-        LAYER_POINTS
+        LAYER_CONSTRAINT_SHADOW,
+        LAYER_POINTS,
+        LAYER_SUBGRIDS,
+        LAYER_VIA_STITCHING
     };
 
     static const GAL_SET saved( visible, arrayDim( visible ) );
@@ -833,7 +832,6 @@ GAL_SET GAL_SET::DefaultVisible()
 }
 
 
-#ifndef SWIG // Skip SWIG generators for the iterators because it requires a default constructor
 // Custom iterators for Copper and Non-Copper layers
 
 LSET::copper_layers_iterator::copper_layers_iterator( const BASE_SET& set, size_t index ) :
@@ -965,5 +963,3 @@ LSET& LSET::ClearUserDefinedLayers()
 
     return *this;
 }
-
-#endif

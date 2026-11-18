@@ -15,17 +15,13 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "sim/sim_model_subckt.h"
 
 #include <ki_exception.h>
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <pegtl.hpp>
 #include <pegtl/contrib/parse_tree.hpp>
 #include <sim/spice_grammar.h>
@@ -67,16 +63,15 @@ std::vector<std::string> SPICE_GENERATOR_SUBCKT::CurrentNames( const SPICE_ITEM&
     }
     else
     {
-        for( const SIM_MODEL_PIN& pin : GetPins() )
-            currentNames.push_back( fmt::format( "I({}:{})", ItemName( aItem ), pin.modelPinName ) );
+        for( const std::reference_wrapper<const SIM_MODEL_PIN>& pin : GetPins() )
+            currentNames.push_back( fmt::format( "I({}:{})", ItemName( aItem ), pin.get().modelPinName ) );
     }
 
     return currentNames;
 }
 
 
-void SPICE_MODEL_PARSER_SUBCKT::ReadModel( const SIM_LIBRARY_SPICE& aLibrary,
-                                           const std::string& aSpiceCode )
+void SPICE_MODEL_PARSER_SUBCKT::ReadModel( const SIM_LIBRARY_SPICE& aLibrary, const std::string& aSpiceCode )
 {
     tao::pegtl::string_input<> in( aSpiceCode, "from_content" );
     std::unique_ptr<tao::pegtl::parse_tree::node> root;
@@ -156,7 +151,7 @@ void SIM_MODEL_SUBCKT::SetBaseModel( const SIM_MODEL& aBaseModel )
     SIM_MODEL::SetBaseModel( aBaseModel );
 
     // Pins aren't constant for subcircuits, so they need to be copied from the base model.
-    for( const SIM_MODEL_PIN& pin : GetBaseModel()->GetPins() )
+    for( const std::reference_wrapper<const SIM_MODEL_PIN>& pin : GetBaseModel()->GetPins() )
         AddPin( pin );
 
     // Same for parameters.

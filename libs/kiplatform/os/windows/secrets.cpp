@@ -13,8 +13,8 @@
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 * General Public License for more details.
 *
-* You should have received a copy of the GNU General Public License along
-* with this program.  If not, see <http://www.gnu.org/licenses/>.
+* You should have received a copy of the GNU General Public License
+* along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <kiplatform/secrets.h>
@@ -44,6 +44,16 @@ namespace KIPLATFORM
             return CredWriteW( &cred, 0 );
         }
 
+        void StoreSecretAsync( const wxString& aService, const wxString& aKey, const wxString& aSecret,
+                               std::function<void( bool )> aDone )
+        {
+            // Credential Manager never prompts, so storing cannot hold the event loop
+            bool stored = StoreSecret( aService, aKey, aSecret );
+
+            if( aDone )
+                aDone( stored );
+        }
+
         bool GetSecret( const wxString& aService, const wxString& aKey, wxString& aSecret )
         {
             wxString display = aService + wxS( ":" ) + aKey;
@@ -59,6 +69,21 @@ namespace KIPLATFORM
             }
 
             return result;
+        }
+
+        void GetSecretAsync( const wxString& aService, const wxString& aKey,
+                             std::function<void( bool, const wxString& )> aDone )
+        {
+            // Credential Manager never prompts, so reading cannot hold the event loop
+            wxString secret;
+            bool     found = GetSecret( aService, aKey, secret );
+
+            aDone( found, secret );
+        }
+
+        bool GetSecretNoPrompt( const wxString& aService, const wxString& aKey, wxString& aSecret )
+        {
+            return GetSecret( aService, aKey, aSecret );
         }
 
         bool DeleteSecret( const wxString& aService, const wxString& aKey )

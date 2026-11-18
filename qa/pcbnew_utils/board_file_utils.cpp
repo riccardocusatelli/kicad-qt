@@ -14,12 +14,13 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+
+#include <boost/test/tools/context.hpp>
+#include <memory>
+
+#include <boost/test/unit_test.hpp>
 
 #include <pcbnew_utils/board_file_utils.h>
 
@@ -62,10 +63,10 @@ std::string GetPcbnewTestDataDir()
 }
 
 
-void DumpBoardToFile( BOARD& board, const std::string& aFilename )
+void DumpBoardToFile( BOARD& board, const std::filesystem::path& aFilename )
 {
     PCB_IO_KICAD_SEXPR io;
-    io.SaveBoard( aFilename, &board );
+    io.SaveBoard( aFilename.string(), board );
 }
 
 
@@ -118,37 +119,69 @@ std::unique_ptr<BOARD> ReadBoardFromFileOrStream( const std::string& aFilename,
 }
 
 
-std::unique_ptr<FOOTPRINT> ReadFootprintFromFileOrStream( const std::string& aFilename,
-                                                          std::istream& aFallback )
+std::unique_ptr<BOARD> ReadBoardFromFile( const std::filesystem::path& aFilename )
 {
-    std::istream* in_stream = nullptr;
-    std::ifstream file_stream;
-
-    if( aFilename.empty() )
-    {
-        // no file, read stdin
-        in_stream = &aFallback;
-    }
-    else
-    {
-        file_stream.open( aFilename );
-
-        if( !file_stream.is_open() )
-        {
-            return nullptr;
-        }
-
-        in_stream = &file_stream;
-    }
-
-    return ReadItemFromStream<FOOTPRINT>( *in_stream );
+    return ReadBoardFromFileOrStream( aFilename.string() );
 }
 
 
-void DumpFootprintToFile( const FOOTPRINT& aFootprint, const std::string& aLibraryPath )
+std::unique_ptr<BOARD> RequireBoardFromPcbnewQAData( const std::filesystem::path& aFilename )
+{
+    std::unique_ptr<BOARD> board;
+
+    // Make it really clear in the test context which board is being loaded
+    BOOST_TEST_CONTEXT( "Loading board " << aFilename )
+    {
+        board = ReadBoardFromFile( KI_TEST::GetPcbnewTestDataDir() + aFilename.string() );
+
+        BOOST_REQUIRE( board );
+    }
+
+    return board;
+}
+
+
+std::unique_ptr<FOOTPRINT> ReadFootprintFromFile( const std::filesystem::path& aFilename,
+                                                  const wxString& aFootprintName )
 {
     PCB_IO_KICAD_SEXPR io;
-    io.FootprintSave( aLibraryPath, &aFootprint, nullptr );
+    wxString           libPath;
+    wxFileName         fn( aFilename.string() );
+
+    if( fn.GetExt().Lower() == FILEEXT::KiCadFootprintFileExtension )
+        libPath = fn.GetPath();
+    else
+        libPath = aFilename.string();
+
+    try
+    {
+        return io.FootprintLoad( libPath, aFootprintName, true );
+    }
+    catch( const IO_ERROR& exc )
+    {
+        BOOST_TEST_CHECKPOINT( "Exception '" << exc.what() << "' occurred reading footprint file '" << aFilename );
+    }
+
+    return nullptr;
+}
+
+
+void DumpFootprintToFile( const FOOTPRINT& aFootprint, const std::filesystem::path& aLibraryPath )
+{
+    PCB_IO_KICAD_SEXPR io;
+
+    try
+    {
+        PRETTIFIED_FILE_OUTPUTFORMATTER formatter( aLibraryPath.string() );
+
+        io.SetOutputFormatter( &formatter );
+        io.FormatFootprintLibFile( const_cast<FOOTPRINT*>( &aFootprint ) );
+        formatter.Finish();
+    }
+    catch( const IO_ERROR& exc )
+    {
+        BOOST_TEST_CHECKPOINT( "Exception '" << exc.what() << "' occurred writing footprint file '" << aLibraryPath );
+    }
 }
 
 

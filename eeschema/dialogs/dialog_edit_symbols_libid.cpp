@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -326,8 +322,8 @@ private:
 	void onCancel( wxCommandEvent& event ) override
     {
         // Just skipping the event doesn't work after the library browser was run
-        if( IsQuasiModal() )
-            EndQuasiModal( wxID_CANCEL );
+        if( IsQuasiModal() || IsModal() )
+            EndDialogShim( wxID_CANCEL );
         else
             event.Skip();
     }
@@ -752,6 +748,17 @@ bool DIALOG_EDIT_SYMBOLS_LIBID::TransferDataFromWindow()
             if( symbol == nullptr )
                 continue;
 
+            std::unique_ptr<LIB_SYMBOL> flattenedSymbol = symbol->Flatten();
+
+            if( flattenedSymbol->GetUnitCount() < candidate.m_Symbol->GetUnit() )
+            {
+                wxString msg;
+                msg.Printf( _( "Cannot remap symbol %s to '%s': the new symbol has too few units." ),
+                            candidate.m_Reference, new_libid );
+                DisplayErrorMessage( this, msg );
+                continue;
+            }
+
             commit.Modify( candidate.m_Symbol, candidate.m_Screen );
             m_isModified = true;
 
@@ -763,7 +770,7 @@ bool DIALOG_EDIT_SYMBOLS_LIBID::TransferDataFromWindow()
                 candidate.m_Symbol->SetValueFieldText( getName( id ) );
 
             candidate.m_Symbol->SetLibId( id );
-            candidate.m_Symbol->SetLibSymbol( symbol->Flatten().release() );
+            candidate.m_Symbol->SetLibSymbol( flattenedSymbol.release() );
             candidate.m_Screen->Append( candidate.m_Symbol );
             candidate.m_Screen->SetContentModified();
 

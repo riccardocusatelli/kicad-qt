@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef DRC_RE_VIAS_UNDER_SMD_CONSTRAINT_DATA_H_
@@ -38,11 +34,11 @@ public:
     {
     }
 
-    explicit DRC_RE_VIAS_UNDER_SMD_CONSTRAINT_DATA( int aId, int aParentId, const wxString& aRuleName,
+    explicit DRC_RE_VIAS_UNDER_SMD_CONSTRAINT_DATA( int aId, const wxString& aRuleName,
                                                     bool aDisallowThroughVias = false, bool aDisallowMicroVias = false,
                                                     bool aDisallowBlindVias = false,
                                                     bool aDisallowBuriedVias = false ) :
-            DRC_RE_BASE_CONSTRAINT_DATA( aId, aParentId, aRuleName ),
+            DRC_RE_BASE_CONSTRAINT_DATA( aId, aRuleName ),
             m_disallowThroughVias( aDisallowThroughVias ),
             m_disallowMicroVias( aDisallowMicroVias ),
             m_disallowBlindVias( aDisallowBlindVias ),
@@ -57,10 +53,14 @@ public:
     std::vector<DRC_RE_FIELD_POSITION> GetFieldPositions() const override
     {
         return {
-            { 400, 615, 52, 1, wxS( "Disallow Through Via" ), LABEL_POSITION::RIGHT },
-            { 400, 615, 92, 2, wxS( "Disallow Micro Via" ), LABEL_POSITION::RIGHT },
-            { 400, 615, 132, 3, wxS( "Disallow Blind Via" ), LABEL_POSITION::RIGHT },
-            { 400, 615, 172, 4, wxS( "Disallow Buried Via" ), LABEL_POSITION::RIGHT },
+            { 400, 615, 52, wxS( "Disallow Through Via" ), LABEL_POSITION::RIGHT,
+              _( "Forbid through vias under surface mount pads" ) },
+            { 400, 615, 92, wxS( "Disallow Micro Via" ), LABEL_POSITION::RIGHT,
+              _( "Forbid micro vias under surface mount pads" ) },
+            { 400, 615, 132, wxS( "Disallow Blind Via" ), LABEL_POSITION::RIGHT,
+              _( "Forbid blind vias under surface mount pads" ) },
+            { 400, 615, 172, wxS( "Disallow Buried Via" ), LABEL_POSITION::RIGHT,
+              _( "Forbid buried vias under surface mount pads" ) },
         };
     }
 
@@ -101,11 +101,13 @@ public:
         return { wxString::Format( wxS( "(constraint disallow %s)" ), items ) };
     }
 
+    wxString GetConditionPredicate() const override { return wxS( "A.Pad_Type == 'SMD'" ); }
+
     wxString GenerateRule( const RULE_GENERATION_CONTEXT& aContext ) override
     {
         RULE_GENERATION_CONTEXT ctx = aContext;
 
-        wxString padTypeCondition = wxS( "A.Pad_Type == 'SMD'" );
+        wxString padTypeCondition = GetConditionPredicate();
 
         if( ctx.conditionExpression.IsEmpty() )
             ctx.conditionExpression = padTypeCondition;

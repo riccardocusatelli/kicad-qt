@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -341,13 +337,11 @@ void DIALOG_BOARD_STATISTICS::updateWidgets()
     m_gridBoard->SetCellValue( ROW_BACK_COPPER_AREA, COL_AMOUNT,
                                m_frame->MessageTextFromValue( m_statsData.backCopperArea, true, EDA_DATA_TYPE::AREA ) );
 
-    m_gridBoard->SetCellValue(
-            ROW_MIN_CLEARANCE, COL_AMOUNT,
-            m_frame->MessageTextFromValue( m_statsData.minClearanceTrackToTrack, true, EDA_DATA_TYPE::DISTANCE ) );
+    m_gridBoard->SetCellValue( ROW_MIN_CLEARANCE, COL_AMOUNT,
+                               FormatBoardStatisticsMinimum( m_statsData.minClearanceTrackToTrack, *m_frame ) );
 
-    m_gridBoard->SetCellValue(
-            ROW_MIN_TRACK_WIDTH, COL_AMOUNT,
-            m_frame->MessageTextFromValue( m_statsData.minTrackWidth, true, EDA_DATA_TYPE::DISTANCE ) );
+    m_gridBoard->SetCellValue( ROW_MIN_TRACK_WIDTH, COL_AMOUNT,
+                               FormatBoardStatisticsMinimum( m_statsData.minTrackWidth, *m_frame ) );
 
     m_gridBoard->SetCellValue(
             ROW_BOARD_THICKNESS, COL_AMOUNT,
@@ -355,9 +349,8 @@ void DIALOG_BOARD_STATISTICS::updateWidgets()
 
     updateDrillGrid();
 
-    m_gridBoard->SetCellValue(
-            ROW_MIN_DRILL_DIAMETER, COL_AMOUNT,
-            m_frame->MessageTextFromValue( m_statsData.minDrillSize, true, EDA_DATA_TYPE::DISTANCE ) );
+    m_gridBoard->SetCellValue( ROW_MIN_DRILL_DIAMETER, COL_AMOUNT,
+                               FormatBoardStatisticsMinimum( m_statsData.minDrillSize, *m_frame ) );
 
     m_gridComponents->AutoSize();
     m_gridPads->AutoSize();

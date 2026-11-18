@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <dialog_sch_find.h>
@@ -28,6 +24,7 @@
 #include <tools/sch_find_replace_tool.h>
 #include <core/ki_assert.h>
 #include <tool/tool_dispatcher.h>
+#include <tool/tool_manager.h>
 
 
 DIALOG_SCH_FIND::DIALOG_SCH_FIND( SCH_BASE_FRAME* aParent, SCH_SEARCH_DATA* aData,
@@ -86,6 +83,7 @@ DIALOG_SCH_FIND::DIALOG_SCH_FIND( SCH_BASE_FRAME* aParent, SCH_SEARCH_DATA* aDat
     {
         wxString hotkeyHint = wxString::Format( wxT( " (%s)" ), KeyNameFromKeyCode( hotkey ) );
         m_searchPanelLink->SetLabel( m_searchPanelLink->GetLabel() + hotkeyHint );
+        m_searchPanelLink->GetParent()->Layout();
     }
 
     m_buttonFind->SetDefault();
@@ -272,6 +270,16 @@ void DIALOG_SCH_FIND::OnReplaceWithEnter( wxCommandEvent& aEvent )
 
 void DIALOG_SCH_FIND::OnOptions( wxCommandEvent& aEvent )
 {
+    if( aEvent.GetEventObject() == m_checkRegexMatch )
+    {
+        m_checkWholeWord->SetValue( false );
+        m_checkMatchCase->SetValue( false );
+    }
+    else if( aEvent.GetEventObject() == m_checkMatchCase || aEvent.GetEventObject() == m_checkWholeWord )
+    {
+        m_checkRegexMatch->SetValue( false );
+    }
+
     updateFlags();
     m_findDirty = true;
 }
@@ -279,11 +287,11 @@ void DIALOG_SCH_FIND::OnOptions( wxCommandEvent& aEvent )
 void DIALOG_SCH_FIND::updateFlags()
 {
     // Rebuild the search flags in m_findReplaceData from dialog settings
-    m_findReplaceData->matchCase                = m_checkMatchCase->GetValue();
-    m_findReplaceData->searchAllFields          = m_cbSearchHiddenFields->GetValue();
-    m_findReplaceData->searchAllPins = m_cbSearchPins->GetValue();
-    m_findReplaceData->replaceReferences        = m_cbReplaceReferences->GetValue();
-    m_findReplaceData->searchNetNames           = m_cbSearchNetNames->GetValue();
+    m_findReplaceData->matchCase         = m_checkMatchCase->GetValue();
+    m_findReplaceData->searchAllFields   = m_cbSearchHiddenFields->GetValue();
+    m_findReplaceData->searchAllPins     = m_cbSearchPins->GetValue();
+    m_findReplaceData->replaceReferences = m_cbReplaceReferences->GetValue();
+    m_findReplaceData->searchNetNames    = m_cbSearchNetNames->GetValue();
 
     // Only read the current-sheet-only widget when the user can actually toggle it.
     // While selection-only forces it on, its value doesn't reflect user intent.
@@ -387,7 +395,7 @@ void DIALOG_SCH_FIND::SetFindEntries( const wxArrayString& aEntries, const wxStr
     while( m_comboFind->GetCount() > 10 )
     {
         m_frame->GetFindHistoryList().pop_back();
-        m_comboFind->Delete( 9 );
+        m_comboFind->Delete( m_comboFind->GetCount() - 1 );
     }
 
     if( !aFindString.IsEmpty() )
@@ -409,13 +417,13 @@ void DIALOG_SCH_FIND::SetReplaceEntries( const wxArrayString& aEntries )
 
     while( m_comboReplace->GetCount() > 10 )
     {
-        m_frame->GetFindHistoryList().pop_back();
-        m_comboReplace->Delete( 9 );
+        m_frame->GetReplaceHistoryList().pop_back();
+        m_comboReplace->Delete( m_comboReplace->GetCount() - 1 );
     }
 
     if( m_comboReplace->GetCount() )
     {
         m_comboReplace->SetSelection( 0 );
-        m_comboFind->SelectAll();
+        m_comboReplace->SelectAll();
     }
 }

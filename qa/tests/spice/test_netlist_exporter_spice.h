@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
@@ -175,6 +171,12 @@ public:
             } while( ngspice->IsRunning() );
         }
 
+        // Detach the reporter while we read m_log on the main thread.  m_ngSpice_Running
+        // can return false while a cbSendChar callback is still in flight, and that
+        // callback writes to *m_log.  SetReporter(nullptr) blocks until the in-flight
+        // call returns.
+        ngspice->SetReporter( nullptr );
+
         // Test if ngspice cannot run a simulation (missing code models).
         // in this case the log contains "MIF-ERROR" and/or "Error: circuit not parsed"
         // when the simulation is not run the spice command "linearize" crashes.
@@ -184,6 +186,11 @@ public:
         BOOST_CHECK( !mif_error );
 
         bool err_found = m_log->Find( wxT( "Error: circuit not parsed" ) ) != wxNOT_FOUND;
+
+        // Re-attach so the rest of the foreground ngspice->Command calls below feed
+        // their output back into the log.  These run on the main thread, so the
+        // cbSendChar callback fires synchronously and there's no concurrent reader.
+        ngspice->SetReporter( m_reporter.get() );
 
         BOOST_TEST_INFO( "Cannot run ngspice. test skipped. Install error?" );
         BOOST_CHECK( !err_found );

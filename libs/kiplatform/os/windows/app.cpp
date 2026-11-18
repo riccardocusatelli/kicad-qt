@@ -14,8 +14,8 @@
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 * General Public License for more details.
 *
-* You should have received a copy of the GNU General Public License along
-* with this program.  If not, see <http://www.gnu.org/licenses/>.
+* You should have received a copy of the GNU General Public License
+* along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <kiplatform/app.h>
@@ -34,6 +34,7 @@
 #include <versionhelpers.h>
 #include <iostream>
 #include <cstdio>
+#include <io.h>
 
 #if defined( _MSC_VER )
 #include <werapi.h>     // issues on msys2
@@ -119,7 +120,9 @@ bool KIPLATFORM::APP::Init()
 #ifndef DEBUG
         wxLog::SetLogLevel( wxLOG_Trace );
 #endif
-        wxLog::SetActiveTarget( new wxLogStderr );
+        const int fd = _fileno( stderr );
+        wxLog::SetActiveTarget( fd >= 0 && !_isatty( fd ) ? new wxLogStderr( stderr, wxConvUTF8 )
+                                                       : new wxLogStderr );
     }
 
     return true;
@@ -235,4 +238,21 @@ void KIPLATFORM::APP::ForceTimerMessagesToBeCreatedIfNecessary()
 void KIPLATFORM::APP::AddDynamicLibrarySearchPath( const wxString& aPath )
 {
     SetDllDirectory( aPath.c_str() );
+}
+
+
+bool KIPLATFORM::APP::SetCurrentThreadPriority( bool aRaise )
+{
+    return SetThreadPriority( GetCurrentThread(),
+                              aRaise ? THREAD_PRIORITY_ABOVE_NORMAL : THREAD_PRIORITY_BELOW_NORMAL )
+           != 0;
+}
+
+
+void KIPLATFORM::APP::TerminateWithCode( int aExitCode )
+{
+    TerminateProcess( GetCurrentProcess(), static_cast<UINT>( aExitCode ) );
+
+    // Not reached unless the call is refused
+    ExitProcess( static_cast<UINT>( aExitCode ) );
 }

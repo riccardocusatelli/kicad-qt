@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -38,19 +34,12 @@ class DIALOG_EXPORT_NETLIST : public DIALOG_EXPORT_NETLIST_BASE
 public:
     DIALOG_EXPORT_NETLIST( SCH_EDIT_FRAME* aEditFrame );
     DIALOG_EXPORT_NETLIST( SCH_EDIT_FRAME* aEditFrame, wxWindow* aParent, JOB_EXPORT_SCH_NETLIST* aJob = nullptr );
-    ~DIALOG_EXPORT_NETLIST(){};
+    ~DIALOG_EXPORT_NETLIST();
 
-private:
-    void                 InstallCustomPages();
-    EXPORT_NETLIST_PAGE* AddOneCustomPage( const wxString& aTitle, const wxString& aCommandString,
-                                           NETLIST_TYPE_ID aNetTypeId );
-    void                 InstallPageSpice();
-    void                 InstallPageSpiceModel();
-
+    bool TransferDataToWindow() override;
     bool TransferDataFromWindow() override;
 
-    void updateGeneratorButtons();
-
+protected:
     // Called when changing the notebook page (and therefore the current netlist format)
     void OnNetlistTypeSelection( wxNotebookEvent& event ) override;
 
@@ -63,6 +52,15 @@ private:
      * Remove a panel relative to a netlist plugin.
      */
     void OnDelGenerator( wxCommandEvent& event ) override;
+
+private:
+    void                 InstallCustomPages();
+    EXPORT_NETLIST_PAGE* AddOneCustomPage( const wxString& aTitle, const wxString& aCommandString,
+                                           NETLIST_TYPE_ID aNetTypeId );
+    void                 InstallPageSpice();
+    void                 InstallPageSpiceModel();
+
+    void updateGeneratorButtons();
 
     /**
      * Write the current netlist options setup in the configuration.

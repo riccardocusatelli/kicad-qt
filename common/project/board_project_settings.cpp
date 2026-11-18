@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <functional>
@@ -79,10 +79,13 @@ nlohmann::json PARAM_LAYER_PRESET::presetsToJson()
 
 void PARAM_LAYER_PRESET::jsonToPresets( const nlohmann::json& aJson )
 {
-    if( aJson.empty() || !aJson.is_array() )
+    if( !aJson.is_array() )
         return;
 
     m_presets->clear();
+
+    if( aJson.empty() )
+        return;
 
     for( const nlohmann::json& preset : aJson )
     {
@@ -217,10 +220,10 @@ nlohmann::json PARAM_VIEWPORT::viewportsToJson()
 
 void PARAM_VIEWPORT::jsonToViewports( const nlohmann::json& aJson )
 {
+    m_viewports->clear();
+
     if( aJson.empty() || !aJson.is_array() )
         return;
-
-    m_viewports->clear();
 
     for( const nlohmann::json& viewport : aJson )
     {
@@ -293,10 +296,10 @@ nlohmann::json PARAM_VIEWPORT3D::viewportsToJson()
 
 void PARAM_VIEWPORT3D::jsonToViewports( const nlohmann::json& aJson )
 {
+    m_viewports->clear();
+
     if( aJson.empty() || !aJson.is_array() )
         return;
-
-    m_viewports->clear();
 
     for( const nlohmann::json& viewport : aJson )
     {

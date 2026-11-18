@@ -13,8 +13,8 @@
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 * General Public License for more details.
 *
-* You should have received a copy of the GNU General Public License along
-* with this program.  If not, see <http://www.gnu.org/licenses/>.
+* You should have received a copy of the GNU General Public License
+* along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #ifndef FILEDLG_HOOK_SAVE_PROJECT_H
@@ -54,16 +54,16 @@ public:
         m_includeExternal = m_choice->GetSelection() > 1;
     }
 
-    ///< Gets the selected state of the create new project option
+    /// Gets the selected state of the create new project option
     bool GetCreateNewProject() const { return m_createNewProject; }
 
-    ///< Gets the selected state of the copy subsheets option
+    /// Gets the selected state of the copy subsheets option
     bool GetCopySubsheets() const { return m_copySubsheets; }
 
-    ///< Gets the selected state of the include external sheets option
+    /// Gets the selected state of the include external sheets option
     bool GetIncludeExternSheets() const { return m_includeExternal; }
 
-    ///< Gets if this hook has attached controls to a dialog box
+    /// Gets if this hook has attached controls to a dialog box
     bool IsAttachedToDialog() const { return m_controlsAttached; }
 
 private:

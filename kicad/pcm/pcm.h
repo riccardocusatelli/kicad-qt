@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PCM_H_
@@ -37,7 +37,7 @@
 #include <wx/wx.h>
 
 
-///< Contains list of all valid directories that get extracted from a package archive
+/// Contains list of all valid directories that get extracted from a package archive
 const std::unordered_set<wxString> PCM_PACKAGE_DIRECTORIES( {
         "plugins",
         "footprints",
@@ -46,14 +46,15 @@ const std::unordered_set<wxString> PCM_PACKAGE_DIRECTORIES( {
         "resources",
         "colors",
         "templates",
-        "scripts"
+        "scripts",
+        "design_blocks"
 } );
 
 
-///< Package states
-///< Package is available if it is not installed and there is a compatible version
-///< Package is unavailable if it is not installed and there are no compatible versions
-///< Pending states are intermediary when (un)installation is scheduled but not yet performed
+/// Package states
+/// Package is available if it is not installed and there is a compatible version
+/// Package is unavailable if it is not installed and there are no compatible versions
+/// Pending states are intermediary when (un)installation is scheduled but not yet performed
 enum PCM_PACKAGE_STATE
 {
     PPS_AVAILABLE = 0,
@@ -66,7 +67,7 @@ enum PCM_PACKAGE_STATE
 };
 
 
-///< Package actions
+/// Package actions
 enum PCM_PACKAGE_ACTION
 {
     PPA_INSTALL = 0,
@@ -97,9 +98,9 @@ class DIALOG_PCM;
  *
  * JSON schema file is expected to be in $KICAD_DATA/schemas directory
  *
- * Installed packages are stored in <user_settings>/installed_packages.json
+ * Installed packages are stored in \<user_settings\>/installed_packages.json
  * If that file is missing PCM will try to reconstruct it from existing
- * directory structure inside $KICADX_3RD_PARTY but package descriptions
+ * directory structure inside \$KICADX_3RD_PARTY but package descriptions
  * and other metadata will be lost.
  */
 class PLUGIN_CONTENT_MANAGER
@@ -111,7 +112,7 @@ public:
     /**
      * @brief Saves metadata of installed packages to disk
      *
-     * Path is <user settings>/installed_packages.json
+     * Path is \<user settings\>/installed_packages.json
      */
     void SaveInstalledPackages();
 
@@ -174,6 +175,7 @@ public:
      * @param aRepositoryId id of the repository
      */
     void DiscardRepositoryCache( const wxString& aRepositoryId );
+    void DiscardAllRepositoryCaches();
 
     /**
      * @brief Mark package as installed
@@ -243,7 +245,7 @@ public:
      */
     const wxString& GetInstalledPackageVersion( const wxString& aPackageId ) const;
 
-    ///< Returns current 3rd party directory path
+    /// Returns current 3rd party directory path
     const wxString& Get3rdPartyPath() const { return m_3rdparty_path; };
 
     /**
@@ -256,11 +258,45 @@ public:
     PCM_PACKAGE_STATE GetPackageState( const wxString& aRepositoryId, const wxString& aPackageId );
 
     /**
+     * @brief Find the cached repository that publishes a given package
+     *
+     * A recorded repository id is a hash of the repository url, so it matches nothing once
+     * that url is edited, and it is empty for packages installed from a local file.
+     *
+     * Only repositories present in aCache are considered; the caller decides what to fetch.
+     * Several publishers that the recorded name does not settle give an empty result rather
+     * than a guess, so a package is never reassigned to a source the user did not pick.
+     *
+     * @param aPackageId package id to look for
+     * @param aRecordedName name the source repository gave itself at install time
+     * @param aRepositoryList configured repositories as (id, name, url) tuples
+     * @param aCache repositories cached so far
+     * @return id of the publishing repository, empty string if there is no unambiguous one
+     */
+    static wxString ResolveRepositoryId( const wxString& aPackageId, const wxString& aRecordedName,
+                                         const STRING_TUPLE_LIST& aRepositoryList,
+                                         const std::unordered_map<wxString, PCM_REPOSITORY>& aCache );
+
+    /**
+     * @brief Repair the repository id of every installed package
+     *
+     * Fetches configured repositories as needed and rewrites the recorded repository of
+     * each installed package to the one that currently publishes it. Also refreshes the
+     * installed package metadata of every repository this fetches.
+     */
+    void ResolveInstalledPackageRepositories();
+
+    /**
+     * @brief Returns true if the selected package version requires SWIG
+     */
+    static bool UsesSWIGRuntime( const PCM_PACKAGE& aPackage, const wxString& aVersion );
+
+    /**
      * @brief Returns pinned status of a package
      *
      * @param aPackageId package id
-     * @return true if package is installed and is pinned
-     * @return false if package is not installed or not pinned
+     * @retval true if package is installed and is pinned
+     * @retval false if package is not installed or not pinned
      */
     bool IsPackagePinned( const wxString& aPackageId ) const;
 
@@ -326,9 +362,9 @@ public:
      * @brief Get the icon bitmaps for installed packages
      *
      * Icons for installed packages are taken from package extracted files in
-     * $KICADX_3RD_PARTY/resources/<packageid> directories
+     * \$KICADX_3RD_PARTY/resources/\<packageid\> directories
      *
-     * @return map of package id -> bitmap
+     * @return map of package id -\> bitmap
      */
     std::unordered_map<wxString, wxBitmap> GetInstalledPackageBitmaps();
 
@@ -371,7 +407,7 @@ public:
     void ShowApiEnablePromptIfNeeded();
 
 private:
-    ///< Default download limit of 10 Mb to not use too much memory
+    /// Default download limit of 10 Mb to not use too much memory
     static constexpr size_t DEFAULT_DOWNLOAD_MEM_LIMIT = 10 * 1024 * 1024;
 
     /**
@@ -381,11 +417,20 @@ private:
      * @param aHash optional sha256 hash
      * @param aPackages resulting packages metadata list
      * @param aReporter progress dialog to use for download
+     * @param aSchemaVersion
      * @return true if packages were successfully downloaded, verified and parsed
      */
     bool fetchPackages( const wxString& aUrl, const std::optional<wxString>& aHash,
                         std::vector<PCM_PACKAGE>& aPackages, PROGRESS_REPORTER* aReporter,
                         int aSchemaVersion = 1 );
+
+    /**
+     * @brief Find a configured repository by id
+     *
+     * @param aRepositoryId id of the repository
+     * @return iterator into the repository list, end() if the id is not configured
+     */
+    STRING_TUPLE_LIST::const_iterator findRepository( const wxString& aRepositoryId ) const;
 
     /**
      * @brief Get the cached repository metadata
@@ -394,6 +439,14 @@ private:
      * @return const PCM_REPOSITORY&
      */
     const PCM_REPOSITORY& getCachedRepository( const wxString& aRepositoryId ) const;
+
+    /**
+     * @brief Repair the repository id of a single installed package
+     *
+     * @param aEntry installation entry to repair in place
+     * @return true if the entry now names a cached repository that publishes the package
+     */
+    bool resolveInstalledPackageRepository( PCM_INSTALLATION_ENTRY& aEntry );
 
     /**
      * @brief Updates metadata of installed packages from freshly fetched repo
@@ -407,7 +460,7 @@ private:
      */
     void updateInstalledPackagesMetadata( const wxString& aRepositoryId );
 
-    ///< Returns current UTC timestamp
+    /// Returns current UTC timestamp
     time_t getCurrentTimestamp() const;
 
     DIALOG_PCM*                                  m_dialog;
@@ -417,6 +470,7 @@ private:
     wxString                                     m_cache_path;
     std::unordered_map<wxString, PCM_REPOSITORY> m_repository_cache;
     STRING_TUPLE_LIST                            m_repository_list; // (id, name, url) tuples
+
     // Using sorted map to keep order of entries in installed list stable
     std::map<wxString, PCM_INSTALLATION_ENTRY> m_installed;
     const static std::tuple<int, int, int>     m_kicad_version;

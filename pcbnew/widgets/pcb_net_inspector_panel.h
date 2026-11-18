@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -318,6 +318,7 @@ private:
     bool m_showZeroPadNets = false;
     bool m_showUnconnectedNets = false;
     bool m_groupByNetclass = false;
+    bool m_groupByNetChain = false;
     bool m_groupByConstraint = false;
     bool m_showTimeDomainDetails = false;
 
@@ -361,12 +362,15 @@ private:
     enum
     {
         COLUMN_NAME = 0,
+        COLUMN_NET_CHAIN,
         COLUMN_NETCLASS,
         COLUMN_TOTAL_LENGTH,
+        COLUMN_NET_CHAIN_LENGTH,
         COLUMN_VIA_COUNT,
         COLUMN_VIA_LENGTH,
         COLUMN_BOARD_LENGTH,
         COLUMN_PAD_DIE_LENGTH,
+        COLUMN_UNROUTED_LENGTH,
         COLUMN_PAD_COUNT,
         COLUMN_LAST_STATIC_COL = COLUMN_PAD_COUNT
     };
@@ -380,6 +384,7 @@ private:
         ID_ADD_GROUP,
         ID_GROUP_BY_CONSTRAINT,
         ID_GROUP_BY_NETCLASS,
+        ID_GROUP_BY_NET_CHAIN,
         ID_FILTER_BY_NET_NAME,
         ID_FILTER_BY_NETCLASS,
         ID_REMOVE_SELECTED_GROUP,

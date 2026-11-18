@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -62,11 +58,17 @@ class PANEL_EMBEDDED_FILES : public PANEL_EMBEDDED_FILES_BASE
 {
 public:
     PANEL_EMBEDDED_FILES( wxWindow* aParent, EMBEDDED_FILES* aFiles, int aFlags = 0,
-                          std::vector<const EMBEDDED_FILES*> aInheritedFiles = {} );
+                          const std::vector<EMBEDDED_FILES*>& aInheritedFiles = {} );
     ~PANEL_EMBEDDED_FILES() override;
 
     bool TransferDataFromWindow() override;
     bool TransferDataToWindow() override;
+
+    bool CommitPendingChanges()
+    {
+        return m_files_grid->CommitPendingChanges();
+    }
+
     bool GetEmbedFonts() const { return m_cbEmbedFonts->GetValue(); }
 
     EMBEDDED_FILES* GetLocalFiles() { return m_localFiles; }
@@ -80,8 +82,8 @@ protected:
     void onExportFiles( wxCommandEvent& event ) override;
 
 private:
-    EMBEDDED_FILES* m_files;
-    EMBEDDED_FILES* m_localFiles;
-    std::vector<const EMBEDDED_FILES*> m_inheritedFiles;
-    std::set<wxString>                 m_inheritedFileNames;
+    EMBEDDED_FILES*              m_files;
+    EMBEDDED_FILES*              m_localFiles;
+    std::vector<EMBEDDED_FILES*> m_inheritedFiles;
+    std::set<wxString>           m_inheritedFileNames;
 };

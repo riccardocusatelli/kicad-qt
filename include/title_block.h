@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef TITLE_BLOCK_H
@@ -28,6 +24,7 @@
 
 #include <wx/string.h>
 #include <wx/arrstr.h>
+#include <common.h>
 #include <ki_exception.h>
 
 class OUTPUTFORMATTER;
@@ -116,7 +113,7 @@ public:
     }
 
     static void GetContextualTextVars( wxArrayString* aVars );
-    bool TextVarResolver( wxString* aToken, const PROJECT* aProject, int aFlags = 0 ) const;
+    bool TextVarResolver( wxString* aToken, const PROJECT* aProject, RESOLUTION_CONTEXT aContext ) const;
 
     /**
      * Output the object to \a aFormatter in s-expression form.
@@ -129,6 +126,8 @@ public:
     static wxString GetCurrentDate();
     static wxString GetCurrentTimeHHMMSS();
     static wxString GetCurrentTimeLocale();
+
+    wxArrayString GetStrings() const { return m_tbTexts; }
 
 private:
     wxArrayString m_tbTexts;

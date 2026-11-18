@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <io/altium/altium_project_variants.h>
@@ -27,8 +23,25 @@
 #include <boost/uuid/string_generator.hpp>
 #include <boost/uuid/uuid_io.hpp>
 
+#include <project.h>
+#include <set>
 #include <wx/fileconf.h>
+#include <wx/filename.h>
 #include <wx/log.h>
+
+
+/**
+ * wxFileConfig resolves a relative local filename against the user's home directory rather than
+ * the working directory, and reports nothing when the result does not exist, so a .PrjPcb named
+ * relatively on a command line would parse as an empty file.
+ */
+static wxString absoluteProjectPath( const wxString& aPrjPcbPath )
+{
+    wxFileName fn( aPrjPcbPath );
+    fn.MakeAbsolute();
+
+    return fn.GetFullPath();
+}
 
 
 KIID AltiumUniqueIdToKiid( const wxString& aUniqueId )
@@ -45,11 +58,17 @@ KIID AltiumUniqueIdToKiid( const wxString& aUniqueId )
 }
 
 
-static ALTIUM_VARIANT_ENTRY ParseVariationString( const wxString& aValue )
+ALTIUM_VARIANT_ENTRY ParseVariationString( const wxString& aValue )
 {
     ALTIUM_VARIANT_ENTRY entry;
 
-    for( const wxString& token : wxSplit( aValue, '|' ) )
+    // AlternatePart is the last named field on the line; everything after it belongs to the
+    // alternate part definition rather than to the component itself
+    bool inAlternatePart = false;
+
+    // UniqueId targets are backslash-delimited paths, so wxSplit's default '\' escape would
+    // merge the field that follows one ending in a separator
+    for( const wxString& token : wxSplit( aValue, '|', '\0' ) )
     {
         int eqPos = token.Find( '=' );
 
@@ -59,7 +78,20 @@ static ALTIUM_VARIANT_ENTRY ParseVariationString( const wxString& aValue )
         wxString key = token.Left( eqPos ).Trim().Trim( false );
         wxString val = token.Mid( eqPos + 1 ).Trim().Trim( false );
 
-        if( key.CmpNoCase( wxS( "Designator" ) ) == 0 )
+        if( key.CmpNoCase( wxS( "AlternatePart" ) ) == 0 )
+        {
+            inAlternatePart = true;
+
+            // Typically empty for Kind=1 and a library reference for Kind=0
+            if( !val.empty() )
+                entry.alternateFields[wxS( "LibReference" )] = val;
+        }
+        else if( inAlternatePart )
+        {
+            if( !val.empty() )
+                entry.alternateFields[key] = val;
+        }
+        else if( key.CmpNoCase( wxS( "Designator" ) ) == 0 )
         {
             entry.designator = val;
         }
@@ -80,49 +112,6 @@ static ALTIUM_VARIANT_ENTRY ParseVariationString( const wxString& aValue )
             val.ToLong( &k );
             entry.kind = static_cast<int>( k );
         }
-        else if( key.CmpNoCase( wxS( "AlternatePart" ) ) == 0 )
-        {
-            if( val.empty() )
-                continue;
-
-            // AlternatePart contains sub-fields in the same pipe-delimited format, but since
-            // it appears at the end of the line, the remaining tokens are its sub-fields.
-            // We've already split on '|', so we just keep accumulating from here.
-            // However, wxSplit already split everything. The AlternatePart sub-fields are the
-            // remaining tokens after this one. We handle this below after the loop.
-        }
-    }
-
-    // Parse AlternatePart sub-fields. In the raw line, AlternatePart= is followed by
-    // pipe-separated key=value pairs that are part of the alternate part definition.
-    // Since we already split on '|', find the AlternatePart token and treat everything
-    // after it as sub-fields.
-    bool inAlternatePart = false;
-
-    for( const wxString& token : wxSplit( aValue, '|' ) )
-    {
-        int eqPos = token.Find( '=' );
-
-        if( eqPos == wxNOT_FOUND )
-            continue;
-
-        wxString key = token.Left( eqPos ).Trim().Trim( false );
-        wxString val = token.Mid( eqPos + 1 ).Trim().Trim( false );
-
-        if( key.CmpNoCase( wxS( "AlternatePart" ) ) == 0 )
-        {
-            inAlternatePart = true;
-
-            // The value after AlternatePart= might itself be the first sub-field value
-            // In practice it's typically empty for Kind=1, or a lib reference for Kind=0
-            if( !val.empty() )
-                entry.alternateFields[wxS( "LibReference" )] = val;
-
-            continue;
-        }
-
-        if( inAlternatePart && !val.empty() )
-            entry.alternateFields[key] = val;
     }
 
     return entry;
@@ -133,7 +122,7 @@ std::map<wxString, wxString> ParseAltiumProjectParameters( const wxString& aPrjP
 {
     std::map<wxString, wxString> parameters;
 
-    wxFileConfig config( wxEmptyString, wxEmptyString, wxEmptyString, aPrjPcbPath,
+    wxFileConfig config( wxEmptyString, wxEmptyString, wxEmptyString, absoluteProjectPath( aPrjPcbPath ),
                          wxCONFIG_USE_NO_ESCAPE_CHARACTERS );
 
     wxString groupname;
@@ -172,11 +161,64 @@ std::map<wxString, wxString> ParseAltiumProjectParameters( const wxString& aPrjP
 }
 
 
+bool AltiumPowerPortNamesTakePriority( const wxString& aPrjPcbPath )
+{
+    wxFileConfig config( wxEmptyString, wxEmptyString, wxEmptyString, absoluteProjectPath( aPrjPcbPath ),
+                         wxCONFIG_USE_NO_ESCAPE_CHARACTERS );
+
+    return config.ReadLong( wxS( "Design/PowerPortNamesTakePriority" ), 0 ) != 0;
+}
+
+
+void ApplyAltiumProjectParametersToProject( PROJECT* aProject,
+                                            const std::map<wxString, wxString>& aParameters )
+{
+    if( !aProject )
+        return;
+
+    // Names KiCad resolves contextually (board fields, title block, special strings). Importing
+    // them as project variables would shadow nothing useful and could surprise the user, so they
+    // are left to native resolution.
+    static const std::set<wxString> reserved = {
+        wxS( "LAYER" ),         wxS( "FILENAME" ),      wxS( "FILEPATH" ),
+        wxS( "PROJECTNAME" ),   wxS( "VARIANT" ),       wxS( "VARIANT_DESC" ),
+        wxS( "ISSUE_DATE" ),    wxS( "CURRENT_DATE" ),  wxS( "CURRENT_TIME_LOCALE" ),
+        wxS( "CURRENT_TIME_HH_MM_SS" ), wxS( "REVISION" ), wxS( "TITLE" ),
+        wxS( "COMPANY" ),       wxS( "COMMENT1" ),      wxS( "COMMENT2" ),
+        wxS( "COMMENT3" ),      wxS( "COMMENT4" ),      wxS( "COMMENT5" ),
+        wxS( "COMMENT6" ),      wxS( "COMMENT7" ),      wxS( "COMMENT8" ),
+        wxS( "COMMENT9" ),      wxS( "VCSHASH" ),       wxS( "VCSSHORTHASH" ),
+        wxS( "KICAD_VERSION" ), wxS( "PAPER" ),         wxS( "SHEETNAME" ),
+        wxS( "SHEETPATH" ),     wxS( "DRC_WARNING" ),   wxS( "DRC_ERROR" ),
+        wxS( "ERC_WARNING" ),   wxS( "ERC_ERROR" )
+    };
+
+    std::map<wxString, wxString>& textVars = aProject->GetTextVars();
+    bool                          added = false;
+
+    for( const auto& [name, value] : aParameters )
+    {
+        if( reserved.count( name ) )
+            continue;
+
+        // Don't clobber a variable the user (or a prior import step) already set.
+        if( textVars.count( name ) )
+            continue;
+
+        textVars[name] = value;
+        added = true;
+    }
+
+    if( added )
+        aProject->IncrementTextVarsTicker();
+}
+
+
 std::vector<ALTIUM_PROJECT_VARIANT> ParseAltiumProjectVariants( const wxString& aPrjPcbPath )
 {
     std::vector<ALTIUM_PROJECT_VARIANT> variants;
 
-    wxFileConfig config( wxEmptyString, wxEmptyString, wxEmptyString, aPrjPcbPath,
+    wxFileConfig config( wxEmptyString, wxEmptyString, wxEmptyString, absoluteProjectPath( aPrjPcbPath ),
                          wxCONFIG_USE_NO_ESCAPE_CHARACTERS );
 
     wxString groupname;

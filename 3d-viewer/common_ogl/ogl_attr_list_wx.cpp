@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -32,7 +28,6 @@
 #include <wx/debug.h>
 #include <core/arraydim.h>
 #include <core/ki_assert.h>
-#include <gal/hidpi_gl_canvas.h>
 
 
 KIGL_ATTRIBUTES OGL_ATT_LIST::GetAttributesList( ANTIALIASING_MODE aAntiAliasingMode,
@@ -40,9 +35,7 @@ KIGL_ATTRIBUTES OGL_ATT_LIST::GetAttributesList( ANTIALIASING_MODE aAntiAliasing
 {
     KI_ASSERT( aAntiAliasingMode <= ANTIALIASING_MODE::AA_8X );
 
-    bool swapCopyAdded = false;
-
-    auto makeAttribs = [aAlpha, &swapCopyAdded]( int aSamplers, bool aSwapCopy = false )
+    auto makeAttribs = [aAlpha]( int aSamplers )
     {
         wxGLAttributes dispAttrs;
 
@@ -52,12 +45,8 @@ KIGL_ATTRIBUTES OGL_ATT_LIST::GetAttributesList( ANTIALIASING_MODE aAntiAliasing
                 .Stencil( 8 )
                 .Samplers( aSamplers )
                 .SampleBuffers( aSamplers >= 0 ? 1 : -1 )
-                .MinRGBA( 8, 8, 8, aAlpha ? 8 : -1 );
-
-        if( aSwapCopy )
-            swapCopyAdded = HIDPI_GL_CANVAS::AddSwapCopyAttributes( dispAttrs );
-
-        dispAttrs.EndList();
+                .MinRGBA( 8, 8, 8, aAlpha ? 8 : -1 )
+                .EndList();
 
         return dispAttrs;
     };
@@ -80,11 +69,6 @@ KIGL_ATTRIBUTES OGL_ATT_LIST::GetAttributesList( ANTIALIASING_MODE aAntiAliasing
             }
         }
     }
-
-    wxGLAttributes copyAttribs = makeAttribs( maxSamples, true );
-
-    if( swapCopyAdded && wxGLCanvas::IsDisplaySupported( copyAttribs ) )
-        return copyAttribs;
 
     return makeAttribs( maxSamples );
 }

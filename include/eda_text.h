@@ -15,15 +15,10 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef EDA_TEXT_H_
-#define EDA_TEXT_H_
+#pragma once
 
 #include <memory>
 #include <mutex>
@@ -33,11 +28,14 @@
 #include <font/glyph.h>
 #include <font/text_attributes.h>
 #include <api/serializable.h>
+#include <text_var_dependency.h>
+#include <common.h>
 
 
 class OUTPUTFORMATTER;
 class SHAPE_COMPOUND;
 class SHAPE_POLY_SET;
+struct EDA_IU_SCALE;
 
 namespace kiapi::common::types
 {
@@ -106,8 +104,11 @@ public:
     void Serialize( google::protobuf::Any &aContainer ) const override;
     bool Deserialize( const google::protobuf::Any &aContainer ) override;
 
-    void Serialize( kiapi::common::types::Text& aOutput ) const;
-    bool Deserialize( const kiapi::common::types::Text& aInput );
+    void Serialize( google::protobuf::Any &aContainer, const EDA_IU_SCALE& aScale ) const;
+    bool Deserialize( const google::protobuf::Any &aContainer, const EDA_IU_SCALE& aScale );
+
+    void Serialize( kiapi::common::types::Text& aOutput, const EDA_IU_SCALE& aScale ) const;
+    bool Deserialize( const kiapi::common::types::Text& aInput, const EDA_IU_SCALE& aScale );
 
     /**
      * Return the string associated with the text object.
@@ -119,14 +120,16 @@ public:
     /**
      * Return the string actually shown after processing of the base text.
      *
-     * @param aAllowExtraText is true to allow adding more text than the initial expanded text,
-     * for intance a title, a prefix for texts in display functions.
-     * False to disable any added text (for instance when writing the shown text in netlists).
-     * @param aDepth is used to prevent infinite recursions and loops when expanding
-     * text variables.
+     * @param aContext controls some features of the expansion, such as whether or not field names
+     *                 are included, or whether or not escaped literal variable references should
+     *                 be prefixed with a '\'.
+     * @param aDepth is used to prevent infinite recursions and loops when expanding text variables.
      */
-    virtual wxString GetShownText( bool aAllowExtraText, int aDepth = 0 ) const
+    virtual wxString GetShownText( RESOLUTION_CONTEXT aContext, int aDepth = 0 ) const
     {
+        if( aContext == RAW_VALUE )
+            return m_text;
+
         return m_shown_text;
     }
 
@@ -134,6 +137,15 @@ public:
      * Indicates the ShownText has text var references which need to be processed.
      */
     bool HasTextVars() const { return m_shown_text_has_text_var_refs; }
+
+    /**
+     * Return the set of `${...}` references extracted from the source text.
+     *
+     * The result is cached lazily and invalidated on SetText/CopyText/Replace. Consumers
+     * (the reactive dependency tracker) may call this at high frequency on items that
+     * rarely change; the cache avoids repeat lexing.
+     */
+    const std::vector<TEXT_VAR_REF_KEY>& GetTextVarReferences() const;
 
     virtual void SetText( const wxString& aText );
 
@@ -143,8 +155,8 @@ public:
      * The TextThickness is that set by the user.  The EffectiveTextPenWidth also factors
      * in bold text and thickness clamping.
      */
-    void SetTextThickness( int aWidth );
-    int GetTextThickness() const                { return m_attributes.m_StrokeWidth; };
+    virtual void SetTextThickness( int aWidth );
+    virtual int  GetTextThickness() const { return m_attributes.m_StrokeWidth; };
 
     int GetTextThicknessProperty() const
     {
@@ -162,15 +174,15 @@ public:
      */
     int GetEffectiveTextPenWidth( int aDefaultPenWidth = 0 ) const;
 
-    virtual void SetTextAngle( const EDA_ANGLE& aAngle );
-    const EDA_ANGLE& GetTextAngle() const       { return m_attributes.m_Angle; }
+    virtual void      SetTextAngle( const EDA_ANGLE& aAngle );
+    virtual EDA_ANGLE GetTextAngle() const { return m_attributes.m_Angle.GetAngle(); }
 
     // For property system:
     void SetTextAngleDegrees( double aOrientation )
     {
         SetTextAngle( EDA_ANGLE( aOrientation, DEGREES_T ) );
     }
-    double GetTextAngleDegrees() const          { return m_attributes.m_Angle.AsDegrees(); }
+    double GetTextAngleDegrees() const          { return m_attributes.m_Angle.GetAngle().AsDegrees(); }
 
     /**
      * Set the text to be italic - this will also update the font if needed.
@@ -201,6 +213,14 @@ public:
      */
     void SetBoldFlag( bool aBold );
     bool IsBold() const                         { return m_attributes.m_Bold; }
+
+    /**
+     * Migrate a pre-v11 bold stroke text so its stored thickness holds the base (non-bold)
+     * width. Older files baked the bolded pen size into the stroke width; Bold is now a
+     * render-time multiplier, so divide it back out. No-op for auto width, non-bold text, or
+     * outline fonts (where thickness is not the weight mechanism).
+     */
+    void MigrateLegacyBoldStrokeWidth();
 
     virtual void SetVisible( bool aVisible );
     virtual bool IsVisible() const              { return m_visible; }
@@ -246,7 +266,7 @@ public:
 
     void CopyText( const EDA_TEXT& aSrc );
 
-    void SetAttributes( const TEXT_ATTRIBUTES& aTextAttrs ) { m_attributes = aTextAttrs; }
+    void SetAttributes( const TEXT_ATTRIBUTES& aTextAttrs );
     const TEXT_ATTRIBUTES& GetAttributes() const { return m_attributes; }
 
     /**
@@ -266,6 +286,7 @@ public:
     KIFONT::FONT* GetFont() const               { return m_attributes.m_Font; }
 
     void SetUnresolvedFontName( const wxString& aFontName ) { m_unresolvedFontName = aFontName; }
+    wxString GetUnresolvedFontName() const { return m_unresolvedFontName; }
     bool ResolveFont( const std::vector<wxString>* aEmbeddedFonts );
 
     wxString GetFontName() const;
@@ -276,27 +297,27 @@ public:
     void SetLineSpacing( double aLineSpacing );
     double GetLineSpacing() const               { return m_attributes.m_LineSpacing; }
 
-    void SetTextSize( VECTOR2I aNewSize, bool aEnforceMinTextSize = true );
-    VECTOR2I GetTextSize() const                { return m_attributes.m_Size; }
+    virtual void     SetTextSize( VECTOR2I aNewSize, bool aEnforceMinTextSize = true );
+    virtual VECTOR2I GetTextSize() const { return m_attributes.m_Size; }
 
-    void SetTextWidth( int aWidth );
-    int GetTextWidth() const                    { return m_attributes.m_Size.x; }
+    virtual void SetTextWidth( int aWidth );
+    virtual int  GetTextWidth() const { return GetTextSize().x; }
 
-    void SetTextHeight( int aHeight );
-    int GetTextHeight() const                   { return m_attributes.m_Size.y; }
+    virtual void SetTextHeight( int aHeight );
+    virtual int  GetTextHeight() const { return GetTextSize().y; }
 
     void SetTextColor( const COLOR4D& aColor )  { m_attributes.m_Color = aColor; }
     COLOR4D GetTextColor() const                { return m_attributes.m_Color; }
 
-    void SetTextPos( const VECTOR2I& aPoint );
-    const VECTOR2I& GetTextPos() const          { return m_pos; }
+    virtual void     SetTextPos( const VECTOR2I& aPoint );
+    virtual VECTOR2I GetTextPos() const { return m_pos; }
 
-    void SetTextX( int aX );
-    void SetTextY( int aY );
+    virtual void SetTextX( int aX );
+    virtual void SetTextY( int aY );
 
     inline void SetActiveUrl( const wxString& aUrl ) const { m_activeUrl = aUrl; }
 
-    void Offset( const VECTOR2I& aOffset );
+    virtual void Offset( const VECTOR2I& aOffset );
 
     void Empty();
 
@@ -306,17 +327,18 @@ public:
     /**
      * Print this text object to the device context \a aDC.
      *
-     * @param aDC the current Device Context.
+     * @param aSettings are the settings used to render the text.
      * @param aOffset draw offset (usually (0,0)).
      * @param aColor text color.
      */
     void Print( const RENDER_SETTINGS* aSettings, const VECTOR2I& aOffset, const COLOR4D& aColor );
 
     /**
-     * build a list of segments (SHAPE_SEGMENT) to describe a text shape.
+     * Build a list of segments (SHAPE_SEGMENT) to describe a text shape.
+     *
      * @param aTriangulate: true to build also the triangulation of each shape
-     * @param aUseTextRotation: true to use the actual text draw rotation.
-     * false to build a list of shape for a not rotated text ("native" shapes).
+     * @param aBBox is the bounding box that contains the text.
+     * @param aAngle is the angle of the text.
      */
     std::shared_ptr<SHAPE_COMPOUND> GetEffectiveTextShape( bool aTriangulate = true,
                                                            const BOX2I& aBBox = BOX2I(),
@@ -345,7 +367,9 @@ public:
      * Useful in multiline texts to calculate the full text or a line area (for zones filling,
      * locate functions....)
      *
+     * @param aSettings are the settings used to render the text.
      * @param aLine The line of text to consider.  Pass -1 for all lines.
+     *
      * @return the rect containing the line of text (i.e. the position and the size of one line)
      *         this rectangle is calculated for 0 orient text.
      *         If orientation is not 0 the rect must be rotated to match the physical area
@@ -358,6 +382,8 @@ public:
      * Calculates the distance (pitch) between two lines of text.  This distance includes the
      * interline distance plus room for characters like j, {, and [.  It also used for single
      * line text, to calculate the text bounding box.
+     *
+     * @param aSettings are the settings used to render the text.
      */
     int GetInterline( const RENDER_SETTINGS* aSettings ) const;
 
@@ -370,6 +396,7 @@ public:
      * Populate \a aPositions with the position of each line of a multiline text, according
      * to the vertical justification and the rotation of the whole text.
      *
+     * @param aSettings are the settings used to render the text.
      * @param aPositions is the list to populate by the VECTOR2I positions.
      * @param aLineCount is the number of lines (not recalculated here for efficiency reasons.
      */
@@ -457,6 +484,7 @@ protected:
     /**
      * Print each line of this EDA_TEXT.
      *
+     * @param aSettings are the settings used to render the text.
      * @param aOffset draw offset (usually (0,0)).
      * @param aColor text color.
      * @param aText the single line of text to draw.
@@ -467,18 +495,30 @@ protected:
 
     bool containsURL() const;
 
+    /**
+     * Return true if this text is (or, while a font resolution is still pending, is
+     * named as) a stroke font, as opposed to an outline font.
+     */
+    bool isStrokeFont() const;
+
 protected:
     /**
      * A hyperlink URL.  If empty, this text object is not a hyperlink.
      */
-    wxString m_hyperlink;
+    wxString         m_hyperlink;
 
     mutable wxString m_activeUrl;
 
 private:
     wxString         m_text;
     wxString         m_shown_text;           // Cache of unescaped text for efficient access
-    bool             m_shown_text_has_text_var_refs;
+    bool             m_shown_text_has_text_var_refs = false;
+
+    // Populated eagerly in cacheShownText() so reads from concurrent workers
+    // (connection graph, API server, painters) see immutable storage without a
+    // lock. Extracted from raw m_text (not m_shown_text) so backslash-escaped
+    // ${...} literals do not fabricate dependency edges.
+    std::vector<TEXT_VAR_REF_KEY>                       m_text_var_refs;
 
     std::reference_wrapper<const EDA_IU_SCALE>          m_IuScale;
 
@@ -491,7 +531,7 @@ private:
     };
 
     mutable std::map<int, BBOX_CACHE_ENTRY> m_bbox_cache;
-    mutable std::mutex m_bbox_cacheMutex;
+    mutable std::mutex                      m_bbox_cacheMutex;
 
     TEXT_ATTRIBUTES  m_attributes;
     wxString         m_unresolvedFontName;
@@ -512,5 +552,3 @@ struct std::hash<EDA_TEXT>
                          aText.GetTextPos().y );
     }
 };
-
-#endif   //  EDA_TEXT_H_

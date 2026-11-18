@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <string_utils.h>
@@ -151,7 +147,7 @@ DIALOG_GLOBAL_EDIT_TEXT_AND_GRAPHICS::DIALOG_GLOBAL_EDIT_TEXT_AND_GRAPHICS( PCB_
     m_fontCtrl->RefreshFonts();
 
     m_autoTextThickness->SetIsCheckButton();
-    m_autoTextThickness->SetBitmap( KiBitmapBundle( BITMAPS::edit_cmp_symb_links ) );
+    m_autoTextThickness->SetBitmap( KiBitmapBundle( BITMAPS::link ) );
 
     m_layerFilter->SetBoardFrame( m_parent );
     m_layerFilter->SetLayersHotkeys( false );
@@ -354,11 +350,9 @@ void DIALOG_GLOBAL_EDIT_TEXT_AND_GRAPHICS::onTextSize( wxCommandEvent& aEvent )
     if( m_textWidth.IsIndeterminate() || m_textHeight.IsIndeterminate() )
         return;
 
-    int  size = std::min( m_textWidth.GetValue(), m_textHeight.GetValue() );
-    bool bold = ( m_bold->Get3StateValue() == wxCHK_CHECKED );
+    int size = std::min( m_textWidth.GetValue(), m_textHeight.GetValue() );
 
-    m_thickness.SetValue( bold ? GetPenSizeForBold( size )
-                                : GetPenSizeForNormal( size ) );
+    m_thickness.SetValue( GetPenSizeForNormal( size ) );
 }
 
 

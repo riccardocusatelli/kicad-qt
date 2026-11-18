@@ -16,9 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this package; see the file COPYING.  If not, write to
- * the Free Software Foundation, Inc., 51 Franklin Street - Fifth Floor,
- * Boston, MA 02110-1301, USA.
+ * along with this package.  If not, see <https://www.gnu.org/licenses/>.
  *
  */
 
@@ -74,6 +72,13 @@ enum EXTRA_PRMS_ID
     LOSS_CONDUCTOR_PRM,   // Loss in conductors (dB)
     CUTOFF_FREQUENCY_PRM, // Cutoff frequency for higher order modes
     EPSILON_EFF_PRM,      // Effective dielectric constant
+    DIELECTRIC_MODEL_PRM, // 0 = CONSTANT, 1 = DJORDJEVIC_SARKAR (panel-level selection)
+    EPSILONR_SPEC_FREQ_PRM, // Frequency (Hz) at which EpsilonR/TanD are specified
+    SOLDERMASK_PRESENT_PRM,    // 0 = no mask correction, 1 = apply Wan-Hoorfar 2000 cover.
+    SOLDERMASK_THICKNESS_PRM,  // Cured mask thickness in metres.  Typical LPI is 15 - 30 um.
+    SOLDERMASK_EPSILONR_PRM,   // Mask relative permittivity.  Typical LPI 3.3 - 3.8.
+    SOLDERMASK_TAND_PRM,       // Mask loss tangent.  Typical LPI 0.025 - 0.035.
+    SOLDERMASK_FILLS_GAPS_PRM, // CPW / CBCPW only.  1 = mask fills the coplanar slots.
     EXTRA_PRMS_COUNT,
 };
 
@@ -84,19 +89,47 @@ public:
     virtual ~TRANSLINE();
 
     const char* m_Name;
+
+    /**
+     * Set a named property to the given value, access through the application.
+     */
     void        setProperty( enum PRMS_ID aPrmId, double aValue );
+
+    /**
+     * Return a property value.
+     */
     double      getProperty( enum PRMS_ID aPrmId );
 
+    /// Setter for panel-level parameters that are shared across every calculator type.
+    void SetExtraParameter( enum EXTRA_PRMS_ID aPrmId, double aValue ) { m_parameters[aPrmId] = aValue; }
 
+    /**
+     *  Get all properties from the UI. Computes some extra ones.
+     */
     virtual void getProperties();
+
+    /**
+     *  Check the input parameters (ie: negative length).
+     *
+     *  Does not check for incompatibility between values as this depends on the line shape.
+     */
     void checkProperties();
-    void setResult( int, double, const char* );
-    void setResult( int, const char* );
+
+    /**
+     * Put the text into the given result line.
+     */
+    void setResult( int aLine, double aValue, const char* aText );
+    void setResult( int aLine, const char* aText );
+
+    /**
+     * Return true if the param @a aPrmId is selected.
+     *
+     * Has meaning only for parameters that have a radio button.
+     */
     bool isSelected( enum PRMS_ID aPrmId );
 
     void         Init();
     virtual void synthesize();
-    virtual void calc() {}
 
     /**
      * Computation for analysis
@@ -105,22 +138,22 @@ public:
 
     /**
      * Computation for synthesis
-     **/
+     */
     virtual void calcSynthesize() {}
 
     /**
-     * Shows synthesis results and checks for errors / warnings.
-     **/
+     * Show synthesis results and checks for errors / warnings.
+     */
     virtual void showAnalyze() {}
 
     /**
-     * Shows analysis results and checks for errors / warnings.
-     **/
+     * Show analysis results and checks for errors / warnings.
+     */
     virtual void showSynthesize() {}
 
     /**
-     * Shows results
-     **/
+     * Show results.
+     */
     virtual void   show_results() {}
 
     void           analyze();
@@ -132,16 +165,39 @@ public:
 protected:
     double m_parameters[EXTRA_PRMS_COUNT];
 
-    bool   minimizeZ0Error1D( double* );
+    /**
+     * Calculate skin depth.
+     *
+     * \f$ \frac{1}{\sqrt{ \pi \cdot f \cdot \mu \cdot \sigma }} \f$
+     */
     double skin_depth();
-    void   ellipke( double, double&, double& );
-    double ellipk( double );
+
+    /**
+     * Set an error / warning level for a given parameter.
+     *
+     * @see TRANSLINE_OK
+     * @see TRANSLINE_WARNING
+     * @see TRANSLINE_ERROR
+     *
+     * @param aP parameter
+     * @param aErrorLevel Error level
+     */
     void   setErrorLevel( PRMS_ID, char );
 
-    /// Calculates the unit propagation delay (in ps/cm) for the given effective dielectric constant
-    static double calcUnitPropagationDelay( double epsilonEff );
+    /**
+     * Push the mask-eligible subset of soldermask parameters (PRESENT, THICKNESS, EPSILONR,
+     * TAND) into the supplied calculator.  Callers that need the CPW-only FILLS_GAPS flag
+     * pass aIncludeFillsGaps = true.  Mask-ineligible calculators (stripline, coax,
+     * waveguide, twisted pair) do not override GetSoldermaskFillingG so these writes are
+     * harmless no-ops on those backends; this helper is purely a deduplication aid for the
+     * four eligible subclasses (microstrip, c_microstrip, coplanar).
+     */
+    void pushSoldermaskParameters( TRANSLINE_CALCULATION_BASE& aCalc,
+                                   bool aIncludeFillsGaps = false ) const;
 
-    /// Converts a TRANSLINE_PARAMETER status to a PCB Calculation status
+    /**
+     * Convert a #TRANSLINE_STATUS status to a PCB Calculation status.
+     */
     static char convertParameterStatusCode( TRANSLINE_STATUS aStatus );
 };
 

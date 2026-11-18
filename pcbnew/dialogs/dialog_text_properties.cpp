@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <dialogs/pcb_text_syntax_help.h>
@@ -28,6 +24,7 @@
 #include <wx/valnum.h>
 #include <wx/hyperlink.h>
 
+#include <bitmaps.h>
 #include <widgets/bitmap_button.h>
 #include <widgets/font_choice.h>
 #include <dialogs/html_message_box.h>
@@ -175,6 +172,8 @@ DIALOG_TEXT_PROPERTIES::DIALOG_TEXT_PROPERTIES( PCB_BASE_EDIT_FRAME* aParent, PC
                        m_PositionYCtrl, m_OrientCtrl,    m_sdbSizerOK,         m_sdbSizerCancel };
     }
 
+    m_separator0->SetIsSeparator();
+
     m_bold->SetIsCheckButton();
     m_bold->SetBitmap( KiBitmapBundle( BITMAPS::text_bold ) );
     m_italic->SetIsCheckButton();
@@ -204,7 +203,7 @@ DIALOG_TEXT_PROPERTIES::DIALOG_TEXT_PROPERTIES( PCB_BASE_EDIT_FRAME* aParent, PC
     m_mirrored->SetBitmap( KiBitmapBundle( BITMAPS::text_mirrored ) );
 
     m_autoTextThickness->SetIsCheckButton();
-    m_autoTextThickness->SetBitmap( KiBitmapBundle( BITMAPS::edit_cmp_symb_links ) );
+    m_autoTextThickness->SetBitmap( KiBitmapBundle( BITMAPS::link ) );
 
     SetTitle( title );
     m_hash_key = title;
@@ -333,8 +332,11 @@ bool DIALOG_TEXT_PROPERTIES::TransferDataToWindow()
 
     if( m_item->GetAutoThickness() )
     {
+        // Show the base width (frozen if auto is unchecked); Bold scales it at render time.
+        // Must match EDA_TEXT::SetAutoThickness()'s formula so unchecking auto doesn't
+        // silently change the stored width.
         m_autoTextThickness->Check( m_item->GetAutoThickness() );
-        m_thickness.SetValue( m_item->GetEffectiveTextPenWidth() );
+        m_thickness.SetValue( GetPenSizeForNormal( m_item->GetTextWidth() ) );
         m_thickness.Enable( false );
     }
     else
@@ -381,35 +383,10 @@ bool DIALOG_TEXT_PROPERTIES::TransferDataToWindow()
 
 void DIALOG_TEXT_PROPERTIES::onFontSelected( wxCommandEvent& aEvent )
 {
-    if( KIFONT::FONT::IsStroke( aEvent.GetString() ) )
-    {
-        m_thickness.Show( true );
-        m_autoTextThickness->Show( true );
+    bool stroke = KIFONT::FONT::IsStroke( aEvent.GetString() );
 
-        int textSize = std::min( m_textWidth.GetValue(), m_textHeight.GetValue() );
-        int thickness = m_thickness.GetValue();
-
-        m_bold->Check( abs( thickness - GetPenSizeForBold( textSize ) )
-                       < abs( thickness - GetPenSizeForNormal( textSize ) ) );
-    }
-    else
-    {
-        m_thickness.Show( false );
-        m_autoTextThickness->Show( false );
-    }
-}
-
-
-void DIALOG_TEXT_PROPERTIES::onBoldToggle( wxCommandEvent& aEvent )
-{
-    int textSize = std::min( m_textWidth.GetValue(), m_textHeight.GetValue() );
-
-    if( aEvent.IsChecked() )
-        m_thickness.ChangeValue( GetPenSizeForBold( textSize ) );
-    else
-        m_thickness.ChangeValue( GetPenSizeForNormal( textSize ) );
-
-    aEvent.Skip();
+    m_thickness.Show( stroke );
+    m_autoTextThickness->Show( stroke );
 }
 
 
@@ -433,31 +410,10 @@ void DIALOG_TEXT_PROPERTIES::onValignButton( wxCommandEvent& aEvent )
 }
 
 
-void DIALOG_TEXT_PROPERTIES::onThickness( wxCommandEvent& event )
-{
-    int textSize = std::min( m_textWidth.GetValue(), m_textHeight.GetValue() );
-    int thickness = m_thickness.GetValue();
-
-    m_bold->Check( abs( thickness - GetPenSizeForBold( textSize ) )
-                   < abs( thickness - GetPenSizeForNormal( textSize ) ) );
-}
-
-
 void DIALOG_TEXT_PROPERTIES::onTextSize( wxCommandEvent& aEvent )
 {
     if( m_autoTextThickness->IsChecked() )
-    {
-        int textSize = std::min( m_textWidth.GetValue(), m_textHeight.GetValue() );
-        int thickness;
-
-        // Calculate the "best" thickness from text size and bold option:
-        if( m_bold->IsChecked() )
-            thickness = GetPenSizeForBold( textSize );
-        else
-            thickness = GetPenSizeForNormal( textSize );
-
-        m_thickness.SetValue( thickness );
-    }
+        m_thickness.SetValue( GetPenSizeForNormal( m_textWidth.GetValue() ) );
 }
 
 

@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef __SHAPE_LINE_CHAIN
@@ -153,8 +149,6 @@ public:
         int m_count;
     };
 
-    typedef std::vector<INTERSECTION> INTERSECTIONS;
-
 
     /**
      * Initialize an empty line chain.
@@ -200,6 +194,7 @@ public:
      * @param aClearance minimum distance that does not qualify as a collision.
      * @param aActual an optional pointer to an int to store the actual distance in the event
      *                of a collision.
+     * @param aLocation is the optional location point of the collision.
      * @return true, when a collision has been found
      */
     virtual bool Collide( const VECTOR2I& aP, int aClearance = 0, int* aActual = nullptr,
@@ -215,6 +210,7 @@ public:
      * @param aClearance minimum distance that does not qualify as a collision.
      * @param aActual an optional pointer to an int to store the actual distance in the event
      *                of a collision.
+     * @param aLocation is the optional location point of the collision.
      * @return true, when a collision has been found
      */
     virtual bool Collide( const SEG& aSeg, int aClearance = 0, int* aActual = nullptr,
@@ -226,7 +222,6 @@ public:
      * @param aOther the line chain to test against.
      * @param aPt0 closest point on this line chain (output).
      * @param aPt1 closest point on the other line chain (output).
-     * @param aDistance distance between points (output).
      * @return true, if the operation was successful.
      */
     bool ClosestPoints( const SHAPE_LINE_CHAIN& aOther, VECTOR2I& aPt0, VECTOR2I& aPt1 ) const;
@@ -246,9 +241,8 @@ public:
      * be edge cases, but it is much faster.
      *
      * @param aOther the line chain to test against.
-     * @param aPt0 closest point on this line chain (output).
-     * @param aPt1 closest point on the other line chain (output).
-     * @param aDistance distance between points (output).
+     * @param[out] aPt0 closest point on this line chain.
+     * @param[out] aPt1 closest point on the other line chain.
      * @return true, if the operation was successful.
      */
     bool ClosestSegmentsFast( const SHAPE_LINE_CHAIN& aOther, VECTOR2I& aPt0,
@@ -356,7 +350,7 @@ public:
 
     /**
      * Remove the duplicate points from the line chain.
-    */
+     */
     void RemoveDuplicatePoints();
 
     /**
@@ -630,6 +624,7 @@ public:
      * Search for point \a aP.
      *
      * @param aP is the point to be looked for.
+     * @param aThreshold is the error threshold for the point search.
      * @return the index of the corresponding point in the line chain or negative when not found.
      */
     int Find( const VECTOR2I& aP, int aThreshold = 0 ) const;
@@ -638,6 +633,7 @@ public:
      * Search for segment containing point \a aP.
      *
      * @param aP is the point to be looked for.
+     * @param aThreshold is the error threshold for the point search.
      * @return index of the corresponding segment in the line chain or negative when not found.
      */
     int FindSegment( const VECTOR2I& aP, int aThreshold = 1 ) const;
@@ -673,23 +669,22 @@ public:
      * Find all intersection points between our line chain and the segment \a aSeg.
      *
      * @param aSeg is the segment chain to find intersections with.
-     * @param aIp is the reference to a vector to store found intersections. Intersection points
-     *        are sorted with increasing distances from point aSeg.a.
+     * @param aIp is a reference to a vector to store the unordered set of found intersections.
      * @return the number of intersections found.
      */
-    int Intersect( const SEG& aSeg, INTERSECTIONS& aIp ) const;
+    int Intersect( const SEG& aSeg, std::vector<INTERSECTION>& aIp ) const;
 
     /**
      * Find all intersection points between our line chain and the line chain \a aChain.
      *
      * @param aChain is the line chain to find intersections with.
-     * @param aIp is reference to a vector to store found intersections. Intersection points are
-     *        sorted with increasing path lengths from the starting point of \a aChain.
+     * @param aIp is a reference to a vector to store the unordered set of found intersections.
+     * @param aExcludeColinearAndTouching
+     * @param aChainBBox
      * @return the number of intersections found.
      */
-    int Intersect( const SHAPE_LINE_CHAIN& aChain, INTERSECTIONS& aIp,
-                   bool aExcludeColinearAndTouching = false,
-                   BOX2I* aChainBBox = nullptr ) const;
+    int Intersect( const SHAPE_LINE_CHAIN& aChain, std::vector<INTERSECTION>& aIp,
+                   bool aExcludeColinearAndTouching = false, BOX2I* aChainBBox = nullptr ) const;
 
     /**
      * Compute the walk path length from the beginning of the line chain and the point \a aP
@@ -903,6 +898,9 @@ public:
     virtual size_t GetPointCount() const override { return PointCount(); }
     virtual size_t GetSegmentCount() const override { return SegmentCount(); }
 
+    bool PointInside( const VECTOR2I& aPt, int aAccuracy = 0,
+                      bool aUseBBoxCache = false ) const override;
+
     void TransformToPolygon( SHAPE_POLY_SET& aBuffer, int aError,
                              ERROR_LOC aErrorLoc ) const override;
 
@@ -923,10 +921,10 @@ protected:
      *
      * @param aPtIndex index of the point in the chain in which to split the arc
      * @param aCoincident If true, the end point of the first arc will be coincident with the start
-                          point of the second arc at aPtIndex.
-                          If false, the end point of the first arc will be at aPtIndex-1 and the
-                          start point of the second arc will be at aPtIndex, resulting in a short
-                          straight line segment between aPtIndex-1 and aPtIndex.
+     *                    point of the second arc at aPtIndex.
+     *                    If false, the end point of the first arc will be at aPtIndex-1 and the
+     *                    start point of the second arc will be at aPtIndex, resulting in a short
+     *                    straight line segment between aPtIndex-1 and aPtIndex.
      */
     void splitArc( ssize_t aPtIndex, bool aCoincident = false );
 

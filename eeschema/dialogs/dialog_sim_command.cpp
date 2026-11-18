@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "dialog_sim_command.h"
@@ -33,9 +29,14 @@
 
 #include <wx/tokenzr.h>
 
+#include <algorithm>
 #include <vector>
 #include <utility>
 #include <core/ki_assert.h>
+
+
+// Keywords for the integration methods, in the order of m_optMethod's choices
+static const std::vector<std::string> SIM_METHODS = { "", "trap", "gear" };
 
 
 // Helper function to shorten conditions
@@ -67,7 +68,8 @@ DIALOG_SIM_COMMAND::DIALOG_SIM_COMMAND( SIMULATOR_FRAME* aParent,
         m_simulatorFrame( aParent ),
         m_circuitModel( aCircuitModel ),
         m_settings( aSettings ),
-        m_spiceEmptyValidator( true )
+        m_spiceEmptyValidator( true ),
+        m_iterationLimitValidator( nullptr, wxNUM_VAL_ZERO_AS_BLANK )
 {
     m_simPages->Hide();
 
@@ -126,8 +128,28 @@ DIALOG_SIM_COMMAND::DIALOG_SIM_COMMAND( SIMULATOR_FRAME* aParent,
             m_noiseSrc->Append( item.refName );
     }
 
+    m_simOptionCtrls = { { "reltol", m_optReltol }, { "abstol", m_optAbstol }, { "vntol", m_optVntol },
+                         { "chgtol", m_optChgtol }, { "trtol", m_optTrtol },   { "gmin", m_optGmin },
+                         { "gshunt", m_optGshunt }, { "rshunt", m_optRshunt }, { "itl1", m_optItl1 },
+                         { "itl4", m_optItl4 },     { "temp", m_optTemp },     { "tnom", m_optTnom } };
+
+    // Focus loss rewrites an empty field to the minimum, and only zero shows as blank
+    m_iterationLimitValidator.SetMin( 0 );
+
+    for( const auto& [key, ctrl] : m_simOptionCtrls )
+    {
+        if( key == "itl1" || key == "itl4" )
+            ctrl->SetValidator( m_iterationLimitValidator );
+        else
+            ctrl->SetValidator( m_spiceEmptyValidator );
+    }
+
     if( !dynamic_cast<NGSPICE_SETTINGS*>( aSettings.get() ) )
+    {
         m_compatibilityModeSizer->Show( false );
+        m_notebook1->DeletePage( m_notebook1->FindPage( m_panelSimOptions ) );
+        m_simOptionCtrls.clear();
+    }
 
     int minWidth = GetTextExtent( wxS( "XXX.XXXXXXX" ) ).x;
     m_y1Min->SetMinSize( wxSize( minWidth, -1 ) );
@@ -137,6 +159,7 @@ DIALOG_SIM_COMMAND::DIALOG_SIM_COMMAND( SIMULATOR_FRAME* aParent,
     m_y3Min->SetMinSize( wxSize( minWidth, -1 ) );
     m_y3Max->SetMinSize( wxSize( minWidth, -1 ) );
 
+    m_axisScalesSizer->Show( false );
     m_bSizerY1->Show( false );
     m_bSizerY2->Show( false );
     m_bSizerY3->Show( false );
@@ -166,6 +189,14 @@ bool DIALOG_SIM_COMMAND::TransferDataToWindow()
         default:    KI_FAIL_MSG( wxString::Format( "Unknown NGSPICE_COMPATIBILITY_MODE %d.",
                                                   settings->GetCompatibilityMode() ) );       break;
         }
+
+        auto method = std::find( SIM_METHODS.begin(), SIM_METHODS.end(),
+                                 settings->GetOption( "method" ).Lower().ToStdString() );
+
+        m_optMethod->SetSelection( method == SIM_METHODS.end() ? 0 : (int) ( method - SIM_METHODS.begin() ) );
+
+        for( const auto& [key, ctrl] : m_simOptionCtrls )
+            ctrl->ChangeValue( settings->GetOption( key ) );
     }
 
     return true;
@@ -194,10 +225,27 @@ void DIALOG_SIM_COMMAND::SetPlotSettings( const SIM_TAB* aSimTab )
 {
     if( const SIM_PLOT_TAB* plotTab = dynamic_cast<const SIM_PLOT_TAB*>( aSimTab ) )
     {
+        // Before the axis sizers: showing a sizer shows its children.
+        m_axisScalesSizer->Show( !plotTab->GetLabelY1().IsEmpty() || !plotTab->GetLabelY2().IsEmpty()
+                                 || !plotTab->GetLabelY3().IsEmpty() );
+
+        // The axis name carries its tick prefix, "Current (mA)", which would contradict the unit by the fields
+        auto axisName = []( const wxString& aLabel, const wxString& aUnits )
+        {
+            if( aUnits.IsEmpty() || !aLabel.EndsWith( aUnits + wxS( ")" ) ) || !aLabel.Contains( wxS( " (" ) ) )
+                return aLabel;
+
+            return aLabel.BeforeLast( '(' ).Trim();
+        };
+
+        m_bSizerY1->Show( !plotTab->GetLabelY1().IsEmpty() );
+        m_bSizerY2->Show( !plotTab->GetLabelY2().IsEmpty() );
+        m_bSizerY3->Show( !plotTab->GetLabelY3().IsEmpty() );
+
         if( !plotTab->GetLabelY1().IsEmpty() )
         {
-            m_bSizerY1->Show( true );
-            m_lockY1->SetLabel( wxString::Format( m_lockY1->GetLabel(), plotTab->GetLabelY1() ) );
+            m_lockY1->SetLabel( wxString::Format( m_lockY1->GetLabel(),
+                                                   axisName( plotTab->GetLabelY1(), plotTab->GetUnitsY1() ) ) );
             m_y1Units->SetLabel( plotTab->GetUnitsY1() );
 
             double min = 0.0, max = 0.0;
@@ -213,8 +261,8 @@ void DIALOG_SIM_COMMAND::SetPlotSettings( const SIM_TAB* aSimTab )
 
         if( !plotTab->GetLabelY2().IsEmpty() )
         {
-            m_bSizerY2->Show( true );
-            m_lockY2->SetLabel( wxString::Format( m_lockY2->GetLabel(), plotTab->GetLabelY2() ) );
+            m_lockY2->SetLabel( wxString::Format( m_lockY2->GetLabel(),
+                                                   axisName( plotTab->GetLabelY2(), plotTab->GetUnitsY2() ) ) );
             m_y2Units->SetLabel( plotTab->GetUnitsY2() );
 
             double min = 0.0, max = 0.0;
@@ -230,8 +278,8 @@ void DIALOG_SIM_COMMAND::SetPlotSettings( const SIM_TAB* aSimTab )
 
         if( !plotTab->GetLabelY3().IsEmpty() )
         {
-            m_bSizerY3->Show( true );
-            m_lockY3->SetLabel( wxString::Format( m_lockY3->GetLabel(), plotTab->GetLabelY3() ) );
+            m_lockY3->SetLabel( wxString::Format( m_lockY3->GetLabel(),
+                                                   axisName( plotTab->GetLabelY3(), plotTab->GetUnitsY3() ) ) );
             m_y3Units->SetLabel( plotTab->GetUnitsY3() );
 
             double min = 0.0, max = 0.0;
@@ -248,14 +296,25 @@ void DIALOG_SIM_COMMAND::SetPlotSettings( const SIM_TAB* aSimTab )
         m_grid->SetValue( plotTab->IsGridShown() );
         m_legend->SetValue( plotTab->IsLegendShown() );
         m_dottedSecondary->SetValue( plotTab->GetDottedSecondary() );
+        m_lineWidth->SetValue( plotTab->GetTraceWidth() );
 
 #define GET_STR( val ) EDA_UNIT_UTILS::UI::MessageTextFromValue( unityScale, EDA_UNITS::UNSCALED, \
                                                                  val, false /* no units */ )
 
-        m_marginLeft->SetValue( GET_STR( plotTab->GetPlotWin()->GetMarginLeft() ) );
-        m_marginTop->SetValue( GET_STR( plotTab->GetPlotWin()->GetMarginTop() ) );
-        m_marginRight->SetValue( GET_STR( plotTab->GetPlotWin()->GetMarginRight() ) );
-        m_marginBottom->SetValue( GET_STR( plotTab->GetPlotWin()->GetMarginBottom() ) );
+        // An empty margin follows the plot; the hint shows its current value.
+        auto showMargin = [&]( wxTextCtrl* aCtrl, int aIndex, int aCurrent )
+        {
+            int user = plotTab->GetUserMargin( aIndex );
+
+            aCtrl->SetValue( user >= 0 ? GET_STR( user ) : wxString() );
+            aCtrl->SetHint( GET_STR( aCurrent ) );
+            aCtrl->SetToolTip( _( "Leave empty to follow the plot." ) );
+        };
+
+        showMargin( m_marginTop, 0, plotTab->GetPlotWin()->GetMarginTop() );
+        showMargin( m_marginRight, 1, plotTab->GetPlotWin()->GetMarginRight() );
+        showMargin( m_marginBottom, 2, plotTab->GetPlotWin()->GetMarginBottom() );
+        showMargin( m_marginLeft, 3, plotTab->GetPlotWin()->GetMarginLeft() );
     }
 }
 
@@ -303,19 +362,11 @@ bool DIALOG_SIM_COMMAND::TransferDataFromWindow()
     if( !wxDialog::TransferDataFromWindow() )
         return false;
 
-    // The simulator dependent settings always get transferred.
-    if( NGSPICE_SETTINGS* settings = dynamic_cast<NGSPICE_SETTINGS*>( m_settings.get() ) )
-    {
-        switch( m_compatibilityMode->GetSelection() )
-        {
-        case 0: settings->SetCompatibilityMode( NGSPICE_COMPATIBILITY_MODE::USER_CONFIG ); break;
-        case 1: settings->SetCompatibilityMode( NGSPICE_COMPATIBILITY_MODE::NGSPICE );     break;
-        case 2: settings->SetCompatibilityMode( NGSPICE_COMPATIBILITY_MODE::PSPICE );      break;
-        case 3: settings->SetCompatibilityMode( NGSPICE_COMPATIBILITY_MODE::LTSPICE );     break;
-        case 4: settings->SetCompatibilityMode( NGSPICE_COMPATIBILITY_MODE::LT_PSPICE );   break;
-        case 5: settings->SetCompatibilityMode( NGSPICE_COMPATIBILITY_MODE::HSPICE );      break;
-        }
-    }
+    NGSPICE_SETTINGS*               ngspiceSettings = dynamic_cast<NGSPICE_SETTINGS*>( m_settings.get() );
+    std::map<std::string, wxString> simOptions;
+
+    if( ngspiceSettings && !readSimOptions( simOptions ) )
+        return false;
 
     wxString previousSimCommand = m_simCommand;
     wxWindow* page = m_simPages->GetCurrentPage();
@@ -494,7 +545,61 @@ bool DIALOG_SIM_COMMAND::TransferDataFromWindow()
     if( previousSimCommand != m_simCommand )
         m_simCommand.Trim();
 
+    // Settings are live, so write them only once everything validated or Cancel would keep them
+    if( ngspiceSettings )
+    {
+        switch( m_compatibilityMode->GetSelection() )
+        {
+        case 0: ngspiceSettings->SetCompatibilityMode( NGSPICE_COMPATIBILITY_MODE::USER_CONFIG ); break;
+        case 1: ngspiceSettings->SetCompatibilityMode( NGSPICE_COMPATIBILITY_MODE::NGSPICE );     break;
+        case 2: ngspiceSettings->SetCompatibilityMode( NGSPICE_COMPATIBILITY_MODE::PSPICE );      break;
+        case 3: ngspiceSettings->SetCompatibilityMode( NGSPICE_COMPATIBILITY_MODE::LTSPICE );     break;
+        case 4: ngspiceSettings->SetCompatibilityMode( NGSPICE_COMPATIBILITY_MODE::LT_PSPICE );   break;
+        case 5: ngspiceSettings->SetCompatibilityMode( NGSPICE_COMPATIBILITY_MODE::HSPICE );      break;
+        }
+
+        for( const auto& [key, value] : simOptions )
+            ngspiceSettings->SetOption( key, value );
+    }
+
     m_settings->SetFixIncludePaths( m_fixIncludePaths->GetValue() );
+
+    return true;
+}
+
+
+bool DIALOG_SIM_COMMAND::readSimOptions( std::map<std::string, wxString>& aOptions )
+{
+    auto showOptionsPage =
+            [&]()
+            {
+                m_notebook1->SetSelection( m_notebook1->FindPage( m_panelSimOptions ) );
+            };
+
+    if( !m_panelSimOptions->Validate() )
+    {
+        showOptionsPage();
+        return false;
+    }
+
+    aOptions["method"] = SIM_METHODS[std::max( 0, m_optMethod->GetSelection() )];
+
+    for( const auto& [key, ctrl] : m_simOptionCtrls )
+    {
+        std::optional<wxString> value = NGSPICE_SETTINGS::NormalizeOption( key, ctrl->GetValue() );
+
+        if( !value )
+        {
+            showOptionsPage();
+            ctrl->SetFocus();
+            ctrl->SelectAll();
+            DisplayError( this, wxString::Format( _( "'%s' is not a valid value for %s." ), ctrl->GetValue(),
+                                                  wxString::FromUTF8( key ) ) );
+            return false;
+        }
+
+        aOptions[key] = *value;
+    }
 
     return true;
 }
@@ -548,18 +653,21 @@ void DIALOG_SIM_COMMAND::ApplySettings( SIM_TAB* aTab )
                                  SIM_VALUE::ToDouble( m_y3Max->GetValue().ToStdString() ) );
         }
 
-        plotTab->GetPlotWin()->LockY( m_lockY1->GetValue()
-                                      || m_lockY2->GetValue()
-                                      || m_lockY3->GetValue() );
-
         plotTab->ShowGrid( m_grid->GetValue() );
         plotTab->ShowLegend( m_legend->GetValue() );
         plotTab->SetDottedSecondary( m_dottedSecondary->GetValue() );
+        plotTab->SetTraceWidth( m_lineWidth->GetValue() );
 
-        plotTab->GetPlotWin()->SetMarginLeft( TO_INT( m_marginLeft ) );
-        plotTab->GetPlotWin()->SetMarginRight( TO_INT( m_marginRight ) );
-        plotTab->GetPlotWin()->SetMarginTop( TO_INT( m_marginTop ) );
-        plotTab->GetPlotWin()->SetMarginBottom( TO_INT( m_marginBottom ) );
+        // An empty margin follows the plot.
+        auto userMargin = []( wxTextCtrl* aCtrl )
+        {
+            wxString text = aCtrl->GetValue();
+
+            return text.Trim( true ).Trim( false ).IsEmpty() ? -1 : TO_INT( aCtrl );
+        };
+
+        plotTab->SetUserMargins( userMargin( m_marginTop ), userMargin( m_marginRight ), userMargin( m_marginBottom ),
+                                 userMargin( m_marginLeft ) );
 
         plotTab->GetPlotWin()->AdjustLimitedView();
         plotTab->GetPlotWin()->UpdateAll();
@@ -628,6 +736,14 @@ void DIALOG_SIM_COMMAND::parseCommand( const wxString& aCommand )
                                         + wxT( "  \u2014  " )
                                         + SPICE_SIMULATOR::TypeToName( type, false ) );
         }
+
+        // Creation fixed the minimum size to fit the short entries
+        int width = 0;
+
+        for( const wxString& item : m_commandType->GetStrings() )
+            width = std::max( width, m_commandType->GetTextExtent( item ).x );
+
+        m_commandType->SetMinSize( wxSize( width + FromDIP( 48 ), -1 ) );
 
         m_commandTypeSizer->Show( true );
         m_commandType->SetSelection( 0 );
@@ -727,6 +843,18 @@ void DIALOG_SIM_COMMAND::parseCommand( const wxString& aCommand )
             m_dcEnable2->SetValue( true );
         }
 
+        // updateDCUnits() doesn't fire when the choices are set programmatically.
+        auto refreshUnits = [&]( wxChoice* aTypeChoice, wxStaticText* aStart, wxStaticText* aEnd, wxStaticText* aStep )
+        {
+            wxString  type = getStringSelection( aTypeChoice ).Upper();
+            wxUniChar ch = type.IsEmpty() ? wxUniChar( '?' ) : type.GetChar( 0 );
+
+            updateDCUnits( ch, aStart, aEnd, aStep );
+        };
+
+        refreshUnits( m_dcSourceType1, m_src1DCStartValUnit, m_src1DCEndValUnit, m_src1DCStepUnit );
+        refreshUnits( m_dcSourceType2, m_src2DCStartValUnit, m_src2DCEndValUnit, m_src2DCStepUnit );
+
         break;
     }
 
@@ -770,7 +898,7 @@ void DIALOG_SIM_COMMAND::parseCommand( const wxString& aCommand )
         SPICE_VALUE pts;
         SPICE_VALUE fStart;
         SPICE_VALUE fStop;
-        bool        saveAll;
+        bool        saveAll = false;
 
         m_circuitModel->ParseNoiseCommand( aCommand, &output, &ref, &source, &scale, &pts,
                                            &fStart, &fStop, &saveAll );
@@ -803,22 +931,24 @@ void DIALOG_SIM_COMMAND::parseCommand( const wxString& aCommand )
         m_transStep->SetValue( SPICE_VALUE( tokenizer.GetNextToken() ).ToSpiceString() );
         m_transFinal->SetValue( SPICE_VALUE( tokenizer.GetNextToken() ).ToSpiceString() );
 
-        // Initial time is an optional field
+        // Initial time, max step, and "uic" are optional fields
         token = tokenizer.GetNextToken();
 
-        if( !token.IsEmpty() )
+        if( token.IsSameAs( wxS( "uic" ), false ) )
+            m_useInitialConditions->SetValue( true );
+        else if( !token.IsEmpty() )
             m_transInitial->SetValue( SPICE_VALUE( token ).ToSpiceString() );
 
-        // Max step is an optional field
         token = tokenizer.GetNextToken();
 
-        if( !token.IsEmpty() )
+        if( token.IsSameAs( wxS( "uic" ), false ) )
+            m_useInitialConditions->SetValue( true );
+        else if( !token.IsEmpty() )
             m_transMaxStep->SetValue( SPICE_VALUE( token ).ToSpiceString() );
 
-        // uic is an optional field
         token = tokenizer.GetNextToken();
 
-        if( token.IsSameAs( wxS( "uic" ) ) )
+        if( token.IsSameAs( wxS( "uic" ), false ) )
             m_useInitialConditions->SetValue( true );
 
         break;
@@ -828,14 +958,12 @@ void DIALOG_SIM_COMMAND::parseCommand( const wxString& aCommand )
         break;
 
     case ST_FFT:
-    {
         m_simPages->SetSelection( m_simPages->FindPage( m_pgFFT ) );
 
         while( tokenizer.HasMoreTokens() )
             m_fftInputSignals.insert( tokenizer.GetNextToken() );
 
         break;
-    }
 
     default:
         m_simPages->SetSelection( m_simPages->FindPage( m_pgCustom ) );

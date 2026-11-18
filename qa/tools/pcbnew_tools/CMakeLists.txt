@@ -13,11 +13,7 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, you may find one here:
-# http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-# or you may search the http://www.gnu.org website for the version 2 license,
-# or you may write to the Free Software Foundation, Inc.,
-# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 add_executable( qa_pcbnew_tools
     # This is needed for the global mock objects
@@ -33,6 +29,8 @@ add_executable( qa_pcbnew_tools
     tools/polygon_generator/polygon_generator.cpp
 
     tools/polygon_triangulation/polygon_triangulation.cpp
+
+    tools/extract_zone_fills/extract_zone_fills.cpp
 )
 
 include_directories(
@@ -58,15 +56,12 @@ target_link_libraries( qa_pcbnew_tools
     dxflib_qcad
     tinyspline_lib
     nanosvg
-    idf3
     common
     qa_utils
     markdown_lib
-    scripting
     ${PCBNEW_IO_LIBRARIES}
     ${wxWidgets_LIBRARIES}
     ${GDI_PLUS_LIBRARIES}
-    ${PYTHON_LIBRARIES}
     Boost::headers
     ${PCBNEW_EXTRA_LIBS}    # -lrt must follow Boost
 )

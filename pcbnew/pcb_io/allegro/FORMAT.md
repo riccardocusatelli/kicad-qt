@@ -9,7 +9,7 @@ as implemented in this importer. This is not an official specification.
 Offset 0x0000: File Header (~4KB)
   - Magic number (4 bytes)
   - Object count
-  - Linked lists: 22 for pre-V180, 28 for V180+
+  - Linked lists: 23 for pre-V180, 24 for V180+
   - Allegro version string (60 bytes)
   - Board units (1 byte: 0x01=Imperial, 0x02=Metric)
   - Units divisor (4 bytes)
@@ -22,7 +22,6 @@ Offset 0x1200: String Table
 After strings: Object Blocks
   - Repeated: [1-byte type tag] [type-specific data]
   - Each block type has a fixed layout with version-conditional fields
-  - V180 files may have zero-padded gaps between block groups
 ```
 
 ## Version Detection
@@ -33,7 +32,9 @@ to determine the format version:
 | Magic         | Version | Allegro Release |
 |---------------|---------|-----------------|
 | `0x0013_0000` | V_160   | 16.0            |
+| `0x0013_0200` | V_161   | between 16.0 and 16.2 |
 | `0x0013_0400` | V_162   | 16.2            |
+| `0x0013_0500` | V_162   | 16.2            |
 | `0x0013_0C00` | V_164   | 16.4            |
 | `0x0013_1000` | V_165   | 16.5            |
 | `0x0013_1500` | V_166   | 16.6            |
@@ -76,9 +77,14 @@ placed instance are board-absolute with final layers already applied.
 ## Linked Lists
 
 Most block types form singly-linked lists via a `m_Next` field containing
-the key of the next block. The header contains 22 linked list descriptors
-with head and tail keys. Walking a linked list starts from the head key,
-looks up each block by key, and follows `m_Next` until 0 or the tail key.
+the key of the next block. The header list descriptors. Each descriptor is
+a tail word followed by a head word. Walking a linked list starts from the
+head key, looks up each block by key, and follows `m_Next` until 0 or the tail key.
+
+The tail is a per-list terminator: within a file the tails form one
+consecutive run of values, and each list ends when a block's `m_Next`
+equals its own tail. The run starts at 0x65 in most files, and at 0x01
+or 0x1001 in some later ones.
 
 The `m_Key` field serves as a global block identifier. All blocks are
 indexed by key in a flat hash map (`m_ObjectKeyMap`).
@@ -105,6 +111,42 @@ while version 18 introduces significant changes.
 The next block of 7 fields seems to have different meanings in v18 compared to
 earlier versions.
 
+## Linked List Descriptors
+
+The header holds many linked list descriptors, representing top-level element
+list. Each descriptor.
+
+Pre-V18 files have 23 descriptors starting at offset 0x3c. V18 and later files
+have 24 descriptors starting at offset 0x60.
+
+
+| Pos | Field               | Contents | Notes |
+|-----|---------------------|----------|-------|
+| 0   | m_LL_0x04           | 0x04 net assignments | Usually empty. Assignments are reached per net through NET.m_Assignment instead. |
+| 1   | m_LL_0x06           | 0x06 component definitions | |
+| 2   | m_LL_0x0C           | 0x0C pin definitions | |
+| 3   | m_LL_Shapes         | 0x28 shapes | |
+| 4   | m_LL_0x14           | 0x14 graphics containers | |
+| 5   | m_LL_0x1B_Nets      | 0x1B nets | |
+| 6   | m_LL_0x1C           | 0x1C padstacks | |
+| 7   | m_LL_0x24_0x28      | 0x24 rects and 0x28 shapes | |
+| 8   | m_LL_Unknown1       | (unknown) | Usually empty. |
+| 9   | m_LL_0x2B           | 0x2B footprint definitions | |
+| 10  | m_LL_0x03_0x30      | 0x30 string wrappers and 0x03 fields | V18 moves the 0x03 objects to position 23, leaving only wrappers here. |
+| 11  | m_LL_0x0A           | 0x0A DRC elements | |
+| 12  | m_LL_0x1D_0x1E_0x1F | 0x1D, 0x1E, 0x1F | Constraint sets, signal integrity models and padstack dimensions. |
+| 13  | m_LL_Unknown2       | (unknown) | Usually empty |
+| 14  | m_LL_0x38           | 0x38 films | |
+| 15  | m_LL_0x2C           | 0x2C tables | |
+| 16  | m_LL_0x0C_2         | 0x0C pin definitions | A second pin list. |
+| 17  | m_LL_Unknown3       | (unknown) | Usually empty |
+| 18  | m_LL_0x35           | 0x35 file records | |
+| 19  | m_LL_0x36           | 0x36 definition tables | |
+| 20  | m_LL_Unknown4       | (unknown) | |
+| 21  | m_LL_Unknown5       | (unknown) | Usually empty |
+| 22  | m_LL_0x0A_2         | 0x0A DRC elements | A second DRC list. |
+| 23  | m_LL_0x03_2         | 0x03 fields | V18+ only. Holds 0x03s that were together with 0x30s in earlier versions|
+
 ## Block Types
 
 | Type | Struct                  | Purpose                              |
@@ -116,7 +158,7 @@ earlier versions.
 | 0x06 | BLK_0x06                | Component/symbol definition          |
 | 0x07 | BLK_0x07                | Footprint instance reference data    |
 | 0x08 | BLK_0x08                | Pin number                           |
-| 0x09 | BLK_0x09                | Intermediate (fill-to-shape link)    |
+| 0x09 | BLK_0x09                | Net-assignment chain entry           |
 | 0x0A | BLK_0x0A_DRC            | DRC error marker                     |
 | 0x0C | BLK_0x0C                | Pin definition                       |
 | 0x0D | BLK_0x0D_PAD            | Pad geometry and placement           |
@@ -129,6 +171,7 @@ earlier versions.
 | 0x15 | BLK_0x15_16_17_SEGMENT  | Line segment (tracks, outlines)      |
 | 0x16 | (same as 0x15)          | Line segment variant                 |
 | 0x17 | (same as 0x15)          | Line segment variant                 |
+| 0x1A | BLK_0x1A_UNKNOWN        | Unknown                              |
 | 0x1B | BLK_0x1B_NET            | Net definition                       |
 | 0x1C | BLK_0x1C_PADSTACK       | Padstack definition                  |
 | 0x1D | BLK_0x1D                | Physical constraint set (see below)  |
@@ -206,10 +249,36 @@ Padstacks had a major overhaul in V17.2:
 
 The first few fields in the header are the same in all versions:
 
-* Block type (and some other numbers which drive a list size)
+* Block type
+* `m_UnknownByte1`
+* `m_N`: drives the size of a trailing uint32 array (`m_N * 8` pre-V172,
+  `m_N * 10` V172+)
+* `m_StartLayer`: 0-based index of the first copper layer in the
+  padstack span
 * Key
 * Next block key
 * The padstack name string key
+
+The version-specific header variant (`HEADER_v16x` / `HEADER_v17x`)
+follows and contains `m_LayerCount`, the number of copper layers
+spanned by the padstack.
+
+#### Via Layer Span
+
+Blind and buried vias (0x33) inherit their span from the referenced
+0x1C padstack:
+
+- `start = m_StartLayer` (0-based copper index)
+- `count = m_LayerCount` from the padstack header
+- `end = start + count - 1`
+
+Importer rules:
+
+- `count > 1` and `count < totalCu`: set a blind/buried via between
+  `start` and `end` (BLIND when either endpoint is an outer copper
+  layer, else BURIED)
+- `count == 1` or `count >= totalCu`: import as a through via
+  (F_Cu to B_Cu)
 
 #### Drill Diameter
 
@@ -307,23 +376,23 @@ and custom pad shapes.
 
 ### Zone Outlines vs Copper Fills
 
-0x28 shapes appear in two distinct contexts:
+0x28 shapes appear in these contexts:
 
 1. On the `m_LL_Shapes` header linked list with BOUNDARY class (0x15):
    these are zone outlines and are imported as ZONE objects.
 
 2. On the net assignment chain (reachable from 0x1B NET via 0x04/0x05):
-   these have ETCH class and include both zone outlines repeated as
-   copper shapes and actual computed fills. applyZoneFills() matches
-   fills to zones by net code, layer, and bounding box overlap, then
-   applies the genuine fills via SetFilledPolysList(). Unmatched fills
-   also serve as a fallback for zone net resolution when
-   resolveShapeNet() returns UNCONNECTED.
+   these have ETCH class and include calculated fills and standalone copper
+   shapes. A boundary's 0x37 pointer array can name its fills, but may omit
+   some. An omitted fill can instead point through a 0x26 block to the same
+   0x2C table as its boundary. The importer attaches it only if that table
+   identifies one boundary and the net and layer match. Directly listed
+   fills can also supply a boundary's net when its NET entry is missing.
 
-3. Also on the net assignment chain but with NO corresponding BOUNDARY
-   zone: these are standalone copper polygons (Allegro "shapes" drawn
-   directly on ETCH layers). They are imported as filled PCB_SHAPE
-   objects with the appropriate net assignment.
+3. Also on the net assignment chain but with NO confirmed BOUNDARY zone:
+   these are standalone copper polygons (Allegro "shapes" drawn directly
+   on ETCH layers). They are imported as filled PCB_SHAPE objects with the
+   appropriate net assignment.
 
    On V172+ boards, the m_Unknown2 field in 0x28 SHAPE blocks is a
    discriminator for dynamic copper. Bit 12 (0x1000) marks shapes that
@@ -332,12 +401,16 @@ and custom pad shapes.
 
    - 0x3001: classic teardrop shapes (5 vertices, asymmetric bbox)
    - 0x1001: dynamic copper fillets at via/pad junctions
-   - 0x0001: genuine standalone copper pours
+   - 0x0101: boundaries and calculated fills on tested boards
+   - 0x0001: standalone copper shapes on tested boards
    - 0x0000: pre-V172 boards (field absent, value_or(0) returns 0)
 
+   The meaning of bit 0x100 is not confirmed. The importer does not use
+   that bit alone to identify a fill's boundary.
+
    Shapes with bit 12 set are imported as KiCad teardrop ZONE objects
-   (TEARDROP_TYPE::TD_VIAPAD). Shapes without this flag are imported
-   as filled PCB_SHAPE objects (standalone copper).
+   (TEARDROP_TYPE::TD_VIAPAD). Unclaimed shapes without this flag are
+   imported as filled PCB_SHAPE objects (standalone copper).
 
    After teardrop zones are created, enablePadTeardrops() finds the
    anchoring pad/via for each teardrop by checking which pad/via
@@ -353,7 +426,7 @@ To find the net for a BOUNDARY shape, follow this pointer chain:
 
 ```
 BOUNDARY 0x28 shape
-  └─ m_Ptr7 (V172+) or m_Ptr7_16x (pre-V172)
+  └─ m_TablePtr (V172+) or m_TablePtr_16x (pre-V172)
        └─ 0x2C TABLE
             └─ m_Ptr1
                  └─ 0x37 pointer array
@@ -361,8 +434,8 @@ BOUNDARY 0x28 shape
                            └─ 0x1B NET block
 ```
 
-The `m_Ptr7` field is version-conditional: `m_Ptr7` exists in V172+,
-`m_Ptr7_16x` exists in pre-V172. One or the other will be populated.
+The table pointer is version-conditional: `m_TablePtr` exists in V172+,
+`m_TablePtr_16x` exists in pre-V172. One or the other will be populated.
 
 The 0x37 pointer array holds keys of blocks, of which the 0x1B NET
 block provides net information and 0x28 SHAPE blocks specify fills.
@@ -465,6 +538,34 @@ provides a layer name string.
 
 A template that multiple placed instances share.
 
+- `m_FieldsPtr`: Head of the 0x03 FIELD chain holding the definition's
+  properties (library symbol path, 3D model assignment)
+- `m_FirstInstPtr`: Head of the 0x2D placed instance linked list
+
+### 3D Models
+
+The 3D model assignment is a pair of string fields on the definition's
+0x03 chain. Both are comma separated and both are optional; a definition
+with no model has neither.
+
+| Field code | Content |
+|------------|---------|
+| 0x345 | `<file>, <bytes>, <mtime>, <colourIdx>, <r>, <g>, <b>, <triangles>` |
+| 0x346 | `<units>, <offX>, <offY>, <offZ>, <rotX>, <rotY>, <rotZ>` |
+
+`<file>` is a bare file name with no directory, e.g. `led3d.stp`. A
+`<colourIdx>` of -1 means the model keeps its own colours; KiCad has no
+per-model colour override, so the colour is dropped.
+
+`<units>` is one of `MM`, `CM`, `MICRONS`, `MILS` or `INCH`. The
+placement is relative to the symbol origin, in the same Z-up, Y-up frame
+KiCad uses for `FP_3DMODEL`, so offsets convert to mm directly.
+Rotations are negated because KiCad stores the negation of the rotation
+its renderers apply.
+
+Only the definition carries the model; placed instances inherit it, and
+the instance's own placement and side are applied on top by KiCad.
+
 ### 0x2D: Placed Footprint Instance
 
 An actual footprint on the board.
@@ -498,10 +599,11 @@ Importer order for a placed instance:
 4. Add graphics, text, assembly, and areas as-is (already
    board-absolute).
 
-Because a footprint's zones are built after step 3, the footprint's
-Flip()/Rotate() has already been applied and will not touch them.
-Build footprint zone polygons (and related fills) straight from the
-board-absolute Allegro geometry, the same as graphics and text.
+Areas imported as footprint zones must still be stored in KiCad as
+footprint-local outlines. Convert board-absolute Allegro geometry
+with the inverted footprint `TRANSFORM_TRS` when building zone
+polygons (and related fills). Board-level zones use the identity
+transform.
 
 ## Pad Placement (0x0D)
 
@@ -528,6 +630,45 @@ The importer corrects this by comparing the first copper layer's pad
 aspect ratio (m_W vs m_H) with the drill aspect ratio (drillW vs
 drillH). If they disagree on orientation, the drill dimensions are
 swapped. Round drills (equal W and H) skip the check.
+
+## Field blocks (0x03)
+
+A 0x03 block is one name/value property attached to another object. `m_Hdr1`
+is the property code and `m_SubType` says how the value is stored.
+
+- Subtype 0x68 holds a string, with its length in `m_Size`
+- 0x64, 0x66, 0x67 and 0x6A hold a u32
+- 0x69 two u32s
+- 0x65 nothing at all
+- 0x6C, 0x70, 0x74, 0xF6 hold lists or fixed records of some kind.
+
+| Code | Meaning |
+|------|---------|
+| 0x37 | Logical path, e.g. `@lib.lib(sch_1):\10MIL\` |
+| 0x55 | Minimum line width |
+| 0x77 | Net schedule |
+| 0x87 | `CLIP_n` |
+| 0x88 | `CLIP_DRAWING` |
+| 0x173 | Maximum line width |
+| 0x1a0 | Physical constraint set |
+| 0x345 | 3D model file and cache data |
+| 0x346 | 3D model placement |
+
+Properties can be carried by item-level lists in objects in the database.
+There is also a board-level list in the `m_LL_0x03_0x30` linked list in the
+file header, which contains board-level properties not attached to any specific item.
+
+### CLIP_DRAWING (0x87 and 0x88)
+
+This is a property Allegro stamps on items taken from the clipboard. Its value
+is `CLIP_<n>`, where n counts the paste operations performed on the drawing, or
+`FALSE` for an item that carries the property without belonging to a clip.
+
+0x87 carries the next `CLIP_n` value which persists across paste operations and
+file loading.
+
+See https://www.flowcad.de/datasheets/FlowCAD_AN_PCB_subdrawing.pdf for more
+description of the CLIP_DRAWING property.
 
 ## Definition tables (0x36)
 
@@ -840,29 +981,8 @@ different nets.
 
 ## V18 Header Changes (0x00150000)
 
-V18 restructures the file header with significant differences from
-V16/V17.
-
-### Linked Lists
-
-V18 has 28 linked lists compared to 22 in pre-V18 files.
-
-| V18 Position | Pre-V18 Position | Field            |
-|-------------|-----------------|------------------|
-| 0-4         | (new)           | m_LL_V18_1..5    |
-| 5-22        | 0-17            | Same 18 shared   |
-| 23          | 19              | m_LL_Unknown5    |
-| 24          | 18              | m_LL_0x36        |
-| 25-26       | 20-21           | Same 2 shared    |
-| 27          | (new)           | m_LL_V18_6       |
-
-Note positions 23-24: m_LL_0x36 and m_LL_Unknown5 are swapped
-relative to their pre-V18 order.
-
-### Head/Tail Word Order
-
-Each linked list descriptor is two 32-bit words. Pre-V18 reads
-word1=tail, word2=head. V18 reverses this to word1=head, word2=tail.
+V18 adds many new fields to the file header. Most of these aren't
+understood yet.
 
 ### String Count
 
@@ -871,19 +991,15 @@ after the layer map. V18 stores it in `m_Unknown2[5]` (read during
 early header parsing) and has no separate field. Similarly,
 `m_0x27_End` is relocated to `m_Unknown2[2]`.
 
-### 0x35 File References
+### Object Stream Termination
 
-Pre-V18 stores 0x35 extents (start/end) between the first 18 LLs
-and the last 4 LLs. V18 stores them after all 28 linked lists as
-two scalar uint32 values.
+The object stream ends when the file ends, or when a 0x00 type byte is
+reached. There is no padding between blocks: every block is a whole number
+of 4-byte words and the next type tag follows immediately.
 
-### Object Stream Gaps
-
-V18 files can have zero-padded gaps between groups of object blocks.
-After encountering the end-of-objects marker (0x00 type byte), the
-parser skips consecutive zero bytes, then checks if a valid block
-type tag (0x01-0x3C) follows. If so, parsing continues from the
-4-byte-aligned position before that tag.
+Some files include zero padding after the last real block. This is only
+valid if all remaining bytes to the end of the file are zero, otherwise
+encountering a zero type tag is a mis-read of a previous block's length.
 
 ### Padstack Trailer
 

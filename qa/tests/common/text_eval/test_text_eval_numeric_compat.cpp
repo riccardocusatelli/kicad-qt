@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -112,7 +108,7 @@ BOOST_AUTO_TEST_CASE( SetVar )
 
 /**
  * A list of valid test cases adapted from numeric evaluator
- * All expressions are wrapped in @{} to use the text_eval system
+ * All expressions are wrapped in \@{} to use the text_eval system
  */
 static const std::vector<TEXT_EVAL_CASE> eval_cases_valid = {
     // Empty case - text_eval handles this differently than numeric evaluator
@@ -344,12 +340,14 @@ BOOST_AUTO_TEST_CASE( UnitSupport )
     BOOST_CHECK( !evaluator_mm.HasErrors() );
 
     // Test unit constructor with variable callback
-    auto callback = [](const std::string& varName) -> calc_parser::Result<calc_parser::Value> {
-        if (varName == "width") {
-            return calc_parser::MakeValue<calc_parser::Value>(10.0);
-        }
-        return calc_parser::MakeError<calc_parser::Value>("Variable not found: " + varName);
-    };
+    auto callback =
+            []( const std::string& varName ) -> calc_parser::RESULT<calc_parser::VALUE>
+            {
+                if (varName == "width") {
+                    return calc_parser::MakeValue<calc_parser::VALUE>(10.0);
+                }
+                return calc_parser::MakeError<calc_parser::VALUE>("Variable not found: " + varName);
+            };
 
     EXPRESSION_EVALUATOR evaluator_callback( EDA_UNITS::MM, callback, false );
     BOOST_CHECK_EQUAL( evaluator_callback.GetDefaultUnits(), EDA_UNITS::MM );
@@ -594,6 +592,8 @@ BOOST_AUTO_TEST_CASE( ActualUnitParsing )
 /**
  * Test unit parsing edge cases and error handling
  */
+#if !defined( __MINGW32__ ) // on mingw use of boost::unit_test::disabled() or enabled()
+                            // creates serious link issues
 BOOST_AUTO_TEST_CASE( UnitParsingEdgeCases, * boost::unit_test::enabled() )
 {
     EXPRESSION_EVALUATOR evaluator_mm( EDA_UNITS::MM );
@@ -625,6 +625,7 @@ BOOST_AUTO_TEST_CASE( UnitParsingEdgeCases, * boost::unit_test::enabled() )
     result = evaluator_mm.Evaluate( "@{1um}" );
     BOOST_CHECK_EQUAL( result, "0.001" );  // 1 um = 0.001 mm
 }
+#endif
 
 BOOST_AUTO_TEST_CASE( NumericEvaluatorCompatibility )
 {

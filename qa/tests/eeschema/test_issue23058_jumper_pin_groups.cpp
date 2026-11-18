@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.en.html
- * or you may search the http://www.gnu.org website for the version 32 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -32,6 +28,7 @@
 #include <schematic_utils/schematic_file_util.h>
 
 #include <connection_graph.h>
+#include <jumper_group.h>
 #include <schematic.h>
 #include <sch_sheet.h>
 #include <sch_screen.h>
@@ -85,10 +82,7 @@ BOOST_FIXTURE_TEST_CASE( JumperPinGroupOutOfBounds, JUMPER_PIN_GROUP_FIXTURE )
     libSym->AddDrawItem( pin2 );
 
     // Add a jumper pin group that references non-existent pin "3"
-    std::set<wxString> group;
-    group.insert( wxT( "1" ) );
-    group.insert( wxT( "3" ) );
-    libSym->JumperPinGroups().push_back( group );
+    libSym->JumperPinGroups().Add( JUMPER_GROUP::Make( { wxT( "1" ), wxT( "3" ) } ).value() );
 
     SCH_SYMBOL* sym = new SCH_SYMBOL( *libSym, libSym->GetLibId(), &path, 0, 0,
                                        VECTOR2I( 15621000, 6223000 ) );
@@ -118,10 +112,7 @@ BOOST_FIXTURE_TEST_CASE( JumperPinGroupAllInvalid, JUMPER_PIN_GROUP_FIXTURE )
     libSym->AddDrawItem( pin1 );
 
     // Add a jumper pin group where ALL pin numbers are invalid
-    std::set<wxString> group;
-    group.insert( wxT( "5" ) );
-    group.insert( wxT( "6" ) );
-    libSym->JumperPinGroups().push_back( group );
+    libSym->JumperPinGroups().Add( JUMPER_GROUP::Make( { wxT( "5" ), wxT( "6" ) } ).value() );
 
     SCH_SYMBOL* sym = new SCH_SYMBOL( *libSym, libSym->GetLibId(), &path, 0, 0,
                                        VECTOR2I( 15621000, 6223000 ) );
@@ -162,10 +153,7 @@ BOOST_FIXTURE_TEST_CASE( JumperPinGroupValidPins, JUMPER_PIN_GROUP_FIXTURE )
     libSym->AddDrawItem( pin3 );
 
     // Add a valid jumper pin group
-    std::set<wxString> group;
-    group.insert( wxT( "1" ) );
-    group.insert( wxT( "3" ) );
-    libSym->JumperPinGroups().push_back( group );
+    libSym->JumperPinGroups().Add( JUMPER_GROUP::Make( { wxT( "1" ), wxT( "3" ) } ).value() );
 
     SCH_SYMBOL* sym = new SCH_SYMBOL( *libSym, libSym->GetLibId(), &path, 0, 0,
                                        VECTOR2I( 15621000, 6223000 ) );
@@ -222,10 +210,7 @@ BOOST_FIXTURE_TEST_CASE( JumperPinGroupStackedPinMember, JUMPER_PIN_GROUP_FIXTUR
     libSym->AddDrawItem( shield );
 
     // A1 is one contact of the stacked pin [A1,A12], so the group bonds that pin to S1.
-    std::set<wxString> group;
-    group.insert( wxT( "A1" ) );
-    group.insert( wxT( "S1" ) );
-    libSym->JumperPinGroups().push_back( group );
+    libSym->JumperPinGroups().Add( JUMPER_GROUP::Make( { wxT( "A1" ), wxT( "S1" ) } ).value() );
 
     SCH_SYMBOL* sym = new SCH_SYMBOL( *libSym, libSym->GetLibId(), &path, 0, 0, VECTOR2I( 15621000, 6223000 ) );
     sym->UpdatePins();
@@ -274,12 +259,8 @@ BOOST_FIXTURE_TEST_CASE( JumperPinGroupAllContactsOfOnePin, JUMPER_PIN_GROUP_FIX
     libSym->AddDrawItem( gnd );
 
     // Every member names a contact of the same pin, which is the case from issue 25063.
-    std::set<wxString> group;
-    group.insert( wxT( "A1" ) );
-    group.insert( wxT( "A12" ) );
-    group.insert( wxT( "B1" ) );
-    group.insert( wxT( "B12" ) );
-    libSym->JumperPinGroups().push_back( group );
+    libSym->JumperPinGroups().Add(
+            JUMPER_GROUP::Make( { wxT( "A1" ), wxT( "A12" ), wxT( "B1" ), wxT( "B12" ) } ).value() );
 
     SCH_SYMBOL* sym = new SCH_SYMBOL( *libSym, libSym->GetLibId(), &path, 0, 0, VECTOR2I( 15621000, 6223000 ) );
     sym->UpdatePins();

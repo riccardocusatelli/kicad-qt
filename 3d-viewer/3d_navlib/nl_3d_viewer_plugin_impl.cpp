@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "nl_3d_viewer_plugin_impl.h"
@@ -25,10 +25,13 @@
 #include <3d-viewer/3d_canvas/eda_3d_canvas.h>
 
 // KiCad includes
+#include <bitmaps.h>
 #include <navlib_safe_init.h>
 #include <tool/action_manager.h>
 #include <tool/tool_manager.h>
 #include <tool/tools_holder.h>
+#include <bitmaps/bitmaps_list.h>
+#include <bitmaps/bitmap_types.h>
 
 // stdlib
 #include <map>
@@ -583,7 +586,7 @@ long NL_3D_VIEWER_PLUGIN_IMPL::SetActiveCommand( std::string commandId )
             bool runAction = true;
 
             if( const ACTION_CONDITIONS* aCond = tool_manager->GetActionManager()->GetCondition( *context ) )
-                runAction = aCond->enableCondition( sel );
+                runAction = aCond->GetHotkeyCondition()( sel );
 
             if( runAction )
             {

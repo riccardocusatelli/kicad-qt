@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef DIALOG_SIM_COMMAND_H
@@ -34,6 +30,11 @@
 
 #include <wx/valnum.h>
 #include <core/ki_assert.h>
+
+#include <map>
+#include <string>
+#include <utility>
+#include <vector>
 
 class SPICE_CIRCUIT_MODEL;
 class SPICE_SETTINGS;
@@ -99,8 +100,8 @@ private:
     void refreshUIControls()
     {
         wxQueueEvent( m_dcEnable2, new wxCommandEvent( wxEVT_CHECKBOX ) );
-        wxQueueEvent( m_dcSourceType1, new wxCommandEvent( wxEVT_RADIOBOX ) );
-        wxQueueEvent( m_dcSourceType2, new wxCommandEvent( wxEVT_RADIOBOX ) );
+        wxQueueEvent( m_dcSourceType1, new wxCommandEvent( wxEVT_CHOICE ) );
+        wxQueueEvent( m_dcSourceType2, new wxCommandEvent( wxEVT_CHOICE ) );
         wxQueueEvent( m_inputSignalsFilter, new wxCommandEvent( wxEVT_TEXT ) );
     }
 
@@ -130,6 +131,13 @@ private:
 
         // Now all widgets have the size fixed, call FinishDialogSettings
         finishDialogSettings();
+
+        // Nothing re-lays out after parseCommand() widens the analysis type choice, and an earlier Layout()
+        // would size the dialog to the page shown then, clipping larger pages
+        Layout();
+
+        // A notebook page relays out only when resized, and hiding the axis scales doesn't resize it
+        m_panelPlotSetup->Layout();
     }
 
     /**
@@ -170,6 +178,13 @@ private:
 
     void loadDirectives();
 
+    /**
+     * Validate and normalize the simulator option fields into \a aOptions.
+     *
+     * @return false, after showing the offending field, if any value is invalid.
+     */
+    bool readSimOptions( std::map<std::string, wxString>& aOptions );
+
 private:
     SIMULATOR_FRAME*                     m_simulatorFrame;
     wxString                             m_simCommand;
@@ -178,7 +193,10 @@ private:
     SPICE_VALIDATOR                      m_spiceValidator;
     SPICE_VALIDATOR                      m_spiceEmptyValidator;
     wxIntegerValidator<int>              m_posIntValidator;
+    wxIntegerValidator<int>              m_iterationLimitValidator;
     std::set<wxString>                   m_fftInputSignals;
+
+    std::vector<std::pair<std::string, wxTextCtrl*>> m_simOptionCtrls;
 };
 
 #endif /* DIALOG_SIM_COMMAND_H */

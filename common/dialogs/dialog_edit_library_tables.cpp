@@ -13,18 +13,21 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <wx/button.h>
 #include <wx/sizer.h>
+#include <confirm.h>
+#include <kidialog.h>
+#include <libraries/library_table.h>
+#include <lib_table_notebook_panel.h>
 
 #include <dialogs/dialog_edit_library_tables.h>
 
 
-DIALOG_EDIT_LIBRARY_TABLES::DIALOG_EDIT_LIBRARY_TABLES( wxWindow* aParent,
-                                                        const wxString& aTitle ) :
+DIALOG_EDIT_LIBRARY_TABLES::DIALOG_EDIT_LIBRARY_TABLES( wxWindow* aParent, const wxString& aTitle ) :
         DIALOG_SHIM( aParent, wxID_ANY, aTitle, wxDefaultPosition, wxDefaultSize,
                      wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER ),
         m_GlobalTableChanged( false ),
@@ -36,9 +39,10 @@ DIALOG_EDIT_LIBRARY_TABLES::DIALOG_EDIT_LIBRARY_TABLES( wxWindow* aParent,
 }
 
 
-void DIALOG_EDIT_LIBRARY_TABLES::InstallPanel( wxPanel* aPanel )
+void DIALOG_EDIT_LIBRARY_TABLES::InstallPanel( wxPanel* aPanel, wxAuiNotebook* aNotebook )
 {
     m_contentPanel = aPanel;
+    m_notebook = aNotebook;
 
     // Now perform the body of the constructor
     auto mainSizer = new wxBoxSizer( wxVERTICAL );
@@ -60,6 +64,9 @@ void DIALOG_EDIT_LIBRARY_TABLES::InstallPanel( wxPanel* aPanel )
     mainSizer->Add( sdbSizer, 0, wxALL|wxEXPAND, 5 );
 
     SetupStandardButtons();
+
+    Bind( wxEVT_CLOSE_WINDOW, &DIALOG_EDIT_LIBRARY_TABLES::onCloseWindow, this );
+    Bind( wxEVT_BUTTON, &DIALOG_EDIT_LIBRARY_TABLES::onCancelButton, this, wxID_CANCEL );
 
     finishDialogSettings();
 
@@ -88,4 +95,81 @@ bool DIALOG_EDIT_LIBRARY_TABLES::TransferDataFromWindow()
      */
     return m_contentPanel->TransferDataFromWindow();
 }
+
+
+bool DIALOG_EDIT_LIBRARY_TABLES::ConfirmOverwrite( const LIBRARY_TABLE& aTable )
+{
+    if( !aTable.DiskChanged() )
+        return true;
+
+    KIDIALOG dlg( this, wxString::Format( _( "'%s' changed on disk after it was loaded." ), aTable.Path() ),
+                  _( "Overwrite Library Table?" ), wxOK | wxCANCEL | wxCANCEL_DEFAULT | wxICON_WARNING );
+    dlg.SetExtendedMessage( _( "Saving replaces the version on disk with the one in this dialog." ) );
+    dlg.SetOKCancelLabels( _( "Overwrite" ), _( "Cancel" ) );
+
+    return dlg.ShowModal() == wxID_OK;
+}
+
+
+bool DIALOG_EDIT_LIBRARY_TABLES::CanClose()
+{
+    if( m_closeOKed )
+        return true;
+
+    std::vector<LIB_TABLE_NOTEBOOK_PANEL*> pages;
+    pages.reserve( m_notebook->GetPageCount() );
+
+    for( int ii = 0; ii < (int) m_notebook->GetPageCount(); ++ii )
+        pages.push_back( static_cast<LIB_TABLE_NOTEBOOK_PANEL*>( m_notebook->GetPage( ii ) ) );
+
+    bool modified = false;
+
+    for( LIB_TABLE_NOTEBOOK_PANEL* page : pages )
+    {
+        page->GetGrid()->CommitPendingChanges();
+        modified |= page->TableModified();
+    }
+
+    if( modified && !::HandleUnsavedChanges( this, _( "Save changes to library tables?" ),
+            [&]() -> bool
+            {
+                bool retVal = true;
+
+                for( LIB_TABLE_NOTEBOOK_PANEL* page : pages )
+                    retVal &= page->SaveTable();
+
+                m_GlobalTableChanged = true;
+                m_ProjectTableChanged = true;
+
+                return retVal;
+            } ) )
+    {
+        return false;
+    };
+
+    m_closeOKed = true;
+    return true;
+}
+
+
+void DIALOG_EDIT_LIBRARY_TABLES::onCloseWindow( wxCloseEvent& aEvent )
+{
+    if( !CanClose() )
+    {
+        aEvent.Veto();
+        return;
+    }
+
+    aEvent.Skip();
+}
+
+
+void DIALOG_EDIT_LIBRARY_TABLES::onCancelButton( wxCommandEvent& aEvent )
+{
+    if( !CanClose() )
+        return;
+
+    aEvent.Skip();
+}
+
 

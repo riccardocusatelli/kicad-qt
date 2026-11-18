@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <wx/debug.h>
@@ -69,6 +65,37 @@
 static WX_STRING_REPORTER s_reporter;
 
 
+/// A #REPORTER that keeps each line's severity so the console can be filtered.
+class SIM_SEVERITY_STRING_REPORTER : public REPORTER
+{
+public:
+    REPORTER& Report( const wxString& aText, SEVERITY aSeverity = RPT_SEVERITY_UNDEFINED ) override
+    {
+        REPORTER::Report( aText, aSeverity );
+
+        // Each reported message is its own line.
+        m_entries.push_back( { aSeverity, aText + wxS( "\n" ) } );
+        return *this;
+    }
+
+    void Clear() override
+    {
+        REPORTER::Clear();
+        m_entries.clear();
+    }
+
+    std::vector<SIM_CONSOLE_ENTRY> TakePendingEntries()
+    {
+        std::vector<SIM_CONSOLE_ENTRY> entries = std::move( m_entries );
+        m_entries.clear();
+        return entries;
+    }
+
+private:
+    std::vector<SIM_CONSOLE_ENTRY> m_entries;
+};
+
+
 class SIM_CONSOLE_REPORTER : public SYNC_REPORTER
 {
 public:
@@ -77,18 +104,15 @@ public:
     {
     }
 
-    wxString TakePendingMessages()
+    std::vector<SIM_CONSOLE_ENTRY> TakePendingEntries()
     {
         std::lock_guard lock( m_mutex );
 
-        wxString messages = m_strRep.GetMessages();
-        m_strRep.Clear();
-
-        return messages;
+        return m_strRep.TakePendingEntries();
     }
 
 private:
-    WX_STRING_REPORTER m_strRep;
+    SIM_SEVERITY_STRING_REPORTER m_strRep;
 };
 
 
@@ -145,7 +169,8 @@ SIMULATOR_FRAME::SIMULATOR_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent ) :
     mainSizer->Add( m_infoBar, 0, wxEXPAND, 0 );
 
     m_tbTopMain = new ACTION_TOOLBAR( this, wxID_ANY, wxDefaultPosition, wxDefaultSize,
-                                      wxAUI_TB_DEFAULT_STYLE|wxAUI_TB_HORZ_LAYOUT|wxAUI_TB_PLAIN_BACKGROUND );
+                                      wxAUI_TB_DEFAULT_STYLE | wxAUI_TB_HORZ_LAYOUT | wxAUI_TB_PLAIN_BACKGROUND
+                                              | wxAUI_TB_OVERFLOW );
     m_tbTopMain->Realize();
     mainSizer->Add( m_tbTopMain, 0, wxEXPAND, 5 );
 
@@ -171,7 +196,8 @@ SIMULATOR_FRAME::SIMULATOR_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent ) :
     m_simulator->SetReporter( m_consoleReporter );
     m_simulator->SetSimStateListener( m_stateListener );
 
-    m_circuitModel = std::make_shared<SPICE_CIRCUIT_MODEL>( &m_schematicFrame->Schematic() );
+    m_circuitModel = std::make_shared<SPICE_CIRCUIT_MODEL>( &m_schematicFrame->Schematic(),
+                                                            &m_schematicFrame->Kiway() );
 
     setupTools();
     setupUIConditions();
@@ -208,6 +234,18 @@ SIMULATOR_FRAME::SIMULATOR_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent ) :
 
     m_ui->InitWorkbook();
     m_ui->FlushSimConsole();
+
+    // InitWorkbook() bypasses SIMULATOR_FRAME::LoadWorkbook()'s modified-flag reset.
+    CallAfter(
+            [this]()
+            {
+                // Showing the frame can still resize it, and sash gravity would shift the restored positions
+                m_ui->SetSubWindowsSashSize();
+
+                m_workbookModified = false;
+                UpdateTitle();
+            } );
+
     UpdateTitle();
 }
 
@@ -391,13 +429,12 @@ bool SIMULATOR_FRAME::LoadSimulator( const wxString& aSimCommand, unsigned aSimO
     if( !m_schematicFrame->ReadyToNetlist( _( "Simulator requires a fully annotated schematic." ) ) )
         return false;
 
-    // If we are using the new connectivity, make sure that we do a full-rebuild
-    if( ADVANCED_CFG::GetCfg().m_IncrementalConnectivity )
-        m_schematicFrame->RecalculateConnections( nullptr, GLOBAL_CLEANUP );
+    m_schematicFrame->PrepareForNetlist();
 
     bool success = m_simulator->Attach( m_circuitModel, aSimCommand, aSimOptions,
                                         Prj().GetProjectPath(), s_reporter );
 
+    m_schematicFrame->RefreshConnectivity( true );
     showNetlistErrors( s_reporter );
 
     return success;
@@ -411,6 +448,7 @@ void SIMULATOR_FRAME::ReloadSimulator( const wxString& aSimCommand, unsigned aSi
     m_simulator->Attach( m_circuitModel, aSimCommand, aSimOptions, Prj().GetProjectPath(),
                          s_reporter );
 
+    m_schematicFrame->RefreshConnectivity( true );
     showNetlistErrors( s_reporter );
 }
 
@@ -561,6 +599,24 @@ const std::vector<wxString> SIMULATOR_FRAME::Signals()
 }
 
 
+const std::vector<wxString>& SIMULATOR_FRAME::NativeSignals()
+{
+    return m_ui->NativeSignals();
+}
+
+
+const std::vector<wxString>& SIMULATOR_FRAME::Netnames()
+{
+    return m_ui->Netnames();
+}
+
+
+std::vector<wxString> SIMULATOR_FRAME::DeviceVoltages()
+{
+    return m_ui->DeviceVoltages();
+}
+
+
 const std::map<int, wxString>& SIMULATOR_FRAME::UserDefinedSignals()
 {
     return m_ui->UserDefinedSignals();
@@ -641,6 +697,12 @@ void SIMULATOR_FRAME::ToggleSimConsole()
 void SIMULATOR_FRAME::ToggleSimSidePanel()
 {
     m_ui->ToggleSimSidePanel();
+}
+
+
+void SIMULATOR_FRAME::ToggleSmithChart()
+{
+    m_ui->ToggleSmithChart();
 }
 
 
@@ -760,6 +822,26 @@ void SIMULATOR_FRAME::setupUIConditions()
                 return m_ui->DarkModePlots();
             };
 
+    auto smithChartCondition =
+            [this]( const SELECTION& aSel )
+            {
+                SIM_PLOT_TAB* plotTab = dynamic_cast<SIM_PLOT_TAB*>( GetCurrentSimTab() );
+                return plotTab && plotTab->IsSmithMode();
+            };
+
+    auto haveSPPlot =
+            [this]( const SELECTION& aSel )
+            {
+                SIM_PLOT_TAB* plotTab = dynamic_cast<SIM_PLOT_TAB*>( GetCurrentSimTab() );
+                return plotTab && plotTab->GetSimType() == ST_SP;
+            };
+
+    auto trackCursorCondition = [this]( const SELECTION& aSel )
+    {
+        SIM_PLOT_TAB* plotTab = dynamic_cast<SIM_PLOT_TAB*>( GetCurrentSimTab() );
+        return plotTab && plotTab->IsTrackCursorEnabled();
+    };
+
     auto simRunning =
             [this]( const SELECTION& aSel )
             {
@@ -842,7 +924,10 @@ void SIMULATOR_FRAME::setupUIConditions()
     mgr->SetConditions( SCH_ACTIONS::toggleGrid,            CHECK( showGridCondition ) );
     mgr->SetConditions( SCH_ACTIONS::toggleLegend,          CHECK( showLegendCondition ) );
     mgr->SetConditions( SCH_ACTIONS::toggleDottedSecondary, CHECK( showDottedCondition ) );
+    mgr->SetConditions( SCH_ACTIONS::toggleSmithChart,
+                        ACTION_CONDITIONS().Check( smithChartCondition ).Enable( haveSPPlot ) );
     mgr->SetConditions( SCH_ACTIONS::toggleDarkModePlots,   CHECK( darkModePlotCondition ) );
+    mgr->SetConditions( SCH_ACTIONS::toggleTrackCursor,     CHECK( trackCursorCondition ) );
 
     mgr->SetConditions( SCH_ACTIONS::newAnalysisTab,        ENABLE( SELECTION_CONDITIONS::ShowAlways ) );
     mgr->SetConditions( SCH_ACTIONS::simAnalysisProperties, ENABLE( haveSim ) );
@@ -863,9 +948,9 @@ void SIMULATOR_FRAME::onSimStarted( wxCommandEvent& aEvent )
 }
 
 
-wxString SIMULATOR_FRAME::TakeSimReportMessages()
+std::vector<SIM_CONSOLE_ENTRY> SIMULATOR_FRAME::TakeSimReportEntries()
 {
-    return m_consoleReporter->TakePendingMessages();
+    return m_consoleReporter->TakePendingEntries();
 }
 
 

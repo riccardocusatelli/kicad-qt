@@ -14,17 +14,14 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <csignal>
 #include <string>
 #include <iostream>
 #include <qa_utils/error_handlers.h>
+#include <wx/thread.h>
 #if defined(__APPLE__) || defined(__FreeBSD__)
 #define BOOST_STACKTRACE_GNU_SOURCE_NOT_REQUIRED
 #endif
@@ -59,7 +56,8 @@ static void signal_handler( int signum )
     // Associate the signal number with a name
     ::signal( signum, SIG_DFL ); // Re-register the default handler
 
-    std::cerr << std::endl << "Signal caught: " << get_signal_string( signum ) << " (" << signum << ")" << std::endl;
+    std::cerr << std::endl << "Signal caught: " << get_signal_string( signum ) << " (" << signum << ")"
+              << ( wxThread::IsMain() ? "" : " on a worker thread" ) << std::endl;
     std::cerr << "Stack trace:" << std::endl;
 
     // Print the stack trace to standard error
@@ -70,6 +68,10 @@ static void signal_handler( int signum )
 }
 
 
+// Boost.Test installs its own handlers around every test case, so these only survive when the
+// runner is started with --catch_system_errors=no.  That is the way to get a usable stack out of
+// a crash in threaded code; Boost's handler long jumps into the main thread's context, which is
+// undefined behaviour when the fault happened on a thread pool worker
 KI_SIGNAL_HANDLER_FIXTURE::KI_SIGNAL_HANDLER_FIXTURE()
 {
     ::signal( SIGSEGV, &signal_handler );

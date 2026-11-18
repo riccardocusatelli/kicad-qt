@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
@@ -150,7 +146,7 @@ BOOST_AUTO_TEST_CASE( Issue24045Footprint )
     const std::string fpPath = KI_TEST::GetPcbnewTestDataDir() + "issue24045/"
                                + "QFN-24_L4.0-W4.0-P0.50-BL-EP2.6.kicad_mod";
 
-    std::unique_ptr<FOOTPRINT> fp = KI_TEST::ReadFootprintFromFileOrStream( fpPath );
+    std::unique_ptr<FOOTPRINT> fp = KI_TEST::ReadFootprintFromFile( fpPath, wxT( "QFN-24_L4.0-W4.0-P0.50-BL-EP2.6" ) );
     BOOST_REQUIRE( fp );
 
     LSET allLayers = LAYER_UTILS::GetAllFootprintLayers( *fp );
@@ -171,7 +167,7 @@ BOOST_AUTO_TEST_CASE( Issue25608ThroughHoleFootprint )
 {
     const std::string fpPath = KI_TEST::GetPcbnewTestDataDir() + "prettifier/Reverb_BTDR-1V.kicad_mod";
 
-    std::unique_ptr<FOOTPRINT> fp = KI_TEST::ReadFootprintFromFileOrStream( fpPath );
+    std::unique_ptr<FOOTPRINT> fp = KI_TEST::ReadFootprintFromFile( fpPath, wxT( "Reverb_BTDR-1V" ) );
     BOOST_REQUIRE( fp );
 
     LSET allLayers = LAYER_UTILS::GetAllFootprintLayers( *fp );

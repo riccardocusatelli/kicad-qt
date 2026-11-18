@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PADS_COMMON_H
@@ -23,56 +23,41 @@
 #include <kiid.h>
 #include <string>
 
+#include <font/text_attributes.h>
 #include <stroke_params.h>
 #include <wx/string.h>
 
 /**
- * @file pads_common.h
- * @brief Common utilities and types for parsing PADS file formats.
- *
- * This header provides shared functionality used by both the PCB (pcbnew) and
- * schematic (eeschema) PADS importers. Utilities include deterministic UUID
- * generation, file type detection, and safe parsing helpers.
+ * Common utilities and types for parsing PADS file formats, shared by the PCB and
+ * schematic importers.
  */
 
 namespace PADS_COMMON
 {
 
 /**
- * Generate a deterministic KIID from a PADS component identifier.
- *
- * This function creates a reproducible UUID based on the input string, enabling
- * cross-probe linking between schematic symbols and PCB footprints when both
- * are imported from the same PADS project.
- *
- * The UUID is generated using a hash of the input string formatted into a valid
- * UUID structure. The same input will always produce the same UUID.
+ * Generate a deterministic KIID from a PADS component identifier. The same input
+ * always produces the same UUID, so a schematic symbol and its PCB footprint can
+ * cross-probe link when both are imported from the same PADS project.
  *
  * @param aIdentifier String identifying the component (typically refdes or
  *                    combination of part type and refdes).
- * @return A deterministic KIID that can be used for cross-probe linking.
  */
 KIID GenerateDeterministicUuid( const std::string& aIdentifier );
 
 
-/**
- * Types of PADS files that can be detected.
- */
 enum class PADS_FILE_TYPE
 {
     UNKNOWN,
-    PCB_ASCII,       ///< PADS PowerPCB ASCII (.asc)
-    SCHEMATIC_ASCII  ///< PADS Logic ASCII (.asc or .txt)
+    PCB_ASCII,
+    SCHEMATIC_ASCII
 };
 
 
-/**
- * Result of detecting related PADS project files.
- */
 struct RELATED_FILES
 {
-    wxString pcbFile;        ///< Path to PCB file if found
-    wxString schematicFile;  ///< Path to schematic file if found
+    wxString pcbFile;
+    wxString schematicFile;
 
     bool HasPcb() const { return !pcbFile.IsEmpty(); }
     bool HasSchematic() const { return !schematicFile.IsEmpty(); }
@@ -82,24 +67,13 @@ struct RELATED_FILES
 
 /**
  * Detect the type of a PADS file by examining its header.
- *
- * @param aFilePath Path to the file to examine.
- * @return Detected file type.
  */
 PADS_FILE_TYPE DetectPadsFileType( const wxString& aFilePath );
 
 
 /**
- * Find related PADS project files from a given source file.
- *
- * When importing a PADS PCB file, looks for matching schematic files.
- * When importing a PADS schematic file, looks for matching PCB files.
- * Matches are found by:
- *   1. Same base filename with different file headers
- *   2. Files in same directory with compatible headers
- *
- * @param aFilePath Path to the source file being imported.
- * @return Structure containing paths to any related files found.
+ * Find the related PADS project file (schematic for a PCB source, or vice versa)
+ * in the same directory, preferring a matching base filename.
  */
 RELATED_FILES FindRelatedPadsFiles( const wxString& aFilePath );
 
@@ -118,17 +92,9 @@ double ParseDouble( const std::string& aStr, double aDefault = 0.0,
                     const std::string& aContext = {} );
 
 /**
- * Convert a PADS net name to KiCad format, handling inverted signal notation.
- *
- * PADS uses a "/" prefix to indicate inverted signals (e.g. "/RESET").
- * KiCad uses overbar notation "~{name}" for the same purpose.
- * Non-inverted names pass through unchanged.
- *
- * This function is shared between the PCB and schematic importers to ensure
- * both sides produce identical net names.
- *
- * @param aNetName Raw PADS net name.
- * @return Net name in KiCad notation.
+ * Convert a PADS net name to KiCad notation. PADS marks inverted signals with a
+ * leading "/" (e.g. "/RESET"); KiCad uses overbar "~{name}". Non-inverted names
+ * pass through unchanged.
  */
 wxString ConvertInvertedNetName( const std::string& aNetName );
 
@@ -150,6 +116,34 @@ wxString ConvertText( const std::string& aText );
  * a signed int8_t for mapping.
  */
 LINE_STYLE PadsLineStyleToKiCad( int aPadsStyle );
+
+/**
+ * Decode a PADS text justification code into KiCad horizontal and vertical alignment.
+ *
+ * PADS encodes the anchor of a text string as a single integer combining a vertical
+ * band and a horizontal code:
+ *   value = vertical_band + horizontal_code
+ *   vertical bands  bottom (0..1), top (2..7), middle (8..)
+ *   horizontal codes  left=0, right=1, center=4
+ *
+ * The same encoding is used for free text, part field labels and net name labels, so
+ * both the PCB and schematic importers share this decode to stay consistent.
+ *
+ * @param aJustification Raw PADS justification code.
+ * @param aHJustify Receives the decoded horizontal alignment.
+ * @param aVJustify Receives the decoded vertical alignment.
+ */
+void DecodeJustification( int aJustification, GR_TEXT_H_ALIGN_T& aHJustify,
+                          GR_TEXT_V_ALIGN_T& aVJustify );
+
+/**
+ * Map a PADS board coordinate to a KiCad internal coordinate.
+ *
+ * Subtracts the per-axis design origin (scaled by @p aScaleFactor), applies the PADS-Y-up to
+ * KiCad-Y-down flip on the Y axis (@p aIsX false), and clamps to the int range. Both PADS PCB
+ * importers share this mapping.
+ */
+int PadsScaleCoord( double aVal, bool aIsX, double aOriginX, double aOriginY, double aScaleFactor );
 
 } // namespace PADS_COMMON
 

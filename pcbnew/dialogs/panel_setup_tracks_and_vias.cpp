@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -53,8 +49,7 @@ enum DIFF_VAR_GRID_COLUMNS
 };
 
 
-PANEL_SETUP_TRACKS_AND_VIAS::PANEL_SETUP_TRACKS_AND_VIAS( wxWindow* aParentWindow,
-                                                          PCB_EDIT_FRAME* aFrame ) :
+PANEL_SETUP_TRACKS_AND_VIAS::PANEL_SETUP_TRACKS_AND_VIAS( wxWindow* aParentWindow, PCB_EDIT_FRAME* aFrame ) :
         PANEL_SETUP_TRACKS_AND_VIAS_BASE( aParentWindow )
 {
     m_Frame = aFrame;
@@ -415,18 +410,61 @@ bool PANEL_SETUP_TRACKS_AND_VIAS::Validate()
         }
     }
 
-    // Test diff pairs
-    for( int row = 0; row < m_diffPairsGrid->GetNumberRows();  ++row )
-    {
-        wxString dpWidth = m_diffPairsGrid->GetCellValue( row, 0 );
-        wxString dpGap = m_diffPairsGrid->GetCellValue( row, 1 );
+    // Test diff pairs using backend validation.
+    BOARD_DESIGN_SETTINGS tempSettings( *m_BrdSettings );
 
-        if( !dpWidth.IsEmpty() && dpGap.IsEmpty() )
+    tempSettings.m_DiffPairDimensionsList.clear();
+    tempSettings.m_DiffPairDimensionsList.emplace_back( 0, 0, 0 );
+
+    for( int row = 0; row < m_diffPairsGrid->GetNumberRows(); ++row )
+    {
+        if( !m_diffPairsGrid->GetCellValue( row, DP_WIDTH_COL ).IsEmpty() )
         {
-            msg = _( "No differential pair gap defined." );
-            PAGED_DIALOG::GetDialog( this )->SetError( msg, this, m_diffPairsGrid, row, 1 );
+            DIFF_PAIR_DIMENSION diffPair;
+
+            diffPair.m_Width = m_diffPairsGrid->GetUnitValue( row, DP_WIDTH_COL );
+
+            if( !m_diffPairsGrid->GetCellValue( row, DP_GAP_COL ).IsEmpty() )
+                diffPair.m_Gap = m_diffPairsGrid->GetUnitValue( row, DP_GAP_COL );
+
+            if( !m_diffPairsGrid->GetCellValue( row, DP_VIA_GAP_COL ).IsEmpty() )
+                diffPair.m_ViaGap = m_diffPairsGrid->GetUnitValue( row, DP_VIA_GAP_COL );
+
+            tempSettings.m_DiffPairDimensionsList.push_back( diffPair );
+        }
+    }
+
+    const wxString diffPairPrefix = wxS( "diff_pair_dimensions_list[" );
+
+    for( const BOARD_DESIGN_SETTINGS::VALIDATION_ERROR& error :
+         tempSettings.ValidateDesignRules( m_Frame->GetUserUnits() ) )
+    {
+        if( !error.setting_name.StartsWith( diffPairPrefix ) )
+            continue;
+
+        wxString remainder = error.setting_name.Mid( diffPairPrefix.length() );
+        long     listIndex = -1;
+
+        if( !remainder.BeforeFirst( ']' ).ToLong( &listIndex ) || listIndex <= 0 )
+        {
+            PAGED_DIALOG::GetDialog( this )->SetError( error.error_message, this, m_diffPairsGrid );
             return false;
         }
+
+        int row = static_cast<int>( listIndex ) - 1;
+        int col = DP_GAP_COL;
+
+        if( error.setting_name.EndsWith( wxS( ".width" ) ) )
+            col = DP_WIDTH_COL;
+        else if( error.setting_name.EndsWith( wxS( ".via_gap" ) ) )
+            col = DP_VIA_GAP_COL;
+
+        if( row >= 0 && row < m_diffPairsGrid->GetNumberRows() )
+            PAGED_DIALOG::GetDialog( this )->SetError( error.error_message, this, m_diffPairsGrid, row, col );
+        else
+            PAGED_DIALOG::GetDialog( this )->SetError( error.error_message, this, m_diffPairsGrid );
+
+        return false;
     }
 
     return true;

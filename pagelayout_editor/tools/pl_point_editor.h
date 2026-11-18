@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PL_POINT_EDITOR_H
@@ -57,23 +53,23 @@ public:
      */
     bool HasPoint() { return m_editedPoint != nullptr; }
 
-    ///< Set up handlers for various events.
+    /// Set up handlers for various events.
     void setTransitions() override;
 
 private:
-    ///< Update item's points with edit points.
+    /// Update item's points with edit points.
     void updateItem() const;
 
-    ///< Update edit points with item's points.
+    /// Update edit points with item's points.
     void updatePoints();
 
-    ///< Update which point is being edited.
+    /// Update which point is being edited.
     void updateEditedPoint( const TOOL_EVENT& aEvent );
 
-    ///< Set the current point being edited. NULL means none.
+    /// Set the current point being edited. NULL means none.
     void setEditedPoint( EDIT_POINT* aPoint );
 
-    ///< Return true if aPoint is the currently modified point.
+    /// Return true if aPoint is the currently modified point.
     inline bool isModified( const EDIT_POINT& aPoint ) const
     {
         return m_editedPoint == &aPoint;
@@ -96,10 +92,10 @@ private:
     PL_EDITOR_FRAME*             m_frame;
     PL_SELECTION_TOOL*           m_selectionTool;
 
-    ///< Currently edited point, NULL if there is none.
+    /// Currently edited point, NULL if there is none.
     EDIT_POINT*                  m_editedPoint;
 
-    ///< Currently available edit points.
+    /// Currently available edit points.
     std::shared_ptr<EDIT_POINTS> m_editPoints;
     std::unique_ptr<KIGFX::PREVIEW::ANGLE_ITEM> m_angleItem;
 };

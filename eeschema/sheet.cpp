@@ -15,13 +15,11 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <map>
+#include <core/utf8.h>
 #include <sch_draw_panel.h>
 #include <gr_basic.h>
 #include <common.h>
@@ -81,7 +79,7 @@ bool SCH_EDIT_FRAME::CheckSheetForRecursion( SCH_SHEET* aSheet, SCH_SHEET_PATH* 
 
     // SCH_SCREEN object file paths are expected to be absolute.  If this assert fires,
     // something is seriously broken.
-    KI_ASSERT( wxFileName( destFilePath ).IsAbsolute() );
+    KI_ASSERT_MSG( wxFileName( destFilePath ).IsAbsolute(), destFilePath + wxS( " is not absolute" ) );
 
     if( schematicSheets.TestForRecursion( loadedSheets, destFilePath ) )
     {
@@ -186,7 +184,7 @@ bool SCH_EDIT_FRAME::ChangeSheetFile( SCH_SHEET* aSheet, const wxString& aNewFil
     SCHEMATIC&  schematic = Schematic();
 
     // Resolve text variables before touching disk. The field keeps the raw text for portability.
-    wxFileName  sheetFileName( ExpandTextVars( aNewFilename, &schematic.Project() ) );
+    wxFileName  sheetFileName( ExpandTextVars( aNewFilename, &schematic.Project(), INTERNAL ) );
     SCH_SCREEN* currentScreen = GetCurrentSheet().LastScreen();
 
     KI_CHECK( currentScreen, false );
@@ -446,16 +444,21 @@ bool SCH_EDIT_FRAME::LoadSheetFromFile( SCH_SHEET* aSheet, SCH_SHEET_PATH* aCurr
 
     wxString fullFilename = fileName.GetFullPath();
 
+    // The caller owns the sheet a plugin returns here, so name the context. An importer that can
+    // only adopt a whole document into the schematic cannot satisfy that and refuses instead.
+    std::map<std::string, UTF8> loadProps;
+    loadProps["hierarchical_sheet_load"] = "1";
+
     try
     {
         if( aSheet->GetScreen() != nullptr )
         {
-            tmpSheet.reset( pi->LoadSchematicFile( fullFilename, &Schematic() ) );
+            tmpSheet.reset( pi->LoadSchematicFile( fullFilename, &Schematic(), nullptr, &loadProps ) );
         }
         else
         {
             tmpSheet->SetFileName( fullFilename );
-            pi->LoadSchematicFile( fullFilename, &Schematic(), tmpSheet.get() );
+            pi->LoadSchematicFile( fullFilename, &Schematic(), tmpSheet.get(), &loadProps );
         }
 
         if( !pi->GetError().IsEmpty() )
@@ -717,20 +720,19 @@ bool SCH_EDIT_FRAME::LoadSheetFromFile( SCH_SHEET* aSheet, SCH_SHEET_PATH* aCurr
                     if( !thisRow || !otherRow )
                         continue;
 
-                    wxFileName otherUriFileName;
-                    wxString thisURI = LIBRARY_MANAGER::GetFullURI( thisRow, true );;
+                    wxString thisURI = LIBRARY_MANAGER::GetFullURI( thisRow, true );
                     wxString otherURI = LIBRARY_MANAGER::GetFullURI( otherRow, false );
 
                     if( otherURI.Contains( "${KIPRJMOD}" ) || otherURI.Contains( "$(KIPRJMOD)" ) )
                     {
-                        // Cannot use relative paths here, "${KIPRJMOD}../path-to-cache-lib" does
-                        // not expand to a valid symbol library path.
-                        otherUriFileName.SetPath( fileName.GetPath() );
-                        otherUriFileName.SetFullName( otherURI.AfterLast( '}' ) );
+                        // Resolve KIPRJMOD against the imported schematic's directory.
+                        otherURI.Replace( wxS( "${KIPRJMOD}" ), fileName.GetPath() );
+                        otherURI.Replace( wxS( "$(KIPRJMOD)" ), fileName.GetPath() );
+                        wxFileName otherUriFileName( otherURI );
                         otherURI = otherUriFileName.GetFullPath();
                     }
 
-                    if( thisURI != otherURI )
+                    if( !LIBRARY_MANAGER::UrisAreEquivalent( thisURI, otherURI ) )
                     {
                         libNameConflict = true;
                         break;
@@ -770,14 +772,12 @@ bool SCH_EDIT_FRAME::LoadSheetFromFile( SCH_SHEET* aSheet, SCH_SHEET_PATH* aCurr
                     // Don't expand environment variable because KIPRJMOD will not be correct
                     // for a different project.
                     wxString uri = LIBRARY_MANAGER::GetFullURI( row, false );
-                    wxFileName newLib;
 
                     if( uri.Contains( "${KIPRJMOD}" ) || uri.Contains( "$(KIPRJMOD)" ) )
                     {
-                        // Cannot use relative paths here, "${KIPRJMOD}../path-to-cache-lib" does
-                        // not expand to a valid symbol library path.
-                        newLib.SetPath( fileName.GetPath() );
-                        newLib.SetFullName( uri.AfterLast( '}' ) );
+                        uri.Replace( wxS( "${KIPRJMOD}" ), fileName.GetPath() );
+                        uri.Replace( wxS( "$(KIPRJMOD)" ), fileName.GetPath() );
+                        wxFileName newLib( uri );
                         uri = newLib.GetFullPath();
                     }
                     else
@@ -831,7 +831,7 @@ bool SCH_EDIT_FRAME::LoadSheetFromFile( SCH_SHEET* aSheet, SCH_SHEET_PATH* aCurr
     newScreen->MigrateSimModels();
 
     // Attempt to create new symbol instances using the instance data loaded above.
-    loadedSheets.AddNewSymbolInstances( *aCurrentSheet, Prj().GetProjectName() );
+    loadedSheets.AddNewSymbolInstances( *aCurrentSheet, Prj().GetProjectName(), true );
 
     // Add new sheet instance data.
     loadedSheets.AddNewSheetInstances( *aCurrentSheet, schematicSheets.GetLastVirtualPageNumber() );
@@ -868,6 +868,27 @@ bool SCH_EDIT_FRAME::EditSheetProperties( SCH_SHEET* aSheet, SCH_SHEET_PATH* aHi
 
     return true;
 }
+
+
+class PRINT_TITLEBLOCK_CONTEXT
+{
+public:
+    PRINT_TITLEBLOCK_CONTEXT( SCH_EDIT_FRAME* aFrame, bool aPrintTitleBlock ) :
+            m_frame( aFrame )
+    {
+        m_originalValue = m_frame->eeconfig()->m_Printing.title_block;
+        m_frame->eeconfig()->m_Printing.title_block = aPrintTitleBlock;
+    }
+
+    ~PRINT_TITLEBLOCK_CONTEXT()
+    {
+        m_frame->eeconfig()->m_Printing.title_block = m_originalValue;
+    }
+
+private:
+    SCH_EDIT_FRAME*  m_frame;
+    bool             m_originalValue;
+};
 
 
 void SCH_EDIT_FRAME::DrawCurrentSheetToClipboard()
@@ -929,15 +950,11 @@ void SCH_EDIT_FRAME::DrawCurrentSheetToClipboard()
     {
         dc.SetUserScale( 1.0, 1.0 );
         SCH_PRINTOUT printout( this, wxEmptyString );
-        // Ensure title block will be when printed on clipboard, regardless
-        // the current Cairo print option
-        EESCHEMA_SETTINGS* eecfg = eeconfig();
-        bool print_tb_opt = eecfg->m_Printing.title_block;
-        eecfg->m_Printing.title_block = true;
-        bool success = printout.PrintPage( GetScreen(), cfg->GetPrintDC(), false );
-        eecfg->m_Printing.title_block = print_tb_opt;
 
-        if( !success )
+        // Ensure title block will be when printed on clipboard, regardless of the current Cairo print option
+        PRINT_TITLEBLOCK_CONTEXT raii( this, true );
+
+        if( !printout.PrintPage( GetScreen(), cfg->GetPrintDC(), false ) )
             wxLogMessage( _( "Cannot create the schematic image") );
     }
     catch( ... )

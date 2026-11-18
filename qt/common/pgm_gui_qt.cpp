@@ -30,6 +30,7 @@
 #include <QFileDialog>
 #include <QGuiApplication>
 #include <QMessageBox>
+#include <QSessionManager>
 #include <QWidget>
 
 #include <build_version.h>
@@ -65,33 +66,24 @@ void PGM_GUI::configureGuiToolkit( bool aHeadless )
     else
         SetDisplayServerInfo( ToWxString( platform ) );
 
-#if defined( KICAD_DESKTOP_APP_NAME )
     // The desktop file of the application, for the Wayland compositors (the window icon, the
-    // launch feedback): the main manager keeps the bare app name; the other GUI apps are
-    // prefixed.  Executables without a desktop file (pl_editor, kicad-cli) are left alone.
-    wxString pgm_name = programName();
-    wxString desktopId;
+    // launch feedback).  Executables without a desktop file (pl_editor, kicad-cli) have none.
+    if( !GetDesktopAppId().IsEmpty() )
+        QGuiApplication::setDesktopFileName( ToQString( GetDesktopAppId() ) );
 
-    if( pgm_name == wxT( "kicad" ) )
+    // The session manager asks the application to save its data before the user session ends:
+    // the windows closed from now on are not closed by the user
+    if( !aHeadless )
     {
-        desktopId = wxT( KICAD_DESKTOP_APP_NAME );
+        QObject::connect( qApp, &QGuiApplication::commitDataRequest,
+                          [this]( QSessionManager& )
+                          {
+                              SetSessionEnding( true );
+                          } );
     }
-    else if( pgm_name == wxT( "eeschema" ) || pgm_name == wxT( "pcbnew" )
-             || pgm_name == wxT( "gerbview" ) || pgm_name == wxT( "bitmap2component" )
-             || pgm_name == wxT( "pcb_calculator" ) )
-    {
-        // pcb_calculator installs as pcbcalculator to satisfy freedesktop naming rules.
-        wxString appName = pgm_name == wxT( "pcb_calculator" ) ? wxT( "pcbcalculator" ) : pgm_name;
-        desktopId = wxString( wxT( KICAD_DESKTOP_APP_PREFIX ) ) + wxT( "." ) + appName;
-    }
-
-    if( !desktopId.IsEmpty() )
-        QGuiApplication::setDesktopFileName( ToQString( desktopId ) );
-#endif
 
     // The tooltips of Qt stay while the mouse is on their widget, and the update UI functions
     // run after the input events (KIQT::RegisterUpdateUI)
-    (void) aHeadless;
 }
 
 

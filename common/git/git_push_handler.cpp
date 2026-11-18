@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "git_push_handler.h"
@@ -39,7 +35,29 @@ PushResult GIT_PUSH_HANDLER::PerformPush( bool aForce )
 }
 
 
-void GIT_PUSH_HANDLER::UpdateProgress( int aCurrent, int aTotal, const wxString& aMessage )
+void GIT_PUSH_HANDLER::SetExpectedTarget( const wxString& aBranch, const wxString& aHeadOid )
 {
-    ReportProgress( aCurrent, aTotal, aMessage );
+    m_hasExpectedTarget = true;
+    m_expectedBranch = aBranch;
+    m_expectedHeadOid = aHeadOid;
+}
+
+
+bool GIT_PUSH_HANDLER::MatchesExpectedTarget( const wxString& aBranch, const wxString& aHeadOid ) const
+{
+    return !m_hasExpectedTarget || ( m_expectedBranch == aBranch && m_expectedHeadOid == aHeadOid );
+}
+
+
+void GIT_PUSH_HANDLER::SetExpectedDestination( const wxString& aRemoteName, const wxString& aPushUrl )
+{
+    m_hasExpectedDestination = true;
+    m_expectedRemoteName = aRemoteName;
+    m_expectedPushUrl = aPushUrl;
+}
+
+
+bool GIT_PUSH_HANDLER::MatchesExpectedDestination( const wxString& aRemoteName, const wxString& aPushUrl ) const
+{
+    return !m_hasExpectedDestination || ( m_expectedRemoteName == aRemoteName && m_expectedPushUrl == aPushUrl );
 }

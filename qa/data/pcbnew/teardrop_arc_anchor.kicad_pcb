@@ -1,5 +1,5 @@
 (kicad_pcb
-	(version 20260206)
+	(version 20260818)
 	(generator "pcbnew")
 	(generator_version "10.99")
 	(general
@@ -88,7 +88,11 @@
 	(footprint "TestFP:ArcAnchorPad"
 		(layer "F.Cu")
 		(uuid "20000001-0000-0000-0000-000000000001")
-		(at -1 6.98)
+		(transform
+			(translate -1 6.98)
+			(rotate 0)
+			(scale 1 1)
+		)
 		(property "Reference" "P1"
 			(at 0 -2 0)
 			(layer "F.SilkS")

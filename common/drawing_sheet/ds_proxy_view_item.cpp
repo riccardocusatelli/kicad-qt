@@ -16,22 +16,24 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
+#include <common.h>
 #include <layer_ids.h>
 #include <page_info.h>
 #include <drawing_sheet/ds_proxy_view_item.h>
 #include <drawing_sheet/ds_draw_item.h>
 #include <drawing_sheet/ds_data_item.h>
+#include <drawing_sheet/ds_data_model.h>
 #include <drawing_sheet/ds_painter.h>
+#include <eda_text.h>
 #include <gal/graphics_abstraction_layer.h>
 #include <project.h>
+#include <text_var_dependency.h>
 #include <view/view.h>
+#include <title_block.h>
 
 using namespace KIGFX;
 
@@ -104,7 +106,7 @@ void DS_PROXY_VIEW_ITEM::ViewDraw( int aLayer, VIEW* aView ) const
 {
     GAL*              gal = aView->GetGAL();
     RENDER_SETTINGS*  settings = aView->GetPainter()->GetSettings();
-    DS_DRAW_ITEM_LIST drawList( m_iuScale );
+    DS_DRAW_ITEM_LIST drawList( m_iuScale, FOR_CANVAS );
 
     buildDrawList( aView, m_properties, &drawList );
 
@@ -126,19 +128,29 @@ void DS_PROXY_VIEW_ITEM::ViewDraw( int aLayer, VIEW* aView ) const
         viewport.SetOrigin( left, viewport.GetTop() );
     }
 
-    DS_PAINTER ws_painter( gal );
-    auto       ws_settings = static_cast<DS_RENDER_SETTINGS*>( ws_painter.GetSettings() );
+    if( !m_painter || m_painterGal != gal )
+    {
+        m_painter = std::make_unique<DS_PAINTER>( gal );
+        m_painterGal = gal;
+    }
 
+    DS_PAINTER& ws_painter = *m_painter;
+    auto        ws_settings = static_cast<DS_RENDER_SETTINGS*>( ws_painter.GetSettings() );
+
+    // Colors and font follow the theme, so they are cheap to set on every draw
     ws_settings->SetNormalColor( settings->GetLayerColor( m_colorLayer ) );
     ws_settings->SetSelectedColor( settings->GetLayerColor( LAYER_SELECT_OVERLAY ) );
     ws_settings->SetBrightenedColor( settings->GetLayerColor( LAYER_BRIGHTENED ) );
     ws_settings->SetPageBorderColor( settings->GetLayerColor( m_pageBorderColorLayer ) );
     ws_settings->SetDefaultFont( settings->GetDefaultFont() );
 
+    // A retained scene keeps the sheet across pans, so it must hold all of it
+    const bool wholeSheet = gal->HasRetainedScene();
+
     // Draw all the components that make the drawing sheet
     for( DS_DRAW_ITEM_BASE* item = drawList.GetFirst(); item; item = drawList.GetNext() )
     {
-        if( viewport.Intersects( item->GetApproxBBox() ) )
+        if( wholeSheet || viewport.Intersects( item->GetApproxBBox() ) )
             ws_painter.Draw( item, LAYER_DRAWINGSHEET );
     }
 
@@ -158,10 +170,97 @@ std::vector<int> DS_PROXY_VIEW_ITEM::ViewGetLayers() const
 }
 
 
+std::vector<TEXT_VAR_REF_KEY> DS_PROXY_VIEW_ITEM::CollectTextVarKeys() const
+{
+    // Scan the drawing-sheet *template* data model, not the resolved draw
+    // list: SyncDrawItems expands `${...}` against the current title block
+    // before populating DS_DRAW_ITEM_TEXT, so the references are lost by the
+    // time we'd see draw items. The template's m_TextBase preserves them.
+    std::vector<TEXT_VAR_REF_KEY> keys;
+
+    for( DS_DATA_ITEM* item : DS_DATA_MODEL::GetTheInstance().GetItems() )
+    {
+        if( item->GetType() != DS_DATA_ITEM::DS_TEXT )
+            continue;
+
+        const DS_DATA_ITEM_TEXT* textItem = static_cast<const DS_DATA_ITEM_TEXT*>( item );
+        std::vector<TEXT_VAR_REF_KEY> itemKeys = ExtractTextVarReferences( textItem->m_TextBase );
+
+        for( const TEXT_VAR_REF_KEY& ref : itemKeys )
+        {
+            if( ref.IsTrackable() )
+                keys.push_back( ref );
+        }
+    }
+
+    // Also scan the title block fields, as they can contain nested references
+    // to other text variables.
+    if( m_titleBlock )
+    {
+        const wxArrayString& titleBlockStrings = m_titleBlock->GetStrings();
+
+        for( int ii = 0; ii < (int) titleBlockStrings.GetCount(); ++ii )
+        {
+            for( const TEXT_VAR_REF_KEY& ref : ExtractTextVarReferences( titleBlockStrings[ii] ) )
+            {
+                if( ref.IsTrackable() )
+                    keys.push_back( ref );
+            }
+        }
+    }
+
+    // De-duplicate — the same ${REVISION} reference may appear on multiple
+    // draw items; a single registration per unique key is enough.
+    std::sort( keys.begin(), keys.end(),
+               []( const TEXT_VAR_REF_KEY& a, const TEXT_VAR_REF_KEY& b )
+               {
+                   if( a.kind != b.kind )
+                       return static_cast<int>( a.kind ) < static_cast<int>( b.kind );
+
+                   if( a.primary != b.primary )
+                       return a.primary < b.primary;
+
+                   return a.secondary < b.secondary;
+               } );
+
+    keys.erase( std::unique( keys.begin(), keys.end() ), keys.end() );
+
+    return keys;
+}
+
+
+void DS_PROXY_VIEW_ITEM::AttachToTracker( TEXT_VAR_TRACKER* aTracker )
+{
+    // Detach path: unregister from any previously attached tracker.
+    if( !aTracker )
+    {
+        if( m_attachedTracker )
+            m_attachedTracker->UnregisterItem( this );
+
+        m_attachedTracker = nullptr;
+        return;
+    }
+
+    // Re-attach to a different tracker: unregister from the old one first.
+    if( m_attachedTracker && m_attachedTracker != aTracker )
+        m_attachedTracker->UnregisterItem( this );
+
+    m_attachedTracker = aTracker;
+    aTracker->RegisterItem( this, CollectTextVarKeys() );
+}
+
+
+DS_PROXY_VIEW_ITEM::~DS_PROXY_VIEW_ITEM()
+{
+    if( m_attachedTracker )
+        m_attachedTracker->UnregisterItem( this );
+}
+
+
 bool DS_PROXY_VIEW_ITEM::HitTestDrawingSheetItems( VIEW* aView, const VECTOR2I& aPosition )
 {
     int               accuracy = (int) aView->ToWorld( 5.0 );   // five pixels at current zoom
-    DS_DRAW_ITEM_LIST drawList( m_iuScale );
+    DS_DRAW_ITEM_LIST drawList( m_iuScale, FOR_CANVAS );
 
     buildDrawList( aView, m_properties, &drawList );
 

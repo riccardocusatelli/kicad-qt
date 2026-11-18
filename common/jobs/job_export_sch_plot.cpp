@@ -14,13 +14,14 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <jobs/job_export_sch_plot.h>
 #include <jobs/job_registry.h>
 #include <i18n_utility.h>
+#include <plotters/plotter_png.h>
 #include <wx/intl.h>
 
 NLOHMANN_JSON_SERIALIZE_ENUM( JOB_PAGE_SIZE,
@@ -37,6 +38,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM( SCH_PLOT_FORMAT,
                                       { SCH_PLOT_FORMAT::POST, "post" },
                                       { SCH_PLOT_FORMAT::SVG, "svg" },
                                       { SCH_PLOT_FORMAT::DXF, "dxf" },
+                                      { SCH_PLOT_FORMAT::PNG, "png" },
                               } )
 
 JOB_EXPORT_SCH_PLOT::JOB_EXPORT_SCH_PLOT( bool aOutputIsDirectory ) :
@@ -65,6 +67,9 @@ JOB_EXPORT_SCH_PLOT::JOB_EXPORT_SCH_PLOT( bool aOutputIsDirectory ) :
 
     m_params.emplace_back( new JOB_PARAM<bool>( "plot_all",
             &m_plotAll, m_plotAll ) );
+
+    m_params.emplace_back( new JOB_PARAM<wxString>( "sheet_path",
+            &m_sheetPath, m_sheetPath ) );
 
     m_params.emplace_back( new JOB_PARAM<bool>( "plot_drawing_sheet",
             &m_plotDrawingSheet, m_plotDrawingSheet ) );
@@ -122,8 +127,8 @@ wxString JOB_EXPORT_SCH_PLOT_PDF::GetSettingsDialogTitle() const
 }
 
 
-JOB_EXPORT_SCH_PLOT_DXF ::JOB_EXPORT_SCH_PLOT_DXF () :
-		JOB_EXPORT_SCH_PLOT( true )
+JOB_EXPORT_SCH_PLOT_DXF::JOB_EXPORT_SCH_PLOT_DXF( bool aOutputIsDirectory ) :
+        JOB_EXPORT_SCH_PLOT( aOutputIsDirectory )
 {
 	m_plotFormat = SCH_PLOT_FORMAT::DXF;
 }
@@ -141,8 +146,8 @@ wxString JOB_EXPORT_SCH_PLOT_DXF::GetSettingsDialogTitle() const
 }
 
 
-JOB_EXPORT_SCH_PLOT_SVG::JOB_EXPORT_SCH_PLOT_SVG() :
-		JOB_EXPORT_SCH_PLOT( true )
+JOB_EXPORT_SCH_PLOT_SVG::JOB_EXPORT_SCH_PLOT_SVG( bool aOutputIsDirectory ) :
+        JOB_EXPORT_SCH_PLOT( aOutputIsDirectory )
 {
 	m_plotFormat = SCH_PLOT_FORMAT::SVG;
 }
@@ -160,8 +165,8 @@ wxString JOB_EXPORT_SCH_PLOT_SVG::GetSettingsDialogTitle() const
 }
 
 
-JOB_EXPORT_SCH_PLOT_PS::JOB_EXPORT_SCH_PLOT_PS() :
-		JOB_EXPORT_SCH_PLOT( true )
+JOB_EXPORT_SCH_PLOT_PS::JOB_EXPORT_SCH_PLOT_PS( bool aOutputIsDirectory ) :
+        JOB_EXPORT_SCH_PLOT( aOutputIsDirectory )
 {
 	m_plotFormat = SCH_PLOT_FORMAT::POST;
 }
@@ -192,6 +197,29 @@ wxString JOB_EXPORT_SCH_PLOT_HPGL::GetDefaultDescription() const
 }
 
 
+JOB_EXPORT_SCH_PLOT_PNG::JOB_EXPORT_SCH_PLOT_PNG( bool aOutputIsDirectory ) :
+        JOB_EXPORT_SCH_PLOT( aOutputIsDirectory ),
+        m_dpi( DEFAULT_PNG_DPI ),
+        m_antialias( true )
+{
+    m_plotFormat = SCH_PLOT_FORMAT::PNG;
+    m_params.emplace_back( new JOB_PARAM<int>( "dpi", &m_dpi, m_dpi ) );
+    m_params.emplace_back( new JOB_PARAM<bool>( "antialias", &m_antialias, m_antialias ) );
+}
+
+
+wxString JOB_EXPORT_SCH_PLOT_PNG::GetDefaultDescription() const
+{
+    return _( "Export PNG" );
+}
+
+
+wxString JOB_EXPORT_SCH_PLOT_PNG::GetSettingsDialogTitle() const
+{
+    return _( "Export PNG Job Settings" );
+}
+
+
 REGISTER_JOB( sch_export_plot_svg, _HKI( "Schematic: Export SVG" ), KIWAY_FACES::FACE_SCH,
               JOB_EXPORT_SCH_PLOT_SVG );
 REGISTER_DEPRECATED_JOB( sch_export_plot_hpgl, _HKI( "Schematic: Export HPGL" ), KIWAY_FACES::FACE_SCH,
@@ -202,3 +230,5 @@ REGISTER_JOB( sch_export_plot_dxf, _HKI( "Schematic: Export DXF" ), KIWAY_FACES:
               JOB_EXPORT_SCH_PLOT_DXF );
 REGISTER_JOB( sch_export_plot_pdf, _HKI( "Schematic: Export PDF" ), KIWAY_FACES::FACE_SCH,
               JOB_EXPORT_SCH_PLOT_PDF );
+REGISTER_JOB( sch_export_plot_png, _HKI( "Schematic: Export PNG" ), KIWAY_FACES::FACE_SCH,
+              JOB_EXPORT_SCH_PLOT_PNG );

@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef FOOTPRINT_VIEWER_FRAME_H
@@ -56,7 +52,7 @@ class FOOTPRINT_VIEWER_FRAME : public PCB_BASE_FRAME
 public:
     ~FOOTPRINT_VIEWER_FRAME();
 
-    ///< @copydoc PCB_BASE_FRAME::GetModel()
+    /// @copydoc PCB_BASE_FRAME::GetModel()
     BOARD_ITEM_CONTAINER* GetModel() const override;
 
     SELECTION& GetCurrentSelection() override;
@@ -92,11 +88,11 @@ public:
      * If no current footprint, rebuild the list of footprints available in a given footprint
      * library.
      *
-     * @param aMode #NEXT_PART or #PREVIOUS_PART.
+     * @param aMode #FPVIEWER_CONSTANTS::NEXT_PART or #FPVIEWER_CONSTANTS::PREVIOUS_PART.
      */
     void SelectAndViewFootprint( FPVIEWER_CONSTANTS aMode );
 
-    ///< @copydoc EDADRAW_FRAME::UpdateMsgPanel
+    /// @copydoc EDA_DRAW_FRAME::UpdateMsgPanel
     void UpdateMsgPanel() override;
 
     COLOR_SETTINGS* GetColorSettings( bool aForceRefresh = false ) const override;

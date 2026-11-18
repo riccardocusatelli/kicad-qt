@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "panel_packages_view.h"
@@ -167,11 +167,26 @@ void PANEL_PACKAGES_VIEW::SetData( const std::vector<PACKAGE_VIEW_DATA>& aPackag
 void PANEL_PACKAGES_VIEW::setPackageDetails( const PACKAGE_VIEW_DATA& aPackageData )
 {
     const PCM_PACKAGE& package = aPackageData.package;
+    bool supportsIpc = std::any_of( package.versions.begin(), package.versions.end(),
+                                    []( const PACKAGE_VERSION& aVersion )
+                                    {
+                                        return aVersion.runtime.value_or( PCM_PACKAGE_RUNTIME::PPR_SWIG )
+                                               == PCM_PACKAGE_RUNTIME::PPR_IPC;
+                                    } );
+    bool legacyRuntimeOnly = ( package.type == PT_PLUGIN || package.type == PT_FAB ) && !supportsIpc;
 
     // Details
     wxString details;
 
     details << wxT( "<h5>" ) + package.name + wxT( "</h5>" );
+
+    if( legacyRuntimeOnly )
+    {
+        details << wxT( "<p><b>" )
+                + _( "Warning: This plugin only supports the legacy Python API "
+                     "and will not run in this KiCad version." )
+                + wxT( "</b></p>" );
+    }
 
     auto format_desc =
             []( const wxString& text ) -> wxString
@@ -599,11 +614,11 @@ void PANEL_PACKAGES_VIEW::OnVersionActionClicked( wxCommandEvent& event )
 
     KI_CHECK_RET( ver_it != package.versions.end(), "Could not find package version" );
 
-    if( !ver_it->compatible && wxMessageBox( _( "This package version is incompatible with your KiCad version or "
-                                                "platform. Are you sure you want to install it anyway?" ),
-                                             _( "Install package" ), wxICON_EXCLAMATION | wxYES_NO,
-                                             wxGetTopLevelParent( this ) )
-                                   == wxNO )
+    if( ( !ver_it->compatible || m_pcm->UsesSWIGRuntime( package, version ) )
+        && wxMessageBox( _( "This package version is incompatible with your KiCad version or "
+                            "platform. Are you sure you want to install it anyway?" ),
+                         _( "Install package" ), wxICON_EXCLAMATION | wxYES_NO, wxGetTopLevelParent( this ) )
+                   == wxNO )
     {
         return;
     }

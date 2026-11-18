@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef CONVERT_TOOL_H_
@@ -68,7 +64,7 @@ public:
      */
     int OutsetItems( const TOOL_EVENT& aEvent );
 
-    ///< @copydoc TOOL_INTERACTIVE::setTransitions()
+    /// @copydoc TOOL_INTERACTIVE::setTransitions()
     void setTransitions() override;
 
 private:
@@ -88,6 +84,7 @@ private:
      * is made to guess at holes.
      *
      * @param aItems is a list of items to process.
+     * @param aStrategy is the conversion strategy.
      * @return a #SHAPE_POLY_SET containing any polygons that were created.
      */
     SHAPE_POLY_SET makePolysFromChainedSegs( const std::deque<EDA_ITEM*>& aItems,
@@ -97,6 +94,7 @@ private:
      * Make polygons from graphic shapes and zones.
      *
      * @param aItems is a list of items to process.
+     * @param aGap
      * @return a #SHAPE_POLY_SET containing any polygons that were created.
      */
     SHAPE_POLY_SET makePolysFromOpenGraphics( const std::deque<EDA_ITEM*>& aItems, int aGap );

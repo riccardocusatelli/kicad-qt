@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PCB_TABLECELL_H
@@ -28,11 +24,13 @@
 #include <pcb_textbox.h>
 #include <board_item_container.h>
 
+
+class wxPGChoices;
+
 namespace kiapi::board::types
 {
     class TableCell;
 }
-
 
 class PCB_TABLECELL : public PCB_TEXTBOX
 {
@@ -46,6 +44,8 @@ public:
     virtual wxString GetFriendlyName() const override { return _( "Table Cell" ); }
 
     EDA_ITEM* Clone() const override { return new PCB_TABLECELL( *this ); }
+
+    void CopyFrom( const BOARD_ITEM* aOther ) override;
 
     void Serialize( google::protobuf::Any &aContainer ) const override;
     bool Deserialize( const google::protobuf::Any &aContainer ) override;
@@ -65,7 +65,13 @@ public:
     // @return the spreadsheet nomenclature for the cell (ie: B3 for 2nd column, 3rd row)
     wxString GetAddr() const;
 
-    wxString GetShownText( bool aAllowExtraText, int aDepth = 0 ) const override;
+    wxString GetShownText( RESOLUTION_CONTEXT aContext, int aDepth = 0 ) const override;
+
+    /**
+     * GetShownText() before it is line-broken to the cell's width, i.e. the width the text
+     * needs rather than the width it has been given.
+     */
+    wxString GetUnwrappedShownText( RESOLUTION_CONTEXT aContext, int aDepth = 0 ) const;
 
     int  GetColSpan() const { return m_colSpan; }
     void SetColSpan( int aSpan ) { m_colSpan = aSpan; }
@@ -78,6 +84,22 @@ public:
 
     int  GetColumnWidth() const;
     void SetColumnWidth( int aWidth );
+
+    double GetCoverageArea( int aTextMargin ) const override;
+
+    /**
+     * The text height, which speaks for the width too only when HasSquareFontSize.
+     * Setting it sets both.
+     */
+    int  GetFontSize() const { return GetTextHeight(); }
+    void SetFontSize( int aSize ) { SetTextSize( VECTOR2I( aSize, aSize ) ); }
+    bool HasSquareFontSize() const { return GetTextWidth() == GetTextHeight(); }
+
+    /**
+     * The font names EDA_TEXT's Font property offers, for the Font Name a generated table and
+     * its cells offer instead.
+     */
+    static wxPGChoices FontChoices( INSPECTABLE* aItem );
 
     bool IsFilledForHitTesting() const override { return true; }
 

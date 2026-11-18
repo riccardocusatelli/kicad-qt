@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -33,7 +29,6 @@
 #include <wx/evtloop.h>
 #include <wx/socket.h>
 #include <core/raii.h>
-#include <trace_helpers.h>
 #include <wx/log.h>
 #include <core/ki_assert.h>
 #include <core/ki_log.h>
@@ -117,8 +112,6 @@ bool KIWAY_PLAYER::ShowModal( wxString* aResult, wxWindow* aResultantFocusWindow
 
     m_modal_resultant_parent = aResultantFocusWindow;
 
-    KI_LOG_TRACE( traceGalContext, wxS( "Modal frame '%s' %p showing" ), GetTitle(), this );
-
     Show( true );
     Raise();    // Needed on some Window managers to always display the frame
 
@@ -140,9 +133,6 @@ bool KIWAY_PLAYER::ShowModal( wxString* aResult, wxWindow* aResultantFocusWindow
         m_modal_loop = &event_loop;
         event_loop.Run();
     }
-
-    KI_LOG_TRACE( traceGalContext, wxS( "Modal frame '%s' %p loop ended, result %d" ), GetTitle(), this,
-                m_modal_ret_val );
 
     if( aResult )
         *aResult = m_modal_string;

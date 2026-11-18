@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -41,11 +37,8 @@ void CONTAINER_3D_BASE::Clear()
 {
     if( !m_objects.empty() )
     {
-        for( LIST_OBJECT::iterator ii = m_objects.begin(); ii != m_objects.end(); ++ii )
-        {
-            delete *ii;
-            *ii = nullptr;
-        }
+        for( OBJECT_3D* object : m_objects )
+            delete object;
 
         m_objects.clear();
     }
@@ -60,7 +53,7 @@ CONTAINER_3D_BASE::~CONTAINER_3D_BASE()
 }
 
 
-void CONTAINER_3D_BASE::ConvertTo( CONST_VECTOR_OBJECT &aOutVector ) const
+void CONTAINER_3D_BASE::ConvertTo( std::vector<const OBJECT_3D*> &aOutVector ) const
 {
     aOutVector.resize( m_objects.size() );
 
@@ -68,11 +61,10 @@ void CONTAINER_3D_BASE::ConvertTo( CONST_VECTOR_OBJECT &aOutVector ) const
     {
         unsigned int i = 0;
 
-        for( LIST_OBJECT::const_iterator ii = m_objects.begin(); ii != m_objects.end(); ++ii )
+        for( const OBJECT_3D* object : m_objects )
         {
-            KI_ASSERT( (*ii) != nullptr );
-
-            aOutVector[i++] = static_cast<const OBJECT_3D*>( *ii );
+            KI_ASSERT( object );
+            aOutVector[i++] = object;
         }
     }
 }
@@ -86,10 +78,8 @@ bool CONTAINER_3D::Intersect( const RAY &aRay, HITINFO &aHitInfo ) const
 
     bool hitted = false;
 
-    for( LIST_OBJECT::const_iterator ii = m_objects.begin(); ii != m_objects.end(); ++ii )
+    for( const OBJECT_3D* object : m_objects )
     {
-        const OBJECT_3D *object = static_cast<const OBJECT_3D *>( *ii );
-
         if( object->Intersect( aRay, aHitInfo) )
             hitted = true;
     }
@@ -100,10 +90,8 @@ bool CONTAINER_3D::Intersect( const RAY &aRay, HITINFO &aHitInfo ) const
 
 bool CONTAINER_3D::IntersectP( const RAY &aRay, float aMaxDistance ) const
 {
-    for( LIST_OBJECT::const_iterator ii = m_objects.begin(); ii != m_objects.end(); ++ii )
+    for( const OBJECT_3D* object : m_objects )
     {
-        const OBJECT_3D *object = static_cast<const OBJECT_3D*>( *ii );
-
         if( object->IntersectP( aRay, aMaxDistance ) )
             return true;
     }

@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef __SHAPE_H
@@ -47,16 +43,17 @@ class SHAPE_POLY_SET;
 
 enum SHAPE_TYPE
 {
-    SH_RECT = 0,         ///< axis-aligned rectangle
-    SH_SEGMENT,          ///< line segment
-    SH_LINE_CHAIN,       ///< line chain (polyline)
-    SH_CIRCLE,           ///< circle
-    SH_SIMPLE,           ///< simple polygon
-    SH_POLY_SET,         ///< set of polygons (with holes, etc.)
-    SH_COMPOUND,         ///< compound shape, consisting of multiple simple shapes
-    SH_ARC,              ///< circular arc
-    SH_NULL,             ///< empty shape (no shape...),
-    SH_POLY_SET_TRIANGLE ///< a single triangle belonging to a POLY_SET triangulation
+    SH_RECT = 0,          ///< axis-aligned rectangle
+    SH_SEGMENT,           ///< line segment
+    SH_LINE_CHAIN,        ///< line chain (polyline)
+    SH_CIRCLE,            ///< circle
+    SH_SIMPLE,            ///< simple polygon
+    SH_POLY_SET,          ///< set of polygons (with holes, etc.)
+    SH_COMPOUND,          ///< compound shape, consisting of multiple simple shapes
+    SH_ARC,               ///< circular arc
+    SH_NULL,              ///< empty shape (no shape...),
+    SH_POLY_SET_TRIANGLE, ///< a single triangle belonging to a POLY_SET triangulation
+    SH_ELLIPSE            ///< ellipse or elliptical arc
 };
 
 static inline const char* SHAPE_TYPE_asString( SHAPE_TYPE a )
@@ -73,6 +70,7 @@ static inline const char* SHAPE_TYPE_asString( SHAPE_TYPE a )
     case SH_ARC:               return "SH_ARC";
     case SH_NULL:              return "SH_NULL";
     case SH_POLY_SET_TRIANGLE: return "SH_POLY_SET_TRIANGLE";
+    case SH_ELLIPSE: return "SH_ELLIPSE";
     }
 
     return "";  // Just to quiet GCC.
@@ -118,7 +116,7 @@ public:
     virtual void GetIndexableSubshapes( std::vector<const SHAPE*>& aSubshapes ) const { }
 
 protected:
-    ///< type of our shape
+    /// type of our shape
     SHAPE_TYPE m_type;
 };
 
@@ -175,10 +173,12 @@ public:
      * Check if the boundary of shape (this) lies closer to the point \a aP than \a aClearance,
      * indicating a collision.
      *
-     * @param aActual [out] an optional pointer to an int to store the actual distance in the
-     *                event of a collision.
-     * @param aLocation [out] an option pointer to a point to store a nearby location in the
-     *                  event of a collision.
+     * @param[in] aP is the position to check for a collision.
+     * @param aClearance is the allowable tolerance of the collision comparison.
+     * @param[out] aActual an optional pointer to an int to store the actual distance in the
+     *                     event of a collision.
+     * @param[out] aLocation an option pointer to a point to store a nearby location in the
+     *                       event of a collision.
      * @return true, if there is a collision.
      */
     virtual bool Collide( const VECTOR2I& aP, int aClearance = 0, int* aActual = nullptr,
@@ -193,15 +193,23 @@ public:
      *
      * @param aShape shape to check collision against
      * @param aClearance minimum clearance
-     * @param aMTV [out] minimum translation vector
-     * @param aActual [out] an optional pointer to an int to store the actual distance in the
-     *                event of a collision.
-     * @param aLocation [out] an option pointer to a point to store a nearby location in the
-     *                  event of a collision.
+     * @param[out] aActual is the actual collision point
      * @return true, if there is a collision.
      */
-    virtual bool Collide( const SHAPE* aShape, int aClearance, VECTOR2I* aMTV ) const;
+    virtual bool Collide( const SHAPE* aShape, int aClearance, VECTOR2I* aActual ) const;
 
+    /**
+     * Check if the boundary of shape (this) lies closer to the shape \a aShape than \a aClearance,
+     * indicating a collision.
+     *
+     * @param aShape shape to check collision against
+     * @param aClearance minimum clearance
+     * @param[out] aActual an optional pointer to an int to store the actual distance in the
+     *                     event of a collision.
+     * @param[out] aLocation an option pointer to a point to store a nearby location in the
+     *                       event of a collision.
+     * @return true, if there is a collision.
+     */
     virtual bool Collide( const SHAPE* aShape, int aClearance = 0, int* aActual = nullptr,
                           VECTOR2I* aLocation = nullptr ) const;
 
@@ -209,10 +217,12 @@ public:
      * Check if the boundary of shape (this) lies closer to the segment \a aSeg than \a aClearance,
      * indicating a collision.
      *
-     * @param aActual [out] an optional pointer to an int to be updated with the actual distance
-     *                int the event of a collision.
-     * @param aLocation [out] an option pointer to a point to store a nearby location in the
-     *                  event of a collision.
+     * @param[in] aSeg is the segment to compare.
+     * @param aClearance is the allowable tolerance of the collision comparison.
+     * @param[out] aActual an optional pointer to an int to be updated with the actual distance
+     *                     int the event of a collision.
+     * @param[out] aLocation an option pointer to a point to store a nearby location in the
+     *                       event of a collision.
      * @return true, if there is a collision.
      */
     virtual bool Collide( const SEG& aSeg, int aClearance = 0, int* aActual = nullptr,
@@ -256,8 +266,8 @@ public:
      * If the shapes are overlapping, the points will be the same.
      *
      * @param aOther the other shape to compare with
-     * @param aPtThis [out] the point on this shape closest to \a aOther
-     * @param aPtOther [out] the point on \a aOther closest to this shape
+     * @param[out] aPtThis the point on this shape closest to \a aOther
+     * @param[out] aPtOther the point on \a aOther closest to this shape
      * @return true if the points were found
      */
     bool NearestPoints( const SHAPE* aOther, VECTOR2I& aPtThis, VECTOR2I& aPtOther ) const;
@@ -265,16 +275,16 @@ public:
     /**
      * Check if point \a aP lies inside a closed shape.  Always returns false if this shape is not closed.
      *
-     * @param aPt point to check
-     * @param aUseBBoxCache gives better performance if the bounding box caches have been
-     *                      generated.
+     * @param aPt point to check.
+     * @param aAccuracy is the allowable tolerance of the cheack.
+     * @param aUseBBoxCache gives better performance if the bounding box caches have been generated.
      * @return true if the point is inside the shape (edge is not treated as being inside).
      */
     virtual bool PointInside( const VECTOR2I& aPt, int aAccuracy = 0, bool aUseBBoxCache = false ) const;
 
     /**
      * Fills a SHAPE_POLY_SET with a polygon representation of this shape.
-     * @param aBuffer [out] will be filled with the polygonal representation of this shape.
+     * @param[out] aBuffer will be filled with the polygonal representation of this shape.
      * @param aError controls the maximum allowed deviation when converting rounded shapes to segments
      * @param aErrorLoc controls where the error is placed when approximating rounded shapes
      */
@@ -324,6 +334,7 @@ public:
      * @param aClearance minimum distance that does not qualify as a collision.
      * @param aActual an optional pointer to an int to store the actual distance in the event
      *                of a collision.
+     * @param aLocation
      * @return true, when a collision has been found
      */
     virtual bool Collide( const VECTOR2I& aP, int aClearance = 0, int* aActual = nullptr,
@@ -336,6 +347,7 @@ public:
      * @param aClearance minimum distance that does not qualify as a collision.
      * @param aActual an optional pointer to an int to store the actual distance in the event
      *                of a collision.
+     * @param aLocation
      * @return true, when a collision has been found
      */
 
@@ -349,7 +361,8 @@ public:
     /**
      * Check if point \a aP lies on an edge or vertex of the line chain.
      *
-     * @param aP point to check
+     * @param aP point to check.
+     * @param aAccuracy is the error limit for the test.
      * @return true if the point lies on the edge.
      */
     bool PointOnEdge( const VECTOR2I& aP, int aAccuracy = 0 ) const;
@@ -358,6 +371,7 @@ public:
      * Check if point \a aP lies on an edge or vertex of the line chain.
      *
      * @param aP point to check
+     * @param aAccuracy is the error limit for the test.
      * @return index of the first edge containing the point, otherwise negative
      */
     int EdgeContainingPoint( const VECTOR2I& aP, int aAccuracy = 0 ) const;

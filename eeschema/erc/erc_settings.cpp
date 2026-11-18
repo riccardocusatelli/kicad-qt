@@ -15,12 +15,13 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <widgets/report_severity.h>
 #include <algorithm>
+#include <tuple>
 #include <erc/erc_item.h>
 #include <erc/erc_settings.h>
 #include <schematic.h>
@@ -30,8 +31,7 @@
 #include <settings/parameters.h>
 #include <core/ki_assert.h>
 
-
-const int ercSettingsSchemaVersion = 0;
+const int ercSettingsSchemaVersion = 1;
 
 
 
@@ -89,7 +89,7 @@ int ERC_SETTINGS::m_PinMinDrive[ELECTRICAL_PINTYPES_TOTAL][ELECTRICAL_PINTYPES_T
 
 
 ERC_SETTINGS::ERC_SETTINGS( JSON_SETTINGS* aParent, const std::string& aPath ) :
-        NESTED_SETTINGS( "erc", ercSettingsSchemaVersion, aParent, aPath )
+        NESTED_SETTINGS( "erc", ercSettingsSchemaVersion, aParent, aPath, false )
 {
     ResetPinMap();
 
@@ -100,6 +100,7 @@ ERC_SETTINGS::ERC_SETTINGS( JSON_SETTINGS* aParent, const std::string& aPath ) :
     m_ERCSeverities[ERCE_UNSPECIFIED]             = RPT_SEVERITY_UNDEFINED;
     m_ERCSeverities[ERCE_ENDPOINT_OFF_GRID]       = RPT_SEVERITY_WARNING;
     m_ERCSeverities[ERCE_PIN_TO_PIN_WARNING]      = RPT_SEVERITY_WARNING;
+    m_ERCSeverities[ERCE_PIN_TO_PIN_ERROR]        = RPT_SEVERITY_ERROR;
     m_ERCSeverities[ERCE_SIMILAR_LABELS]          = RPT_SEVERITY_WARNING;
     m_ERCSeverities[ERCE_SIMILAR_POWER]           = RPT_SEVERITY_WARNING;
     m_ERCSeverities[ERCE_SIMILAR_LABEL_AND_POWER] = RPT_SEVERITY_WARNING;
@@ -107,6 +108,7 @@ ERC_SETTINGS::ERC_SETTINGS( JSON_SETTINGS* aParent, const std::string& aPath ) :
     m_ERCSeverities[ERCE_SAME_LOCAL_GLOBAL_LABEL] = RPT_SEVERITY_WARNING;
     m_ERCSeverities[ERCE_SAME_LOCAL_GLOBAL_POWER] = RPT_SEVERITY_WARNING;
     m_ERCSeverities[ERCE_GROUND_PIN_NOT_GROUND]   = RPT_SEVERITY_WARNING;
+    m_ERCSeverities[ERCE_WIRED_IMPLICIT_POWER]    = RPT_SEVERITY_WARNING;
     m_ERCSeverities[ERCE_LABEL_SINGLE_PIN]        = RPT_SEVERITY_WARNING;
     m_ERCSeverities[ERCE_DRIVER_CONFLICT]         = RPT_SEVERITY_WARNING;
     m_ERCSeverities[ERCE_BUS_ENTRY_CONFLICT]      = RPT_SEVERITY_WARNING;
@@ -125,6 +127,14 @@ ERC_SETTINGS::ERC_SETTINGS( JSON_SETTINGS* aParent, const std::string& aPath ) :
     m_ERCSeverities[ERCE_UNCONNECTED_WIRE_ENDPOINT] = RPT_SEVERITY_WARNING;
     m_ERCSeverities[ERCE_STACKED_PIN_SYNTAX]      = RPT_SEVERITY_WARNING;
     m_ERCSeverities[ERCE_FIELD_NAME_WHITESPACE]   = RPT_SEVERITY_WARNING;
+    m_ERCSeverities[ERCE_EMPTY_LABEL_NAME] = RPT_SEVERITY_ERROR;
+    m_ERCSeverities[ERCE_EMPTY_POWER_VALUE] = RPT_SEVERITY_ERROR;
+    m_ERCSeverities[ERCE_DUPLICATE_SHEET_SUFFIX] = RPT_SEVERITY_ERROR;
+    m_ERCSeverities[ERCE_REF_SUFFIX_MISMATCH] = RPT_SEVERITY_WARNING;
+    m_ERCSeverities[ERCE_PIN_MAP_UNMAPPED_PIN] = RPT_SEVERITY_WARNING;
+    m_ERCSeverities[ERCE_PIN_MAP_STALE_PIN] = RPT_SEVERITY_WARNING;
+    m_ERCSeverities[ERCE_VARIANT_SYMBOL_INVALID]  = RPT_SEVERITY_ERROR;
+    m_ERCSeverities[ERCE_VARIANT_SYMBOL_INCOMPATIBLE] = RPT_SEVERITY_WARNING;
 
     m_params.emplace_back( new PARAM_LAMBDA<nlohmann::json>( "rule_severities",
             [&]() -> nlohmann::json
@@ -167,8 +177,8 @@ ERC_SETTINGS::ERC_SETTINGS( JSON_SETTINGS* aParent, const std::string& aPath ) :
             {
                 nlohmann::json js = nlohmann::json::array();
 
-                for( const wxString& entry : m_ErcExclusions )
-                    js.push_back( { entry, m_ErcExclusionComments[ entry ] } );
+                for( const ERC_EXCLUSION& exclusion : m_ErcExclusions )
+                    js.push_back( exclusion );
 
                 return js;
             },
@@ -181,16 +191,13 @@ ERC_SETTINGS::ERC_SETTINGS( JSON_SETTINGS* aParent, const std::string& aPath ) :
 
                 for( const nlohmann::json& entry : aObj )
                 {
-                    if( entry.is_array() )
-                    {
-                        wxString serialized = entry[0].get<wxString>();
-                        m_ErcExclusions.insert( serialized );
-                        m_ErcExclusionComments[ serialized ] = entry[1].get<wxString>();
-                    }
-                    else if( entry.is_string() )
-                    {
-                        m_ErcExclusions.insert( entry.get<wxString>() );
-                    }
+                    if( !entry.is_object() )
+                        continue;
+
+                    ERC_EXCLUSION exclusion = entry.get<ERC_EXCLUSION>();
+
+                    if( !exclusion.GetSortKey().empty() )
+                        m_ErcExclusions.insert( exclusion );
                 }
             },
             {} ) );
@@ -241,6 +248,8 @@ ERC_SETTINGS::ERC_SETTINGS( JSON_SETTINGS* aParent, const std::string& aPath ) :
             },
             {} ) );
 
+    registerMigration( 0, 1, std::bind( &ERC_SETTINGS::migrateSchema0to1, this ) );
+
     // Pin weights used for sorting. Take care, sorting is descending!
     m_PinTypeWeights.emplace( ELECTRICAL_PINTYPE::PT_NIC,           11 );
     m_PinTypeWeights.emplace( ELECTRICAL_PINTYPE::PT_UNSPECIFIED,   10 );
@@ -256,6 +265,41 @@ ERC_SETTINGS::ERC_SETTINGS( JSON_SETTINGS* aParent, const std::string& aPath ) :
     m_PinTypeWeights.emplace( ELECTRICAL_PINTYPE::PT_NC,            0 );
 
     m_ERCSortingMetric = ERC_PIN_SORTING_METRIC::SM_HEURISTICS;
+}
+
+
+bool ERC_SETTINGS::migrateSchema0to1()
+{
+    // Schema 0 to 1: convert ERC exclusions from legacy pipe-delimited strings to ProtoJSON
+    std::optional<nlohmann::json> opt = Get<nlohmann::json>( "erc_exclusions" );
+
+    if( !opt )
+        return true;
+
+    m_ErcExclusionsLegacy.clear();
+
+    for( const nlohmann::json& entry : *opt )
+    {
+        if( entry.is_array() && entry.size() > 0 )
+        {
+            wxString markerData = entry[0].get<wxString>();
+            wxString comment    = entry.size() > 1 ? entry[1].get<wxString>() : wxString();
+
+            if( !markerData.IsEmpty() )
+                m_ErcExclusionsLegacy.emplace( markerData, comment );
+        }
+        else if( entry.is_string() )
+        {
+            wxString markerData = entry.get<wxString>();
+
+            if( !markerData.IsEmpty() )
+                m_ErcExclusionsLegacy.emplace( markerData, wxString() );
+        }
+    }
+
+    Set( "erc_exclusions", nlohmann::json::array() );
+
+    return true;
 }
 
 
@@ -277,26 +321,26 @@ SEVERITY ERC_SETTINGS::GetSeverity( int aErrorCode ) const
     {
         return RPT_SEVERITY_ERROR;
     }
-    // Special-case pin-to-pin errors:
-    // Ignore-or-not is controlled by ERCE_PIN_TO_PIN_WARNING (for both)
-    // Warning-or-error is controlled by which errorCode it is
+    // Pin-to-pin codes carry independent ignore state but a fixed reported severity.
+    // Warning-or-error is controlled by which errorCode it is, so each slot's stored
+    // value is consulted only to determine ignore-vs-active.
     else if( aErrorCode == ERCE_PIN_TO_PIN_ERROR )
     {
-        KI_ASSERT( m_ERCSeverities.count( ERCE_PIN_TO_PIN_WARNING ) );
+        auto it = m_ERCSeverities.find( ERCE_PIN_TO_PIN_ERROR );
 
-        if( m_ERCSeverities.at( ERCE_PIN_TO_PIN_WARNING ) == RPT_SEVERITY_IGNORE )
+        if( it != m_ERCSeverities.end() && it->second == RPT_SEVERITY_IGNORE )
             return RPT_SEVERITY_IGNORE;
-        else
-            return RPT_SEVERITY_ERROR;
+
+        return RPT_SEVERITY_ERROR;
     }
     else if( aErrorCode == ERCE_PIN_TO_PIN_WARNING )
     {
-        KI_ASSERT( m_ERCSeverities.count( ERCE_PIN_TO_PIN_WARNING ) );
+        auto it = m_ERCSeverities.find( ERCE_PIN_TO_PIN_WARNING );
 
-        if( m_ERCSeverities.at( ERCE_PIN_TO_PIN_WARNING ) == RPT_SEVERITY_IGNORE )
+        if( it != m_ERCSeverities.end() && it->second == RPT_SEVERITY_IGNORE )
             return RPT_SEVERITY_IGNORE;
-        else
-            return RPT_SEVERITY_WARNING;
+
+        return RPT_SEVERITY_WARNING;
     }
     else if( aErrorCode == ERCE_GENERIC_WARNING )
     {
@@ -326,26 +370,6 @@ void ERC_SETTINGS::ResetPinMap()
 }
 
 
-struct CompareMarkers
-{
-    bool operator()( const SCH_MARKER* item1, const SCH_MARKER* item2 ) const
-    {
-        KI_CHECK( item1 && item2, false );
-
-        const VECTOR2I& p1 = item1->GetPosition();
-        const VECTOR2I& p2 = item2->GetPosition();
-
-        if( p1 == p2 )
-            return item1->SerializeToString() < item2->SerializeToString();
-
-        // VECTOR2::operator< orders by squared magnitude, which is not a strict
-        // weak ordering: mirrored points like (a, b) and (b, a) compare equal
-        // and collide in the std::set below, silently dropping one marker.
-        return p1.x < p2.x || ( p1.x == p2.x && p1.y < p2.y );
-    }
-};
-
-
 void SHEETLIST_ERC_ITEMS_PROVIDER::visitMarkers( std::function<void( SCH_MARKER* )> aVisitor ) const
 {
     std::set<SCH_SCREEN*> seenScreens;
@@ -357,18 +381,25 @@ void SHEETLIST_ERC_ITEMS_PROVIDER::visitMarkers( std::function<void( SCH_MARKER*
         if( firstTime )
             seenScreens.insert( sheet.LastScreen() );
 
-        std::set<SCH_MARKER*, CompareMarkers> orderedMarkers;
+        std::map<std::tuple<int, int, std::string, wxString>, SCH_MARKER*> orderedMarkers;
 
         for( SCH_ITEM* item : sheet.LastScreen()->Items().OfType( SCH_MARKER_T ) )
-            orderedMarkers.insert( static_cast<SCH_MARKER*>( item ) );
-
-        for( SCH_ITEM* item : orderedMarkers )
         {
             SCH_MARKER* marker = static_cast<SCH_MARKER*>( item );
 
             if( marker->GetMarkerType() != MARKER_BASE::MARKER_ERC )
                 continue;
 
+            const VECTOR2I& position = marker->GetPosition();
+            orderedMarkers.emplace( std::make_tuple( position.x,
+                                                     position.y,
+                                                     ERC_EXCLUSION::FromMarker( *marker ).GetSortKey(),
+                                                     marker->GetRCItem()->GetErrorMessage( false ) ),
+                                    marker );
+        }
+
+        for( const auto& [key, marker] : orderedMarkers )
+        {
             std::shared_ptr<const ERC_ITEM> ercItem =
                     std::static_pointer_cast<const ERC_ITEM>( marker->GetRCItem() );
 

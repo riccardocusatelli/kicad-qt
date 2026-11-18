@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "lib_table_grid_tricks.h"
@@ -28,11 +28,16 @@
 #include <kicad_message_dialog.h>
 
 
+static bool isGridReadOnly( WX_GRID* aGrid )
+{
+    LIB_TABLE_GRID_DATA_MODEL* model = static_cast<LIB_TABLE_GRID_DATA_MODEL*>( aGrid->GetTable() );
+    return model && model->Table().IsReadOnly();
+}
+
+
 LIB_TABLE_GRID_TRICKS::LIB_TABLE_GRID_TRICKS( WX_GRID* aGrid ) :
         GRID_TRICKS( aGrid )
 {
-    m_grid->Disconnect( wxEVT_CHAR_HOOK );
-    m_grid->Connect( wxEVT_CHAR_HOOK, wxCharEventHandler( LIB_TABLE_GRID_TRICKS::onCharHook ), nullptr, this );
 }
 
 
@@ -40,8 +45,6 @@ LIB_TABLE_GRID_TRICKS::LIB_TABLE_GRID_TRICKS( WX_GRID* aGrid,
         std::function<void( wxCommandEvent& )> aAddHandler ) :
         GRID_TRICKS( aGrid, aAddHandler )
 {
-    m_grid->Disconnect( wxEVT_CHAR_HOOK );
-    m_grid->Connect( wxEVT_CHAR_HOOK, wxCharEventHandler( LIB_TABLE_GRID_TRICKS::onCharHook ), nullptr, this );
 }
 
 
@@ -62,18 +65,22 @@ void LIB_TABLE_GRID_TRICKS::onGridCellLeftClick( wxGridEvent& aEvent )
                                 ? wxString::Format( _( "Error loading library table '%s'" ), row.Nickname() )
                                 : wxString::Format( _( "Error loading library '%s'" ), row.Nickname() );
 
-        if( !row.IsOk() )
+        // The settings dialog reports load errors itself and is where they get fixed
+        if( adapter->SupportsConfigurationDialog( row ) && !isGridReadOnly( m_grid ) )
+        {
+            if( adapter->ShowConfigurationDialog( row, model->Table().Scope(), wxGetTopLevelParent( m_grid ) )
+                != wxID_CANCEL )
+            {
+                model->OnModify();
+            }
+        }
+        else if( !row.IsOk() )
         {
             DisplayErrorMessage( m_grid, title, row.ErrorDescription() );
         }
         else if( std::optional<LIBRARY_ERROR> e = adapter->LibraryError( row.Nickname() ) )
         {
             DisplayErrorMessage( m_grid, title, e->message );
-        }
-        else if( adapter->SupportsConfigurationDialog( row.Nickname() ) )
-        {
-            if( adapter->ShowConfigurationDialog( row.Nickname(), wxGetTopLevelParent( m_grid ) ) != wxID_CANCEL )
-                model->OnModify();
         }
         else if( row.Type() == LIBRARY_TABLE_ROW::TABLE_TYPE_NAME )
         {
@@ -105,9 +112,7 @@ void LIB_TABLE_GRID_TRICKS::showPopupMenu( wxMenu& menu, wxGridEvent& aEvent )
     {
         if( LIBRARY_MANAGER_ADAPTER* adapter = model->Adapter() )
         {
-            wxString nickname = model->GetValue( m_sel_row_start, COL_NICKNAME );
-
-            if( m_sel_row_count == 1 && adapter->SupportsConfigurationDialog( nickname ) )
+            if( m_sel_row_count == 1 && adapter->SupportsConfigurationDialog( firstRow ) )
             {
                 showSettings = true;
                 menu.Append( LIB_TABLE_GRID_TRICKS_LIBRARY_SETTINGS, _( "Edit Settings..." ) );
@@ -213,8 +218,11 @@ void LIB_TABLE_GRID_TRICKS::doPopupSelection( wxCommandEvent& event )
         LIBRARY_MANAGER_ADAPTER* adapter = model->Adapter();
         LIBRARY_TABLE_ROW&       row = model->At( m_sel_row_start );
 
-        if( adapter->ShowConfigurationDialog( row.Nickname(), wxGetTopLevelParent( m_grid ) ) != wxID_CANCEL )
+        if( adapter->ShowConfigurationDialog( row, model->Table().Scope(), wxGetTopLevelParent( m_grid ) )
+            != wxID_CANCEL )
+        {
             model->OnModify();
+        }
     }
     else if( menu_id == LIB_TABLE_GRID_TRICKS_OPEN_TABLE )
     {
@@ -351,6 +359,12 @@ bool LIB_TABLE_GRID_TRICKS::handleDoubleClick( wxGridEvent& aEvent )
 {
     if( aEvent.GetCol() == COL_OPTIONS )
     {
+        if( isGridReadOnly( m_grid ) )
+        {
+            wxBell();
+            return true;
+        }
+
         optionsEditor( aEvent.GetRow() );
         return true;
     }
@@ -359,14 +373,7 @@ bool LIB_TABLE_GRID_TRICKS::handleDoubleClick( wxGridEvent& aEvent )
 }
 
 
-static bool isGridReadOnly( WX_GRID* aGrid )
-{
-    LIB_TABLE_GRID_DATA_MODEL* model = static_cast<LIB_TABLE_GRID_DATA_MODEL*>( aGrid->GetTable() );
-    return model && model->Table().IsReadOnly();
-}
-
-
-void LIB_TABLE_GRID_TRICKS::AppendRowHandler( WX_GRID* aGrid )
+void LIB_TABLE_GRID_TRICKS::AppendRowHandler( WX_GRID* aGrid, const wxString& aType )
 {
     if( isGridReadOnly( aGrid ) )
     {
@@ -380,6 +387,7 @@ void LIB_TABLE_GRID_TRICKS::AppendRowHandler( WX_GRID* aGrid )
                 LIB_TABLE_GRID_DATA_MODEL* model = static_cast<LIB_TABLE_GRID_DATA_MODEL*>( aGrid->GetTable() );
 
                 aGrid->AppendRows( 1 );
+                aGrid->SetCellValue( aGrid->GetNumberRows() - 1, COL_TYPE, aType );
                 model->OnModify();
                 return { aGrid->GetNumberRows() - 1, COL_NICKNAME };
             } );

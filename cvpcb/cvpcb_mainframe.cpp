@@ -16,17 +16,15 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <pgm_base.h>
+#include <api/common/commands/cross_probe_commands.pb.h>
+#include <api/cross_probe_client.h>
+#include <api/api_utils.h>
 #include <bitmaps.h>
 #include <confirm.h>
-#include <eda_dde.h>
 #include <footprint_library_adapter.h>
 #include <kiface_base.h>
 #include <kiplatform/app.h>
@@ -396,7 +394,7 @@ bool CVPCB_MAINFRAME::canCloseWindow( CLOSE_REQUEST& aRequest )
     if( m_modified )
     {
         // Shutdown blocks must be determined and vetoed as early as possible
-        if( KIPLATFORM::APP::SupportsShutdownBlockReason() && aRequest.IsSessionEndQuery() )
+        if( isBlockableSessionEnd() )
             return false;
 
         if( !HandleUnsavedChanges( this, _( "Symbol to Footprint links have been modified. Save changes?" ),
@@ -926,41 +924,39 @@ bool CVPCB_MAINFRAME::LoadFootprintFiles()
 
 void CVPCB_MAINFRAME::SendComponentSelectionToSch( bool aClearSelectionOnly )
 {
-    if( m_netlist.IsEmpty() )
+    if( m_netlist.IsEmpty() && !aClearSelectionOnly )
         return;
 
-    std::string command = "$SELECT: ";
+    kiapi::common::commands::SyncSelection sync;
 
-    if( aClearSelectionOnly )
+    if( !aClearSelectionOnly )
     {
-        // Sending an empty list means clearing the selection.
-        if( Kiface().IsSingle() )
-            SendCommand( MSG_TO_SCH, command );
-        else
-            Kiway().ExpressMail( FRAME_SCH, MAIL_SELECTION, command, this );
+        int selection = m_symbolsListBox->GetSelection();
 
-        return;
+        if( selection < 0 ) // Nothing selected
+            return;
+
+        if( m_netlist.GetComponent( selection ) == nullptr )
+            return;
+
+        // Now select the corresponding symbol on the schematic:
+        wxString ref = m_netlist.GetComponent( selection )->GetReference();
+
+        sync.set_mode( kiapi::common::commands::SSM_ITEMS_ONLY );
+        sync.add_items()->mutable_footprint()->set_reference( ref.ToUTF8() );
     }
 
-    int selection = m_symbolsListBox->GetSelection();
-
-    if( selection < 0 ) // Nothing selected
-        return;
-
-    if( m_netlist.GetComponent( selection ) == nullptr )
-        return;
-
-    // Now select the corresponding symbol on the schematic:
-    wxString ref = m_netlist.GetComponent( selection )->GetReference();
-
-    // The prefix 0,F before the reference is for selecting the symbol
-    // (one can select a pin with a different prefix)
-    command += wxT( "0,F" ) + EscapeString( ref, CTX_IPC );
-
     if( Kiface().IsSingle() )
-        SendCommand( MSG_TO_SCH, command );
+    {
+        CROSS_PROBE_CLIENT::SendToFrame( FRAME_SCH, sync );
+    }
     else
-        Kiway().ExpressMail( FRAME_SCH, MAIL_SELECTION, command, this );
+    {
+        std::string payload;
+
+        if( kiapi::common::PackKiwayApiMessage( sync, payload ) )
+            Kiway().ExpressMail( FRAME_SCH, MAIL_SELECTION, payload, this );
+    }
 }
 
 
@@ -1023,7 +1019,7 @@ void CVPCB_MAINFRAME::BuildLibrariesList()
     {
         bool operator()( const wxString& lhs, const wxString& rhs ) const
         {
-            return StrNumCmp( lhs, rhs, true ) < 0;
+            return StrNumCmp( lhs, rhs, CMP_T::IGNORE_CASE ) < 0;
         }
     };
 
@@ -1223,15 +1219,10 @@ void CVPCB_MAINFRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
     switch( mail.Command() )
     {
     case MAIL_EESCHEMA_NETLIST:
-        // Disable Close events during readNetListAndFpFiles() to avoid crash when updating
-        // widgets:
+        // Disable Close events during readNetListAndFpFiles() to avoid crash when updating widgets:
         m_cannotClose = true;
         readNetListAndFpFiles( payload );
         m_cannotClose = false;
-
-        /* @todo
-        Go into SCH_EDIT_FRAME::OnOpenCvpcb( wxCommandEvent& event ) and trim GNL_ALL down.
-        */
         break;
 
     case MAIL_RELOAD_LIB:

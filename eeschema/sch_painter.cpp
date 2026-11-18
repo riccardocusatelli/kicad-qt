@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -29,13 +25,17 @@
 #include <chrono>
 #include <bitmap_base.h>
 #include <connection_graph.h>
+#include <connectivity/conn_netchain_manager.h>
 #include <gal/graphics_abstraction_layer.h>
+#include <sch_netchain.h>
 #include <callback_gal.h>
+#include <geometry/shape_arc.h>
 #include <geometry/shape_segment.h>
 #include <geometry/shape_rect.h>
 #include <geometry/roundrect.h>
 #include <geometry/shape_poly_set.h>
 #include <geometry/shape_utils.h>
+#include <font/glyph_types.h>
 #include <gr_text.h>
 #include <sch_pin.h>
 #include <math/util.h>
@@ -49,11 +49,13 @@
 #include <sch_junction.h>
 #include <sch_line.h>
 #include <sch_shape.h>
+#include <sch_rule_area.h>
 #include <sch_marker.h>
 #include <sch_no_connect.h>
 #include <sch_sheet.h>
 #include <sch_sheet_pin.h>
 #include <sch_text.h>
+#include <sch_label.h>
 #include <sch_textbox.h>
 #include <sch_table.h>
 #include <schematic.h>
@@ -63,6 +65,7 @@
 #include <kiface_base.h>
 #include <default_values.h>
 #include <advanced_config.h>
+#include <connectivity/conn_text.h>
 #include <settings/settings_manager.h>
 #include <stroke_params.h>
 #include <string_utils.h>
@@ -120,7 +123,12 @@ bool SCH_PAINTER::Draw( const VIEW_ITEM* aItem, int aLayer )
     if( !item )
         return false;
 
+    // Staged items keep drawing their last published nets until the recalculation
+    SCH_CONNECTIVITY::RENDER_SCOPE renderScope;
     draw( item, aLayer, false );
+
+    // A shadow's pixel width belongs to the item that asked for it
+    m_gal->SetStrokePixelPad( 0.0 );
 
     return false;
 }
@@ -265,15 +273,15 @@ bool SCH_PAINTER::nonCached( const EDA_ITEM* aItem )
 
 bool SCH_PAINTER::isUnitAndConversionShown( const SCH_ITEM* aItem ) const
 {
-    if( m_schSettings.m_ShowUnit            // showing a specific unit
-            && aItem->GetUnit()             // item is unit-specific
+    if( m_schSettings.m_ShowUnit
+            && aItem->GetUnit() != ALL_UNITS
             && aItem->GetUnit() != m_schSettings.m_ShowUnit )
     {
         return false;
     }
 
-    if( m_schSettings.m_ShowBodyStyle       // showing a specific body style
-            && aItem->GetBodyStyle()        // item is body-style-specific
+    if( m_schSettings.m_ShowBodyStyle
+            && aItem->GetBodyStyle() != ALL_BODY_STYLES
             && aItem->GetBodyStyle() != m_schSettings.m_ShowBodyStyle )
     {
         return false;
@@ -292,12 +300,28 @@ KIFONT::FONT* SCH_PAINTER::getFont( const EDA_TEXT* aItem ) const
 }
 
 
+bool SCH_PAINTER::renderAsBitmap( const SCH_ITEM* aItem ) const
+{
+    // Asked as a scale limit so a zoom that stays on one side of it keeps what was drawn
+    const double limit = aItem->BitmapWorldScaleLimit();
+
+    return limit > 0.0 && m_gal->WorldScaleBelow( limit );
+}
+
+
 float SCH_PAINTER::getShadowWidth( bool aForHighlight ) const
 {
-    const MATRIX3x3D& matrix = m_gal->GetScreenWorldMatrix();
-
     int milsWidth = aForHighlight ? eeconfig()->m_Selection.highlight_thickness
                                   : eeconfig()->m_Selection.selection_thickness;
+
+    // The canvas adds the pixel part, so a zoom need not redraw the shadow
+    if( m_gal->SupportsStrokePixelPad() )
+    {
+        m_gal->SetStrokePixelPad( milsWidth );
+        return (float) schIUScale.MilsToIU( milsWidth );
+    }
+
+    const MATRIX3x3D& matrix = m_gal->GetScreenWorldMatrix();
 
     // For best visuals the selection width must be a cross between the zoom level and the
     // default line width.
@@ -584,49 +608,43 @@ static bool isFieldsLayer( int aLayer )
 }
 
 
-static BOX2I GetTextExtents( const wxString& aText, const VECTOR2D& aPosition, KIFONT::FONT& aFont,
-                             const TEXT_ATTRIBUTES& aAttrs, const KIFONT::METRICS& aFontMetrics )
-{
-    const VECTOR2I extents = aFont.StringBoundaryLimits( aText, aAttrs.m_Size, aAttrs.m_StrokeWidth,
-                                                         aAttrs.m_Bold, aAttrs.m_Italic, aFontMetrics );
-    BOX2I box( aPosition, VECTOR2I( extents.x, aAttrs.m_Size.y ) );
-
-    switch( aAttrs.m_Halign )
-    {
-    case GR_TEXT_H_ALIGN_LEFT:                                                        break;
-    case GR_TEXT_H_ALIGN_CENTER:        box.SetX( box.GetX() - box.GetWidth() / 2 );  break;
-    case GR_TEXT_H_ALIGN_RIGHT:         box.SetX( box.GetX() - box.GetWidth() );      break;
-    case GR_TEXT_H_ALIGN_INDETERMINATE: KI_FAIL_MSG( wxT( "Legal only in dialogs" ) ); break;
-    }
-
-    switch( aAttrs.m_Valign )
-    {
-    case GR_TEXT_V_ALIGN_TOP:                                                         break;
-    case GR_TEXT_V_ALIGN_CENTER:        box.SetY( box.GetY() - box.GetHeight() / 2 ); break;
-    case GR_TEXT_V_ALIGN_BOTTOM:        box.SetY( box.GetY() - box.GetHeight() );     break;
-    case GR_TEXT_V_ALIGN_INDETERMINATE: KI_FAIL_MSG( wxT( "Legal only in dialogs" ) ); break;
-    }
-
-    box.Normalize(); // Make h and v sizes always >= 0
-    box = box.GetBoundingBoxRotated( aPosition, aAttrs.m_Angle );
-
-    return box;
-}
-
-
-static void strokeText( KIGFX::GAL& aGal, const wxString& aText, const VECTOR2D& aPosition,
-                        const TEXT_ATTRIBUTES& aAttrs, const KIFONT::METRICS& aFontMetrics,
-                        std::optional<VECTOR2I> aMousePos = std::nullopt, wxString* aActiveUrl = nullptr )
+static void drawText( KIGFX::GAL& aGal, const wxString& aText, const VECTOR2D& aPosition,
+                      const TEXT_ATTRIBUTES& aAttrs, float aShadowWidth, const KIFONT::METRICS& aFontMetrics,
+                      std::optional<VECTOR2I> aMousePos = std::nullopt, wxString* aActiveUrl = nullptr )
 {
     KIFONT::FONT* font = aAttrs.m_Font;
 
     if( !font )
         font = KIFONT::FONT::GetFont( eeconfig()->m_Appearance.default_font, aAttrs.m_Bold, aAttrs.m_Italic );
 
-    aGal.SetIsFill( font->IsOutline() );
-    aGal.SetIsStroke( font->IsStroke() );
+    if( aShadowWidth > 0.0f )
+    {
+        KIGFX::GAL_DISPLAY_OPTIONS empty_opts;
 
-    font->Draw( &aGal, aText, aPosition, aAttrs, aFontMetrics, aMousePos, aActiveUrl );
+        CALLBACK_GAL callback_gal( empty_opts,
+                // Stroke callback
+                [&]( const VECTOR2I& aPt1, const VECTOR2I& aPt2 )
+                {
+                    aGal.SetLineWidth( (float) aAttrs.m_StrokeWidth + aShadowWidth );
+                    aGal.DrawLine( aPt1, aPt2 );
+                },
+                // Polygon callback
+                [&]( const SHAPE_LINE_CHAIN& aPoly )
+                {
+                    aGal.SetLineWidth( aShadowWidth );
+                    aGal.DrawPolygon( aPoly );
+                } );
+
+        aGal.SetIsStroke( true );
+        font->Draw( &callback_gal, aText, aPosition, aAttrs, aFontMetrics );
+    }
+    else
+    {
+        aGal.SetIsFill( font->IsOutline() );
+        aGal.SetIsStroke( font->IsStroke() );
+
+        font->Draw( &aGal, aText, aPosition, aAttrs, aFontMetrics, aMousePos, aActiveUrl );
+    }
 }
 
 
@@ -641,7 +659,32 @@ static void bitmapText( KIGFX::GAL& aGal, const wxString& aText, const VECTOR2D&
     aGal.SetHorizontalJustify( aAttrs.m_Halign );
     aGal.SetVerticalJustify( aAttrs.m_Valign );
 
-    aGal.BitmapText( aText, aPosition, aAttrs.m_Angle );
+    aGal.BitmapText( aText, aPosition, aAttrs.m_Angle.GetAngle() );
+}
+
+
+static void drawCache( KIGFX::GAL& aGal, std::vector<std::unique_ptr<KIFONT::GLYPH>>* aCache, float aStrokeWidth,
+                       float aShadowWidth )
+{
+    aGal.SetLineWidth( aStrokeWidth + aShadowWidth );
+    aGal.DrawGlyphs( *aCache );
+
+    if( aShadowWidth > 0.0f )
+    {
+        for( const std::unique_ptr<KIFONT::GLYPH>& glyph : *aCache )
+        {
+            if( glyph->IsOutline() )
+            {
+                KIFONT::OUTLINE_GLYPH* outlineGlyph = static_cast<KIFONT::OUTLINE_GLYPH*>( glyph.get() );
+
+                aGal.SetIsStroke( true );
+                aGal.SetLineWidth( aShadowWidth );
+
+                for( int ii = 0; ii < outlineGlyph->OutlineCount(); ++ii )
+                    aGal.DrawPolygon( outlineGlyph->Outline( ii ) );
+            }
+        }
+    }
 }
 
 
@@ -691,25 +734,6 @@ static void knockoutText( KIGFX::GAL& aGal, const wxString& aText, const VECTOR2
 }
 
 
-static void boxText( KIGFX::GAL& aGal, const wxString& aText, const VECTOR2D& aPosition,
-                     const TEXT_ATTRIBUTES& aAttrs, const KIFONT::METRICS& aFontMetrics )
-{
-    KIFONT::FONT* font = aAttrs.m_Font;
-
-    if( !font )
-        font = KIFONT::FONT::GetFont( eeconfig()->m_Appearance.default_font, aAttrs.m_Bold, aAttrs.m_Italic );
-
-    BOX2I box = GetTextExtents( aText, aPosition, *font, aAttrs, aFontMetrics );
-
-    // Give the highlight a bit of margin.
-    box.Inflate( aAttrs.m_StrokeWidth / 2, aAttrs.m_StrokeWidth * 2 );
-
-    aGal.SetIsFill( true );
-    aGal.SetIsStroke( false );
-    aGal.DrawRectangle( box.GetOrigin(), box.GetEnd() );
-}
-
-
 void SCH_PAINTER::triLine( const VECTOR2D& a, const VECTOR2D& b, const VECTOR2D& c )
 {
     m_gal->DrawLine( a, b );
@@ -751,11 +775,19 @@ void SCH_PAINTER::draw( const LIB_SYMBOL* aSymbol, int aLayer, bool aDrawFields,
         if( !childOnLayer( item, aLayer ) )
             continue;
 
-        if( aUnit && item.GetUnit() && aUnit != item.GetUnit() )
+        if( aUnit != ALL_UNITS
+                && item.GetUnit() != ALL_UNITS
+                && aUnit != item.GetUnit() )
+        {
             continue;
+        }
 
-        if( aBodyStyle && item.GetBodyStyle() && aBodyStyle != item.GetBodyStyle() )
+        if( aBodyStyle != ALL_BODY_STYLES
+                && item.GetBodyStyle() != ALL_BODY_STYLES
+                && aBodyStyle != item.GetBodyStyle() )
+        {
             continue;
+        }
 
         draw( &item, aLayer, aDimmed );
     }
@@ -1145,9 +1177,7 @@ void SCH_PAINTER::draw( const SCH_PIN* aPin, int aLayer, bool aDimmed )
     float shadowWidth = 0.0f;
 
     if( drawingShadows )
-    {
         shadowWidth = getShadowWidth( aPin->IsBrightened() );
-    }
 
     PIN_LAYOUT_CACHE& cache = aPin->GetLayoutCache();
     cache.SetRenderParameters( nameStrokeWidth, numStrokeWidth, m_schSettings.m_ShowPinsElectricalType,
@@ -1163,18 +1193,18 @@ void SCH_PAINTER::draw( const SCH_PIN* aPin, int aLayer, bool aDimmed )
                 static const float BITMAP_FONT_SIZE_THRESHOLD = 3.5;
 
                 // Any text non bitmappable?
-                return aTextSize * aGal.GetWorldScale() < BITMAP_FONT_SIZE_THRESHOLD;
+                return aTextSize > 0 && aGal.WorldScaleBelow( BITMAP_FONT_SIZE_THRESHOLD / aTextSize );
             };
 
     // Helper function for drawing braces around multi-line text
     const auto drawBrace =
-            [&]( KIGFX::GAL& aGal, const VECTOR2D& aTop, const VECTOR2D& aBottom,
-                 int aBraceWidth, bool aLeftBrace, const TEXT_ATTRIBUTES& aAttrs )
+            [&]( KIGFX::GAL& aGal, const VECTOR2D& aTop, const VECTOR2D& aBottom, int aBraceWidth, bool aLeftBrace,
+                 const TEXT_ATTRIBUTES& aAttrs, float aShadowWidth )
             {
                 // Draw a simple brace using line segments, accounting for text rotation
                 VECTOR2D mid = ( aTop + aBottom ) / 2.0;
 
-                aGal.SetLineWidth( aAttrs.m_StrokeWidth );
+                aGal.SetLineWidth( (float) aAttrs.m_StrokeWidth + aShadowWidth );
                 aGal.SetIsFill( false );
                 aGal.SetIsStroke( true );
 
@@ -1186,7 +1216,7 @@ void SCH_PAINTER::draw( const SCH_PIN* aPin, int aLayer, bool aDimmed )
                 VECTOR2D p5 = aBottom;
 
                 // Apply brace offset based on text orientation
-                if( aAttrs.m_Angle == ANGLE_VERTICAL )
+                if( aAttrs.m_Angle.GetAngle() == ANGLE_VERTICAL )
                 {
                     // For vertical text, braces extend in the Y direction
                     // "Left" brace is actually towards negative Y, "right" towards positive Y
@@ -1212,17 +1242,17 @@ void SCH_PAINTER::draw( const SCH_PIN* aPin, int aLayer, bool aDimmed )
             };
 
     const auto drawBracesAroundText =
-            [&]( KIGFX::GAL& aGal, const wxArrayString& aLines, const VECTOR2D& aStartPos,
-                 int aLineSpacing, const TEXT_ATTRIBUTES& aAttrs )
+            [&]( KIGFX::GAL& aGal, const wxArrayString& aLines, const VECTOR2D& aStartPos, int aLineSpacing,
+                 const TEXT_ATTRIBUTES& aAttrs, float aShadowWidth )
             {
                 if( aLines.size() <= 1 )
                     return;
 
                 // Calculate brace dimensions
-                int braceWidth = aAttrs.m_Size.x / 3;  // Make braces a bit larger
+                int braceWidth = aAttrs.m_Size.x / 3; // Make braces a bit larger
 
                 // Find the maximum line width to position braces
-                int maxLineWidth = 0;
+                int           maxLineWidth = 0;
                 KIFONT::FONT* font = aAttrs.m_Font;
 
                 if( !font )
@@ -1244,9 +1274,9 @@ void SCH_PAINTER::draw( const SCH_PIN* aPin, int aLayer, bool aDimmed )
 
                 // Extend braces beyond the text bounds
                 int textHeight = aAttrs.m_Size.y;
-                int extraHeight = textHeight / 3;  // Extend braces by 1/3 of text height beyond text
+                int extraHeight = textHeight / 3; // Extend braces by 1/3 of text height beyond text
 
-                if( aAttrs.m_Angle == ANGLE_VERTICAL )
+                if( aAttrs.m_Angle.GetAngle() == ANGLE_VERTICAL )
                 {
                     // For vertical text, lines are spaced horizontally and braces are horizontal
                     braceEnd.x += ( (int) aLines.size() - 1 ) * aLineSpacing;
@@ -1263,7 +1293,7 @@ void SCH_PAINTER::draw( const SCH_PIN* aPin, int aLayer, bool aDimmed )
                     VECTOR2D topBraceEnd = braceEnd;
                     topBraceEnd.y -= braceSpacing;
 
-                    drawBrace( aGal, topBraceStart, topBraceEnd, braceWidth, true, aAttrs );
+                    drawBrace( aGal, topBraceStart, topBraceEnd, braceWidth, true, aAttrs, aShadowWidth );
 
                     VECTOR2D bottomBraceStart = braceStart;
                     bottomBraceStart.y += braceSpacing;
@@ -1271,7 +1301,7 @@ void SCH_PAINTER::draw( const SCH_PIN* aPin, int aLayer, bool aDimmed )
                     VECTOR2D bottomBraceEnd = braceEnd;
                     bottomBraceEnd.y += braceSpacing;
 
-                    drawBrace( aGal, bottomBraceStart, bottomBraceEnd, braceWidth, false, aAttrs );
+                    drawBrace( aGal, bottomBraceStart, bottomBraceEnd, braceWidth, false, aAttrs, aShadowWidth );
                 }
                 else
                 {
@@ -1291,7 +1321,7 @@ void SCH_PAINTER::draw( const SCH_PIN* aPin, int aLayer, bool aDimmed )
                     VECTOR2D leftBottom = braceEnd;
                     leftBottom.x -= braceSpacing;
 
-                    drawBrace( aGal, leftTop, leftBottom, braceWidth, true, aAttrs );
+                    drawBrace( aGal, leftTop, leftBottom, braceWidth, true, aAttrs, aShadowWidth );
 
                     // Draw right brace
                     VECTOR2D rightTop = braceStart;
@@ -1300,7 +1330,7 @@ void SCH_PAINTER::draw( const SCH_PIN* aPin, int aLayer, bool aDimmed )
                     VECTOR2D rightBottom = braceEnd;
                     rightBottom.x += braceSpacing;
 
-                    drawBrace( aGal, rightTop, rightBottom, braceWidth, false, aAttrs );
+                    drawBrace( aGal, rightTop, rightBottom, braceWidth, false, aAttrs, aShadowWidth );
                 }
             };
 
@@ -1323,7 +1353,7 @@ void SCH_PAINTER::draw( const SCH_PIN* aPin, int aLayer, bool aDimmed )
 
                 int textHalfHeight = aAttrs.m_Size.y / 2;
 
-                if( aAttrs.m_Angle == ANGLE_VERTICAL )
+                if( aAttrs.m_Angle.GetAngle() == ANGLE_VERTICAL )
                 {
                     // For vertical text, lines are spaced horizontally
                     braceEnd.x += ( (int) aLines.size() - 1 ) * aLineSpacing;
@@ -1334,7 +1364,7 @@ void SCH_PAINTER::draw( const SCH_PIN* aPin, int aLayer, bool aDimmed )
                     VECTOR2D leftEnd = braceEnd;
                     leftEnd.y -= maxLineWidth / 2.0 + braceWidth / 2.0;
 
-                    drawBrace( aGal, leftStart, leftEnd, braceWidth, true, aAttrs );
+                    drawBrace( aGal, leftStart, leftEnd, braceWidth, true, aAttrs, 0.0f );
 
                     VECTOR2D rightStart = braceStart;
                     rightStart.y += maxLineWidth / 2.0 + braceWidth / 2.0;
@@ -1342,7 +1372,7 @@ void SCH_PAINTER::draw( const SCH_PIN* aPin, int aLayer, bool aDimmed )
                     VECTOR2D rightEnd = braceEnd;
                     rightEnd.y += maxLineWidth / 2.0 + braceWidth / 2.0;
 
-                    drawBrace( aGal, rightStart, rightEnd, braceWidth, false, aAttrs );
+                    drawBrace( aGal, rightStart, rightEnd, braceWidth, false, aAttrs, 0.0f );
                 }
                 else
                 {
@@ -1361,7 +1391,7 @@ void SCH_PAINTER::draw( const SCH_PIN* aPin, int aLayer, bool aDimmed )
                     VECTOR2D leftBottom = braceBottom;
                     leftBottom.x -= maxLineWidth / 2.0 + braceWidth / 2.0;
 
-                    drawBrace( aGal, leftTop, leftBottom, braceWidth, true, aAttrs );
+                    drawBrace( aGal, leftTop, leftBottom, braceWidth, true, aAttrs, 0.0f );
 
                     VECTOR2D rightTop = braceTop;
                     rightTop.x += maxLineWidth / 2.0 + braceWidth / 2.0;
@@ -1369,14 +1399,14 @@ void SCH_PAINTER::draw( const SCH_PIN* aPin, int aLayer, bool aDimmed )
                     VECTOR2D rightBottom = braceBottom;
                     rightBottom.x += maxLineWidth / 2.0 + braceWidth / 2.0;
 
-                    drawBrace( aGal, rightTop, rightBottom, braceWidth, false, aAttrs );
+                    drawBrace( aGal, rightTop, rightBottom, braceWidth, false, aAttrs, 0.0f );
                 }
             };
 
     // Helper functions for drawing multi-line pin text with braces
     const auto drawMultiLineText =
-            [&]( KIGFX::GAL& aGal, const wxString& aText, const VECTOR2D& aPosition,
-                 const TEXT_ATTRIBUTES& aAttrs, const KIFONT::METRICS& aFontMetrics )
+            [&]( KIGFX::GAL& aGal, const wxString& aText, const VECTOR2D& aPosition, const TEXT_ATTRIBUTES& aAttrs,
+                 bool aRenderTextAsBitmap, float aShadowWidth, const KIFONT::METRICS& aFontMetrics )
             {
                 // Check if this is multi-line stacked pin text with braces
                 if( aText.StartsWith( "[" ) && aText.EndsWith( "]" ) && aText.Contains( "\n" ) )
@@ -1394,7 +1424,7 @@ void SCH_PAINTER::draw( const SCH_PIN* aPin, int aLayer, bool aDimmed )
                         // Calculate positioning based on text alignment and rotation
                         VECTOR2D startPos = aPosition;
 
-                        if( aAttrs.m_Angle == ANGLE_VERTICAL )
+                        if( aAttrs.m_Angle.GetAngle() == ANGLE_VERTICAL )
                         {
                             // For vertical text, lines are spaced horizontally
                             // Adjust start position based on horizontal alignment
@@ -1413,12 +1443,15 @@ void SCH_PAINTER::draw( const SCH_PIN* aPin, int aLayer, bool aDimmed )
                             for( size_t i = 0; i < lines.size(); i++ )
                             {
                                 VECTOR2D linePos = startPos;
-                                linePos.x += i * lineSpacing;
+                                linePos.x += (int) i * lineSpacing;
 
                                 wxString line = lines[i];
                                 line.Trim( true ).Trim( false );
 
-                                strokeText( aGal, line, linePos, aAttrs, aFontMetrics );
+                                if( aRenderTextAsBitmap )
+                                    bitmapText( aGal, line, linePos, aAttrs );
+                                else
+                                    drawText( aGal, line, linePos, aAttrs, aShadowWidth, aFontMetrics );
                             }
                         }
                         else
@@ -1445,169 +1478,28 @@ void SCH_PAINTER::draw( const SCH_PIN* aPin, int aLayer, bool aDimmed )
                                 wxString line = lines[i];
                                 line.Trim( true ).Trim( false );
 
-                                strokeText( aGal, line, linePos, aAttrs, aFontMetrics );
+                                if( aRenderTextAsBitmap )
+                                    bitmapText( aGal, line, linePos, aAttrs );
+                                else
+                                    drawText( aGal, line, linePos, aAttrs, aShadowWidth, aFontMetrics );
                             }
                         }
 
                         // Draw braces around the text
-                        drawBracesAroundText( aGal, lines, startPos, lineSpacing, aAttrs );
+                        if( aRenderTextAsBitmap )
+                            drawBracesAroundTextBitmap( aGal, lines, startPos, lineSpacing, aAttrs );
+                        else
+                            drawBracesAroundText( aGal, lines, startPos, lineSpacing, aAttrs, aShadowWidth );
+
                         return;
                     }
                 }
 
                 // Fallback to regular single-line text
-                strokeText( aGal, aText, aPosition, aAttrs, aFontMetrics );
-            };
-
-    const auto boxMultiLineText =
-            [&]( KIGFX::GAL& aGal, const wxString& aText, const VECTOR2D& aPosition,
-                 const TEXT_ATTRIBUTES& aAttrs, const KIFONT::METRICS& aFontMetrics )
-            {
-                // Similar to drawMultiLineText but uses boxText for outline fonts
-                if( aText.StartsWith( "[" ) && aText.EndsWith( "]" ) && aText.Contains( "\n" ) )
-                {
-                    wxString content = aText.Mid( 1, aText.Length() - 2 );
-                    wxArrayString lines;
-                    wxStringSplit( content, lines, '\n' );
-
-                    if( lines.size() > 1 )
-                    {
-                        int lineSpacing = KiROUND( aAttrs.m_Size.y * 1.3 );
-                        VECTOR2D startPos = aPosition;
-
-                        if( aAttrs.m_Angle == ANGLE_VERTICAL )
-                        {
-                            // For vertical text, lines are spaced horizontally
-                            if( aAttrs.m_Halign == GR_TEXT_H_ALIGN_RIGHT )
-                            {
-                                int totalWidth = ( (int) lines.size() - 1 ) * lineSpacing;
-                                startPos.x -= totalWidth;
-                            }
-                            else if( aAttrs.m_Halign == GR_TEXT_H_ALIGN_CENTER )
-                            {
-                                int totalWidth = ( (int) lines.size() - 1 ) * lineSpacing;
-                                startPos.x -= totalWidth / 2.0;
-                            }
-
-                            for( size_t i = 0; i < lines.size(); i++ )
-                            {
-                                VECTOR2D linePos = startPos;
-                                linePos.x += (int) i * lineSpacing;
-
-                                wxString line = lines[i];
-                                line.Trim( true ).Trim( false );
-
-                                boxText( aGal, line, linePos, aAttrs, aFontMetrics );
-                            }
-                        }
-                        else
-                        {
-                            // For horizontal text, lines are spaced vertically
-                            if( aAttrs.m_Valign == GR_TEXT_V_ALIGN_BOTTOM )
-                            {
-                                int totalHeight = ( (int) lines.size() - 1 ) * lineSpacing;
-                                startPos.y -= totalHeight;
-                            }
-                            else if( aAttrs.m_Valign == GR_TEXT_V_ALIGN_CENTER )
-                            {
-                                int totalHeight = ( (int) lines.size() - 1 ) * lineSpacing;
-                                startPos.y -= totalHeight / 2.0;
-                            }
-
-                            for( size_t i = 0; i < lines.size(); i++ )
-                            {
-                                VECTOR2D linePos = startPos;
-                                linePos.y += (int) i * lineSpacing;
-
-                                wxString line = lines[i];
-                                line.Trim( true ).Trim( false );
-
-                                boxText( aGal, line, linePos, aAttrs, aFontMetrics );
-                            }
-                        }
-
-                        drawBracesAroundText( aGal, lines, startPos, lineSpacing, aAttrs );
-                        return;
-                    }
-                }
-
-                boxText( aGal, aText, aPosition, aAttrs, aFontMetrics );
-            };
-
-    const auto drawMultiLineBitmapText =
-            [&]( KIGFX::GAL& aGal, const wxString& aText, const VECTOR2D& aPosition,
-                 const TEXT_ATTRIBUTES& aAttrs )
-            {
-                // Similar to drawMultiLineText but uses bitmapText
-                if( aText.StartsWith( "[" ) && aText.EndsWith( "]" ) && aText.Contains( "\n" ) )
-                {
-                    wxString content = aText.Mid( 1, aText.Length() - 2 );
-                    wxArrayString lines;
-                    wxStringSplit( content, lines, '\n' );
-
-                    if( lines.size() > 1 )
-                    {
-                        int lineSpacing = KiROUND( aAttrs.m_Size.y * 1.3 );
-                        VECTOR2D startPos = aPosition;
-
-                        if( aAttrs.m_Angle == ANGLE_VERTICAL )
-                        {
-                            // For vertical text, lines are spaced horizontally
-                            if( aAttrs.m_Halign == GR_TEXT_H_ALIGN_RIGHT )
-                            {
-                                int totalWidth = ( (int) lines.size() - 1 ) * lineSpacing;
-                                startPos.x -= totalWidth;
-                            }
-                            else if( aAttrs.m_Halign == GR_TEXT_H_ALIGN_CENTER )
-                            {
-                                int totalWidth = ( (int) lines.size() - 1 ) * lineSpacing;
-                                startPos.x -= totalWidth / 2.0;
-                            }
-
-                            for( size_t i = 0; i < lines.size(); i++ )
-                            {
-                                VECTOR2D linePos = startPos;
-                                linePos.x += (int) i * lineSpacing;
-
-                                wxString line = lines[i];
-                                line.Trim( true ).Trim( false );
-
-                                bitmapText( aGal, line, linePos, aAttrs );
-                            }
-                        }
-                        else
-                        {
-                            // For horizontal text, lines are spaced vertically
-                            if( aAttrs.m_Valign == GR_TEXT_V_ALIGN_BOTTOM )
-                            {
-                                int totalHeight = ( (int) lines.size() - 1 ) * lineSpacing;
-                                startPos.y -= totalHeight;
-                            }
-                            else if( aAttrs.m_Valign == GR_TEXT_V_ALIGN_CENTER )
-                            {
-                                int totalHeight = ( (int) lines.size() - 1 ) * lineSpacing;
-                                startPos.y -= totalHeight / 2.0;
-                            }
-
-                            for( size_t i = 0; i < lines.size(); i++ )
-                            {
-                                VECTOR2D linePos = startPos;
-                                linePos.y += (int) i * lineSpacing;
-
-                                wxString line = lines[i];
-                                line.Trim( true ).Trim( false );
-
-                                bitmapText( aGal, line, linePos, aAttrs );
-                            }
-                        }
-
-                        // Draw braces with bitmap text (simplified version)
-                        drawBracesAroundTextBitmap( aGal, lines, startPos, lineSpacing, aAttrs );
-                        return;
-                    }
-                }
-
-                bitmapText( aGal, aText, aPosition, aAttrs );
+                if( aRenderTextAsBitmap )
+                    bitmapText( aGal, aText, aPosition, aAttrs );
+                else
+                    drawText( aGal, aText, aPosition, aAttrs, aShadowWidth, aFontMetrics );
             };
 
     const auto drawTextInfo =
@@ -1628,31 +1520,18 @@ void SCH_PAINTER::draw( const SCH_PIN* aPin, int aLayer, bool aDimmed )
                 attrs.m_Angle = aTextInfo.m_Angle;
                 attrs.m_StrokeWidth = aTextInfo.m_Thickness;
 
-                if( drawingShadows )
+                if( nonCached( aPin ) && renderTextAsBitmap )
                 {
                     attrs.m_StrokeWidth += KiROUND( shadowWidth );
-
-                    if( !attrs.m_Font->IsOutline() )
-                    {
-                        drawMultiLineText( *m_gal, aTextInfo.m_Text, aTextInfo.m_TextPosition, attrs,
-                                         aPin->GetFontMetrics() );
-                    }
-                    else
-                    {
-                        boxMultiLineText( *m_gal, aTextInfo.m_Text, aTextInfo.m_TextPosition, attrs,
-                                          aPin->GetFontMetrics() );
-                    }
-                }
-                else if( nonCached( aPin ) && renderTextAsBitmap )
-                {
-                    drawMultiLineBitmapText( *m_gal, aTextInfo.m_Text, aTextInfo.m_TextPosition, attrs );
+                    drawMultiLineText( *m_gal, aTextInfo.m_Text, aTextInfo.m_TextPosition, attrs, true, shadowWidth,
+                                       aPin->GetFontMetrics() );
                     const_cast<SCH_PIN*>( aPin )->SetFlags( IS_SHOWN_AS_BITMAP );
                 }
                 else
                 {
-                    drawMultiLineText( *m_gal, aTextInfo.m_Text, aTextInfo.m_TextPosition, attrs,
+                    drawMultiLineText( *m_gal, aTextInfo.m_Text, aTextInfo.m_TextPosition, attrs, false, shadowWidth,
                                        aPin->GetFontMetrics() );
-                    const_cast<SCH_PIN*>( aPin )->SetFlags( IS_SHOWN_AS_BITMAP );
+                    const_cast<SCH_PIN*>( aPin )->ClearFlags( IS_SHOWN_AS_BITMAP );
                 }
             };
 
@@ -1668,7 +1547,54 @@ void SCH_PAINTER::draw( const SCH_PIN* aPin, int aLayer, bool aDimmed )
     // Request text layout info and draw it
 
     if( std::optional<PIN_LAYOUT_CACHE::TEXT_INFO> numInfo = cache.GetPinNumberInfo( shadowWidth ) )
+    {
+        std::optional<PIN_LAYOUT_CACHE::TEXT_INFO> origInfo;
+
+        // Vertical numbers read bottom to top. Shift the pair back when the label would otherwise run into the
+        // symbol body.
+        if( !aPin->GetRemappedFromNumber().IsEmpty() )
+        {
+            if( OPT_BOX2I numBox = cache.GetPinNumberBBox() )
+            {
+                origInfo = *numInfo;
+                origInfo->m_Text = wxT( "/" ) + aPin->GetRemappedFromNumber();
+                origInfo->m_TextSize = std::max( 1, ( numInfo->m_TextSize * 4 ) / 5 );
+                origInfo->m_HAlign = GR_TEXT_H_ALIGN_LEFT;
+
+                KIFONT::FONT* font = KIFONT::FONT::GetFont( eeconfig()->m_Appearance.default_font );
+                VECTOR2I      fontSize( origInfo->m_TextSize, origInfo->m_TextSize );
+                VECTOR2I      labelExtents = font->StringBoundaryLimits( origInfo->m_Text, fontSize,
+                                                                         origInfo->m_Thickness, false, false,
+                                                                         aPin->GetFontMetrics() );
+
+                if( numInfo->m_Angle == ANGLE_VERTICAL )
+                {
+                    int shift = dir.y > 0 ? labelExtents.x : 0;
+                    numInfo->m_TextPosition.y += shift;
+                    origInfo->m_TextPosition.y = numBox->GetTop() + shift;
+                }
+                else
+                {
+                    int shift = dir.x < 0 ? labelExtents.x : 0;
+                    numInfo->m_TextPosition.x -= shift;
+                    origInfo->m_TextPosition.x = numBox->GetRight() - shift;
+                }
+            }
+        }
+
         drawTextInfo( *numInfo, getColorForLayer( LAYER_PINNUM ) );
+
+        if( origInfo )
+        {
+            COLOR4D dimmed = getColorForLayer( LAYER_PINNUM );
+
+            // Dim the text but not its selection halo.
+            if( !drawingShadows )
+                dimmed.a *= 0.5;
+
+            drawTextInfo( *origInfo, dimmed );
+        }
+    }
 
     if( std::optional<PIN_LAYOUT_CACHE::TEXT_INFO> nameInfo = cache.GetPinNameInfo( shadowWidth ) )
     {
@@ -1676,16 +1602,30 @@ void SCH_PAINTER::draw( const SCH_PIN* aPin, int aLayer, bool aDimmed )
 
         if( OPT_BOX2I altIconBox = cache.GetAltIconBBox() )
         {
-            drawAltPinModesIcon( *m_gal, altIconBox->GetCenter(), altIconBox->GetWidth(),
-                                 // Icon style doesn't work due to the tempPin having no alt
-                                 // but maybe it's better with just one style anyway.
-                                 true, nameInfo->m_Angle == ANGLE_VERTICAL, shadowWidth,
-                                 getColorForLayer( LAYER_PINNAM ) );
+            // Icon style doesn't work due to the tempPin having no alt but maybe it's better with just one style
+            // anyway.
+            drawAltPinModesIcon( *m_gal, altIconBox->GetCenter(), altIconBox->GetWidth(), true,
+                                 nameInfo->m_Angle == ANGLE_VERTICAL, shadowWidth, getColorForLayer( LAYER_PINNAM ) );
         }
     }
 
     if( std::optional<PIN_LAYOUT_CACHE::TEXT_INFO> elecTypeInfo = cache.GetPinElectricalTypeInfo( shadowWidth ) )
         drawTextInfo( *elecTypeInfo, getColorForLayer( LAYER_PRIVATE_NOTES ) );
+
+    if( aPin->IsBrightened() && m_netChainTerminalPins.contains( aPin ) )
+    {
+        if( SCH_NETCHAIN* sig = m_schematic->NetChains().GetNetChainByName( m_schematic->GetHighlightedNetChain() ) )
+        {
+            CIRCLE c = cache.GetDanglingIndicator();
+            COLOR4D emphasis = sig->GetColor() != COLOR4D::UNSPECIFIED ? sig->GetColor()
+                                                                       : color.Brightened( 0.5 );
+            m_gal->SetStrokeColor( emphasis );
+            m_gal->SetIsFill( false );
+            m_gal->SetIsStroke( true );
+            m_gal->SetLineWidth( getShadowWidth( true ) );
+            m_gal->DrawCircle( c.Center, c.Radius );
+        }
+    }
 }
 
 
@@ -1695,10 +1635,20 @@ void SCH_PAINTER::drawAnchor( const VECTOR2I& aPos, bool aDrawingShadows )
         return;
 
     // In order for the anchors to be visible but unobtrusive, their size must factor in the
-    // current zoom level.
-    const MATRIX3x3D& matrix = m_gal->GetScreenWorldMatrix();
-    int radius = KiROUND( std::fabs( matrix.GetScale().x * TEXT_ANCHOR_SIZE ) / 25.0 )
-                     + schIUScale.MilsToIU( TEXT_ANCHOR_SIZE );
+    // current zoom level.  A canvas that can add pixels to a stroke's length does that when it draws.
+    const bool lengthPad = m_gal->SupportsStrokeLengthPad();
+    int        radius = schIUScale.MilsToIU( TEXT_ANCHOR_SIZE );
+
+    if( lengthPad )
+    {
+        m_gal->SetStrokeLengthPad( TEXT_ANCHOR_SIZE / 25.0 );
+    }
+    else
+    {
+        const MATRIX3x3D& matrix = m_gal->GetScreenWorldMatrix();
+
+        radius += KiROUND( std::fabs( matrix.GetScale().x * TEXT_ANCHOR_SIZE ) / 25.0 );
+    }
 
     COLOR4D color = aDrawingShadows ? m_schSettings.GetLayerColor( LAYER_SELECTION_SHADOWS )
                                     : m_schSettings.GetLayerColor( LAYER_SCHEMATIC_ANCHOR );
@@ -1710,6 +1660,9 @@ void SCH_PAINTER::drawAnchor( const VECTOR2I& aPos, bool aDrawingShadows )
 
     m_gal->DrawLine( aPos - VECTOR2I( radius, 0 ), aPos + VECTOR2I( radius, 0 ) );
     m_gal->DrawLine( aPos - VECTOR2I( 0, radius ), aPos + VECTOR2I( 0, radius ) );
+
+    if( lengthPad )
+        m_gal->SetStrokeLengthPad( 0.0 );
 }
 
 
@@ -1742,12 +1695,9 @@ void SCH_PAINTER::drawDanglingIndicator( const VECTOR2I& aPos, const COLOR4D& aC
 void SCH_PAINTER::draw( const SCH_JUNCTION* aJct, int aLayer )
 {
     bool highlightNetclassColors = false;
-    EESCHEMA_SETTINGS* eeschemaCfg = eeconfig();
 
-    if( eeschemaCfg )
-    {
+    if( EESCHEMA_SETTINGS* eeschemaCfg = eeconfig() )
         highlightNetclassColors = eeschemaCfg->m_Selection.highlight_netclass_colors;
-    }
 
     bool drawingShadows = aLayer == LAYER_SELECTION_SHADOWS;
 
@@ -1780,18 +1730,16 @@ void SCH_PAINTER::draw( const SCH_JUNCTION* aJct, int aLayer )
 
 void SCH_PAINTER::draw( const SCH_LINE* aLine, int aLayer )
 {
-    bool drawingShadows = aLayer == LAYER_SELECTION_SHADOWS;
-    bool drawingNetColorHighlights = aLayer == LAYER_NET_COLOR_HIGHLIGHT;
-    bool drawingWires = aLayer == LAYER_WIRE;
-    bool drawingBusses = aLayer == LAYER_BUS;
-    bool drawingDangling = aLayer == LAYER_DANGLING;
-    bool drawingOP = aLayer == LAYER_OP_VOLTAGES;
-
-    bool highlightNetclassColors = false;
-    double             highlightAlpha = 0.6;
-    EESCHEMA_SETTINGS* eeschemaCfg = eeconfig();
-    double             hopOverScale = 0.0;
-    int                defaultLineWidth = schIUScale.MilsToIU( DEFAULT_LINE_WIDTH_MILS );
+    bool   drawingShadows = aLayer == LAYER_SELECTION_SHADOWS;
+    bool   drawingNetColorHighlights = aLayer == LAYER_NET_COLOR_HIGHLIGHT;
+    bool   drawingWires = aLayer == LAYER_WIRE;
+    bool   drawingBusses = aLayer == LAYER_BUS;
+    bool   drawingDangling = aLayer == LAYER_DANGLING;
+    bool   drawingOP = aLayer == LAYER_OP_VOLTAGES;
+    bool   highlightNetclassColors = false;
+    double highlightAlpha = 0.6;
+    double hopOverScale = 0.0;
+    int    defaultLineWidth = schIUScale.MilsToIU( DEFAULT_LINE_WIDTH_MILS );
 
     if( aLine->Schematic() )    // Can be nullptr when run from the color selection panel
     {
@@ -1799,7 +1747,7 @@ void SCH_PAINTER::draw( const SCH_LINE* aLine, int aLayer )
         defaultLineWidth = aLine->Schematic()->Settings().m_DefaultLineWidth;
     }
 
-    if( eeschemaCfg )
+    if( EESCHEMA_SETTINGS* eeschemaCfg = eeconfig() )
     {
         highlightNetclassColors = eeschemaCfg->m_Selection.highlight_netclass_colors;
         highlightAlpha = eeschemaCfg->m_Selection.highlight_netclass_colors_alpha;
@@ -1836,6 +1784,28 @@ void SCH_PAINTER::draw( const SCH_LINE* aLine, int aLayer )
             color = m_schSettings.GetLayerColor( LAYER_WIRE );
         else if( drawingBusses )
             color = m_schSettings.GetLayerColor( LAYER_BUS );
+    }
+
+    // If the user has highlighted a chain and this wire belongs to that chain,
+    // and the chain has a colour override, tint the wire in that colour so the
+    // highlighted chain is immediately visible.
+    if( drawingWires && !drawingShadows && m_schematic && !m_schematic->GetHighlightedNetChain().IsEmpty() )
+    {
+        const auto net = !aLine->IsConnectivityDirty()
+                                 ? aLine->GetConnectionName( &m_schematic->CurrentSheet() )
+                                 : std::nullopt;
+
+        if( net && !net->IsEmpty() )
+        {
+            if( SCH_NETCHAIN* chain = m_schematic->NetChains().GetNetChainForNet( *net ) )
+            {
+                if( chain->GetName() == m_schematic->GetHighlightedNetChain()
+                    && chain->GetColor() != COLOR4D::UNSPECIFIED )
+                {
+                    color = chain->GetColor().WithAlpha( color.a );
+                }
+            }
+        }
     }
 
     if( drawingNetColorHighlights )
@@ -1927,8 +1897,21 @@ void SCH_PAINTER::draw( const SCH_LINE* aLine, int aLayer )
     }
     else
     {
-        curr_wire_shape.emplace_back( aLine->GetStartPoint().x, aLine->GetStartPoint().y, 0 );
-        curr_wire_shape.emplace_back( aLine->GetEndPoint().x, aLine->GetEndPoint().y, 0 );
+        VECTOR2I lineStart = aLine->GetStartPoint();
+        VECTOR2I lineEnd = aLine->GetEndPoint();
+        bool     drawLineBody = true;
+
+        if( aLine->IsGraphicLine() )
+        {
+            drawLineBody = EDA_SHAPE::ShortenSegmentForEndings( lineStart, lineEnd, aLine->GetStartEnding(),
+                                                                aLine->GetEndEnding(), KiROUND( width ) );
+        }
+
+        if( drawLineBody )
+        {
+            curr_wire_shape.emplace_back( lineStart.x, lineStart.y, 0 );
+            curr_wire_shape.emplace_back( lineEnd.x, lineEnd.y, 0 );
+        }
     }
 
     for( size_t ii = 1; ii < curr_wire_shape.size(); ii++ )
@@ -1966,6 +1949,17 @@ void SCH_PAINTER::draw( const SCH_LINE* aLine, int aLayer )
             m_gal->DrawArc( center, ( dstart - center ).EuclideanNorm(), startAngle, angle );
         }
     }
+
+    // Line endings for graphic lines
+    if( aLine->IsGraphicLine() && !drawingShadows )
+    {
+        VECTOR2I  start = aLine->GetStartPoint();
+        VECTOR2I  end = aLine->GetEndPoint();
+        EDA_ANGLE lineAngle( end - start );
+
+        aLine->GetStartEnding().Draw( *m_gal, start, lineAngle + ANGLE_180, width, color );
+        aLine->GetEndEnding().Draw( *m_gal, end, lineAngle, width, color );
+    }
 }
 
 
@@ -1976,6 +1970,16 @@ void SCH_PAINTER::draw( const SCH_SHAPE* aShape, int aLayer, bool aDimmed )
 
     if( aShape->IsPrivate() && !m_schSettings.m_IsSymbolEditor )
         return;
+
+    // A rule area that exists solely to carry attached directive labels follows the visibility of
+    // those labels.  Rule areas which also apply DNP or exclude-from rules always remain visible
+    // since they have a design effect of their own.
+    if( aShape->Type() == SCH_RULE_AREA_T && !eeconfig()->m_Appearance.show_directive_labels
+            && !aShape->IsSelected() )
+    {
+        if( static_cast<const SCH_RULE_AREA*>( aShape )->IsDirectiveLabelOnlyArea() )
+            return;
+    }
 
     bool drawingShadows = aLayer == LAYER_SELECTION_SHADOWS;
 
@@ -1991,25 +1995,19 @@ void SCH_PAINTER::draw( const SCH_SHAPE* aShape, int aLayer, bool aDimmed )
     auto drawShape =
             [&]( const SCH_SHAPE* shape )
             {
+                int  lineWidth = KiROUND( getLineWidth( shape, false ) );
+
                 switch( shape->GetShape() )
                 {
                 case SHAPE_T::ARC:
                 {
-                    VECTOR2D start = shape->GetStart();
-                    VECTOR2D mid = shape->GetArcMid();
-                    VECTOR2D end = shape->GetEnd();
-                    VECTOR2D center = CalcArcCenter( start, mid, end );
+                    SHAPE_ARC arc( shape->GetStart(), shape->GetArcMid(), shape->GetEnd(), 0 );
+                    EDA_ANGLE startAngle = arc.GetStartAngle();
+                    EDA_ANGLE arcAngle = arc.GetCentralAngle();
 
-                    EDA_ANGLE startAngle( start - center );
-                    EDA_ANGLE midAngle( mid - center );
-                    EDA_ANGLE endAngle( end - center );
+                    if( shape->ShortenArcForEndings( startAngle, arcAngle, arc.GetRadius(), lineWidth ) )
+                        m_gal->DrawArc( arc.GetCenter(), arc.GetRadius(), startAngle, arcAngle );
 
-                    EDA_ANGLE angle1 = midAngle - startAngle;
-                    EDA_ANGLE angle2 = endAngle - midAngle;
-
-                    EDA_ANGLE angle = angle1.Normalize180() + angle2.Normalize180();
-
-                    m_gal->DrawArc( center, ( start - center ).EuclideanNorm(), startAngle, angle );
                     break;
                 }
 
@@ -2038,29 +2036,73 @@ void SCH_PAINTER::draw( const SCH_SHAPE* aShape, int aLayer, bool aDimmed )
 
                 case SHAPE_T::POLY:
                 {
-                    const std::vector<SHAPE*> polySegments = shape->MakeEffectiveShapes( true );
+                    if( shape->GetPolyShape().OutlineCount() == 0 )
+                        break;
 
-                    if( !polySegments.empty() )
+                    const SHAPE_LINE_CHAIN& outline = shape->GetPolyShape().COutline( 0 );
+                    std::deque<VECTOR2D>    drawPts;
+
+                    if( shape->GetStartEnding().GetShortenDepth( lineWidth ) > 0
+                        || shape->GetEndEnding().GetShortenDepth( lineWidth ) > 0 )
                     {
-                        std::deque<VECTOR2D> pts;
+                        std::vector<VECTOR2I> pts;
 
-                        for( SHAPE* polySegment : polySegments )
-                            pts.push_back( static_cast<SHAPE_SEGMENT*>( polySegment )->GetSeg().A );
-
-                        pts.push_back( static_cast<SHAPE_SEGMENT*>( polySegments.back() )->GetSeg().B );
-
-                        for( SHAPE* polySegment : polySegments )
-                            delete polySegment;
-
-                        m_gal->DrawPolygon( pts );
+                        if( shape->GetShortenedBodyPolyPoints( outline, 0, pts, lineWidth ) )
+                        {
+                            for( const VECTOR2I& pt : pts )
+                                drawPts.emplace_back( pt );
+                        }
                     }
+                    else
+                    {
+                        for( const VECTOR2I& pt : outline.CPoints() )
+                            drawPts.emplace_back( pt );
+
+                        if( shape->IsClosed() )
+                            drawPts.emplace_back( outline.CPoint( 0 ) );
+                    }
+
+                    if( drawPts.size() >= 2 )
+                        m_gal->DrawPolygon( drawPts );
+
                     break;
                 }
 
                 case SHAPE_T::BEZIER:
+                    if( std::optional<BEZIER<double>> curve = shape->ShortenedBezierCurve( lineWidth ) )
+                        m_gal->DrawCurve( curve->Start, curve->C1, curve->C2, curve->End, shape->GetMaxError() );
+
+                    break;
+
+                case SHAPE_T::ELLIPSE:
+                    m_gal->DrawEllipse( shape->GetEllipseCenter(), shape->GetEllipseMajorRadius(),
+                                        shape->GetEllipseMinorRadius(), shape->GetEllipseRotation() );
+                    break;
+
+                case SHAPE_T::ELLIPSE_ARC:
                 {
-                    m_gal->DrawCurve( shape->GetStart(), shape->GetBezierC1(),
-                                      shape->GetBezierC2(), shape->GetEnd() );
+                    const VECTOR2D        center( aShape->GetEllipseCenter() );
+                    const int             majorR = aShape->GetEllipseMajorRadius();
+                    const int             minorR = aShape->GetEllipseMinorRadius();
+                    const EDA_ANGLE&      rot = aShape->GetEllipseRotation();
+                    const EDA_ANGLE&      start = aShape->GetEllipseStartAngle();
+                    const EDA_ANGLE&      end = aShape->GetEllipseEndAngle();
+                    SHAPE_ELLIPSE         ellipse( center, majorR, minorR, rot, start, end );
+                    SHAPE_LINE_CHAIN      chain = ellipse.ConvertToPolyline( aShape->GetMaxError() );
+                    std::vector<VECTOR2I> pts;
+
+                    if( aShape->GetShortenedBodyPolyPoints( chain, 0, pts, lineWidth ) )
+                    {
+                        chain.Clear();
+
+                        for( const VECTOR2I& pt : pts )
+                            chain.Append( pt );
+
+                        chain.SetClosed( false );
+
+                        m_gal->DrawSegmentChain( chain, lineWidth );
+                    }
+
                     break;
                 }
 
@@ -2155,6 +2197,8 @@ void SCH_PAINTER::draw( const SCH_SHAPE* aShape, int aLayer, bool aDimmed )
 
         if( lineWidth > 0 )
         {
+            int lineWidthIU = KiROUND( lineWidth );
+
             m_gal->SetIsFill( false );
             m_gal->SetIsStroke( true );
             m_gal->SetLineWidth( lineWidth );
@@ -2166,23 +2210,38 @@ void SCH_PAINTER::draw( const SCH_SHAPE* aShape, int aLayer, bool aDimmed )
             }
             else
             {
-                std::vector<SHAPE*> shapes = aShape->MakeEffectiveShapesForStroking();
+                std::vector<SHAPE*> shapes = aShape->MakeEffectiveShapesForStroking( lineWidthIU );
 
                 for( SHAPE* shape : shapes )
                 {
-                    STROKE_PARAMS::Stroke( shape, lineStyle, KiROUND( lineWidth ), &m_schSettings,
-                            [this]( const VECTOR2I& a, const VECTOR2I& b )
-                            {
-                                // DrawLine has problem with 0 length lines so enforce minimum
-                                if( a == b )
-                                    m_gal->DrawLine( a+1, b );
-                                else
-                                    m_gal->DrawLine( a, b );
-                            } );
+                    STROKE_PARAMS::Stroke( shape, lineStyle, lineWidthIU, &m_schSettings,
+                                           [this]( const VECTOR2I& a, const VECTOR2I& b )
+                                           {
+                                               if( a == b )
+                                                   m_gal->DrawLine( a + 1, b );
+                                               else
+                                                   m_gal->DrawLine( a, b );
+                                           } );
                 }
 
                 for( SHAPE* shape : shapes )
                     delete shape;
+            }
+        }
+
+        // Line endings
+        if( aShape->GetStartEnding().GetStyle() != LINE_ENDING_STYLE::NONE
+             || aShape->GetEndEnding().GetStyle() != LINE_ENDING_STYLE::NONE )
+        {
+            EDA_ANGLE startTangent, endTangent;
+            aShape->GetEndingTangents( startTangent, endTangent, KiROUND( lineWidth ) );
+
+            VECTOR2I startPt, endPt;
+
+            if( aShape->GetLineEndingEndpoints( startPt, endPt ) )
+            {
+                aShape->GetStartEnding().Draw( *m_gal, startPt, startTangent, lineWidth, color );
+                aShape->GetEndEnding().Draw( *m_gal, endPt, endTangent, lineWidth, color );
             }
         }
     }
@@ -2219,15 +2278,10 @@ void SCH_PAINTER::draw( const SCH_TEXT* aText, int aLayer, bool aDimmed )
 
     COLOR4D color = getRenderColor( aText, aLayer, drawingShadows, aDimmed );
 
-    if( m_schematic )
+    if( m_schematic && !aText->IsConnectivityDirty()
+        && aText->HasBusConnection( &m_schematic->CurrentSheet() ) )
     {
-        SCH_CONNECTION* conn = nullptr;
-
-        if( !aText->IsConnectivityDirty() )
-            conn = aText->Connection();
-
-        if( conn && conn->IsBus() )
-            color = getRenderColor( aText, LAYER_BUS, drawingShadows, aDimmed );
+        color = getRenderColor( aText, LAYER_BUS, drawingShadows, aDimmed );
     }
 
     if( !( aText->IsVisible() || aText->IsForceVisible() ) )
@@ -2246,7 +2300,7 @@ void SCH_PAINTER::draw( const SCH_TEXT* aText, int aLayer, bool aDimmed )
     m_gal->SetFillColor( color );
     m_gal->SetHoverColor( color );
 
-    wxString        shownText( aText->GetShownText( true ) );
+    wxString        shownText( aText->GetShownText( FOR_CANVAS ) );
     VECTOR2I        text_offset = aText->GetSchematicTextOffset( &m_schSettings );
     TEXT_ATTRIBUTES attrs = aText->GetAttributes();
     KIFONT::FONT*   font = getFont( aText );
@@ -2254,26 +2308,18 @@ void SCH_PAINTER::draw( const SCH_TEXT* aText, int aLayer, bool aDimmed )
     attrs.m_Angle = aText->GetDrawRotation();
     attrs.m_StrokeWidth = KiROUND( getTextThickness( aText ) );
 
+    float shadowWidth = 0.0f;
+
+    if( drawingShadows )
+    {
+        attrs.m_Underlined = false;
+        shadowWidth = getShadowWidth( !aText->IsSelected() );
+    }
+
     if( transparentColor )
     {
         // Clear any hover URL so a hidden item leaves no stale clickable region behind.
         aText->SetActiveUrl( wxString() );
-    }
-    else if( drawingShadows && font->IsOutline() )
-    {
-        // Trying to draw glyph-shaped shadows on outline text is a fool's errand.  Just box it.
-        // Use GetBoundingBox() which correctly handles multiline text dimensions.
-        BOX2I bbox = aText->GetBoundingBox();
-
-        // SCH_TEXT glyphs are drawn shifted by GetOffsetToMatchSCH_FIELD(); shift the box to match.
-        if( aText->Type() == SCH_TEXT_T )
-            bbox.Offset( aText->GetOffsetToMatchSCH_FIELD( nullptr ) );
-
-        bbox.Inflate( attrs.m_StrokeWidth / 2, attrs.m_StrokeWidth * 2 );
-
-        m_gal->SetIsFill( true );
-        m_gal->SetIsStroke( false );
-        m_gal->DrawRectangle( bbox.GetOrigin(), bbox.GetEnd() );
     }
     else if( aText->GetLayer() == LAYER_DEVICE )
     {
@@ -2284,16 +2330,7 @@ void SCH_PAINTER::draw( const SCH_TEXT* aText, int aLayer, bool aDimmed )
         // offset by shadowWidth/2 to be drawn at the same place as normal text.
         double shadowOffset = 0.0;
 
-        if( drawingShadows )
-        {
-            double shadowWidth = getShadowWidth( !aText->IsSelected() );
-            attrs.m_StrokeWidth += getShadowWidth( !aText->IsSelected() );
-
-            const double adjust = 1.2f;      // Value chosen after tests
-            shadowOffset = shadowWidth/2.0f * adjust;
-        }
-
-        if( attrs.m_Angle == ANGLE_VERTICAL )
+        if( attrs.m_Angle.GetAngle() == ANGLE_VERTICAL )
         {
             switch( attrs.m_Halign )
             {
@@ -2334,30 +2371,7 @@ void SCH_PAINTER::draw( const SCH_TEXT* aText, int aLayer, bool aDimmed )
         // vertically centered.
         attrs.m_Valign = GR_TEXT_V_ALIGN_CENTER;
 
-        strokeText( *m_gal, shownText, pos, attrs, aText->GetFontMetrics() );
-    }
-    else if( drawingShadows )
-    {
-        m_gal->SetIsFill( false );
-        m_gal->SetIsStroke( true );
-        attrs.m_StrokeWidth += KiROUND( getShadowWidth( !aText->IsSelected() ) );
-        attrs.m_Underlined = false;
-
-        // Fudge factors to match 6.0 positioning
-        // New text stroking has width dependent offset but we need to center the shadow on the
-        // stroke.  NB this offset is in font.cpp also.
-        int fudge = KiROUND( getShadowWidth( !aText->IsSelected() ) / 1.52 );
-
-        if( attrs.m_Halign == GR_TEXT_H_ALIGN_LEFT && attrs.m_Angle == ANGLE_0 )
-            text_offset.x -= fudge;
-        else if( attrs.m_Halign == GR_TEXT_H_ALIGN_RIGHT && attrs.m_Angle == ANGLE_90 )
-            text_offset.y -= fudge;
-        else if( attrs.m_Halign == GR_TEXT_H_ALIGN_RIGHT && attrs.m_Angle == ANGLE_0 )
-            text_offset.x += fudge;
-        else if( attrs.m_Halign == GR_TEXT_H_ALIGN_LEFT && attrs.m_Angle == ANGLE_90 )
-            text_offset.y += fudge;
-
-        strokeText( *m_gal, shownText, aText->GetDrawPos() + text_offset, attrs, aText->GetFontMetrics() );
+        drawText( *m_gal, shownText, pos, attrs, shadowWidth, aText->GetFontMetrics() );
     }
     else
     {
@@ -2380,9 +2394,10 @@ void SCH_PAINTER::draw( const SCH_TEXT* aText, int aLayer, bool aDimmed )
         if( aText->Type() == SCH_TEXT_T )
             text_offset += aText->GetOffsetToMatchSCH_FIELD( nullptr );
 
-        if( nonCached( aText ) && aText->RenderAsBitmap( m_gal->GetWorldScale() )
+        if( nonCached( aText ) && renderAsBitmap( aText )
                                && !shownText.Contains( wxT( "\n" ) ) )
         {
+            attrs.m_StrokeWidth += shadowWidth;
             bitmapText( *m_gal, shownText, aText->GetDrawPos() + text_offset, attrs );
             const_cast<SCH_TEXT*>( aText )->SetFlags( IS_SHOWN_AS_BITMAP );
         }
@@ -2395,12 +2410,11 @@ void SCH_PAINTER::draw( const SCH_TEXT* aText, int aLayer, bool aDimmed )
 
             if( cache )
             {
-                m_gal->SetLineWidth( attrs.m_StrokeWidth );
-                m_gal->DrawGlyphs( *cache );
+                drawCache( *m_gal, cache, attrs.m_StrokeWidth, shadowWidth );
             }
             else
             {
-                strokeText( *m_gal, shownText, aText->GetDrawPos() + text_offset, attrs,
+                drawText( *m_gal, shownText, aText->GetDrawPos() + text_offset, attrs, shadowWidth,
                             aText->GetFontMetrics(), aText->GetRolloverPos(), &activeUrl );
             }
 
@@ -2471,49 +2485,6 @@ void SCH_PAINTER::draw( const SCH_TEXTBOX* aTextBox, int aLayer, bool aDimmed )
     float         borderWidth = getLineWidth( aTextBox, drawingShadows );
     KIFONT::FONT* font = getFont( aTextBox );
 
-    auto drawText =
-            [&]()
-            {
-                wxString        shownText = aTextBox->GetShownText( true );
-                TEXT_ATTRIBUTES attrs = aTextBox->GetAttributes();
-                wxString        activeUrl;
-
-                attrs.m_Angle = aTextBox->GetDrawRotation();
-                attrs.m_StrokeWidth = KiROUND( getTextThickness( aTextBox ) );
-
-                if( aTextBox->IsRollover() && !aTextBox->IsMoving() )
-                {
-                    // Highlight any urls found within the text
-                    m_gal->SetHoverColor( m_schSettings.GetLayerColor( LAYER_HOVERED ) );
-
-                    // Highlight the whole text if it has a link definition
-                    if( aTextBox->HasHyperlink() )
-                    {
-                        attrs.m_Hover = true;
-                        attrs.m_Underlined = true;
-                        activeUrl = aTextBox->GetHyperlink();
-                    }
-                }
-
-                std::vector<std::unique_ptr<KIFONT::GLYPH>>* cache = nullptr;
-
-                if( !aTextBox->IsRollover() && font->IsOutline() )
-                    cache = aTextBox->GetRenderCache( font, shownText );
-
-                if( cache )
-                {
-                    m_gal->SetLineWidth( attrs.m_StrokeWidth );
-                    m_gal->DrawGlyphs( *cache );
-                }
-                else
-                {
-                    strokeText( *m_gal, shownText, aTextBox->GetDrawPos(), attrs,
-                                aTextBox->GetFontMetrics(), aTextBox->GetRolloverPos(), &activeUrl );
-                }
-
-                aTextBox->SetActiveUrl( activeUrl );
-            };
-
     if( drawingShadows && !( aTextBox->IsBrightened() || aTextBox->IsSelected() ) )
         return;
 
@@ -2548,9 +2519,49 @@ void SCH_PAINTER::draw( const SCH_TEXTBOX* aTextBox, int aLayer, bool aDimmed )
     else if( aLayer == LAYER_DEVICE || aLayer == LAYER_NOTES || aLayer == LAYER_PRIVATE_NOTES )
     {
         if( transparentColor )
+        {
             aTextBox->SetActiveUrl( wxString() );
+        }
         else
-            drawText();
+        {
+            wxString        shownText = aTextBox->GetShownText( FOR_CANVAS );
+            TEXT_ATTRIBUTES attrs = aTextBox->GetAttributes();
+            wxString        activeUrl;
+
+            attrs.m_Angle = aTextBox->GetDrawRotation();
+            attrs.m_StrokeWidth = KiROUND( getTextThickness( aTextBox ) );
+
+            if( aTextBox->IsRollover() && !aTextBox->IsMoving() )
+            {
+                // Highlight any urls found within the text
+                m_gal->SetHoverColor( m_schSettings.GetLayerColor( LAYER_HOVERED ) );
+
+                // Highlight the whole text if it has a link definition
+                if( aTextBox->HasHyperlink() )
+                {
+                    attrs.m_Hover = true;
+                    attrs.m_Underlined = true;
+                    activeUrl = aTextBox->GetHyperlink();
+                }
+            }
+
+            std::vector<std::unique_ptr<KIFONT::GLYPH>>* cache = nullptr;
+
+            if( !aTextBox->IsRollover() && font->IsOutline() )
+                cache = aTextBox->GetRenderCache( font, shownText );
+
+            if( cache )
+            {
+                drawCache( *m_gal, cache, attrs.m_StrokeWidth, 0.0f );
+            }
+            else
+            {
+                drawText( *m_gal, shownText, aTextBox->GetDrawPos(), attrs, 0.0f, aTextBox->GetFontMetrics(),
+                          aTextBox->GetRolloverPos(), &activeUrl );
+            }
+
+            aTextBox->SetActiveUrl( activeUrl );
+        }
 
         if( aTextBox->Type() != SCH_TABLECELL_T && borderWidth > 0 )
         {
@@ -2619,50 +2630,52 @@ void SCH_PAINTER::draw( const SCH_TABLE* aTable, int aLayer, bool aDimmed )
     if( aLayer == LAYER_SELECTION_SHADOWS )
         return;
 
-    aTable->DrawBorders(
-            [&]( const VECTOR2I& ptA, const VECTOR2I& ptB, const STROKE_PARAMS& stroke )
-            {
-                int        lineWidth = stroke.GetWidth();
-                COLOR4D    color = stroke.GetColor();
-                LINE_STYLE lineStyle = stroke.GetLineStyle();
-
-                if( lineWidth == 0 )
-                    lineWidth = m_schSettings.GetDefaultPenWidth();
-
-                if( color == COLOR4D::UNSPECIFIED )
-                    color = m_schSettings.GetLayerColor( LAYER_NOTES );
-
-                if( lineStyle == LINE_STYLE::DEFAULT )
-                    lineStyle = LINE_STYLE::SOLID;
-
-                m_gal->SetIsFill( false );
-                m_gal->SetIsStroke( true );
-                m_gal->SetStrokeColor( color );
-                m_gal->SetLineWidth( (float) lineWidth );
-
-                if( lineStyle <= LINE_STYLE::FIRST_TYPE )
+    if( aLayer == LAYER_NOTES )
+    {
+        aTable->DrawBorders(
+                [&]( const VECTOR2I& ptA, const VECTOR2I& ptB, const STROKE_PARAMS& stroke )
                 {
-                    m_gal->DrawLine( ptA, ptB );
-                }
-                else
-                {
-                    SHAPE_SEGMENT seg( ptA, ptB );
-                    STROKE_PARAMS::Stroke( &seg, lineStyle, lineWidth, &m_schSettings,
-                            [&]( const VECTOR2I& a, const VECTOR2I& b )
-                            {
-                                // DrawLine has problem with 0 length lines so enforce minimum
-                                if( a == b )
-                                    m_gal->DrawLine( a+1, b );
-                                else
-                                    m_gal->DrawLine( a, b );
-                            } );
-                }
-            } );
+                    int        lineWidth = stroke.GetWidth();
+                    COLOR4D    color = stroke.GetColor();
+                    LINE_STYLE lineStyle = stroke.GetLineStyle();
+
+                    if( lineWidth == 0 )
+                        lineWidth = m_schSettings.GetDefaultPenWidth();
+
+                    if( color == COLOR4D::UNSPECIFIED )
+                        color = m_schSettings.GetLayerColor( LAYER_NOTES );
+
+                    if( lineStyle == LINE_STYLE::DEFAULT )
+                        lineStyle = LINE_STYLE::SOLID;
+
+                    m_gal->SetIsFill( false );
+                    m_gal->SetIsStroke( true );
+                    m_gal->SetStrokeColor( color );
+                    m_gal->SetLineWidth( (float) lineWidth );
+
+                    if( lineStyle <= LINE_STYLE::FIRST_TYPE )
+                    {
+                        m_gal->DrawLine( ptA, ptB );
+                    }
+                    else
+                    {
+                        SHAPE_SEGMENT seg( ptA, ptB );
+                        STROKE_PARAMS::Stroke( &seg, lineStyle, lineWidth, &m_schSettings,
+                                [&]( const VECTOR2I& a, const VECTOR2I& b )
+                                {
+                                    // DrawLine has problem with 0 length lines so enforce minimum
+                                    if( a == b )
+                                        m_gal->DrawLine( a+1, b );
+                                    else
+                                        m_gal->DrawLine( a, b );
+                                } );
+                    }
+                } );
+    }
 }
 
 
-wxString SCH_PAINTER::expandLibItemTextVars( const wxString& aSourceText,
-                                             const SCH_SYMBOL* aSymbolContext )
+wxString SCH_PAINTER::expandLibItemTextVars( const wxString& aSourceText, const SCH_SYMBOL* aSymbolContext )
 {
     std::function<bool( wxString* )> symbolResolver =
             [&]( wxString* token ) -> bool
@@ -2673,7 +2686,30 @@ wxString SCH_PAINTER::expandLibItemTextVars( const wxString& aSourceText,
                 return aSymbolContext->ResolveTextVar( &m_schematic->CurrentSheet(), token );
             };
 
-    return ExpandTextVars( aSourceText, &symbolResolver );
+    int      depth = 0;
+    wxString text = ResolveTextVars( aSourceText, &symbolResolver, depth );
+    FinalizeTextVarExpansion( text, FOR_CANVAS );
+
+    return text;
+}
+
+
+// A selected or brightened symbol or pin shows on the shadow layer, a pin's operating point on the
+// current layer, and nothing else of a symbol is drawn there
+static bool symbolDrawsOnOverlay( const SCH_SYMBOL* aSymbol, int aLayer )
+{
+    const bool shadows = aLayer == LAYER_SELECTION_SHADOWS;
+
+    if( shadows && ( aSymbol->IsBrightened() || aSymbol->IsSelected() ) )
+        return true;
+
+    for( const std::unique_ptr<SCH_PIN>& pin : aSymbol->GetRawPins() )
+    {
+        if( shadows ? pin->IsBrightened() || pin->IsSelected() : !pin->GetOperatingPoint().IsEmpty() )
+            return true;
+    }
+
+    return false;
 }
 
 
@@ -2716,19 +2752,29 @@ void SCH_PAINTER::draw( const SCH_SYMBOL* aSymbol, int aLayer )
     if( isFieldsLayer( aLayer ) )
         return;
 
-    if( drawingShadows && !( aSymbol->IsBrightened() || aSymbol->IsSelected() ) )
+    // The library copy below is most of a symbol's draw; skip it on overlay layers it adds nothing to
+    if( ( drawingShadows || aLayer == LAYER_OP_CURRENTS ) && !m_schSettings.GetDrawBoundingBoxes()
+        && !symbolDrawsOnOverlay( aSymbol, aLayer ) )
     {
-        // Don't exit here; symbol may still have selected pins
-        // return;
+        return;
     }
 
     int unit = m_schematic ? aSymbol->GetUnitSelection( &m_schematic->CurrentSheet() ) : 1;
     int bodyStyle = aSymbol->GetBodyStyle();
 
-    // Use dummy symbol if the actual couldn't be found (or couldn't be locked).
-    LIB_SYMBOL*           originalSymbol = aSymbol->GetLibSymbolRef() ? aSymbol->GetLibSymbolRef().get()
-                                                                      : LIB_SYMBOL::GetDummy();
+    // Use the effective symbol (variant alternate or base), falling back to dummy.
+    const LIB_SYMBOL* originalSymbol = aSymbol->GetEffectiveLibSymbol( sheetPath );
+
+    if( !originalSymbol )
+        originalSymbol = LIB_SYMBOL::GetDummy();
+
+    bool usingAlternateSymbol = ( originalSymbol != aSymbol->GetLibSymbolRef().get()
+                                  && originalSymbol != LIB_SYMBOL::GetDummy() );
+
     std::vector<SCH_PIN*> originalPins = originalSymbol->GetGraphicalPins( unit, bodyStyle );
+
+    if( usingAlternateSymbol && originalPins.empty() && bodyStyle > 1 )
+        originalPins = originalSymbol->GetGraphicalPins( unit, 1 );
 
     // Copy the source so we can re-orient and translate it.
     auto       tCopy1 = std::chrono::high_resolution_clock::now();
@@ -2743,6 +2789,9 @@ void SCH_PAINTER::draw( const SCH_SYMBOL* aSymbol, int aLayer )
 
     std::vector<SCH_PIN*> tempPins = tempSymbol.GetGraphicalPins( unit, bodyStyle );
 
+    if( usingAlternateSymbol && tempPins.empty() && bodyStyle > 1 )
+        tempPins = tempSymbol.GetGraphicalPins( unit, 1 );
+
     tempSymbol.SetFlags( aSymbol->GetFlags() );
 
     OrientAndMirrorSymbolItems( &tempSymbol, aSymbol->GetOrientation() );
@@ -2750,6 +2799,7 @@ void SCH_PAINTER::draw( const SCH_SYMBOL* aSymbol, int aLayer )
     for( SCH_ITEM& tempItem : tempSymbol.GetDrawItems() )
     {
         tempItem.SetFlags( aSymbol->GetFlags() );     // SELECTED, HIGHLIGHTED, BRIGHTENED,
+        tempItem.SetNetHighlighted( aSymbol->IsNetHighlighted() );
         tempItem.Move( aSymbol->GetPosition() );
 
         if( tempItem.Type() == SCH_TEXT_T )
@@ -2768,10 +2818,17 @@ void SCH_PAINTER::draw( const SCH_SYMBOL* aSymbol, int aLayer )
         }
     }
 
-    // Copy the pin info from the symbol to the temp pins
+    // Copy the pin info from the symbol to the temp pins.
+    std::vector<SCH_PIN*> symbolPins = aSymbol->MapLibPins( originalPins, usingAlternateSymbol );
+    SCH_NETCHAIN*         highlightedChain = nullptr;
+
+    if( m_schematic && !m_schematic->GetHighlightedNetChain().IsEmpty() )
+        highlightedChain = m_schematic->NetChains().GetNetChainByName( m_schematic->GetHighlightedNetChain() );
+
     for( unsigned i = 0; i < tempPins.size(); ++ i )
     {
-        SCH_PIN* symbolPin = aSymbol->GetPin( originalPins[ i ] );
+        SCH_PIN* symbolPin = symbolPins[ i ];
+
         SCH_PIN* tempPin = tempPins[ i ];
 
         tempPin->SetFlipStackedTextSide( originalPins[i]->StackedTextSideFlipped( aSymbol->GetTransform() ) );
@@ -2782,10 +2839,42 @@ void SCH_PAINTER::draw( const SCH_SYMBOL* aSymbol, int aLayer )
         tempPin->ClearFlags();
         tempPin->SetFlags( symbolPin->GetFlags() );     // SELECTED, HIGHLIGHTED, BRIGHTENED,
                                                         // IS_SHOWN_AS_BITMAP
+        tempPin->SetNetHighlighted( symbolPin->IsNetHighlighted() );
+
+        // Terminal markers match the schematic pin, not its library definition
+        if( highlightedChain
+            && highlightedChain->IsTerminal( symbolPin->m_Uuid, m_schematic->CurrentSheet().PathRef() ) )
+        {
+            m_netChainTerminalPins.insert( tempPin );
+        }
 
         tempPin->SetName( expandLibItemTextVars( symbolPin->GetShownName(), aSymbol ) );
         tempPin->SetType( symbolPin->GetType() );
         tempPin->SetShape( symbolPin->GetShape() );
+
+        // Pin-to-pad mapping (issue #2282): show the effective pad number on the schematic.  The
+        // resolution needs the SCH_SYMBOL context that symbolPin carries, so substitute the temp
+        // pin's number here, which lets the layout cache recompute geometry for the shown text.
+        if( m_schematic )
+        {
+            const wxString original = symbolPin->GetShownNumber();
+            const wxString effective =
+                    symbolPin->GetEffectivePadNumber( m_schematic->CurrentSheet(), m_schematic->GetCurrentVariant() );
+
+            if( effective != original )
+            {
+                bool showOriginal = eeconfig() ? eeconfig()->m_Appearance.show_remapped_pin_numbers
+                                               : m_schSettings.m_ShowRemappedPinNumbers;
+
+                // The effective pad is the primary number; the layout cache positions and sizes it.
+                // When the preference is on, the original symbol-pin number is carried on the temp
+                // pin so draw( SCH_PIN* ) can render it as a dimmed secondary label.
+                tempPin->SetNumber( effective );
+
+                if( showOriginal )
+                    tempPin->SetRemappedFromNumber( original );
+            }
+        }
 
         if( symbolPin->IsDangling() )
             tempPin->SetFlags( IS_DANGLING );
@@ -2796,10 +2885,12 @@ void SCH_PAINTER::draw( const SCH_SYMBOL* aSymbol, int aLayer )
     }
 
     draw( &tempSymbol, aLayer, false, aSymbol->GetUnit(), aSymbol->GetBodyStyle(), DNP );
+    m_netChainTerminalPins.clear();
 
     for( unsigned i = 0; i < tempPins.size(); ++i )
     {
-        SCH_PIN* symbolPin = aSymbol->GetPin( originalPins[ i ] );
+        SCH_PIN* symbolPin = symbolPins[ i ];
+
         SCH_PIN* tempPin = tempPins[ i ];
 
         if( !symbolPin )
@@ -2809,12 +2900,13 @@ void SCH_PAINTER::draw( const SCH_SYMBOL* aSymbol, int aLayer )
         tempPin->ClearFlags( IS_DANGLING );             // Clear this temporary flag
         symbolPin->SetFlags( tempPin->GetFlags() );     // SELECTED, HIGHLIGHTED, BRIGHTENED,
                                                         // IS_SHOWN_AS_BITMAP
+        symbolPin->SetNetHighlighted( tempPin->IsNetHighlighted() );
     }
 
     // Draw DNP and EXCLUDE from SIM markers.
     // These drawings are associated to the symbol body, so draw them only when the LAYER_DEVICE
     // is drawn (to avoid draw artifacts).
-    if( DNP && aLayer == LAYER_DEVICE )
+    if( DNP && m_schSettings.m_ShowDNPMarkers && aLayer == LAYER_DEVICE )
     {
         COLOR4D  marker_color = m_schSettings.GetLayerColor( LAYER_DNP_MARKER );
         BOX2I    bbox = aSymbol->GetBodyBoundingBox();
@@ -2937,7 +3029,7 @@ void SCH_PAINTER::draw( const SCH_FIELD* aField, int aLayer, bool aDimmed )
         variant = m_schematic->GetCurrentVariant();
     }
 
-    wxString shownText = aField->GetShownText( sheetPath, true, 0, variant );
+    wxString shownText = aField->GetShownText( sheetPath, FOR_CANVAS, variant );
 
     if( shownText.IsEmpty() )
         return;
@@ -2978,8 +3070,16 @@ void SCH_PAINTER::draw( const SCH_FIELD* aField, int aLayer, bool aDimmed )
     if( m_schSettings.GetDrawBoundingBoxes() )
         drawItemBoundingBox( aField );
 
-    TEXT_ATTRIBUTES attributes = aField->GetAttributes();
-    attributes.m_StrokeWidth = KiROUND( getTextThickness( aField ) );
+    TEXT_ATTRIBUTES attrs = aField->GetAttributes();
+    attrs.m_StrokeWidth = KiROUND( getTextThickness( aField ) );
+
+    float shadowWidth = 0.0f;
+
+    if( drawingShadows )
+    {
+        attrs.m_Underlined = false;
+        shadowWidth = getShadowWidth( !aField->IsSelected() );
+    }
 
     m_gal->SetStrokeColor( color );
     m_gal->SetFillColor( color );
@@ -2989,26 +3089,13 @@ void SCH_PAINTER::draw( const SCH_FIELD* aField, int aLayer, bool aDimmed )
     {
         // Skip glyph rendering; the anchor/umbilical drawing below still runs.
     }
-    else if( drawingShadows && getFont( aField )->IsOutline() )
-    {
-        // Trying to draw glyph-shaped shadows on outline text is a fool's errand.  Just box it.
-        VECTOR2I textpos = bbox.Centre();
-
-        attributes.m_Halign = GR_TEXT_H_ALIGN_CENTER;
-        attributes.m_Valign = GR_TEXT_V_ALIGN_CENTER;
-        attributes.m_Angle = orient;
-        boxText( *m_gal, shownText, textpos, attributes, aField->GetFontMetrics() );
-    }
     else
     {
         VECTOR2I textpos = bbox.Centre();
 
-        attributes.m_Halign = GR_TEXT_H_ALIGN_CENTER;
-        attributes.m_Valign = GR_TEXT_V_ALIGN_CENTER;
-        attributes.m_Angle = orient;
-
-        if( drawingShadows )
-            attributes.m_StrokeWidth += getShadowWidth( !aField->IsSelected() );
+        attrs.m_Halign = GR_TEXT_H_ALIGN_CENTER;
+        attrs.m_Valign = GR_TEXT_V_ALIGN_CENTER;
+        attrs.m_Angle = orient;
 
         if( aField->IsRollover() && !aField->IsMoving() )
         {
@@ -3018,14 +3105,15 @@ void SCH_PAINTER::draw( const SCH_FIELD* aField, int aLayer, bool aDimmed )
             // Highlight the whole text if it has a link definition
             if( aField->HasHyperlink() )
             {
-                attributes.m_Hover = true;
-                attributes.m_Underlined = true;
+                attrs.m_Hover = true;
+                attrs.m_Underlined = true;
             }
         }
 
-        if( nonCached( aField ) && aField->RenderAsBitmap( m_gal->GetWorldScale() ) )
+        if( nonCached( aField ) && renderAsBitmap( aField ) )
         {
-            bitmapText( *m_gal, shownText, textpos, attributes );
+            attrs.m_StrokeWidth += shadowWidth;
+            bitmapText( *m_gal, shownText, textpos, attrs );
             const_cast<SCH_FIELD*>( aField )->SetFlags( IS_SHOWN_AS_BITMAP );
         }
         else
@@ -3033,17 +3121,16 @@ void SCH_PAINTER::draw( const SCH_FIELD* aField, int aLayer, bool aDimmed )
             std::vector<std::unique_ptr<KIFONT::GLYPH>>* cache = nullptr;
 
             if( !aField->IsRollover() )
-                cache = aField->GetRenderCache( shownText, textpos, attributes );
+                cache = aField->GetRenderCache( shownText, textpos, attrs );
 
             if( cache )
             {
-                m_gal->SetLineWidth( attributes.m_StrokeWidth );
-                m_gal->DrawGlyphs( *cache );
+                drawCache( *m_gal, cache, attrs.m_StrokeWidth, shadowWidth );
             }
             else
             {
-                strokeText( *m_gal, shownText, textpos, attributes, aField->GetFontMetrics(),
-                            aField->GetRolloverPos() );
+                drawText( *m_gal, shownText, textpos, attrs, shadowWidth, aField->GetFontMetrics(),
+                          aField->GetRolloverPos() );
             }
 
             const_cast<SCH_FIELD*>( aField )->ClearFlags( IS_SHOWN_AS_BITMAP );
@@ -3070,11 +3157,8 @@ void SCH_PAINTER::draw( const SCH_FIELD* aField, int aLayer, bool aDimmed )
                             bbox.GetBottom() - bbox.GetHeight() / 6.0 );
         }
 
-        if( !transparentColor && parent->IsSymbolLikePowerLocalLabel()
-                && aField->GetId() == FIELD_T::VALUE )
-        {
+        if( !transparentColor && parent->IsSymbolLikePowerLocalLabel() && aField->GetId() == FIELD_T::VALUE )
             drawLocalPowerIcon( pos, size, rotated, color, drawingShadows, aField->IsBrightened() );
-        }
     }
 
     // Draw anchor or umbilical line.  The umbilical line shows independent motion of a field
@@ -3189,15 +3273,14 @@ void SCH_PAINTER::draw( const SCH_LABEL* aLabel, int aLayer, bool aDimmed )
     if( drawingShadows && !( aLabel->IsBrightened() || aLabel->IsSelected() ) )
         return;
 
-    COLOR4D color = getRenderColor( aLabel, LAYER_HIERLABEL, drawingShadows, aDimmed, true );
+    COLOR4D color = getRenderColor( aLabel, LAYER_LOCLABEL, drawingShadows, aDimmed, true );
 
     if( drawingDangling )
     {
         if( aLabel->IsDangling() )
         {
-            drawDanglingIndicator( aLabel->GetTextPos(), color,
-                                   schIUScale.MilsToIU( DANGLING_SYMBOL_SIZE / 2 ), true,
-                                   drawingShadows, aLabel->IsBrightened() );
+            drawDanglingIndicator( aLabel->GetTextPos(), color, schIUScale.MilsToIU( DANGLING_SYMBOL_SIZE / 2 ),
+                                   true, drawingShadows, aLabel->IsBrightened() );
         }
 
         return;
@@ -3236,9 +3319,8 @@ void SCH_PAINTER::draw( const SCH_HIERLABEL* aLabel, int aLayer, bool aDimmed )
     {
         if( aLabel->IsDangling() )
         {
-            drawDanglingIndicator( aLabel->GetTextPos(), color,
-                                   schIUScale.MilsToIU( DANGLING_SYMBOL_SIZE / 2 ), true,
-                                   drawingShadows, aLabel->IsBrightened() );
+            drawDanglingIndicator( aLabel->GetTextPos(), color, schIUScale.MilsToIU( DANGLING_SYMBOL_SIZE / 2 ),
+                                   true, drawingShadows, aLabel->IsBrightened() );
         }
 
         return;
@@ -3356,6 +3438,7 @@ void SCH_PAINTER::draw( const SCH_SHEET* aSheet, int aLayer )
 
     bool drawingShadows = aLayer == LAYER_SELECTION_SHADOWS;
     bool markExclusion = eeconfig()->m_Appearance.mark_sim_exclusions
+                            && !m_schSettings.IsPrinting()
                             && aSheet->GetExcludedFromSim( sheetPath, variant );
 
     if( m_schSettings.IsPrinting() && drawingShadows )
@@ -3367,7 +3450,7 @@ void SCH_PAINTER::draw( const SCH_SHEET* aSheet, int aLayer )
             draw( &field, aLayer, DNP );
 
         for( SCH_SHEET_PIN* sheetPin : aSheet->GetPins() )
-            draw( static_cast<SCH_HIERLABEL*>( sheetPin ), aLayer, DNP );
+            draw( sheetPin, aLayer, DNP );
     }
 
     if( isFieldsLayer( aLayer ) )
@@ -3409,7 +3492,7 @@ void SCH_PAINTER::draw( const SCH_SHEET* aSheet, int aLayer )
         m_gal->DrawRectangle( pos, pos + size );
     }
 
-    if( DNP && aLayer == LAYER_SHEET )
+    if( DNP && m_schSettings.m_ShowDNPMarkers && aLayer == LAYER_SHEET )
     {
         int      layer = LAYER_DNP_MARKER;
         BOX2I    bbox = aSheet->GetBodyBoundingBox();
@@ -3437,7 +3520,7 @@ void SCH_PAINTER::draw( const SCH_SHEET* aSheet, int aLayer )
         m_gal->DrawSegment( pt1, pt2, strokeWidth );
     }
 
-    if( markExclusion )
+    if( markExclusion && aLayer == LAYER_SHEET )
     {
         int   layer = LAYER_EXCLUDED_FROM_SIM;
         BOX2I bbox = aSheet->GetBodyBoundingBox();
@@ -3510,12 +3593,9 @@ void SCH_PAINTER::draw( const SCH_BUS_ENTRY_BASE *aEntry, int aLayer )
         return;
 
     bool highlightNetclassColors = false;
-    EESCHEMA_SETTINGS* eeschemaCfg = eeconfig();
 
-    if( eeschemaCfg )
-    {
+    if( EESCHEMA_SETTINGS* eeschemaCfg = eeconfig() )
         highlightNetclassColors = eeschemaCfg->m_Selection.highlight_netclass_colors;
-    }
 
     if( !highlightNetclassColors && drawingNetColorHighlights )
         return;
@@ -3560,10 +3640,8 @@ void SCH_PAINTER::draw( const SCH_BUS_ENTRY_BASE *aEntry, int aLayer )
     if( drawingNetColorHighlights )
     {
         // Don't draw highlights for default-colored nets
-        if( ( aEntry->Type() == SCH_BUS_WIRE_ENTRY_T
-              && color == m_schSettings.GetLayerColor( LAYER_WIRE ) )
-            || ( aEntry->Type() == SCH_BUS_BUS_ENTRY_T
-                 && color == m_schSettings.GetLayerColor( LAYER_BUS ) ) )
+        if(   ( aEntry->Type() == SCH_BUS_WIRE_ENTRY_T && color == m_schSettings.GetLayerColor( LAYER_WIRE ) )
+           || ( aEntry->Type() == SCH_BUS_BUS_ENTRY_T  && color == m_schSettings.GetLayerColor( LAYER_BUS ) ) )
         {
             return;
         }
@@ -3577,16 +3655,10 @@ void SCH_PAINTER::draw( const SCH_BUS_ENTRY_BASE *aEntry, int aLayer )
         m_gal->SetLineWidth( m_schSettings.GetDanglingIndicatorThickness() );
 
         if( aEntry->IsStartDangling() )
-        {
-            m_gal->DrawCircle( aEntry->GetPosition(),
-                               aEntry->GetPenWidth() + KiROUND( TARGET_BUSENTRY_RADIUS / 2.0 ) );
-        }
+            m_gal->DrawCircle( aEntry->GetPosition(), aEntry->GetPenWidth() + KiROUND( TARGET_BUSENTRY_RADIUS / 2.0 ) );
 
         if( aEntry->IsEndDangling() )
-        {
-            m_gal->DrawCircle( aEntry->GetEnd(),
-                               aEntry->GetPenWidth() + KiROUND( TARGET_BUSENTRY_RADIUS / 2.0 ) );
-        }
+            m_gal->DrawCircle( aEntry->GetEnd(), aEntry->GetPenWidth() + KiROUND( TARGET_BUSENTRY_RADIUS / 2.0 ) );
     }
     else
     {
@@ -3600,11 +3672,17 @@ void SCH_PAINTER::draw( const SCH_BUS_ENTRY_BASE *aEntry, int aLayer )
 
 void SCH_PAINTER::draw( const SCH_BITMAP* aBitmap, int aLayer )
 {
+    const REFERENCE_IMAGE& refImage = aBitmap->GetReferenceImage();
+    bool                   drawingShadows = aLayer == LAYER_SELECTION_SHADOWS;
+
+    if( m_schSettings.IsPrinting() && drawingShadows )
+        return;
+
     auto t1 = std::chrono::high_resolution_clock::now();
     m_gal->Save();
     m_gal->Translate( aBitmap->GetPosition() );
 
-    const REFERENCE_IMAGE& refImage = aBitmap->GetReferenceImage();
+    m_gal->Rotate( -refImage.GetOrientation().AsRadians() );
 
     // When the image scale factor is not 1.0, we need to modify the actual as the image scale
     // factor is similar to a local zoom
@@ -3615,7 +3693,15 @@ void SCH_PAINTER::draw( const SCH_BITMAP* aBitmap, int aLayer )
 
     if( aLayer == LAYER_DRAW_BITMAPS )
     {
-        m_gal->DrawBitmap( refImage.GetImage() );
+        double imageAlpha = refImage.GetOpacity();
+
+        if( aBitmap->IsSelected() || aBitmap->IsBrightened() )
+        {
+            // Give it a floor so you can't lose it too easily
+            imageAlpha = std::max( imageAlpha, 0.1 );
+        }
+
+        m_gal->DrawBitmap( refImage.GetImage(), imageAlpha );
     }
 
     if( aLayer == LAYER_SELECTION_SHADOWS )
@@ -3684,6 +3770,9 @@ void SCH_PAINTER::draw( const SCH_MARKER* aMarker, int aLayer )
 
 void SCH_PAINTER::draw( const SCH_GROUP* aGroup, int aLayer )
 {
+    if( m_schSettings.IsPrinting() )
+        return;
+
     const bool drawingShadows = false;
 
     if( aLayer == LAYER_SCHEMATIC_ANCHOR )

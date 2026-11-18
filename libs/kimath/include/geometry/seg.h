@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef __SEG_H
@@ -126,20 +122,20 @@ public:
     }
 
     /**
-      * Compute the perpendicular projection point of aP on a line passing through
-      * ends of the segment.
-      *
-      * @param aP point to project
-      * @return projected point
-      */
+     * Compute the perpendicular projection point of aP on a line passing through
+     * ends of the segment.
+     *
+     * @param aP point to project
+     * @return projected point
+     */
     VECTOR2I LineProject( const VECTOR2I& aP ) const;
 
     /**
-      * Determine on which side of directed line passing via segment ends point aP lies.
-      *
-      * @param aP point to determine the orientation wrs to self
-      * @return: < 0: left, 0 : on the line, > 0 : right
-      */
+     * Determine on which side of directed line passing via segment ends point aP lies.
+     *
+     * @param aP point to determine the orientation wrs to self
+     * @return: < 0: left, 0 : on the line, > 0 : right
+     */
     int Side( const VECTOR2I& aP ) const
     {
         const ecoord det = ( B - A ).Cross( aP - A );
@@ -148,53 +144,54 @@ public:
     }
 
     /**
-      * Return the closest Euclidean distance between point aP and the line defined by
-      * the ends of segment (this).
-      *
-      * @param aP the point to test
-      * @param aDetermineSide: when true, the sign of the returned value indicates
-      * the side of the line at which we are (negative = left)
-      * @return the distance
-      */
+     * Return the closest Euclidean distance between point aP and the line defined by
+     * the ends of segment (this).
+     *
+     * @param aP the point to test
+     * @param aDetermineSide: when true, the sign of the returned value indicates
+     * the side of the line at which we are (negative = left)
+     * @return the distance
+     */
     int LineDistance( const VECTOR2I& aP, bool aDetermineSide = false ) const;
 
     /**
-      * Determine the smallest angle between two segments
-      *
-      * @param aOther point to determine the orientation wrs to self
-      * @return smallest angle between this and aOther
-      */
+     * Determine the smallest angle between two segments
+     *
+     * @param aOther point to determine the orientation wrs to self
+     * @return smallest angle between this and aOther
+     */
     EDA_ANGLE Angle( const SEG& aOther ) const;
 
     /**
-      * Compute a point on the segment (this) that is closest to point \a aP.
-      *
-      * @return the nearest point
-      */
+     * Compute a point on the segment (this) that is closest to point \a aP.
+     *
+     * @return the nearest point
+     */
     const VECTOR2I NearestPoint( const VECTOR2I& aP ) const;
 
     /**
-      * Compute a point on the segment (this) that is closest to any point on \a aSeg.
-      *
-      * @return the nearest point
-      */
+     * Compute a point on the segment (this) that is closest to any point on \a aSeg.
+     *
+     * @return the nearest point
+     */
     const VECTOR2I NearestPoint( const SEG &aSeg ) const;
 
     /**
-      * Compute closest points between this segment and \a aSeg.
-      *
-      * @param aPtA point on this segment (output)
-      * @param aPtB point on the other segment (output)
-      * @param aDistSq squared distance between points (output)
-      * @return true if the operation was successful
-      */
+     * Compute closest points between this segment and \a aSeg.
+     *
+     * @param aSeg is the segement to compare against.
+     * @param[out] aPtA point on this segment.
+     * @param[out] aPtB point on the other segment.
+     * @param[out] aDistSq squared distance between points.
+     * @return true if the operation was successful.
+     */
     bool NearestPoints( const SEG& aSeg, VECTOR2I& aPtA, VECTOR2I& aPtB, int64_t& aDistSq ) const;
 
     /**
-      * Reflect a point using this segment as axis.
-      *
-      * @return the reflected point
-      */
+     * Reflect a point using this segment as axis.
+     *
+     * @return the reflected point
+     */
     const VECTOR2I ReflectPoint( const VECTOR2I& aP ) const;
 
     /**
@@ -320,6 +317,27 @@ public:
         return false;
     }
 
+    bool ApproxOverlaps( const SEG& aSeg, int aThreshold = 3 ) const
+    {
+        if( this->A == this->B ) // single point corner case
+        {
+            if( aSeg.A == this->A || aSeg.B == this->A )
+                return false;
+
+            return aSeg.Contains( this->A, aThreshold );
+        }
+
+        if( !aSeg.ApproxCollinear( *this, aThreshold ) )
+            return false;
+
+        if( aSeg.Contains( this->A, aThreshold ) || aSeg.Contains( this->B, aThreshold ) )
+            return true;
+
+        if( this->Contains( aSeg.A, aThreshold ) || this->Contains( aSeg.B, aThreshold ) )
+            return true;
+
+        return false;
+    }
 
     bool Contains( const SEG& aSeg ) const
     {
@@ -363,7 +381,7 @@ public:
         return m_index;
     }
 
-    bool Contains( const VECTOR2I& aP ) const;
+    bool Contains( const VECTOR2I& aP, int aSqDistanceThreshold = 3 ) const;
 
     void Reverse()
     {
@@ -375,7 +393,7 @@ public:
         return SEG( B, A );
     }
 
-    ///< Returns the center point of the line
+    /// Returns the center point of the line
     VECTOR2I Center() const
     {
         return A + ( B - A ) / 2;
@@ -398,7 +416,7 @@ private:
     bool mutualDistanceSquared( const SEG& aSeg, ecoord& aD1, ecoord& aD2 ) const;
 
 private:
-    ///< index within the parent shape (used when m_is_local == false)
+    /// index within the parent shape (used when m_is_local == false)
     int m_index;
 };
 

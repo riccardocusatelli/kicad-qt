@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef _LIB_ID_H_
@@ -40,7 +36,7 @@
  * Example LIB_ID string:
  * "smt:R_0805".
  *
- * - "smt" is the logical library name used to look up library information saved in the #LIB_TABLE.
+ * - "smt" is the logical library name used to look up library information saved in the #LIBRARY_TABLE.
  * - "R" is the name of the item within the library.
  *
  * @author Dick Hollenbeck
@@ -59,7 +55,7 @@ public:
      * names allowing '/' as a valid character.  This was causing the symbol names to
      * be truncated at the first occurrence of '/' in the symbol name.
      *
-     * @param aLibraryName is the library name used to look up the library item in the #LIB_TABLE.
+     * @param aLibraryName is the library name used to look up the library item in the #LIBRARY_TABLE.
      * @param aItemName is the name of the library item which is not parsed by the standard
      *                     LIB_ID::Parse() function.
      */
@@ -163,7 +159,7 @@ public:
      *
      * A valid #LIB_ID must have both the library nickname and the library item name defined.
      *
-     * @note A return value of true does not indicated that the #LIB_ID is a valid #LIB_TABLE
+     * @note A return value of true does not indicated that the #LIB_ID is a valid #LIBRARY_TABLE
      *       entry.
      *
      * @return true is the #LIB_ID is valid.

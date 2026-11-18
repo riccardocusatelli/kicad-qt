@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <kiid.h>
@@ -38,11 +34,13 @@
 #include <json_common.h>
 
 #include <cctype>
+#include <cstdint>
 #include <mutex>
 #include <utility>
 #include <stdlib.h>
 
 #include <wx/log.h>
+#include <wx/string.h>
 
 // Use thread_local because boost:mt19937 is not thread-safe
 // Static rng and generators are used because the overhead of constant seeding is expensive
@@ -250,6 +248,14 @@ KIID KIID::FromName( const std::string& aName )
 }
 
 
+KIID KIID::FromBytes( const std::array<uint8_t, 16>& aBytes )
+{
+    KIID id( 0 );
+    std::copy( aBytes.begin(), aBytes.end(), id.m_uuid.begin() );
+    return id;
+}
+
+
 void KIID::Clone( const KIID& aUUID )
 {
     m_uuid = aUUID.m_uuid;
@@ -265,6 +271,14 @@ wxString KIID::AsString() const
 std::string KIID::AsStdString() const
 {
     return boost::uuids::to_string( m_uuid );
+}
+
+
+std::array<uint8_t, 16> KIID::AsBytes() const
+{
+    std::array<uint8_t, 16> result;
+    std::copy( m_uuid.begin(), m_uuid.end(), result.begin() );
+    return result;
 }
 
 
@@ -306,6 +320,36 @@ KIID KIID::Combine( const KIID& aFirst, const KIID& aSecond )
         result.m_uuid.data[i] = aFirst.m_uuid.data[i] ^ aSecond.m_uuid.data[i];
 
     return result;
+}
+
+
+KIID KIID::FromDeterministicString( const wxString& aName )
+{
+    // Dual FNV-1a accumulators fold the name into two 64-bit values, which are
+    // then laid out as a v4-shaped UUID string and parsed back into a KIID so
+    // boost's string_generator produces identical bytes on every call. Do not
+    // alter the constants or bit layout: this output is embedded in persisted
+    // diff/merge artifacts and must stay byte-identical.
+    std::uint64_t h1 = 0xcbf29ce484222325ULL;
+    std::uint64_t h2 = 0x84222325cbf29ce4ULL;
+
+    for( wxChar c : aName )
+    {
+        h1 ^= static_cast<std::uint64_t>( c );
+        h1 *= 0x100000001b3ULL;
+        h2 ^= static_cast<std::uint64_t>( c ) * 0x9E3779B97F4A7C15ULL;
+        h2  = ( h2 << 13 ) | ( h2 >> 51 );
+    }
+
+    const wxString uuid = wxString::Format(
+            wxS( "%08x-%04x-%04x-%04x-%012llx" ),
+            static_cast<unsigned>( h1 >> 32 ),
+            static_cast<unsigned>( ( h1 >> 16 ) & 0xffff ),
+            static_cast<unsigned>( h1 & 0xffff ),
+            static_cast<unsigned>( h2 & 0xffff ),
+            static_cast<unsigned long long>( h2 >> 16 ) & 0xffffffffffffULL );
+
+    return KIID( uuid );
 }
 
 

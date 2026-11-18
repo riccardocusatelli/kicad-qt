@@ -117,25 +117,27 @@ public:
             frame->UpdateHierarchyNavigator();
     }
 
+    void RefSuffixChanged() override
+    {
+        if( SCH_EDIT_FRAME* frame = editFrame() )
+            frame->RefreshComposedReferences();
+    }
+
+    bool HasEditor() const override { return editFrame() != nullptr; }
+
     void Pushed( SCH_COMMIT& aCommit, PICKED_ITEMS_LIST& aUndoList, int aCommitFlags,
                  const PUSH_RESULT& aResult ) override
     {
         SCH_EDIT_FRAME* frame = editFrame();
 
-        if( !( aCommitFlags & SKIP_UNDO ) && frame )
+        if( !( aCommitFlags & SKIP_UNDO ) && frame && aUndoList.GetCount() > 0 )
+            frame->SaveCopyInUndoList( aUndoList, UNDO_REDO::UNSPECIFIED, false );
+
+        // The commit has already cleaned up the connections
+        if( aResult.dirtyConnectivity && frame )
         {
-            if( aUndoList.GetCount() > 0 )
-                frame->SaveCopyInUndoList( aUndoList, UNDO_REDO::UNSPECIFIED, false );
-
-            if( aResult.dirtyConnectivity )
-            {
-                SCH_CLEANUP_FLAGS cleanUp = static_cast<SCH_CLEANUP_FLAGS>( aResult.connectivityCleanUp );
-
-                KI_LOG_TRACE( wxS( "CONN_PROFILE" ),
-                              wxS( "SCH_COMMIT::pushSchEdit() %s clean up connectivity rebuild." ),
-                              cleanUp == LOCAL_CLEANUP ? wxS( "local" ) : wxS( "global" ) );
-                frame->RecalculateConnections( &aCommit, cleanUp );
-            }
+            frame->RecalculateConnections( &aCommit, static_cast<SCH_CLEANUP_FLAGS>( aResult.connectivityCleanUp ),
+                                           nullptr, true );
         }
 
         m_toolMgr->PostEvent( { TC_MESSAGE, TA_MODEL_CHANGE, AS_GLOBAL } );
@@ -247,6 +249,14 @@ SCH_COMMIT::SCH_COMMIT( TOOL_MANAGER* aToolMgr ) :
 {
     SCH_BASE_FRAME* frame = dynamic_cast<SCH_BASE_FRAME*>( aToolMgr->GetToolHolder() );
     m_isLibEditor = frame && frame->IsType( FRAME_SCH_SYMBOL_EDITOR );
+}
+
+
+SCH_COMMIT::SCH_COMMIT( TOOL_MANAGER* aToolMgr, bool aIsLibEditor ) :
+        COMMIT(),
+        m_listener( std::make_unique<TOOL_COMMIT_LISTENER>( aToolMgr ) ),
+        m_isLibEditor( aIsLibEditor )
+{
 }
 
 

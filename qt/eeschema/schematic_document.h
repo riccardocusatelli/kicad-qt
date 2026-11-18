@@ -141,7 +141,8 @@ private:
     static void markScreensModified( const PICKED_ITEMS_LIST& aEntry );
 
     /// Recalculate the connections after a change, and redraw what they change.
-    void recalculateConnections( SCH_COMMIT* aCommit, SCH_CLEANUP_FLAGS aCleanUp );
+    void recalculateConnections( SCH_COMMIT* aCommit, SCH_CLEANUP_FLAGS aCleanUp,
+                                 bool aCleanupDone = false );
 
     /// Undo or redo an entry.
     void applyUndoEntry( PICKED_ITEMS_LIST& aEntry );

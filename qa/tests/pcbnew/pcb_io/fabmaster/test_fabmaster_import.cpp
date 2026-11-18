@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -64,9 +60,7 @@ BOOST_AUTO_TEST_CASE( EmptyRefdesInPins )
     std::string dataPath =
             KI_TEST::GetPcbnewTestDataDir() + "plugins/fabmaster/cds2f_only_2_comp.txt";
 
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
-
-    m_fabmasterPlugin.LoadBoard( dataPath, board.get(), nullptr );
+    std::unique_ptr<BOARD> board = m_fabmasterPlugin.LoadBoard( dataPath );
 
     BOOST_REQUIRE( board );
 
@@ -103,9 +97,7 @@ BOOST_AUTO_TEST_CASE( StaticShapesPreserved )
     std::string dataPath =
             KI_TEST::GetPcbnewTestDataDir() + "plugins/fabmaster/cds2f_14066-20316FBRD.txt";
 
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
-
-    m_fabmasterPlugin.LoadBoard( dataPath, board.get(), nullptr );
+    std::unique_ptr<BOARD> board = m_fabmasterPlugin.LoadBoard( dataPath );
 
     BOOST_REQUIRE( board );
 
@@ -155,9 +147,7 @@ BOOST_AUTO_TEST_CASE( PadStackDifferentLayers )
     std::string dataPath =
             KI_TEST::GetPcbnewTestDataDir() + "plugins/fabmaster/cds2f_padstack_test.txt";
 
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
-
-    m_fabmasterPlugin.LoadBoard( dataPath, board.get(), nullptr );
+    std::unique_ptr<BOARD> board = m_fabmasterPlugin.LoadBoard( dataPath );
 
     BOOST_REQUIRE( board );
     BOOST_REQUIRE_GT( board->Footprints().size(), 0 );
@@ -189,7 +179,7 @@ BOOST_AUTO_TEST_CASE( PadStackDifferentLayers )
     // Verify drill is present
     BOOST_CHECK_EQUAL( static_cast<int>( pad1->GetAttribute() ),
                        static_cast<int>( PAD_ATTRIB::PTH ) );
-    BOOST_CHECK_GT( pad1->GetDrillSizeX(), 0 );
+    BOOST_CHECK_GT( pad1->GetDrillSize().x, 0 );
 }
 
 
@@ -201,9 +191,7 @@ BOOST_AUTO_TEST_CASE( PadStackSameLayers )
     std::string dataPath =
             KI_TEST::GetPcbnewTestDataDir() + "plugins/fabmaster/cds2f_padstack_test.txt";
 
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
-
-    m_fabmasterPlugin.LoadBoard( dataPath, board.get(), nullptr );
+    std::unique_ptr<BOARD> board = m_fabmasterPlugin.LoadBoard( dataPath );
 
     BOOST_REQUIRE( board );
     BOOST_REQUIRE_GT( board->Footprints().size(), 0 );
@@ -229,9 +217,7 @@ BOOST_AUTO_TEST_CASE( PadStackSmdPad )
     std::string dataPath =
             KI_TEST::GetPcbnewTestDataDir() + "plugins/fabmaster/cds2f_padstack_test.txt";
 
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
-
-    m_fabmasterPlugin.LoadBoard( dataPath, board.get(), nullptr );
+    std::unique_ptr<BOARD> board = m_fabmasterPlugin.LoadBoard( dataPath );
 
     BOOST_REQUIRE( board );
     BOOST_REQUIRE_GT( board->Footprints().size(), 0 );
@@ -269,9 +255,7 @@ BOOST_AUTO_TEST_CASE( AreaClassesImportedAsRuleAreas )
     std::string dataPath =
             KI_TEST::GetPcbnewTestDataDir() + "plugins/fabmaster/cds2f_issue7732_shape_pads2.txt";
 
-    std::unique_ptr<BOARD> board = std::make_unique<BOARD>();
-
-    m_fabmasterPlugin.LoadBoard( dataPath, board.get(), nullptr );
+    std::unique_ptr<BOARD> board = m_fabmasterPlugin.LoadBoard( dataPath );
 
     BOOST_REQUIRE( board );
 

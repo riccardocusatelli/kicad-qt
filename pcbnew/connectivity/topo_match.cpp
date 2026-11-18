@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <cstdio>
@@ -402,9 +398,9 @@ void CONNECTION_GRAPH::breakTie( COMPONENT* aRef, std::vector<COMPONENT*>& aMatc
     KI_LOG_TRACE( traceTopoMatch, wxT( "Topology tie for %s: %s" ),
                 aRef->GetParent()->GetReferenceAsString(), candidateRefs );
 
-    if( breakTieBySymbolUuid( aRef, aMatches ) )
+    if( breakTieBySymbolPath( aRef, aMatches ) )
     {
-        KI_LOG_TRACE( traceTopoMatchDetail, wxT( "Broke tie with symbol UUID match for %s" ),
+        KI_LOG_TRACE( traceTopoMatchDetail, wxT( "Broke tie with symbol path match for %s" ),
                     aRef->GetParent()->GetReferenceAsString() );
     }
     else if( breakTieByValue( aRef, aMatches ) )
@@ -460,102 +456,69 @@ bool CONNECTION_GRAPH::breakTieByValue( COMPONENT* aRef, std::vector<COMPONENT*>
 }
 
 
-bool CONNECTION_GRAPH::breakTieBySymbolUuid( COMPONENT* aRef, std::vector<COMPONENT*>& aMatches ) const
+size_t CommonPathTailLength( const KIID_PATH& aA, const KIID_PATH& aB )
 {
-    auto getSymbolInstanceUuid =
-            []( const FOOTPRINT* aFootprint ) -> KIID
-            {
-                if( !aFootprint )
-                    return niluuid;
+    // A nil symbol UUID is no instance link, so two of them must not count as a match
+    if( aA.empty() || aB.empty() || aA.back() == niluuid || aB.back() == niluuid )
+        return 0;
 
-                const KIID_PATH& path = aFootprint->GetPath();
+    size_t n = 0;
 
-                if( path.empty() )
-                    return niluuid;
+    while( n < aA.size() && n < aB.size() && aA[aA.size() - 1 - n] == aB[aB.size() - 1 - n] )
+        n++;
 
-                const KIID& symbolUuid = path.back();
+    return n;
+}
 
-                return symbolUuid;
-            };
 
+bool CONNECTION_GRAPH::breakTieBySymbolPath( COMPONENT* aRef, std::vector<COMPONENT*>& aMatches ) const
+{
     FOOTPRINT* refFp = aRef ? aRef->GetParent() : nullptr;
-    const KIID refSymbolUuid = getSymbolInstanceUuid( refFp );
-    wxString   candidateSymbolUuids;
-    wxString   matchingSymbolCandidates;
-    int        symbolUuidHitCount = 0;
-    int        uniqueMatchIdx = -1;
 
-    if( refSymbolUuid == niluuid )
+    if( !refFp || refFp->GetPath().empty() )
     {
-        KI_LOG_TRACE( traceTopoMatchDetail, wxT( "Tie symbol UUID unavailable for %s" ),
+        KI_LOG_TRACE( traceTopoMatchDetail, wxT( "Tie symbol path unavailable for %s" ),
                     refFp ? refFp->GetReferenceAsString() : wxString( wxT( "<null>" ) ) );
         return false;
     }
 
-    // Inspect every tied candidate and collect:
-    // 1) a detailed ref->symbol UUID mapping string for traces, and
-    // 2) the subset of candidates whose symbol-path tail UUID matches the reference.
+    size_t bestLength = 0;
+    int    bestCount = 0;
+    int    bestIdx = -1;
+
     for( size_t i = 0; i < aMatches.size(); i++ )
     {
-        FOOTPRINT*     candidateFp = aMatches[i]->GetParent();
-        const wxString candidateRef = candidateFp->GetReferenceAsString();
-        const KIID     candidateSymbolUuid = getSymbolInstanceUuid( candidateFp );
+        size_t length = CommonPathTailLength( refFp->GetPath(), aMatches[i]->GetParent()->GetPath() );
 
-        if( i > 0 )
-            candidateSymbolUuids += wxT( ", " );
+        KI_LOG_TRACE( traceTopoMatchDetail, wxT( "Tie candidate %s shares %zu path elements with %s" ),
+                    aMatches[i]->GetParent()->GetReferenceAsString(), length, refFp->GetReferenceAsString() );
 
-        if( candidateSymbolUuid == niluuid )
-            candidateSymbolUuids += candidateRef + wxT( "=<none>" );
-        else
-            candidateSymbolUuids += candidateRef + wxT( "=" ) + candidateSymbolUuid.AsString();
-
-        if( candidateSymbolUuid == refSymbolUuid )
+        if( length > bestLength )
         {
-            if( uniqueMatchIdx < 0 )
-                uniqueMatchIdx = static_cast<int>( i );
-
-            symbolUuidHitCount++;
-
-            if( !matchingSymbolCandidates.IsEmpty() )
-                matchingSymbolCandidates += wxT( ", " );
-
-            matchingSymbolCandidates += candidateRef;
+            bestLength = length;
+            bestCount = 1;
+            bestIdx = static_cast<int>( i );
+        }
+        else if( length == bestLength && length > 0 )
+        {
+            bestCount++;
         }
     }
 
-    KI_LOG_TRACE( traceTopoMatchDetail, wxT( "Tie reference symbol UUID for %s: %s (hits=%d)" ),
-                refFp->GetReferenceAsString(), refSymbolUuid.AsString(), symbolUuidHitCount );
-
-    KI_LOG_TRACE( traceTopoMatchDetail, wxT( "Tie candidate symbol UUIDs: %s" ), candidateSymbolUuids );
-
-    // One match is what we want, we should have one match between the source symbol instance
-    // and the destination only since in theory we are repeating across two instances of the same sheet
-    if( symbolUuidHitCount == 1 )
+    // Copy and pasted footprints share a whole path, so only a unique longest tail is usable
+    if( bestLength == 0 || bestCount != 1 )
     {
-        KI_LOG_TRACE( traceTopoMatchDetail, wxT( "Symbol UUID unique match (usable) for %s: %s" ),
-                    refFp->GetReferenceAsString(), matchingSymbolCandidates );
-
-        std::rotate( aMatches.begin(), aMatches.begin() + uniqueMatchIdx, aMatches.begin() + uniqueMatchIdx + 1 );
-
-        KI_LOG_TRACE( traceTopoMatchDetail, wxT( "Applied symbol UUID tie-break for %s: selected %s" ),
-                    refFp->GetReferenceAsString(), aMatches.front()->GetParent()->GetReferenceAsString() );
-
-        return true;
-    }
-    // Copy and pasting footprints can result in multiple matches
-    else if( symbolUuidHitCount > 1 )
-    {
-        KI_LOG_TRACE( traceTopoMatchDetail, wxT( "Symbol UUID multiple matches (not usable) for %s: %s" ),
-                    refFp->GetReferenceAsString(), matchingSymbolCandidates );
+        KI_LOG_TRACE( traceTopoMatchDetail, wxT( "No unique symbol path match for %s (tail %zu, hits %d)" ),
+                    refFp->GetReferenceAsString(), bestLength, bestCount );
         return false;
     }
-    // Probably not sheet instances, break the tie some other way
-    else
-    {
-        KI_LOG_TRACE( traceTopoMatchDetail, wxT( "No symbol UUID candidate match (not usable) for %s" ),
-                    refFp->GetReferenceAsString() );
-        return false;
-    }
+
+    std::rotate( aMatches.begin(), aMatches.begin() + bestIdx, aMatches.begin() + bestIdx + 1 );
+
+    KI_LOG_TRACE( traceTopoMatchDetail, wxT( "Applied symbol path tie-break for %s: selected %s" ),
+                refFp->GetReferenceAsString(), aMatches.front()->GetParent()->GetReferenceAsString() );
+
+    return true;
 }
 
 
@@ -638,6 +601,184 @@ void CONNECTION_GRAPH::BuildConnectivity( const std::unordered_set<int>& aExtern
 }
 
 
+struct SIDE_INVENTORY
+{
+    std::map<wxString, int>                   counts;
+    std::map<wxString, wxString>              footprintOf;
+    std::map<wxString, std::vector<wxString>> partsUsing;
+    std::set<wxString>                        repeatedRefs;
+};
+
+
+static SIDE_INVENTORY takeInventory( const std::vector<COMPONENT*>& aComponents )
+{
+    SIDE_INVENTORY inventory;
+
+    for( COMPONENT* cmp : aComponents )
+    {
+        const wxString reference = cmp->GetParent()->GetReferenceAsString();
+        wxString       footprint = cmp->GetParent()->GetFPIDAsString();
+
+        if( footprint.IsEmpty() )
+            footprint = _( "(no library ID)" );
+
+        inventory.counts[footprint]++;
+        inventory.partsUsing[footprint].push_back( reference );
+
+        if( !inventory.footprintOf.emplace( reference, footprint ).second )
+            inventory.repeatedRefs.insert( reference );
+    }
+
+    for( auto& [footprint, parts] : inventory.partsUsing )
+        std::sort( parts.begin(), parts.end() );
+
+    return inventory;
+}
+
+
+static bool sameFootprintInventory( const std::vector<COMPONENT*>&         aRefComponents,
+                                    const std::vector<COMPONENT*>&         aTargetComponents,
+                                    std::vector<TOPOLOGY_MISMATCH_REASON>& aMismatchReasons )
+{
+    const SIDE_INVENTORY ref = takeInventory( aRefComponents );
+    const SIDE_INVENTORY target = takeInventory( aTargetComponents );
+
+    if( ref.counts == target.counts )
+        return true;
+
+    // Same name on both sides but a different footprint. That is the part someone changed.
+    for( const auto& [reference, footprint] : ref.footprintOf )
+    {
+        auto other = target.footprintOf.find( reference );
+
+        if( other == target.footprintOf.end() || other->second == footprint || ref.repeatedRefs.count( reference )
+            || target.repeatedRefs.count( reference ) )
+            continue;
+
+        TOPOLOGY_MISMATCH_REASON reason;
+        reason.m_reference = reference;
+        reason.m_candidate = reference;
+        reason.m_reason = wxString::Format( _( "%s uses footprint '%s' in the reference area but "
+                                               "'%s' in the target area." ),
+                                            reference, footprint, other->second );
+        aMismatchReasons.push_back( reason );
+    }
+
+    // Lines that name parts go before bare counts. The caller shows the first line as the headline.
+    std::vector<TOPOLOGY_MISMATCH_REASON> namedParts;
+    std::vector<TOPOLOGY_MISMATCH_REASON> countsOnly;
+    std::vector<wxString>                 refOnly;
+    std::vector<wxString>                 targetOnly;
+
+    const size_t maxNamed = 12;
+
+    auto joinParts = []( const std::vector<wxString>& aParts )
+    {
+        wxString joined;
+
+        for( const wxString& part : aParts )
+        {
+            if( !joined.IsEmpty() )
+                joined += wxT( ", " );
+
+            joined += part;
+        }
+
+        return joined;
+    };
+
+    for( const auto& [footprint, count] : ref.counts )
+    {
+        if( !target.counts.count( footprint ) )
+            refOnly.push_back( footprint );
+    }
+
+    for( const auto& [footprint, count] : target.counts )
+    {
+        if( !ref.counts.count( footprint ) )
+            targetOnly.push_back( footprint );
+    }
+
+    // One footprint swapped for one other. Put both names in one line so a small spelling
+    // difference is easy to see.
+    const bool pairedSwap = refOnly.size() == 1 && targetOnly.size() == 1
+                            && ref.partsUsing.at( refOnly.front() ).size() <= maxNamed
+                            && target.partsUsing.at( targetOnly.front() ).size() <= maxNamed;
+
+    if( pairedSwap )
+    {
+        TOPOLOGY_MISMATCH_REASON reason;
+        reason.m_reason =
+                wxString::Format( _( "Footprint '%s' in the reference area (%s) appears as "
+                                     "'%s' in the target area (%s)." ),
+                                  refOnly.front(), joinParts( ref.partsUsing.at( refOnly.front() ) ),
+                                  targetOnly.front(), joinParts( target.partsUsing.at( targetOnly.front() ) ) );
+        namedParts.push_back( reason );
+    }
+
+    auto reportUsage = [&]( const wxString& aFootprint, int aRefUses, int aTargetUses )
+    {
+        if( aRefUses == aTargetUses )
+            return;
+
+        if( pairedSwap && ( aFootprint == refOnly.front() || aFootprint == targetOnly.front() ) )
+            return;
+
+        // Only one side uses this footprint, so name the parts that do. Their numbering does not
+        // have to match the other side. A long list is left as counts.
+        const std::vector<wxString>& parts =
+                aRefUses == 0 ? target.partsUsing.at( aFootprint ) : ref.partsUsing.at( aFootprint );
+        TOPOLOGY_MISMATCH_REASON reason;
+
+        if( ( aRefUses == 0 || aTargetUses == 0 ) && parts.size() <= maxNamed )
+        {
+            const wxString named = joinParts( parts );
+
+            if( aRefUses == 0 )
+            {
+                reason.m_reason = wxString::Format( _( "Footprint '%s' is used by %s in the target "
+                                                       "area but by nothing in the reference area." ),
+                                                    aFootprint, named );
+            }
+            else
+            {
+                reason.m_reason = wxString::Format( _( "Footprint '%s' is used by %s in the "
+                                                       "reference area but by nothing in the "
+                                                       "target area." ),
+                                                    aFootprint, named );
+            }
+
+            namedParts.push_back( reason );
+        }
+        else
+        {
+            reason.m_reason = wxString::Format( _( "Footprint '%s': %d in the reference area, %d in "
+                                                   "the target area." ),
+                                                aFootprint, aRefUses, aTargetUses );
+            countsOnly.push_back( reason );
+        }
+    };
+
+    for( const auto& [footprint, refUses] : ref.counts )
+    {
+        auto used = target.counts.find( footprint );
+
+        reportUsage( footprint, refUses, used == target.counts.end() ? 0 : used->second );
+    }
+
+    for( const auto& [footprint, targetUses] : target.counts )
+    {
+        if( !ref.counts.count( footprint ) )
+            reportUsage( footprint, 0, targetUses );
+    }
+
+    aMismatchReasons.insert( aMismatchReasons.end(), namedParts.begin(), namedParts.end() );
+    aMismatchReasons.insert( aMismatchReasons.end(), countsOnly.begin(), countsOnly.end() );
+
+    return false;
+}
+
+
 bool CONNECTION_GRAPH::FindIsomorphism( CONNECTION_GRAPH* aTarget, COMPONENT_MATCHES& aResult,
                                         std::vector<TOPOLOGY_MISMATCH_REASON>& aMismatchReasons,
                                         const ISOMORPHISM_PARAMS& aParams )
@@ -659,7 +800,14 @@ bool CONNECTION_GRAPH::FindIsomorphism( CONNECTION_GRAPH* aTarget, COMPONENT_MAT
     if( m_components.empty()|| aTarget->m_components.empty() )
     {
         TOPOLOGY_MISMATCH_REASON reason;
-        reason.m_reason = _( "One or both of the areas has no components assigned." );
+
+        if( m_components.empty() && aTarget->m_components.empty() )
+            reason.m_reason = _( "Neither area has any footprints to match." );
+        else if( m_components.empty() )
+            reason.m_reason = _( "The reference area has no footprints to match." );
+        else
+            reason.m_reason = _( "The target area has no footprints to match." );
+
         aMismatchReasons.push_back( reason );
         return false;
     }
@@ -667,10 +815,15 @@ bool CONNECTION_GRAPH::FindIsomorphism( CONNECTION_GRAPH* aTarget, COMPONENT_MAT
     if( m_components.size() != aTarget->m_components.size() )
     {
         TOPOLOGY_MISMATCH_REASON reason;
-        reason.m_reason = _( "Component count mismatch" );
+        reason.m_reason = wxString::Format( _( "The reference area has %d components and the "
+                                               "target area has %d." ),
+                                            (int) m_components.size(), (int) aTarget->m_components.size() );
         aMismatchReasons.push_back( reason );
         return false;
     }
+
+    if( !sameFootprintInventory( m_components, aTarget->m_components, aMismatchReasons ) )
+        return false;
 
     // Structural compatibility (MatchesWith) depends only on pin count, footprint ID, and
     // pin connection topology -- all immutable graph properties.  Precompute it once per
@@ -702,18 +855,29 @@ bool CONNECTION_GRAPH::FindIsomorphism( CONNECTION_GRAPH* aTarget, COMPONENT_MAT
                         COMPONENT* ref = m_components[i];
                         TOPOLOGY_MISMATCH_REASON reason;
                         TOPOLOGY_MISMATCH_REASON bestReason;
+                        int                      bestRank = -1;
 
                         for( COMPONENT* tgt : aTarget->m_components )
                         {
                             if( ref->MatchesWith( tgt, reason ) )
                             {
                                 structuralMatches[i].push_back( tgt );
+                                continue;
                             }
-                            else if( bestReason.m_reason.IsEmpty() || ref->IsSameKind( *tgt ) )
+
+                            // Report against the counterpart the user expects to match.
+                            int rank = 0;
+
+                            if( tgt->m_reference == ref->m_reference )
+                                rank = 3;
+                            else if( ref->IsSameKind( *tgt ) )
+                                rank = 2;
+                            else if( COMPONENT::prefixesShareCommonBase( ref->m_prefix, tgt->m_prefix ) )
+                                rank = 1;
+
+                            if( rank >= bestRank )
                             {
-                                // Prefer the reason from a same-kind counterpart (same prefix and
-                                // footprint) because that is the candidate the user actually expects
-                                // to match; a connectivity difference there is the meaningful failure.
+                                bestRank = rank;
                                 bestReason = reason;
                             }
                         }
@@ -767,7 +931,11 @@ bool CONNECTION_GRAPH::FindIsomorphism( CONNECTION_GRAPH* aTarget, COMPONENT_MAT
             KI_LOG_TRACE( traceTopoMatch, wxT( "stk: Iter cnt exceeded\n" ) );
 
             TOPOLOGY_MISMATCH_REASON reason;
-            reason.m_reason = _( "Iteration count exceeded (timeout)" );
+            reason.m_reason = wxString::Format( _( "Gave up after %d attempts to pair up the two "
+                                                   "areas. Either their connections differ, or too "
+                                                   "many components are interchangeable to tell "
+                                                   "apart." ),
+                                                c_ITER_LIMIT );
 
             if( aMismatchReasons.empty() )
                 aMismatchReasons.push_back( reason );

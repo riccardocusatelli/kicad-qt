@@ -15,19 +15,23 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "eda_3d_viewer_settings.h"
+
+#include <wx/config.h>
+
 #include <fmt/format.h>
+
 #include <3d_enums.h>
+#include <layer_ids.h>
 #include <common_ogl/antialiasing_mode.h>
 #include <settings/parameters.h>
 #include <settings/json_settings_internals.h>
 #include <3d_canvas/board_adapter.h>
-#include <wx/config.h>
 
-#include "eda_3d_viewer_settings.h"
 #include <core/ki_assert.h>
 
 using KIGFX::COLOR4D;
@@ -42,6 +46,10 @@ LAYER_PRESET_3D::LAYER_PRESET_3D( const wxString& aName ) :
     layers.set( LAYER_3D_PLATED_BARRELS );
     layers.set( LAYER_3D_COPPER_TOP );
     layers.set( LAYER_3D_COPPER_BOTTOM );
+
+    for( int layer = 0; layer < MAX_CU_LAYERS - 2; ++layer )
+        layers.set( LAYER_3D_COPPER_INNER_1 + layer );
+
     layers.set( LAYER_3D_SILKSCREEN_TOP );
     layers.set( LAYER_3D_SILKSCREEN_BOTTOM );
     layers.set( LAYER_3D_SOLDERMASK_TOP );
@@ -69,10 +77,15 @@ LAYER_PRESET_3D::LAYER_PRESET_3D( const wxString& aName ) :
     colors[ LAYER_3D_SOLDERMASK_TOP ]    = BOARD_ADAPTER::g_DefaultSolderMask;
     colors[ LAYER_3D_SOLDERMASK_BOTTOM ] = BOARD_ADAPTER::g_DefaultSolderMask;
     colors[ LAYER_3D_SOLDERPASTE ]       = BOARD_ADAPTER::g_DefaultSolderPaste;
+    colors[ LAYER_3D_ADHESIVE ]          = BOARD_ADAPTER::g_DefaultAdhesive;
     colors[ LAYER_3D_USER_DRAWINGS ]     = BOARD_ADAPTER::g_DefaultComments;
     colors[ LAYER_3D_USER_COMMENTS ]     = BOARD_ADAPTER::g_DefaultComments;
     colors[ LAYER_3D_USER_ECO1 ]         = BOARD_ADAPTER::g_DefaultECOs;
     colors[ LAYER_3D_USER_ECO2 ]         = BOARD_ADAPTER::g_DefaultECOs;
+    colors[ LAYER_3D_F_FAB ]             = BOARD_ADAPTER::g_DefaultFabColor;
+    colors[ LAYER_3D_B_FAB ]             = BOARD_ADAPTER::g_DefaultFabColor;
+    colors[ LAYER_3D_F_COURTYARD ]       = BOARD_ADAPTER::g_DefaultCourtyardColor;
+    colors[ LAYER_3D_B_COURTYARD ]       = BOARD_ADAPTER::g_DefaultCourtyardColor;
 }
 
 
@@ -107,6 +120,10 @@ PARAM_LAYER_PRESET_3D::PARAM_LAYER_PRESET_3D( const std::string& aPath,
     LAYER( "user_drawings",       LAYER_3D_USER_DRAWINGS     );
     LAYER( "user_eco1",           LAYER_3D_USER_ECO1         );
     LAYER( "user_eco2",           LAYER_3D_USER_ECO2         );
+    LAYER( "f_fab",               LAYER_3D_F_FAB             );
+    LAYER( "b_fab",               LAYER_3D_B_FAB             );
+    LAYER( "f_courtyard",         LAYER_3D_F_COURTYARD       );
+    LAYER( "b_courtyard",         LAYER_3D_B_COURTYARD       );
     LAYER( "3d_navigator",        LAYER_3D_NAVIGATOR         );
     LAYER( "th_models",           LAYER_3D_TH_MODELS         );
     LAYER( "smd_models",          LAYER_3D_SMD_MODELS        );
@@ -117,9 +134,18 @@ PARAM_LAYER_PRESET_3D::PARAM_LAYER_PRESET_3D( const std::string& aPath,
     LAYER( "off_board_silk",      LAYER_3D_OFF_BOARD_SILK    );
     LAYER( "3d_axes", LAYER_GRID_AXES );
 
+    for( int layer = LAYER_3D_COPPER_INNER_1; layer <= LAYER_3D_COPPER_INNER_30; ++layer )
+    {
+        const int innerLayerIdx = layer - LAYER_3D_COPPER_INNER_1 + 1;
+        wxString name = wxString::Format( wxS( "copper_inner_%d" ), innerLayerIdx );
+        m_layerToLayerNameMap[layer] = name;
+        m_layerNameToLayerMap[name] = layer;
+    }
+
     for( int layer = LAYER_3D_USER_1; layer <= LAYER_3D_USER_45; ++layer )
     {
-        wxString name = wxString::Format( wxS( "user_%d" ), layer - LAYER_3D_USER_1 + 1 );
+        const int userLayerIdx = layer - LAYER_3D_USER_1 + 1;
+        wxString name = wxString::Format( wxS( "user_%d" ), userLayerIdx );
         m_layerToLayerNameMap[layer] = name;
         m_layerNameToLayerMap[name] = layer;
     }
@@ -174,10 +200,13 @@ nlohmann::json PARAM_LAYER_PRESET_3D::presetsToJson()
 
 void PARAM_LAYER_PRESET_3D::jsonToPresets( const nlohmann::json& aJson )
 {
-    if( aJson.empty() || !aJson.is_array() )
+    if( !aJson.is_array() )
         return;
 
     m_presets->clear();
+
+    if( aJson.empty() )
+        return;
 
     for( const nlohmann::json& preset : aJson )
     {
@@ -223,13 +252,15 @@ void PARAM_LAYER_PRESET_3D::jsonToPresets( const nlohmann::json& aJson )
 
 
 ///! Update the schema version whenever a migration is required
-const int viewer3dSchemaVersion = 4;
+const int viewer3dSchemaVersion = 5;
 
 
 EDA_3D_VIEWER_SETTINGS::EDA_3D_VIEWER_SETTINGS() :
         APP_SETTINGS_BASE( "3d_viewer", viewer3dSchemaVersion ),
         m_Render(),
-        m_Camera()
+        m_Camera(),
+        m_Viewer(),
+        m_Preview()
 {
     m_params.emplace_back( new PARAM<bool>( "aui.show_layer_manager",
                                             &m_AuiPanels.show_layer_manager, true ) );
@@ -266,6 +297,8 @@ EDA_3D_VIEWER_SETTINGS::EDA_3D_VIEWER_SETTINGS() :
     // OpenGL options
     m_params.emplace_back( new PARAM<bool>( "render.opengl_copper_thickness",
                                             &m_Render.opengl_copper_thickness, false ) );
+    m_params.emplace_back( new PARAM<float>( "render.board_layer_thickness_scale",
+                                             &m_Render.board_layer_thickness_scale, 1.0f, 1.0f, 100.0f ) );
     m_params.emplace_back( new PARAM<bool>( "render.opengl_show_model_bbox",
                                             &m_Render.show_model_bbox, false ) );
     m_params.emplace_back( new PARAM<bool>( "render.opengl_show_off_board_silk",
@@ -380,6 +413,14 @@ EDA_3D_VIEWER_SETTINGS::EDA_3D_VIEWER_SETTINGS() :
                                             &m_Render.show_eco1, true ) );
     m_params.emplace_back( new PARAM<bool>( "render.show_eco2",
                                             &m_Render.show_eco2, true ) );
+    m_params.emplace_back( new PARAM<bool>( "render.show_f_fab",
+                                            &m_Render.show_f_fab, false ) );
+    m_params.emplace_back( new PARAM<bool>( "render.show_b_fab",
+                                            &m_Render.show_b_fab, false ) );
+    m_params.emplace_back( new PARAM<bool>( "render.show_f_courtyard",
+                                            &m_Render.show_f_courtyard, false ) );
+    m_params.emplace_back( new PARAM<bool>( "render.show_b_courtyard",
+                                            &m_Render.show_b_courtyard, false ) );
 
     for( int layer = 0; layer < 45; ++layer )
     {
@@ -411,6 +452,14 @@ EDA_3D_VIEWER_SETTINGS::EDA_3D_VIEWER_SETTINGS() :
                                             &m_Render.show_copper_bottom, true ) );
     m_params.emplace_back( new PARAM<bool>( "render.show_copper_bottom",
                                             &m_Render.show_copper_top, true ) );
+
+    for( int layer = LAYER_3D_COPPER_INNER_1; layer <= LAYER_3D_COPPER_INNER_30; ++layer )
+    {
+        const int innerLayerIndex = layer - LAYER_3D_COPPER_INNER_1;
+        m_params.emplace_back( new PARAM<bool>( fmt::format( "render.show_copper_inner{}", innerLayerIndex + 1 ),
+                                                &m_Render.show_copper_inner[innerLayerIndex], true ) );
+    }
+
     m_params.emplace_back( new PARAM<bool>( "render.show_zones",
                                             &m_Render.show_zones, true ) );
     m_params.emplace_back( new PARAM<bool>( "render.show_fp_references",
@@ -427,16 +476,27 @@ EDA_3D_VIEWER_SETTINGS::EDA_3D_VIEWER_SETTINGS() :
                                             &m_Render.differentiate_plated_copper, false ) );
     m_params.emplace_back( new PARAM<bool>( "render.use_board_editor_copper_colors",
                                             &m_Render.use_board_editor_copper_colors, false ) );
-    m_params.emplace_back( new PARAM<bool>( "render.preview_show_board_body",
-                                            &m_Render.preview_show_board_body, true ) );
+    m_params.emplace_back( new PARAM<bool>( "render.show_missing_models", &m_Render.show_missing_models, false ) );
     m_params.emplace_back( new PARAM<bool>( "camera.animation_enabled",
                                             &m_Camera.animation_enabled, true ) );
     m_params.emplace_back( new PARAM<int>( "camera.moving_speed_multiplier",
                                            &m_Camera.moving_speed_multiplier, 3 ) );
     m_params.emplace_back( new PARAM<double>( "camera.rotation_increment",
                                               &m_Camera.rotation_increment, 10.0 ) );
-    m_params.emplace_back( new PARAM<int>( "camera.projection_mode",
-                                           &m_Camera.projection_mode, 1 ) );
+
+    m_params.emplace_back( new PARAM_ENUM<PROJECTION_TYPE>( "main_view.projection_mode",
+                                                            &m_Viewer.projection_mode,
+                                                            PROJECTION_TYPE::PERSPECTIVE,
+                                                            PROJECTION_TYPE::ORTHO,
+                                                            PROJECTION_TYPE::PERSPECTIVE ) );
+
+    m_params.emplace_back( new PARAM_ENUM<PROJECTION_TYPE>( "preview.projection_mode",
+                                                            &m_Preview.projection_mode,
+                                                            PROJECTION_TYPE::ORTHO, // ortho is more suitable for previews
+                                                            PROJECTION_TYPE::ORTHO,
+                                                            PROJECTION_TYPE::PERSPECTIVE ) );
+    m_params.emplace_back( new PARAM<bool>( "preview.show_board_body",
+                                            &m_Preview.show_board_body, true ) );
 
     m_params.emplace_back( new PARAM<int>( "export_image.width", &m_ExportImage.width, 0 ) );
     m_params.emplace_back( new PARAM<int>( "export_image.height", &m_ExportImage.height, 0 ) );
@@ -555,6 +615,18 @@ EDA_3D_VIEWER_SETTINGS::EDA_3D_VIEWER_SETTINGS() :
                         preset["layers"] = mappedLayers;
                     }
                 }
+
+                return true;
+            } );
+
+    registerMigration( 4, 5,
+            [&]() -> bool
+            {
+                if( std::optional<int> optval = Get<int>( "camera.projection_mode" ) )
+                    Set( "main_view.projection_mode", *optval );
+
+                if( std::optional<bool> optval = Get<bool>( "render.preview_show_board_body" ) )
+                    Set( "preview.show_board_body", *optval );
 
                 return true;
             } );

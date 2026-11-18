@@ -14,24 +14,22 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
 
 #include <map>
-#include <bitmaps.h>
 #include <units_provider.h>
 #include <gal/color4d.h>
 #include <wx/translation.h>
 #include <geometry/shape.h>
 
+
 class OUTPUTFORMATTER;
 class MSG_PANEL_ITEM;
+
+enum class BITMAPS : unsigned int;
 
 namespace KIGFX
 {
@@ -110,12 +108,14 @@ public:
     KIGFX::COLOR4D GetColor() const { return m_color; }
     void SetColor( const KIGFX::COLOR4D& aColor ) { m_color = aColor; }
 
-    bool operator!=( const STROKE_PARAMS& aOther ) const
+    bool operator==( const STROKE_PARAMS& aOther ) const
     {
-        return m_width != aOther.m_width
-                || m_lineStyle != aOther.m_lineStyle
-                || m_color != aOther.m_color;
+        return m_width == aOther.m_width && m_lineStyle == aOther.m_lineStyle && m_color == aOther.m_color;
     }
+
+    bool operator!=( const STROKE_PARAMS& aOther ) const { return !( *this == aOther ); }
+
+    bool operator<( const STROKE_PARAMS& aOther ) const;
 
     void Format( OUTPUTFORMATTER* out, const EDA_IU_SCALE& aIuScale ) const;
 

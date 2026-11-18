@@ -13,12 +13,14 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PATHS_H
 #define PATHS_H
+
+#include <vector>
 
 #include <kicommon.h>
 #include <wx/filename.h>
@@ -162,11 +164,6 @@ public:
     static wxString GetDocumentationPath();
 
     /**
-     * Gets the path used for wxSingleInstanceChecker lock files
-     */
-    static wxString GetInstanceCheckerPath();
-
-    /**
      * Gets a path to use for user-visible log files
      */
     static wxString GetLogsPath();
@@ -251,6 +248,51 @@ public:
     static wxString CalculateUserSettingsPath( bool aIncludeVer = true, bool aUseEnv = true );
 
     static const wxString& GetExecutablePath();
+
+    /**
+     * Resolve a sibling executable alongside the running process. Returns the
+     * absolute path (with .exe extension on Windows) when the file exists,
+     * otherwise an empty string. Used by sub-binary launchers (kicad,
+     * kicad-cli, kicad-cli-helper) that need to find each other without
+     * relying on PATH, which differs across installers, portable builds, and
+     * per-user PATH overrides.
+     */
+    static wxString ResolveSiblingExecutable( const wxString& aBaseName );
+
+    /**
+     * Return the CMake build root for a KiCad executable path, or an empty string outside a build tree.
+     */
+    static wxString FindKiCadBuildRoot( const wxString& aExecutablePath );
+
+    /**
+     * The build root of the running executable, or empty outside a KiCad build tree.
+     */
+    static const wxString& GetBuildRoot();
+
+    /**
+     * True when KiCad runs from its build tree or KICAD_RUN_FROM_BUILD_DIR is set.
+     */
+    static bool RunningFromBuildDir();
+
+    /**
+     * Return the directory holding the running executable itself.
+     *
+     * Unlike GetExecutablePath() this is the directory the binary actually lives in on every
+     * platform, so it is Contents/MacOS rather than the bundle root, and it carries no trailing
+     * separator.
+     */
+    static wxString GetExecutableDir();
+
+    /**
+     * Return the directories holding tools shipped alongside KiCad, most specific first.
+     *
+     * These are the directories put on the PATH of a command spawned on the user's behalf so that
+     * a bare command name reaches KiCad's own tools. Directories that do not exist are omitted.
+     *
+     * @param aExecutableDir the directory holding the running KiCad executable.
+     */
+    static std::vector<wxString> GetToolDirectories( const wxString& aExecutableDir );
+
 private:
     // we are a static helper
     PATHS() {}

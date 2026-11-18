@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -63,6 +59,17 @@ BOOST_AUTO_TEST_CASE( GetPrefix )
             BOOST_CHECK_EQUAL( UTIL::GetRefDesPrefix( c.first ), c.second );
         }
     }
+}
+
+
+BOOST_AUTO_TEST_CASE( RangesStayWithinOneSuffix )
+{
+    // R1_M1 and R1_M2 are different channels, never a range
+    std::vector<std::pair<wxString, wxString>> refs = { { wxS( "R1" ), wxS( "_M1" ) }, { wxS( "R1" ), wxS( "_M2" ) },
+                                                        { wxS( "R2" ), wxS( "_M1" ) }, { wxS( "R2" ), wxS( "_M2" ) },
+                                                        { wxS( "R3" ), wxS( "_M1" ) }, { wxS( "R3" ), wxS( "_M2" ) } };
+
+    BOOST_CHECK_EQUAL( UTIL::FormatRefDesRanges( refs, wxS( ", " ), wxS( "-" ) ), wxS( "R1_M1-R3_M1, R1_M2-R3_M2" ) );
 }
 
 

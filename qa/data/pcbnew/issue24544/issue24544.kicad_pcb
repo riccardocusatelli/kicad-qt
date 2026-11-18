@@ -1,5 +1,5 @@
 (kicad_pcb
-	(version 20260206)
+	(version 20260603)
 	(generator "pcbnew")
 	(generator_version "10.99")
 	(general
@@ -60,6 +60,8 @@
 				(material "FR4")
 				(epsilon_r 4.5)
 				(loss_tangent 0.02)
+				(spec_frequency 1000000000)
+				(dielectric_model constant)
 			)
 			(layer "B.Cu"
 				(type "copper")

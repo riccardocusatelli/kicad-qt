@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <design_block.h>
@@ -58,7 +54,11 @@ PCB_DESIGN_BLOCK_PANE::PCB_DESIGN_BLOCK_PANE( PCB_EDIT_FRAME* aParent, const LIB
                                                      },
                                                         aParent->GetToolManager()->GetTool<PCB_DESIGN_BLOCK_CONTROL>()
                                                      );
-    m_chooserPanel->SetPreviewWidget(new PCB_DESIGN_BLOCK_PREVIEW_WIDGET( m_chooserPanel->GetDetailsPanel(), aParent ) );
+    m_chooserPanel->SetPreviewWidgetFactory(
+            [aParent]( wxWindow* aPreviewParent ) -> DESIGN_BLOCK_PREVIEW_WIDGET*
+            {
+                return new PCB_DESIGN_BLOCK_PREVIEW_WIDGET( aPreviewParent, aParent );
+            } );
     sizer->Add( m_chooserPanel, 1, wxEXPAND, 5 );
 
     if( aPreselect && aPreselect->IsValid() )

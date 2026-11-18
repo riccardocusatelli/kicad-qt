@@ -15,15 +15,11 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <sim/sim_model_r_pot.h>
-#include <fmt/core.h>
+#include <fmt/format.h>
 
 
 std::string SPICE_GENERATOR_R_POT::ModelLine( const SPICE_ITEM& aItem ) const
@@ -39,11 +35,17 @@ std::string SPICE_GENERATOR_R_POT::ModelLine( const SPICE_ITEM& aItem ) const
 
     if( position != "" )
     {
-        return fmt::format( ".model {} potentiometer( r={} position={} )\n", aItem.modelName, r,
+        return fmt::format( ".model {} potentiometer( r={} position={} )\n",
+                            aItem.modelName,
+                            r,
                             position );
     }
     else
-        return fmt::format( ".model {} potentiometer( r={} )\n", aItem.modelName, r );
+    {
+        return fmt::format( ".model {} potentiometer( r={} )\n",
+                            aItem.modelName,
+                            r );
+    }
 }
 
 
@@ -56,7 +58,7 @@ std::string SPICE_GENERATOR_R_POT::TunerCommand( const SPICE_ITEM& aItem, double
 
 
 SIM_MODEL_R_POT::SIM_MODEL_R_POT() :
-    SIM_MODEL( TYPE::R_POT, std::make_unique<SPICE_GENERATOR_R_POT>( *this ) )
+        SIM_MODEL( TYPE::R_POT, std::make_unique<SPICE_GENERATOR_R_POT>( *this ) )
 {
     static std::vector<PARAM::INFO> paramInfos = makeParamInfos();
 

@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <boost/test/unit_test.hpp>
@@ -260,6 +256,26 @@ BOOST_AUTO_TEST_CASE( TestStackedProjectNetlistUpdate )
     {
         BOOST_TEST_MESSAGE( "Pin 8 correctly NOT found (expected behavior)" );
     }
+}
+
+
+BOOST_AUTO_TEST_CASE( SharedPadPrefersExplicitNet )
+{
+    COMPONENT component( LIB_ID(), wxString( "VD1" ), wxString(), KIID_PATH(), {} );
+    component.AddNet( "2", "unconnected-(VD1A-A-Pad2)", wxString(), wxString() );
+    component.AddNet( "2", "unconnected-(VD1C-A-Pad2)", wxString(), wxString() );
+    BOOST_CHECK_EQUAL( component.GetNet( "2" ).GetNetName(), wxString( "unconnected-(VD1A-A-Pad2)" ) );
+    component.AddNet( "2", wxString(), wxString(), wxString() );
+    BOOST_CHECK_EQUAL( component.GetNet( "2" ).GetNetName(), wxString( "unconnected-(VD1A-A-Pad2)" ) );
+    component.AddNet( "2", "zz_USER", wxString(), wxString() );
+    BOOST_CHECK_EQUAL( component.GetNet( "2" ).GetNetName(), wxString( "zz_USER" ) );
+    component.SortPins();
+    BOOST_CHECK_EQUAL( component.GetNet( "2" ).GetNetName(), wxString( "zz_USER" ) );
+    component.AddNet( "[3,4]", "Net-(VD1-Pad3)", wxString(), wxString() );
+    component.AddNet( "4", "/Sheet/USER", wxString(), wxString() );
+    BOOST_CHECK_EQUAL( component.GetNet( "4" ).GetNetName(), wxString( "/Sheet/USER" ) );
+    BOOST_CHECK_EQUAL( component.GetNet( "3" ).GetNetName(), wxString( "Net-(VD1-Pad3)" ) );
+    BOOST_CHECK( !component.GetNet( "9" ).IsValid() );
 }
 
 

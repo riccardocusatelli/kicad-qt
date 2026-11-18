@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
@@ -147,6 +147,11 @@ static const std::vector<PCB_IO_PLUGIN_CASE> BoardPluginCases = {
         "Basic EasyEDA Pro epro project",
         "plugins/easyedapro/ProProject_Yuzuki Chameleon_2023-09-02.epro",
         PCB_IO_MGR::EASYEDAPRO
+    },
+    {
+        "Basic EasyEDA Pro v3 epro2 project",
+        "plugins/easyedapro/ProProject_LS2K0300Core_2025-11-14.epro2",
+        PCB_IO_MGR::EASYEDAPRO_V3
     },
     {
         "Basic Altium Designer board file",

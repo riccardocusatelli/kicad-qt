@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -101,7 +97,7 @@ namespace APP_MONITOR
      * This is a singleton class intended to manage sentry
      *
      * The inards of the api in this class are meant to be compiled out when KICAD_USE_SENTRY
-     * is not defined and become "inert" in order to reduce the need to sprinkle #ifdef checks
+     * is not defined and become "inert" in order to reduce the need to sprinkle \#ifdef checks
      * everywhere.
      */
     class KICOMMON_API SENTRY

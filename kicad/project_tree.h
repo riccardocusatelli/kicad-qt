@@ -15,26 +15,17 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PROJECT_TREE_H
 #define PROJECT_TREE_H
-
-#include <memory>
-
-#include <git/kicad_git_common.h>
 
 #include <wx/treectrl.h>
 
 #include "tree_file_type.h"
 
 class PROJECT_TREE_PANE;
-struct git_repository;
 
 /** PROJECT_TREE
  * This is the class to show (as a tree) the files in the project directory
@@ -46,7 +37,6 @@ class PROJECT_TREE : public wxTreeCtrl
 private:
     PROJECT_TREE_PANE*            m_projectTreePane;
     wxImageList*                  m_statusImageList;
-    std::shared_ptr<KIGIT_COMMON> m_gitCommon;
 
 public:
     PROJECT_TREE_PANE* GetProjectTreePane() const { return m_projectTreePane; }
@@ -57,21 +47,6 @@ public:
     void LoadIcons();
 
     void GetItemsRecursively( const wxTreeItemId& aParentId, std::vector<wxTreeItemId>& aItems );
-
-    void SetGitRepo( git_repository* aRepo )    { m_gitCommon->SetRepo( aRepo ); }
-    git_repository* GetGitRepo() const          { return m_gitCommon->GetRepo(); }
-
-    KIGIT_COMMON* GitCommon() const             { return m_gitCommon.get(); }
-
-    /// Shared handle for background workers so the common outlives a concurrent TakeGitCommon().
-    std::shared_ptr<KIGIT_COMMON> GitCommonPtr() const { return m_gitCommon; }
-
-    std::shared_ptr<KIGIT_COMMON> TakeGitCommon()
-    {
-        auto old = std::move( m_gitCommon );
-        m_gitCommon = std::make_shared<KIGIT_COMMON>( nullptr );
-        return old;
-    }
 
 private:
     /* overridden sort function */

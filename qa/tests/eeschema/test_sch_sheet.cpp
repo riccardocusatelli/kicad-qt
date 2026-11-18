@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -47,12 +43,12 @@ public:
     {
     }
 
-    ///< Dummy schematic to attach the test sheet to
+    /// Dummy schematic to attach the test sheet to
     SCHEMATIC m_schematic;
 
     SCH_SHEET m_sheet;
 
-    ///< Can use when you need a const ref (lots of places need fixing here)
+    /// Can use when you need a const ref (lots of places need fixing here)
     const SCH_SHEET& m_csheet;
 };
 
@@ -148,8 +144,6 @@ BOOST_AUTO_TEST_CASE( AddPins )
     BOOST_CHECK_EQUAL( m_sheet.HasPins(), false );
     BOOST_CHECK_EQUAL( m_sheet.HasPin( "pinname" ), false );
     BOOST_CHECK_EQUAL( m_sheet.GetPin( pinPos ), nullptr );
-
-    delete &pinRef;
 }
 
 /**

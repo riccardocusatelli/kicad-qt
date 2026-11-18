@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
  #ifndef PANEL_TOOLBAR_CUSTOMIZATION_H_
@@ -91,9 +87,8 @@ protected:
     void populateToolbarTree();
 
     void populateActions();
-    bool isActionSupported( const TOOL_ACTION& aAction ) const;
-
     void applyActionFilter();
+    bool isActionSupported( const TOOL_ACTION& aAction ) const;
     bool actionMatchesFilter( const ACTION_LIST_ENTRY& aEntry, const wxString& aFilter ) const;
 
     void enableCustomControls( bool enable );

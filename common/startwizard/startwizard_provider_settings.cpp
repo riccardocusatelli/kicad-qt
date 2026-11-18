@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -59,6 +59,9 @@ public:
             wxFileName path( m_cbPath->GetValue(), wxEmptyString );
             m_model->import_path = path.GetPath();
         }
+
+        if( m_lblPathError->IsShown() )
+            return false;
 
         return true;
     }
@@ -165,9 +168,8 @@ void PANEL_STARTWIZARD_SETTINGS::OnDefaultSelected( wxCommandEvent& event )
 
 bool PANEL_STARTWIZARD_SETTINGS::validatePath()
 {
-    SETTINGS_MANAGER& manager = Pgm().GetSettingsManager();
     wxString path = m_cbPath->GetValue();
-    bool valid = manager.IsSettingsPathValid( path );
+    bool valid = SETTINGS_MANAGER::IsSettingsPathValid( path );
 
     showPathError( !valid );
 

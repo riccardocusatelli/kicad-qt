@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef TOOLBARS_PCB_EDITOR_H_
@@ -28,6 +28,7 @@ class PCB_ACTION_TOOLBAR_CONTROLS : public ACTION_TOOLBAR_CONTROLS
 public:
     static ACTION_TOOLBAR_CONTROL trackWidth;
     static ACTION_TOOLBAR_CONTROL viaDiameter;
+    static ACTION_TOOLBAR_CONTROL viaStack;
     static ACTION_TOOLBAR_CONTROL currentVariant;
 };
 

@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef DIALOG_FOOTPRINT_PROPERTIES_FP_EDITOR_H
@@ -72,6 +68,7 @@ private:
     void OnRemoveNettieGroup( wxCommandEvent& event ) override;
     void OnAddJumperGroup( wxCommandEvent& event ) override;
     void OnRemoveJumperGroup( wxCommandEvent& event ) override;
+    void OnGridCellChanging( wxGridEvent& aEvent );
     void OnUpdateUI( wxUpdateUIEvent& event ) override;
     void OnPageChanging( wxNotebookEvent& event ) override;
     void OnText( wxCommandEvent& event ) override;
@@ -107,6 +104,7 @@ private:
     UNIT_BINDER                m_netClearance;
     UNIT_BINDER                m_solderMask;
     MARGIN_OFFSET_BINDER       m_solderPaste;
+    UNIT_BINDER                m_height;
 
     wxControl*                 m_delayedFocusCtrl;
     NOTEBOOK_PAGES             m_delayedFocusPage;

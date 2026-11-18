@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -27,21 +23,23 @@
 #include <dialog_footprint_wizard_list_base.h>
 #include <footprint_wizard.h>
 
+class FOOTPRINT_WIZARD_FRAME;
+
+
 class DIALOG_FOOTPRINT_WIZARD_LIST: public DIALOG_FOOTPRINT_WIZARD_LIST_BASE
 {
 public:
-    DIALOG_FOOTPRINT_WIZARD_LIST( wxWindow * aParent );
+    DIALOG_FOOTPRINT_WIZARD_LIST( FOOTPRINT_WIZARD_FRAME* aParent );
     ~DIALOG_FOOTPRINT_WIZARD_LIST() = default;
 
-    FOOTPRINT_WIZARD* GetWizard();
+    const wxString& GetWizard();
+    FOOTPRINT_WIZARD_FRAME* ParentFrame();
 
 private:
     void initLists();
     void OnCellFpGeneratorClick( wxGridEvent& event ) override;
     void OnCellFpGeneratorDoubleClick( wxGridEvent& event ) override;
-    void onShowTrace( wxCommandEvent& event ) override;
-    void onUpdatePythonModulesClick( wxCommandEvent& event ) override;
 
 private:
-    FOOTPRINT_WIZARD* m_footprintWizard;    ///< The selected python script wizard
+    wxString m_selectedWizard;    ///< The selected footprint wizard identifier
 };

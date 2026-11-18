@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PCM_TASK_MANAGER_H_
@@ -72,11 +72,12 @@ public:
      * @param aPackage package metadata
      * @param aVersion version to be installed
      * @param aRepositoryId id of the source repository
+     * @param isUpdate
      *
      * @return int status of the process
      */
     PCM_TASK_MANAGER::STATUS DownloadAndInstall( const PCM_PACKAGE& aPackage, const wxString& aVersion,
-                             const wxString& aRepositoryId, const bool isUpdate );
+                                                 const wxString& aRepositoryId, const bool isUpdate );
 
     /**
      * @brief Enqueue package uninstallation

@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef __SHAPE_SIMPLE_H
@@ -74,7 +70,6 @@ public:
         m_points.Clear();
     }
 
-    /// @copydoc SHAPE::BBox()
     const BOX2I BBox( int aClearance = 0 ) const override
     {
         return m_points.BBox( aClearance );
@@ -148,7 +143,6 @@ public:
         m_points.Append( aP );
     }
 
-    /// @copydoc SHAPE::Collide()
     bool Collide( const SEG& aSeg, int aClearance = 0, int* aActual = nullptr,
                   VECTOR2I* aLocation = nullptr ) const override
     {

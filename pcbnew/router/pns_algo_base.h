@@ -16,8 +16,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef __PNS_ALGO_BASE_H
@@ -50,16 +50,16 @@ public:
 
     virtual ~ALGO_BASE() {}
 
-    ///< Return the instance of our router
+    /// Return the instance of our router
     ROUTER* Router() const
     {
         return m_router;
     }
 
-    ///< Return current router settings
+    /// Return current router settings
     ROUTING_SETTINGS& Settings() const;
 
-    ///< Return the logger object, allowing to dump geometry to a file.
+    /// Return the logger object, allowing to dump geometry to a file.
     virtual LOGGER* Logger();
 
     void SetLogger( LOGGER* aLogger )

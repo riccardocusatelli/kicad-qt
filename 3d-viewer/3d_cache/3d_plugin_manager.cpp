@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -126,7 +122,7 @@ void S3D_PLUGIN_MANAGER::loadPlugins( void )
     wxFileName          fn;
 
 #ifndef __WXMAC__
-    if( wxGetEnv( wxT( "KICAD_RUN_FROM_BUILD_DIR" ), nullptr ) )
+    if( PATHS::RunningFromBuildDir() )
     {
         // set up to work from the build directory
         fn.Assign( wxStandardPaths::Get().GetExecutablePath() );
@@ -156,7 +152,7 @@ void S3D_PLUGIN_MANAGER::loadPlugins( void )
     fn.AssignDir( PATHS::GetStockPlugins3DPath() );
     checkPluginPath( std::string( fn.GetPathWithSep().ToUTF8() ), searchpaths );
 #else
-    if( wxGetEnv( wxT( "KICAD_RUN_FROM_BUILD_DIR" ), nullptr ) )
+    if( PATHS::RunningFromBuildDir() )
     {
     	// Exe will be at <build_dir>/pcbnew/pcbnew.app/Contents/MacOS/pcbnew for standalone
     	// Plugin will be at <build_dir>/kicad/KiCad.app/Contents/PlugIns/3d
@@ -330,7 +326,7 @@ void S3D_PLUGIN_MANAGER::checkPluginName( const wxString& aPath,
     }
 
     // prevent loading non-plugin dlls
-    if( wxGetEnv( wxT( "KICAD_RUN_FROM_BUILD_DIR" ), nullptr ) )
+    if( PATHS::RunningFromBuildDir() )
     {
         if( !path.GetName().StartsWith( "s3d_plugin" )
             && !path.GetName().StartsWith( "libs3d_plugin" ) )

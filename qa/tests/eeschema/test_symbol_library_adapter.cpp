@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
@@ -191,7 +191,10 @@ BOOST_AUTO_TEST_CASE( PartiallyLoadedTableReportsNoSpuriousErrors )
     adapter.SeedLoaded( wxS( "Connector" ) );
     adapter.SeedLoadError( wxS( "BadLib" ), wxS( "File is corrupt" ) );
 
-    const wxString errors = adapter.GetLibraryLoadErrors();
+    wxString errors;
+
+    for( const KI_ERROR& error : adapter.GetLibraryLoadErrors() )
+        errors.Append( error.AsString() + "\n" );
 
     // The unloaded-but-present rows must not masquerade as missing-from-table errors.
     BOOST_CHECK( !errors.Contains( wxS( "not found in library table" ) ) );

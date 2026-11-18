@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef DRC_RE_PANEL_MATCHER_H_
@@ -123,6 +119,12 @@ public:
      * @return The recommended panel type, or CUSTOM_RULE if no match.
      */
     DRC_RULE_EDITOR_CONSTRAINT_NAME GetPanelForConstraint( DRC_CONSTRAINT_T aConstraintType );
+
+    /**
+     * The panel whose page lists a text rule that sets this constraint, or CUSTOM_RULE when no
+     * panel edits it.
+     */
+    DRC_RULE_EDITOR_CONSTRAINT_NAME GetHomePanel( DRC_CONSTRAINT_T aConstraintType );
 
 private:
     void initClaims();

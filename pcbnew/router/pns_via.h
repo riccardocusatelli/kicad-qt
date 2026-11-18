@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef __PNS_VIA_H
@@ -90,12 +90,12 @@ public:
         m_unconnectedLayerMode = UNCONNECTED_LAYER_MODE::KEEP_ALL;
         m_isFree = false;
         m_isVirtual = false;
-        SetHoleLayers( PNS_LAYER_RANGE() );
         m_secondaryHoleLayers.reset();
         m_secondaryDrill.reset();
         m_primaryPostMachining.reset();
         m_secondaryPostMachining.reset();
         SetHole( HOLE::MakeCircularHole( m_pos, m_drill / 2, PNS_LAYER_RANGE() ) );
+        SetHoleLayers( PNS_LAYER_RANGE() );
     }
 
     VIA( const VECTOR2I& aPos, const PNS_LAYER_RANGE& aLayers, int aDiameter, int aDrill,
@@ -110,12 +110,12 @@ public:
         m_diameters[0] = aDiameter;
         m_drill = aDrill;
         m_shapes[0] = SHAPE_CIRCLE( aPos, aDiameter / 2 );
-        SetHoleLayers( aLayers );
         m_secondaryHoleLayers.reset();
         m_secondaryDrill.reset();
         m_primaryPostMachining.reset();
         m_secondaryPostMachining.reset();
         SetHole( HOLE::MakeCircularHole( m_pos, aDrill / 2, PNS_LAYER_RANGE() ) );
+        SetHoleLayers( aLayers );
         m_viaType = aViaType;
         m_unconnectedLayerMode = UNCONNECTED_LAYER_MODE::KEEP_ALL;
         m_isFree = false;
@@ -141,7 +141,7 @@ public:
         m_secondaryDrill = aB.m_secondaryDrill;
         m_primaryPostMachining = aB.m_primaryPostMachining;
         m_secondaryPostMachining = aB.m_secondaryPostMachining;
-        SetHole( HOLE::MakeCircularHole( m_pos, m_drill / 2, PNS_LAYER_RANGE() ) );
+        SetHole( HOLE::MakeCircularHole( m_pos, m_drill / 2, m_holeLayers ) );
         m_marker = aB.m_marker;
         m_rank = aB.m_rank;
         m_viaType = aB.m_viaType;
@@ -177,7 +177,7 @@ public:
         m_secondaryDrill = aB.m_secondaryDrill;
         m_primaryPostMachining = aB.m_primaryPostMachining;
         m_secondaryPostMachining = aB.m_secondaryPostMachining;
-        SetHole( HOLE::MakeCircularHole( m_pos, m_drill / 2, PNS_LAYER_RANGE() ) );
+        SetHole( HOLE::MakeCircularHole( m_pos, m_drill / 2, m_holeLayers ) );
         m_marker = aB.m_marker;
         m_rank = aB.m_rank;
         m_routable = aB.m_routable;

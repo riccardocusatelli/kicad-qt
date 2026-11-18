@@ -15,18 +15,14 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
 #include <wx/filename.h>
 #include <wx/log.h>
 #include <wx/stdpaths.h>
-#include <wx/wxcrtvararg.h>     //for wxPrintf
+#include <wx/wxcrtvararg.h> //for wxPrintf
 
 #include <kiway_base.h>
 #include <libraries/library_manager.h>
@@ -39,7 +35,7 @@
 
 #include <cctype>
 #include <set>
-#include <stdexcept>
+#include <cstdlib>
 
 #include <bin_mod.h>
 #include <pgm_base.h>
@@ -56,7 +52,14 @@
 #include "cli/command_jobset_run.h"
 #include "cli/command_pcb.h"
 #include "cli/command_pcb_export.h"
+#include "cli/command_export_bom.h"
+#include "cli/command_fp_diff.h"
+#include "cli/command_pcb_diff.h"
 #include "cli/command_pcb_drc.h"
+#include "cli/command_mergetool.h"
+#include "cli/command_git_mergedriver.h"
+#include "cli/command_sch_diff.h"
+#include "cli/command_sym_diff.h"
 #include "cli/command_pcb_render.h"
 #include "cli/command_pcb_export_3d.h"
 #include "cli/command_pcb_export_drill.h"
@@ -64,32 +67,49 @@
 #include "cli/command_pcb_export_gerbers.h"
 #include "cli/command_pcb_export_hpgl.h"
 #include "cli/command_pcb_export_gencad.h"
+#include "cli/command_pcb_export_specctra.h"
 #include "cli/command_pcb_export_ipc2581.h"
+#include "cli/command_pcb_export_idf.h"
 #include "cli/command_pcb_export_ipcd356.h"
 #include "cli/command_pcb_export_odb.h"
 #include "cli/command_pcb_export_pdf.h"
+#include "cli/command_pcb_export_png.h"
 #include "cli/command_pcb_export_pos.h"
 #include "cli/command_pcb_export_ps.h"
 #include "cli/command_pcb_export_stats.h"
+#include "cli/command_pcb_export_stackup.h"
 #include "cli/command_pcb_export_svg.h"
-#include "cli/command_sch_export_bom.h"
 #include "cli/command_sch_export_pythonbom.h"
 #include "cli/command_sch_export_netlist.h"
 #include "cli/command_sch_export_plot.h"
 #include "cli/command_pcb_upgrade.h"
+#include "cli/command_pcb_downgrade.h"
 #include "cli/command_pcb_import.h"
+#include "cli/command_sch_import.h"
+#include "cli/command_import.h"
 #include "cli/command_fp.h"
 #include "cli/command_fp_export.h"
 #include "cli/command_fp_export_svg.h"
+#include "cli/command_fp_downgrade.h"
 #include "cli/command_fp_upgrade.h"
 #include "cli/command_sch.h"
 #include "cli/command_sch_erc.h"
+#include "cli/command_project.h"
+#include "cli/command_project_downgrade.h"
 #include "cli/command_sch_export.h"
 #include "cli/command_sch_upgrade.h"
+#include "cli/command_sch_downgrade.h"
 #include "cli/command_sym.h"
 #include "cli/command_sym_export.h"
 #include "cli/command_sym_export_svg.h"
+#include "cli/command_sym_downgrade.h"
 #include "cli/command_sym_upgrade.h"
+#include "cli/command_gerber.h"
+#include "cli/command_gerber_convert.h"
+#include "cli/command_gerber_convert_png.h"
+#include "cli/command_gerber_info.h"
+#include "cli/command_gerber_diff.h"
+#include "cli/command_api_server.h"
 #include "cli/command_version.h"
 #include "cli/exit_codes.h"
 
@@ -114,9 +134,11 @@ KIFACE_BASE& Kiface()
     // This function should never be called.  It is only referenced from
     // EDA_BASE_FRAME::config() and this is only provided to satisfy the linker,
     // not to be actually called.
-    wxLogFatalError( wxT( "Unexpected call to Kiface() in kicad/kicad.cpp" ) );
-
-    throw std::logic_error( "Unexpected call to Kiface() in kicad/kicad.cpp" );
+    wxFprintf( stderr,
+               wxT( "Unexpected call to Kiface() in kicad/kicad_cli.cpp — a "
+                    "code path is reaching into a kiface stub from the CLI "
+                    "process. Re-run with KICAD_TRACE=KICAD for a backtrace.\n" ) );
+    std::abort();
 }
 
 
@@ -126,65 +148,107 @@ struct COMMAND_ENTRY
 
     std::vector<COMMAND_ENTRY> subCommands;
 
-    COMMAND_ENTRY( CLI::COMMAND* aHandler ) : handler( aHandler ){};
+    COMMAND_ENTRY( CLI::COMMAND* aHandler ) :
+            handler( aHandler ) {};
     COMMAND_ENTRY( CLI::COMMAND* aHandler, std::vector<COMMAND_ENTRY> aSub ) :
-            handler( aHandler ), subCommands( aSub ){};
+            handler( aHandler ),
+            subCommands( aSub ) {};
 };
 
 static CLI::JOBSET_COMMAND               jobsetCmd{};
 static CLI::JOBSET_RUN_COMMAND           jobsetRunCmd{};
 static CLI::PCB_COMMAND                  pcbCmd{};
+static CLI::PCB_DIFF_COMMAND             pcbDiffCmd{};
 static CLI::PCB_DRC_COMMAND              pcbDrcCmd{};
+static CLI::MERGETOOL_COMMAND            mergetoolCmd{};
+static CLI::GIT_MERGEDRIVER_COMMAND      gitMergeDriverCmd{};
 static CLI::PCB_RENDER_COMMAND           pcbRenderCmd{};
 static CLI::PCB_UPGRADE_COMMAND          pcbUpgradeCmd{};
+static CLI::PCB_DOWNGRADE_COMMAND        pcbDowngradeCmd{};
 static CLI::PCB_IMPORT_COMMAND           pcbImportCmd{};
+static CLI::SCH_IMPORT_COMMAND           schImportCmd{};
+static CLI::IMPORT_COMMAND               importCmd{};
+static CLI::EXPORT_BOM_COMMAND           exportPcbBomCmd{ KIWAY_FACES::FACE_PCB };
 static CLI::PCB_EXPORT_DRILL_COMMAND     exportPcbDrillCmd{};
 static CLI::PCB_EXPORT_DXF_COMMAND       exportPcbDxfCmd{};
-static CLI::PCB_EXPORT_3D_COMMAND        exportPcbGlbCmd{ "glb", UTF8STDSTR( _( "Export GLB (binary GLTF)" ) ), JOB_EXPORT_PCB_3D::FORMAT::GLB };
-static CLI::PCB_EXPORT_3D_COMMAND        exportPcbStepCmd{ "step", UTF8STDSTR( _( "Export STEP" ) ), JOB_EXPORT_PCB_3D::FORMAT::STEP };
-static CLI::PCB_EXPORT_3D_COMMAND        exportPcbBrepCmd{ "brep", UTF8STDSTR( _( "Export BREP" ) ), JOB_EXPORT_PCB_3D::FORMAT::BREP };
-static CLI::PCB_EXPORT_3D_COMMAND        exportPcbXaoCmd{ "xao", UTF8STDSTR( _( "Export XAO" ) ), JOB_EXPORT_PCB_3D::FORMAT::XAO };
-static CLI::PCB_EXPORT_3D_COMMAND        exportPcbVrmlCmd{ "vrml", UTF8STDSTR( _( "Export VRML" ) ), JOB_EXPORT_PCB_3D::FORMAT::VRML };
-static CLI::PCB_EXPORT_3D_COMMAND        exportPcbPlyCmd{ "ply", UTF8STDSTR( _( "Export PLY" ) ), JOB_EXPORT_PCB_3D::FORMAT::PLY };
-static CLI::PCB_EXPORT_3D_COMMAND        exportPcbStlCmd{ "stl", UTF8STDSTR( _( "Export STL" ) ), JOB_EXPORT_PCB_3D::FORMAT::STL };
-static CLI::PCB_EXPORT_3D_COMMAND        exportPcbStepzCmd{ "stpz", UTF8STDSTR( _( "Export STEPZ" ) ), JOB_EXPORT_PCB_3D::FORMAT::STEPZ };
-static CLI::PCB_EXPORT_3D_COMMAND        exportPcbU3DCmd{ "u3d", UTF8STDSTR( _( "Export U3D" ) ), JOB_EXPORT_PCB_3D::FORMAT::U3D };
+static CLI::PCB_EXPORT_3D_COMMAND        exportPcbGlbCmd{ "glb", UTF8STDSTR( _( "Export GLB (binary GLTF)" ) ),
+                                                   JOB_EXPORT_PCB_3D::FORMAT::GLB };
+static CLI::PCB_EXPORT_3D_COMMAND        exportPcbStepCmd{ "step", UTF8STDSTR( _( "Export STEP" ) ),
+                                                    JOB_EXPORT_PCB_3D::FORMAT::STEP };
+static CLI::PCB_EXPORT_3D_COMMAND        exportPcbBrepCmd{ "brep", UTF8STDSTR( _( "Export BREP" ) ),
+                                                    JOB_EXPORT_PCB_3D::FORMAT::BREP };
+static CLI::PCB_EXPORT_3D_COMMAND        exportPcbXaoCmd{ "xao", UTF8STDSTR( _( "Export XAO" ) ),
+                                                   JOB_EXPORT_PCB_3D::FORMAT::XAO };
+static CLI::PCB_EXPORT_3D_COMMAND        exportPcbVrmlCmd{ "vrml", UTF8STDSTR( _( "Export VRML" ) ),
+                                                    JOB_EXPORT_PCB_3D::FORMAT::VRML };
+static CLI::PCB_EXPORT_3D_COMMAND        exportPcbPlyCmd{ "ply", UTF8STDSTR( _( "Export PLY" ) ),
+                                                   JOB_EXPORT_PCB_3D::FORMAT::PLY };
+static CLI::PCB_EXPORT_3D_COMMAND        exportPcbStlCmd{ "stl", UTF8STDSTR( _( "Export STL" ) ),
+                                                   JOB_EXPORT_PCB_3D::FORMAT::STL };
+static CLI::PCB_EXPORT_3D_COMMAND        exportPcbStepzCmd{ "stpz", UTF8STDSTR( _( "Export STEPZ" ) ),
+                                                     JOB_EXPORT_PCB_3D::FORMAT::STEPZ };
+static CLI::PCB_EXPORT_3D_COMMAND        exportPcbU3DCmd{ "u3d", UTF8STDSTR( _( "Export U3D" ) ),
+                                                   JOB_EXPORT_PCB_3D::FORMAT::U3D };
 static CLI::PCB_EXPORT_3D_COMMAND        exportPcb3DPDFCmd{ "3dpdf", UTF8STDSTR( _( "Export PDF" ) ),
-                                                   JOB_EXPORT_PCB_3D::FORMAT::PDF };
+                                                     JOB_EXPORT_PCB_3D::FORMAT::PDF };
 static CLI::PCB_EXPORT_SVG_COMMAND       exportPcbSvgCmd{};
 static CLI::PCB_EXPORT_PDF_COMMAND       exportPcbPdfCmd{};
+static CLI::PCB_EXPORT_PNG_COMMAND       exportPcbPngCmd{};
 static CLI::PCB_EXPORT_POS_COMMAND       exportPcbPosCmd{};
 static CLI::PCB_EXPORT_PS_COMMAND        exportPcbPsCmd{};
 static CLI::PCB_EXPORT_STATS_COMMAND     exportPcbStatsCmd{};
+static CLI::PCB_EXPORT_STACKUP_COMMAND   exportPcbStackupCmd{};
 static CLI::PCB_EXPORT_GERBERS_COMMAND   exportPcbGerbersCmd{};
 static CLI::PCB_EXPORT_HPGL_COMMAND      exportPcbHpglCmd{};
 static CLI::PCB_EXPORT_GENCAD_COMMAND    exportPcbGencadCmd{};
+static CLI::PCB_EXPORT_SPECCTRA_COMMAND  exportPcbSpecctraCmd{};
 static CLI::PCB_EXPORT_IPC2581_COMMAND   exportPcbIpc2581Cmd{};
+static CLI::PCB_EXPORT_IDF_COMMAND       exportPcbIdfCmd{};
 static CLI::PCB_EXPORT_IPCD356_COMMAND   exportPcbIpcD356Cmd{};
 static CLI::PCB_EXPORT_ODB_COMMAND       exportPcbOdbCmd{};
 static CLI::PCB_EXPORT_COMMAND           exportPcbCmd{};
 static CLI::SCH_EXPORT_COMMAND           exportSchCmd{};
+static CLI::PROJECT_COMMAND              projectCmd{};
+static CLI::PROJECT_DOWNGRADE_COMMAND    projectDowngradeCmd{};
 static CLI::SCH_COMMAND                  schCmd{};
+static CLI::SCH_DIFF_COMMAND             schDiffCmd{};
 static CLI::SCH_ERC_COMMAND              schErcCmd{};
 static CLI::SCH_UPGRADE_COMMAND          schUpgradeCmd{};
-static CLI::SCH_EXPORT_BOM_COMMAND       exportSchBomCmd{};
+static CLI::SCH_DOWNGRADE_COMMAND        schDowngradeCmd{};
+static CLI::EXPORT_BOM_COMMAND           exportSchBomCmd{ KIWAY_FACES::FACE_SCH };
 static CLI::SCH_EXPORT_PYTHONBOM_COMMAND exportSchPythonBomCmd{};
 static CLI::SCH_EXPORT_NETLIST_COMMAND   exportSchNetlistCmd{};
-static CLI::SCH_EXPORT_PLOT_COMMAND      exportSchDxfCmd{ "dxf",        UTF8STDSTR( _( "Export DXF" ) ),    SCH_PLOT_FORMAT::DXF,   CLI::COMMAND::IO_TYPE::DIRECTORY };
-static CLI::SCH_EXPORT_PLOT_COMMAND      exportSchHpglCmd{ "hpgl",      UTF8STDSTR( _( "Export HPGL" ) ),   SCH_PLOT_FORMAT::HPGL,  CLI::COMMAND::IO_TYPE::DIRECTORY };
-static CLI::SCH_EXPORT_PLOT_COMMAND      exportSchPdfCmd{ "pdf",        UTF8STDSTR( _( "Export PDF" ) ),    SCH_PLOT_FORMAT::PDF,   CLI::COMMAND::IO_TYPE::FILE };
-static CLI::SCH_EXPORT_PLOT_COMMAND      exportSchPostscriptCmd{ "ps",  UTF8STDSTR( _( "Export PS" ) ),     SCH_PLOT_FORMAT::POST,  CLI::COMMAND::IO_TYPE::DIRECTORY };
-static CLI::SCH_EXPORT_PLOT_COMMAND      exportSchSvgCmd{ "svg",        UTF8STDSTR( _( "Export SVG" ) ),    SCH_PLOT_FORMAT::SVG,   CLI::COMMAND::IO_TYPE::DIRECTORY };
-static CLI::FP_COMMAND                   fpCmd{};
-static CLI::FP_EXPORT_COMMAND            fpExportCmd{};
-static CLI::FP_EXPORT_SVG_COMMAND        fpExportSvgCmd{};
-static CLI::FP_UPGRADE_COMMAND           fpUpgradeCmd{};
-static CLI::SYM_COMMAND                  symCmd{};
-static CLI::SYM_EXPORT_COMMAND           symExportCmd{};
-static CLI::SYM_EXPORT_SVG_COMMAND       symExportSvgCmd{};
-static CLI::SYM_UPGRADE_COMMAND          symUpgradeCmd{};
-static CLI::VERSION_COMMAND              versionCmd{};
-
+static CLI::SCH_EXPORT_PLOT_COMMAND      exportSchDxfCmd{ "dxf", UTF8STDSTR( _( "Export DXF" ) ), SCH_PLOT_FORMAT::DXF,
+                                                     CLI::COMMAND::IO_TYPE::DIRECTORY };
+static CLI::SCH_EXPORT_PLOT_COMMAND exportSchHpglCmd{ "hpgl", UTF8STDSTR( _( "Export HPGL" ) ), SCH_PLOT_FORMAT::HPGL,
+                                                      CLI::COMMAND::IO_TYPE::DIRECTORY };
+static CLI::SCH_EXPORT_PLOT_COMMAND exportSchPdfCmd{ "pdf", UTF8STDSTR( _( "Export PDF" ) ), SCH_PLOT_FORMAT::PDF,
+                                                     CLI::COMMAND::IO_TYPE::FILE };
+static CLI::SCH_EXPORT_PLOT_COMMAND exportSchPostscriptCmd{ "ps", UTF8STDSTR( _( "Export PS" ) ), SCH_PLOT_FORMAT::POST,
+                                                            CLI::COMMAND::IO_TYPE::DIRECTORY };
+static CLI::SCH_EXPORT_PLOT_COMMAND exportSchSvgCmd{ "svg", UTF8STDSTR( _( "Export SVG" ) ), SCH_PLOT_FORMAT::SVG,
+                                                     CLI::COMMAND::IO_TYPE::DIRECTORY };
+static CLI::SCH_EXPORT_PLOT_COMMAND exportSchPngCmd{ "png", UTF8STDSTR( _( "Export PNG" ) ), SCH_PLOT_FORMAT::PNG,
+                                                     CLI::COMMAND::IO_TYPE::DIRECTORY };
+static CLI::FP_COMMAND              fpCmd{};
+static CLI::FP_DIFF_COMMAND         fpDiffCmd{};
+static CLI::FP_EXPORT_COMMAND       fpExportCmd{};
+static CLI::FP_EXPORT_SVG_COMMAND   fpExportSvgCmd{};
+static CLI::FP_UPGRADE_COMMAND      fpUpgradeCmd{};
+static CLI::FP_DOWNGRADE_COMMAND         fpDowngradeCmd{};
+static CLI::SYM_COMMAND             symCmd{};
+static CLI::SYM_DIFF_COMMAND        symDiffCmd{};
+static CLI::SYM_EXPORT_COMMAND      symExportCmd{};
+static CLI::SYM_EXPORT_SVG_COMMAND  symExportSvgCmd{};
+static CLI::SYM_UPGRADE_COMMAND     symUpgradeCmd{};
+static CLI::SYM_DOWNGRADE_COMMAND        symDowngradeCmd{};
+static CLI::GERBER_COMMAND          gerberCmd{};
+static CLI::GERBER_CONVERT_COMMAND  gerberConvertCmd{};
+static CLI::GERBER_CONVERT_PNG_COMMAND gerberConvertPngCmd{};
+static CLI::GERBER_INFO_COMMAND        gerberInfoCmd{};
+static CLI::GERBER_DIFF_COMMAND        gerberDiffCmd{};
+static CLI::VERSION_COMMAND            versionCmd{};
+static CLI::API_SERVER_COMMAND         apiServerCmd{};
 
 // clang-format off
 static std::vector<COMMAND_ENTRY> commandStack = {
@@ -200,6 +264,9 @@ static std::vector<COMMAND_ENTRY> commandStack = {
         &fpCmd,
         {
             {
+                &fpDiffCmd
+            },
+            {
                 &fpExportCmd,
                 {
                     &fpExportSvgCmd
@@ -207,12 +274,18 @@ static std::vector<COMMAND_ENTRY> commandStack = {
             },
             {
                 &fpUpgradeCmd
+            },
+            {
+                &fpDowngradeCmd
             }
         }
     },
     {
         &pcbCmd,
         {
+            {
+                &pcbDiffCmd
+            },
             {
                 &pcbDrcCmd
             },
@@ -225,6 +298,7 @@ static std::vector<COMMAND_ENTRY> commandStack = {
             {
                 &exportPcbCmd,
                 {
+                    &exportPcbBomCmd,
                     &exportPcbBrepCmd,
                     &exportPcbDrillCmd,
                     &exportPcbDxfCmd,
@@ -233,12 +307,16 @@ static std::vector<COMMAND_ENTRY> commandStack = {
                     &exportPcbGencadCmd,
                     &exportPcbGlbCmd,
                     &exportPcbIpc2581Cmd,
+                    &exportPcbIdfCmd,
                     &exportPcbIpcD356Cmd,
                     &exportPcbOdbCmd,
                     &exportPcbPdfCmd,
+                    &exportPcbPngCmd,
                     &exportPcbPosCmd,
                     &exportPcbPsCmd,
+                    &exportPcbSpecctraCmd,
                     &exportPcbStatsCmd,
+                    &exportPcbStackupCmd,
                     &exportPcbStepCmd,
                     &exportPcbSvgCmd,
                     &exportPcbVrmlCmd,
@@ -252,6 +330,17 @@ static std::vector<COMMAND_ENTRY> commandStack = {
             },
             {
                 &pcbUpgradeCmd
+            },
+            {
+                &pcbDowngradeCmd
+            }
+        }
+    },
+    {
+        &projectCmd,
+        {
+            {
+                &projectDowngradeCmd
             }
         }
     },
@@ -259,7 +348,13 @@ static std::vector<COMMAND_ENTRY> commandStack = {
         &schCmd,
         {
             {
+                &schDiffCmd
+            },
+            {
                 &schErcCmd
+            },
+            {
+                &schImportCmd
             },
             {
                 &exportSchCmd,
@@ -268,6 +363,7 @@ static std::vector<COMMAND_ENTRY> commandStack = {
                     &exportSchHpglCmd,
                     &exportSchNetlistCmd,
                     &exportSchPdfCmd,
+                    &exportSchPngCmd,
                     &exportSchPostscriptCmd,
                     &exportSchBomCmd,
                     &exportSchPythonBomCmd,
@@ -276,12 +372,18 @@ static std::vector<COMMAND_ENTRY> commandStack = {
             },
             {
                 &schUpgradeCmd
+            },
+            {
+                &schDowngradeCmd
             }
         }
     },
     {
         &symCmd,
         {
+            {
+                &symDiffCmd
+            },
             {
                 &symExportCmd,
                 {
@@ -290,11 +392,47 @@ static std::vector<COMMAND_ENTRY> commandStack = {
             },
             {
                 &symUpgradeCmd
+            },
+            {
+                &symDowngradeCmd
             }
         }
     },
     {
-            &versionCmd,
+        &gerberCmd,
+        {
+            {
+                &gerberConvertCmd,
+                {
+                    {
+                        &gerberConvertPngCmd
+                    }
+                }
+            },
+            {
+                &gerberInfoCmd
+            },
+            {
+                &gerberDiffCmd
+            }
+        }
+    },
+    {
+        &mergetoolCmd,
+    },
+    {
+        // Hidden from --help (set_suppress); invoked by git via the
+        // merge.kicad-*.driver config, not by users.
+        &gitMergeDriverCmd,
+    },
+    {
+        &importCmd,
+    },
+    {
+        &versionCmd,
+    },
+    {
+        &apiServerCmd,
     }
 };
 // clang-format on
@@ -311,8 +449,7 @@ static void recurseArgParserBuild( argparse::ArgumentParser& aArgParser, COMMAND
 }
 
 
-static COMMAND_ENTRY* recurseArgParserSubCommandUsed( argparse::ArgumentParser& aArgParser,
-                                                      COMMAND_ENTRY&            aEntry )
+static COMMAND_ENTRY* recurseArgParserSubCommandUsed( argparse::ArgumentParser& aArgParser, COMMAND_ENTRY& aEntry )
 {
     COMMAND_ENTRY* cliCmd = nullptr;
 
@@ -325,7 +462,7 @@ static COMMAND_ENTRY* recurseArgParserSubCommandUsed( argparse::ArgumentParser& 
                 break;
         }
 
-        if(!cliCmd)
+        if( !cliCmd )
             cliCmd = &aEntry;
     }
 
@@ -382,9 +519,7 @@ static std::vector<std::string> preprocessArgs( int argc, char** argv )
 {
     std::vector<std::string> result;
 
-    static const std::set<std::string> vectorArgs = {
-        "--rotate", "--pan", "--pivot"
-    };
+    static const std::set<std::string> vectorArgs = { "--rotate", "--pan", "--pivot" };
 
     for( int i = 0; i < argc; ++i )
     {
@@ -457,7 +592,7 @@ bool PGM_KICAD_CLI::OnPgmInit()
     SetGitBackend( new LIBGIT_BACKEND() );
     GetGitBackend()->Init();
 
-    if( !InitPgm( true, true) )
+    if( !InitPgm( true ) )
         return false;
 
     m_bm.InitSettings( new KICAD_SETTINGS );
@@ -481,10 +616,7 @@ int PGM_KICAD_CLI::OnPgmRun()
             .flag()
             .nargs( 0 );
 
-    argParser.add_argument( ARG_HELP_SHORT, ARG_HELP )
-            .help( UTF8STDSTR( ARG_HELP_DESC ) )
-            .flag()
-            .nargs( 0 );
+    argParser.add_argument( ARG_HELP_SHORT, ARG_HELP ).help( UTF8STDSTR( ARG_HELP_DESC ) ).flag().nargs( 0 );
 
     for( COMMAND_ENTRY& entry : commandStack )
     {
@@ -542,7 +674,7 @@ int PGM_KICAD_CLI::OnPgmRun()
         return requestedHelp ? 0 : CLI::EXIT_CODES::ERR_ARGS;
     }
 
-    if( argParser[ ARG_HELP ] == true )
+    if( argParser[ARG_HELP] == true )
     {
         std::stringstream ss;
         ss << argParser;
@@ -599,17 +731,39 @@ int PGM_KICAD_CLI::OnPgmRun()
 
 void PGM_KICAD_CLI::OnPgmExit()
 {
-    // Abort and wait on any background jobs
-    GetKiCadThreadPool().purge();
-    GetKiCadThreadPool().wait();
+    // Abort and wait on any background jobs, if InitPgm() got far enough to start the pool
+    if( m_singleton.m_ThreadPool )
+    {
+        GetKiCadThreadPool().purge();
+        GetKiCadThreadPool().wait();
+    }
 
-    s_kiway.OnKiwayEnd();
+    for( KIWAY_FACES::FACE_T face : { KIWAY_FACES::FACE_SCH, KIWAY_FACES::FACE_PCB } )
+    {
+        if( KIFACE* kiface = s_kiway.KiFACE( face, false ) )
+            kiface->Reset();
+    }
 
     if( m_settings_manager && m_settings_manager->IsOK() )
     {
         SaveCommonSettings();
         m_settings_manager->Save();
+
+        // Unload projects while the kiface DRC/ERC severity tables their PROJECT_FILE serializes
+        // against are still alive; deferring to static teardown crashes
+        for( const wxString& projectPath : m_settings_manager->GetOpenProjects() )
+        {
+            if( PROJECT* project = m_settings_manager->GetProject( projectPath ) )
+                m_settings_manager->UnloadProject( project, false );
+        }
     }
+
+    s_kiway.OnKiwayEnd();
+
+    // Release module settings while the settings manager is still available.
+    Destroy();
+
+    m_settings_manager.reset();
 
     if( GetGitBackend() )
     {
@@ -618,10 +772,6 @@ void PGM_KICAD_CLI::OnPgmExit()
         SetGitBackend( nullptr );
     }
 
-    // Destroy everything in PGM_KICAD,
-    // especially wxSingleInstanceCheckerImpl earlier than wxApp and earlier
-    // than static destruction would.
-    Destroy();
 }
 
 
@@ -643,7 +793,8 @@ static PGM_KICAD_CLI program;
  */
 struct APP_KICAD_CLI : public wxAppConsole
 {
-    APP_KICAD_CLI() : wxAppConsole()
+    APP_KICAD_CLI() :
+            wxAppConsole()
     {
         SetPgm( &program );
 
@@ -669,13 +820,19 @@ struct APP_KICAD_CLI : public wxAppConsole
         }
 #endif
 
-        if( !program.OnPgmInit() )
+        // An escaping exception would skip OnPgmExit() and crash the static teardown
+        try
         {
-            program.OnPgmExit();
-            return false;
+            if( program.OnPgmInit() )
+                return true;
+        }
+        catch( ... )
+        {
+            Pgm().HandleException( std::current_exception() );
         }
 
-        return true;
+        program.OnPgmExit();
+        return false;
     }
 
     int OnExit() override
@@ -692,21 +849,27 @@ struct APP_KICAD_CLI : public wxAppConsole
 #endif
 
         program.OnPgmExit();
+        program.ExitIfTeardownUnsafe();
+
         return ret;
     }
 
     int OnRun() override
     {
+        int ret = -1;
+
         try
         {
-            return program.OnPgmRun();
+            ret = program.OnPgmRun();
         }
         catch( ... )
         {
             Pgm().HandleException( std::current_exception() );
         }
 
-        return -1;
+        program.SetRunResult( ret );
+
+        return ret;
     }
 };
 

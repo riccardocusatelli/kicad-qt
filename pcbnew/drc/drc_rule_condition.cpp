@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -150,6 +146,10 @@ bool DRC_RULE_CONDITION::Compile( REPORTER* aReporter, int aSourceLine, int aSou
     PCBEXPR_CONTEXT preflightContext( 0, F_Cu );
 
     bool ok = compiler.Compile( GetExpression().ToUTF8().data(), m_ucode.get(), &preflightContext );
+
+    if( !ok )
+        m_ucode.reset();
+
     return ok;
 }
 
@@ -160,3 +160,13 @@ bool DRC_RULE_CONDITION::HasGeometryDependentFunctions() const
 }
 
 
+bool DRC_RULE_CONDITION::RequiresPairItems() const
+{
+    return m_ucode && m_ucode->RequiresPairItems();
+}
+
+
+bool DRC_RULE_CONDITION::ReferencesItemB() const
+{
+    return m_ucode && m_ucode->ReferencesItemB();
+}

@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef SYM_TREE_PANE_H
@@ -28,9 +24,11 @@
 
 #include <wx/panel.h>
 #include <wx/dataview.h>
+#include <functional>
 #include <vector>
 
 class LIB_TREE;
+class LIB_TREE_NODE;
 class SYMBOL_EDIT_FRAME;
 class LIB_SYMBOL_LIBRARY_MANAGER;
 class wxBoxSizer;
@@ -62,6 +60,8 @@ protected:
     SYMBOL_EDIT_FRAME*          m_symbolEditFrame;
     LIB_TREE*                   m_tree;             ///< symbol search tree widget
     LIB_SYMBOL_LIBRARY_MANAGER* m_libMgr;
+
+    std::function<bool( LIB_TREE_NODE& )> m_filter;
 };
 
 #endif /* SYM_TREE_PANE_H */

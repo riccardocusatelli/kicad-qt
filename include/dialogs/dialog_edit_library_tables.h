@@ -13,17 +13,21 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
-#ifndef DIALOG_EDIT_LIBRARY_TABLES_H
-#define DIALOG_EDIT_LIBRARY_TABLES_H
+#pragma once
 
 #include <dialog_shim.h>
+#include <functional>
 #include <wx/panel.h>
+#include <wx/aui/auibook.h>
 #include <widgets/wx_infobar.h>
+
+
+class LIBRARY_TABLE;
 
 
 class DIALOG_EDIT_LIBRARY_TABLES : public DIALOG_SHIM
@@ -35,7 +39,7 @@ public:
 public:
     DIALOG_EDIT_LIBRARY_TABLES( wxWindow* aParent, const wxString& aTitle );
 
-    void InstallPanel( wxPanel* aPanel );
+    void InstallPanel( wxPanel* aPanel, wxAuiNotebook* aNotebook );
 
     bool TransferDataToWindow() override;
     bool TransferDataFromWindow() override;
@@ -51,10 +55,18 @@ public:
         m_infoBar->ShowMessageFor( aErrorMsg, 8000, wxICON_ERROR, aType );
     }
 
+    bool CanClose();
+
+    /// Ask before a save replaces a table file that changed on disk after the table was loaded
+    bool ConfirmOverwrite( const LIBRARY_TABLE& aTable );
+
 protected:
-    WX_INFOBAR* m_infoBar;
-    wxPanel*    m_contentPanel;
+    WX_INFOBAR*    m_infoBar;
+    wxAuiNotebook* m_notebook;
+    wxPanel*       m_contentPanel;
+    bool           m_closeOKed = false;
+
+private:
+    void onCloseWindow( wxCloseEvent& aEvent );
+    void onCancelButton( wxCommandEvent& aEvent );
 };
-
-
-#endif //DIALOG_EDIT_LIBRARY_TABLES_H

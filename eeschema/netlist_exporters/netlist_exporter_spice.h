@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef NETLIST_EXPORTER_SPICE_H
@@ -30,12 +26,16 @@
 #include <sim/sim_lib_mgr.h>
 #include <sim/sim_library.h>
 #include <sim/sim_model.h>
+#include <sim/sim_model_multiunit.h>
 #include <sim/spice_generator.h>
 
 #include <list>
 
 
 class wxWindow;
+
+// Test-only access seam for the private multi-unit helpers (see qa/tests/spice).
+class NETLIST_EXPORTER_SPICE_PROBE;
 
 
 class NAME_GENERATOR
@@ -54,6 +54,8 @@ private:
 class NETLIST_EXPORTER_SPICE : public NETLIST_EXPORTER_BASE
 {
 public:
+    friend class NETLIST_EXPORTER_SPICE_PROBE;
+
     enum OPTIONS
     {
         OPTION_ADJUST_INCLUDE_PATHS  = 0x0010,
@@ -72,12 +74,12 @@ public:
                                | OPTION_SAVE_ALL_EVENTS
     };
 
-    NETLIST_EXPORTER_SPICE( SCHEMATIC* aSchematic );
+    NETLIST_EXPORTER_SPICE( SCHEMATIC* aSchematic, KIWAY* aKiway );
 
     /**
      * Write to specified output file.
      */
-    bool WriteNetlist( const wxString& aOutFileName, unsigned aNetlistOptions,
+    bool writeNetlist( const wxString& aOutFileName, unsigned aNetlistOptions,
                        REPORTER& aReporter ) override;
 
     /**
@@ -105,7 +107,8 @@ public:
     virtual bool ReadSchematicAndLibraries( unsigned aNetlistOptions, REPORTER& aReporter );
 
     /**
-     * Remove formatting wrappers and replace illegal spice net name characters with underscores.
+     * Convert an escaped schematic net name to SPICE, preserving literal slashes when mapping ground names.
+     * Remove formatting wrappers and replace illegal SPICE characters with underscores.
      */
     static void ConvertToSpiceMarkup( wxString* aNetName );
 
@@ -162,9 +165,35 @@ private:
      *
      * @param aSymbol The symbol to collect pins for
      * @param aSheet The sheet path for the symbol
+     * @param aVariantName is the variant name or empty if the default variant.
      * @return The merged Sim.Pins string, or empty string if symbol is not multi-unit
      */
-    wxString collectMergedSimPins( SCH_SYMBOL& aSymbol, const SCH_SHEET_PATH& aSheet );
+    wxString collectMergedSimPins( SCH_SYMBOL& aSymbol, const SCH_SHEET_PATH& aSheet,
+                                   const wxString& aVariantName );
+
+    /**
+     * Gather every unit's Sim.Pins mapping for a multi-unit symbol, one entry per unit.
+     *
+     * Unlike collectMergedSimPins(), repeats of a model pin across units are preserved
+     * (they are the signal that drives repeat-per-unit decomposition).  The Sim.Pins are
+     * resolved with the active variant.
+     *
+     * @param aSymbol  The primary unit being processed.
+     * @param aSheet   The sheet path for the symbol.
+     * @param aVariantName  The active design variant (for field resolution).
+     * @return One UNIT_PIN_MAP per unit found, in hierarchy traversal order.
+     */
+    std::vector<UNIT_PIN_MAP> collectUnitPinMaps( SCH_SYMBOL& aSymbol, const SCH_SHEET_PATH& aSheet,
+                                                  const wxString& aVariantName );
+
+    /**
+     * Read and parse the Sim.Decomposition field from the primary unit.
+     *
+     * The exporter's traversal (see NETLIST_EXPORTER_BASE::findNextSymbol) guarantees the
+     * symbol reaching readModel() is the primary unit, so the field is read directly from it.
+     */
+    SIM_DECOMPOSITION getDecomposition( SCH_SYMBOL& aSymbol, const SCH_SHEET_PATH& aSheet,
+                                        const wxString& aVariantName ) const;
 
     void readModel( SCH_SHEET_PATH& aSheet, SCH_SYMBOL& aSymbol, SPICE_ITEM& aItem,
                     const wxString& aVariantName, REPORTER& aReporter );
@@ -190,8 +219,11 @@ private:
     std::set<wxString>      m_rawIncludes;        ///< include directives found in symbols
     std::set<wxString>      m_nets;
 
-    ///< Items representing schematic symbols in Spice world.
+    /// Items representing schematic symbols in Spice world.
     std::list<SPICE_ITEM>   m_items;
+
+    /// Owns the synthesized repeat-per-unit wrappers referenced by m_items.
+    std::vector<std::unique_ptr<SIM_MODEL_MULTIUNIT>> m_multiunitModels;
 };
 
 

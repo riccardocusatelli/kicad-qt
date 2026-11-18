@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef __PNS_INDEX_H
@@ -51,7 +51,35 @@ public:
     typedef SHAPE_INDEX<ITEM*>          ITEM_SHAPE_INDEX;
     typedef std::unordered_set<ITEM*>   ITEM_SET;
 
-    INDEX(){};
+    INDEX() : m_deferred( false ) {};
+
+    /**
+     * When deferred, Add() registers items in metadata but skips spatial index
+     * insertion. Call BuildSpatialIndex() to bulk load all items at once.
+     */
+    void SetDeferred( bool aDeferred );
+
+    /**
+     * Bulk load the spatial sub-indices from all registered items.
+     * Call after SetDeferred(false) to populate the R-trees.
+     */
+    void BuildSpatialIndex();
+
+    /**
+     * Create a copy-on-write clone of this index. The spatial tree structure is
+     * shared (O(1)) while metadata (net map, item set) is copied.
+     */
+    std::unique_ptr<INDEX> Clone() const
+    {
+        auto clone = std::make_unique<INDEX>();
+
+        for( const auto& si : m_subIndices )
+            clone->m_subIndices.emplace_back( std::make_unique<ITEM_SHAPE_INDEX>( si->Clone() ) );
+
+        clone->m_netMap = m_netMap;
+        clone->m_allItems = m_allItems;
+        return clone;
+    }
 
     /**
      * Adds item to the spatial index.
@@ -127,6 +155,7 @@ private:
     std::deque<std::unique_ptr<ITEM_SHAPE_INDEX>> m_subIndices;
     std::map<NET_HANDLE, NET_ITEMS_LIST> m_netMap;
     ITEM_SET                             m_allItems;
+    bool                                 m_deferred;
 };
 
 

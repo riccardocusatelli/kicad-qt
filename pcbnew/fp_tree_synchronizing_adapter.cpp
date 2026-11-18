@@ -16,14 +16,11 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <pgm_base.h>
+#include <kiplatform/ui.h>
 #include <project/project_file.h>
 #include <fp_tree_synchronizing_adapter.h>
 #include <footprint_edit_frame.h>
@@ -36,10 +33,10 @@
 #include <footprint.h>
 #include <tool/tool_manager.h>
 #include <tools/footprint_editor_control.h>
-#include <kiplatform/ui.h>
 
 #include <map>
 
+#include <wx/log.h>
 #include <wx/settings.h>
 #include <core/ki_assert.h>
 #include <settings/common_settings.h>
@@ -78,12 +75,17 @@ void FP_TREE_SYNCHRONIZING_ADAPTER::Sync( FOOTPRINT_LIBRARY_ADAPTER* aLibs )
 {
     m_libs = aLibs;
 
-    // Cancels a queued scroll; a frame-clock tick would else walk rows freed below
+    KI_LOG_TRACE( wxT( "KICAD_TABS_DBG" ), wxT( "FpSyncAdapter::Sync enter" ) );
+
+    // The work below frees nodes while the caller yields the event loop, so a GtkTreeView scroll
+    // queued earlier would point at freed rows and crash the next frame-clock tick. Drop it first.
     KIPLATFORM::UI::CancelPendingScroll( m_widget );
 
-    // Detaches the model for the rebuild; a frame-clock tick during an event loop yield
-    // would else validate freed rows
+    // Detach the GtkTreeView from the model before freeing any node so the frame-clock tick during
+    // the caller's yield has no stale rows to validate. The RAII guard re-attaches on all paths.
     ResetTreeView resetGuard( *this );
+
+    KI_LOG_TRACE( wxT( "KICAD_TABS_DBG" ), wxT( "FpSyncAdapter::Sync freeing/updating nodes" ) );
 
     // Process already stored libraries
     for( auto it = m_tree.m_Children.begin(); it != m_tree.m_Children.end(); )
@@ -154,6 +156,8 @@ void FP_TREE_SYNCHRONIZING_ADAPTER::Sync( FOOTPRINT_LIBRARY_ADAPTER* aLibs )
 
     if( m_libMap.size() > count )
         m_tree.AssignIntrinsicRanks( m_shownColumns );
+
+    KI_LOG_TRACE( wxT( "KICAD_TABS_DBG" ), wxT( "FpSyncAdapter::Sync exit" ) );
 }
 
 
@@ -203,13 +207,12 @@ void FP_TREE_SYNCHRONIZING_ADAPTER::updateLibrary( LIB_TREE_NODE_LIBRARY& aLibNo
 }
 
 
-LIB_TREE_NODE::PTR_VECTOR::iterator
-FP_TREE_SYNCHRONIZING_ADAPTER::deleteLibrary( LIB_TREE_NODE::PTR_VECTOR::iterator& aLibNodeIt )
+std::vector<std::unique_ptr<LIB_TREE_NODE>>::iterator
+FP_TREE_SYNCHRONIZING_ADAPTER::deleteLibrary( std::vector<std::unique_ptr<LIB_TREE_NODE>>::iterator& aLibNodeIt )
 {
     LIB_TREE_NODE* node = aLibNodeIt->get();
     m_libMap.erase( node->m_Name );
-    auto it = m_tree.m_Children.erase( aLibNodeIt );
-    return it;
+    return m_tree.m_Children.erase( aLibNodeIt );
 }
 
 
@@ -229,6 +232,12 @@ void FP_TREE_SYNCHRONIZING_ADAPTER::GetValue( wxVariant& aVariant, wxDataViewIte
     }
 
     LIB_TREE_NODE* node = ToNode( aItem );
+
+    if( !node )
+    {
+        aVariant = wxEmptyString;
+        return;
+    }
 
     switch( aCol )
     {

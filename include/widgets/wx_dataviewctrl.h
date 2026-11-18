@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef WX_DATAVIEWCTRL_H_
@@ -23,6 +23,7 @@
 #include <functional>
 #include <utility>
 
+#include <kicommon.h>
 #include <wx/dataview.h>
 
 /**
@@ -81,7 +82,7 @@ private:
  * These should probably be sent upstream, since they may be useful to others, but for now
  * just extend the class with them ourselves.
  */
-class WX_DATAVIEWCTRL : public wxDataViewCtrl
+class KICOMMON_API WX_DATAVIEWCTRL : public wxDataViewCtrl
 {
 public:
     // Just take all constructors

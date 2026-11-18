@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "teardrop/teardrop.h"
@@ -34,7 +30,6 @@
 #include <connectivity/connectivity_data.h>
 #include <drc/drc_rtree.h>
 #include <geometry/shape_line_chain.h>
-#include <geometry/rtree.h>
 #include <convert_basic_shapes_to_polygon.h>
 #include <bezier_curves.h>
 
@@ -123,7 +118,7 @@ ZONE* TEARDROP_MANAGER::createTeardrop( TEARDROP_VARIANT aTeardropVariant,
     teardrop->SetTeardropAreaType( aTeardropVariant == TD_TYPE_PADVIA ? TEARDROP_TYPE::TD_VIAPAD
                                                                       : TEARDROP_TYPE::TD_TRACKEND );
     teardrop->SetLayer( aSourceTrack->GetLayer() );
-    teardrop->SetNetCode( aSourceTrack->GetNetCode() );
+    teardrop->SetNetCode( aSourceTrack->GetNetCode(), /* aNoAssert */ true );
     teardrop->SetLocalClearance( 0 );
     teardrop->SetMinThickness( pcbIUScale.mmToIU( 0.0254 ) );  // The minimum zone thickness
     teardrop->SetPadConnection( ZONE_CONNECTION::FULL );
@@ -203,11 +198,14 @@ void TEARDROP_MANAGER::createAndAddTeardropWithMask( BOARD_COMMIT& aCommit,
 {
     ZONE* new_teardrop = createTeardrop( aTeardropVariant, aPoints, aSourceTrack, aUuid );
     m_board->Add( new_teardrop, ADD_MODE::BULK_INSERT );
+
     m_createdTdList.push_back( new_teardrop );
 
     // The next teardrop has to see this one, or two of them flare into the same gap.
-    ensureCopperIndex();
-    m_copperRTree.Insert( new_teardrop, new_teardrop->GetLayer() );
+    BOX2I     bbox = new_teardrop->Outline()->BBox();
+    const int bmin[2] = { bbox.GetX(), bbox.GetY() };
+    const int bmax[2] = { bbox.GetRight(), bbox.GetBottom() };
+    m_createdTdRTree[aSourceTrack->GetLayer()].Insert( bmin, bmax, new_teardrop );
 
     aCommit.Added( new_teardrop );
 

@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <gal_display_options_common.h>
@@ -150,16 +150,15 @@ void FOOTPRINT_PREVIEW_PANEL::fitToCurrentFootprint()
     bool  includeText = m_currentFootprint->TextOnly();
     BOX2I bbox = m_currentFootprint->GetBoundingBox( includeText );
 
-    if( bbox.GetSize().x > 0 && bbox.GetSize().y > 0 )
-    {
-        // Autozoom
-        GetView()->SetViewport( BOX2D( bbox.GetOrigin(), bbox.GetSize() ) );
+    bbox.Inflate( pcbIUScale.mmToIU( ADVANCED_CFG::GetCfg().m_DRCEpsilon * 100 ) );
 
-        // Add a margin
-        GetView()->SetScale( GetView()->GetScale() * 0.7 );
+    // Autozoom
+    GetView()->SetViewport( BOX2D( bbox.GetOrigin(), bbox.GetSize() ) );
 
-        Refresh();
-    }
+    // Add a margin
+    GetView()->SetScale( GetView()->GetScale() * 0.7 );
+
+    Refresh();
 }
 
 
@@ -173,7 +172,12 @@ void FOOTPRINT_PREVIEW_PANEL::onSize( wxSizeEvent& aEvent )
 
         // Defer the fit until after the base class onSize handler has called
         // GAL::ResizeScreen(), so SetViewport sees the correct screen dimensions.
-        CallAfter( [this]() { fitToCurrentFootprint(); } );
+        CallAfter(
+                [this]()
+                {
+                    fitToCurrentFootprint();
+                }
+                );
     }
 }
 
@@ -259,7 +263,7 @@ FOOTPRINT_PREVIEW_PANEL* FOOTPRINT_PREVIEW_PANEL::New( KIWAY* aKiway, wxWindow* 
     gal_opts = std::make_unique<GAL_DISPLAY_OPTIONS_IMPL>();
     gal_opts->ReadConfig( *commonSettings, cfg->m_Window, aParent );
 
-    auto galType = static_cast<EDA_DRAW_PANEL_GAL::GAL_TYPE>( commonSettings->m_Graphics.canvas_type );
+    auto galType = EDA_DRAW_PANEL_GAL::ResolveStoredCanvasType( commonSettings->m_Graphics.canvas_type );
     FOOTPRINT_PREVIEW_PANEL* panel = new FOOTPRINT_PREVIEW_PANEL( aKiway, aParent, aUnitsProvider,
                                                                   std::move( gal_opts ), galType );
 

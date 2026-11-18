@@ -31,6 +31,7 @@
 #include <field_validation.h>
 
 #include <refdes_utils.h>
+#include <string_utils.h>
 #include <wx/arrstr.h>
 #include <wx/intl.h>
 
@@ -45,6 +46,8 @@ wxString FieldExcludedChars( FIELD_T aFieldId )
         excludes += wxT( " " );
     else if( aFieldId == FIELD_T::SHEET_NAME )
         excludes += wxT( "/" );
+    else if( aFieldId == FIELD_T::SHEET_REF_SUFFIX )
+        excludes += wxT( " ?," );   // '?' marks unannotated references, ',' stacked sheet series
 
     return excludes;
 }
@@ -61,8 +64,16 @@ bool FieldCannotBeEmpty( FIELD_T aFieldId )
 wxString GetFieldValidationErrorMessage( FIELD_T aFieldId, const wxString& aValue )
 {
     wxString msg;
+    wxString value = aValue;
 
-    if( FieldCannotBeEmpty( aFieldId ) && aValue.empty() )
+    // Editors and rendering each unescape, so {brace}comma} must not survive as a hidden comma
+    if( aFieldId == FIELD_T::SHEET_REF_SUFFIX )
+    {
+        for( wxString next = UnescapeString( value ); next != value; next = UnescapeString( value ) )
+            value = next;
+    }
+
+    if( FieldCannotBeEmpty( aFieldId ) && value.empty() )
     {
         switch( aFieldId )
         {
@@ -78,7 +89,7 @@ wxString GetFieldValidationErrorMessage( FIELD_T aFieldId, const wxString& aValu
 
         for( const wxUniChar& excludeChar : FieldExcludedChars( aFieldId ) )
         {
-            if( aValue.Find( excludeChar ) != wxNOT_FOUND )
+            if( value.Find( excludeChar ) != wxNOT_FOUND )
             {
                 if( excludeChar == '\r' )
                     badCharsFound.Add( _( "carriage return" ) );
@@ -143,6 +154,10 @@ wxString GetFieldValidationErrorMessage( FIELD_T aFieldId, const wxString& aValu
                 msg.Printf( _( "The sheet filename cannot contain %s character(s)." ), badChars );
                 break;
 
+            case FIELD_T::SHEET_REF_SUFFIX:
+                msg.Printf( _( "The reference suffix cannot contain %s character(s)." ), badChars );
+                break;
+
             default:
                 msg.Printf( _( "The field cannot contain %s character(s)." ), badChars );
                 break;
@@ -152,13 +167,18 @@ wxString GetFieldValidationErrorMessage( FIELD_T aFieldId, const wxString& aValu
 
     if( msg.empty() )
     {
-        if( aFieldId == FIELD_T::REFERENCE && aValue.Contains( wxT( "${" ) ) )
+        if( aFieldId == FIELD_T::REFERENCE && value.Contains( wxT( "${" ) ) )
         {
             msg.Printf( _( "The reference designator cannot contain text variable references" ) );
         }
-        else if( aFieldId == FIELD_T::REFERENCE && UTIL::GetRefDesPrefix( aValue ).IsEmpty() )
+        else if( aFieldId == FIELD_T::REFERENCE && UTIL::GetRefDesPrefix( value ).IsEmpty() )
         {
             msg.Printf( _( "References must start with a letter." ) );
+        }
+        else if( aFieldId == FIELD_T::SHEET_REF_SUFFIX && !value.empty() && wxIsdigit( value[0] ) )
+        {
+            // References end in their number, so R1 with suffix 2 would read as R12
+            msg = _( "The reference suffix cannot start with a digit." );
         }
     }
 

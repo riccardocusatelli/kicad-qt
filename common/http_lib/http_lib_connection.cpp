@@ -14,12 +14,12 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <wx/log.h>
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <wx/translation.h>
 #include <ctime>
 
@@ -351,6 +351,16 @@ bool HTTP_LIB_CONNECTION::SelectOne( const std::string& aPartID, HTTP_LIB_PART& 
 
         setPartIdNameAndMetadata( response, aFetchedPart );
         setPartExtendedData( response, aFetchedPart );
+
+        // parse optional pin assignments (legacy flat form; issue #2282)
+        aFetchedPart.pin_map.clear();
+
+        if( response.contains( "pin_map" ) )
+            aFetchedPart.pin_map = ParseLegacyPinAssignments( response["pin_map"] );
+
+        // parse the spec-form named pin maps + footprint associations (issue #2282)
+        aFetchedPart.named_pin_maps = ParsePinMapSet( response );
+        aFetchedPart.associated_footprints = ParseAssociatedFootprints( response );
 
         // Reaching the per-part endpoint means we have the full record, even if the
         // server returned no fields for this part; otherwise it would be re-fetched forever.

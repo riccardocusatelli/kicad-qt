@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -29,6 +25,7 @@
 #include <eda_text.h>
 #include <geometry/shape_arc.h>
 #include <padstack.h>
+#include <reporter.h>
 
 #include <deque>
 #include <functional>
@@ -59,6 +56,7 @@ public:
         has_graphic( false ),
         has_nets( false ),
         has_pins( false ),
+        m_reporter( nullptr ),
         m_progressReporter( nullptr ),
         m_doneCount( 0 ),
         m_lastProgressCount( 0 ),
@@ -69,6 +67,12 @@ public:
     bool Read( const std::string& aFile );
 
     bool Process();
+
+    /**
+     * Set the reporter used for import diagnostics. Must be called before Read()/Process(),
+     * as that is where the bulk of the parse diagnostics are emitted.
+     */
+    void SetReporter( REPORTER* aReporter ) { m_reporter = aReporter; }
 
     bool LoadBoard( BOARD* aBoard, PROGRESS_REPORTER* aProgressReporter );
 
@@ -653,6 +657,38 @@ private:
     static std::vector<std::unique_ptr<BOARD_ITEM>>
     createBoardItems( BOARD& aBoard, PCB_LAYER_ID aLayer, FABMASTER::GRAPHIC_ITEM& aGraphic );
 
+    /**
+     * Report a malformed-input issue the user can act on. Silent when no reporter is attached,
+     * which is the case for QA and any other non-interactive caller.
+     */
+    void reportError( const wxString& aMsg ) const
+    {
+        if( m_reporter )
+            m_reporter->Report( aMsg, RPT_SEVERITY_ERROR );
+    }
+
+    template <typename... Args>
+    void reportError( const wxString& aFormat, Args&&... aArgs ) const
+    {
+        if( m_reporter )
+            m_reporter->Report( wxString::Format( aFormat, aArgs... ), RPT_SEVERITY_ERROR );
+    }
+
+    template <typename... Args>
+    void reportWarning( const wxString& aFormat, Args&&... aArgs ) const
+    {
+        if( m_reporter )
+            m_reporter->Report( wxString::Format( aFormat, aArgs... ), RPT_SEVERITY_WARNING );
+    }
+
+    template <typename... Args>
+    void reportInfo( const wxString& aFormat, Args&&... aArgs ) const
+    {
+        if( m_reporter )
+            m_reporter->Report( wxString::Format( aFormat, aArgs... ), RPT_SEVERITY_INFO );
+    }
+
+    REPORTER*           m_reporter;           ///< optional; may be nullptr
     PROGRESS_REPORTER*  m_progressReporter;  ///< optional; may be nullptr
     unsigned            m_doneCount;
     unsigned            m_lastProgressCount;

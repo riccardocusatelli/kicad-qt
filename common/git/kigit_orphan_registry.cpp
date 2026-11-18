@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "kigit_orphan_registry.h"
@@ -45,21 +41,6 @@ KIGIT_ORPHAN_REGISTRY::~KIGIT_ORPHAN_REGISTRY()
     }
 
     m_entries.clear();
-}
-
-
-size_t KIGIT_ORPHAN_REGISTRY::TrackedCount() const
-{
-    std::lock_guard<std::mutex> lock( m_mutex );
-    size_t                      count = 0;
-
-    for( const ENTRY& entry : m_entries )
-    {
-        if( !entry.m_state->m_done.load( std::memory_order_acquire ) )
-            ++count;
-    }
-
-    return count;
 }
 
 

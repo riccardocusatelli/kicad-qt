@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef DS_PROXY_VIEW_ITEM_H
@@ -28,6 +24,9 @@
 
 #include <eda_item.h>
 #include <eda_units.h>
+#include <functional>
+#include <memory>
+#include <vector>
 
 class BOARD;
 class PAGE_INFO;
@@ -38,11 +37,14 @@ class DS_DRAW_ITEM_RECT;
 class DS_DRAW_ITEM_TEXT;
 class DS_DRAW_ITEM_BITMAP;
 class DS_DRAW_ITEM_LIST;
+class TEXT_VAR_TRACKER;
+struct TEXT_VAR_REF_KEY;
 
 namespace KIGFX
 {
 class VIEW;
 class GAL;
+class DS_PAINTER;
 }
 
 class DS_PROXY_VIEW_ITEM : public EDA_ITEM
@@ -107,17 +109,13 @@ public:
     const PAGE_INFO& GetPageInfo() { return *m_pageInfo; }
     const TITLE_BLOCK& GetTitleBlock() { return *m_titleBlock; }
 
-    /// @copydoc VIEW_ITEM::ViewBBox()
     const BOX2I ViewBBox() const override;
 
-    /// @copydoc VIEW_ITEM::ViewDraw()
     void ViewDraw( int aLayer, KIGFX::VIEW* aView ) const override;
 
-    /// @copydoc VIEW_ITEM::ViewGetLayers()
     std::vector<int> ViewGetLayers() const override;
 
 #if defined(DEBUG)
-    /// @copydoc EDA_ITEM::Show()
     void Show( int x, std::ostream& st ) const override { }
 #endif
 
@@ -132,6 +130,33 @@ public:
     }
 
     bool HitTestDrawingSheetItems( KIGFX::VIEW* aView, const VECTOR2I& aPosition );
+
+    /**
+     * Walk the current drawing-sheet definition and collect every `${...}`
+     * reference encountered in its text items. Used by reactive integrations
+     * (BOARD / SCHEMATIC text-var trackers) to register the proxy as a single
+     * dependent covering the whole title block — any source change fans out
+     * to one repaint rather than per-text-item.
+     */
+    std::vector<TEXT_VAR_REF_KEY> CollectTextVarKeys() const;
+
+    /**
+     * Register this proxy with @p aTracker as a dependent on every
+     * title-block source variable its current template references. The
+     * proxy retains a pointer to @p aTracker and unregisters automatically
+     * in its destructor.
+     *
+     * Callers are responsible for attaching a single long-lived invalidate
+     * listener to @p aTracker that routes per-proxy invalidations (e.g.,
+     * look up the canvas's current drawing sheet and call VIEW::Update on
+     * it). This avoids listener accumulation when the proxy is replaced on
+     * page-setup changes.
+     *
+     * Passing @p aTracker as nullptr detaches.
+     */
+    void AttachToTracker( TEXT_VAR_TRACKER* aTracker );
+
+    ~DS_PROXY_VIEW_ITEM() override;
 
 protected:
     void buildDrawList( KIGFX::VIEW* aView, const std::map<wxString, wxString>* aProperties,
@@ -162,6 +187,14 @@ protected:
 
     /// Layer that is used for page border color
     int                 m_pageBorderColorLayer;
+
+    /// Painter kept between draws because building its settings is costly, rebuilt if the GAL changes
+    mutable std::unique_ptr<KIGFX::DS_PAINTER> m_painter;
+    mutable KIGFX::GAL*                        m_painterGal = nullptr;
+
+    /// Tracker this proxy is currently registered with (null if detached).
+    /// Used by the destructor to unregister cleanly.
+    TEXT_VAR_TRACKER*   m_attachedTracker = nullptr;
 };
 
 #endif /* DS_PROXY_VIEW_ITEM_H */

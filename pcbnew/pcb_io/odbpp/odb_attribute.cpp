@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "odb_attribute.h"
@@ -58,15 +58,22 @@ void ATTR_RECORD_WRITER::WriteAttributes( std::ostream& ost ) const
 {
     ODB::CHECK_ONCE once;
 
-    ost << " ";
+    // Some readers need the attribute and ID sections even when both are empty
+    if( m_ODBattributes.empty() )
+    {
+        ost << " ;;";
+        return;
+    }
+
+    ost << " ;";
 
     for( const auto& attr : m_ODBattributes )
     {
-        if( once() )
-            ost << ";";
-        else
+        if( !once() )
             ost << ",";
+
         ost << attr.first;
+
         if( attr.second.size() )
             ost << "=" << attr.second;
     }

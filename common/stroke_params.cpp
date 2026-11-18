@@ -13,14 +13,15 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "stroke_params.h"
 #include "stroke_params_parser.h"
 
 #include <base_units.h>
+#include <bitmaps.h>
 #include <charconv>
 #include <string_utils.h>
 #include <render_settings.h>
@@ -29,6 +30,7 @@
 #include <geometry/shape_rect.h>
 #include <geometry/shape_segment.h>
 #include <geometry/shape_simple.h>
+#include <geometry/shape_ellipse.h>
 #include <geometry/shape_line_chain.h>
 #include <macros.h>
 #include <trigo.h>
@@ -49,11 +51,9 @@ const std::map<LINE_STYLE, struct LINE_STYLE_DESC> lineTypeNames = {
 
 void STROKE_PARAMS::Stroke( const SHAPE* aShape, LINE_STYLE aLineStyle, int aWidth,
                             const KIGFX::RENDER_SETTINGS* aRenderSettings,
-                            const std::function<void( const VECTOR2I& a,
-                                                      const VECTOR2I& b )>& aStroker )
+                            const std::function<void( const VECTOR2I& a, const VECTOR2I& b )>& aStroker )
 {
-    double strokes[6] = { aWidth * 1.0, aWidth * 1.0, aWidth * 1.0, aWidth * 1.0, aWidth * 1.0,
-                          aWidth * 1.0 };
+    double strokes[6] = { aWidth * 1.0, aWidth * 1.0, aWidth * 1.0, aWidth * 1.0, aWidth * 1.0, aWidth * 1.0 };
     int    wrapAround = 6;
 
     switch( aLineStyle )
@@ -301,8 +301,113 @@ void STROKE_PARAMS::Stroke( const SHAPE* aShape, LINE_STYLE aLineStyle, int aWid
         break;
     }
 
+    case SH_ELLIPSE:
+    {
+        const SHAPE_ELLIPSE* ellipse = static_cast<const SHAPE_ELLIPSE*>( aShape );
+
+        VECTOR2I  center = ellipse->GetCenter();
+        double    a = ellipse->GetMajorRadius();
+        double    b = ellipse->GetMinorRadius();
+        EDA_ANGLE rotation = ellipse->GetRotation();
+        double    cosRot = rotation.Cos();
+        double    sinRot = rotation.Sin();
+
+        EDA_ANGLE startAngle = ellipse->IsArc() ? ellipse->GetStartAngle() : ANGLE_0;
+        EDA_ANGLE endAngle = ellipse->IsArc() ? ellipse->GetEndAngle() : ANGLE_360;
+
+        if( endAngle == startAngle )
+            endAngle = startAngle + ANGLE_360;
+
+        if( startAngle > endAngle )
+        {
+            if( endAngle < ANGLE_0 )
+                endAngle = endAngle.Normalize();
+            else
+                startAngle = startAngle.Normalize() - ANGLE_360;
+        }
+
+        auto evalRad = [&]( double thetaRad ) -> VECTOR2D
+        {
+            double x = a * std::cos( thetaRad );
+            double y = b * std::sin( thetaRad );
+            return VECTOR2D( center.x + x * cosRot - y * sinRot, center.y + x * sinRot + y * cosRot );
+        };
+
+        auto evalAngle = [&]( const EDA_ANGLE& theta ) -> VECTOR2I
+        {
+            double x = a * theta.Cos();
+            double y = b * theta.Sin();
+            return VECTOR2I( center.x + KiROUND( x * cosRot - y * sinRot ),
+                             center.y + KiROUND( x * sinRot + y * cosRot ) );
+        };
+
+        // Place strokes by arclength rather than angle so the pattern stays
+        // visually uniform on highly curved ellipses.
+        const double        startRad = startAngle.AsRadians();
+        const double        endRad = endAngle.AsRadians();
+        const int           LUT_SIZE = 1024;
+        std::vector<double> arcLens( LUT_SIZE + 1 );
+
+        arcLens[0] = 0.0;
+        VECTOR2D prev = evalRad( startRad );
+
+        for( int j = 1; j <= LUT_SIZE; ++j )
+        {
+            double   t = startRad + ( endRad - startRad ) * j / LUT_SIZE;
+            VECTOR2D curr = evalRad( t );
+            arcLens[j] = arcLens[j - 1] + ( curr - prev ).EuclideanNorm();
+            prev = curr;
+        }
+
+        const double totalLen = arcLens[LUT_SIZE];
+
+        auto angleAtLen = [&]( double s ) -> double
+        {
+            if( s >= totalLen )
+                return endRad;
+
+            if( s <= 0.0 )
+                return startRad;
+
+            auto it = std::upper_bound( arcLens.begin(), arcLens.end(), s );
+            int  idx = std::distance( arcLens.begin(), it ) - 1;
+
+            double seg = arcLens[idx + 1] - arcLens[idx];
+            double frac = ( seg > 0 ) ? ( s - arcLens[idx] ) / seg : 0.0;
+
+            double t0 = startRad + ( endRad - startRad ) * idx / LUT_SIZE;
+            double t1 = startRad + ( endRad - startRad ) * ( idx + 1 ) / LUT_SIZE;
+
+            return t0 + frac * ( t1 - t0 );
+        };
+
+        EDA_ANGLE angleIncrement( 0.5, DEGREES_T );
+        double    currentLen = 0.0;
+
+        for( size_t i = 0; i < 10000 && currentLen < totalLen; ++i )
+        {
+            double targetLen = std::min( currentLen + strokes[i % wrapAround], totalLen );
+
+            if( i % 2 == 0 )
+            {
+                EDA_ANGLE elemStart( angleAtLen( currentLen ), RADIANS_T );
+                EDA_ANGLE elemEnd( angleAtLen( targetLen ), RADIANS_T );
+
+                for( EDA_ANGLE c = elemStart; c < elemEnd; c += angleIncrement )
+                {
+                    EDA_ANGLE n = std::min( c + angleIncrement, elemEnd );
+                    aStroker( evalAngle( c ), evalAngle( n ) );
+                }
+            }
+
+            currentLen = targetLen;
+        }
+
+        break;
+    }
+
     case SH_CIRCLE:
-        // A circle is always filled; a ring is represented by a 360° arc.
+        // A circle is always filled. A ring is represented by a 360° arc.
         KI_FALLTHROUGH;
 
     default:
@@ -351,6 +456,18 @@ void STROKE_PARAMS::GetMsgPanelInfo( UNITS_PROVIDER* aUnitsProvider,
 
     if( aIncludeWidth )
         aList.emplace_back( _( "Line Width" ), aUnitsProvider->MessageTextFromValue( GetWidth() ) );
+}
+
+
+bool STROKE_PARAMS::operator<(const STROKE_PARAMS& aOther) const
+{
+    if( m_width != aOther.m_width )
+        return m_width < aOther.m_width;
+
+    if( m_lineStyle != aOther.m_lineStyle )
+        return m_lineStyle < aOther.m_lineStyle;
+
+    return m_color < aOther.m_color;
 }
 
 
@@ -454,5 +571,3 @@ double STROKE_PARAMS_PARSER::parseDouble( const char* aText )
 
     return DSNLEXER::parseDouble();
 }
-
-

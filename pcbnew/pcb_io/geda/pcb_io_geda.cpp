@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  * This file contains file format knowledge derived from the gEDA/pcb project:
  *
@@ -108,10 +104,7 @@ static inline long parseInt( const wxString& aValue, double aScalar )
     aValue.ToCDouble(&value);
 
     if( value == std::numeric_limits<double>::max() ) // conversion really failed
-    {
-        THROW_IO_ERROR( wxString::Format( _( "Cannot convert '%s' to an integer." ),
-                                          aValue.GetData() ) );
-    }
+        THROW_IO_ERRORF( _( "Cannot convert '%s' to an integer." ), aValue.GetData() );
 
     return KiROUND( value * aScalar );
 }
@@ -244,10 +237,7 @@ void GPCB_FPL_CACHE::Load()
     wxDir dir( m_lib_path.GetPath() );
 
     if( !dir.IsOpened() )
-    {
-        THROW_IO_ERROR( wxString::Format( _( "Footprint library '%s' not found." ),
-                                          m_lib_path.GetPath().GetData() ) );
-    }
+        THROW_IO_ERRORF( _( "Footprint library '%s' not found." ), m_lib_path.GetPath().GetData() );
 
     wxString fullName;
     wxString fileSpec = wxT( "*." ) + wxString( FILEEXT::GedaPcbFootprintLibFileExtension );
@@ -299,9 +289,9 @@ void GPCB_FPL_CACHE::Remove( const wxString& aFootprintName )
 
     if( it == m_footprints.end() )
     {
-        THROW_IO_ERROR( wxString::Format( _( "Library '%s' has no footprint '%s'." ),
-                                          m_lib_path.GetPath().GetData(),
-                                          aFootprintName.GetData() ) );
+        THROW_IO_ERRORF( _( "Library '%s' has no footprint '%s'." ),
+                         m_lib_path.GetPath().GetData(),
+                         aFootprintName.GetData() );
     }
 
     // Remove the footprint from the cache and delete the footprint file from the library.
@@ -338,10 +328,7 @@ FOOTPRINT* GPCB_FPL_CACHE::parseFOOTPRINT( LINE_READER* aLineReader )
     std::unique_ptr<FOOTPRINT> footprint = std::make_unique<FOOTPRINT>( nullptr );
 
     if( aLineReader->ReadLine() == nullptr )
-    {
-        msg = aLineReader->GetSource() + wxT( ": empty file" );
-        THROW_IO_ERROR( msg );
-    }
+        THROW_IO_ERRORF( wxT( "%s: empty file" ), aLineReader->GetSource() );
 
     parameters.Clear();
     parseParameters( parameters, aLineReader );
@@ -524,6 +511,7 @@ FOOTPRINT* GPCB_FPL_CACHE::parseFOOTPRINT( LINE_READER* aLineReader )
             static const LSET pad_front( { F_Cu, F_Mask, F_Paste } );
             static const LSET pad_back( { B_Cu, B_Mask, B_Paste } );
 
+            pad->SetPadstackMode( PADSTACK::MODE::NORMAL );     // gEDA doesn't have complex padstacks
             pad->SetShape( PADSTACK::ALL_LAYERS, PAD_SHAPE::RECTANGLE );
             pad->SetAttribute( PAD_ATTRIB::SMD );
             pad->SetLayerSet( pad_front );
@@ -585,14 +573,26 @@ FOOTPRINT* GPCB_FPL_CACHE::parseFOOTPRINT( LINE_READER* aLineReader )
                     pad->SetShape( PADSTACK::ALL_LAYERS, PAD_SHAPE::OVAL );
             }
 
-            if( pad->GetSizeX() > 0 && pad->GetSizeY() > 0 )
+            bool badPad = false;
+
+            pad->Padstack().ForEachUniqueLayer(
+                    [&]( PCB_LAYER_ID layer )
+                    {
+                        VECTOR2I padSize = pad->GetSize( layer );
+
+                        if( padSize.x <= 0 || padSize.y <= 0 )
+                            badPad = true;
+                    } );
+
+            if( badPad )
             {
-                footprint->Add( pad.release() );
+                m_owner->Report( wxString::Format( _( "Invalid zero-sized pad ignored in\nfile: %s" ),
+                                                   aLineReader->GetSource() ),
+                                 RPT_SEVERITY_ERROR );
             }
             else
             {
-                wxLogError( _( "Invalid zero-sized pad ignored in\nfile: %s" ),
-                            aLineReader->GetSource() );
+                footprint->Add( pad.release() );
             }
 
             continue;
@@ -615,6 +615,7 @@ FOOTPRINT* GPCB_FPL_CACHE::parseFOOTPRINT( LINE_READER* aLineReader )
 
             PAD* pad = new PAD( footprint.get() );
 
+            pad->SetPadstackMode( PADSTACK::MODE::NORMAL );     // gEDA doesn't have complex padstacks
             pad->SetShape( PADSTACK::ALL_LAYERS, PAD_SHAPE::CIRCLE );
 
             static const LSET pad_set = LSET::AllCuMask() | LSET( { F_SilkS, F_Mask, B_Mask } );
@@ -849,7 +850,7 @@ void PCB_IO_GEDA::init( const std::map<std::string, UTF8>* aProperties )
 }
 
 
-void PCB_IO_GEDA::validateCache( const wxString& aLibraryPath, bool checkModified  )
+void PCB_IO_GEDA::validateCache( const wxString& aLibraryPath, bool checkModified )
 {
     if( !m_cache || ( checkModified && m_cache->IsModified() ) )
     {
@@ -861,9 +862,8 @@ void PCB_IO_GEDA::validateCache( const wxString& aLibraryPath, bool checkModifie
 }
 
 
-FOOTPRINT* PCB_IO_GEDA::ImportFootprint( const wxString&        aFootprintPath,
-                                         wxString&              aFootprintNameOut,
-                                         const std::map<std::string, UTF8>* aProperties )
+std::unique_ptr<FOOTPRINT> PCB_IO_GEDA::ImportFootprint( const wxString& aFootprintPath, wxString& aFootprintNameOut,
+                                                         const std::map<std::string, UTF8>* aProperties )
 {
     wxFileName fn( aFootprintPath );
 
@@ -896,7 +896,7 @@ void PCB_IO_GEDA::FootprintEnumerate( wxArrayString& aFootprintNames, const wxSt
         if( aBestEfforts )
             return;
         else
-            THROW_IO_ERROR( wxString::Format( _( "Footprint library '%s' not found." ), aLibraryPath ) );
+            THROW_IO_ERRORF( _( "Footprint library '%s' not found." ), aLibraryPath );
     }
 
     init( aProperties );
@@ -939,10 +939,8 @@ const FOOTPRINT* PCB_IO_GEDA::getFootprint( const wxString& aLibraryPath,
 }
 
 
-FOOTPRINT* PCB_IO_GEDA::FootprintLoad( const wxString& aLibraryPath,
-                                       const wxString& aFootprintName,
-                                       bool  aKeepUUID,
-                                       const std::map<std::string, UTF8>* aProperties )
+std::unique_ptr<FOOTPRINT> PCB_IO_GEDA::FootprintLoad( const wxString& aLibraryPath, const wxString& aFootprintName,
+                                                       bool aKeepUUID, const std::map<std::string, UTF8>* aProperties )
 {
     // Suppress font substitution warnings (RAII - automatically restored on scope exit)
     FONTCONFIG_REPORTER_SCOPE fontconfigScope( nullptr );
@@ -951,7 +949,7 @@ FOOTPRINT* PCB_IO_GEDA::FootprintLoad( const wxString& aLibraryPath,
 
     if( footprint )
     {
-        FOOTPRINT* copy = (FOOTPRINT*) footprint->Duplicate( IGNORE_PARENT_GROUP );
+        std::unique_ptr<FOOTPRINT> copy( static_cast<FOOTPRINT*>( footprint->Duplicate( IGNORE_PARENT_GROUP ) ) );
         copy->SetParent( nullptr );
         return copy;
     }
@@ -968,10 +966,7 @@ void PCB_IO_GEDA::FootprintDelete( const wxString& aLibraryPath, const wxString&
     validateCache( aLibraryPath );
 
     if( !m_cache->IsWritable() )
-    {
-        THROW_IO_ERROR( wxString::Format( _( "Library '%s' is read only." ),
-                                          aLibraryPath.GetData() ) );
-    }
+        THROW_IO_ERRORF( _( "Library '%s' is read only." ), aLibraryPath.GetData() );
 
     m_cache->Remove( aFootprintName );
 }
@@ -987,56 +982,43 @@ bool PCB_IO_GEDA::DeleteLibrary( const wxString& aLibraryPath, const std::map<st
         return false;
 
     if( !fn.IsDirWritable() )
-    {
-        THROW_IO_ERROR( wxString::Format( _( "Insufficient permissions to delete folder '%s'." ),
-                                          aLibraryPath.GetData() ) );
-    }
+        THROW_IO_ERRORF( _( "Insufficient permissions to delete folder '%s'." ), aLibraryPath.GetData() );
 
     wxDir dir( aLibraryPath );
 
     if( dir.HasSubDirs() )
-    {
-        THROW_IO_ERROR( wxString::Format( _( "Library folder '%s' has unexpected sub-folders." ),
-                                          aLibraryPath.GetData() ) );
-    }
+        THROW_IO_ERRORF( _( "Library folder '%s' has unexpected sub-folders." ), aLibraryPath.GetData() );
 
     // All the footprint files must be deleted before the directory can be deleted.
     if( dir.HasFiles() )
     {
-        unsigned      i;
         wxFileName    tmp;
         wxArrayString files;
 
         CollectFilesLoopSafe( aLibraryPath, files );
 
-        for( i = 0;  i < files.GetCount();  i++ )
+        for( unsigned i = 0;  i < files.GetCount();  i++ )
         {
             tmp = files[i];
 
             if( tmp.GetExt() != FILEEXT::KiCadFootprintFileExtension )
             {
-                THROW_IO_ERROR( wxString::Format( _( "Unexpected file '%s' found in library '%s'." ),
-                                                  files[i].GetData(),
-                                                  aLibraryPath.GetData() ) );
+                THROW_IO_ERRORF( _( "Unexpected file '%s' found in library '%s'." ),
+                                 files[i].GetData(),
+                                 aLibraryPath.GetData() );
             }
         }
 
-        for( i = 0;  i < files.GetCount();  i++ )
-        {
+        for( unsigned i = 0;  i < files.GetCount();  i++ )
             wxRemoveFile( files[i] );
-        }
     }
 
-    KI_LOG_TRACE( traceGedaPcbPlugin, wxT( "Removing footprint library '%s'" ),
-                aLibraryPath.GetData() );
+    KI_LOG_TRACE( traceGedaPcbPlugin, wxT( "Removing footprint library '%s'" ), aLibraryPath.GetData() );
 
     // Some of the more elaborate wxRemoveFile() crap puts up its own wxLog dialog
     // we don't want that.  we want bare metal portability with no UI here.
     if( !wxRmdir( aLibraryPath ) )
-    {
-        THROW_IO_ERROR( wxString::Format( _( "Footprint library '%s' cannot be deleted." ),
-                                          aLibraryPath.GetData() ) );
-    }
+        THROW_IO_ERRORF( _( "Footprint library '%s' cannot be deleted." ), aLibraryPath.GetData() );
 
     // For some reason removing a directory in Windows is not immediately updated.  This delay
     // prevents an error when attempting to immediately recreate the same directory when over
@@ -1301,10 +1283,7 @@ void PCB_IO_GEDA::parseVia( wxArrayString& aParameters, double aConvUnit )
     int paramCnt = aParameters.GetCount();
 
     if( paramCnt < 10 )
-    {
-        THROW_IO_ERROR( wxString::Format(
-                _( "Via token contains %d parameters, expected at least 10." ), paramCnt ) );
-    }
+        THROW_IO_ERRORF( _( "Via token contains %d parameters, expected at least 10." ), paramCnt );
 
     PCB_VIA* via = new PCB_VIA( m_board );
 
@@ -1314,6 +1293,7 @@ void PCB_IO_GEDA::parseVia( wxArrayString& aParameters, double aConvUnit )
     int drill     = static_cast<int>( parseInt( aParameters[7], aConvUnit ) );
 
     via->SetPosition( VECTOR2I( x, y ) );
+    via->SetPadstackMode( PADSTACK::MODE::NORMAL );     // gEDA doesn't have complex padstacks
     via->SetWidth( PADSTACK::ALL_LAYERS, thickness );
     via->SetDrill( drill );
     via->SetViaType( VIATYPE::THROUGH );
@@ -1324,20 +1304,15 @@ void PCB_IO_GEDA::parseVia( wxArrayString& aParameters, double aConvUnit )
 }
 
 
-FOOTPRINT* PCB_IO_GEDA::parseElement( wxArrayString& aParameters, LINE_READER* aLineReader,
-                                      double aConvUnit )
+FOOTPRINT* PCB_IO_GEDA::parseElement( wxArrayString& aParameters, LINE_READER* aLineReader, double aConvUnit )
 {
     int       paramCnt = aParameters.GetCount();
     double    conv_unit = aConvUnit;
-    wxString  msg;
 
     std::unique_ptr<FOOTPRINT> footprint = std::make_unique<FOOTPRINT>( m_board );
 
     if( paramCnt < 10 || paramCnt > 14 )
-    {
-        msg.Printf( _( "Element token contains %d parameters." ), paramCnt );
-        THROW_IO_ERROR( msg );
-    }
+        THROW_IO_ERRORF( _( "Element token contains %d parameters." ), paramCnt );
 
     // The long form has SFlags, Desc, Name, Value, MX, MY, TX, TY, TDir, TScale, TSFlags
     // paramCnt == 14: Element [ SFlags "Desc" "Name" "Value" MX MY TX TY TDir TScale TSFlags ]
@@ -1440,12 +1415,10 @@ FOOTPRINT* PCB_IO_GEDA::parseElement( wxArrayString& aParameters, LINE_READER* a
             VECTOR2I centre( static_cast<int>( parseInt( parameters[2], conv_unit ) ),
                              static_cast<int>( parseInt( parameters[3], conv_unit ) ) );
 
-            EDA_ANGLE start_angle( static_cast<int>( parseInt( parameters[6], -10.0 ) ),
-                                   TENTHS_OF_A_DEGREE_T );
+            EDA_ANGLE start_angle( static_cast<int>( parseInt( parameters[6], -10.0 ) ), TENTHS_OF_A_DEGREE_T );
             start_angle += ANGLE_180;
 
-            EDA_ANGLE sweep_angle( static_cast<int>( parseInt( parameters[7], -10.0 ) ),
-                                   TENTHS_OF_A_DEGREE_T );
+            EDA_ANGLE sweep_angle( static_cast<int>( parseInt( parameters[7], -10.0 ) ), TENTHS_OF_A_DEGREE_T );
 
             if( sweep_angle == -ANGLE_360 )
             {
@@ -1481,6 +1454,7 @@ FOOTPRINT* PCB_IO_GEDA::parseElement( wxArrayString& aParameters, LINE_READER* a
             static const LSET pad_front( { F_Cu, F_Mask, F_Paste } );
             static const LSET pad_back( { B_Cu, B_Mask, B_Paste } );
 
+            pad->SetPadstackMode( PADSTACK::MODE::NORMAL );     // gEDA doesn't have complex padstacks
             pad->SetShape( PADSTACK::ALL_LAYERS, PAD_SHAPE::RECTANGLE );
             pad->SetAttribute( PAD_ATTRIB::SMD );
             pad->SetLayerSet( pad_front );
@@ -1513,27 +1487,40 @@ FOOTPRINT* PCB_IO_GEDA::parseElement( wxArrayString& aParameters, LINE_READER* a
 
             VECTOR2I padPos( ( x1 + x2 ) / 2, ( y1 + y2 ) / 2 );
 
-            pad->SetSize( PADSTACK::ALL_LAYERS,
-                          VECTOR2I( delta.EuclideanNorm() + width, width ) );
+            pad->SetSize( PADSTACK::ALL_LAYERS, VECTOR2I( delta.EuclideanNorm() + width, width ) );
 
             padPos += footprint->GetPosition();
             pad->SetPosition( padPos );
 
             if( !testFlags( parameters[paramCnt - 2], 0x0100, wxT( "square" ) ) )
             {
-                if( pad->GetSize( PADSTACK::ALL_LAYERS ).x
-                    == pad->GetSize( PADSTACK::ALL_LAYERS ).y )
-                {
+                if( pad->GetSize( PADSTACK::ALL_LAYERS ).x == pad->GetSize( PADSTACK::ALL_LAYERS ).y )
                     pad->SetShape( PADSTACK::ALL_LAYERS, PAD_SHAPE::CIRCLE );
-                }
                 else
-                {
                     pad->SetShape( PADSTACK::ALL_LAYERS, PAD_SHAPE::OVAL );
-                }
             }
 
-            if( pad->GetSizeX() > 0 && pad->GetSizeY() > 0 )
+            bool badPad = false;
+
+            pad->Padstack().ForEachUniqueLayer(
+                    [&]( PCB_LAYER_ID layer )
+                    {
+                        VECTOR2I padSize = pad->GetSize( layer );
+
+                        if( padSize.x <= 0 || padSize.y <= 0 )
+                            badPad = true;
+                    } );
+
+            if( badPad )
+            {
+                Report( wxString::Format( _( "Invalid zero-sized pad ignored in\nfile: %s" ),
+                                          m_board->GetFileName() ),
+                        RPT_SEVERITY_ERROR );
+            }
+            else
+            {
                 footprint->Add( pad.release() );
+            }
 
             continue;
         }
@@ -1546,10 +1533,10 @@ FOOTPRINT* PCB_IO_GEDA::parseElement( wxArrayString& aParameters, LINE_READER* a
 
             PAD* pad = new PAD( footprint.get() );
 
+            pad->SetPadstackMode( PADSTACK::MODE::NORMAL );     // gEDA doesn't have complex padstacks
             pad->SetShape( PADSTACK::ALL_LAYERS, PAD_SHAPE::CIRCLE );
 
-            static const LSET pad_set = LSET::AllCuMask()
-                                        | LSET( { F_SilkS, F_Mask, B_Mask } );
+            static const LSET pad_set = LSET::AllCuMask() | LSET( { F_SilkS, F_Mask, B_Mask } );
 
             pad->SetLayerSet( pad_set );
 
@@ -1588,8 +1575,7 @@ FOOTPRINT* PCB_IO_GEDA::parseElement( wxArrayString& aParameters, LINE_READER* a
             pad->SetPosition( padPos );
 
             if( pad->GetShape( PADSTACK::ALL_LAYERS ) == PAD_SHAPE::CIRCLE
-                && pad->GetSize( PADSTACK::ALL_LAYERS ).x
-                       != pad->GetSize( PADSTACK::ALL_LAYERS ).y )
+                && pad->GetSize( PADSTACK::ALL_LAYERS ).x != pad->GetSize( PADSTACK::ALL_LAYERS ).y )
             {
                 pad->SetShape( PADSTACK::ALL_LAYERS, PAD_SHAPE::OVAL );
             }
@@ -1612,8 +1598,7 @@ FOOTPRINT* PCB_IO_GEDA::parseElement( wxArrayString& aParameters, LINE_READER* a
 }
 
 
-void PCB_IO_GEDA::parseLayer( wxArrayString& aParameters, LINE_READER* aLineReader,
-                              double aConvUnit )
+void PCB_IO_GEDA::parseLayer( wxArrayString& aParameters, LINE_READER* aLineReader, double aConvUnit )
 {
     // Layer(N "name") (  ... objects ... )
     // In new format: Layer[N "name"]
@@ -1717,12 +1702,10 @@ void PCB_IO_GEDA::parseLayer( wxArrayString& aParameters, LINE_READER* aLineRead
 
             VECTOR2I centre( cx, cy );
 
-            EDA_ANGLE start_angle( static_cast<int>( parseInt( parameters[8], -10.0 ) ),
-                                   TENTHS_OF_A_DEGREE_T );
+            EDA_ANGLE start_angle( static_cast<int>( parseInt( parameters[8], -10.0 ) ), TENTHS_OF_A_DEGREE_T );
             start_angle += ANGLE_180;
 
-            EDA_ANGLE sweep_angle( static_cast<int>( parseInt( parameters[9], -10.0 ) ),
-                                   TENTHS_OF_A_DEGREE_T );
+            EDA_ANGLE sweep_angle( static_cast<int>( parseInt( parameters[9], -10.0 ) ), TENTHS_OF_A_DEGREE_T );
 
             if( isCopperLayer )
             {
@@ -1965,20 +1948,14 @@ void PCB_IO_GEDA::parseNetList( LINE_READER* aLineReader )
 }
 
 
-BOARD* PCB_IO_GEDA::LoadBoard( const wxString& aFileName, BOARD* aAppendToMe,
-                               const std::map<std::string, UTF8>* aProperties,
-                               PROJECT* aProject )
+void PCB_IO_GEDA::loadBoard( const wxString& aFileName, BOARD& aBoard, bool aIsNewLoad,
+                             const std::map<std::string, UTF8>* aProperties, PROJECT* aProject )
 {
     FONTCONFIG_REPORTER_SCOPE fontconfigScope( &LOAD_INFO_REPORTER::GetInstance() );
 
     init( aProperties );
 
-    m_board = aAppendToMe ? aAppendToMe : new BOARD();
-
-    if( !aAppendToMe )
-        m_board->SetFileName( aFileName );
-
-    std::unique_ptr<BOARD> deleter( aAppendToMe ? nullptr : m_board );
+    m_board = &aBoard;
 
     for( FOOTPRINT* fp : m_cachedFootprints )
         delete fp;
@@ -2105,9 +2082,6 @@ BOARD* PCB_IO_GEDA::LoadBoard( const wxString& aFileName, BOARD* aAppendToMe,
 
     m_board->m_LegacyDesignSettingsLoaded = true;
     m_board->m_LegacyNetclassesLoaded = true;
-
-    deleter.release();
-    return m_board;
 }
 
 

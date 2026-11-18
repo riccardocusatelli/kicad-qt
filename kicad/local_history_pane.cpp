@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "local_history_pane.h"
@@ -116,12 +112,12 @@ void LOCAL_HISTORY_PANE::RefreshHistory( const wxString& aProjectPath )
         else if( elapsed.GetMinutes() < 91 )
         {
             int minutes = elapsed.GetMinutes();
-            timeStr = wxString::Format( _( "%d minutes ago" ), minutes );
+            timeStr = wxString::Format( wxPLURAL( "%d minute ago", "%d minutes ago", minutes ), minutes );
         }
         else if( elapsed.GetHours() < 24 )
         {
             int hours = elapsed.GetHours();
-            timeStr = wxString::Format( _( "%d hours ago" ), hours );
+            timeStr = wxString::Format( wxPLURAL( "%d hour ago", "%d hours ago", hours ), hours );
         }
         else
         {

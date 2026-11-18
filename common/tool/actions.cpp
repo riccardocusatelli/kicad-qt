@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <bitmaps.h>
@@ -131,6 +127,12 @@ TOOL_ACTION ACTIONS::pageSettings( TOOL_ACTION_ARGS()
         .FriendlyName( _( "Page Settings..." ) )
         .Tooltip( _( "Settings for paper size and title block info" ) )
         .Icon( BITMAPS::sheetset ) );
+
+TOOL_ACTION ACTIONS::exportForOlderVersion( TOOL_ACTION_ARGS()
+                                                    .Name( "common.Control.exportForOlderVersion" )
+                                                    .Scope( AS_GLOBAL )
+                                                    .FriendlyName( _( "Export for Older KiCad Version..." ) )
+                                                    .Tooltip( _( "Export a copy that an older KiCad can open" ) ) );
 
 TOOL_ACTION ACTIONS::print( TOOL_ACTION_ARGS()
         .Name( "common.Control.print" )
@@ -399,11 +401,8 @@ TOOL_ACTION ACTIONS::duplicate( TOOL_ACTION_ARGS()
 TOOL_ACTION ACTIONS::doDelete( TOOL_ACTION_ARGS()
         .Name( "common.Interactive.delete" )
         .Scope( AS_GLOBAL )
-#if defined( __WXMAC__ )
-        .DefaultHotkey( WXK_BACK )
-#else
         .DefaultHotkey( WXK_DELETE )
-#endif
+        .DefaultHotkeyAlt( WXK_BACK )
         .LegacyHotkeyName( "Delete Item" )
         .FriendlyName( _( "Delete" ) )
         .Tooltip( _( "Delete selected item(s)" ) )  // differentiation from deleteTool, below
@@ -606,6 +605,29 @@ TOOL_ACTION ACTIONS::pointEditorArcKeepRadius( TOOL_ACTION_ARGS()
         .FriendlyName( _( "Keep Arc Radius and Center, adjust angle" ) )
         .Tooltip( _( "Switch arc editing mode to maintaining radius when endpoint are moved" ) )
         .Parameter( ARC_EDIT_MODE::KEEP_CENTER_ENDS_ADJUST_ANGLE ) );
+
+TOOL_ACTION ACTIONS::arcPosture( TOOL_ACTION_ARGS()
+        .Name( "common.InteractiveDrawing.arcPosture" )
+        .Scope( AS_GLOBAL )
+        .DefaultHotkey( '/' )
+        .LegacyHotkeyName( "Switch Track Posture" )
+        .FriendlyName( _( "Switch Arc Posture" ) )
+        .Tooltip( _( "Switch arc posture between clockwise and counter-clockwise" ) ) );
+
+TOOL_ACTION ACTIONS::cycleArcDrawMode( TOOL_ACTION_ARGS()
+        .Name( "common.InteractiveDrawing.cycleArcDrawMode" )
+        .Scope( AS_GLOBAL )
+        .DefaultHotkey( MD_ALT + '/' )
+        .FriendlyName( _( "Cycle Arc Drawing Mode" ) )
+        .Tooltip( _( "Switch to the next method of drawing arcs" ) ) );
+
+TOOL_ACTION ACTIONS::deleteLastPoint( TOOL_ACTION_ARGS()
+        .Name( "common.InteractiveDrawing.deleteLastPoint" )
+        .Scope( AS_GLOBAL )
+        .DefaultHotkey( WXK_BACK )
+        .FriendlyName( _( "Delete Last Point" ) )
+        .Tooltip( _( "Delete the last point added to the current item" ) )
+        .Icon( BITMAPS::undo ) );
 
 TOOL_ACTION ACTIONS::cycleArcEditMode( TOOL_ACTION_ARGS()
         .Name( "common.Interactive.cycleArcEditMode" )
@@ -1322,6 +1344,14 @@ TOOL_ACTION ACTIONS::showProperties( TOOL_ACTION_ARGS()
         .ToolbarState( TOOLBAR_STATE::TOGGLE )
         .Icon( BITMAPS::tools ) );
 
+TOOL_ACTION ACTIONS::showGitCommitPane( TOOL_ACTION_ARGS()
+                                                .Name( "common.Control.showGitCommitPane" )
+                                                .Scope( AS_GLOBAL )
+                                                .FriendlyName( _( "Version Control" ) )
+                                                .Tooltip( _( "Show/hide the version control panel" ) )
+                                                .ToolbarState( TOOLBAR_STATE::TOGGLE )
+                                                .Icon( BITMAPS::git_good_check ) );
+
 TOOL_ACTION ACTIONS::showDatasheet( TOOL_ACTION_ARGS()
         .Name( "common.Control.showDatasheet" )
         .Scope( AS_GLOBAL )
@@ -1442,11 +1472,22 @@ TOOL_ACTION ACTIONS::ddAddLibrary( TOOL_ACTION_ARGS()
 
 TOOL_ACTION ACTIONS::pluginsReload( TOOL_ACTION_ARGS()
         .Name( "common.API.pluginsReload" )
-        .Flags( AF_NOTIFY )
         .Scope( AS_GLOBAL )
         .FriendlyName( _( "Refresh Plugins" ) )
         .Tooltip( _( "Reload all python plugins and refresh plugin menus" ) )
         .Icon( BITMAPS::reload ) );
+
+TOOL_ACTION ACTIONS::pluginsShowFolder( TOOL_ACTION_ARGS()
+        .Name( "common.API.pluginsShowFolder" )
+        .Scope( AS_GLOBAL )
+#ifdef __WXMAC__
+        .FriendlyName( _( "Reveal Plugin Folder in Finder" ) )
+        .Tooltip( _( "Reveals the plugins folder in a Finder window" ) )
+#else
+        .FriendlyName( _( "Open Plugin Directory" ) )
+        .Tooltip( _( "Opens the directory in the default system file manager" ) )
+#endif
+        .Icon( BITMAPS::directory_open ) );
 
 // Embedding Files
 
@@ -1499,5 +1540,5 @@ const TOOL_EVENT
 
 // System-wide undo/redo Events
 
-const TOOL_EVENT EVENTS::UndoRedoPreEvent( TC_MESSAGE, TA_UNDO_REDO_POST, AS_GLOBAL );
+const TOOL_EVENT EVENTS::UndoRedoPreEvent( TC_MESSAGE, TA_UNDO_REDO_PRE, AS_GLOBAL );
 const TOOL_EVENT EVENTS::UndoRedoPostEvent( TC_MESSAGE, TA_UNDO_REDO_POST, AS_GLOBAL );

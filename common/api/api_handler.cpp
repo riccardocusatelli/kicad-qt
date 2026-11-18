@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <api/api_handler.h>
@@ -52,7 +52,7 @@ API_RESULT API_HANDLER::Handle( ApiRequest& aMsg )
 
     if( it != m_handlers.end() )
     {
-        REQUEST_HANDLER& handler = it->second;
+        REQUEST_HANDLER& handler = it->second.Handler;
         return handler( aMsg );
     }
 

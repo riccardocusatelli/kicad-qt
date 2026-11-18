@@ -83,6 +83,7 @@ public:
     ~STATUSBAR_WARNING_REPORTER() override;
 
     REPORTER& Report( const wxString& aText, SEVERITY aSeverity = RPT_SEVERITY_UNDEFINED ) override;
+    REPORTER& Report( const KI_ERROR& aError ) override;
 
 private:
     std::shared_ptr<STATUSBAR_WARNING_REPORTER_IMPL> m_impl;

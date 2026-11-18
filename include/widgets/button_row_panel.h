@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -82,8 +78,9 @@ public:
     /**
      * Construct a SIMPLE_BUTTON_PANEL with a set of buttons on each side.
      *
-     * @param aLeftBtns: buttons on the left side, from left to right
-     * @param aRightBtns: buttons on the right side, from left to right
+     * @param aWindow is the parent window.
+     * @param aLeftBtns: buttons on the left side, from left to right.
+     * @param aRightBtns: buttons on the right side, from left to right.
      */
     BUTTON_ROW_PANEL( wxWindow* aWindow, const BTN_DEF_LIST& aLeftBtns, const BTN_DEF_LIST& aRightBtns );
 
@@ -91,9 +88,8 @@ private:
     /**
      * Add a set of buttons to one side of the panel.
      *
-     * @param aSizer the sizer to add them to
-     * @param aLeft  place on the left (false for right)
-     * @param aDefs  list of button defs, from left to right
+     * @param aLeft  place on the left (false for right).
+     * @param aDefs  list of button defs, from left to right.
      */
     void addButtons( bool aLeft, const BTN_DEF_LIST& aDefs );
 

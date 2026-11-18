@@ -14,14 +14,13 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
+
+#include <geometry/eda_angle.h>
+
 
 enum class FLIP_DIRECTION
 {
@@ -59,4 +58,13 @@ constexpr void MIRROR( VT& aPoint, const VT& aMirrorRef, FLIP_DIRECTION aFlipDir
         MIRROR( aPoint.x, aMirrorRef.x );
     else
         MIRROR( aPoint.y, aMirrorRef.y );
+}
+
+
+/**
+ * Returns the angle of the axis of reflection for the given flip direction.
+ */
+constexpr EDA_ANGLE MIRROR_AXIS( FLIP_DIRECTION aFlipDirection )
+{
+    return aFlipDirection == FLIP_DIRECTION::LEFT_RIGHT ? ANGLE_90 : ANGLE_0;
 }

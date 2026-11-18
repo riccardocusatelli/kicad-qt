@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <sch_io/ltspice/ltspice_schematic.h>
@@ -24,6 +24,7 @@
 #include <sch_io/ltspice/sch_io_ltspice_parser.h>
 
 #include <project_sch.h>
+#include <richio.h>
 #include <schematic.h>
 #include <sch_sheet.h>
 #include <sch_screen.h>
@@ -37,6 +38,23 @@
 int SCH_IO_LTSPICE::GetModifyHash() const
 {
     return 0;
+}
+
+
+bool SCH_IO_LTSPICE::CanReadSchematicFile( const wxString& aFileName ) const
+{
+    if( !SCH_IO::CanReadSchematicFile( aFileName ) )
+        return false;
+
+    // PADS uses .asc too, and LTspice files can be UTF-16 so the header needs decoding
+    try
+    {
+        return SafeReadFile( aFileName, wxS( "r" ) ).Left( 7 ).Upper() == wxS( "VERSION" );
+    }
+    catch( const IO_ERROR& )
+    {
+        return false;
+    }
 }
 
 
@@ -67,13 +85,23 @@ SCH_SHEET* SCH_IO_LTSPICE::LoadSchematicFile( const wxString& aFileName, SCHEMAT
         rootSheet->SetScreen( screen );
 
         // Virtual root sheet UUID must be the same as the schematic file UUID.
-        const_cast<KIID&>( rootSheet->m_Uuid ) = screen->GetUuid();
+        rootSheet->SyncUuidToScreen();
     }
 
+    // An explicit library location wins over the places LTspice installs itself
+    wxString   libOverride;
+    wxFileName ltspiceDataDir;
+
+    if( wxGetEnv( wxS( "KICAD_LTSPICE_LIB" ), &libOverride ) && wxDirExists( libOverride ) )
+        ltspiceDataDir = wxFileName( libOverride, wxEmptyString );
+
     // Windows path: C:\Users\USERNAME\AppData\Local\LTspice\lib
-    wxFileName ltspiceDataDir( KIPLATFORM::ENV::GetUserLocalDataPath(), wxEmptyString );
-    ltspiceDataDir.AppendDir( wxS( "LTspice" ) );
-    ltspiceDataDir.AppendDir( wxS( "lib" ) );
+    if( !ltspiceDataDir.IsOk() )
+    {
+        ltspiceDataDir = wxFileName( KIPLATFORM::ENV::GetUserLocalDataPath(), wxEmptyString );
+        ltspiceDataDir.AppendDir( wxS( "LTspice" ) );
+        ltspiceDataDir.AppendDir( wxS( "lib" ) );
+    }
 
     if( !ltspiceDataDir.DirExists() )
     {
@@ -94,7 +122,7 @@ SCH_SHEET* SCH_IO_LTSPICE::LoadSchematicFile( const wxString& aFileName, SCHEMAT
     }
 #endif
 
-    if( !ltspiceDataDir.DirExists() )
+    if( !ltspiceDataDir.DirExists() && wxDirExists( KIPLATFORM::ENV::GetDocumentsPath() ) )
     {
         // See if user has older version of LTspice installed
         // (e.g. C:\Users\USERNAME\Documents\LTspiceXVII\lib

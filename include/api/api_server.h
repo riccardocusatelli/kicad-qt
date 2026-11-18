@@ -14,13 +14,15 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef KICAD_API_SERVER_H
 #define KICAD_API_SERVER_H
 
+#include <atomic>
+#include <functional>
 #include <memory>
 #include <set>
 #include <string>
@@ -28,6 +30,7 @@
 #include <wx/filename.h>
 
 #include <kicommon.h>
+#include <api/common/types/base_types.pb.h>
 
 class API_HANDLER;
 class KINNG_REQUEST_SERVER;
@@ -36,7 +39,7 @@ class KINNG_REQUEST_SERVER;
 class KIQT_COMMON_API KICAD_API_SERVER
 {
 public:
-    KICAD_API_SERVER();
+    KICAD_API_SERVER( bool aAutoStart = true );
 
     ~KICAD_API_SERVER();
 
@@ -60,13 +63,52 @@ public:
 
     void DeregisterHandler( API_HANDLER* aHandler );
 
-    std::set<API_HANDLER*> Handlers() const { return m_handlers; }
+    void SetReadyToReply( bool aReady = true )
+    {
+        m_readyToReply.store( aReady, std::memory_order_release );
+    }
 
-    void SetReadyToReply( bool aReady = true ) { m_readyToReply = aReady; }
+    void SetSocketPath( const wxString& aSocketPath )
+    {
+        m_socketPathOverride = aSocketPath;
+    }
 
     std::string SocketPath() const;
 
     const std::string& Token() const { return m_token; }
+
+    /**
+     * Return the default API socket path (without the ipc:// scheme).
+     */
+    static wxFileName StandardSocketPath();
+
+    /**
+     * Return the default API socket URL (including the ipc:// scheme).
+     */
+    static std::string StandardSocketUrl();
+
+    /**
+     * Calls onNetSettingsChanged() on every registered handler, so that editors can update
+     * state derived from project net settings after they are changed via the API.
+     * Must be called from the main thread.
+     */
+    void NotifyNetSettingsChanged();
+
+    /**
+     * Notifies the host application that a document was saved to a new path.
+     * Must be called from the main thread.
+     */
+    void NotifyDocumentRenamed( kiapi::common::types::DocumentType aType, const wxString& aOldPath,
+                                const wxString& aNewPath );
+
+    /**
+     * Installs a callback to be invoked by NotifyDocumentRenamed.
+     */
+    void SetRenameListener( std::function<void( kiapi::common::types::DocumentType,
+                                                const wxString&, const wxString& )> aListener )
+    {
+        m_renameListener = std::move( aListener );
+    }
 
 private:
 
@@ -85,6 +127,8 @@ private:
      */
     void handleApiRequest( std::string* aRequest );
 
+    void handleApiRequestString( std::string& aRequestString );
+
     void log( const std::string& aOutput );
 
     std::unique_ptr<KINNG_REQUEST_SERVER> m_server;
@@ -93,7 +137,11 @@ private:
 
     std::string m_token;
 
-    bool m_readyToReply;
+    std::atomic<bool> m_readyToReply;
+
+    std::function<void( kiapi::common::types::DocumentType, const wxString&, const wxString& )> m_renameListener;
+
+    wxString m_socketPathOverride;
 
     static wxString s_logFileName;
 

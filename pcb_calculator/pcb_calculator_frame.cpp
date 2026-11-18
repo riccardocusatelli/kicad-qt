@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include <wx/msgdlg.h>
 #include <wx/treebook.h>
@@ -23,10 +23,13 @@
 
 #include <typeinfo>
 
+#include <sstream>
+
 #include <bitmaps.h>
 #include <bitmap_store.h>
 #include <geometry/shape_poly_set.h>
 #include <kiface_base.h>
+#include <kiway_mail.h>
 #include <tool/actions.h>
 #include <tool/tool_manager.h>
 #include <tool/tool_dispatcher.h>
@@ -49,6 +52,7 @@
 #include <calculator_panels/panel_via_size.h>
 #include <calculator_panels/panel_wavelength.h>
 #include <calculator_panels/panel_eseries_display.h>
+#include <calculator_panels/panel_pth_size.h>
 #include "widgets/wx_menubar.h"
 #include <core/ki_assert.h>
 
@@ -164,6 +168,10 @@ void PCB_CALCULATOR_FRAME::loadPages()
 
     AddCalculator( new PANEL_REGULATOR( m_treebook ), _( "Regulators" ) );
     AddCalculator( new PANEL_R_CALCULATOR( m_treebook ), _( "Resistor Calculator" ) );
+
+    m_treebook->AddPage( nullptr, _( "Footprint design" ) );
+
+    AddCalculator( new PANEL_PTH_SIZE( m_treebook ), _( "Through-hole Size" ) );
 
     m_treebook->AddPage( nullptr, _( "Power, current and isolation" ) );
 
@@ -284,11 +292,60 @@ void PCB_CALCULATOR_FRAME::AddCalculator( CALCULATOR_PANEL *aPanel, const wxStri
 }
 
 
+void PCB_CALCULATOR_FRAME::showCalculatorPage( wxWindow* aPage )
+{
+    for( size_t i = 0; i < m_treebook->GetPageCount(); ++i )
+    {
+        if( m_treebook->GetPage( i ) == aPage )
+        {
+            const int pageIndex = static_cast<int>( i );
+            const int parentIndex = m_treebook->GetPageParent( pageIndex );
+
+            if( parentIndex != wxNOT_FOUND )
+                m_treebook->ExpandNode( parentIndex );
+
+            m_treebook->SetSelection( pageIndex );
+            break;
+        }
+    }
+}
+
+
+void PCB_CALCULATOR_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& aEvent )
+{
+    if( aEvent.Command() != MAIL_CALC_SHOW )
+        return;
+
+
+    // Decode trhe payload: JSON
+    const std::string& payloadStr = aEvent.GetPayload();
+    nlohmann::json     payload = nlohmann::json::parse( payloadStr, nullptr, false );
+
+    const std::string pageName = payload.value( "page", "" );
+
+    if( pageName.empty() )
+        return;
+
+    wxWindow* shownPanel = nullptr;
+
+    if( pageName == "pth_size" )
+    {
+        PANEL_PTH_SIZE* pthPanel = GetCalculator<PANEL_PTH_SIZE>();
+        // Any dedicated setup would be here
+        shownPanel = pthPanel;
+    }
+    else
+    {
+        // Unknown page name, do nothing
+    }
+
+    if( shownPanel )
+        showCalculatorPage( shownPanel );
+}
+
+
 void PCB_CALCULATOR_FRAME::onThemeChanged( wxSysColourChangedEvent& aEvent )
 {
-    // Force the bitmaps to refresh
-    GetBitmapStore()->ThemeChanged();
-
     // Update the panels
     for( auto& panel : m_panels )
         panel->ThemeChanged();

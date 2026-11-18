@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <pgm_base.h>
@@ -42,6 +38,7 @@
 #include <project_sch.h>
 
 #include <dialog_symbol_chooser.h>
+#include <widgets/panel_symbol_chooser.h>
 #include <core/ki_assert.h>
 #include <sch_edit_frame.h>
 
@@ -49,7 +46,7 @@ PICKED_SYMBOL SCH_BASE_FRAME::PickSymbolFromLibrary( const SYMBOL_LIBRARY_FILTER
                                                      std::vector<PICKED_SYMBOL>&  aHistoryList,
                                                      std::vector<PICKED_SYMBOL>&  aAlreadyPlaced,
                                                      bool aShowFootprints, const LIB_ID* aHighlight,
-                                                     bool aAllowFields )
+                                                     bool aAllowFields, SYMBOL_COMPAT_FUNC aCompatFunc )
 {
     std::unique_lock<std::mutex> dialogLock( DIALOG_SYMBOL_CHOOSER::g_Mutex, std::defer_lock );
 
@@ -62,17 +59,23 @@ PICKED_SYMBOL SCH_BASE_FRAME::PickSymbolFromLibrary( const SYMBOL_LIBRARY_FILTER
     DIALOG_SYMBOL_CHOOSER dlg( this, aHighlight, aFilter, aHistoryList, aAlreadyPlaced,
                                aAllowFields, aShowFootprints, aCancelled );
 
+    if( aCompatFunc )
+        dlg.GetChooserPanel()->SetCompatibilityCallback( std::move( aCompatFunc ) );
+
     if( aCancelled || dlg.ShowModal() == wxID_CANCEL )
         return PICKED_SYMBOL();
 
     PICKED_SYMBOL sel;
-    LIB_ID id = dlg.GetSelectedLibId( &sel.Unit );
+    LIB_ID id = dlg.GetSelectedLibId( &sel.Unit, &sel.BodyStyle );
 
     if( !id.IsValid() )
         return PICKED_SYMBOL();
 
     if( sel.Unit == 0 )
         sel.Unit = 1;
+
+    if( sel.BodyStyle == 0 )
+        sel.BodyStyle = 1;
 
     sel.Fields = dlg.GetFields();
     sel.LibId = id;
@@ -93,9 +96,11 @@ PICKED_SYMBOL SCH_BASE_FRAME::PickSymbolFromLibrary( const SYMBOL_LIBRARY_FILTER
 }
 
 
-void SCH_EDIT_FRAME::SelectUnit( SCH_SYMBOL* aSymbol, int aUnit )
+void SCH_EDIT_FRAME::SelectUnit( SCH_SYMBOL* aSymbol, int aUnit, SCH_COMMIT* aCommit )
 {
-    SCH_COMMIT  commit( m_toolManager );
+    SCH_COMMIT  localCommit( m_toolManager );
+    SCH_COMMIT* commit = aCommit ? aCommit : &localCommit;
+    bool        staged = false;
     LIB_SYMBOL* symbol = GetLibSymbol( aSymbol->GetLibId() );
 
     if( !symbol )
@@ -150,7 +155,10 @@ void SCH_EDIT_FRAME::SelectUnit( SCH_SYMBOL* aSymbol, int aUnit )
         SCH_SYMBOL* otherSymbol = otherSymbolRef->GetSymbol();
 
         if( !otherSymbol->GetEditFlags() )
-            commit.Modify( otherSymbol, otherSymbolRef->GetSheetPath().LastScreen() );
+        {
+            commit->Modify( otherSymbol, otherSymbolRef->GetSheetPath().LastScreen() );
+            staged = true;
+        }
 
         // Give that symbol the unit we used to have
         otherSymbol->SetUnitSelection( &otherSymbolRef->GetSheetPath(), currentUnit );
@@ -158,31 +166,37 @@ void SCH_EDIT_FRAME::SelectUnit( SCH_SYMBOL* aSymbol, int aUnit )
     }
 
     if( !aSymbol->GetEditFlags() ) // No command in progress: save in undo list
-        commit.Modify( aSymbol, GetScreen() );
+    {
+        commit->Modify( aSymbol, GetScreen() );
+        staged = true;
+    }
 
     // Update the unit number.
     aSymbol->SetUnit( aUnit );
     aSymbol->SetUnitSelection( &sheetPath, aUnit );
 
-    if( !commit.Empty() )
+    if( !staged )
+        return;
+
+    if( eeconfig()->m_AutoplaceFields.enable )
     {
-        if( eeconfig()->m_AutoplaceFields.enable )
-        {
-            AUTOPLACE_ALGO fieldsAutoplaced = aSymbol->GetFieldsAutoplaced();
+        AUTOPLACE_ALGO fieldsAutoplaced = aSymbol->GetFieldsAutoplaced();
 
-            if( fieldsAutoplaced == AUTOPLACE_AUTO || fieldsAutoplaced == AUTOPLACE_MANUAL )
-                aSymbol->AutoplaceFields( GetScreen(), fieldsAutoplaced );
-        }
-
-        if( swapWithOther )
-            commit.Push( _( "Swap Units" ) );
-        else
-            commit.Push( _( "Change Unit" ) );
+        if( fieldsAutoplaced == AUTOPLACE_AUTO || fieldsAutoplaced == AUTOPLACE_MANUAL )
+            aSymbol->AutoplaceFields( GetScreen(), fieldsAutoplaced );
     }
+
+    if( aCommit )
+        return;
+
+    if( swapWithOther )
+        localCommit.Push( _( "Swap Units" ) );
+    else
+        localCommit.Push( _( "Change Unit" ) );
 }
 
 
-void SCH_EDIT_FRAME::SelectBodyStyle( SCH_SYMBOL* aSymbol, int aBodyStyle )
+void SCH_EDIT_FRAME::SelectBodyStyle( SCH_SYMBOL* aSymbol, int aBodyStyle, SCH_COMMIT* aCommit )
 {
     if( !aSymbol || !aSymbol->GetLibSymbolRef() )
         return;
@@ -196,9 +210,12 @@ void SCH_EDIT_FRAME::SelectBodyStyle( SCH_SYMBOL* aSymbol, int aBodyStyle )
     if( aBodyStyle > bodyStyleCount )
         aBodyStyle = bodyStyleCount;
 
-    SCH_COMMIT commit( m_toolManager );
+    SCH_COMMIT  localCommit( m_toolManager );
+    SCH_COMMIT* commit = aCommit ? aCommit : &localCommit;
 
-    commit.Modify( aSymbol, GetScreen() );
+    // A symbol with edit flags was already staged by the command in progress
+    if( !aSymbol->GetEditFlags() )
+        commit->Modify( aSymbol, GetScreen() );
 
     aSymbol->SetBodyStyle( aBodyStyle );
 
@@ -206,7 +223,8 @@ void SCH_EDIT_FRAME::SelectBodyStyle( SCH_SYMBOL* aSymbol, int aBodyStyle )
     if( aSymbol->IsSelected() )
         m_toolManager->RunAction<EDA_ITEM*>( ACTIONS::selectItem, aSymbol );
 
-    commit.Push( _( "Change Body Style" ) );
+    if( !localCommit.Empty() )
+        localCommit.Push( _( "Change Body Style" ) );
 }
 
 

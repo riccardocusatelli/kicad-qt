@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -55,6 +51,7 @@ public:
     int DuplicateSymbol( const TOOL_EVENT& aEvent );
     int RenameSymbol( const TOOL_EVENT& newName );
     int ExportSymbol( const TOOL_EVENT& aEvent );
+    int ExportForOlderVersion( const TOOL_EVENT& aEvent );
     int OpenDirectory( const TOOL_EVENT& aEvent );
     int OpenWithTextEditor( const TOOL_EVENT& aEvent );
     int ExportView( const TOOL_EVENT& aEvent );
@@ -81,7 +78,14 @@ public:
 
     int ShowLibraryTable( const TOOL_EVENT& aEvent );
 
+    int NextTab( const TOOL_EVENT& aEvent );
+    int PrevTab( const TOOL_EVENT& aEvent );
+    int CloseTab( const TOOL_EVENT& aEvent );
+
+    /// Diff the currently-open symbol library against another .kicad_sym file.
+    int CompareLibraryWithFile( const TOOL_EVENT& aEvent );
+
 private:
-    ///< Set up handlers for various events.
+    /// Set up handlers for various events.
     void setTransitions() override;
 };

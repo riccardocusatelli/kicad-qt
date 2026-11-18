@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -39,6 +35,48 @@
 
 class wxTextEntryBase;
 class ROW_ICON_PROVIDER;
+
+
+/**
+ * Used primarily by the fields tables to collapse multiple grouped symbols, etc. to allow
+ * viewing and editing of the fields for multiple items at once.
+ */
+enum class ROW_STATE
+{
+    // This does not mean the row contains only one item. For instance,
+    // a row might contain references to U1A and U1B but symbol fields aren't
+    // independently editable for units of one symbol, so the row DATA_MODEL_ROW
+    // will contain multiple references but not be expandable to multiple child items
+    NON_EXPANDABLE,
+    // Synthetic headers display and edit every member of the group.
+    GROUP_COLLAPSED,
+    GROUP_COLLAPSED_DURING_SORT,
+    GROUP_EXPANDED,
+    // Real parent headers display and edit only the first member, above its descendants.
+    PARENT_COLLAPSED,
+    PARENT_COLLAPSED_DURING_SORT,
+    PARENT_EXPANDED,
+    EXPANDED_CHILD
+};
+
+
+inline bool IsParentRow( ROW_STATE aState )
+{
+    return aState == ROW_STATE::PARENT_COLLAPSED || aState == ROW_STATE::PARENT_COLLAPSED_DURING_SORT
+           || aState == ROW_STATE::PARENT_EXPANDED;
+}
+
+
+inline bool IsRowCollapsed( ROW_STATE aState )
+{
+    return aState == ROW_STATE::GROUP_COLLAPSED || aState == ROW_STATE::PARENT_COLLAPSED;
+}
+
+
+inline bool IsRowExpanded( ROW_STATE aState )
+{
+    return aState == ROW_STATE::GROUP_EXPANDED || aState == ROW_STATE::PARENT_EXPANDED;
+}
 
 
 class KIQT_COMMON_API WX_GRID_TABLE_BASE : public wxGridTableBase
@@ -67,8 +105,9 @@ public:
         return enhanceAttr( nullptr, aRow, aCol, aKind );
     }
 
-    virtual bool IsExpanderColumn( int aCol ) const { return false; }
-    virtual GROUP_TYPE GetGroupType( int aRow ) const { return GROUP_SINGLETON; }
+    /// Show grouping controls in the row headers instead of row numbers.
+    virtual bool      HasRowLabelExpanders() const { return false; }
+    virtual ROW_STATE GetRowState( int aRow ) const { return ROW_STATE::NON_EXPANDABLE; }
 
     /**
      * Optional identity-based serialization for the host dialog's Ctrl+Z/Ctrl+Y.
@@ -110,7 +149,7 @@ public:
      * Hide wxGrid's SetColLabelSize() method with one which makes sure the size is tall
      * enough for the system GUI font.
      *
-     * @param height
+     * @param aHeight
      */
     void SetColLabelSize( int aHeight );        // Yes, we're hiding a non-virtual method
 
@@ -127,6 +166,13 @@ public:
      * @param aEnable flag to specify to enable alternate row striping in the grid.
      */
     void EnableAlternateRowColors( bool aEnable = true );
+
+    /**
+     * Enable repainting for grids whose table uses the cursor row and column when rendering cells.
+     */
+    void EnableCursorRowColumnHighlight( bool aEnable = true ) { m_cursorRowColumnHighlight = aEnable; }
+
+    bool IsCursorRowColumnHighlightEnabled() const { return m_cursorRowColumnHighlight; }
 
     /**
      * Get a tokenized string containing the shown column indexes.
@@ -187,11 +233,18 @@ public:
     /**
      * Set a EUNITS_PROVIDER to enable use of unit- and eval-based Getters.
      *
-     * @param aProvider
+     * @param aProvider the units provider to set.
+     * @param aCol is the column to set the units provider to.
      */
     void SetUnitsProvider( UNITS_PROVIDER* aProvider, int aCol = 0 );
 
     void SetAutoEvalCols( const std::vector<int>& aCols ) { m_autoEvalCols = aCols; }
+
+    void EvaluateCell( int aRow, int aCol );
+
+    void SetUseNativeSelection( bool aUseNative ) { m_useNativeSelection = aUseNative; }
+
+    std::vector<int> GetSelectedRowIndices() const;
 
     /**
      * Set the unit and unit data type to use for a given column
@@ -208,7 +261,6 @@ public:
      *
      * @param aRow the cell row index to fetch.
      * @param aCol the cell column index to fetch.
-     * @param aIsOptional if true, indicates to the unit provider the value is optional.
      * @return the value held by the cell in internal units.
      */
     int GetUnitValue( int aRow, int aCol );
@@ -285,13 +337,35 @@ public:
      * Grids that have column sizes automatically set to fill the available width don't want
      * to shrink afterwards (because wxGrid reports the aggregate column size as the bestSize.
      *
-     * @param aSize
+     * @param aXPct fraction of the best width to advertise as the minimum.
+     * @param aYPct fraction of the best height to advertise as the minimum.
      */
     void OverrideMinSize( double aXPct, double aYPct )
     {
         wxSize size = DoGetBestSize();
         m_minSizeOverride = wxSize( KiROUND( size.x * aXPct ), KiROUND( size.y * aYPct ) );
     }
+
+    /**
+     * Floor this grid at aMinRows visible rows and grow aDialog so it opens tall enough to show
+     * every current row.  The small floor keeps the dialog shrinkable (the grid scrolls past it)
+     * while the grow shows all the data when there is room; DIALOG_SHIM::Show() then clamps the
+     * grown size to the monitor work area.  Call after the rows are populated, e.g. at the end of
+     * TransferDataToWindow.
+     */
+    void SetMinVisibleRows( wxWindow* aDialog, int aMinRows );
+
+    /**
+     * Height of aMaxRows data rows plus the column-label header, never more than aMinHeight.  Kept
+     * a pure function so the row-floor policy is testable without a live grid.
+     *
+     * @param aMinHeight the full-content height; the result never exceeds it.
+     * @param aHeaderHeight the height of the column-label header.
+     * @param aRowHeights the height of each data row.
+     * @param aMaxRows the row cap, or a negative value to return aMinHeight unchanged.
+     */
+    static int CapHeightToVisibleRows( int aMinHeight, int aHeaderHeight,
+                                       const std::vector<int>& aRowHeights, int aMaxRows );
 
     wxSize DoGetBestSize() const override
     {
@@ -360,6 +434,8 @@ private:
 
 protected:
     bool                       m_weOwnTable;
+    bool                       m_cursorRowColumnHighlight = false;
+    bool                       m_useNativeSelection = false;
 
     std::map<int, UNITS_PROVIDER*>                                 m_unitsProviders;
     std::unique_ptr<NUMERIC_EVALUATOR>                             m_eval;

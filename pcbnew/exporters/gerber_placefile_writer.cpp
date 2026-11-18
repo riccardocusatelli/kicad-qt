@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -145,7 +145,7 @@ int PLACEFILE_GERBER_WRITER::CreatePlaceFile( const wxString& aFullFilename, PCB
 
         // Add object attribute: component reference to flash (mainly useful for users)
         // using not quoted UTF8 string
-        wxString ref = ConvertNotAllowedCharsInGerber( footprint->Reference().GetShownText( false ),
+        wxString ref = ConvertNotAllowedCharsInGerber( footprint->Reference().GetShownText( FOR_GUI ),
                                                        allowUtf8, quoteOption );
 
         metadata.SetCmpReference( ref );
@@ -168,7 +168,7 @@ int PLACEFILE_GERBER_WRITER::CreatePlaceFile( const wxString& aFullFilename, PCB
         // Add component value info:
         wxString fpValue = UnescapeString(
                 footprint->GetFieldValueForVariant( m_variant,
-                                                    GetCanonicalFieldName( FIELD_T::VALUE ) ) );
+                                                    GetDefaultFieldName( FIELD_T::VALUE, UNTRANSLATED ) ) );
         pnpAttrib.m_Value = ConvertNotAllowedCharsInGerber( fpValue, allowUtf8, quoteOption );
 
         // Add component footprint info:

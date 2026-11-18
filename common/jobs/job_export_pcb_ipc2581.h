@@ -14,17 +14,17 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef JOB_EXPORT_PCB_IPC2581_H
 #define JOB_EXPORT_PCB_IPC2581_H
 
 #include <kicommon.h>
-#include "job.h"
+#include "job_export_pcb_fab.h"
 
-class KICOMMON_API JOB_EXPORT_PCB_IPC2581 : public JOB
+class KICOMMON_API JOB_EXPORT_PCB_IPC2581 : public JOB_EXPORT_PCB_FAB
 {
 public:
     JOB_EXPORT_PCB_IPC2581();
@@ -33,11 +33,8 @@ public:
 
     void SetDefaultOutputPath( const wxString& aReferenceName );
 
-    enum class IPC2581_UNITS
-    {
-        INCH,
-        MM
-    };
+    void FromJson( const nlohmann::json& aJson ) override;
+    bool SupportsDataSet( DATA_SET aDataSet ) const override;
 
     enum class IPC2581_VERSION
     {
@@ -45,23 +42,24 @@ public:
         C
     };
 
-public:
-    wxString        m_filename;
-    wxString        m_drawingSheet;
-    wxString        m_variant;
+    enum class REF_DES
+    {
+        INCLUDE,
+        OMIT
+    };
 
-    IPC2581_UNITS   m_units;
+public:
     IPC2581_VERSION m_version;
-    int             m_precision;
 
     bool            m_compress;
 
     wxString        m_colInternalId;
-    wxString        m_colMfgPn;
     wxString        m_colMfg;
     wxString        m_colDistPn;
     wxString        m_colDist;
     wxString        m_bomRev;
+
+    REF_DES         m_refDes = REF_DES::INCLUDE;
 };
 
 #endif

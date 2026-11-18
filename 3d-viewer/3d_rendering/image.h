@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
  /**
@@ -144,17 +140,17 @@ public:
      * Perform a copy operation based on \a aOperation type.
      *
      * The available image operations.
-     *  - IMAGE_OP::RAW        this <- aImgA
-     *  - IMAGE_OP::ADD        this <- CLAMP(aImgA + aImgB)
-     *  - IMAGE_OP::SUB        this <- CLAMP(aImgA - aImgB)
-     *  - IMAGE_OP::DIF        this <- abs(aImgA - aImgB)
-     *  - IMAGE_OP::MUL        this <- aImgA * aImgB
-     *  - IMAGE_OP::AND        this <- aImgA & aImgB
-     *  - IMAGE_OP::OR         this <- aImgA | aImgB
-     *  - IMAGE_OP::XOR        this <- aImgA ^ aImgB
-     *  - IMAGE_OP::BLEND50    this <- (aImgA + aImgB) / 2
-     *  - IMAGE_OP::MIN        this <- (aImgA < aImgB) ? aImgA : aImgB
-     *  - IMAGE_OP::MAX        this <- (aImgA > aImgB) ? aImgA : aImgB
+     *  - IMAGE_OP::RAW        this \<- aImgA
+     *  - IMAGE_OP::ADD        this \<- CLAMP(aImgA + aImgB)
+     *  - IMAGE_OP::SUB        this \<- CLAMP(aImgA - aImgB)
+     *  - IMAGE_OP::DIF        this \<- abs(aImgA - aImgB)
+     *  - IMAGE_OP::MUL        this \<- aImgA * aImgB
+     *  - IMAGE_OP::AND        this \<- aImgA & aImgB
+     *  - IMAGE_OP::OR         this \<- aImgA | aImgB
+     *  - IMAGE_OP::XOR        this \<- aImgA ^ aImgB
+     *  - IMAGE_OP::BLEND50    this \<- (aImgA + aImgB) / 2
+     *  - IMAGE_OP::MIN        this \<- (aImgA < aImgB) ? aImgA : aImgB
+     *  - IMAGE_OP::MAX        this \<- (aImgA > aImgB) ? aImgA : aImgB
      *
      * @param aImgA an image input.
      * @param aImgB an image input.
@@ -218,7 +214,7 @@ private:
      * Calculate the coordinates points in accord with the current clamping settings.
      *
      * @param aXo X coordinate to be converted (output).
-     * @param aXo Y coordinate to be converted (output).
+     * @param aYo Y coordinate to be converted (output).
      * @return bool - true if the coordinates are inside the image, false otherwise.
      */
     bool wrapCoords( int* aXo, int* aYo ) const;

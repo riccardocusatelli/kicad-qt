@@ -62,7 +62,7 @@ public:
                                    wxEmptyString ) );
         mainSizer->Add( m_stName, 0, wxALL | wxEXPAND, 1 );
 
-        m_stStatus = new wxStaticText( this, wxID_ANY, aJob->m_status, wxDefaultPosition,
+        m_stStatus = new wxStaticText( this, wxID_ANY, aJob->GetStatus(), wxDefaultPosition,
                                        wxDefaultSize, 0 );
         m_stStatus->Wrap( -1 );
         mainSizer->Add( m_stStatus, 0, wxALL | wxEXPAND, 1 );
@@ -81,7 +81,7 @@ public:
 
     void UpdateFromJob()
     {
-        m_stStatus->SetLabelText( m_job->m_status );
+        m_stStatus->SetLabelText( m_job->GetStatus() );
         m_progress->SetValue( m_job->m_currentProgress );
         m_progress->SetRange( m_job->m_maxProgress );
     }

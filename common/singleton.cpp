@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <singleton.h>
@@ -38,8 +38,13 @@ void KICAD_SINGLETON::Shutdown()
     // Must be called before static destruction begins to avoid crashes on macOS.
     if( m_ThreadPool )
     {
+        #if !defined( __MINGW32__ )
+        // does not work fine on MINGW (delete m_ThreadPool takes a looong time) and can create a crash
+        // on exit in some cases (for instance running under GDB). So use only static destruction.
+        // But builds on MINGW have a few specific code.
         delete m_ThreadPool;
         m_ThreadPool = nullptr;
+        #endif
 
         // Clear the cached thread pool pointer to prevent dangling reference
         InvalidateKiCadThreadPool();

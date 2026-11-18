@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <refdes_utils.h>
@@ -68,6 +64,104 @@ int GetRefDesNumber( const wxString& aRefDes )
     }
 
     return retval;
+}
+
+
+wxString FormatRefDesRanges( const std::vector<wxString>& aReferences, const wxString& aRefDelimiter,
+                             const wxString& aRefRangeDelimiter )
+{
+    std::vector<std::pair<wxString, wxString>> bases;
+
+    for( const wxString& reference : aReferences )
+        bases.emplace_back( reference, wxEmptyString );
+
+    return FormatRefDesRanges( bases, aRefDelimiter, aRefRangeDelimiter );
+}
+
+
+wxString FormatRefDesRanges( const std::vector<std::pair<wxString, wxString>>& aBasesAndSuffixes,
+                             const wxString& aRefDelimiter, const wxString& aRefRangeDelimiter )
+{
+    std::vector<std::pair<wxString, wxString>> sorted( aBasesAndSuffixes );
+
+    // A range must not span channels, so each suffix's references are made adjacent
+    std::vector<wxString> suffixOrder;
+
+    for( const auto& [base, suffix] : sorted )
+    {
+        if( std::find( suffixOrder.begin(), suffixOrder.end(), suffix ) == suffixOrder.end() )
+            suffixOrder.push_back( suffix );
+    }
+
+    std::stable_sort( sorted.begin(), sorted.end(),
+                      [&]( const auto& a, const auto& b )
+                      {
+                          return std::find( suffixOrder.begin(), suffixOrder.end(), a.second )
+                                 < std::find( suffixOrder.begin(), suffixOrder.end(), b.second );
+                      } );
+
+    auto composed =
+            [&]( size_t aIndex )
+            {
+                return sorted[aIndex].first + sorted[aIndex].second;
+            };
+
+    wxString retVal;
+    size_t   i = 0;
+
+    while( i < sorted.size() )
+    {
+        const wxString& reference = sorted[i].first;
+        const wxString& suffix = sorted[i].second;
+        wxString        prefix = GetRefDesPrefix( reference );
+        wxString        numberText = reference.Mid( prefix.length() );
+        long            number;
+        bool            hasNumber = numberText.ToLong( &number );
+        size_t          range = 1;
+
+        while( hasNumber && i + range < sorted.size() )
+        {
+            const wxString& nextReference = sorted[i + range].first;
+            wxString        nextPrefix = GetRefDesPrefix( nextReference );
+            wxString        nextNumberText = nextReference.Mid( nextPrefix.length() );
+            long            nextNumber;
+
+            if( nextPrefix != prefix || sorted[i + range].second != suffix
+                || !nextNumberText.ToLong( &nextNumber ) || nextNumber != number + static_cast<long>( range ) )
+            {
+                break;
+            }
+
+            range++;
+
+            if( range == 2 && aRefRangeDelimiter.IsEmpty() )
+                break;
+        }
+
+        if( !retVal.IsEmpty() )
+            retVal << aRefDelimiter;
+
+        if( range == 1 )
+        {
+            retVal << composed( i );
+        }
+        else if( range == 2 || aRefRangeDelimiter.IsEmpty() )
+        {
+            retVal << composed( i );
+            retVal << aRefDelimiter;
+            retVal << composed( i + 1 );
+        }
+        else
+        {
+            retVal << composed( i );
+            retVal << aRefRangeDelimiter;
+            retVal << composed( i + range - 1 );
+        }
+
+        i += range;
+    }
+
+    return retVal;
 }
 
 } // namespace UTIL

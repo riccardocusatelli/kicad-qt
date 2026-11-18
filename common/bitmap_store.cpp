@@ -13,10 +13,11 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <limits>
 #include <set>
 
 #include <wx/bitmap.h>
@@ -70,6 +71,9 @@ BITMAP_STORE::BITMAP_STORE() :
 
     ThemeChanged();
 }
+
+
+BITMAP_STORE::~BITMAP_STORE() = default;
 
 
 wxBitmap BITMAP_STORE::GetBitmap( BITMAPS aBitmapId, int aHeight )
@@ -141,9 +145,13 @@ wxBitmapBundle BITMAP_STORE::GetBitmapBundleDef( BITMAPS aBitmapId, int aDefHeig
 
         wxImage img = getImage( info.id, info.height );
 
-        if( info.height > largestHeight )
+        // A native-size icon (height < 0) has no fixed height. Treat it as the largest source so the
+        // resample-to-default below can build a bundle from it.
+        int effectiveHeight = info.height < 0 ? std::numeric_limits<int>::max() : info.height;
+
+        if( effectiveHeight > largestHeight )
         {
-            largestHeight = info.height;
+            largestHeight = effectiveHeight;
             largestImage = img;
         }
 
@@ -257,9 +265,11 @@ wxBitmapBundle BITMAP_STORE::GetDisabledBitmapBundleDef( BITMAPS aBitmapId, int 
 
         wxImage img = getImage( info.id, info.height ).ConvertToDisabled( KIPLATFORM::UI::IsDarkTheme() ? 70 : 255 );
 
-        if( info.height > largestHeight )
+        int effectiveHeight = info.height < 0 ? std::numeric_limits<int>::max() : info.height;
+
+        if( effectiveHeight > largestHeight )
         {
-            largestHeight = info.height;
+            largestHeight = effectiveHeight;
             largestImage = img;
         }
 

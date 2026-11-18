@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef _SCH_BUS_ENTRY_H_
@@ -39,6 +35,15 @@ class SCH_BUS_ENTRY_BASE : public SCH_ITEM
 public:
     SCH_BUS_ENTRY_BASE( KICAD_T aType, const VECTOR2I& pos = VECTOR2I( 0, 0 ),
                         bool aFlipY = false );
+
+    void Serialize( google::protobuf::Any& aContainer ) const override;
+    bool Deserialize( const google::protobuf::Any& aContainer ) override;
+
+    void SetDanglingState( bool aStart, bool aEnd )
+    {
+        m_isStartDangling = aStart;
+        m_isEndDangling = aEnd;
+    }
 
     bool IsStartDangling() const { return m_isStartDangling; }
     bool IsEndDangling() const { return m_isEndDangling; }
@@ -90,8 +95,8 @@ public:
     void SetWireStyle( WIRE_STYLE aStyle ) { SetLineStyle( (LINE_STYLE) aStyle ); }
     WIRE_STYLE GetWireStyle() const { return (WIRE_STYLE) GetStroke().GetLineStyle(); }
 
-    COLOR4D GetBusEntryColor() const;
-    void SetBusEntryColor( const COLOR4D& aColor );
+    KIGFX::COLOR4D GetBusEntryColor() const;
+    void SetBusEntryColor( const KIGFX::COLOR4D& aColor );
 
     void swapData( SCH_ITEM* aItem ) override;
 
@@ -158,9 +163,9 @@ protected:
     // If real-time connectivity gets disabled (due to being too slow on a particular
     // design), we can no longer rely on getting the NetClass to find netclass-specific
     // linestyles, linewidths and colors.
-    mutable LINE_STYLE m_lastResolvedLineStyle;
-    mutable int        m_lastResolvedWidth;
-    mutable COLOR4D    m_lastResolvedColor;
+    mutable LINE_STYLE     m_lastResolvedLineStyle;
+    mutable int            m_lastResolvedWidth;
+    mutable KIGFX::COLOR4D  m_lastResolvedColor;
 };
 
 /**

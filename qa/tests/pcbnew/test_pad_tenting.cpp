@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
@@ -65,15 +61,15 @@ BOOST_AUTO_TEST_CASE( DefaultTentingNotSerialized )
     BOARD board;
     board.SetBoardUse( BOARD_USE::FPHOLDER );
 
-    auto fp = std::make_unique<FOOTPRINT>( &board );
+    std::unique_ptr<FOOTPRINT> fp = std::make_unique<FOOTPRINT>( &board );
     fp->SetPosition( VECTOR2I( 0, 0 ) );
 
-    auto* pad = new PAD( fp.get() );
+    PAD* pad = new PAD( fp.get() );
+    pad->SetPadstackMode( PADSTACK::MODE::NORMAL );
     pad->SetAttribute( PAD_ATTRIB::PTH );
     pad->SetLayerSet( PAD::PTHMask() );
     pad->SetShape( PADSTACK::ALL_LAYERS, PAD_SHAPE::CIRCLE );
-    pad->SetSize( PADSTACK::ALL_LAYERS,
-                  VECTOR2I( pcbIUScale.mmToIU( 1.5 ), pcbIUScale.mmToIU( 1.5 ) ) );
+    pad->SetSize( PADSTACK::ALL_LAYERS, VECTOR2I( pcbIUScale.mmToIU( 1.5 ), pcbIUScale.mmToIU( 1.5 ) ) );
     pad->SetDrillSize( VECTOR2I( pcbIUScale.mmToIU( 0.8 ), pcbIUScale.mmToIU( 0.8 ) ) );
     pad->SetNumber( wxT( "1" ) );
     pad->SetPosition( VECTOR2I( 0, 0 ) );
@@ -101,15 +97,15 @@ BOOST_AUTO_TEST_CASE( ExplicitTentingSerialized )
     BOARD board;
     board.SetBoardUse( BOARD_USE::FPHOLDER );
 
-    auto fp = std::make_unique<FOOTPRINT>( &board );
+    std::unique_ptr<FOOTPRINT> fp = std::make_unique<FOOTPRINT>( &board );
     fp->SetPosition( VECTOR2I( 0, 0 ) );
 
-    auto* pad = new PAD( fp.get() );
+    PAD* pad = new PAD( fp.get() );
+    pad->SetPadstackMode( PADSTACK::MODE::NORMAL );
     pad->SetAttribute( PAD_ATTRIB::PTH );
     pad->SetLayerSet( PAD::PTHMask() );
     pad->SetShape( PADSTACK::ALL_LAYERS, PAD_SHAPE::CIRCLE );
-    pad->SetSize( PADSTACK::ALL_LAYERS,
-                  VECTOR2I( pcbIUScale.mmToIU( 1.5 ), pcbIUScale.mmToIU( 1.5 ) ) );
+    pad->SetSize( PADSTACK::ALL_LAYERS, VECTOR2I( pcbIUScale.mmToIU( 1.5 ), pcbIUScale.mmToIU( 1.5 ) ) );
     pad->SetDrillSize( VECTOR2I( pcbIUScale.mmToIU( 0.8 ), pcbIUScale.mmToIU( 0.8 ) ) );
     pad->SetNumber( wxT( "1" ) );
     pad->SetPosition( VECTOR2I( 0, 0 ) );
@@ -140,15 +136,15 @@ BOOST_AUTO_TEST_CASE( NpthDefaultTentingNotSerialized )
     BOARD board;
     board.SetBoardUse( BOARD_USE::FPHOLDER );
 
-    auto fp = std::make_unique<FOOTPRINT>( &board );
+    std::unique_ptr<FOOTPRINT> fp = std::make_unique<FOOTPRINT>( &board );
     fp->SetPosition( VECTOR2I( 0, 0 ) );
 
-    auto* pad = new PAD( fp.get() );
+    PAD* pad = new PAD( fp.get() );
+    pad->SetPadstackMode( PADSTACK::MODE::NORMAL );
     pad->SetAttribute( PAD_ATTRIB::NPTH );
     pad->SetLayerSet( PAD::UnplatedHoleMask() );
     pad->SetShape( PADSTACK::ALL_LAYERS, PAD_SHAPE::CIRCLE );
-    pad->SetSize( PADSTACK::ALL_LAYERS,
-                  VECTOR2I( pcbIUScale.mmToIU( 1.0 ), pcbIUScale.mmToIU( 1.0 ) ) );
+    pad->SetSize( PADSTACK::ALL_LAYERS, VECTOR2I( pcbIUScale.mmToIU( 1.0 ), pcbIUScale.mmToIU( 1.0 ) ) );
     pad->SetDrillSize( VECTOR2I( pcbIUScale.mmToIU( 1.0 ), pcbIUScale.mmToIU( 1.0 ) ) );
     pad->SetNumber( wxT( "" ) );
     pad->SetPosition( VECTOR2I( pcbIUScale.mmToIU( 5 ), 0 ) );
@@ -178,7 +174,8 @@ BOOST_AUTO_TEST_CASE( ViaDefaultTentingNotSerialized )
     BOARD board;
     board.SetBoardUse( BOARD_USE::FPHOLDER );
 
-    auto* via = new PCB_VIA( &board );
+    PCB_VIA* via = new PCB_VIA( &board );
+    via->SetPadstackMode( PADSTACK::MODE::NORMAL );
     via->SetPosition( VECTOR2I( 0, 0 ) );
     via->SetWidth( PADSTACK::ALL_LAYERS, pcbIUScale.mmToIU( 0.8 ) );
     via->SetDrill( pcbIUScale.mmToIU( 0.4 ) );
@@ -208,7 +205,8 @@ BOOST_AUTO_TEST_CASE( ViaExplicitTentingSerialized )
     BOARD board;
     board.SetBoardUse( BOARD_USE::FPHOLDER );
 
-    auto* via = new PCB_VIA( &board );
+    PCB_VIA* via = new PCB_VIA( &board );
+    via->SetPadstackMode( PADSTACK::MODE::NORMAL );
     via->SetPosition( VECTOR2I( 0, 0 ) );
     via->SetWidth( PADSTACK::ALL_LAYERS, pcbIUScale.mmToIU( 0.8 ) );
     via->SetDrill( pcbIUScale.mmToIU( 0.4 ) );

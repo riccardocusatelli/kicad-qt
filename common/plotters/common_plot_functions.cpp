@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <eda_item.h>
@@ -27,6 +23,7 @@
 #include <plotters/plotter_dxf.h>
 #include <plotters/plotters_pslike.h>
 #include <plotters/plotter_gerber.h>
+#include <plotters/plotter_png.h>
 #include <drawing_sheet/ds_data_item.h>
 #include <drawing_sheet/ds_draw_item.h>
 #include <string_utils.h>
@@ -44,6 +41,7 @@ wxString GetDefaultPlotExtension( PLOT_FORMAT aFormat )
     case PLOT_FORMAT::PDF:    return PDF_PLOTTER::GetDefaultFileExtension();
     case PLOT_FORMAT::GERBER: return GERBER_PLOTTER::GetDefaultFileExtension();
     case PLOT_FORMAT::SVG:    return SVG_PLOTTER::GetDefaultFileExtension();
+    case PLOT_FORMAT::PNG:    return PNG_PLOTTER::GetDefaultFileExtension();
     default:    KI_FAIL();       return wxEmptyString;
     }
 }
@@ -65,7 +63,7 @@ void PlotDrawingSheet( PLOTTER* plotter, const PROJECT* aProject, const TITLE_BL
     if( plotColor == COLOR4D::UNSPECIFIED )
         plotColor = COLOR4D( RED );
 
-    DS_DRAW_ITEM_LIST drawList( unityScale );
+    DS_DRAW_ITEM_LIST drawList( unityScale, FOR_CANVAS );
 
     // Print only a short filename, if aFilename is the full filename
     wxFileName fn( aFilename );
@@ -141,7 +139,7 @@ void PlotDrawingSheet( PLOTTER* plotter, const PROJECT* aProject, const TITLE_BL
                 DS_DRAW_ITEM_TEXT* text = (DS_DRAW_ITEM_TEXT*) item;
                 KIFONT::FONT*      font = text->GetDrawFont( settings );
                 COLOR4D            color = plotColor;
-                wxString           shownText( text->GetShownText( true ) );
+                wxString           shownText( text->GetShownText( FOR_CANVAS ) );
 
                 if( plotter->GetColorMode() && text->GetTextColor() != COLOR4D::UNSPECIFIED )
                     color = text->GetTextColor();

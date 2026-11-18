@@ -14,11 +14,7 @@
 * GNU General Public License for more details.
 *
 * You should have received a copy of the GNU General Public License
-* along with this program; if not, you may find one here:
-* http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-* or you may search the http://www.gnu.org website for the version 2 license,
-* or you may write to the Free Software Foundation, Inc.,
-* 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+* along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
@@ -42,7 +38,8 @@ struct CLIP_LINE_TO_PAD_FIXTURE
 
     std::unique_ptr<PAD> MakePad()
     {
-        auto pad = std::make_unique<PAD>( &m_footprint );
+        std::unique_ptr<PAD> pad = std::make_unique<PAD>( &m_footprint );
+        pad->SetPadstackMode( PADSTACK::MODE::NORMAL );
         pad->SetAttribute( PAD_ATTRIB::SMD );
         pad->SetShape( PADSTACK::ALL_LAYERS, PAD_SHAPE::ROUNDRECT );
         pad->SetSize( PADSTACK::ALL_LAYERS, VECTOR2I( 2540000, 1270000 ) );

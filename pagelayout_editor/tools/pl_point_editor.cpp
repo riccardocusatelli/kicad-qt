@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <functional>
@@ -40,7 +36,7 @@ using namespace std::placeholders;
 #include <drawing_sheet/ds_data_item.h>
 #include "pl_editor_frame.h"
 #include "pl_point_editor.h"
-#include "properties_frame.h"
+#include "widgets/pl_properties_panel.h"
 #include "tools/pl_selection_tool.h"
 
 // Few constants to avoid using bare numbers for point indices
@@ -429,9 +425,9 @@ void PL_POINT_EDITOR::updateItem() const
     m_frame->SetMsgPanel( item );
 
     // The Properties frame will be updated. Avoid flicker during update:
-    m_frame->GetPropertiesFrame()->Freeze();
-    m_frame->GetPropertiesFrame()->CopyPrmsFromItemToPanel( dataItem );
-    m_frame->GetPropertiesFrame()->Thaw();
+    m_frame->GetPropertiesPanel()->Freeze();
+    m_frame->GetPropertiesPanel()->UpdateData();
+    m_frame->GetPropertiesPanel()->Thaw();
 }
 
 

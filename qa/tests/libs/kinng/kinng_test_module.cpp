@@ -14,9 +14,23 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #define BOOST_TEST_MODULE KiNNG
 #include <boost/test/unit_test.hpp>
+
+#include <qa_utils/file_utils.h>
+
+
+namespace
+{
+struct PROCESS_TEMP_DIR_FIXTURE
+{
+    KI_TEST::SCOPED_PROCESS_TEMP_DIR m_dir{ "kicad_qa_kinng" };
+};
+
+} // namespace
+
+BOOST_GLOBAL_FIXTURE( PROCESS_TEMP_DIR_FIXTURE );

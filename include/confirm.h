@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -134,6 +130,7 @@ KICOMMON_API bool IsOK( TOOLKIT_WINDOW_ARG aParent, const wxString& aMessage );
  *                         Passing wxEmptyString will hide this portion of the dialog.
  * @param aOKLabel is the text to display in the OK button.
  * @param aCancelLabel is the text to display in the cancel button.
+ * @param aApplyToAll
  *
  * @return wxID_OK or wxID_CANCEL depending on the button the user selected.
  */

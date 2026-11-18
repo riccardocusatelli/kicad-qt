@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef FP_TREE_MODEL_ADAPTER_H
@@ -33,6 +33,7 @@ public:
     /**
      * Factory function: create a model adapter in a reference-counting container.
      *
+     * @param aParent is the parent window.
      * @param aLibs library set from which parts will be loaded
      */
     static wxObjectDataPtr<LIB_TREE_MODEL_ADAPTER> Create( PCB_BASE_FRAME* aParent,

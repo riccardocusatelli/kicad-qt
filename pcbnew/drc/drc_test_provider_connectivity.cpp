@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <board.h>
@@ -96,8 +92,8 @@ bool DRC_TEST_PROVIDER_CONNECTIVITY::Run()
 
             if( track->Type() == PCB_VIA_T )
             {
-                auto constraint = m_drcEngine->EvalRules( VIA_DANGLING_CONSTRAINT, track, nullptr,
-                                                         track->GetLayer() );
+                DRC_CONSTRAINT constraint = m_drcEngine->EvalRules( VIA_DANGLING_CONSTRAINT, track, nullptr,
+                                                                    track->GetLayer() );
 
                 if( constraint.GetSeverity() == RPT_SEVERITY_IGNORE )
                     continue;
@@ -274,6 +270,12 @@ bool DRC_TEST_PROVIDER_CONNECTIVITY::Run()
 
         if( !reportProgress( ii++, count, progressDelta ) )
             return false;   // DRC cancelled
+
+        // Copper-thieving fills are netless dummy copper by definition.  Every
+        // stamp is an "isolated island" but that is the intended geometry; flagging
+        // would produce thousands of false violations on a real board.
+        if( zone->IsCopperThieving() )
+            continue;
 
         for( const auto& [ layer, layerIslands ] : zoneIslands )
         {

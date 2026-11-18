@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef ENUM_VECTOR_H
@@ -29,7 +29,7 @@
  * Macro to create const vectors containing enum values to enable easy iteration.
  *
  * @warning Do not use in new code. Use the #DEFINE_ENUM_CLASS_WITH_ITERATOR and
- *          #DECLARE_ENUM_CLASS_ITERATOR macros instead (unless they don't work ;) ).
+ *          #DECLARE_ENUM_TO_WXANY macros instead (unless they don't work ;) ).
  *
  * Usage:
  * [header]

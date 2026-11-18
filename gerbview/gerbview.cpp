@@ -19,16 +19,13 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <gerbview.h>
 #include <gerbview_frame.h>
 #include <gerbview_settings.h>
+#include <gerbview_jobs_handler.h>
 #include <gestfich.h>
 #include <kiface_gui.h>
 #include <macros.h>
@@ -40,9 +37,12 @@
 #include <dialogs/panel_gerbview_display_options.h>
 #include <dialogs/panel_gerbview_excellon_settings.h>
 #include <dialogs/panel_grid_settings.h>
+#include <dialogs/panel_snapping.h>
 #include <dialogs/panel_gerbview_color_settings.h>
 #include <wildcards_and_files_ext.h>
 #include <wx/ffile.h>
+#include <reporter.h>
+#include <cli_progress_reporter.h>
 
 #include <dialogs/panel_toolbar_customization.h>
 #include <toolbars_gerber.h>
@@ -53,7 +53,8 @@
 using json = nlohmann::json;
 
 
-namespace GERBV {
+namespace GERBV
+{
 
 static struct IFACE : public KIFACE_GUI, public UNITS_PROVIDER
 {
@@ -62,7 +63,8 @@ static struct IFACE : public KIFACE_GUI, public UNITS_PROVIDER
     IFACE( const char* aName, KIWAY_FACES::FACE_T aType ) :
             KIFACE_GUI( aName, aType ),
             UNITS_PROVIDER( gerbIUScale, EDA_UNITS::MM )
-    {}
+    {
+    }
 
     bool OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY_SERVICES* aKiway ) override;
 
@@ -76,14 +78,11 @@ static struct IFACE : public KIFACE_GUI, public UNITS_PROVIDER
 
         switch( aClassId )
         {
-        case FRAME_GERBER:
-            return new GERBVIEW_FRAME( aKiway, aParent );
+        case FRAME_GERBER: return new GERBVIEW_FRAME( aKiway, aParent );
 
-        case PANEL_GBR_DISPLAY_OPTIONS:
-            return new PANEL_GERBVIEW_DISPLAY_OPTIONS( aParent );
+        case PANEL_GBR_DISPLAY_OPTIONS: return new PANEL_GERBVIEW_DISPLAY_OPTIONS( aParent );
 
-        case PANEL_GBR_EXCELLON_OPTIONS:
-            return new PANEL_GERBVIEW_EXCELLON_SETTINGS( aParent );
+        case PANEL_GBR_EXCELLON_OPTIONS: return new PANEL_GERBVIEW_EXCELLON_SETTINGS( aParent );
 
         case PANEL_GBR_GRIDS:
         {
@@ -96,13 +95,15 @@ static struct IFACE : public KIFACE_GUI, public UNITS_PROVIDER
             return new PANEL_GRID_SETTINGS( aParent, this, frame, cfg, FRAME_GERBER );
         }
 
-        case PANEL_GBR_COLORS:
-            return new PANEL_GERBVIEW_COLOR_SETTINGS( aParent );
+        case PANEL_GBR_SNAPPING:
+            return CreateSnappingPanel( aParent, GetAppSettings<GERBVIEW_SETTINGS>( "gerbview" ), FRAME_GERBER );
+
+        case PANEL_GBR_COLORS: return new PANEL_GERBVIEW_COLOR_SETTINGS( aParent );
 
         case PANEL_GBR_TOOLBARS:
         {
             GERBVIEW_SETTINGS* cfg = GetAppSettings<GERBVIEW_SETTINGS>( "gerbview" );
-            TOOLBAR_SETTINGS*  tb  = GetToolbarSettings<GERBVIEW_TOOLBAR_SETTINGS>( "gerbview-toolbars" );
+            TOOLBAR_SETTINGS*  tb = GetToolbarSettings<GERBVIEW_TOOLBAR_SETTINGS>( "gerbview-toolbars" );
 
             std::vector<TOOL_ACTION*>            actions;
             std::vector<ACTION_TOOLBAR_CONTROL*> controls;
@@ -116,8 +117,7 @@ static struct IFACE : public KIFACE_GUI, public UNITS_PROVIDER
             return new PANEL_TOOLBAR_CUSTOMIZATION( aParent, cfg, tb, FRAME_GERBER, actions, controls );
         }
 
-        default:
-            ;
+        default:;
         }
 
         return nullptr;
@@ -133,10 +133,7 @@ static struct IFACE : public KIFACE_GUI, public UNITS_PROVIDER
      * @param aDataId identifies which object you want the address of.
      * @return the object requested and must be cast into the know type.
      */
-    void* IfaceOrAddress( int aDataId ) override
-    {
-        return nullptr;
-    }
+    void* IfaceOrAddress( int aDataId ) override { return nullptr; }
 
     /**
      * Saving a file under a different name is delegated to the various KIFACEs because
@@ -144,23 +141,33 @@ static struct IFACE : public KIFACE_GUI, public UNITS_PROVIDER
      * paths in them that need updating).
      */
     void SaveFileAs( const wxString& aProjectBasePath, const wxString& aProjectName,
-                     const wxString& aNewProjectBasePath, const wxString& aNewProjectName,
-                     const wxString& aSrcFilePath, wxString& aErrors ) override;
+                     const wxString& aNewProjectBasePath, const wxString& aNewProjectName, const wxString& aSrcFilePath,
+                     wxString& aErrors ) override;
+
+    int HandleJob( JOB* aJob, REPORTER* aReporter, PROGRESS_REPORTER* aProgressReporter ) override;
+
+    bool HandleJobConfig( JOB* aJob, wxWindow* aParent ) override;
+
+private:
+    std::unique_ptr<GERBVIEW_JOBS_HANDLER> m_jobHandler;
 
 } kiface( "gerbview", KIWAY_FACES::FACE_GERBVIEW );
 
-} // namespace
+} // namespace GERBV
 
 
 using namespace GERBV;
 
 
-KIFACE_BASE& Kiface() { return kiface; }
+KIFACE_BASE& Kiface()
+{
+    return kiface;
+}
 
 
 // KIFACE_GETTER's actual spelling is a substitution macro found in kiway.h.
 // KIFACE_GETTER will not have name mangling due to declaration in kiway.h.
-KIFACE_API KIFACE* KIFACE_GETTER(  int* aKIFACEversion, int aKiwayVersion, PGM_BASE* aProgram )
+KIFACE_API KIFACE* KIFACE_GETTER( int* aKIFACEversion, int aKiwayVersion, PGM_BASE* aProgram )
 {
     return &kiface;
 }
@@ -171,6 +178,15 @@ bool IFACE::OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY_SERVICES* aKi
     InitSettings( new GERBVIEW_SETTINGS );
     aProgram->GetSettingsManager().RegisterSettings( KifaceSettings() );
     start_common( aCtlBits );
+
+    m_jobHandler = std::make_unique<GERBVIEW_JOBS_HANDLER>( aKiway );
+
+    if( m_start_flags & KFCTL_CLI )
+    {
+        m_jobHandler->SetReporter( &CLI_REPORTER::GetInstance() );
+        m_jobHandler->SetProgressReporter( &CLI_PROGRESS_REPORTER::GetInstance() );
+    }
+
     return true;
 }
 
@@ -178,6 +194,18 @@ bool IFACE::OnKifaceStart( PGM_BASE* aProgram, int aCtlBits, KIWAY_SERVICES* aKi
 void IFACE::OnKifaceEnd()
 {
     end_common();
+}
+
+
+int IFACE::HandleJob( JOB* aJob, REPORTER* aReporter, PROGRESS_REPORTER* aProgressReporter )
+{
+    return m_jobHandler->RunJob( aJob, aReporter, aProgressReporter );
+}
+
+
+bool IFACE::HandleJobConfig( JOB* aJob, wxWindow* aParent )
+{
+    return m_jobHandler->HandleJobConfig( aJob, aParent );
 }
 
 
@@ -211,14 +239,14 @@ void IFACE::SaveFileAs( const wxString& aProjectBasePath, const wxString& aProje
     else if( ext == FILEEXT::GerberJobFileExtension )
     {
         if( destFile.GetName() == aProjectName + wxT( "-job" ) )
-            destFile.SetName( aNewProjectName + wxT( "-job" )  );
+            destFile.SetName( aNewProjectName + wxT( "-job" ) );
 
-         FILE_LINE_READER jobfileReader( aSrcFilePath );
+        FILE_LINE_READER jobfileReader( aSrcFilePath );
 
-         char*    line;
-         wxString data;
+        char*    line;
+        wxString data;
 
-         while( ( line = jobfileReader.ReadLine() ) != nullptr )
+        while( ( line = jobfileReader.ReadLine() ) != nullptr )
             data << line << '\n';
 
         // detect the file format: old (deprecated) gerber format or official JSON format
@@ -287,4 +315,3 @@ void IFACE::SaveFileAs( const wxString& aProjectBasePath, const wxString& aProje
         KI_FAIL_MSG( wxT( "Unexpected filetype for GerbView::SaveFileAs()" ) );
     }
 }
-

@@ -16,8 +16,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef __PNS_OPTIMIZER_H
@@ -105,14 +105,17 @@ public:
         RESTRICT_VERTEX_RANGE = 0x40,
         MERGE_COLINEAR        = 0x80,    ///< Merge co-linear segments
         RESTRICT_AREA         = 0x100,
-        LIMIT_CORNER_COUNT    = 0x200  ///< Do not attempt to optimize if the resulting line's
-                                       ///< corner count is outside the predefined range
+        LIMIT_CORNER_COUNT    = 0x200,  ///< Do not attempt to optimize if the resulting line's
+                                        ///< corner count is outside the predefined range
+        REQUIRE_OBTUSE_ANGLES = 0x400,  ///< Try to prevent 90-degree or acute corners in a drag
+        DP_PAD_EXITS          = 0x800,  ///< fit coupled gateways for pad/via diff pair connections
+        PRESERVE_SEGMENTS     = 0x1000, ///< do not remove segments from a restricted set
     };
 
     OPTIMIZER( NODE* aWorld );
     ~OPTIMIZER();
 
-    ///< A quick shortcut to optimize a line without creating and setting up an optimizer.
+    /// A quick shortcut to optimize a line without creating and setting up an optimizer.
     static bool Optimize( LINE* aLine, int aEffortLevel, NODE* aWorld,
                           const VECTOR2I& aV = VECTOR2I(0, 0) );
 
@@ -132,6 +135,12 @@ public:
     void SetEffortLevel( int aEffort )
     {
         m_effortLevel = aEffort;
+    }
+
+    void SetPreserveSegments( const std::vector<SEG>& aSegs )
+    {
+        m_preservedSegments = aSegs;
+        m_effortLevel |= OPTIMIZER::PRESERVE_SEGMENTS;
     }
 
     void SetPreserveVertex( const VECTOR2I& aV )
@@ -175,6 +184,8 @@ private:
     bool runSmartPads( LINE* aLine );
     bool mergeStep( LINE* aLine, SHAPE_LINE_CHAIN& aCurrentLine, int step );
     bool fanoutCleanup( LINE * aLine );
+    bool dragFixCorners( LINE* aLine );
+    bool dragFixCorner( LINE* aLine, int aVIdx );
     bool mergeDpSegments( DIFF_PAIR *aPair );
     bool mergeDpStep( DIFF_PAIR *aPair, bool aTryP, int step );
 
@@ -207,6 +218,7 @@ private:
     int                 m_effortLevel;
 
     VECTOR2I            m_preservedVertex;
+    std::vector<SEG>    m_preservedSegments;
     std::pair<int, int> m_restrictedVertexRange;
     BOX2I               m_restrictArea;
     bool                m_restrictAreaIsStrict;
@@ -309,6 +321,23 @@ private:
 };
 
 
+class PRESERVE_SEGMENTS_CONSTRAINT: public OPT_CONSTRAINT
+{
+public:
+    PRESERVE_SEGMENTS_CONSTRAINT( NODE* aWorld, const std::vector<SEG>& aSegs ) :
+        OPT_CONSTRAINT( aWorld ),
+        m_segs( aSegs )
+    {
+    };
+
+    bool Check( int aVertex1, int aVertex2, const LINE* aOriginLine,
+                const SHAPE_LINE_CHAIN& aCurrentPath,
+                const SHAPE_LINE_CHAIN& aReplacement ) override;
+private:
+    std::vector<SEG> m_segs;
+};
+
+
 class RESTRICT_VERTEX_RANGE_CONSTRAINT: public OPT_CONSTRAINT
 {
 public:
@@ -341,6 +370,20 @@ public:
 private:
     int m_minCorners;
     int m_angleMask;
+};
+
+
+class OBTUSE_ONLY_CONSTRAINT : public OPT_CONSTRAINT
+{
+public:
+    OBTUSE_ONLY_CONSTRAINT( NODE* aWorld ) :
+        OPT_CONSTRAINT( aWorld )
+    {
+    }
+
+    bool Check( int aVertex1, int aVertex2, const LINE* aOriginLine,
+                const SHAPE_LINE_CHAIN& aCurrentPath,
+                const SHAPE_LINE_CHAIN& aReplacement ) override;
 };
 
 

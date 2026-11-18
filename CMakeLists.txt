@@ -14,12 +14,7 @@
 #  GNU General Public License for more details.
 #
 #  You should have received a copy of the GNU General Public License
-#  along with this program; if not, you may find one here:
-
-#  http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-#  or you may search the http://www.gnu.org website for the version 2 license,
-#  or you may write to the Free Software Foundation, Inc.,
-#  51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+#  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
 if( MSVC )
@@ -31,10 +26,6 @@ endif()
 
 # Generate DEPFILES without transforming relative paths
 cmake_policy( SET CMP0116 OLD )
-
-# Needed to allow the doxygen-python process that depends on swig generation running twice to occur
-# The current structure requires the add_custom_command to get called twice, the NEW behavior deduplicates it
-cmake_policy( SET CMP0113 OLD )
 
 #  Enable CMAKE_MSVC_DEBUG_INFORMATION_FORMAT to override the cmake pdb flags easily
 if (POLICY CMP0141)
@@ -81,6 +72,9 @@ if( APPLE )
     # Apple, in their infinite wisdom, has decided to mark OpenGL as deprecated.
     # Luckily we can silence warnings about its deprecation.
     add_compile_definitions( GL_SILENCE_DEPRECATION=1 )
+
+    # Per-source LANGUAGE OBJCXX on the Metal backend only takes effect once the language is enabled here.
+    enable_language( OBJCXX )
 endif()
 
 # Create a flag to identify the non-Apple unix systems
@@ -127,11 +121,6 @@ option( KICAD_BUILD_QA_TESTS
     "Build software Quality assurance unit tests (default ON)"
     ON )
 
-option( KICAD_SCRIPTING_WXPYTHON
-    "Build wxPython implementation for wx interface building in Python and py.shell (default ON)."
-    ON )
-mark_as_advanced( KICAD_SCRIPTING_WXPYTHON )
-
 option( KICAD_UPDATE_CHECK
     "Build in update check"
     ON )
@@ -147,11 +136,27 @@ option( KICAD_QT_SHELL
     OFF )
 
 if( KICAD_WX_FREE )
-    # Nothing of the GUI: no wxPython, no update check.  The QA builds only the suites without
+    # Nothing of the GUI: no update check.  The QA builds only the suites without
     # the GUI (see qa/CMakeLists.txt).
-    set( KICAD_SCRIPTING_WXPYTHON OFF CACHE BOOL "" FORCE )
     set( KICAD_UPDATE_CHECK OFF CACHE BOOL "" FORCE )
 endif()
+
+cmake_dependent_option( KICAD_BUILD_NATIVE_MODEL_PREVIEW
+    "Build native operating-system 3D model preview components"
+    OFF "MINGW"
+    ON )
+
+if( KICAD_WX_FREE )
+    # The native 3D model previews (Quick Look, Explorer, GTK) are wxWidgets components
+    set( KICAD_BUILD_NATIVE_MODEL_PREVIEW OFF )
+endif()
+
+if( KICAD_BUILD_NATIVE_MODEL_PREVIEW )
+    add_compile_definitions( KICAD_NATIVE_MODEL_PREVIEW )
+endif()
+
+set( KICAD_BUNDLE_ID "org.kicad.kicad"
+    CACHE STRING "Bundle identifier for the containing KiCad application" )
 
 cmake_dependent_option( KICAD_WAYLAND
     "Support Wayland features"
@@ -180,11 +185,6 @@ cmake_dependent_option( KICAD_BUILD_FLATPAK
 cmake_dependent_option( KICAD_BUILD_NIGHTLY_FLATPAK
     "Build a Nightly flatpak (requires KICAD_BUILD_FLATPAK=ON)"
     OFF "UNIX_NOT_APPLE"
-    OFF )
-
-cmake_dependent_option( KICAD_WIN32_DPI_AWARE
-    "Turn on DPI awareness for Windows builds only"
-    OFF "WIN32"
     OFF )
 
 cmake_dependent_option( KICAD_WIN32_VERIFY_CODESIGN
@@ -285,6 +285,11 @@ option( KICAD_USE_PCH
     "Enable precompiled header support"
     ON )
 
+option( KICAD_UNITY_BUILD_WXFB
+    "Compile wxFormBuilder generated sources in batches, without the precompiled header"
+    ON )
+mark_as_advanced( KICAD_UNITY_BUILD_WXFB )
+
 # Advanced option to make link maps (only available on linux)
 cmake_dependent_option( KICAD_MAKE_LINK_MAPS
     "Create link maps for artifacts"
@@ -318,14 +323,6 @@ option( KICAD_GAL_PROFILE
     "Enable profiling info for GAL"
     OFF )
 
-option( KICAD_IPC_API
-    "Enable IPC API"
-    ON )
-
-option( KICAD_IDF_TOOLS
-    "Build additional idf tools"
-    ON )
-
 # Global setting: exports are explicit
 set( CMAKE_CXX_VISIBILITY_PRESET "hidden" )
 set( CMAKE_VISIBILITY_INLINES_HIDDEN ON )
@@ -338,6 +335,13 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Xcode older than 26 gates std::jthread / std::stop_token behind the
+# experimental library. Enable it for C++20.
+if( APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "Clang" )
+    add_compile_options( -fexperimental-library )
+    add_link_options( -fexperimental-library )
+endif()
+
 # Check if the current generator is multi-config (Ninja Multi-Config, Visual Studio, Xcode)
 get_property(IS_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
 
@@ -348,22 +352,17 @@ get_property(IS_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
 if(IS_MULTI_CONFIG)
     set(KICMAKE_CFG_INTDIR "$<CONFIG>")
 else()
-    # For single-config generators (Ninja, Makefiles), default to "." 
+    # For single-config generators (Ninja, Makefiles), default to "."
     set(KICMAKE_CFG_INTDIR ".")
 endif()
 
 # Pass defines into KiCad code based on the build options set
-add_compile_definitions( $<$<BOOL:${KICAD_SCRIPTING_WXPYTHON}>:KICAD_SCRIPTING_WXPYTHON> )
 add_compile_definitions( $<$<BOOL:${KICAD_SIGNAL_INTEGRITY}>:KICAD_SIGNAL_INTEGRITY> )
 
 add_compile_definitions( $<$<BOOL:${KICAD_USE_VALGRIND}>:KICAD_USE_VALGRIND> )
 add_compile_definitions( $<$<BOOL:${KICAD_GAL_PROFILE}>:KICAD_GAL_PROFILE> )
 add_compile_definitions( $<$<BOOL:${KICAD_WIN32_VERIFY_CODESIGN}>:KICAD_WIN32_VERIFY_CODESIGN> )
 add_compile_definitions( $<$<BOOL:${KICAD_UPDATE_CHECK}>:KICAD_UPDATE_CHECK> )
-
-if( KICAD_IPC_API )
-    add_definitions( -DKICAD_IPC_API )
-endif()
 
 # Ensure DEBUG is defined for all platforms in Debug builds
 add_compile_definitions( $<$<CONFIG:Debug>:DEBUG> )
@@ -403,8 +402,6 @@ if( WIN32 )
     # In fully standards-compliant mode, M_PI et al. are defined only if
     # _USE_MATH_DEFINES is set.
     add_compile_definitions( _USE_MATH_DEFINES )
-
-    add_compile_definitions( $<$<BOOL:${KICAD_WIN32_DPI_AWARE}>:KICAD_WIN32_DPI_AWARE=1> )
 endif()
 
 add_compile_definitions( $<$<BOOL:${KICAD_BUILD_ARCH_X86}>:KICAD_BUILD_ARCH_X86> )
@@ -468,11 +465,11 @@ if( CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang" )
     # but no information about local variables.
     # Level 3 includes full information, but binaries are much larger.
     if( KICAD_BUILD_SMALL_DEBUG_FILES )
-        set( CMAKE_C_FLAGS_DEBUG   "-g1 -ggdb1" )
-        set( CMAKE_CXX_FLAGS_DEBUG "-g1 -ggdb1" )
+        set( CMAKE_C_FLAGS_DEBUG   "${CMAKE_C_FLAGS_DEBUG} -g1 -ggdb1" )
+        set( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g1 -ggdb1" )
     else()
-        set( CMAKE_C_FLAGS_DEBUG   "-g3 -ggdb3" )
-        set( CMAKE_CXX_FLAGS_DEBUG "-g3 -ggdb3" )
+        set( CMAKE_C_FLAGS_DEBUG   "${CMAKE_C_FLAGS_DEBUG} -g3 -ggdb3" )
+        set( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g3 -ggdb3" )
     endif()
 
     check_cxx_compiler_flag( "-ftrivial-auto-var-init=pattern" COMPILER_SUPPORTS_TRIVIAL_PATTERN_INIT )
@@ -552,11 +549,7 @@ if( CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang" )
         # include dir to allow getting the version header
         list(APPEND mingw_resource_compiler_INCLUDE_DIRS ${CMAKE_BINARY_DIR}/ )
         list(APPEND mingw_resource_compiler_DEFINES KICAD_BUILD_ARCH=${KICAD_BUILD_ARCH} )
-        if( KICAD_WIN32_DPI_AWARE )
-            list(APPEND mingw_resource_compiler_DEFINES KICAD_WIN32_DPI_AWARE=1 )
-        endif()
-
-        set( CMAKE_EXE_LINKER_FLAGS_RELEASE "-s" )
+        set( CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} -s" )
 
         # for some reasons, cmake does do use always a response file to send the list of objects
         # to the archiver, and because this list can be very long, and can create issue
@@ -613,7 +606,7 @@ if( MSVC )
     # /Gy: Enable Function-Level Linking
     string( APPEND CMAKE_CXX_FLAGS_RELEASE " /Gy" )
     string( APPEND CMAKE_CXX_FLAGS_RELWITHDEBINFO " /Gy" )
-    # Avoid fatal error because /GF + swig wrapper exceed standard obj file limits
+    # Avoid fatal error as we could exceed standard obj file limits
     string( APPEND CMAKE_CXX_FLAGS " /bigobj" )
     # /permissive-: This puts MSVC into compliance mode, this flag is default on with C++20
     # but we want to turn it on to enable debug performance improvements available under C++17 in MSVC 17.5+
@@ -651,6 +644,9 @@ if( MSVC )
     foreach( type EXE SHARED MODULE)
         # /DEBUG: create PDB
         string( APPEND CMAKE_${type}_LINKER_FLAGS " /DEBUG /MANIFEST:NO" )
+        # /PDBPAGESIZE: the default 4 KiB pages cap a PDB at 4 GiB, which an incrementally linked
+        # debug eeschema reaches
+        string( APPEND CMAKE_${type}_LINKER_FLAGS_DEBUG " /PDBPAGESIZE:8192" )
         # /OPT:REF: omit unreferenced code
         string( APPEND CMAKE_${type}_LINKER_FLAGS_RELEASE " /OPT:REF" )
         string( APPEND CMAKE_${type}_LINKER_FLAGS_RELWITHDEBINFO " /OPT:REF" )
@@ -741,7 +737,7 @@ if( NOT APPLE )
         CACHE STRING "Location of KiCad stock EDA library data" )
 
     if( WIN32 )
-        set( KICAD_PLUGINS ${KICAD_BIN}/scripting/plugins
+        set( KICAD_PLUGINS ${KICAD_DATA}/plugins
             CACHE PATH "Location of KiCad plugins." )
 
         set( KICAD_LIB ${KICAD_BIN}
@@ -810,11 +806,6 @@ else()
     set( KICAD_DEMOS demos
         CACHE PATH "Location of KiCad demo files." FORCE )
 
-    # Required to run from build folder
-    if( PYTHON_FRAMEWORK )
-        list(APPEND CMAKE_BUILD_RPATH ${PYTHON_FRAMEWORK} )
-    endif()
-
     # RPATH settings for building shared libraries
     set( CMAKE_MACOSX_RPATH FALSE )
 endif()
@@ -832,6 +823,7 @@ mark_as_advanced( KICAD_BIN
 
 include( Functions )
 include( HeadlessKiface )
+include( RHIShaderCompilation )
 
 include( ExternalProject )
 
@@ -886,6 +878,27 @@ find_package( libgit2 1.5 REQUIRED )
 # Set include directories for libgit
 include_directories(${LIBGIT2_INCLUDE_DIRS})
 
+# Find SQLite3, required by the database library backend
+find_package( SQLite3 REQUIRED )
+
+# The SDK library of macOS fails to read a write-ahead log database that no program has open, and the only
+# workaround writes to the user's database, so a build must link Homebrew or vcpkg SQLite instead
+if( APPLE )
+    if( SQLite3_LIBRARY MATCHES "^/usr/lib/" OR SQLite3_LIBRARY MATCHES "\\.sdk/" OR SQLite3_LIBRARY MATCHES "/SDKs/" )
+        message( FATAL_ERROR "SQLite3 was found in the macOS SDK (${SQLite3_LIBRARY}), which cannot read WAL "
+                             "databases KiCad promises to read.  Set SQLite3_ROOT to a Homebrew or vcpkg SQLite, for "
+                             "example -DSQLite3_ROOT=/opt/homebrew/opt/sqlite, and remove SQLite3_LIBRARY and "
+                             "SQLite3_INCLUDE_DIR from the CMake cache if it already found the SDK copy." )
+    endif()
+endif()
+
+# Newer CMake renames the imported target and deprecates the old name
+if( TARGET SQLite3::SQLite3 )
+    set( KICAD_SQLITE3_TARGET SQLite3::SQLite3 )
+else()
+    set( KICAD_SQLITE3_TARGET SQLite::SQLite3 )
+endif()
+
 #
 # Find Boost headers and libraries, required.
 set( BOOST_REQUESTED_COMPONENTS locale )    # locale is required by nanoodbc/database libraries
@@ -928,13 +941,16 @@ endif()
 if( OCC_VERSION_STRING VERSION_LESS 7.5.0 )
     MESSAGE( FATAL_ERROR "================================================================\n"
                          "OpenCASCADE version ${OCC_VERSION_STRING} was found.\n"
-                         "  KiCad requires a minimum version of 7.5.0\n"
+                         "  KiCad requires a minimum version of 7.6.0\n"
                          "================================================================\n")
 endif()
 include_directories( SYSTEM ${OCC_INCLUDE_DIR} )
 
 # Try to find Protobuf with modern approach first, fallback to legacy if needed
 set( _protobuf_found FALSE )
+
+# KiCad 11 relies on protobuf 3.15+
+set( PROTOBUF_MIN_VERSION 3.15 )
 
 if( NOT KICAD_USE_CMAKE_FINDPROTOBUF )
     message( STATUS "Attempting to find Protobuf using CONFIG mode..." )
@@ -956,6 +972,17 @@ if( NOT _protobuf_found )
     if( Protobuf_FOUND )
         message( STATUS "Found Protobuf using FindProtobuf.cmake" )
     endif()
+endif()
+
+if( NOT Protobuf_VERSION )
+    message( WARNING
+             "Unable to determine the Protobuf version. KiCad requires a minimum version of ${PROTOBUF_MIN_VERSION}" )
+elseif( Protobuf_VERSION VERSION_LESS PROTOBUF_MIN_VERSION )
+    message( FATAL_ERROR
+             "================================================================\n"
+             " Protobuf version ${Protobuf_VERSION} was found.\n"
+             "  KiCad requires a minimum version of ${PROTOBUF_MIN_VERSION}\n"
+             "================================================================\n" )
 endif()
 
 if( NOT Protobuf_PROTOC_EXECUTABLE )
@@ -989,113 +1016,11 @@ set( INC_AFTER
 # Find Python and other scripting resources
 #
 
-# SWIG 4.0 or later require for proper C++11 support.
-find_package( SWIG 4.0 REQUIRED )
-include( ${SWIG_USE_FILE} )
-
 set( PythonInterp_FIND_VERSION 3.6 )
-set( PythonLibs_FIND_VERSION 3.6 )
 
 find_package( PythonInterp ${PythonInterp_FIND_VERSION} )
 
 check_find_package_result( PYTHONINTERP_FOUND "Python Interpreter" )
-
-# Get the correct Python site package install path from the Python interpreter found by
-# FindPythonInterp unless the user specifically defined a custom path.
-if( NOT PYTHON_SITE_PACKAGE_PATH )
-    execute_process( COMMAND ${PYTHON_EXECUTABLE} -c "import sys, sysconfig
-if 'deb_system' in sysconfig.get_scheme_names():
-    scheme = 'deb_system'
-elif sys.version_info > (3, 10):
-    scheme = sysconfig.get_default_scheme()
-else:
-    scheme = sysconfig._get_default_scheme()
-print(\"%s\"%sysconfig.get_path('platlib', vars={'platbase': '.'}, scheme=scheme))"
-        OUTPUT_VARIABLE PYTHON_SITE_PACKAGE_PATH
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-        )
-
-    if( NOT PYTHON_SITE_PACKAGE_PATH )
-        message( FATAL_ERROR "Error occurred while attempting to find the Python site library path." )
-    endif()
-endif()
-
-if( APPLE )
-    set( OSX_BUNDLE_PYTHON_SITE_PACKAGES_DIR ${OSX_BUNDLE_LIB_DIR}/Python.framework/Versions/${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages)
-    set( OSX_BUNDLE_INSTALL_PYTHON_SITE_PACKAGES_DIR "${OSX_BUNDLE_INSTALL_DIR}/${OSX_BUNDLE_PYTHON_SITE_PACKAGES_DIR}")
-    set( PYTHON_DEST "${OSX_BUNDLE_BUILD_DIR}/${OSX_BUNDLE_PYTHON_SITE_PACKAGES_DIR}"
-        CACHE PATH "Python module install path."
-        )
-
-    add_compile_definitions( OSX_BUNDLE_PYTHON_SITE_PACKAGES_DIR="${OSX_BUNDLE_PYTHON_SITE_PACKAGES_DIR}" )
-elseif( VCPKG_TOOLCHAIN )
-    set( PYTHON_DEST "${CMAKE_INSTALL_PREFIX}/bin/Lib/site-packages"
-        CACHE PATH "Python module install path."
-        )
-else()
-    set( PYTHON_DEST "${PYTHON_SITE_PACKAGE_PATH}"
-        CACHE PATH "Python module install path."
-        )
-
-    if( IS_ABSOLUTE ${PYTHON_SITE_PACKAGE_PATH} )
-        set( PYTHON_FULL_DEST "${PYTHON_SITE_PACKAGE_PATH}"
-            CACHE PATH "Python module full install path."
-            )
-    else()
-        set( PYTHON_FULL_DEST "${CMAKE_INSTALL_PREFIX}/${PYTHON_SITE_PACKAGE_PATH}"
-            CACHE PATH "Python module full install path."
-            )
-    endif()
-endif()
-message( STATUS "Python module install path: ${PYTHON_DEST}" )
-
-find_package( PythonLibs 3.6 REQUIRED )
-
-# pybind11 is header-only, so include the subdir
-# USE_CROSSCOMPILING is needed to avoid pybind11 trying to run a non-native intrepreter
-# It also makes no sense it needs a second flag in addition to CMAKE_CROSSCOMPILING
-set( PYBIND11_USE_CROSSCOMPILING TRUE )
-# Disable the findpython integration that pybind has buried in it
-set( PYBIND11_NOPYTHON TRUE )
-add_subdirectory(thirdparty/pybind11)
-
-# Make sure that we get our pybind11 and not the system pybind11 (ours is patched to work with wx)
-include_directories( BEFORE SYSTEM ${PYBIND11_INCLUDE_DIR} )
-
-# Infrequently needed headers go at end of search paths, append to INC_AFTER which
-# although is used for all components, should be a harmless hit for something like eeschema
-# so long as unused search paths are at the end like this.
-set( INC_AFTER ${INC_AFTER} ${PYTHON_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/scripting )
-
-
-if( KICAD_SCRIPTING_WXPYTHON )
-    # Find the wxPython installation
-    if( NOT VCPKG_TOOLCHAIN )
-        find_package( wxPython REQUIRED )
-
-        if( WXPYTHON_VERSION VERSION_LESS 4.0.0 )
-            message( FATAL_ERROR "wxPython Phoenix is required" )
-        endif()
-
-        if( WXPYTHON_WXVERSION VERSION_LESS 3.2.0 )
-            message( FATAL_ERROR "wxWidgets 3.2.0 or greater is required" )
-        endif()
-    endif()
-
-endif()
-
-# GTK3 is required on Linux
-if( UNIX AND NOT APPLE AND KICAD_SCRIPTING_WXPYTHON )
-    if( NOT "${WXPYTHON_TOOLKIT}" STREQUAL "gtk3" )
-        message( FATAL_ERROR "GTK3-based wxPython/Phoenix toolkit is required.")
-    endif()
-endif()
-
-if( WXPYTHON_FLAVOR )
-    message( STATUS "Found wxPython ${WXPYTHON_FLAVOR} "
-        "${WXPYTHON_VERSION}/${WXPYTHON_TOOLKIT} "
-        "(wxWidgets ${WXPYTHON_WXVERSION})" )
-endif()
 
 if( KICAD_WX_FREE )
     include( WxFree )
@@ -1105,29 +1030,7 @@ else()
     # Find wxWidgets library, required
     #
 
-    # Check if '--toolkit=xxx' option has been passed
-    string( REGEX MATCH "--toolkit=([a-zA-Z0-9]+)"
-        WXWIDGETS_REQUESTED_TOOLKIT "${wxWidgets_CONFIG_OPTIONS}" )
-
-    if( WXWIDGETS_REQUESTED_TOOLKIT
-            AND NOT WXWIDGETS_REQUESTED_TOOLKIT STREQUAL "--toolkit=${WXPYTHON_TOOLKIT}" )
-        message( WARNING "wxWidgets and wxPython must be based on the same toolkit.\n"
-            "It will be fixed automatically if you skip the '--toolkit=xxx' "
-            "wxWidgets_CONFIG_OPTIONS parameter.")
-    elseif( UNIX AND NOT APPLE )
-        # Force the use of GTK3 on Linux
-        set( wxWidgets_CONFIG_OPTIONS ${wxWidgets_CONFIG_OPTIONS} "--toolkit=gtk3" )
-    else()
-        # Use the same toolkit as wxPython otherwise there will be a symbol conflict
-        set( wxWidgets_CONFIG_OPTIONS ${wxWidgets_CONFIG_OPTIONS} "--toolkit=${WXPYTHON_TOOLKIT}" )
-    endif()
-
-    # Require the same wxWidgets version as is used by wxPython
-    if( KICAD_SCRIPTING_WXPYTHON )
-        set( wxWidgets_REQ_VERSION ${WXPYTHON_WXVERSION} )
-    else()
-        set( wxWidgets_REQ_VERSION 3.2.0 )
-    endif()
+    set( wxWidgets_REQ_VERSION 3.2.0 )
 
     # See line 49 of cmake/FindwxWidgets.cmake
     set( wxWidgets_CONFIG_OPTIONS ${wxWidgets_CONFIG_OPTIONS} --static=no )
@@ -1164,6 +1067,12 @@ else()
         message( STATUS "Detected wxWidgets port: ${KICAD_WX_PORT}")
     else()
         message( FATAL_ERROR "Unable to detect wxWidgets port")
+    endif()
+
+    if( UNIX_NOT_APPLE AND KICAD_BUILD_NATIVE_MODEL_PREVIEW
+        AND NOT _wx_selected_config MATCHES "^gtk3" )
+        message( FATAL_ERROR
+            "Native 3D model picker previews require a wxWidgets GTK 3 build; detected '${_wx_selected_config}'" )
     endif()
 
     if( NOT MSVC )
@@ -1233,12 +1142,17 @@ if( KICAD_USE_SENTRY )
         set( CRASHPAD_WER_ENABLED ON )
     endif()
     add_subdirectory( thirdparty/sentry-native )
+
+    if( APPLE AND TARGET crashpad_handler )
+        set_target_properties(crashpad_handler PROPERTIES
+                RUNTIME_OUTPUT_DIRECTORY "${OSX_BUNDLE_BUILD_BIN_DIR}"
+        )
+    endif()
+
     add_compile_definitions( KICAD_USE_SENTRY )
 endif()
 
-if( KICAD_IPC_API )
-    find_package( nng REQUIRED )
-endif()
+find_package( nng REQUIRED )
 
 #================================================
 # Add the doxygen target
@@ -1250,7 +1164,6 @@ add_subdirectory( doxygen )
 # Generate config.h.
 configure_file( ${PROJECT_SOURCE_DIR}/cmake/config.h.cmake
     ${CMAKE_BINARY_DIR}/config.h )
-
 
 #================================================
 # "make uninstall" rules
@@ -1288,14 +1201,12 @@ add_subdirectory( api )
 add_subdirectory( resources )
 add_subdirectory( thirdparty )
 add_subdirectory( libs )
-add_subdirectory( scripting )
 add_subdirectory( common )
 add_subdirectory( 3d-viewer )
 add_subdirectory( eeschema )
 add_subdirectory( gerbview )
 add_subdirectory( pcbnew )
 add_subdirectory( pagelayout_editor )
-add_subdirectory( bitmap2component )
 add_subdirectory( pcb_calculator )
 add_subdirectory( plugins )             # 3D plugins must be built before kicad
 add_subdirectory( cvpcb )               # must be after pcbnew
@@ -1314,6 +1225,12 @@ endif()
 if( KICAD_WX_FREE )
     # Only the targets of kicad-cli (and of the Qt shell), with the sources they link
     kicad_wx_free_restrict_targets()
+endif()
+
+# Must follow every directory that defines targets
+if( KICAD_UNITY_BUILD_WXFB )
+    include( WxFormBuilderUnity )
+    kicad_unity_wxformbuilder_sources()
 endif()
 
 # Demos
@@ -1343,6 +1260,16 @@ if( APPLE )
 
     # As of CMP0082 (CMake 3.14), the install rules are run in order, so we can just
     # declare it last.
+
+    install( CODE "
+        cmake_policy( SET CMP0012 NEW )
+
+        if( ${KICAD_APPLE_MAKE_RELOCATEABLE_BUNDLE} )
+            message( STATUS \"Making the finished bundle relocateable...\" )
+            include( ${KICAD_CMAKE_MODULE_PATH}/InstallSteps/RefixupMacOS.cmake )
+            refix_kicad_bundle( ${OSX_BUNDLE_INSTALL_DIR} )
+        endif()
+    " COMPONENT Runtime )
 
     add_subdirectory( signing )
 endif()

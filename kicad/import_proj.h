@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef IMPORT_PROJ_H
@@ -59,6 +59,11 @@ public:
      */
     void ImportPadsFiles();
 
+    /**
+     * @brief Saves every design an editor imported, so the new project exists on disk.
+     */
+    void SaveImportedFiles();
+
     wxFileName m_InputFile;
     wxFileName m_TargetProj;
 
@@ -66,6 +71,8 @@ private:
     KICAD_MANAGER_FRAME* m_frame;
 
     std::map<std::string, UTF8> m_properties;
+
+    std::set<FRAME_T> m_importedFrames; ///< editors whose import succeeded
 
     std::vector<wxString> m_copiedSchPaths;
     std::vector<wxString> m_copiedPcbPaths;
@@ -88,11 +95,24 @@ private:
     /// Join the basenames of the given library paths into a source-library property value.
     wxString joinSourceLibNicknames( const std::set<wxString>& aPaths ) const;
 
-    void EasyEDAProProjectHandler();
+    void EasyEDAProProjectHandler( int aImportedSchFileType, int aImportedPcbFileType );
 
     void AltiumProjectHandler();
 
     void GedaProjectHandler();
+
+    /**
+     * @brief Imports the OrCAD schematic, then offers to import an associated Allegro board.
+     */
+    void OrcadProjectHandler();
+
+    /**
+     * @brief Imports an Easy-PC / DesignSpark project, or a schematic and board pair.
+     *
+     * A .prj names its sheets and its single PCB; the schematic importer reads every sheet from the .prj itself
+     * and the board is the PCB item.  A .sch or .pcb pairs with the sibling of the same name.
+     */
+    void EasyPcProjectHandler();
 };
 
 #endif

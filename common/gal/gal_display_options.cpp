@@ -14,11 +14,7 @@
 * GNU General Public License for more details.
 *
 * You should have received a copy of the GNU General Public License
-* along with this program; if not, you may find one here:
-* http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-* or you may search the http://www.gnu.org website for the version 2 license,
-* or you may write to the Free Software Foundation, Inc.,
-* 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+* along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <gal/gal_display_options.h>
@@ -27,7 +23,6 @@
 
 #include <wx/log.h>
 
-#include <config_map.h>
 #include <core/ki_log.h>
 
 using namespace KIGFX;
@@ -49,6 +44,7 @@ GAL_DISPLAY_OPTIONS::GAL_DISPLAY_OPTIONS()
       m_gridSnapping( GRID_SNAPPING::ALWAYS ),
       m_gridLineWidth( 1.0 ),
       m_gridMinSpacing( 10.0 ),
+      m_gridShowMajor( true ),
       m_axesEnabled( false ),
       m_crossHairMode( CROSS_HAIR_MODE::SMALL_CROSS ),
       m_forceDisplayCursor( false ),

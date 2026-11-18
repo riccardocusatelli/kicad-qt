@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <geometry/shape_segment.h>
@@ -132,12 +128,12 @@ void DRC_TEST_PROVIDER_HOLE_SIZE::checkPadHole( PAD* aPad )
 
         ptA = aPad->GetPosition();
 
-        if( aPad->GetDrillSizeX() == aPad->GetDrillSizeY() )
-            ptB = ptA - VECTOR2I( aPad->GetDrillSize() ).Resize( aPad->GetDrillSizeX() / 2 );
-        else if( aPad->GetDrillSizeX() > aPad->GetDrillSizeY() )
-            ptB = ptA - VECTOR2I( aPad->GetDrillSizeX() / 2, 0 );
+        if( aPad->GetDrillSize().x == aPad->GetDrillSize().y )
+            ptB = ptA - VECTOR2I( aPad->GetDrillSize() ).Resize( aPad->GetDrillSize().x / 2 );
+        else if( aPad->GetDrillSize().x > aPad->GetDrillSize().y )
+            ptB = ptA - VECTOR2I( aPad->GetDrillSize().x / 2, 0 );
         else
-            ptB = ptA - VECTOR2I( 0, aPad->GetDrillSizeY() / 2 );
+            ptB = ptA - VECTOR2I( 0, aPad->GetDrillSize().y / 2 );
     }
 
     if( constraint.Value().HasMin() && holeMinor < constraint.Value().Min() )
@@ -147,12 +143,12 @@ void DRC_TEST_PROVIDER_HOLE_SIZE::checkPadHole( PAD* aPad )
 
         ptA = aPad->GetPosition();
 
-        if( aPad->GetDrillSizeX() == aPad->GetDrillSizeY() )
-            ptB = ptA - VECTOR2I( aPad->GetDrillSize() ).Resize( aPad->GetDrillSizeX() / 2 );
-        else if( aPad->GetDrillSizeX() < aPad->GetDrillSizeY() )
-            ptB = ptA - VECTOR2I( aPad->GetDrillSizeX() / 2, 0 );
+        if( aPad->GetDrillSize().x == aPad->GetDrillSize().y )
+            ptB = ptA - VECTOR2I( aPad->GetDrillSize() ).Resize( aPad->GetDrillSize().x / 2 );
+        else if( aPad->GetDrillSize().x < aPad->GetDrillSize().y )
+            ptB = ptA - VECTOR2I( aPad->GetDrillSize().x / 2, 0 );
         else
-            ptB = ptA - VECTOR2I( 0, aPad->GetDrillSizeY() / 2 );
+            ptB = ptA - VECTOR2I( 0, aPad->GetDrillSize().y / 2 );
     }
 
     if( fail_min || fail_max )

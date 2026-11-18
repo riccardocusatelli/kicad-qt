@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -23,8 +23,9 @@
  * Contains common object definitions
  */
 
-#ifndef CADSTAR_ARCHIVE_OBJECTS_H_
-#define CADSTAR_ARCHIVE_OBJECTS_H_
+#pragma once
+
+#define CADSTAR_FONT_NAME wxT( "CADSTAR" )
 
 
 enum class CADSTAR_PIN_TYPE
@@ -52,6 +53,3 @@ enum class CADSTAR_PIN_POSITION
     BOTTOM_LEFT  = 2,
     BOTTOM_RIGHT = 3
 };
-
-
-#endif // CADSTAR_ARCHIVE_OBJECTS_H_

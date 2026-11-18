@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <boost/test/unit_test.hpp>
@@ -30,6 +30,8 @@
 #include <pcb_text.h>
 #include <pcb_group.h>
 #include <pcb_board_outline.h>
+#include <lset.h>
+#include <generators/pcb_via_stack.h>
 #include <pcb_view.h>
 #include <tools/pcb_selection_tool.h>
 
@@ -223,6 +225,216 @@ BOOST_AUTO_TEST_CASE( LayerChangeOffEdgeCutsUpdatesBoardOutline )
     commit.Push( wxT( "Change layer" ), SKIP_UNDO );
 
     BOOST_CHECK_EQUAL( board.BoardOutline()->GetOutline().OutlineCount(), 0 );
+}
+
+// Undo after a drag must put the hops back with the stack.
+BOOST_AUTO_TEST_CASE( RevertAfterDraggingAViaStackRestoresItsHops )
+{
+    BOARD        board;
+    TOOL_MANAGER mgr;
+
+    board.SetCopperLayerCount( 4 );
+    board.SetEnabledLayers( LSET::AllCuMask( 4 ) | LSET::AllTechMask() );
+    mgr.SetEnvironment( &board, nullptr, nullptr, nullptr, nullptr );
+
+    KI_TEST::DUMMY_TOOL* dummyTool = new KI_TEST::DUMMY_TOOL();
+    mgr.RegisterTool( dummyTool );
+
+    VECTOR2I origin( 10000000, 10000000 );
+
+    PCB_VIA_STACK* stack = new PCB_VIA_STACK( &board, F_Cu );
+    stack->SetStartLayer( F_Cu );
+    stack->SetEndLayer( In2_Cu );
+    stack->SetViaSize( 300000 );
+    stack->SetViaDrill( 150000 );
+    stack->SetPosition( origin );
+    board.Add( stack );
+    stack->Regenerate( &board, nullptr );
+
+    std::map<BOARD_ITEM*, VECTOR2I> before;
+
+    for( BOARD_ITEM* item : stack->GetBoardItems() )
+        before[item] = item->GetPosition();
+
+    BOOST_REQUIRE_EQUAL( before.size(), 2u );
+
+    BOARD_COMMIT commit( &mgr, true, false );
+
+    stack->EditStart( nullptr, &board, &commit );
+
+    // A drag is a stream of motion events.
+    for( const VECTOR2I& step : { VECTOR2I( 500000, 0 ), VECTOR2I( 500000, 250000 ) } )
+    {
+        stack->Move( step );
+        stack->Update( nullptr, &board, &commit );
+    }
+
+    stack->EditFinish( nullptr, &board, &commit );
+
+    commit.Revert();
+
+    BOOST_CHECK_EQUAL( stack->GetPosition(), origin );
+
+    for( const auto& [item, pos] : before )
+    {
+        BOOST_CHECK_MESSAGE( item->GetPosition() == pos,
+                             "hop left behind at " + item->GetPosition().Format() + " instead of " + pos.Format() );
+    }
+}
+
+
+// Editing a stack stages its members, then rebuilds them. A member must not carry both a
+// modify and a remove line, or redo trips over the pair.
+BOOST_AUTO_TEST_CASE( RegeneratingAViaStackDoesNotDoubleStageItsHops )
+{
+    BOARD        board;
+    TOOL_MANAGER mgr;
+
+    board.SetCopperLayerCount( 6 );
+    board.SetEnabledLayers( LSET::AllCuMask( 6 ) | LSET::AllTechMask() );
+    mgr.SetEnvironment( &board, nullptr, nullptr, nullptr, nullptr );
+
+    KI_TEST::DUMMY_TOOL* dummyTool = new KI_TEST::DUMMY_TOOL();
+    mgr.RegisterTool( dummyTool );
+
+    PCB_VIA_STACK* stack = new PCB_VIA_STACK( &board, F_Cu );
+    stack->SetStartLayer( F_Cu );
+    stack->SetEndLayer( In2_Cu );
+    stack->SetViaSize( 300000 );
+    stack->SetViaDrill( 150000 );
+    stack->SetPosition( VECTOR2I( 10000000, 10000000 ) );
+    board.Add( stack );
+    stack->Regenerate( &board, nullptr );
+
+    const auto originalItems = stack->GetBoardItems();
+    std::vector<BOARD_ITEM*> original( originalItems.begin(), originalItems.end() );
+    BOOST_REQUIRE_EQUAL( original.size(), 2u );
+
+    BOARD_COMMIT commit( &mgr, true, false );
+
+    stack->EditStart( nullptr, &board, &commit );
+
+    // Widening the span changes the hop set, so the members are replaced rather than reused.
+    stack->SetEndLayer( In3_Cu );
+    stack->Update( nullptr, &board, &commit );
+    stack->EditFinish( nullptr, &board, &commit );
+
+    for( BOARD_ITEM* item : original )
+    {
+        BOOST_CHECK_MESSAGE( commit.GetStatus( item ) == CHT_REMOVE,
+                             "replaced hop is staged as " << commit.GetStatus( item ) << ", expected CHT_REMOVE only" );
+    }
+
+    commit.Revert();
+}
+
+
+// Update outside an edit must do nothing. Regenerating there would delete and rebuild the
+// hops behind the back of whatever holds them.
+BOOST_AUTO_TEST_CASE( UpdateOutsideAnEditIsInert )
+{
+    BOARD        board;
+    TOOL_MANAGER mgr;
+
+    board.SetCopperLayerCount( 4 );
+    board.SetEnabledLayers( LSET::AllCuMask( 4 ) | LSET::AllTechMask() );
+    mgr.SetEnvironment( &board, nullptr, nullptr, nullptr, nullptr );
+
+    KI_TEST::DUMMY_TOOL* dummyTool = new KI_TEST::DUMMY_TOOL();
+    mgr.RegisterTool( dummyTool );
+
+    PCB_VIA_STACK* stack = new PCB_VIA_STACK( &board, F_Cu );
+    stack->SetStartLayer( F_Cu );
+    stack->SetEndLayer( In2_Cu );
+    stack->SetViaSize( 300000 );
+    stack->SetViaDrill( 150000 );
+    stack->SetPosition( VECTOR2I( 10000000, 10000000 ) );
+    board.Add( stack );
+    stack->Regenerate( &board, nullptr );
+
+    const auto beforeItems = stack->GetBoardItems();
+    std::vector<BOARD_ITEM*> before( beforeItems.begin(), beforeItems.end() );
+    BOOST_REQUIRE_EQUAL( before.size(), 2u );
+
+    BOARD_COMMIT commit( &mgr, true, false );
+
+    // No EditStart, so IN_EDIT is not set.
+    BOOST_CHECK( !stack->Update( nullptr, &board, &commit ) );
+
+    const auto afterItems = stack->GetBoardItems();
+    std::vector<BOARD_ITEM*> after( afterItems.begin(), afterItems.end() );
+
+    BOOST_REQUIRE_EQUAL( after.size(), before.size() );
+    BOOST_CHECK_MESSAGE( std::set<BOARD_ITEM*>( before.begin(), before.end() )
+                                 == std::set<BOARD_ITEM*>( after.begin(), after.end() ),
+                         "the hops were rebuilt outside an edit" );
+}
+
+
+// A reverted commit must forget what it staged, or the next edit of the same item is skipped
+// and the commit pushes empty, leaving the change on the board with no undo entry.
+BOOST_AUTO_TEST_CASE( RevertedCommitStagesTheSameItemAgain )
+{
+    BOARD        board;
+    TOOL_MANAGER mgr;
+    mgr.SetEnvironment( &board, nullptr, nullptr, nullptr, nullptr );
+    KI_TEST::DUMMY_TOOL* dummyTool = new KI_TEST::DUMMY_TOOL();
+    mgr.RegisterTool( dummyTool );
+
+    PCB_SHAPE* shape = new PCB_SHAPE( &board, SHAPE_T::SEGMENT );
+    shape->SetStart( VECTOR2I( 0, 0 ) );
+    shape->SetEnd( VECTOR2I( 100000, 0 ) );
+    board.Add( shape );
+
+    BOARD_COMMIT commit( dummyTool );
+
+    commit.Modify( shape );
+    BOOST_REQUIRE( !commit.Empty() );
+
+    shape->SetEnd( VECTOR2I( 200000, 0 ) );
+    commit.Revert();
+    BOOST_REQUIRE( commit.Empty() );
+    BOOST_REQUIRE( shape->GetEnd() == VECTOR2I( 100000, 0 ) );
+
+    commit.Modify( shape );
+    BOOST_CHECK( !commit.Empty() );
+    BOOST_CHECK_EQUAL( commit.GetStatus( shape ), CHT_MODIFY );
+}
+
+
+// Rolling back to a checkpoint must leave the earlier changes staged and drop the later ones.
+// An item still staged after its change was dropped is skipped on the next edit, so that edit
+// gets no undo entry.
+BOOST_AUTO_TEST_CASE( RevertToCheckpointKeepsEarlierItemsStaged )
+{
+    BOARD board;
+    TOOL_MANAGER mgr;
+    mgr.SetEnvironment( &board, nullptr, nullptr, nullptr, nullptr );
+    KI_TEST::DUMMY_TOOL* dummyTool = new KI_TEST::DUMMY_TOOL();
+    mgr.RegisterTool( dummyTool );
+
+    PCB_SHAPE* kept = new PCB_SHAPE( &board, SHAPE_T::SEGMENT );
+    board.Add( kept );
+
+    PCB_SHAPE* rolledBack = new PCB_SHAPE( &board, SHAPE_T::SEGMENT );
+    rolledBack->SetStart( VECTOR2I( 0, 100000 ) );
+    rolledBack->SetEnd( VECTOR2I( 100000, 100000 ) );
+    board.Add( rolledBack );
+
+    BOARD_COMMIT commit( dummyTool );
+
+    commit.Modify( kept );
+    int checkpoint = commit.Checkpoint();
+
+    commit.Modify( rolledBack );
+    rolledBack->SetEnd( VECTOR2I( 200000, 100000 ) );
+    commit.RevertToCheckpoint( checkpoint );
+
+    BOOST_REQUIRE( rolledBack->GetEnd() == VECTOR2I( 100000, 100000 ) );
+    BOOST_CHECK_EQUAL( commit.GetStatus( kept ), CHT_MODIFY );
+
+    commit.Modify( rolledBack );
+    BOOST_CHECK_EQUAL( commit.GetStatus( rolledBack ), CHT_MODIFY );
 }
 
 

@@ -380,9 +380,9 @@ void KISTATUSBAR::AddWarningMessages( const wxString& aSource, const wxString& a
 
         while( tokenizer.HasMoreTokens() )
         {
-            LOAD_MESSAGE msg;
-            msg.message = tokenizer.GetNextToken();
-            msg.severity = RPT_SEVERITY_WARNING;  // Default to warning for font substitutions
+            KI_ERROR msg;
+            msg.SetTitle( tokenizer.GetNextToken() );
+            msg.SetSeverity( RPT_SEVERITY_WARNING );  // Default to warning for font substitutions
             m_warningMessages[aSource].push_back( msg );
         }
     }
@@ -391,7 +391,7 @@ void KISTATUSBAR::AddWarningMessages( const wxString& aSource, const wxString& a
 }
 
 
-void KISTATUSBAR::AddWarningMessages( const wxString& aSource, const std::vector<LOAD_MESSAGE>& aMessages )
+void KISTATUSBAR::AddWarningMessages( const wxString& aSource, const std::vector<KI_ERROR>& aMessages )
 {
     KI_LOG_TRACE( traceLibraries, "KISTATUSBAR::AddWarningMessages: this=%p, count=%zu",
                 this, aMessages.size() );
@@ -420,6 +420,13 @@ size_t KISTATUSBAR::GetLoadWarningCount() const
         count += messages.size();
 
     return count;
+}
+
+
+std::map<wxString, std::vector<KI_ERROR>> KISTATUSBAR::GetWarningMessages() const
+{
+    std::lock_guard<std::mutex> lock( m_warningMutex );
+    return { m_warningMessages.begin(), m_warningMessages.end() };
 }
 
 
@@ -470,7 +477,7 @@ void KISTATUSBAR::ClearWarningMessages( const wxString& aSource )
 void KISTATUSBAR::onLoadWarningsIconClick()
 {
     // Copy messages under lock to avoid holding lock during modal dialog
-    std::unordered_map<wxString, std::vector<LOAD_MESSAGE>> messages;
+    std::unordered_map<wxString, std::vector<KI_ERROR>> messages;
     {
         std::lock_guard<std::mutex> lock( m_warningMutex );
         messages = m_warningMessages;
@@ -481,10 +488,10 @@ void KISTATUSBAR::onLoadWarningsIconClick()
 
     STATUSBAR_WARNING_REPORTER_DIALOG dlg( parentWidget(), this );
 
-    for( const std::vector<LOAD_MESSAGE>& source : std::views::values( messages ) )
+    for( const std::vector<KI_ERROR>& source : std::views::values( messages ) )
     {
-        for( const LOAD_MESSAGE& msg : source )
-            dlg.m_Reporter->Report( msg.message, msg.severity );
+        for( const KI_ERROR& msg : source )
+            dlg.m_Reporter->Report( msg );
     }
 
     dlg.m_Reporter->Flush();

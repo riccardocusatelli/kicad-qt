@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <tool/tool_manager.h>
@@ -56,6 +56,13 @@ TOOL_ACTION EDA_3D_ACTIONS::toggleRaytacing( TOOL_ACTION_ARGS()
         .Tooltip( _( "Render current view using Raytracing" ) )
         .Icon( BITMAPS::ray_tracing )
         .ToolbarState( TOOLBAR_STATE::TOGGLE) );
+
+TOOL_ACTION EDA_3D_ACTIONS::toggleShowMissingModels( TOOL_ACTION_ARGS()
+        .Name( "3DViewer.Control.toggleShowMissingModels" )
+        .Scope( AS_GLOBAL )
+        .FriendlyName( _( "Show parts without 3D model" ) )
+        .Tooltip( _( "Display a placeholder for footprints with missing 3D models" ) )
+        .ToolbarState( TOOLBAR_STATE::TOGGLE ) );
 
 TOOL_ACTION EDA_3D_ACTIONS::copyToClipboard( TOOL_ACTION_ARGS()
         .Name( "3DViewer.Control.copyToClipboard" )

@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/gpl-3.0.en.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -629,15 +625,16 @@ BOOST_AUTO_TEST_CASE( SafeCastingInvalid )
  * deliberately accesses freed memory to verify the magic value detection works.
  * ASAN will catch the use-after-free before SafeCast can check the magic value.
  */
-// Detect AddressSanitizer - must use nested #if because __has_feature() can't appear
-// in a preprocessor expression on compilers that don't define it
+// Detect AddressSanitizer / ThreadSanitizer - must use nested #if because __has_feature()
+// can't appear in a preprocessor expression on compilers that don't define it.  Either
+// sanitizer flags the deliberate read-through-freed-pointer that this test relies on.
 #if defined( __has_feature )
-    #if __has_feature( address_sanitizer )
+    #if __has_feature( address_sanitizer ) || __has_feature( thread_sanitizer )
         #define KICAD_ASAN_ENABLED 1
     #endif
 #endif
 
-#if defined( __SANITIZE_ADDRESS__ )
+#if defined( __SANITIZE_ADDRESS__ ) || defined( __SANITIZE_THREAD__ )
     #define KICAD_ASAN_ENABLED 1
 #endif
 

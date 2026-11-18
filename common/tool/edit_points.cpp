@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <gal/graphics_abstraction_layer.h>
@@ -50,7 +46,8 @@ EDIT_POINTS::EDIT_POINTS( EDA_ITEM* aParent ) :
         m_parent( aParent ),
         m_swapX( false ),
         m_swapY( false ),
-        m_allowPoints( true )
+        m_allowPoints( true ),
+        m_lineStateVisible( false )
 {
 }
 
@@ -293,27 +290,44 @@ void EDIT_POINTS::ViewDraw( int aLayer, KIGFX::VIEW* aView ) const
     double borderSize = aView->ToWorld( EDIT_POINT::BORDER_SIZE );
     double hoverSize  = aView->ToWorld( EDIT_POINT::HOVER_SIZE );
 
-    auto drawPoint =
-            [&]( const EDIT_POINT& aPoint, bool aDrawCircle = false )
-            {
-                if( aPoint.IsHover() || aPoint.IsActive() )
-                {
-                    gal->SetStrokeColor( highlightColor );
-                    gal->SetLineWidth( hoverSize );
-                }
-                else
-                {
-                    gal->SetStrokeColor( borderColor );
-                    gal->SetLineWidth( borderSize );
-                }
+    auto drawPoint = [&]( const EDIT_POINT& aPoint, bool aDrawCircle = false, bool aShowState = true )
+    {
+        bool fill = true;
 
-                gal->SetFillColor( drawColor );
+        if( aShowState && aPoint.IsSelected() )
+        {
+            gal->SetStrokeColor( highlightColor );
+            gal->SetLineWidth( hoverSize );
+            gal->SetFillColor( highlightColor );
+        }
+        else if( aShowState && ( aPoint.IsHover() || aPoint.IsActive() ) )
+        {
+            gal->SetStrokeColor( highlightColor );
+            gal->SetLineWidth( hoverSize );
+            gal->SetFillColor( drawColor );
+        }
+        else if( aShowState && aPoint.IsDependent() )
+        {
+            gal->SetStrokeColor( highlightColor );
+            gal->SetLineWidth( borderSize );
+            fill = false;
+        }
+        else
+        {
+            gal->SetStrokeColor( borderColor );
+            gal->SetLineWidth( borderSize );
+            gal->SetFillColor( drawColor );
+        }
 
-                if( aDrawCircle )
-                    gal->DrawCircle( aPoint.GetPosition(), size );
-                else
-                    gal->DrawRectangle( aPoint.GetPosition() - size, aPoint.GetPosition() + size );
-            };
+        gal->SetIsFill( fill );
+
+        if( aDrawCircle )
+            gal->DrawCircle( aPoint.GetPosition(), size );
+        else
+            gal->DrawRectangle( aPoint.GetPosition() - size, aPoint.GetPosition() + size );
+
+        gal->SetIsFill( true );
+    };
 
     for( const EDIT_POINT& point : m_points )
         drawPoint( point, point.DrawCircle() );
@@ -322,7 +336,8 @@ void EDIT_POINTS::ViewDraw( int aLayer, KIGFX::VIEW* aView ) const
     {
         if( line.HasCenterPoint() )
         {
-            drawPoint( line.GetPosition(), true );
+            // Only an editor that lets an edge be picked on its own shows the handle's state
+            drawPoint( line, true, m_lineStateVisible );
         }
 
         if( line.DrawLine() )

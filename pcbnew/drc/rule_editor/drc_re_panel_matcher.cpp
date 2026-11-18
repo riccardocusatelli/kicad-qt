@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "drc_re_panel_matcher.h"
@@ -76,10 +72,10 @@ void DRC_PANEL_MATCHER::initClaims()
             std::set<DRC_CONSTRAINT_T>{},
             90 );
 
-    // Priority 80: MINIMUM_TEXT_HEIGHT_THICKNESS claims text_height + text_thickness
+    // Priority 80: MINIMUM_TEXT_HEIGHT_THICKNESS claims text_height + line_width
     m_claims.emplace_back(
             MINIMUM_TEXT_HEIGHT_AND_THICKNESS,
-            std::set<DRC_CONSTRAINT_T>{ TEXT_HEIGHT_CONSTRAINT, TEXT_THICKNESS_CONSTRAINT },
+            std::set<DRC_CONSTRAINT_T>{ TEXT_HEIGHT_CONSTRAINT, LINE_WIDTH_CONSTRAINT },
             std::set<DRC_CONSTRAINT_T>{},
             80 );
 
@@ -221,6 +217,13 @@ void DRC_PANEL_MATCHER::initClaims()
             std::set<DRC_CONSTRAINT_T>{ MIN_RESOLVED_SPOKES_CONSTRAINT },
             std::set<DRC_CONSTRAINT_T>{},
             20 );
+
+    // Microvia stack limits
+    m_claims.emplace_back( MICROVIA_STACK_DEPTH, std::set<DRC_CONSTRAINT_T>{ MICROVIA_STACK_DEPTH_CONSTRAINT },
+                           std::set<DRC_CONSTRAINT_T>{}, 20 );
+
+    m_claims.emplace_back( HOLE_ASPECT_RATIO, std::set<DRC_CONSTRAINT_T>{ HOLE_ASPECT_RATIO_CONSTRAINT },
+                           std::set<DRC_CONSTRAINT_T>{}, 20 );
 
     // Diff pair length matching requires both length and skew.
     // Without this, LENGTH_CONSTRAINT alone would match here at priority 65
@@ -386,6 +389,32 @@ DRC_RULE_EDITOR_CONSTRAINT_NAME DRC_PANEL_MATCHER::GetPanelForConstraint( DRC_CO
         {
             return claim.panelType;
         }
+    }
+
+    return CUSTOM_RULE;
+}
+
+
+DRC_RULE_EDITOR_CONSTRAINT_NAME DRC_PANEL_MATCHER::GetHomePanel( DRC_CONSTRAINT_T aConstraintType )
+{
+    // These have a page of their own besides a combined panel that outranks it
+    switch( aConstraintType )
+    {
+    case HOLE_SIZE_CONSTRAINT: return HOLE_SIZE;
+    case SILK_CLEARANCE_CONSTRAINT: return SILK_TO_SILK_CLEARANCE;
+    case LENGTH_CONSTRAINT: return ABSOLUTE_LENGTH;
+    default: break;
+    }
+
+    DRC_RULE_EDITOR_CONSTRAINT_NAME single = GetPanelForConstraint( aConstraintType );
+
+    if( single != CUSTOM_RULE )
+        return single;
+
+    for( const DRC_PANEL_CLAIM& claim : m_claims )
+    {
+        if( claim.requiredConstraints.count( aConstraintType ) || claim.optionalConstraints.count( aConstraintType ) )
+            return claim.panelType;
     }
 
     return CUSTOM_RULE;

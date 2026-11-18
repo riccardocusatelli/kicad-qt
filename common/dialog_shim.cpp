@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "dialog_shim.h"
@@ -228,6 +224,7 @@ DIALOG_SHIM::~DIALOG_SHIM()
                     {
                         delete PROPERTY_HOLDER::SafeCast( child->GetClientData() );
                         child->SetClientData( nullptr );
+                        clearOptOuts( child->GetChildren() );
                     }
                 };
 
@@ -463,6 +460,11 @@ void DIALOG_SHIM::SetPosition( const wxPoint& aNewPosition )
 
 void DIALOG_SHIM::focusParentCanvas( bool aDeferUntilFrameActive )
 {
+    // A dialog can be hidden while its parent frame is part way through its own destructor,
+    // where the frame's overrides are gone and GetToolCanvas() is pure again.
+    if( m_parentFrame && m_parentFrame->IsBeingDeleted() )
+        return;
+
     wxWindow* toolCanvas = m_parentFrame ? m_parentFrame->GetToolCanvas() : nullptr;
     wxWindow* target = toolCanvas ? toolCanvas : m_parent;
 
@@ -502,12 +504,15 @@ bool DIALOG_SHIM::Show( bool show )
 
     if( show )
     {
+        KIPLATFORM::UI::StabilizeWindowPosition( this );
+
 #ifndef __WINDOWS__
         wxDialog::Raise();  // Needed on OS X and some other window managers (i.e. Unity)
 #endif
         ret = wxDialog::Show( show );
 
         wxRect      savedDialogRect;
+        wxSize      savedClientSize;
         std::string key = m_hash_key.empty() ? getDialogKeyFromTitle( GetTitle() ) : m_hash_key;
 
         if( COMMON_SETTINGS* settings = Pgm().GetCommonSettings() )
@@ -523,6 +528,7 @@ bool DIALOG_SHIM::Show( bool show )
                     const nlohmann::json& g = geoIt->second;
                     savedDialogRect.SetPosition( wxPoint( g.value( "x", 0 ), g.value( "y", 0 ) ) );
                     savedDialogRect.SetSize( wxSize( g.value( "w", 500 ), g.value( "h", 300 ) ) );
+                    savedClientSize = wxSize( g.value( "cw", 0 ), g.value( "ch", 0 ) );
                 }
             }
         }
@@ -532,16 +538,29 @@ bool DIALOG_SHIM::Show( bool show )
             // Convert saved DIP size to logical pixels for the current monitor
             wxSize restoredSize = FromDIP( savedDialogRect.GetSize() );
 
-            if( m_useCalculatedSize )
+            if( m_useCalculatedSize || ( GetWindowStyleFlag() & wxRESIZE_BORDER ) == 0 )
             {
                 SetSize( savedDialogRect.GetPosition().x, savedDialogRect.GetPosition().y,
                          wxDialog::GetSize().x, wxDialog::GetSize().y, 0 );
             }
             else
             {
-                SetSize( savedDialogRect.GetPosition().x, savedDialogRect.GetPosition().y,
-                         std::max( wxDialog::GetSize().x, restoredSize.x ),
-                         std::max( wxDialog::GetSize().y, restoredSize.y ), 0 );
+                // GTK may not know the decorations of a process's first window yet, so a frame size
+                // restored there lands as the client size and the dialog grows on every open
+                if( savedClientSize.x > 0 && savedClientSize.y > 0 )
+                {
+                    Move( savedDialogRect.GetPosition() );
+
+                    wxSize restoredClient = FromDIP( savedClientSize );
+                    SetClientSize( std::max( wxDialog::GetClientSize().x, restoredClient.x ),
+                                   std::max( wxDialog::GetClientSize().y, restoredClient.y ) );
+                }
+                else
+                {
+                    SetSize( savedDialogRect.GetPosition().x, savedDialogRect.GetPosition().y,
+                             std::max( wxDialog::GetSize().x, restoredSize.x ),
+                             std::max( wxDialog::GetSize().y, restoredSize.y ), 0 );
+                }
 
                 // Reset minimum size so the user can resize the dialog smaller than
                 // the saved size. We must clear the current minimum and invalidate
@@ -563,11 +582,14 @@ bool DIALOG_SHIM::Show( bool show )
             }
 #endif
 
+            ReloadSashPositions();
         }
         else if( m_initialSize != wxDefaultSize )
         {
             SetSize( m_initialSize );
             Centre();
+
+            ReloadSashPositions();
         }
 
         // Re-center if the title bar would land on no display. Testing a point inside the title
@@ -585,8 +607,6 @@ bool DIALOG_SHIM::Show( bool show )
         // Cap size and pull the dialog back on-screen here, after the minimum has been
         // (re)established above, so the clamp is not overwritten.
         clampToWorkArea();
-
-        KIPLATFORM::UI::EnsureVisible( this );
     }
     else
     {
@@ -596,9 +616,15 @@ bool DIALOG_SHIM::Show( bool show )
             m_eventLoop->Exit( GetReturnCode() );   // Needed for APP-MODAL dlgs on OSX
 #endif
 
+        // Controls settle on the focus loss that hiding sends, but the restorable position needs a mapped window
+        std::optional<wxPoint> position;
+
+        if( IsShown() )
+            position = KIPLATFORM::UI::GetRestorablePosition( this );
+
         ret = wxDialog::Show( show );
 
-        SaveControlState();
+        SaveControlState( position );
         focusParentCanvas();
     }
 
@@ -710,7 +736,7 @@ std::string DIALOG_SHIM::generateKey( const wxWindow* aWin ) const
 }
 
 
-void DIALOG_SHIM::SaveControlState()
+void DIALOG_SHIM::SaveControlState( const std::optional<wxPoint>& aPosition )
 {
     COMMON_SETTINGS* settings = Pgm().GetCommonSettings();
 
@@ -720,14 +746,21 @@ void DIALOG_SHIM::SaveControlState()
     std::string dialogKey = m_hash_key.empty() ? getDialogKeyFromTitle( GetTitle() ) : m_hash_key;
     std::map<std::string, nlohmann::json>& dlgMap = settings->CsInternals().m_dialogControlValues[ dialogKey ];
 
-    wxPoint pos = GetPosition();
-    wxSize  dipSize = ToDIP( GetSize() );
-    nlohmann::json geom;
-    geom[ "x" ] = pos.x;
-    geom[ "y" ] = pos.y;
-    geom[ "w" ] = dipSize.x;
-    geom[ "h" ] = dipSize.y;
-    dlgMap[ "__geometry" ] = geom;
+    // A hidden GTK dialog reports its frame origin, which static gravity would restore off by the decorations
+    if( aPosition || IsShown() )
+    {
+        wxPoint pos = aPosition ? *aPosition : KIPLATFORM::UI::GetRestorablePosition( this );
+        wxSize  dipSize = ToDIP( GetSize() );
+        wxSize  dipClientSize = ToDIP( GetClientSize() );
+        nlohmann::json geom;
+        geom[ "x" ] = pos.x;
+        geom[ "y" ] = pos.y;
+        geom[ "w" ] = dipSize.x;
+        geom[ "h" ] = dipSize.y;
+        geom[ "cw" ] = dipClientSize.x;
+        geom[ "ch" ] = dipClientSize.y;
+        dlgMap[ "__geometry" ] = geom;
+    }
 
     std::function<void( wxWindow* )> saveFn =
             [&]( wxWindow* win )
@@ -757,6 +790,14 @@ void DIALOG_SHIM::SaveControlState()
                     {
                         dlgMap[ key ] = od_combo->GetSelection();
                     }
+                    else if( wxSpinCtrl* spin = dynamic_cast<wxSpinCtrl*>( win ) )
+                    {
+                        dlgMap[ key ] = spin->GetValue();
+                    }
+                    else if( wxSpinCtrlDouble* spinDouble = dynamic_cast<wxSpinCtrlDouble*>( win ) )
+                    {
+                        dlgMap[ key ] = spinDouble->GetValue();
+                    }
                     else if( wxTextEntry* textEntry = dynamic_cast<wxTextEntry*>( win ) )
                     {
                         dlgMap[ key ] = textEntry->GetValue();
@@ -769,10 +810,6 @@ void DIALOG_SHIM::SaveControlState()
                     {
                         dlgMap[ key ] = check->GetValue();
                     }
-                    else if( wxSpinCtrl* spin = dynamic_cast<wxSpinCtrl*>( win ) )
-                    {
-                        dlgMap[ key ] = spin->GetValue();
-                    }
                     else if( wxRadioButton* radio = dynamic_cast<wxRadioButton*>( win ) )
                     {
                         dlgMap[ key ] = radio->GetValue();
@@ -783,7 +820,9 @@ void DIALOG_SHIM::SaveControlState()
                     }
                     else if( wxSplitterWindow* splitter = dynamic_cast<wxSplitterWindow*>( win ) )
                     {
-                        dlgMap[ key ] = splitter->GetSashPosition();
+                        // An unsplit sash is meaningless, so keep the one saved while split
+                        if( splitter->IsSplit() )
+                            dlgMap[ key ] = splitter->GetSashPosition();
                     }
                     else if( wxScrolledWindow* scrolled = dynamic_cast<wxScrolledWindow*>( win ) )
                     {
@@ -888,6 +927,16 @@ void DIALOG_SHIM::LoadControlState()
                                     od_combo->SetSelection( index );
                             }
                         }
+                        else if( wxSpinCtrl* spin = dynamic_cast<wxSpinCtrl*>( win ) )
+                        {
+                            if( j.is_number_integer() )
+                                spin->SetValue( j.get<int>() );
+                        }
+                        else if( wxSpinCtrlDouble* spinDouble = dynamic_cast<wxSpinCtrlDouble*>( win ) )
+                        {
+                            if( j.is_number() )
+                                spinDouble->SetValue( j.get<double>() );
+                        }
                         else if( wxTextEntry* textEntry = dynamic_cast<wxTextEntry*>( win ) )
                         {
                             if( j.is_string() )
@@ -907,11 +956,6 @@ void DIALOG_SHIM::LoadControlState()
                         {
                             if( j.is_boolean() )
                                 check->SetValue( j.get<bool>() );
-                        }
-                        else if( wxSpinCtrl* spin = dynamic_cast<wxSpinCtrl*>( win ) )
-                        {
-                            if( j.is_number_integer() )
-                                spin->SetValue( j.get<int>() );
                         }
                         else if( wxRadioButton* radio = dynamic_cast<wxRadioButton*>( win ) )
                         {
@@ -993,11 +1037,88 @@ void DIALOG_SHIM::LoadControlState()
 }
 
 
+void DIALOG_SHIM::ReloadSashPositions()
+{
+    COMMON_SETTINGS* settings = Pgm().GetCommonSettings();
+
+    if( !settings )
+        return;
+
+    std::string dialogKey = m_hash_key.empty() ? getDialogKeyFromTitle( GetTitle() ) : m_hash_key;
+    auto        dlgIt = settings->CsInternals().m_dialogControlValues.find( dialogKey );
+
+    if( dlgIt == settings->CsInternals().m_dialogControlValues.end() )
+        return;
+
+    const std::map<std::string, nlohmann::json>& dlgMap = dlgIt->second;
+
+    std::function<void( wxWindow* )> loadFn =
+            [&]( wxWindow* win )
+            {
+                if( PROPERTY_HOLDER* props = PROPERTY_HOLDER::SafeCast( win->GetClientData() ) )
+                {
+                    if( !props->GetPropertyOr( "persist", false ) )
+                        return;
+                }
+
+                std::string key = generateKey( win );
+
+                if( !key.empty() )
+                {
+                    auto it = dlgMap.find( key );
+
+                    if( it != dlgMap.end() )
+                    {
+                        const nlohmann::json& j = it->second;
+
+                        if( wxSplitterWindow* splitter = dynamic_cast<wxSplitterWindow*>( win ) )
+                        {
+                            if( j.is_number_integer() )
+                                splitter->SetSashPosition( j.get<int>() );
+                        }
+                    }
+                }
+
+                for( wxWindow* child : win->GetChildren() )
+                    loadFn( child );
+            };
+
+    if( PROPERTY_HOLDER* props = PROPERTY_HOLDER::SafeCast( GetClientData() ) )
+    {
+        if( !props->GetPropertyOr( "persist", false ) )
+            return;
+    }
+
+    for( wxWindow* child : GetChildren() )
+        loadFn( child );
+}
+
+
 void DIALOG_SHIM::OptOut( wxWindow* aWindow )
 {
     PROPERTY_HOLDER* props = new PROPERTY_HOLDER();
     props->SetProperty( "persist", false );
     aWindow->SetClientData( props );
+
+    if( aWindow == this )
+    {
+        COMMON_SETTINGS* settings = Pgm().GetCommonSettings();
+
+        if( settings )
+        {
+            std::string dialogKey = m_hash_key.empty() ? getDialogKeyFromTitle( GetTitle() ) : m_hash_key;
+            auto        dlgIt = settings->CsInternals().m_dialogControlValues.find( dialogKey );
+
+            if( dlgIt != settings->CsInternals().m_dialogControlValues.end() )
+            {
+                std::erase_if( dlgIt->second,
+                               []( const auto& aEntry )
+                               {
+                                   return aEntry.first != "__geometry";
+                               } );
+            }
+        }
+    }
 }
 
 
@@ -1613,6 +1734,8 @@ void DIALOG_SHIM::ClearModify()
 
 int DIALOG_SHIM::ShowModal()
 {
+    KIPLATFORM::UI::StabilizeWindowPosition( this );
+
     // Apple in its infinite wisdom will raise a disabled window before even passing
     // us the event, so we have no way to stop it.  Instead, we must set an order on
     // the windows so that the modal will be pushed in front of the disabled
@@ -1733,25 +1856,6 @@ void DIALOG_SHIM::EndQuasiModal( int retCode )
     m_qmodal_parent_disabler = nullptr;
 
     Show( false );
-}
-
-
-void DIALOG_SHIM::resetUndoRedoForNewContent( wxWindowList& aChildren )
-{
-    m_undoStack.clear();
-    m_redoStack.clear();
-    m_currentValues.clear();
-    m_controlsWithPendingChanges.clear();
-    registerUndoRedoHandlers( aChildren );
-}
-
-
-void DIALOG_SHIM::unregisterUnitBinders( wxWindow* aWindow )
-{
-    m_unitBinders.erase( aWindow );
-
-    for( wxWindow* child : aWindow->GetChildren() )
-        unregisterUnitBinders( child );
 }
 
 
@@ -2053,4 +2157,13 @@ static void recursiveDescent( wxSizer* aSizer, std::map<int, wxString>& aLabels 
 void DIALOG_SHIM::SetupStandardButtons( std::map<int, wxString> aLabels )
 {
     recursiveDescent( GetSizer(), aLabels );
+}
+
+
+void DIALOG_SHIM::EndDialogShim( int aReturnCode )
+{
+    if( IsQuasiModal() )
+        EndQuasiModal( aReturnCode );
+    else
+        EndDialog( aReturnCode );       // Call the default handler for modal and mode-less dialogs.
 }

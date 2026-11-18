@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -126,30 +122,28 @@ public:
     bool IntersectP( const RAY& aRay, float aMaxDistance ) const override;
 
 private:
-    BVHBuildNode* recursiveBuild( std::vector<BVHPrimitiveInfo>& primitiveInfo, int start,
-                                  int end, int* totalNodes, CONST_VECTOR_OBJECT& orderedPrims );
+    BVHBuildNode* recursiveBuild( std::vector<BVHPrimitiveInfo>& primitiveInfo, int start, int end, int* totalNodes,
+                                  std::vector<const OBJECT_3D*>& orderedPrims );
 
-    BVHBuildNode* HLBVHBuild( const std::vector<BVHPrimitiveInfo>& primitiveInfo,
-                              int* totalNodes, CONST_VECTOR_OBJECT& orderedPrims );
+    BVHBuildNode* HLBVHBuild( const std::vector<BVHPrimitiveInfo>& primitiveInfo, int* totalNodes,
+                              std::vector<const OBJECT_3D*>& orderedPrims );
 
     //!TODO: after implement memory arena, put const back to this functions
-    BVHBuildNode* emitLBVH( BVHBuildNode* &buildNodes,
-                            const std::vector<BVHPrimitiveInfo>& primitiveInfo,
+    BVHBuildNode* emitLBVH( BVHBuildNode* &buildNodes, const std::vector<BVHPrimitiveInfo>& primitiveInfo,
                             MortonPrimitive* mortonPrims, int nPrimitives, int* totalNodes,
-                            CONST_VECTOR_OBJECT& orderedPrims, int* orderedPrimsOffset, int bit );
+                            std::vector<const OBJECT_3D*>& orderedPrims, int* orderedPrimsOffset, int bit );
 
-    BVHBuildNode* buildUpperSAH( std::vector<BVHBuildNode*>& treeletRoots, int start, int end,
-                                 int* totalNodes );
+    BVHBuildNode* buildUpperSAH( std::vector<BVHBuildNode*>& treeletRoots, int start, int end, int* totalNodes );
 
     int flattenBVHTree( BVHBuildNode* node, uint32_t* offset );
 
     // BVH Private Data
-    const int           m_maxPrimsInNode;
-    SPLITMETHOD         m_splitMethod;
-    CONST_VECTOR_OBJECT m_primitives;
-    LinearBVHNode*      m_nodes;
+    const int                     m_maxPrimsInNode;
+    SPLITMETHOD                   m_splitMethod;
+    std::vector<const OBJECT_3D*> m_primitives;
+    LinearBVHNode*                m_nodes;
 
-    std::list<void*>    m_nodesToFree;
+    std::list<void*>              m_nodesToFree;
 
     // Partition traversal
     unsigned int m_I[RAYPACKET_RAYS_PER_PACKET];

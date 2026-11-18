@@ -13,11 +13,7 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, you may find one here:
-# http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-# or you may search the http://www.gnu.org website for the version 2 license,
-# or you may write to the Free Software Foundation, Inc.,
-# 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 set( QA_PCBNEW_SRCS
     # This is needed for the global mock objects
@@ -34,15 +30,29 @@ set( QA_PCBNEW_SRCS
     drc/drc_test_utils.cpp
 
     # test compilation units (start test_)
+    test_dimension_zero_suppression.cpp
+    test_bbox_3d.cpp
+    test_creepage_groove_order.cpp
     test_3d_viewer_layer_presets.cpp
     test_array_pad_name_provider.cpp
     test_barcode_load_save.cpp
+    test_extruded_body_load_save.cpp
     test_board_connected_items.cpp
     test_board_design_settings.cpp
     test_board_item_index.cpp
+    test_board_loader.cpp
+    test_project_file_implicit_save.cpp
     test_board_item.cpp
+    test_drill_chart.cpp
     test_board_commit.cpp
+<<<<<<< b2e17e0a
     test_board_undo_redo.cpp
+||||||| 1304b76aad
+=======
+    test_board_downgrade.cpp
+    test_downgrade_oracle.cpp
+    test_text_var_reactive.cpp
+>>>>>>> ed8c16703e
     test_clipboard_group.cpp
     test_clipboard_io.cpp
     test_board_statistics.cpp
@@ -51,56 +61,104 @@ set( QA_PCBNEW_SRCS
     test_clip_line_to_pad.cpp
     test_clip_line_to_via.cpp
     test_component_classes.cpp
+    test_connectivity_clusters.cpp
+    test_via_validation.cpp
     test_convert_tool.cpp
     test_generator_load_save.cpp
     test_glb_utils.cpp
+    test_block_drag_capability.cpp
+    test_block_drag_dependents.cpp
+    test_block_drag_displacement.cpp
+    test_block_drag_pick.cpp
+    test_block_drag_validation.cpp
     test_graphics_load_save.cpp
+    test_graphic_extend.cpp
+    test_graphic_trim.cpp
     test_graphics_import_mgr.cpp
     test_group_load_save.cpp
     test_group_mirror.cpp
     test_group_save_perf.cpp
+    test_headless_pcb_context.cpp
     test_history_autosave.cpp
+    test_fields_table_presence.cpp
     test_footprint.cpp
+    test_footprint_editor_tabs.cpp
     test_footprint_import_reconciler.cpp
+    test_import_design_rules.cpp
     test_footprint_library_adapter.cpp
     test_footprint_load_save.cpp
+    test_footprint_net_tie.cpp
+    test_footprint_pad_fixup.cpp
+    test_footprint_realignment.cpp
+    test_exchange_pad_changes.cpp
+    test_cross_probe_selection.cpp
+    test_footprint_transform_sync.cpp
+    test_ref_suffix_split.cpp
     test_footprint_rescue_layer.cpp
+    test_issue24735.cpp
     test_issue24901.cpp
     test_issue24967.cpp
     test_issue25010.cpp
+    test_issue25880.cpp
     test_issue25110_bezier_line_style.cpp
     test_issue25521.cpp
+    test_issue25621_via_flashing_contact_layer.cpp
+    test_issue25650_collinear_arc.cpp
     test_fp_lib_load_save.cpp
     test_io_mgr.cpp
+    test_ellipse_roundtrip.cpp
+    test_custom_pad_primitive_roundtrip.cpp
+    test_custom_property_roundtrip.cpp
     test_active_layer_update.cpp
+    test_line_ending_load_save.cpp
     test_lset.cpp
+    test_match_properties.cpp
     test_meander_corner_radius.cpp
     test_odb_dimension_export.cpp
     test_odb_drill_tools.cpp
     test_odb_soldermask_shape_export.cpp
     test_issue25074_odb_knockout_textbox.cpp
     test_pcb_control_rehatch.cpp
+    test_pcb_handle_key.cpp
     test_pns_basics.cpp
+    test_pad_check.cpp
     test_pad_flashing.cpp
     test_pad_numbering.cpp
-    test_pad_size_setters.cpp
+    test_pad_roundtrip.cpp
+    test_pcb_differ.cpp
+    test_diff_canvas_context.cpp
+    test_pcb_merge_applier.cpp
+    test_import_net_names.cpp
+    test_net_classes_diff_merge.cpp
+    test_custom_drc_diff_merge.cpp
+    test_lib_table_diff_merge.cpp
+    test_applier_helpers.cpp
+    test_fp_lib_differ.cpp
+    test_footprint_item_equality.cpp
+    test_pad_setters.cpp
     test_pad_swap_positions.cpp
     test_pad_tenting.cpp
     test_plot_edge_cuts_drill_marks.cpp
+    test_plot_job_layers.cpp
     test_plot_pad_mask.cpp
+    test_plot_footprint_scaled_text.cpp
     test_pcb_textbox.cpp
     test_prettifier.cpp
     test_pcb_render_settings.cpp
     test_libeval_compiler.cpp
     test_reference_image_load.cpp
+    test_complex_padstack_export.cpp
+    test_padstack_clone.cpp
     test_gencad_export.cpp
+    test_idf_export.cpp
     test_d356_export.cpp
     test_specctra_export.cpp
     test_step_model_color_transfer.cpp
+    test_board_netlist_updater_fpid_change.cpp
+    test_board_netlist_updater_nested_groups.cpp
     test_netlist_group_instances.cpp
     test_step_export_modified_board.cpp
     test_pdf_output_path.cpp
-    test_plot_controller.cpp
     test_shape_corner_radius.cpp
     test_shape_hatch_knockout.cpp
     test_connect_board_shapes.cpp
@@ -112,16 +170,35 @@ set( QA_PCBNEW_SRCS
     test_tracks_cleaner.cpp
     test_triangulation.cpp
     test_tuning_pattern_layer.cpp
+    test_via_stitch.cpp
     test_multichannel.cpp
     test_pns_tuning_path_through_pad.cpp
     test_pns_diff_pair_tuning_width.cpp
+    test_pns_via_layer_span.cpp
     test_variant.cpp
     test_text_variable_resolution.cpp
     test_zone.cpp
     test_zone_filler.cpp
     test_poly_simplify.cpp
+    test_pcb_dynamic_properties.cpp
 
+    # Net chain roundtrip tests
+    net_chains/test_net_chain_terminal_pads.cpp
+    net_chains/test_net_chain_terminal_pad_assignment.cpp
+    net_chains/test_net_chain_terminal_pad_stale.cpp
+    net_chains/test_apply_chain_assignments_dry_run.cpp
+    net_chains/test_net_chain_netclass_persistence.cpp
     net_chains/test_update_pcb_legacy_fpid_dnp.cpp
+    # Net chain aggregation / skew / total length tests
+    net_chains/test_net_chain_skew_tuning.cpp
+    net_chains/test_net_chain_total_length.cpp
+    net_chains/test_net_chain_total_length_sexpr.cpp
+    net_chains/test_net_chain_bridging_delay.cpp
+    net_chains/test_net_chain_partition.cpp
+    net_chains/test_net_chain_trunk_delay.cpp
+    net_chains/test_tuning_bridging_clamp.cpp
+    # Tuning profile integration
+    net_chains/test_net_chain_bridging_delay_tuning_profiles.cpp
 
     drc/test_custom_rule_severities.cpp
     drc/test_drc_backdrill_postmachining.cpp
@@ -133,12 +210,12 @@ set( QA_PCBNEW_SRCS
     drc/test_drc_regressions.cpp
     drc/test_drc_issue23469.cpp
     drc/test_drc_issue24525.cpp
-    drc/test_drc_writedrcreport.cpp
     drc/test_drc_arc_arc_edge_clearance.cpp
     drc/test_drc_solder_mask_expansion.cpp
     drc/test_drc_copper_conn.cpp
     drc/test_drc_copper_graphics.cpp
     drc/test_drc_copper_sliver.cpp
+    drc/test_drc_copper_thieving.cpp
     drc/test_solder_mask_bridging.cpp
     drc/test_solder_mask_bridge_all_tracks.cpp
     drc/test_solder_mask_track_to_pad.cpp
@@ -151,12 +228,23 @@ set( QA_PCBNEW_SRCS
     drc/test_drc_starved_thermal.cpp
     drc/test_drc_orientation.cpp
     drc/test_drc_lengths.cpp
+    drc/test_drc_length_with_chain.cpp
+    drc/test_drc_chain_topology.cpp
+    drc/test_drc_chain_length_trunk.cpp
+    drc/test_drc_return_path_zone_bbox.cpp
+    drc/test_drc_return_path_per_segment.cpp
+    drc/test_drc_return_path_reference_net.cpp
+    drc/test_drc_chain_bridging_multipad.cpp
+    drc/test_drc_tuner_chain_bridging_agreement.cpp
+    drc/test_drc_stub_length.cpp
     drc/test_drc_tuner_agreement.cpp
     drc/test_drc_length_item_order.cpp
     drc/test_drc_skew_arc.cpp
+    drc/test_drc_linewidth.cpp
     drc/test_drc_unconnected_items_exclusion_loss.cpp
     drc/test_drc_via_dangling.cpp
     drc/test_drc_keepout_disallow.cpp
+    drc/test_drc_netclass_literal.cpp
     drc/test_drc_tuning_profiles.cpp
     drc/test_drc_creepage.cpp
     drc/test_drc_creepage_issue20480.cpp
@@ -164,6 +252,7 @@ set( QA_PCBNEW_SRCS
     drc/test_drc_creepage_issue23364.cpp
     drc/test_drc_creepage_issue23389.cpp
     drc/test_drc_creepage_issue23576.cpp
+    drc/test_drc_creepage_issue23658.cpp
     drc/test_drc_creepage_issue23578.cpp
     drc/test_drc_creepage_issue24286.cpp
     drc/test_drc_creepage_issue24523.cpp
@@ -174,16 +263,29 @@ set( QA_PCBNEW_SRCS
     drc/test_drc_creepage_issue24853.cpp
     drc/test_drc_creepage_issue24875.cpp
     drc/test_drc_creepage_issue24885.cpp
+    drc/test_drc_creepage_issue25439.cpp
+    drc/test_drc_creepage_issue25821.cpp
+    drc/test_drc_creepage_circle_prune.cpp
+    drc/test_creepage_engine_parity.cpp
+    drc/test_creepage_engine_incremental.cpp
+    drc/test_drc_copper_outside_board_issue14650.cpp
     drc/test_drc_invalid_outline_issue24078.cpp
-    drc/test_drc_issue24264.cpp
-    drc/test_drc_issue24211.cpp
+    drc/test_drc_invalid_outline_issue24241.cpp
     drc/test_drc_silk_rule_area_issue24177.cpp
     drc/test_drc_annular_overlap_issue24340.cpp
+    drc/test_drc_via_stack.cpp
     drc/test_drc_hole_clearance_issue24355.cpp
+    drc/test_drc_hole_to_hole_npth_slot_issue24541.cpp
+    drc/test_drc_npth_slot_clearance_issue24799.cpp
+    drc/test_drc_issue24264.cpp
+    drc/test_drc_issue23868.cpp
+    drc/test_drc_issue24211.cpp
     drc/test_drc_physical_clearance.cpp
+    drc/test_drc_prepared_candidates.cpp
+    drc/test_drc_rule_document.cpp
     drc/test_drc_rule_editor.cpp
-    drc/test_drc_bitmap_overlay_panel.cpp
     drc/test_drc_violation_layers_issue24941.cpp
+    drc/test_drc_net_chain_tuning_profiles.cpp
 
     pcb_io/altium/test_altium_rule_transformer.cpp
     pcb_io/altium/test_altium_pcblib_import.cpp
@@ -191,23 +293,34 @@ set( QA_PCBNEW_SRCS
     pcb_io/altium/test_altium_custom_pad_issue23933.cpp
     pcb_io/cadstar/test_cadstar_footprints.cpp
     pcb_io/eagle/test_eagle_board_import.cpp
+    pcb_io/eagle/test_eagle_binary_import.cpp
     pcb_io/eagle/test_eagle_lbr_import.cpp
     pcb_io/eagle/test_eagle_managed_lib_naming.cpp
     pcb_io/pads/test_pads_import.cpp
+    pcb_io/pads/test_pads_binary_import.cpp
     pcb_io/pads/test_pads_layer_mapper.cpp
     pcb_io/pads/test_pads_arc_structures.cpp
     pcb_io/pads/test_pads_part_structures.cpp
-    pcb_io/pads/test_pads_keepout.cpp
     pcb_io/geda/test_geda_pcb_import.cpp
+    pcb_io/sprint_layout/test_sprint_layout_import.cpp
 
     pcb_io/kicad_sexpr/test_kicad_sexpr.cpp
 
     pcb_io/easyedapro/test_easyedapro_import.cpp
+    pcb_io/easyedapro/test_easyedapro_v3_import.cpp
+    pcb_io/easyeda/test_easyeda_import.cpp
+
+    pcb_io/diptrace/test_diptrace_import.cpp
+    pcb_io/diptrace/test_diptrace_cross_link.cpp
+    pcb_io/diptrace/test_diptrace_benchmarks.cpp
+
+    pcb_io/autotrax/test_autotrax_import.cpp
 
     pcb_io/fabmaster/test_fabmaster_import.cpp
 
     pcb_io/allegro/allegro_test_utils.cpp
     pcb_io/allegro/test_allegro_boards.cpp
+    pcb_io/allegro/test_allegro_drill_spans.cpp
     pcb_io/allegro/test_allegro_import.cpp
     pcb_io/allegro/test_block_additional.cpp
 
@@ -215,11 +328,51 @@ set( QA_PCBNEW_SRCS
     pcb_io/ipc2581/test_ipc2581_export.cpp
 
     pcb_io/odbpp/test_odbpp_netlist.cpp
-
-    router/test_pns_walkaround_arcs.cpp
+    pcb_io/odbpp/test_odbpp_attributes.cpp
+    pcb_io/odbpp/test_odbpp_rout.cpp
+    test_fab_pin.cpp
+    test_fab_stackup.cpp
+    test_fab_pad_geometry.cpp
+    pcb_io/odbpp/odb_test_utils.cpp
 
     group_saveload.cpp
+    test_via_stack_saveload.cpp
+    test_via_stack_selection.cpp
+
+    # Geometric constraint solver (planegcs adapter)
+    constraints/test_planegcs_smoke.cpp
+    constraints/test_constraint_system_2d.cpp
+    constraints/test_snap_resolver.cpp
+    constraints/test_snap_inference.cpp
+    constraints/test_pcb_snap_pipeline.cpp
+    constraints/test_pcb_constraint.cpp
+    constraints/test_constraint_ownership.cpp
+    constraints/test_constraint_commit.cpp
+    constraints/test_constraint_exclusions.cpp
+    constraints/test_constraint_adapter.cpp
+    constraints/test_constraint_serialization.cpp
+    constraints/test_constraint_drag.cpp
+    constraints/test_constraint_authoring.cpp
+    constraints/test_constraint_auto.cpp
+    constraints/test_constraint_diagnostics.cpp
+    constraints/test_constraint_protobuf.cpp
+    constraints/test_constraint_clipboard.cpp
+    constraints/test_constraint_duplicate.cpp
+    constraints/test_constraint_overlay.cpp
+    constraints/test_constraint_labels.cpp
+    constraints/test_constraint_apply.cpp
+    constraints/test_constraint_lock.cpp
+    constraints/test_constraint_combinations.cpp
+    constraints/test_constraint_reference.cpp
+    constraints/test_constraint_arc_angle.cpp
+    constraints/test_constraint_dimension.cpp
 )
+
+# DipTrace PCB benchmark tests that exercise proprietary reference designs kept outside the source
+# tree. The file is intentionally not committed; include it only when a developer has it.
+if( EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/pcb_io/diptrace/test_diptrace_benchmarks_local.cpp" )
+    list( APPEND QA_PCBNEW_SRCS pcb_io/diptrace/test_diptrace_benchmarks_local.cpp )
+endif()
 
 if( WIN32 )
     # We want to declare a resource manifest on Windows to enable UTF8 mode
@@ -274,17 +427,15 @@ target_link_libraries( qa_pcbnew
     gal
     common
     gal
-    scripting
     qa_utils
     dxflib_qcad
     tinyspline_lib
     nanosvg
-    idf3
+    planegcs
     markdown_lib
     ${PCBNEW_IO_LIBRARIES}
     ${wxWidgets_LIBRARIES}
     ${GDI_PLUS_LIBRARIES}
-    ${PYTHON_LIBRARIES}
     Boost::headers
     Boost::unit_test_framework
     ${PCBNEW_EXTRA_LIBS}    # -lrt must follow Boost
@@ -297,8 +448,199 @@ if( WIN32 )
         )
 endif()
 
-kicad_add_boost_test( qa_pcbnew qa_pcbnew )
+# Register split test groups for parallel execution.  Each group runs the same
+# qa_pcbnew binary with a different --run_test= filter.  Groups were chosen by
+# profiling wall-clock time so that no single group dominates.
+#
+# The "other" group is a catch-all that uses exclusion filters: any new test
+# suites or cases added to the binary will automatically land here.
 
-setup_qa_env( qa_pcbnew )
+# Keep build-system dependencies from the original single-entry registration
+add_dependencies( qa_all_tests qa_pcbnew )
 
+if( NOT KICAD_BUILD_QA_TESTS )
+    set_target_properties( qa_pcbnew PROPERTIES EXCLUDE_FROM_ALL TRUE )
+endif()
 
+# Helper to register one pcbnew test group
+function( add_pcbnew_test_group GROUP_NAME FILTER )
+    set( TEST_NAME "qa_pcbnew_${GROUP_NAME}" )
+    set( BOOST_PARAMS "" )
+
+    if( KICAD_TEST_XML_OUTPUT )
+        set( BOOST_PARAMS
+            --logger=JUNIT,warning,${TEST_NAME}.boost-results.xml:HRF,message )
+    endif()
+
+    add_test( NAME ${TEST_NAME}
+        COMMAND $<TARGET_FILE:qa_pcbnew> "--run_test=${FILTER}" ${BOOST_PARAMS}
+    )
+
+    setup_qa_env( ${TEST_NAME} )
+endfunction()
+
+# Zone fill and zone tests (~40s)
+set( PCBNEW_ZONE_TESTS
+    "BasicZoneFills\
+:NotchedZones\
+:RegressionZoneFillTests\
+:RegressionZoneClearanceWithIterativeRefill\
+:RegressionSliverZoneFillTests\
+:RegressionTeardropFill\
+:RegressionNetTie\
+:RegressionZonePriorityIsolatedIslands\
+:RegressionViaFlashingUnreachableZone\
+:RegressionViaZoneNetShort\
+:HatchZoneThermalConnectivity\
+:RegressionShallowArcZoneFill\
+:RegressionIterativeRefillRespectsKeepouts\
+:RegressionTHPadInnerLayerFlashing\
+:RegressionThermalReliefAnnularRing45\
+:RegressionRoundRectTeardropGeometry\
+:OvalPadTeardropGeometry\
+:LargeCircleTeardropGeometry\
+:RegressionCoincidentPadClearance\
+:ZoneViaNetClearance\
+:ZoneLayerSpecificRules\
+:RegressionZoneFillMinWidthAfterKnockout\
+:RegressionSameNetOverlappingZones\
+:RegressionSameNetZoneFillScheduler\
+:RegressionDiffNetOverlappingZones\
+:RegressionThermalReliefsToNowhere\
+:OffCenterTeardropSymmetry\
+:CrossingTrackTeardropOnViaStaysOnTrack\
+:CrossingTrackTeardropOnPadStaysOnTrack\
+:RegressionKeepoutBoundaryMissingFill\
+:HatchZoneViaConnectionRespectsSetting\
+:RegressionCascadingIslandRefill\
+:IterativeRefillConvergenceLimit\
+:Zone" )
+
+# Allegro importer tests (~31s)
+set( PCBNEW_ALLEGRO_TESTS
+    "AllegroBlocks:AllegroBoards:AllegroImport:AllegroComprehensive:AllegroDrillSpans" )
+
+# Creepage DRC tests (~16s, heavily multi-threaded internally)
+set( PCBNEW_CREEPAGE_TESTS
+    "CreepageHVvsGND\
+:CreepageAroundSlotIssue20480\
+:CreepagePerformanceIssue21482\
+:CreepageDualSlotsIssue23364\
+:CreepageNPTHSlotIssue23389\
+:CreepagePathStartPointIssue23576\
+:CreepageTwoNPTHSlotsIssue24523\
+:CreepageRotatedRectPadIssue24543\
+:CreepageRoundedSlotIssue24544\
+:CreepageStadiumCapsBlockOuterSide\
+:CreepageStadiumCapsArcOutward" )
+
+# IPC-2581 export tests (~15s)
+set( PCBNEW_IPC2581_TESTS "Ipc2581Export" )
+
+# Tracks cleaner tests (~14s)
+set( PCBNEW_TRACKS_CLEANER_TESTS
+    "FailedToCleanRegressionTests:TrackCleanerRegressionTests" )
+
+# Multichannel tool tests (~11s)
+set( PCBNEW_MULTICHANNEL_TESTS "MultichannelTool" )
+
+# DRC regression tests (~10s)
+set( PCBNEW_DRC_REGRESSION_TESTS
+    "DRCFalsePositiveRegressions\
+:DRCFalseNegativeRegressions\
+:DRCZoneFalsePositiveRegressions" )
+
+# Geometric constraint solver tests (planegcs adapter, issue #2329)
+set( PCBNEW_CONSTRAINTS_TESTS "PlanegcsSmokeSolve:ConstraintSolver*" )
+
+# Solder mask and copper sliver DRC tests (~6s)
+set( PCBNEW_DRC_SOLDER_MASK_TESTS
+    "DRCCopperSliver\
+:DRCSolderMaskBridgingTest\
+:DRCSolderMaskBridgeAllTracksTest\
+:DRCSolderMaskBridgeSingleErrorTest\
+:DRCTrackToPadBridgeTest\
+:FootprintLevelSolderMaskExpansion\
+:SolderMaskExpansionPerformance" )
+
+add_pcbnew_test_group( zone "${PCBNEW_ZONE_TESTS}" )
+add_pcbnew_test_group( allegro "${PCBNEW_ALLEGRO_TESTS}" )
+add_pcbnew_test_group( creepage "${PCBNEW_CREEPAGE_TESTS}" )
+add_pcbnew_test_group( ipc2581 "${PCBNEW_IPC2581_TESTS}" )
+add_pcbnew_test_group( tracks_cleaner "${PCBNEW_TRACKS_CLEANER_TESTS}" )
+add_pcbnew_test_group( multichannel "${PCBNEW_MULTICHANNEL_TESTS}" )
+add_pcbnew_test_group( drc_regression "${PCBNEW_DRC_REGRESSION_TESTS}" )
+add_pcbnew_test_group( drc_solder_mask "${PCBNEW_DRC_SOLDER_MASK_TESTS}" )
+add_pcbnew_test_group( constraints "${PCBNEW_CONSTRAINTS_TESTS}" )
+
+# Catch-all for everything not in a named group.  New tests automatically
+# land here so they are never silently skipped.
+set( PCBNEW_EXCLUDED_FROM_OTHER
+    "!BasicZoneFills\
+:!NotchedZones\
+:!RegressionZoneFillTests\
+:!RegressionZoneClearanceWithIterativeRefill\
+:!RegressionSliverZoneFillTests\
+:!RegressionTeardropFill\
+:!RegressionNetTie\
+:!RegressionZonePriorityIsolatedIslands\
+:!RegressionViaFlashingUnreachableZone\
+:!RegressionViaZoneNetShort\
+:!HatchZoneThermalConnectivity\
+:!RegressionShallowArcZoneFill\
+:!RegressionIterativeRefillRespectsKeepouts\
+:!RegressionTHPadInnerLayerFlashing\
+:!RegressionThermalReliefAnnularRing45\
+:!RegressionRoundRectTeardropGeometry\
+:!OvalPadTeardropGeometry\
+:!LargeCircleTeardropGeometry\
+:!RegressionCoincidentPadClearance\
+:!ZoneViaNetClearance\
+:!ZoneLayerSpecificRules\
+:!RegressionZoneFillMinWidthAfterKnockout\
+:!RegressionSameNetOverlappingZones\
+:!RegressionSameNetZoneFillScheduler\
+:!RegressionDiffNetOverlappingZones\
+:!RegressionThermalReliefsToNowhere\
+:!OffCenterTeardropSymmetry\
+:!CrossingTrackTeardropOnViaStaysOnTrack\
+:!CrossingTrackTeardropOnPadStaysOnTrack\
+:!RegressionKeepoutBoundaryMissingFill\
+:!HatchZoneViaConnectionRespectsSetting\
+:!RegressionCascadingIslandRefill\
+:!IterativeRefillConvergenceLimit\
+:!Zone\
+:!AllegroBlocks\
+:!AllegroBoards\
+:!AllegroImport\
+:!AllegroComprehensive\
+:!AllegroDrillSpans\
+:!CreepageHVvsGND\
+:!CreepageAroundSlotIssue20480\
+:!CreepagePerformanceIssue21482\
+:!CreepageDualSlotsIssue23364\
+:!CreepageNPTHSlotIssue23389\
+:!CreepagePathStartPointIssue23576\
+:!CreepageTwoNPTHSlotsIssue24523\
+:!CreepageRotatedRectPadIssue24543\
+:!CreepageRoundedSlotIssue24544\
+:!CreepageStadiumCapsBlockOuterSide\
+:!CreepageStadiumCapsArcOutward\
+:!Ipc2581Export\
+:!FailedToCleanRegressionTests\
+:!TrackCleanerRegressionTests\
+:!MultichannelTool\
+:!DRCFalsePositiveRegressions\
+:!DRCFalseNegativeRegressions\
+:!DRCZoneFalsePositiveRegressions\
+:!DRCCopperSliver\
+:!DRCSolderMaskBridgingTest\
+:!DRCSolderMaskBridgeAllTracksTest\
+:!DRCSolderMaskBridgeSingleErrorTest\
+:!DRCTrackToPadBridgeTest\
+:!FootprintLevelSolderMaskExpansion\
+:!SolderMaskExpansionPerformance\
+:!PlanegcsSmokeSolve\
+:!ConstraintSolver*" )
+
+add_pcbnew_test_group( other "${PCBNEW_EXCLUDED_FROM_OTHER}" )

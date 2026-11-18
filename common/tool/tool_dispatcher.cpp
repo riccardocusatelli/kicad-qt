@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "tool/tool_dispatcher.h"
@@ -41,6 +37,7 @@
 #include <tool/action_menu.h>
 #include <view/view.h>
 #include <view/wx_view_controls.h>
+#include <geometry/geometry_utils.h>
 #include <eda_draw_frame.h>
 #include <core/kicad_algo.h>
 
@@ -216,6 +213,12 @@ KIGFX::VIEW* TOOL_DISPATCHER::getView()
 }
 
 
+bool TOOL_DISPATCHER::IsPastDragThreshold( const VECTOR2D& aOffset, int aDragMinX, int aDragMinY )
+{
+    return abs( aOffset.x ) > aDragMinX || abs( aOffset.y ) > aDragMinY;
+}
+
+
 bool TOOL_DISPATCHER::handleMouseButton( wxEvent& aEvent, int aIndex, bool aMotion )
 {
     BUTTON_STATE* st = m_buttons[aIndex];
@@ -228,6 +231,24 @@ bool TOOL_DISPATCHER::handleMouseButton( wxEvent& aEvent, int aIndex, bool aMoti
     bool up = false, down = false;
     bool dblClick = type == st->dblClickEvent;
     bool state = st->GetState();
+
+    if( dblClick )
+    {
+        // If the mouse moved significantly between clicks, this is a fast click-drag, not a
+        // double-click. Demote to a regular mouse-down so drag detection works normally.
+        VECTOR2D offset = m_lastMousePosScreen - st->dragOriginScreen;
+
+        if( IsPastDragThreshold( offset, m_sysDragMinX, m_sysDragMinY ) )
+        {
+            dblClick = false;
+            down = true;
+
+            // Treat this as a fresh press so a stale pressed state from a missed button-up
+            // does not keep the previous drag origin.
+            st->pressed = false;
+            st->dragging = false;
+        }
+    }
 
     if( !dblClick )
     {
@@ -286,7 +307,7 @@ bool TOOL_DISPATCHER::handleMouseButton( wxEvent& aEvent, int aIndex, bool aMoti
 #endif
             VECTOR2D offset = m_lastMousePosScreen - st->dragOriginScreen;
 
-            if( abs( offset.x ) > m_sysDragMinX || abs( offset.y ) > m_sysDragMinY )
+            if( IsPastDragThreshold( offset, m_sysDragMinX, m_sysDragMinY ) )
                 st->dragging = true;
 
         }
@@ -527,8 +548,7 @@ bool TOOL_DISPATCHER::isStaleAutoRepeat( const wxKeyEvent& aKeyEvent )
     int  key = aKeyEvent.GetKeyCode();
     bool keyIsDown = key > MAX_MOUSE_BUTTON && wxGetKeyState( static_cast<wxKeyCode>( key ) );
 
-    return ShouldDropAutoRepeat( key, wxGetLocalTimeMillis(), keyIsDown, m_lastKeyCode,
-                                 m_lastKeyTime );
+    return ShouldDropAutoRepeat( key, wxGetLocalTimeMillis(), keyIsDown, m_lastKeyCode, m_lastKeyTime );
 }
 
 
@@ -585,8 +605,9 @@ void TOOL_DISPATCHER::DispatchWxEvent( wxEvent& aEvent )
 
     if( isMouseClick( type ) )
     {
-        if( m_toolMgr->GetToolHolder() && m_toolMgr->GetToolHolder()->GetToolCanvas() &&
-            !m_toolMgr->GetToolHolder()->GetToolCanvas()->HasFocus() )
+        if( m_toolMgr->GetToolHolder()
+                && m_toolMgr->GetToolHolder()->GetToolCanvas()
+                && !m_toolMgr->GetToolHolder()->GetToolCanvas()->HasFocus() )
         {
             m_toolMgr->GetToolHolder()->GetToolCanvas()->SetFocus();
         }
@@ -594,20 +615,30 @@ void TOOL_DISPATCHER::DispatchWxEvent( wxEvent& aEvent )
 
     // Mouse handling
     // Note: wxEVT_LEFT_DOWN event must always be skipped.
-    if( type == wxEVT_MOTION || type == wxEVT_MOUSEWHEEL ||
-        type == wxEVT_MAGNIFY ||
-        isMouseClick( type ) ||
-        // Event issued when mouse retains position in screen coordinates,
-        // but changes in world coordinates (e.g. autopanning)
-        type == KIGFX::WX_VIEW_CONTROLS::EVT_REFRESH_MOUSE )
+    if( type == wxEVT_MOTION
+            || type == wxEVT_MOUSEWHEEL
+            || type == wxEVT_MAGNIFY
+            || isMouseClick( type )
+            // Event issued when mouse retains position in screen coordinates,
+            // but changes in world coordinates (e.g. autopanning)
+            || type == KIGFX::WX_VIEW_CONTROLS::EVT_REFRESH_MOUSE )
     {
         wxMouseEvent* me = static_cast<wxMouseEvent*>( &aEvent );
         int mods = decodeModifiers( me );
 
         if( m_toolMgr->GetViewControls() )
         {
-            pos = m_toolMgr->GetViewControls()->GetMousePosition();
-            m_lastMousePosScreen = m_toolMgr->GetViewControls()->GetMousePosition( false );
+            if( type == wxEVT_MOTION || isMouseClick( type ) )
+            {
+                const wxPoint eventPos = me->GetPosition();
+                m_lastMousePosScreen = VECTOR2D( eventPos.x, eventPos.y );
+                pos = GetClampedCoords( m_toolMgr->GetView()->ToWorld( m_lastMousePosScreen ) );
+            }
+            else
+            {
+                pos = m_toolMgr->GetViewControls()->GetMousePosition();
+                m_lastMousePosScreen = m_toolMgr->GetViewControls()->GetMousePosition( false );
+            }
 
             if( pos != m_lastMousePos )
             {
@@ -635,8 +666,7 @@ void TOOL_DISPATCHER::DispatchWxEvent( wxEvent& aEvent )
         // when WX_VIEW_CONTROLS is not in use, like in the 3D viewer)
         if( !evt && me->GetWheelRotation() != 0 )
         {
-            const unsigned modBits =
-                    static_cast<unsigned>( mods ) & MD_MODIFIER_MASK;
+            const unsigned modBits = static_cast<unsigned>( mods ) & MD_MODIFIER_MASK;
             const bool shouldHandle = std::popcount( modBits ) > 1;
 
             if( shouldHandle )
@@ -698,6 +728,12 @@ void TOOL_DISPATCHER::DispatchWxEvent( wxEvent& aEvent )
         {
             evt.reset();
             droppedStaleAutoRepeat = true;
+        }
+
+        if( evt && !evt->IsCancel() && m_toolMgr->GetViewControls() )
+        {
+            evt->SetMousePosition( m_lastMousePos );
+            evt->SetHasPosition( true );
         }
     }
     else if( type == wxEVT_MENU_OPEN || type == wxEVT_MENU_CLOSE || type == wxEVT_MENU_HIGHLIGHT )
@@ -763,14 +799,18 @@ void TOOL_DISPATCHER::DispatchWxEvent( wxEvent& aEvent )
 
     if( evt )
     {
-        KI_LOG_TRACE( kicadTraceToolStack, wxS( "TOOL_DISPATCHER::DispatchWxEvent %s" ),
-                    evt->Format() );
+        KI_LOG_TRACE( kicadTraceToolStack, wxS( "TOOL_DISPATCHER::DispatchWxEvent %s" ), evt->Format() );
 
         handled = m_toolMgr->ProcessEvent( *evt );
 
-        KI_LOG_TRACE( kicadTraceToolStack,
-                    wxS( "TOOL_DISPATCHER::DispatchWxEvent - Handled: %s  %s" ),
+        KI_LOG_TRACE( kicadTraceToolStack, wxS( "TOOL_DISPATCHER::DispatchWxEvent - Handled: %s  %s" ),
                     ( handled ? wxS( "true" ) : wxS( "false" ) ), evt->Format() );
+    }
+    else if( type == KIGFX::WX_VIEW_CONTROLS::EVT_REFRESH_MOUSE )
+    {
+        // A zoom anchored at the cursor leaves the cursor's world position where it was, so no
+        // motion follows, yet the zoom the status bar shows has changed
+        m_toolMgr->UpdateUI( TOOL_EVENT( TC_MOUSE, TA_MOUSE_MOTION ) );
     }
 
     // pass the event to the GUI, it might still be interested in it

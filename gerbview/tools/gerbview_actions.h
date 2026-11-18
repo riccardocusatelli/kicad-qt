@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef __GERBVIEW_ACTIONS_H
@@ -50,6 +50,9 @@ public:
     static TOOL_ACTION toggleForceOpacityMode;
     static TOOL_ACTION toggleXORMode;
     static TOOL_ACTION flipGerberView;
+    static TOOL_ACTION showInactiveLayers;
+    static TOOL_ACTION dimInactiveLayers;
+    static TOOL_ACTION hideInactiveLayers;
 
     // Layer control
     static TOOL_ACTION layerPrev;

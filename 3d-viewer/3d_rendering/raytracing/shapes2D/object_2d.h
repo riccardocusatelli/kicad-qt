@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -82,12 +78,14 @@ public:
     virtual bool Overlaps( const BBOX_2D& aBBox ) const = 0;
 
     /**
-     * a.Intersects(b) ⇔ !a.Disjoint(b) ⇔ !(a ∩ b = ∅)
+     * a.Intersects(b) ⇔ \!a.Disjoint(b) ⇔ \!(a ∩ b = ∅)
      */
     virtual bool Intersects( const BBOX_2D& aBBox ) const = 0;
 
     /**
+     * @param aSegRay
      * @param aOutT a value between 0.0 and 1.0 in relation to the time of the hit of the segment.
+     * @param aNormalOut
      */
     virtual bool Intersect( const RAYSEG2D& aSegRay, float* aOutT, SFVEC2F* aNormalOut ) const = 0;
 

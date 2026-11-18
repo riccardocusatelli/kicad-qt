@@ -17,16 +17,13 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef CACHED_CONTAINER_H_
 #define CACHED_CONTAINER_H_
 
+#include <gal/gal.h>
 #include <gal/opengl/vertex_container.h>
 #include <map>
 #include <set>
@@ -43,7 +40,7 @@ class SHADER;
  * enables fast reuse of that data.
  */
 
-class CACHED_CONTAINER : public VERTEX_CONTAINER
+class GAL_API CACHED_CONTAINER : public VERTEX_CONTAINER
 {
 public:
     CACHED_CONTAINER( unsigned int aSize = DEFAULT_SIZE );
@@ -56,7 +53,7 @@ public:
 
     virtual void SetItem( VERTEX_ITEM* aItem ) override;
 
-    ///< @copydoc VERTEX_CONTAINER::FinishItem()
+    /// @copydoc VERTEX_CONTAINER::FinishItem()
     virtual void FinishItem() override;
 
     /**
@@ -72,10 +69,10 @@ public:
      */
     virtual VERTEX* Allocate( unsigned int aSize ) override;
 
-    ///< @copydoc VERTEX_CONTAINER::Delete()
+    /// @copydoc VERTEX_CONTAINER::Delete()
     virtual void Delete( VERTEX_ITEM* aItem ) override;
 
-    ///< @copydoc VERTEX_CONTAINER::Clear()
+    /// @copydoc VERTEX_CONTAINER::Clear()
     virtual void Clear() override;
 
     /**
@@ -88,21 +85,18 @@ public:
      */
     virtual bool IsMapped() const = 0;
 
-    ///< @copydoc VERTEX_CONTAINER::Map()
+    /// @copydoc VERTEX_CONTAINER::Map()
     virtual void Map() override = 0;
 
-    ///< @copydoc VERTEX_CONTAINER::Unmap()
+    /// @copydoc VERTEX_CONTAINER::Unmap()
     virtual void Unmap() override = 0;
 
     virtual unsigned int AllItemsSize() const { return 0; }
 
 protected:
-    ///< Maps size of free memory chunks to their offsets
+    /// Maps size of free memory chunks to their offsets
     typedef std::pair<unsigned int, unsigned int> CHUNK;
     typedef std::multimap<unsigned int, unsigned int> FREE_CHUNK_MAP;
-
-    /// List of all the stored items
-    typedef std::set<VERTEX_ITEM*> ITEMS;
 
     /**
      * Resize the chunk that stores the current item to the given size. The current item has
@@ -144,7 +138,7 @@ protected:
      *
      * @param aChunk is the chunk.
      */
-    inline int getChunkSize( const CHUNK& aChunk ) const
+    int getChunkSize( const CHUNK& aChunk ) const
     {
         return aChunk.first;
     }
@@ -154,7 +148,7 @@ protected:
      *
      * @param aChunk is the chunk.
      */
-    inline unsigned int getChunkOffset( const CHUNK& aChunk ) const
+    unsigned int getChunkOffset( const CHUNK& aChunk ) const
     {
         return aChunk.second;
     }
@@ -164,21 +158,17 @@ protected:
      */
     void addFreeChunk( unsigned int aOffset, unsigned int aSize );
 
-    ///< Store size & offset of free chunks.
-    FREE_CHUNK_MAP  m_freeChunks;
+protected:
+    FREE_CHUNK_MAP         m_freeChunks;    ///< Store size & offset of free chunks.
+    std::set<VERTEX_ITEM*> m_items;         ///< Stored VERTEX_ITEMs
+    VERTEX_ITEM*           m_item;          ///< Currently modified item
 
-    ///< Stored VERTEX_ITEMs
-    ITEMS m_items;
+    /// Properties of currently modified chunk & item
+    unsigned int           m_chunkSize;
+    unsigned int           m_chunkOffset;
 
-    ///< Currently modified item
-    VERTEX_ITEM* m_item;
-
-    ///< Properties of currently modified chunk & item
-    unsigned int m_chunkSize;
-    unsigned int m_chunkOffset;
-
-    ///< Maximal vertex index number stored in the container
-    unsigned int m_maxIndex;
+    /// Maximal vertex index number stored in the container
+    unsigned int           m_maxIndex;
 
 private:
     /// Debug & test functions

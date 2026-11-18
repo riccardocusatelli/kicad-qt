@@ -59,11 +59,11 @@ void EDA_3D_VIEWER_FRAME::setupWindow( EDA_3D_VIEWER_SETTINGS* aCfg )
     setWindowIcon( KiBitmapBundle( BITMAPS::icon_3d ) );
 
     // Create the status line: the fields of EDA_3D_VIEWER_STATUSBAR, as the wxWidgets build
-    // (the first one is stretched)
-    static const int status_dims[5] = { -1, 170, 130, 130, 130 };
+    // (activity, render time and hovered item are stretched)
+    static const int status_dims[6] = { -1, -1, -1, 130, 130, 130 };
 
-    CreateStatusBar( 5 );
-    SetStatusWidths( 5, status_dims );
+    CreateStatusBar( 6 );
+    SetStatusWidths( 6, status_dims );
 
     // The main area: the infobar above the canvas
     QWidget*     central = new QWidget( this );
@@ -131,6 +131,7 @@ void EDA_3D_VIEWER_FRAME::ShowChangedLanguage()
         layersManager->setWindowTitle( ToQString( _( "Appearance" ) ) );
 
     SetStatusText( wxEmptyString, ACTIVITY );
+    SetStatusText( wxEmptyString, RENDER_TIME );
     SetStatusText( wxEmptyString, HOVERED_ITEM );
 }
 

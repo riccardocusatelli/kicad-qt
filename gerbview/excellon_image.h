@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef EXCELLON_IMAGE_H
@@ -72,6 +68,7 @@ enum drill_G_code_t {
     DRILL_G_ZEROSET,
     DRILL_G_ROUT,
     DRILL_G_DRILL,
+    DRILL_G_DRILL_IN_HEADER,                // a G05 in file header (unusual, but happens
     DRILL_G_SLOT,
     DRILL_G_ZERO_SET,
     DRILL_G_LINEARMOVE,

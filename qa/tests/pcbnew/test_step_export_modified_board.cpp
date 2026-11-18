@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /*
@@ -40,6 +36,7 @@
 #include <vector>
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
+#include <qa_utils/file_utils.h>
 #include <boost/test/unit_test.hpp>
 
 #include <pcbnew_utils/board_file_utils.h>
@@ -52,37 +49,6 @@
 #include <wx/string.h>
 
 
-namespace
-{
-/// A uniquely-named temporary directory removed on destruction, so concurrent runs and early
-/// test failures cannot collide or leak.
-class SCOPED_TEMP_DIR
-{
-public:
-    SCOPED_TEMP_DIR( const wxString& aPrefix )
-    {
-        wxString reserved = wxFileName::CreateTempFileName( aPrefix );
-        BOOST_REQUIRE( !reserved.IsEmpty() );
-        BOOST_REQUIRE( wxRemoveFile( reserved ) );
-
-        m_path = std::filesystem::path( std::string( reserved.utf8_str() ) );
-        std::filesystem::create_directory( m_path );
-    }
-
-    ~SCOPED_TEMP_DIR()
-    {
-        std::error_code ec;
-        std::filesystem::remove_all( m_path, ec );
-    }
-
-    const std::filesystem::path& Path() const { return m_path; }
-
-private:
-    std::filesystem::path m_path;
-};
-} // namespace
-
-
 BOOST_AUTO_TEST_SUITE( StepExportModifiedBoard )
 
 
@@ -92,17 +58,16 @@ BOOST_AUTO_TEST_CASE( ModifiedBoardStagesCurrentState )
 
     BOOST_REQUIRE_MESSAGE( std::filesystem::exists( sourceBoard ), "Missing test board " << sourceBoard );
 
-    std::unique_ptr<BOARD> board = KI_TEST::ReadBoardFromFileOrStream( sourceBoard );
-    BOOST_REQUIRE( board );
+    std::unique_ptr<BOARD> board = KI_TEST::RequireBoardFromPcbnewQAData( "issue23704/issue23704.kicad_pcb" );
 
     const size_t originalCount = board->Footprints().size();
     BOOST_REQUIRE_MESSAGE( originalCount > 1, "Panel board needs multiple footprints to delete" );
 
     // Stage the board's "saved" copy in an isolated temp directory so the helper writes its
     // temporary export file alongside it rather than into the shared test data tree.
-    const SCOPED_TEMP_DIR       workDir( wxS( "kicad_step_export_23704_" ) );
-    const std::filesystem::path onDisk = workDir.Path() / "panel.kicad_pcb";
-    KI_TEST::DumpBoardToFile( *board, onDisk.string() );
+    const KI_TEST::SCOPED_TEMP_DIR workDir( wxS( "kicad_step_export_23704_" ) );
+    const std::filesystem::path& onDisk = workDir.Path() / "panel.kicad_pcb";
+    KI_TEST::DumpBoardToFile( *board, onDisk );
     const wxString onDiskPath = wxString::FromUTF8( onDisk.string() );
 
     // A sibling project file must be staged too, so project-relative model and library paths
@@ -166,8 +131,7 @@ BOOST_AUTO_TEST_CASE( UnmodifiedBoardStagesOnDiskFile )
 {
     const std::string sourceBoard = KI_TEST::GetPcbnewTestDataDir() + "issue23704/issue23704.kicad_pcb";
 
-    std::unique_ptr<BOARD> board = KI_TEST::ReadBoardFromFileOrStream( sourceBoard );
-    BOOST_REQUIRE( board );
+    std::unique_ptr<BOARD> board = KI_TEST::RequireBoardFromPcbnewQAData( "issue23704/issue23704.kicad_pcb" );
 
     const wxString onDiskPath = wxString::FromUTF8( sourceBoard );
 
@@ -188,10 +152,7 @@ BOOST_AUTO_TEST_CASE( UnmodifiedBoardStagesOnDiskFile )
  */
 BOOST_AUTO_TEST_CASE( UnsavedBoardIsRejected )
 {
-    const std::string sourceBoard = KI_TEST::GetPcbnewTestDataDir() + "issue23704/issue23704.kicad_pcb";
-
-    std::unique_ptr<BOARD> board = KI_TEST::ReadBoardFromFileOrStream( sourceBoard );
-    BOOST_REQUIRE( board );
+    std::unique_ptr<BOARD> board = KI_TEST::RequireBoardFromPcbnewQAData( "issue23704/issue23704.kicad_pcb" );
 
     wxString              inputPath;
     std::vector<wxString> tempFiles;

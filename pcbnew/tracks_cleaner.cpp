@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <pgm_base.h>
@@ -38,6 +34,8 @@
 #include <thread_pool.h>
 #include <lset.h>
 #include <pad.h>
+#include <pcb_generator.h>
+#include <generators/pcb_via_stack.h>
 #include <pcb_track.h>
 #include <tools/pcb_actions.h>
 #include <tools/global_edit_tool.h>
@@ -171,6 +169,14 @@ void TRACKS_CLEANER::CleanupBoard( bool aDryRun,
 
 bool TRACKS_CLEANER::filterItem( BOARD_CONNECTED_ITEM* aItem )
 {
+    // A via stack owns its vias and connecting traces, and rebuilds them as a unit, so cleanup
+    // must not delete one out from under it. Other generators are left to the cleaner as before.
+    if( PCB_GENERATOR* generator = dynamic_cast<PCB_GENERATOR*>( aItem->GetParentGroup() ) )
+    {
+        if( generator->GetGeneratorType() == PCB_VIA_STACK::GENERATOR_TYPE )
+            return true;
+    }
+
     if( !m_filter )
         return false;
 
@@ -387,8 +393,10 @@ void TRACKS_CLEANER::cleanup( bool aDeleteDuplicateVias, bool aDeleteNullSegment
     for( PCB_TRACK* track : m_brd->Tracks() )
     {
         track->ClearFlags( IS_DELETED | SKIP_STRUCT );
-        rtree.Insert( track, track->GetLayer() );
+        rtree.Insert( track, track->GetLayer(), NULL_CONSTRAINT );
     }
+
+    rtree.Build();
 
     std::set<BOARD_ITEM*> toRemove;
 
@@ -590,22 +598,28 @@ void TRACKS_CLEANER::cleanup( bool aDeleteDuplicateVias, bool aDeleteNullSegment
         auto merge_returns = tp.submit_blocks( 0, m_brd->Tracks().size(), track_loop );
         bool retval = false;
 
-        for( size_t ii = 0; ii < merge_returns.size(); ++ii )
-        {
-            std::future<std::vector<std::pair<PCB_TRACK*, PCB_TRACK*>>>& ret = merge_returns[ii];
+        // Drain every worker before mutating any track flags.  mergeCollinearSegments writes
+        // IS_DELETED on aSeg2, and worker threads still in track_loop read the same flags via
+        // HasFlag and via the PCB_TRACK copy constructor in testMergeCollinearSegments.
+        std::vector<std::pair<PCB_TRACK*, PCB_TRACK*>> mergePairs;
 
+        for( auto& ret : merge_returns )
+        {
             if( ret.valid() )
             {
-                for( auto& [seg1, seg2] : ret.get() )
-                {
-                    retval = true;
-
-                    if( seg1->HasFlag( IS_DELETED ) || seg2->HasFlag( IS_DELETED ) )
-                        continue;
-
-                    mergeCollinearSegments( seg1, seg2 );
-                }
+                std::vector<std::pair<PCB_TRACK*, PCB_TRACK*>> pairs = ret.get();
+                mergePairs.insert( mergePairs.end(), pairs.begin(), pairs.end() );
             }
+        }
+
+        for( auto& [seg1, seg2] : mergePairs )
+        {
+            retval = true;
+
+            if( seg1->HasFlag( IS_DELETED ) || seg2->HasFlag( IS_DELETED ) )
+                continue;
+
+            mergeCollinearSegments( seg1, seg2 );
         }
 
         return retval;

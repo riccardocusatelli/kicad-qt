@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <algorithm>
@@ -82,6 +78,21 @@ namespace std
             return hash<int>()( k.Netcode ) ^ ( hash<int>()( k.Layer ) * prime );
         }
     };
+}
+
+
+static void addItemPolysWithEndings( BOARD_ITEM* aItem, SHAPE_POLY_SET& aBuffer, PCB_LAYER_ID aLayer, int aClearance,
+                                     int aError, ERROR_LOC aErrorLoc )
+{
+    if( aItem->Type() == PCB_SHAPE_T )
+    {
+        PCB_SHAPE* shape = static_cast<PCB_SHAPE*>( aItem );
+        shape->TransformWithLineEndingsToPolygon( aBuffer, aClearance, aError, aErrorLoc );
+    }
+    else
+    {
+        aItem->TransformShapeToPolygon( aBuffer, aLayer, aClearance, aError, aErrorLoc );
+    }
 }
 
 
@@ -370,7 +381,7 @@ bool DRC_TEST_PROVIDER_CONNECTION_WIDTH::Run()
                 ITEMS_POLY& itemsPoly = dataset[ { aNetcode, aLayer } ];
 
                 for( BOARD_ITEM* item : itemsPoly.Items )
-                    item->TransformShapeToPolygon( itemsPoly.Poly, aLayer, 0, ARC_HIGH_DEF, ERROR_OUTSIDE );
+                    addItemPolysWithEndings( item, itemsPoly.Poly, aLayer, 0, ARC_HIGH_DEF, ERROR_OUTSIDE );
 
                 itemsPoly.Poly.Fracture();
 

@@ -13,15 +13,15 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef JSON_COMMON_H
 #define JSON_COMMON_H
 
 /***********************************************************************************************************************
- * If we are compiling on Apple with Clang >= 17, the version of LLVM no longer includes a generic template for
+ * If we are compiling against libc++ >= 19, the version of LLVM no longer includes a generic template for
  * char_traits for char types which are not specified in the C++ standard. We define our own here for types required by
  * the JSON library.
  *
@@ -33,8 +33,10 @@
  *
  **********************************************************************************************************************/
 
-#ifdef __APPLE__
-#if __clang_major__ >= 17
+#include <version>
+
+#if defined( _LIBCPP_VERSION )
+#if _LIBCPP_VERSION >= 190102
 
 #include <string>
 #include <wx/unichar.h>
@@ -153,6 +155,11 @@ struct std::char_traits<wxUniChar>
 
 #include <nlohmann/json.hpp>
 #include <kicommon.h>
+
+
+#define ALLOW_EXCEPTIONS true
+#define IGNORE_COMMENTS true
+
 
 /**
  * This is simply a "stub" meant to inform MSVC when compiling shared libraries that it can find

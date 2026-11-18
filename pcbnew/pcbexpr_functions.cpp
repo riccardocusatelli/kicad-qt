@@ -14,22 +14,20 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <algorithm>
 #include <cstdio>
 #include <memory>
 #include <mutex>
+#include <set>
 
 #include <wx/log.h>
 
 #include <board.h>
 #include <board_design_settings.h>
+#include <project/net_settings.h>
 #include <component_classes/component_class.h>
 #include <drc/drc_rtree.h>
 #include <drc/drc_engine.h>
@@ -64,8 +62,32 @@ bool fromToFunc( LIBEVAL::CONTEXT* aCtx, void* self )
     result->Set(0.0);
     aCtx->Push( result );
 
-    if(!item)
+    if( !item )
         return false;
+
+    if( !argFrom || argFrom->AsString().IsEmpty() )
+    {
+        if( aCtx->HasErrorCallback() )
+        {
+            aCtx->ReportError( wxString::Format( _( "Missing 'from' pad argument (footprint reference designator "
+                                                    "followed by hyphen and pad number) to %s." ),
+                                                 wxT( "fromTo()" ) ) );
+        }
+
+        return false;
+    }
+
+    if( !argTo || argTo->AsString().IsEmpty() )
+    {
+        if( aCtx->HasErrorCallback() )
+        {
+            aCtx->ReportError( wxString::Format( _( "Missing 'to' pad argument (footprint reference designator "
+                                                    "followed by hyphen and pad number) to %s." ),
+                                                 wxT( "fromTo()" ) ) );
+        }
+
+        return false;
+    }
 
     auto ftCache = item->GetBoard()->GetConnectivity()->GetFromToCache();
 
@@ -75,17 +97,12 @@ bool fromToFunc( LIBEVAL::CONTEXT* aCtx, void* self )
         return true;
     }
 
-    if( ftCache->IsOnFromToPath( static_cast<BOARD_CONNECTED_ITEM*>( item ),
-                                 argFrom->AsString(), argTo->AsString() ) )
-    {
+    if( ftCache->IsOnFromToPath( static_cast<BOARD_CONNECTED_ITEM*>( item ), argFrom->AsString(), argTo->AsString() ) )
         result->Set(1.0);
-    }
 
     return true;
 }
 
-
-#define MISSING_LAYER_ARG( f ) wxString::Format( _( "Missing layer name argument to %s." ), f )
 
 static void existsOnLayerFunc( LIBEVAL::CONTEXT* aCtx, void *self )
 {
@@ -103,7 +120,10 @@ static void existsOnLayerFunc( LIBEVAL::CONTEXT* aCtx, void *self )
     if( !arg || arg->AsString().IsEmpty() )
     {
         if( aCtx->HasErrorCallback() )
-            aCtx->ReportError( MISSING_LAYER_ARG( wxT( "existsOnLayer()" ) ) );
+        {
+            aCtx->ReportError( wxString::Format( _( "Missing layer name argument to %s." ),
+                                                 wxT( "existsOnLayer()" ) ) );
+        }
 
         return;
     }
@@ -215,17 +235,28 @@ bool collidesWithCourtyard( BOARD_ITEM* aItem, std::shared_ptr<SHAPE>& aItemShap
     if( !footprintCourtyard.BBox().Intersects( aItem->GetBoundingBox() ) )
         return false;
 
-    if( !aItemShape )
+    if( aItemShape )
     {
-        // Since rules are used for zone filling we can't rely on the filled shapes.
-        // Use the zone outline instead.
-        if( ZONE* zone = dynamic_cast<ZONE*>( aItem ) )
-            aItemShape.reset( zone->Outline()->Clone() );
-        else
-            aItemShape = aItem->GetEffectiveShape( aCtx->GetLayer() );
+        return footprintCourtyard.Collide( aItemShape.get() );
     }
+    else if( ZONE* zone = dynamic_cast<ZONE*>( aItem ) )
+    {
+        // Since rules are used for zone filling we can't rely on the filled shapes.  Use the
+        // zone  outline instead.
+        SHAPE_POLY_SET  zoneOutlineStorage;
+        SHAPE_POLY_SET* zoneOutline = &zoneOutlineStorage;
 
-    return footprintCourtyard.Collide( aItemShape.get() );
+        if( zone->GetParentFootprint() )
+            zoneOutlineStorage = zone->GetBoardOutline();
+        else
+            zoneOutline = zone->Outline();
+
+        return footprintCourtyard.Collide( zoneOutline );
+    }
+    else
+    {
+        return footprintCourtyard.Collide( aItem->GetEffectiveShape( aCtx->GetLayer() ).get() );
+    }
 };
 
 
@@ -272,8 +303,7 @@ static bool testFootprintSelector( FOOTPRINT* aFp, const wxString& aSelector )
  * linear scan.
  */
 static bool searchFootprintsNearItem( BOARD* aBoard, const wxString& aArg, PCBEXPR_CONTEXT* aCtx,
-                                      BOARD_ITEM* aItem,
-                                      const std::function<bool( FOOTPRINT* )>& aFunc )
+                                      BOARD_ITEM* aItem, const std::function<bool( FOOTPRINT* )>& aFunc )
 {
     if( aArg == wxT( "A" ) )
     {
@@ -537,7 +567,7 @@ static SHAPE_POLY_SET getDeflatedZoneOutline( BOARD* aBoard, ZONE* aArea )
     }
 
     // Cache miss - compute deflated outline
-    SHAPE_POLY_SET areaOutline = aArea->Outline()->CloneDropTriangulation();
+    SHAPE_POLY_SET areaOutline = aArea->GetBoardOutline();
     areaOutline.ClearArcs();
     areaOutline.Deflate( aBoard->GetDesignSettings().GetDRCEpsilon(), CORNER_STRATEGY::ALLOW_ACUTE_CORNERS,
                          ARC_LOW_DEF );
@@ -627,8 +657,7 @@ bool collidesWithArea( BOARD_ITEM* aItem, PCB_LAYER_ID aLayer, PCBEXPR_CONTEXT* 
 
         return false;
     }
-
-    if( aItem->Type() == PCB_ZONE_T )
+    else if( aItem->Type() == PCB_ZONE_T )
     {
         ZONE* zone = static_cast<ZONE*>( aItem );
 
@@ -637,17 +666,16 @@ bool collidesWithArea( BOARD_ITEM* aItem, PCB_LAYER_ID aLayer, PCBEXPR_CONTEXT* 
             if( !zone->IsFilled() )
                 return false;
 
-        DRC_RTREE* zoneRTree = board->m_CopperZoneRTreeCache[ zone ].get();
-
-        if( zoneRTree )
-        {
-            if( zoneRTree->QueryColliding( areaBBox, &areaOutline, aLayer ) )
-                return true;
-        }
-        else
-        {
-            std::unique_ptr<DRC_RTREE> rtree = std::make_unique<DRC_RTREE>();
-            rtree->Insert( zone, aLayer, CLEARANCE_CONSTRAINT );
+            if( DRC_RTREE* zoneRTree = board->GetCopperZoneRTree( zone ) )
+            {
+                if( zoneRTree->QueryColliding( areaBBox, &areaOutline, aLayer ) )
+                    return true;
+            }
+            else
+            {
+                std::unique_ptr<DRC_RTREE> rtree = std::make_unique<DRC_RTREE>();
+                rtree->Insert( zone, aLayer, CLEARANCE_CONSTRAINT );
+                rtree->Build();
 
                 if( rtree->QueryColliding( areaBBox, &areaOutline, aLayer ) )
                     return true;
@@ -657,7 +685,16 @@ bool collidesWithArea( BOARD_ITEM* aItem, PCB_LAYER_ID aLayer, PCBEXPR_CONTEXT* 
         }
         else
         {
-            return areaOutline.Collide( zone->Outline() );
+            SHAPE_POLY_SET  zonePolyStorage;
+            SHAPE_POLY_SET* zonePoly = &zonePolyStorage;
+
+            // GetBoardOutline() is expensive.  Only use it where we have to.
+            if( zone->GetParentFootprint() )
+                zonePolyStorage = zone->GetBoardOutline();
+            else
+                zonePoly = zone->Outline();
+
+            return areaOutline.Collide( zonePoly );
         }
     }
     else
@@ -685,13 +722,13 @@ bool searchAreas( BOARD* aBoard, const wxString& aArg, PCBEXPR_CONTEXT* aCtx,
     {
         KIID target( aArg );
 
-        // Use the board's item-by-ID cache for O(1) lookup instead of O(n) iteration.
-        // The cache includes both board zones and zones inside footprints.
-        const auto& cache = aBoard->GetItemByIdCache();
-        auto        it = cache.find( target );
+        // Resolve through the board's item index: it re-binds stale entries and includes
+        // both board zones and zones inside footprints. In the normal path, it gives
+        // an O(1) lookup for the item by its UUID.
+        BOARD_ITEM* item = aBoard->ResolveItem( target, true );
 
-        if( it != cache.end() && it->second->Type() == PCB_ZONE_T )
-            return aFunc( static_cast<ZONE*>( it->second ) );
+        if( item && item->Type() == PCB_ZONE_T )
+            return aFunc( static_cast<ZONE*>( item ) );
 
         return false;
     }
@@ -762,6 +799,10 @@ public:
         m_item->SetLayerSet( m_layers );
     }
 
+    // No copying or it can lead to double-restoring of the layer set.
+    SCOPED_LAYERSET( const SCOPED_LAYERSET& ) = delete;
+    SCOPED_LAYERSET& operator=( const SCOPED_LAYERSET& ) = delete;
+
     void Add( PCB_LAYER_ID aLayer )
     {
         m_item->SetLayerSet( m_item->GetLayerSet().set( aLayer ) );
@@ -812,14 +853,17 @@ static void doIntersectsAreaFunc( LIBEVAL::CONTEXT* aCtx, void* self, bool aForK
                 bool           transient = ( item->GetFlags() & ROUTER_TRANSIENT ) != 0;
                 const wxString selector = arg->AsString();
 
+                auto&          resultsCache = aForKeepout ? board->m_IntersectsKeepoutResultCache
+                                                          : board->m_IntersectsAreaResultCache;
+
+                auto&          intersectsCache = aForKeepout ? board->m_IntersectsKeepoutCache
+                                                             : board->m_IntersectsAreaCache;
+
                 // See intersectsCourtyard: "A"/"B" are pair-relative and not memoizable here.
                 bool memoize = !transient && selector != wxT( "A" ) && selector != wxT( "B" );
-
-                ITEM_SELECTOR_LAYER_CACHE_KEY rkey{ item, selector, aLayer,
-                                                    context->GetConstraint() };
                 bool whole = false;
 
-                if( memoize && board->m_IntersectsAreaResultCache.Get( rkey, whole ) )
+                if( memoize && resultsCache.Get( { item, selector, aLayer, context->GetConstraint() }, whole ) )
                     return whole ? 1.0 : 0.0;
 
                 BOX2I itemBBox = item->GetBoundingBox();
@@ -864,10 +908,9 @@ static void doIntersectsAreaFunc( LIBEVAL::CONTEXT* aCtx, void* self, bool aForK
                             {
                                 for( PCB_LAYER_ID layer : testLayers.UIOrder() )
                                 {
-                                    PTR_PTR_LAYER_CACHE_KEY key = { aArea, item, layer };
-                                    bool                    cached = false;
+                                    bool cached = false;
 
-                                    if( board->m_IntersectsAreaCache.Get( key, cached ) )
+                                    if( intersectsCache.Get( { aArea, item, layer }, cached ) )
                                     {
                                         if( cached )
                                             return true;
@@ -891,8 +934,7 @@ static void doIntersectsAreaFunc( LIBEVAL::CONTEXT* aCtx, void* self, bool aForK
                                 bool collides = collidesWithArea( item, layer, context, aArea, aForKeepout );
 
                                 if( !isTransient )
-                                    board->m_IntersectsAreaCache.Set( { aArea, item, layer },
-                                                                      collides );
+                                    intersectsCache.Set( { aArea, item, layer }, collides );
 
                                 if( collides )
                                     anyCollision = true;
@@ -902,7 +944,7 @@ static void doIntersectsAreaFunc( LIBEVAL::CONTEXT* aCtx, void* self, bool aForK
                         } );
 
                 if( memoize )
-                    board->m_IntersectsAreaResultCache.Set( rkey, res );
+                    resultsCache.Set( { item, selector, aLayer, context->GetConstraint() }, res );
 
                 return res ? 1.0 : 0.0;
             } );
@@ -956,8 +998,7 @@ static void enclosedByAreaFunc( LIBEVAL::CONTEXT* aCtx, void* self )
                 // See intersectsCourtyard: "A"/"B" are pair-relative and not memoizable here.
                 bool memoize = !transient && selector != wxT( "A" ) && selector != wxT( "B" );
 
-                ITEM_SELECTOR_LAYER_CACHE_KEY rkey{ item, selector, layer,
-                                                    context->GetConstraint() };
+                ITEM_SELECTOR_LAYER_CACHE_KEY rkey{ item, selector, layer, context->GetConstraint() };
                 bool whole = false;
 
                 if( memoize && board->m_EnclosedByAreaResultCache.Get( rkey, whole ) )
@@ -994,7 +1035,7 @@ static void enclosedByAreaFunc( LIBEVAL::CONTEXT* aCtx, void* self )
 
                             if( item->Type() == PCB_ZONE_T )
                             {
-                                itemShape = *static_cast<ZONE*>( item )->Outline();
+                                itemShape = static_cast<ZONE*>( item )->GetBoardOutline();
                             }
                             else if( item->Type() == PCB_FOOTPRINT_T )
                             {
@@ -1018,8 +1059,17 @@ static void enclosedByAreaFunc( LIBEVAL::CONTEXT* aCtx, void* self )
                             }
                             else
                             {
+                                SHAPE_POLY_SET  areaOutlineStorage;
+                                SHAPE_POLY_SET* areaOutline = &areaOutlineStorage;
+
+                                // GetBoardOutline() is expensive.  Only use it where we have to.
+                                if( aArea->GetParentFootprint() )
+                                    areaOutlineStorage = aArea->GetBoardOutline();
+                                else
+                                    areaOutline = aArea->Outline();
+
                                 itemShape.ClearArcs();
-                                itemShape.BooleanSubtract( *aArea->Outline() );
+                                itemShape.BooleanSubtract( *areaOutline );
 
                                 enclosedByArea = itemShape.IsEmpty();
                             }
@@ -1038,9 +1088,6 @@ static void enclosedByAreaFunc( LIBEVAL::CONTEXT* aCtx, void* self )
 }
 
 
-#define MISSING_GROUP_ARG( f ) \
-    wxString::Format( _( "Missing group name argument to %s." ), f )
-
 static void memberOfGroupFunc( LIBEVAL::CONTEXT* aCtx, void* self )
 {
     LIBEVAL::VALUE* arg = aCtx->Pop();
@@ -1052,7 +1099,10 @@ static void memberOfGroupFunc( LIBEVAL::CONTEXT* aCtx, void* self )
     if( !arg || arg->AsString().IsEmpty() )
     {
         if( aCtx->HasErrorCallback() )
-            aCtx->ReportError( MISSING_GROUP_ARG( wxT( "memberOfGroup()" ) ) );
+        {
+            aCtx->ReportError( wxString::Format( _( "Missing group name argument to %s." ),
+                                                 wxT( "memberOfGroup()" ) ) );
+        }
 
         return;
     }
@@ -1206,9 +1256,6 @@ static void memberOfSheetOrChildrenFunc( LIBEVAL::CONTEXT* aCtx, void* self )
 }
 
 
-#define MISSING_REF_ARG( f ) \
-    wxString::Format( _( "Missing footprint argument (reference designator) to %s." ), f )
-
 static void memberOfFootprintFunc( LIBEVAL::CONTEXT* aCtx, void* self )
 {
     LIBEVAL::VALUE* arg = aCtx->Pop();
@@ -1220,7 +1267,10 @@ static void memberOfFootprintFunc( LIBEVAL::CONTEXT* aCtx, void* self )
     if( !arg || arg->AsString().IsEmpty() )
     {
         if( aCtx->HasErrorCallback() )
-            aCtx->ReportError( MISSING_REF_ARG( wxT( "memberOfFootprint()" ) ) );
+        {
+            aCtx->ReportError( wxString::Format( _( "Missing footprint argument (reference designator) to %s." ),
+                                                 wxT( "memberOfFootprint()" ) ) );
+        }
 
         return;
     }
@@ -1284,6 +1334,50 @@ static void isBuriedVia( LIBEVAL::CONTEXT* aCtx, void* self )
         result->Set( 1.0 );
 }
 
+static void isStackedViaFunc( LIBEVAL::CONTEXT* aCtx, void* self )
+{
+    PCBEXPR_VAR_REF* vref = static_cast<PCBEXPR_VAR_REF*>( self );
+    BOARD_ITEM*      item = vref ? vref->GetObject( aCtx ) : nullptr;
+    LIBEVAL::VALUE*  result = aCtx->AllocValue();
+
+    result->Set( 0.0 );
+    aCtx->Push( result );
+
+    if( !item || item->Type() != PCB_VIA_T )
+        return;
+
+    PCB_VIA* via = static_cast<PCB_VIA*>( item );
+    BOARD*   board = via->GetBoard();
+
+    if( !board || via->GetViaType() != VIATYPE::MICROVIA )
+        return;
+
+    {
+        std::shared_lock<std::shared_mutex> readLock( board->m_CachesMutex );
+
+        if( board->m_StackedMicroviaCache.has_value() )
+        {
+            if( board->m_StackedMicroviaCache->count( via ) )
+                result->Set( 1.0 );
+
+            return;
+        }
+    }
+
+    std::set<const PCB_VIA*> stacked;
+
+    for( const std::vector<PCB_VIA*>& column : PCB_VIA::CollectMicroviaColumns( board ) )
+        stacked.insert( column.begin(), column.end() );
+
+    {
+        std::unique_lock<std::shared_mutex> writeLock( board->m_CachesMutex );
+        board->m_StackedMicroviaCache = stacked;
+    }
+
+    if( stacked.count( via ) )
+        result->Set( 1.0 );
+}
+
 static void isBlindBuriedViaFunc( LIBEVAL::CONTEXT* aCtx, void* self )
 {
     PCBEXPR_VAR_REF* vref = static_cast<PCBEXPR_VAR_REF*>( self );
@@ -1329,6 +1423,7 @@ static void isCoupledDiffPairFunc( LIBEVAL::CONTEXT* aCtx, void* self )
 
                 if( context->GetConstraint() == DRC_CONSTRAINT_T::DIFF_PAIR_GAP_CONSTRAINT
                         || context->GetConstraint() == DRC_CONSTRAINT_T::LENGTH_CONSTRAINT
+                        || context->GetConstraint() == DRC_CONSTRAINT_T::NET_CHAIN_LENGTH_CONSTRAINT
                         || context->GetConstraint() == DRC_CONSTRAINT_T::SKEW_CONSTRAINT )
                 {
                     // DRC engine evaluates these only in the context of a diffpair, but doesn't
@@ -1348,9 +1443,6 @@ static void isCoupledDiffPairFunc( LIBEVAL::CONTEXT* aCtx, void* self )
 }
 
 
-#define MISSING_DP_ARG( f ) \
-    wxString::Format( _( "Missing diff-pair name argument to %s." ), f )
-
 static void inDiffPairFunc( LIBEVAL::CONTEXT* aCtx, void* self )
 {
     LIBEVAL::VALUE*  argv   = aCtx->Pop();
@@ -1364,7 +1456,10 @@ static void inDiffPairFunc( LIBEVAL::CONTEXT* aCtx, void* self )
     if( !argv || argv->AsString().IsEmpty() )
     {
         if( aCtx->HasErrorCallback() )
-            aCtx->ReportError( MISSING_DP_ARG( wxT( "inDiffPair()" ) ) );
+        {
+            aCtx->ReportError( wxString::Format( _( "Missing diff-pair name argument to %s." ),
+                                                 wxT( "inDiffPair()" ) ) );
+        }
 
         return;
     }
@@ -1402,6 +1497,140 @@ static void inDiffPairFunc( LIBEVAL::CONTEXT* aCtx, void* self )
 }
 
 
+static void inNetChainFunc( LIBEVAL::CONTEXT* aCtx, void* self )
+{
+    LIBEVAL::VALUE*  argv   = aCtx->Pop();
+    PCBEXPR_VAR_REF* vref   = static_cast<PCBEXPR_VAR_REF*>( self );
+    BOARD_ITEM*      item   = vref ? vref->GetObject( aCtx ) : nullptr;
+    LIBEVAL::VALUE*  result = aCtx->AllocValue();
+
+    result->Set( 0.0 );
+    aCtx->Push( result );
+
+    if( !argv || argv->AsString().IsEmpty() )
+    {
+        if( aCtx->HasErrorCallback() )
+        {
+            aCtx->ReportError( wxString::Format( _( "Missing net-chain name argument to %s" ),
+                                                 wxT( "inNetChain()" ) ) );
+        }
+
+        return;
+    }
+
+    if( !item || !item->GetBoard() )
+        return;
+
+    result->SetDeferredEval(
+            [item, argv]() -> double
+            {
+                if( !item || !item->IsConnected() )
+                    return 0.0;
+
+                NETINFO_ITEM* netinfo = static_cast<BOARD_CONNECTED_ITEM*>( item )->GetNet();
+
+                if( !netinfo )
+                    return 0.0;
+
+                const wxString& chainName = netinfo->GetNetChain();
+
+                if( chainName.IsEmpty() )
+                    return 0.0;
+
+                wxString arg = argv->AsString();
+
+                return chainName.Matches( arg ) ? 1.0 : 0.0;
+            } );
+}
+
+
+static void hasNetChainFunc( LIBEVAL::CONTEXT* aCtx, void* self )
+{
+    PCBEXPR_VAR_REF* vref   = static_cast<PCBEXPR_VAR_REF*>( self );
+    BOARD_ITEM*      item   = vref ? vref->GetObject( aCtx ) : nullptr;
+    LIBEVAL::VALUE*  result = aCtx->AllocValue();
+
+    result->Set( 0.0 );
+    aCtx->Push( result );
+
+    if( !item || !item->GetBoard() )
+        return;
+
+    result->SetDeferredEval(
+            [item]() -> double
+            {
+                if( !item || !item->IsConnected() )
+                    return 0.0;
+
+                NETINFO_ITEM* netinfo = static_cast<BOARD_CONNECTED_ITEM*>( item )->GetNet();
+
+                return ( netinfo && !netinfo->GetNetChain().IsEmpty() ) ? 1.0 : 0.0;
+            } );
+}
+
+
+static void inNetChainClassFunc( LIBEVAL::CONTEXT* aCtx, void* self )
+{
+    LIBEVAL::VALUE*  argv   = aCtx->Pop();
+    PCBEXPR_VAR_REF* vref   = static_cast<PCBEXPR_VAR_REF*>( self );
+    BOARD_ITEM*      item   = vref ? vref->GetObject( aCtx ) : nullptr;
+    LIBEVAL::VALUE*  result = aCtx->AllocValue();
+
+    result->Set( 0.0 );
+    aCtx->Push( result );
+
+    if( !argv || argv->AsString().IsEmpty() )
+    {
+        if( aCtx->HasErrorCallback() )
+        {
+            aCtx->ReportError( wxString::Format( _( "Missing netclass name argument to %s" ),
+                                                 wxT( "inNetChainClass()" ) ) );
+        }
+
+        return;
+    }
+
+    if( !item || !item->GetBoard() )
+        return;
+
+    result->SetDeferredEval(
+            [item, argv]() -> double
+            {
+                if( !item || !item->IsConnected() )
+                    return 0.0;
+
+                NETINFO_ITEM* netinfo = static_cast<BOARD_CONNECTED_ITEM*>( item )->GetNet();
+
+                if( !netinfo )
+                    return 0.0;
+
+                const wxString& chainName = netinfo->GetNetChain();
+
+                if( chainName.IsEmpty() )
+                    return 0.0;
+
+                if( BOARD* board = item->GetBoard() )
+                {
+                    std::shared_ptr<NET_SETTINGS> ns = board->GetDesignSettings().m_NetSettings;
+
+                    if( ns )
+                    {
+                        const wxString& className = ns->GetNetChainClass( chainName );
+
+                        if( className.IsEmpty() )
+                            return 0.0;
+
+                        wxString arg = argv->AsString();
+
+                        return className.Matches( arg ) ? 1.0 : 0.0;
+                    }
+                }
+
+                return 0.0;
+            } );
+}
+
+
 static void getFieldFunc( LIBEVAL::CONTEXT* aCtx, void* self )
 {
     LIBEVAL::VALUE*  arg    = aCtx->Pop();
@@ -1412,7 +1641,7 @@ static void getFieldFunc( LIBEVAL::CONTEXT* aCtx, void* self )
     result->Set( "" );
     aCtx->Push( result );
 
-    if( !arg )
+    if( !arg || arg->AsString().IsEmpty() )
     {
         if( aCtx->HasErrorCallback() )
         {
@@ -1431,12 +1660,22 @@ static void getFieldFunc( LIBEVAL::CONTEXT* aCtx, void* self )
             {
                 if( item && item->Type() == PCB_FOOTPRINT_T )
                 {
-                    FOOTPRINT* fp = static_cast<FOOTPRINT*>( item );
-                    BOARD*     board = fp->GetBoard();
+                    FOOTPRINT*      fp = static_cast<FOOTPRINT*>( item );
+                    BOARD*          board = fp->GetBoard();
                     const wxString& fieldName = arg->AsString();
 
-                    // getField only depends on the item, so memoize the resolved text per
-                    // (item, field) to avoid the linear field-name search on every repeat.
+                    if( board )
+                    {
+                        const wxString variantName = board->GetCurrentVariant();
+
+                        if( const FOOTPRINT_VARIANT* variant = fp->GetVariant( variantName );
+                            variant && variant->HasFieldValue( fieldName ) )
+                        {
+                            return variant->GetFieldValue( fieldName );
+                        }
+                    }
+
+                    // Only base values go in the cache.
                     ITEM_FIELD_CACHE_KEY key{ item, std::hash<wxString>{}( fieldName ) };
                     wxString             cached;
 
@@ -1468,7 +1707,10 @@ static void hasNetclassFunc( LIBEVAL::CONTEXT* aCtx, void* self )
     if( !arg || arg->AsString().IsEmpty() )
     {
         if( aCtx->HasErrorCallback() )
-            aCtx->ReportError( _( "Missing netclass name argument to hasNetclass()" ) );
+        {
+            aCtx->ReportError( wxString::Format( _( "Missing netclass name argument to %s." ),
+                                                 wxT( "hasNetclass()" ) ) );
+        }
 
         return;
     }
@@ -1507,7 +1749,10 @@ static void hasExactNetclassFunc( LIBEVAL::CONTEXT* aCtx, void* self )
     if( !arg || arg->AsString().IsEmpty() )
     {
         if( aCtx->HasErrorCallback() )
-            aCtx->ReportError( _( "Missing netclass name argument to hasExactNetclass()" ) );
+        {
+            aCtx->ReportError( wxString::Format( _( "Missing netclass name argument to %s." ),
+                                                 wxT( "hasExactNetclass()" ) ) );
+        }
 
         return;
     }
@@ -1525,34 +1770,9 @@ static void hasExactNetclassFunc( LIBEVAL::CONTEXT* aCtx, void* self )
                     return 0.0;
 
                 BOARD_CONNECTED_ITEM* bcItem = static_cast<BOARD_CONNECTED_ITEM*>( item );
-                BOARD*                board = bcItem->GetBoard();
-                wxString              netclassName;
+                NETCLASS*             netclass = bcItem->GetEffectiveNetClass();
 
-                if( board && ( item->GetFlags() & ROUTER_TRANSIENT ) == 0 )
-                {
-                    std::shared_lock<std::shared_mutex> readLock( board->m_CachesMutex );
-
-                    auto it = board->m_ItemNetclassCache.find( item );
-
-                    if( it != board->m_ItemNetclassCache.end() )
-                        netclassName = it->second;
-                }
-
-                if( netclassName.empty() )
-                {
-                    NETCLASS* netclass = bcItem->GetEffectiveNetClass();
-
-                    if( netclass )
-                        netclassName = netclass->GetName();
-
-                    if( board && !netclassName.empty() && ( item->GetFlags() & ROUTER_TRANSIENT ) == 0 )
-                    {
-                        std::unique_lock<std::shared_mutex> writeLock( board->m_CachesMutex );
-                        board->m_ItemNetclassCache[item] = netclassName;
-                    }
-                }
-
-                return ( netclassName == arg->AsString() ) ? 1.0 : 0.0;
+                return netclass && netclass->NameEquals( arg->AsString() ) ? 1.0 : 0.0;
             } );
 }
 
@@ -1568,7 +1788,10 @@ static void hasComponentClassFunc( LIBEVAL::CONTEXT* aCtx, void* self )
     if( !arg || arg->AsString().IsEmpty() )
     {
         if( aCtx->HasErrorCallback() )
-            aCtx->ReportError( _( "Missing component class name argument to hasComponentClass()" ) );
+        {
+            aCtx->ReportError( wxString::Format( _( "Missing component class name argument to %s." ),
+                                                 wxT( "hasComponentClass()" ) ) );
+        }
 
         return;
     }
@@ -1596,6 +1819,94 @@ static void hasComponentClassFunc( LIBEVAL::CONTEXT* aCtx, void* self )
 
                 if( compClass && compClass->ContainsClassName( arg->AsString() ) )
                     return 1.0;
+
+                return 0.0;
+            } );
+}
+
+
+static void customPropertyFunc( LIBEVAL::CONTEXT* aCtx, void* self )
+{
+    LIBEVAL::VALUE*  arg    = aCtx->Pop();
+    PCBEXPR_VAR_REF* vref   = static_cast<PCBEXPR_VAR_REF*>( self );
+    BOARD_ITEM*      item   = vref ? vref->GetObject( aCtx ) : nullptr;
+    LIBEVAL::VALUE*  result = aCtx->AllocValue();
+
+    result->Set( "" );
+    aCtx->Push( result );
+
+    if( !arg )
+    {
+        if( aCtx->HasErrorCallback() )
+        {
+            aCtx->ReportError( wxString::Format( _( "Missing property name argument to %s." ),
+                                                 wxT( "customProperty()" ) ) );
+        }
+
+        return;
+    }
+
+    if( !item )
+        return;
+
+    result->SetDeferredEval(
+            [item, arg]() -> wxString
+            {
+                const wxString key = arg->AsString();
+                wxString       value;
+
+                if( item && item->GetCustomProperty( key, value ) )
+                    return value;
+
+                if( FOOTPRINT* parentFp = item ? item->GetParentFootprint() : nullptr )
+                {
+                    if( parentFp->GetCustomProperty( key, value ) )
+                        return value;
+                }
+
+                return wxString();
+            } );
+}
+
+
+static void hasCustomPropertyFunc( LIBEVAL::CONTEXT* aCtx, void* self )
+{
+    LIBEVAL::VALUE*  arg    = aCtx->Pop();
+    PCBEXPR_VAR_REF* vref   = static_cast<PCBEXPR_VAR_REF*>( self );
+    BOARD_ITEM*      item   = vref ? vref->GetObject( aCtx ) : nullptr;
+    LIBEVAL::VALUE*  result = aCtx->AllocValue();
+
+    result->Set( 0.0 );
+    aCtx->Push( result );
+
+    if( !arg )
+    {
+        if( aCtx->HasErrorCallback() )
+        {
+            aCtx->ReportError( wxString::Format( _( "Missing property name argument to %s." ),
+                                                 wxT( "hasCustomProperty()" ) ) );
+        }
+
+        return;
+    }
+
+    if( !item )
+        return;
+
+    result->SetDeferredEval(
+            [item, arg]() -> double
+            {
+                const wxString key = arg->AsString();
+                wxString       value;
+
+                if( item && item->GetCustomProperty( key, value ) )
+                    return 1.0;
+
+                if( FOOTPRINT* parentFp = item ? item->GetParentFootprint() : nullptr )
+                {
+                    if( parentFp->GetCustomProperty( key, value ) )
+                        return 1.0;
+                }
 
                 return 0.0;
             } );
@@ -1634,6 +1945,7 @@ void PCBEXPR_BUILTIN_FUNCTIONS::RegisterAllFunctions()
     RegisterFunc( wxT( "isBlindVia()" ), isBlindVia );
     RegisterFunc( wxT( "isBuriedVia()" ), isBuriedVia );
     RegisterFunc( wxT( "isBlindBuriedVia()" ), isBlindBuriedViaFunc );
+    RegisterFunc( wxT( "isStackedVia()" ), isStackedViaFunc );
 
     RegisterFunc( wxT( "memberOf('x') DEPRECATED" ), memberOfGroupFunc );
     RegisterFunc( wxT( "memberOfGroup('x')" ), memberOfGroupFunc );
@@ -1644,10 +1956,16 @@ void PCBEXPR_BUILTIN_FUNCTIONS::RegisterAllFunctions()
     RegisterFunc( wxT( "fromTo('x','y')" ), fromToFunc );
     RegisterFunc( wxT( "isCoupledDiffPair()" ), isCoupledDiffPairFunc );
     RegisterFunc( wxT( "inDiffPair('x')" ), inDiffPairFunc );
+    RegisterFunc( wxT( "inNetChain('x')" ), inNetChainFunc );
+    RegisterFunc( wxT( "hasNetChain()" ), hasNetChainFunc );
+    RegisterFunc( wxT( "inNetChainClass('x')" ), inNetChainClassFunc );
 
     RegisterFunc( wxT( "getField('x')" ), getFieldFunc );
 
     RegisterFunc( wxT( "hasNetclass('x')" ), hasNetclassFunc );
     RegisterFunc( wxT( "hasExactNetclass('x')" ), hasExactNetclassFunc );
     RegisterFunc( wxT( "hasComponentClass('x')" ), hasComponentClassFunc );
+
+    RegisterFunc( wxT( "customProperty('x')" ), customPropertyFunc );
+    RegisterFunc( wxT( "hasCustomProperty('x')" ), hasCustomPropertyFunc );
 }

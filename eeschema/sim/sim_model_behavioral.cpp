@@ -15,18 +15,14 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <sim/sim_model_behavioral.h>
 
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/algorithm/string/trim.hpp>
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <core/ki_assert.h>
 
 
@@ -71,7 +67,7 @@ std::string SPICE_GENERATOR_BEHAVIORAL::ItemLine( const SPICE_ITEM& aItem ) cons
 
 
 SIM_MODEL_BEHAVIORAL::SIM_MODEL_BEHAVIORAL( TYPE aType ) :
-    SIM_MODEL( aType, std::make_unique<SPICE_GENERATOR_BEHAVIORAL>( *this ) )
+        SIM_MODEL( aType, std::make_unique<SPICE_GENERATOR_BEHAVIORAL>( *this ) )
 {
     static PARAM::INFO resistor  = makeParams( "r", "Expression for resistance",  "Ω" );
     static PARAM::INFO capacitor = makeParams( "c", "Expression for capacitance", "F" );
@@ -95,7 +91,7 @@ bool SIM_MODEL_BEHAVIORAL::parseValueField( const std::string& aValueField )
 {
     std::string expr = aValueField;
 
-    if( expr.find( "=" ) == std::string::npos )
+    if( expr.find( '=' ) == std::string::npos )
         return false;
 
     boost::replace_first( expr, "=", "" );

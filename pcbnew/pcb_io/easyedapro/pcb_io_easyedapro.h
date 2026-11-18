@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PCB_EASYEDAPRO_PLUGIN_H_
@@ -27,10 +23,12 @@
 
 #include <nlohmann/json_fwd.hpp>
 
+#include <utility>
+#include <vector>
+
 #include <io/common/plugin_common_choose_project.h>
 #include <pcb_io/pcb_io.h>
 #include <pcb_io/pcb_io_mgr.h>
-
 
 class PCB_IO_EASYEDAPRO : public PCB_IO, public PROJECT_CHOOSER_PLUGIN
 {
@@ -54,8 +52,9 @@ public:
 
     bool CanReadBoard( const wxString& aFileName ) const override;
 
-    BOARD* LoadBoard( const wxString& aFileName, BOARD* aAppendToMe,
-                      const std::map<std::string, UTF8>* aProperties = nullptr, PROJECT* aProject = nullptr ) override;
+    std::vector<std::pair<wxString, wxString>> EnumerateProjectBoards( const wxString& aFileName ) const override;
+
+    std::vector<IMPORT_PROJECT_DESC> EnumerateProjectEntries( const wxString& aFileName ) const override;
 
     long long GetLibraryTimestamp( const wxString& aLibraryPath ) const override;
 
@@ -64,19 +63,27 @@ public:
                              const std::map<std::string, UTF8>* aProperties = nullptr ) override;
 
     std::vector<FOOTPRINT*> GetImportedCachedLibraryFootprints() override;
+    wxString                GetImportedDesignRules() const override { return m_importedDesignRules; }
 
-    FOOTPRINT* FootprintLoad( const wxString& aLibraryPath, const wxString& aFootprintName,
-                              bool                   aKeepUUID = false,
-                              const std::map<std::string, UTF8>* aProperties = nullptr ) override;
+
+    std::unique_ptr<FOOTPRINT> FootprintLoad( const wxString& aLibraryPath, const wxString& aFootprintName,
+                                              bool                               aKeepUUID = false,
+                                              const std::map<std::string, UTF8>* aProperties = nullptr ) override;
 
     bool IsLibraryWritable( const wxString& aLibraryPath ) override { return false; }
 
     PCB_IO_EASYEDAPRO();
     ~PCB_IO_EASYEDAPRO();
 
+protected:
+    void loadBoard( const wxString& aFileName, BOARD& aBoard, bool aIsNewLoad,
+                    const std::map<std::string, UTF8>* aProperties = nullptr, PROJECT* aProject = nullptr ) override;
+
 private:
     struct PRJ_DATA; // Opaque data structure
     PRJ_DATA* m_projectData = nullptr;
+    wxString  m_importedDesignRules;
+
 
     void LoadAllDataFromProject( const wxString& aLibraryPath, const nlohmann::json& aProject );
 };

@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <properties/property.h>
@@ -38,6 +34,7 @@
 #include <sch_shape.h>
 #include <sch_bitmap.h>
 #include <sch_text.h>
+#include <sch_label.h>
 #include <sch_textbox.h>
 #include <sch_table.h>
 #include <sch_tablecell.h>
@@ -115,7 +112,6 @@ public:
         case SCH_BITMAP_T:          return new SCH_BITMAP();
         case SCH_TEXT_T:            return new SCH_TEXT( VECTOR2I( 0, 0 ), "test text" );
         case SCH_TEXTBOX_T:         return new SCH_TEXTBOX( LAYER_NOTES, 0, FILL_T::NO_FILL, "test textbox" );
-        case SCH_TABLECELL_T:       return new SCH_TABLECELL();
 
         case SCH_TABLE_T:
         {

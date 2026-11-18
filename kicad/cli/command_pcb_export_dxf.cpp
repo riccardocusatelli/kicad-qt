@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "command_pcb_export_dxf.h"
@@ -54,6 +54,10 @@ CLI::PCB_EXPORT_DXF_COMMAND::PCB_EXPORT_DXF_COMMAND() :
 
     m_argParser.add_argument( "--sp", ARG_SKETCH_PADS_ON_FAB_LAYERS )
             .help( UTF8STDSTR( _( ARG_SKETCH_PADS_ON_FAB_LAYERS_DESC ) ) )
+            .flag();
+
+    m_argParser.add_argument( "--spn", ARG_SKETCH_PAD_NUMBERS )
+            .help( UTF8STDSTR( _( ARG_SKETCH_PAD_NUMBERS_DESC ) ) )
             .flag();
 
     m_argParser.add_argument( "--hdnp", ARG_HIDE_DNP_FPS_ON_FAB_LAYERS )
@@ -129,8 +133,7 @@ int CLI::PCB_EXPORT_DXF_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
     dxfJob->SetConfiguredOutputPath( m_argOutput );
     dxfJob->m_drawingSheet = m_argDrawingSheet;
     dxfJob->m_sketchPadsOnFabLayers = m_argParser.get<bool>( ARG_SKETCH_PADS_ON_FAB_LAYERS );
-    if( dxfJob->m_sketchPadsOnFabLayers )
-        dxfJob->m_plotPadNumbers = true;
+    dxfJob->m_plotPadNumbers = dxfJob->m_sketchPadsOnFabLayers && m_argParser.get<bool>( ARG_SKETCH_PAD_NUMBERS );
     dxfJob->m_hideDNPFPsOnFabLayers = m_argParser.get<bool>( ARG_HIDE_DNP_FPS_ON_FAB_LAYERS );
     dxfJob->m_sketchDNPFPsOnFabLayers = m_argParser.get<bool>( ARG_SKETCH_DNP_FPS_ON_FAB_LAYERS );
     dxfJob->m_crossoutDNPFPsOnFabLayers = m_argParser.get<bool>( ARG_CROSSOUT_DNP_FPS_ON_FAB_LAYERS );
@@ -145,7 +148,7 @@ int CLI::PCB_EXPORT_DXF_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
         return EXIT_CODES::ERR_INVALID_INPUT_FILE;
     }
 
-    dxfJob->m_plotFootprintValues = m_argParser.get<bool>( ARG_EXCLUDE_VALUE );
+    dxfJob->m_plotFootprintValues = !m_argParser.get<bool>( ARG_EXCLUDE_VALUE );
     dxfJob->m_plotRefDes = !m_argParser.get<bool>( ARG_EXCLUDE_REFDES );
     dxfJob->m_plotGraphicItemsUsingContours = m_argParser.get<bool>( ARG_USE_CONTOURS );
     dxfJob->m_polygonMode = m_argParser.get<bool>( ARG_USE_CONTOURS );

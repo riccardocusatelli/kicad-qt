@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef __TOPO_MATCH_H
@@ -31,6 +27,7 @@
 #include <unordered_set>
 #include <optional>
 
+#include <kiid.h>
 #include <wx/string.h>
 #include <core/ki_assert.h>
 
@@ -191,6 +188,17 @@ private:
 
 typedef std::map<FOOTPRINT*, FOOTPRINT*> COMPONENT_MATCHES;
 
+/**
+ * Count the trailing elements two symbol instance paths share.
+ *
+ * Instances of a sheet differ only in their leading sheet UUIDs, so a footprint's counterpart in
+ * another channel shares the longest tail.  The symbol UUID alone repeats once a sheet is reused
+ * inside a repeated sheet.
+ *
+ * @return 0 when either path is empty or ends in a nil UUID.
+ */
+size_t CommonPathTailLength( const KIID_PATH& aA, const KIID_PATH& aB );
+
 class CONNECTION_GRAPH
 {
 public:
@@ -227,7 +235,7 @@ private:
      * The most useful tie breaker is based on symbol/sheet instances, since multiple channels in a design
      * are very often multiple instances of the same sheet.
      */
-    bool breakTieBySymbolUuid( COMPONENT* aRef, std::vector<COMPONENT*>& aMatches ) const;
+    bool breakTieBySymbolPath( COMPONENT* aRef, std::vector<COMPONENT*>& aMatches ) const;
 
     /**
      * Break a tie by footprint value when the symbol UUID can't, e.g. identical parts that

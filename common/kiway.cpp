@@ -15,21 +15,20 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <cstring>
 
 #include <app_monitor.h>
+#include <cli/exit_codes.h>
 #include <core/ignore.h>
 #include <macros.h>
 #include <kiway.h>
 #include <kiway_player.h>
 #include <kiway_mail.h>
+#include <paths.h>
+#include <reporter.h>
 #include <pgm_base.h>
 #include <config.h>
 #include <id.h>
@@ -133,9 +132,6 @@ KIWAY_FACES::FACE_T KIWAY::KifaceType( FRAME_T aFrameType )
     case FRAME_CVPCB_DISPLAY:
         return FACE_CVPCB;
 
-    case FRAME_PYTHON:
-        return FACE_PYTHON;
-
     case FRAME_GERBER:
         return FACE_GERBVIEW;
 
@@ -144,9 +140,6 @@ KIWAY_FACES::FACE_T KIWAY::KifaceType( FRAME_T aFrameType )
 
     case FRAME_CALC:
         return FACE_PCB_CALCULATOR;
-
-    case FRAME_BM2CMP:
-        return FACE_BMP2CMP;
 
     default:
         return FACE_T( -1 );
@@ -199,7 +192,13 @@ KIWAY_PLAYER* KIWAY::Player( FRAME_T aFrameType, bool doCreate, wxTopLevelWindow
             KIFACE* kiface = KiFACE( face_type );
 
             if( !kiface )
+            {
+                // KiFACE() reports a broken DSO only once, but every explicit open needs an answer
+                if( (unsigned) face_type < KIWAY_FACE_COUNT && m_kifaceLoadFailed[face_type] )
+                    wxLogError( _( "Application cannot start." ) );
+
                 return nullptr;
+            }
 
             frame = (KIWAY_PLAYER*) kiface->CreateKiWindow(
                                             aParent,    // Parent window of frame in modal mode,
@@ -366,6 +365,10 @@ void KIWAY::SetLanguage( int aLanguage )
 
 void KIWAY::CommonSettingsChanged( int aFlags )
 {
+    // Fieldname templates have both a project and a global half, so we need to update the global templates
+    // and then re-resolve the calculated templates (meaning figure out who's visibility settings win)
+    Pgm().GetSettingsManager().SyncGlobalFieldNameTemplatesToProjects();
+
     if( m_ctl & KFCTL_CPP_PROJECT_SUITE )
     {
         // A dynamic_cast could be better, but creates link issues
@@ -518,7 +521,41 @@ bool KIWAY::ProcessJobConfigDialog( KIWAY_FACES::FACE_T aFace, JOB* aJob, wxWind
 {
     KIFACE* kiface = KiFACE( aFace );
 
-    return kiface->HandleJobConfig( aJob, aWindow );
+    return kiface && kiface->HandleJobConfig( aJob, aWindow );
+}
+
+
+bool KIWAY::ProcessApiOpenDocument( KIWAY_FACES::FACE_T aFace, const KIFACE::DOCUMENT_SPEC& aSpec,
+                                    KICAD_API_SERVER* aServer, wxString* aError )
+{
+    KIFACE* kiface = KiFACE( aFace );
+
+    if( !kiface )
+    {
+        if( aError )
+            *aError = wxS( "Failed to load requested face" );
+
+        return false;
+    }
+
+    return kiface->HandleApiOpenDocument( aSpec, aServer, aError );
+}
+
+
+bool KIWAY::ProcessApiCloseDocument( KIWAY_FACES::FACE_T aFace, const KIFACE::DOCUMENT_SPEC& aSpec,
+                                     KICAD_API_SERVER* aServer, wxString* aError )
+{
+    KIFACE* kiface = KiFACE( aFace );
+
+    if( !kiface )
+    {
+        if( aError )
+            *aError = wxS( "Failed to load requested face" );
+
+        return false;
+    }
+
+    return kiface->HandleApiCloseDocument( aSpec, aServer, aError );
 }
 
 

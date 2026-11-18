@@ -33,9 +33,12 @@
  *  wxMathPlot provides two mpLayer implementations for plotting horizontal and vertical rulers: mpScaleX and mpScaleY.
  *  For convenient function plotting a series of classes derived from mpLayer are provided,
  *  like mpFX, mpProfile, mpLegend and so on.
- *  These base classes already come with plot code, user's own functions can be implemented by overriding just one member for retrieving a function value.
+ *  These base classes already come with plot code, user's own functions can be implemented by overriding just one
+ *  member for retrieving a function value.
  *
- *  mpWindow has built-in support for mouse-based pan and zoom through intuitive combinations of buttons and the mouse wheel. It also incorporates an optional double buffering mechanism to avoid flicker. Plots can be easily sent to printer evices or exported in bitmap formats like PNG, BMP or JPEG.
+ *  mpWindow has built-in support for mouse-based pan and zoom through intuitive combinations of buttons and the
+ *  mouse wheel. It also incorporates an optional double buffering mechanism to avoid flicker. Plots can be easily
+ *  sent to printer evices or exported in bitmap formats like PNG, BMP or JPEG.
  *
  *  @section coding Coding conventions
  *  wxMathPlot sticks to wxWindow's coding conventions.
@@ -75,6 +78,7 @@
 #include <wx/print.h>
 #include <wx/image.h>
 
+#include <cmath>
 #include <vector>
 #include <deque>
 #include <stack>
@@ -109,12 +113,44 @@ class WXDLLIMPEXP_MATHPLOT mpScaleY;
 class WXDLLIMPEXP_MATHPLOT mpWindow;
 class WXDLLIMPEXP_MATHPLOT mpPrintout;
 
-/** Find the smallest and largest finite value in \a aValues.
- *  Non-finite samples have no position on an axis, so they are left out of the range instead of
- *  poisoning it.
- *  @param aMin receives the smallest finite value.
- *  @param aMax receives the largest finite value.
- *  @return false if \a aValues holds no finite value, in which case aMin and aMax are untouched.
+
+/// @return true if [aMin, aMax] is non-finite, empty, or too narrow relative to the values to label.
+inline bool mpIsDegenerateRange( double aMin, double aMax )
+{
+    if( !std::isfinite( aMin ) || !std::isfinite( aMax ) )
+        return true;
+
+    double span = aMax - aMin;
+    double magnitude = std::max( std::abs( aMin ), std::abs( aMax ) );
+
+    return !( span > 0.0 ) || span <= magnitude * 1e-9;
+}
+
+
+/// Widen a degenerate range around its midpoint.  A constant zero is padded by +/-1.
+inline void mpPadDegenerateRange( double& aMin, double& aMax )
+{
+    double mid = ( aMin + aMax ) / 2.0;
+
+    if( !std::isfinite( mid ) )
+        mid = 0.0;
+
+    double pad = mid != 0.0 ? std::abs( mid ) * 1e-3 : 1.0;
+
+    aMin = mid - pad;
+    aMax = mid + pad;
+}
+
+/**
+ * Find the smallest and largest finite value in \a aValues.
+ *
+ * Non-finite samples have no position on an axis, so they are left out of the range instead of
+ * poisoning it.
+ *
+ * @param aValues is the list of values to plot.
+ * @param aMin receives the smallest finite value.
+ * @param aMax receives the largest finite value.
+ * @return false if \a aValues holds no finite value, in which case aMin and aMax are untouched.
  */
 bool WXDLLIMPEXP_MATHPLOT mpFiniteRange( const std::vector<double>& aValues, double& aMin,
                                          double& aMax );
@@ -253,10 +289,26 @@ public:
         return m_displayName.IsEmpty() ? m_name : m_displayName;
     }
 
-    /** Get font set for this layer.
+    /** Get font set for this layer.  Invalid if none was set.
      *  @return Font
      */
     const wxFont& GetFont() const { return m_font; }
+
+    /** Get the font to draw this layer with, which is the default one when none was set.
+     *
+     * The stock fonts are built on first use from the running toolkit, so this must not be
+     * called before there is one; layers resolve their font when they plot, not when they are
+     * constructed.
+     *
+     *  @return Font
+     */
+    const wxFont& GetPlotFont() const
+    {
+        if( m_font.IsOk() )
+            return m_font;
+
+        return *wxSMALL_FONT;
+    }
 
     /** Get pen set for this layer.
      *  @return Pen
@@ -314,15 +366,15 @@ public:
 
 protected:
 
-    wxFont      m_font;               // !< Layer's font
-    wxPen       m_pen;                // !< Layer's pen
-    wxBrush     m_brush;              // !< Layer's brush
-    wxString    m_name;               // !< Layer's name
+    wxFont      m_font;               ///< Layer's font
+    wxPen       m_pen;                ///< Layer's pen
+    wxBrush     m_brush;              ///< Layer's brush
+    wxString    m_name;               ///< Layer's name
     wxString    m_displayName;
-    bool        m_continuous;         // !< Specify if the layer will be plotted as a continuous line or a set of points.
-    bool        m_showName;           // !< States whether the name of the layer must be shown (default is true).
-    mpLayerType m_type;               // !< Define layer type, which is assigned by constructor
-    bool        m_visible;            // !< Toggles layer visibility
+    bool        m_continuous;         ///< Specify if the layer will be plotted as a continuous line or a set of points.
+    bool        m_showName;           ///< States whether the name of the layer must be shown (default is true).
+    mpLayerType m_type;               ///< Define layer type, which is assigned by constructor
+    bool        m_visible;            ///< Toggles layer visibility
 
     DECLARE_DYNAMIC_CLASS( mpLayer )
 };
@@ -334,7 +386,8 @@ protected:
 
 /** @class mpInfoLayer
  *  @brief Base class to create small rectangular info boxes
- *  mpInfoLayer is the base class to create a small rectangular info box in transparent overlay over plot layers. It is used to implement objects like legends.
+ *  mpInfoLayer is the base class to create a small rectangular info box in transparent overlay over plot layers. It
+ *  is used to implement objects like legends.
  */
 class WXDLLIMPEXP_MATHPLOT mpInfoLayer : public mpLayer
 {
@@ -391,7 +444,7 @@ protected:
     wxRect  m_dim;          // !< The bounding rectangle of the box. It may be resized dynamically
                             //    by the Plot method.
     wxPoint m_reference;    // !< Holds the reference point for movements
-    wxBrush m_brush;        // !< The brush to be used for the background
+                            // The background brush is mpLayer::m_brush.
     int     m_winX;         // !< Holds the mpWindow size. Used to rescale position when window is
     int     m_winY;         //    resized.
 
@@ -400,7 +453,8 @@ protected:
 
 /** @class mpInfoLegend
  *  @brief Implements the legend to be added to the plot
- *  This layer allows you to add a legend to describe the plots in the window. The legend uses the layer name as a label, and displays only layers of type mpLAYER_PLOT. */
+ *  This layer allows you to add a legend to describe the plots in the window. The legend uses the layer name as
+ *  a label, and displays only layers of type mpLAYER_PLOT. */
 class WXDLLIMPEXP_MATHPLOT mpInfoLegend : public mpInfoLayer
 {
 public:
@@ -453,7 +507,8 @@ protected:
 #define mpALIGN_FAR_RIGHT       0x06
 /** Set label for X axis in normal mode */
 #define mpX_NORMAL              0x00
-/** Set label for X axis in time mode: the value is represented as minutes:seconds.milliseconds if time is less than 2 minutes, hours:minutes:seconds otherwise. */
+/** Set label for X axis in time mode: the value is represented as minutes:seconds.milliseconds if time is less
+ *  than 2 minutes, hours:minutes:seconds otherwise. */
 #define mpX_TIME                0x01
 /** Set label for X axis in hours mode: the value is always represented as hours:minutes:seconds. */
 #define mpX_HOURS               0x02
@@ -474,7 +529,7 @@ protected:
 /** Aligns label to south-east. For use with mpFXY. */
 #define mpALIGN_SE              0x03
 
-/*@}*/
+/**@}*/
 
 /** @name mpLayer implementations - functions
  *  @{*/
@@ -607,7 +662,7 @@ protected:
     DECLARE_DYNAMIC_CLASS( mpFXY )
 };
 
-/*@}*/
+/**@}*/
 
 // -----------------------------------------------------------------------------
 // mpLayer implementations - furniture (scales, ...)
@@ -660,27 +715,39 @@ public:
     {
         if( !m_rangeSet )
         {
-            m_minV  = minV;
-            m_maxV  = maxV;
+            m_dataMinV = minV;
+            m_dataMaxV = maxV;
             m_rangeSet = true;
         }
         else
         {
-            m_minV  = std::min( minV, m_minV );
-            m_maxV  = std::max( maxV, m_maxV );
+            m_dataMinV = std::min( minV, m_dataMinV );
+            m_dataMaxV = std::max( maxV, m_dataMaxV );
         }
 
-        if( m_minV == m_maxV )
-        {
-            m_minV = m_minV - 1.0;
-            m_maxV = m_maxV + 1.0;
-        }
+        updateDisplayRange();
+    }
+
+    /** Force this axis' data range to an explicit [minV, maxV], as if it had been computed by
+     *  ExtendDataRange().  Used to synchronize the Y-axis range across views when signals are
+     *  routed to share another view's Y-axis scale (see SIM_PLOT_TAB's "Y Scale" column).
+     */
+    void SetDataRange( double minV, double maxV )
+    {
+        m_dataMinV = minV;
+        m_dataMaxV = maxV;
+        m_rangeSet = true;
+
+        updateDisplayRange();
     }
 
     virtual void ResetDataRange()
     {
         m_rangeSet = false;
     }
+
+    ///< True once ExtendDataRange()/SetDataRange() has established a real data range.
+    bool IsRangeSet() const { return m_rangeSet; }
 
     double AbsMaxValue() const
     {
@@ -691,6 +758,8 @@ public:
     {
         return m_absVisibleMaxV;
     }
+
+    int GetMaxLabelWidth() const { return m_maxLabelWidth; }
 
     void SetAxisMinMax( bool lock, double minV, double maxV )
     {
@@ -743,6 +812,16 @@ protected:
     virtual void formatLabels() {};
 
 protected:
+    /// Padding a running hull after every trace would make the result depend on trace order.
+    void updateDisplayRange()
+    {
+        m_minV = m_dataMinV;
+        m_maxV = m_dataMaxV;
+
+        if( mpIsDegenerateRange( m_minV, m_maxV ) )
+            mpPadDegenerateRange( m_minV, m_maxV );
+    }
+
     std::vector<double>     m_tickValues;
     std::vector<TICK_LABEL> m_tickLabels;
 
@@ -751,14 +830,19 @@ protected:
     int                     m_flags;            // !< Flag for axis alignment
     int                     m_nameFlags;
     bool                    m_ticks;            // !< Flag to toggle between ticks or grid
-    double                  m_minV, m_maxV;
+    double                  m_minV, m_maxV;     // !< Display range, padded when degenerate
     bool                    m_rangeSet;
+    double                  m_dataMinV = 0.0;   // !< Hull of the data, never padded
+    double                  m_dataMaxV = 0.0;
     bool                    m_axisLocked;
     double                  m_axisMin;
     double                  m_axisMax;
     int                     m_maxLabelHeight;
     int                     m_maxLabelWidth;
 };
+
+/**@}*/
+
 
 class WXDLLIMPEXP_MATHPLOT mpScaleXBase : public mpScaleBase
 {
@@ -889,7 +973,8 @@ protected:
 /** Mouse panning creates a zoom box. Mouse mode for mpWindow. */
 #define mpMOUSEMODE_ZOOMBOX 1
 
-/*@}*/
+/**@}*/
+
 /** Define the type for the list of layers inside mpWindow */
 // WX_DECLARE_HASH_MAP( int, mpLayer*, wxIntegerHash, wxIntegerEqual, wxLayerList );
 typedef std::deque<mpLayer*> wxLayerList;
@@ -1089,19 +1174,23 @@ public:
      */
     void SetScr( int scrX, int scrY ) { m_scrX = scrX; m_scrY = scrY; }
 
-    /** Converts mpWindow (screen) pixel coordinates into graph (floating point) coordinates, using current mpWindow position and scale.
+    /** Converts mpWindow (screen) pixel coordinates into graph (floating point) coordinates, using current mpWindow
+     *  position and scale.
      * @sa p2y,x2p,y2p */
     inline double p2x( wxCoord pixelCoordX ) { return m_posX + pixelCoordX / m_scaleX; }
 
-    /** Converts mpWindow (screen) pixel coordinates into graph (floating point) coordinates, using current mpWindow position and scale.
+    /** Converts mpWindow (screen) pixel coordinates into graph (floating point) coordinates, using current mpWindow
+     *  position and scale.
      * @sa p2x,x2p,y2p */
     inline double p2y( wxCoord pixelCoordY ) { return m_posY - pixelCoordY / m_scaleY; }
 
-    /** Converts graph (floating point) coordinates into mpWindow (screen) pixel coordinates, using current mpWindow position and scale.
+    /** Converts graph (floating point) coordinates into mpWindow (screen) pixel coordinates, using current mpWindow
+     *  position and scale.
      * @sa p2x,p2y,y2p */
     inline wxCoord x2p( double x ) { return (wxCoord) ( (x - m_posX) * m_scaleX ); }
 
-    /** Converts graph (floating point) coordinates into mpWindow (screen) pixel coordinates, using current mpWindow position and scale.
+    /** Converts graph (floating point) coordinates into mpWindow (screen) pixel coordinates, using current mpWindow
+     *  position and scale.
      * @sa p2x,p2y,x2p */
     inline wxCoord y2p( double y ) { return (wxCoord) ( (m_posY - y) * m_scaleY ); }
 
@@ -1272,9 +1361,6 @@ public:
         m_enableLimitedView = aEnable;
     }
 
-    void LockY( bool aLock ) { m_yLocked = aLock; }
-    bool GetYLocked() const { return m_yLocked; }
-
     void ZoomUndo();
     void ZoomRedo();
     int UndoZoomStackSize() const { return m_undoZoomStack.size(); }
@@ -1292,6 +1378,10 @@ protected:
     void pushZoomUndo( const std::array<double, 4>& aZoom );
 
     void OnPaint( wxPaintEvent& event );             // !< Paint handler, will plot all attached layers
+
+    /// Called at the end of OnPaint(), once the scales have measured their labels.
+    virtual void onPaintFinished() {}
+
     void OnSize( wxSizeEvent& event );               // !< Size handler, will update scroll bar sizes
 
     void OnShowPopupMenu( wxMouseEvent& event );     // !< Mouse handler, will show context menu
@@ -1331,6 +1421,12 @@ protected:
      */
     virtual bool SetYView( double pos, double desiredMax, double desiredMin );
 
+    /** Called whenever the visible X range changes (pan, zoom, fit, ...).
+     *  Override to react to (or mirror) X-axis view changes, e.g. to keep multiple
+     *  windows showing the same X range in sync.
+     */
+    virtual void OnXViewChanged() {}
+
     // wxList m_layers;    //!< List of attached plot layers
     wxLayerList m_layers;   // !< List of attached plot layers
     wxMenu m_popmenu;       // !< Canvas' context menu
@@ -1350,8 +1446,6 @@ protected:
     int m_scrY;             // !< Current view's Y dimension
     int m_clickedX;         // !< Last mouse click X position, for centering and zooming the view
     int m_clickedY;         // !< Last mouse click Y position, for centering and zooming the view
-
-    bool m_yLocked;
 
     /** These are updated in Fit, ZoomIn, ZoomOut, ZoomRect, SetXView, SetYView and may be different
      *  from the real borders (layer coordinates) only if lock aspect ratio is true.

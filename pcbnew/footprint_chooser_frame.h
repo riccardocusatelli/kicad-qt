@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef FOOTPRINT_CHOOSER_FRAME_H
@@ -49,12 +45,13 @@ class FOOTPRINT_CHOOSER_FRAME : public PCB_BASE_FRAME
 public:
     ~FOOTPRINT_CHOOSER_FRAME();
 
-    ///< @copydoc PCB_BASE_FRAME::GetModel()
+    /// @copydoc PCB_BASE_FRAME::GetModel()
     BOARD_ITEM_CONTAINER* GetModel() const override;
 
     /**
      * @param aFootprint an optional FPID string to initialize the viewer with and to
      *                   return a selected footprint through.
+     * @param aParent is the parent window of the dialog.
      */
     bool ShowModal( wxString* aFootprint, wxWindow* aParent ) override;
 

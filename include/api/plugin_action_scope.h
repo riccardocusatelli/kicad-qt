@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef KICAD_PLUGIN_ACTION_SCOPE_H
@@ -29,7 +29,8 @@ enum class PLUGIN_ACTION_SCOPE
     SCHEMATIC,
     FOOTPRINT,
     SYMBOL,
-    PROJECT_MANAGER
+    PROJECT_MANAGER,
+    FOOTPRINT_WIZARD
 };
 
 

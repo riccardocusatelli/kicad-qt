@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef DIALOG_SIM_MODEL_H
@@ -123,6 +119,7 @@ private:
     void onPageChanging( wxNotebookEvent& event ) override;
     void onPinAssignmentsGridCellChange( wxGridEvent& aEvent ) override;
     void onPinAssignmentsGridSize( wxSizeEvent& aEvent ) override;
+    void onDecompositionModeChoice( wxCommandEvent& aEvent ) override;
     void onDifferentialCheckbox( wxCommandEvent& event ) override;
     void onSizeParamGrid( wxSizeEvent& event ) override;
 
@@ -131,6 +128,9 @@ private:
     void onUpdateUI( wxUpdateUIEvent& aEvent );
 
     void adjustParamGridColumns( int aWidth, bool aForce );
+
+    /// Show/populate the decomposition controls (multi-unit only) and sync their enabled state.
+    void updateDecompositionControls();
 
     bool isIbisLoaded() { return dynamic_cast<const SIM_LIBRARY_IBIS*>( library() ); }
 

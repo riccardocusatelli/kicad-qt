@@ -18,11 +18,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef __SHAPE_POLY_SET_H
@@ -32,6 +28,7 @@
 #include <core/ki_assert.h>
 #include <cstdio>
 #include <deque>                        // for deque
+#include <functional>
 #include <iosfwd>                       // for string, stringstream
 #include <memory>
 #include <mutex>
@@ -51,6 +48,8 @@
 #include <hash_128.h>
 
 
+class TRIANGULATION_INDEX;
+
 /**
  * Represent a set of closed polygons. Polygons may be nonconvex, self-intersecting
  * and have holes. Provides boolean operations (using Clipper library as the backend).
@@ -63,11 +62,14 @@
  *      outline or a hole.
  *      - Vertex (or corner): each one of the points that define a contour.
  *
- * TODO: add convex partitioning & spatial index
+ * TODO: add convex partitioning
  */
 class SHAPE_POLY_SET : public SHAPE
 {
 public:
+    /// Callback that submits a unit of work for asynchronous execution.
+    typedef std::function<void( std::function<void()> )> TASK_SUBMITTER;
+
     /// represents a single polygon outline with holes. The first entry is the outline,
     /// the remaining (if any), are the holes
     /// N.B. SWIG only supports typedef, so avoid c++ 'using' keyword
@@ -158,6 +160,13 @@ public:
             b = m_vertices[ tri.b ];
             c = m_vertices[ tri.c ];
         }
+
+        /**
+         * Refine this triangulation in place with boundary-preserving Lawson edge flips,
+         * minimizing the number of sliver triangles and, on ties, maximizing the minimum angle.
+         * Adds and removes no vertices or triangles.
+         */
+        void Refine();
 
         TRIANGULATED_POLYGON& operator=( const TRIANGULATED_POLYGON& aOther );
 
@@ -550,38 +559,19 @@ public:
 
     SHAPE_POLY_SET& operator=( const SHAPE_POLY_SET& aOther );
 
-    // Move assignment operator
-    SHAPE_POLY_SET& operator=( SHAPE_POLY_SET&& aOther ) noexcept
-    {
-        if (this != &aOther)
-        {
-            SHAPE::operator=( aOther );
-
-            m_polys = std::move( aOther.m_polys );
-            m_triangulatedPolys = std::move( aOther.m_triangulatedPolys );
-
-            m_hash = aOther.m_hash;
-            m_hashValid.store( aOther.m_hashValid.load() );
-            m_triangulationValid.store( aOther.m_triangulationValid );
-        }
-
-        return *this;
-    }
+    SHAPE_POLY_SET& operator=( SHAPE_POLY_SET&& aOther ) noexcept;
 
     /**
      * Build a polygon triangulation, needed to draw a polygon on OpenGL and in some
-     * other calculations
-     * @param aPartition = true to created a trinagulation in a partition on a grid
-     * false to create a more basic triangulation of the polygons
-     * Note
-     * in partition calculations the grid size is hard coded to 1e7.
-     * This is a good value for Pcbnew: 1cm, in internal units.
-     * But not good for Gerbview (1e7 = 10cm), however using a partition is not useful.
-     * @param aSimplify = force the algorithm to simplify the POLY_SET before triangulating
+     * other calculations.
+     * @param aSimplify when true, simplify the polygon set before triangulating
+     * @param aSubmitter optional callback for parallel triangulation of partition leaves
+     * @param aBuildIndexes when true, also build the spatial index over the triangles
      */
-    virtual void CacheTriangulation( bool aPartition = true, bool aSimplify = false )
+    virtual void CacheTriangulation( bool aSimplify = false, const TASK_SUBMITTER& aSubmitter = {},
+                                     bool aBuildIndexes = false )
     {
-        cacheTriangulation( aPartition, aSimplify, nullptr );
+        cacheTriangulation( aSimplify, nullptr, aSubmitter, aBuildIndexes );
     }
     bool IsTriangulationUpToDate() const;
 
@@ -611,7 +601,7 @@ public:
      * vertex.
      *
      * @param  aRelativeIndices is the set of relative indices.
-     * @param  aGlobalIdx [out] is the computed global index.
+     * @param[out] aGlobalIdx is the computed global index.
      * @return true if the relative indices are correct; false otherwise. The computed
      *         global index is returned in the \p aGlobalIdx reference.
      */
@@ -732,6 +722,9 @@ public:
 
     /// Return the number of triangulated polygons
     unsigned int TriangulatedPolyCount() const { return m_triangulatedPolys.size(); }
+
+    /// The spatial index over the cached triangulation, or nullptr when none was built.
+    const TRIANGULATION_INDEX* TriangulationIndex() const { return m_triIndex.get(); }
 
     /// Return the number of outlines in the set
     int OutlineCount() const { return m_polys.size(); }
@@ -1043,9 +1036,9 @@ public:
     void BooleanXor( const SHAPE_POLY_SET& a, const SHAPE_POLY_SET& b );
 
     /**
-    * Extract all contours from this polygon set, then recreate polygons with holes.
-    * Essentially XOR'ing, but faster. Self-intersecting polygons are not supported.
-    */
+     * Extract all contours from this polygon set, then recreate polygons with holes.
+     * Essentially XOR'ing, but faster. Self-intersecting polygons are not supported.
+     */
     void RebuildHolesFromContours();
 
     /**
@@ -1056,12 +1049,13 @@ public:
      * the outline.
      *
      * @param aAmount is the number of units to offset edges.
-     * @param aCornerStrategy #ALLOW_ACUTE_CORNERS to preserve all angles,
-     *                        #CHAMFER_ACUTE_CORNERS to chop angles less than 90°,
-     *                        #ROUND_ACUTE_CORNERS to round off angles less than 90°,
-     *                        #ROUND_ALL_CORNERS to round regardless of angles
+     * @param aCornerStrategy #CORNER_STRATEGY::ALLOW_ACUTE_CORNERS to preserve all angles,
+     *                        #CORNER_STRATEGY::CHAMFER_ACUTE_CORNERS to chop angles less than 90°,
+     *                        #CORNER_STRATEGY::ROUND_ACUTE_CORNERS to round off angles less than 90°,
+     *                        #CORNER_STRATEGY::ROUND_ALL_CORNERS to round regardless of angles
      * @param aMaxError is the allowable deviation when rounding corners with an approximated
      *                  polygon
+     * @param aSimplify simplifies the polygon when true.
      */
     void Inflate( int aAmount, CORNER_STRATEGY aCornerStrategy, int aMaxError,
                   bool aSimplify = false );
@@ -1076,10 +1070,10 @@ public:
      *
      * @param aLine is the line to perform offsetting on.
      * @param aAmount is the number of units to offset the line chain.
-     * @param aCornerStrategy #ALLOW_ACUTE_CORNERS to preserve all angles,
-     *                        #CHAMFER_ACUTE_CORNERS to chop angles less than 90°,
-     *                        #ROUND_ACUTE_CORNERS to round off angles less than 90°,
-     *                        #ROUND_ALL_CORNERS to round regardless of angles
+     * @param aCornerStrategy #CORNER_STRATEGY::ALLOW_ACUTE_CORNERS to preserve all angles,
+     *                        #CORNER_STRATEGY::CHAMFER_ACUTE_CORNERS to chop angles less than 90°,
+     *                        #CORNER_STRATEGY::ROUND_ACUTE_CORNERS to round off angles less than 90°,
+     *                        #CORNER_STRATEGY::ROUND_ALL_CORNERS to round regardless of angles
      * @param aMaxError is the allowable deviation when rounding corners with an approximated
      *                  polygon
      * @param aSimplify set to simplify the output polygon.
@@ -1154,6 +1148,13 @@ public:
     void Mirror( const VECTOR2I& aRef, FLIP_DIRECTION aFlipDirection );
 
     /**
+     * Mirror the line points about an arbitrary axis.
+     *
+     * @param aAxis is the axis to mirror about.
+     */
+    void Mirror( const SEG& aAxis );
+
+    /**
      * Rotate all vertices by a given angle.
      *
      * @param aCenter is the rotation center.
@@ -1173,6 +1174,7 @@ public:
      * Check if point \a aP lies on an edge or vertex of some of the outlines or holes.
      *
      * @param aP is the point to check.
+     * @param aAccuracy is the allowable accuracy of the test.
      * @return true if the point lies on the edge of any polygon.
      */
     bool PointOnEdge( const VECTOR2I& aP, int aAccuracy = 0 ) const;
@@ -1183,10 +1185,10 @@ public:
      *
      * @param aShape shape to check collision against
      * @param aClearance minimum clearance
-     * @param aActual [out] an optional pointer to an int to store the actual distance in the
-     *                event of a collision.
-     * @param aLocation [out] an option pointer to a point to store a nearby location in the
-     *                  event of a collision.
+     * @param[out] aActual an optional pointer to an int to store the actual distance in the
+     *                     event of a collision.
+     * @param[out] aLocation an option pointer to a point to store a nearby location in the
+     *                       event of a collision.
      * @return true if there is a collision.
      */
     bool Collide( const SHAPE* aShape, int aClearance = 0, int* aActual = nullptr,
@@ -1208,6 +1210,8 @@ public:
      *                    than aClearance distance, then there is a collision.
      * @param aActual an optional pointer to an int to store the actual distance in the event
      *                of a collision.
+     * @param[out] aLocation an optional pointer to a point to store a nearby location in the
+     *                       event of a collision.
      * @return true if the point aP collides with the polygon; false in any other case.
      */
     bool Collide( const VECTOR2I& aP, int aClearance = 0, int* aActual = nullptr,
@@ -1229,6 +1233,7 @@ public:
      *                    than aClearance distance, then there is a collision.
      * @param aActual an optional pointer to an int to store the actual distance in the event
      *                of a collision.
+     * @param[out] aLocation is an optional object for the coordinates of the collision.
      * @return true if the segment aSeg collides with the polygon, false in any other case.
      */
     bool Collide( const SEG& aSeg, int aClearance = 0, int* aActual = nullptr,
@@ -1250,11 +1255,11 @@ public:
     /**
      * Check whether aPoint collides with any edge of any of the contours of the polygon.
      *
-     * @param  aPoint     is the VECTOR2I point whose collision with respect to the polygon
+     * @param aPoint      is the VECTOR2I point whose collision with respect to the polygon
      *                    will be tested.
-     * @param  aClearance is the security distance; if \p aPoint lies closer to a vertex than
-     *                    aClearance distance, then there is a collision.
      * @param aClosestVertex is the index of the closes vertex to \p aPoint.
+     * @param aClearance is the security distance; if \p aPoint lies closer to a vertex than
+     *                   aClearance distance, then there is a collision.
      * @return bool - true if there is a collision, false in any other case.
      */
     bool CollideEdge( const VECTOR2I& aPoint, VERTEX_INDEX* aClosestVertex = nullptr,
@@ -1278,6 +1283,7 @@ public:
      *
      * @param aP is the point to check
      * @param aSubpolyIndex is the subpolygon to check, or -1 to check all
+     * @param aAccuracy
      * @param aUseBBoxCaches gives faster performance when multiple calls are made with no
      *                       editing in between, but the caller MUST cache the bbox caches
      *                       before calling (via BuildBBoxCaches(), above)
@@ -1405,8 +1411,8 @@ public:
      *
      * @param  aPoint is the point whose distance to the aIndex-th polygon has to be measured.
      * @param  aIndex is the index of the polygon whose distance to aPoint has to be measured.
-     * @param  aNearest [out] an optional pointer to be filled in with the point on the
-     *                  polyset which is closest to aPoint.
+     * @param[out] aNearest an optional pointer to be filled in with the point on the
+     *                      polyset which is closest to aPoint.
      * @return The minimum distance between \a aPoint and all the segments of the \a aIndex-th
      *         polygon. If the point is contained in the polygon, the distance is zero.
      */
@@ -1420,8 +1426,8 @@ public:
      * @param  aSegment is the segment whose distance to the aIndex-th polygon has to be
      *                  measured.
      * @param  aIndex   is the index of the polygon whose distance to aPoint has to be measured.
-     * @param  aNearest [out] an optional pointer to be filled in with the point on the
-     *                  polyset which is closest to aSegment.
+     * @param[out] aNearest an optional pointer to be filled in with the point on the
+     *                      polyset which is closest to aSegment.
      * @return The minimum distance between \a aSegment and all the segments of the \a aIndex-th
      *         polygon. If the point is contained in the polygon, the distance is zero.
      */
@@ -1433,8 +1439,9 @@ public:
      * Squared distances are used because they avoid the cost of doing square-roots.
      *
      * @param  aPoint is the point whose distance to the set has to be measured.
-     * @param  aNearest [out] an optional pointer to be filled in with the point on the
-     *                  polyset which is closest to aPoint.
+     * @param  aOutlineOnly
+     * @param[out]  aNearest an optional pointer to be filled in with the point on the
+     *                       polyset which is closest to aPoint.
      * @return The minimum distance squared between aPoint and all the polygons in the set.
      *         If the point is contained in any of the polygons, the distance is zero.
      */
@@ -1451,9 +1458,8 @@ public:
      * Squared distances are used because they avoid the cost of doing square-roots.
      *
      * @param  aSegment is the segment whose distance to the polygon set has to be measured.
-     * @param  aSegmentWidth is the width of the segment; defaults to zero.
-     * @param  aNearest [out] an optional pointer to be filled in with the point on the
-     *                  polyset which is closest to aSegment.
+     * @param[out]  aNearest an optional pointer to be filled in with the point on the
+     *                       polyset which is closest to \a aSegment.
      * @return  The minimum distance squared between aSegment and all the polygons in the set.
      *          If the point is contained in the polygon, the distance is zero.
      */
@@ -1470,8 +1476,8 @@ public:
     /**
      * Build a SHAPE_POLY_SET from a bunch of outlines in provided in random order.
      *
-     * @param aPath set of closed outlines forming the polygon.
-     *              Positive orientation = outline, negative = hole
+     * @param aPaths set of closed outlines forming the polygon.
+     *               Positive orientation = outline, negative = hole
      * @param aEvenOdd forces the even-off fill rule (default is non zero)
      */
     void BuildPolysetFromOrientedPaths( const std::vector<SHAPE_LINE_CHAIN>& aPaths,
@@ -1489,8 +1495,8 @@ public:
     void Scale( double aScaleFactorX, double aScaleFactorY, const VECTOR2I& aCenter );
 
 protected:
-    void cacheTriangulation( bool aPartition, bool aSimplify,
-                             std::vector<std::unique_ptr<TRIANGULATED_POLYGON>>* aHintData );
+    void cacheTriangulation( bool aSimplify, std::vector<std::unique_ptr<TRIANGULATED_POLYGON>>* aHintData,
+                             const TASK_SUBMITTER& aSubmitter = {}, bool aBuildIndexes = false );
 
 private:
     enum DROP_TRIANGULATION_FLAG { SINGLETON };
@@ -1548,6 +1554,18 @@ private:
                     const SHAPE_POLY_SET& aOtherShape );
 
     /**
+     * Append the rings left after cutting the fracture bridges out of \a aChain.  Clipper2
+     * resolves every bridge with a pass over the whole output, which is quadratic on a fractured
+     * hatch plane.  Dropping a pair of coincident opposite edges changes no winding number, so a
+     * NonZero boolean sees the same region.
+     *
+     * @return false, leaving \a aPaths untouched, when \a aChain holds no bridges.
+     */
+    static bool appendBridgeFreePaths( const SHAPE_LINE_CHAIN& aChain, Clipper2Lib::Paths64& aPaths,
+                                       std::vector<CLIPPER_Z_VALUE>& aZValues,
+                                       std::vector<SHAPE_ARC>& aArcBuffer );
+
+    /**
      * Check whether the point \a aP is inside the \a aSubpolyIndex-th polygon of the polyset. If
      * the points lies on an edge, the polygon is considered to contain it.
      *
@@ -1599,6 +1617,11 @@ private:
 protected:
     std::vector<POLYGON>                               m_polys;
     std::vector<std::unique_ptr<TRIANGULATED_POLYGON>> m_triangulatedPolys;
+
+    /// One index over every triangle of every polygon above.  Built lazily inside
+    /// cacheTriangulation(); dropped by anything that rebuilds, discards or moves the
+    /// triangles.  Never copied.
+    std::unique_ptr<TRIANGULATION_INDEX> m_triIndex;
 
     std::atomic<bool> m_triangulationValid = false;
     std::mutex  m_triangulationMutex;

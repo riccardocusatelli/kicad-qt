@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <eda_list_dialog.h>
@@ -31,12 +27,22 @@
 #include "lib_tree_model_adapter.h"
 #include <core/ki_assert.h>
 
+#include <algorithm>
+#include <iterator>
+
 // wxWidgets spends *far* too long calculating column widths (most of it, believe it or
 // not, in repeatedly creating/destroying a wxDC to do the measurement in).
 // Use default column widths instead.
 // Note, these are "standard DPI" widths
 static int DEFAULT_SINGLE_COL_WIDTH = 260;
 static int DEFAULT_COL_WIDTHS[] = { 200, 300 };
+
+
+// Columns past the defaults take the last one's width
+static int defaultColWidth( unsigned aCol )
+{
+    return DEFAULT_COL_WIDTHS[std::min<size_t>( aCol, std::size( DEFAULT_COL_WIDTHS ) - 1 )];
+}
 
 
 EDA_LIST_DIALOG::EDA_LIST_DIALOG( TOOLKIT_WINDOW_ARG aParent, const wxString& aTitle, const wxArrayString& aItemHeaders,
@@ -119,15 +125,17 @@ void EDA_LIST_DIALOG::initDialog( const wxArrayString& aItemHeaders, const std::
         m_listBox->SetMinClientSize( FromDIP( wxSize( DEFAULT_SINGLE_COL_WIDTH, 200 ) ) );
         SetMinClientSize( FromDIP( wxSize( DEFAULT_COL_WIDTHS[0], 220 ) ) );
     }
-    else if( aItemHeaders.Count() == 2 )
+    else if( aItemHeaders.Count() >= 2 )
     {
         for( unsigned i = 0; i < aItemHeaders.Count(); i++ )
         {
             m_listBox->InsertColumn( i, aItemHeaders.Item( i ), wxLIST_FORMAT_LEFT,
-                                     FromDIP( DEFAULT_COL_WIDTHS[ i ] ) );
+                                     FromDIP( defaultColWidth( i ) ) );
         }
 
-        m_listBox->SetMinClientSize( FromDIP( wxSize( DEFAULT_COL_WIDTHS[0] * 3, 200 ) ) );
+        int minWidth = DEFAULT_COL_WIDTHS[0] * std::max( 3, static_cast<int>( aItemHeaders.Count() ) );
+
+        m_listBox->SetMinClientSize( FromDIP( wxSize( minWidth, 200 ) ) );
         SetMinClientSize( FromDIP( wxSize( DEFAULT_COL_WIDTHS[0] * 2, 220 ) ) );
     }
 
@@ -258,7 +266,7 @@ void EDA_LIST_DIALOG::InsertItems( const std::vector< wxArrayString >& itemList,
             info.m_itemId = row + position;
             info.m_col = col;
             info.m_text = itemList[row].Item( col );
-            info.m_width = FromDIP( DEFAULT_COL_WIDTHS[ col ] );
+            info.m_width = FromDIP( defaultColWidth( col ) );
             info.m_mask = wxLIST_MASK_TEXT | wxLIST_MASK_WIDTH;
 
             if( col == 0 )
@@ -297,6 +305,13 @@ void EDA_LIST_DIALOG::onSize( wxSizeEvent& event )
         m_listBox->SetColumnWidth( 0, first );
         m_listBox->SetColumnWidth( 1, m_listBox->GetClientSize().x - first );
     }
+    else if( m_listBox->GetColumnCount() > 2 )
+    {
+        int width = m_listBox->GetClientSize().x / m_listBox->GetColumnCount();
+
+        for( int col = 0; col < m_listBox->GetColumnCount(); col++ )
+            m_listBox->SetColumnWidth( col, width );
+    }
 
     event.Skip();
 }
@@ -310,7 +325,7 @@ static int wxCALLBACK myCompareFunction( wxIntPtr aItem1, wxIntPtr aItem2, wxInt
     wxString* component1Name = (wxString*) aItem1;
     wxString* component2Name = (wxString*) aItem2;
 
-    return StrNumCmp( *component1Name, *component2Name, true );
+    return StrNumCmp( *component1Name, *component2Name, CMP_T::IGNORE_CASE );
 }
 
 

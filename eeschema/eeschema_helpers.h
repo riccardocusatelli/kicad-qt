@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef EESCHEMA_HELPERS_H_
@@ -32,6 +28,7 @@
 class SCHEMATIC;
 class SETTINGS_MANAGER;
 class PROJECT;
+class REPORTER;
 
 /**
  * Helper functions to do things like load schematics behind the scenes for special functions
@@ -45,15 +42,18 @@ public:
     /// The schematic open in the schematic editor (set by the editor; none without GUI).
     static void              SetEditorSchematic( std::function<SCHEMATIC*()> aGetter );
 
+    // A root reporter requests strict root-input validation before loader recovery.
     static SCHEMATIC*        LoadSchematic( const wxString& aFileName, bool aSetActive,
                                             bool aForceDefaultProject,
                                             PROJECT* aProject = nullptr,
-                                            bool aCalculateConnectivity = true );
+                                            bool aCalculateConnectivity = true,
+                                            REPORTER* aRootReporter = nullptr );
     static SCHEMATIC*        LoadSchematic( const wxString& aFileName,
                                             SCH_IO_MGR::SCH_FILE_T aFormat,
                                             bool aSetActive, bool aForceDefaultProject,
                                             PROJECT* aProject = nullptr,
-                                            bool aCalculateConnectivity = true );
+                                            bool aCalculateConnectivity = true,
+                                            REPORTER* aRootReporter = nullptr );
 
 private:
     static std::function<SCHEMATIC*()> s_editorSchematic;

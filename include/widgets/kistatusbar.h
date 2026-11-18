@@ -15,28 +15,26 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef KISTATUSBAR_H
 #define KISTATUSBAR_H
 
 #include <kicommon.h>
+#include <ki_error.h>
+#include <map>
 #include <optional>
 #include <mutex>
 #include <vector>
 #include <unordered_map>
-#include <string_utils.h>       // LOAD_MESSAGE
 #include <wx/statusbr.h>
 
 class wxGauge;
 class wxButton;
 class wxStaticText;
 class BITMAP_BUTTON;
+class STATUSBAR_WARNING_LIST;
 
 /**
  * KISTATUSBAR is a wxStatusBar suitable for Kicad manager.
@@ -50,6 +48,8 @@ class BITMAP_BUTTON;
 
 class KIQT_COMMON_API KISTATUSBAR : public wxStatusBar
 {
+    friend class STATUSBAR_WARNING_LIST;
+
 public:
     enum STYLE_FLAGS : int
     {
@@ -105,7 +105,7 @@ public:
     void ClearWarningMessages( const wxString& aSource = wxEmptyString );
 
     /**
-     * Add warning/error messages (not thread-safe, use the std::vector<LOAD_MESSAGE> variant
+     * Add warning/error messages (not thread-safe, use the std::vector<KI_ERROR> variant
      * from other threads)
      */
     void AddWarningMessages( const wxString& aSource, const wxString& aMessages );
@@ -114,12 +114,23 @@ public:
      * Add warning/error messages thread-safely.
      * Can be called from any thread. UI update is deferred to main thread.
      */
-    void AddWarningMessages( const wxString& aSource, const std::vector<LOAD_MESSAGE>& aMessages );
+    void AddWarningMessages( const wxString& aSource, const std::vector<KI_ERROR>& aMessages );
 
     /**
      * Get current message count (thread-safe).
      */
     size_t GetLoadWarningCount() const;
+
+    /**
+     * Get a copy of all stored warning/error messages, grouped by source and sorted by
+     * source name for stable display order.  Thread-safe.
+     */
+    std::map<wxString, std::vector<KI_ERROR>> GetWarningMessages() const;
+
+    /**
+     * Close the warning message overlay panel, if it is shown.
+     */
+    void CloseWarningList();
 
     virtual void SetStatusWidths( int aSize, const int* aWidths ) override;
 
@@ -128,6 +139,7 @@ private:
     void onBackgroundProgressClick( wxMouseEvent& aEvent );
     void onNotificationsIconClick( wxCommandEvent& aEvent );
     void onLoadWarningsIconClick( wxCommandEvent& aEvent );
+    void openWarningList();
     void updateWarningUI();  ///< Update warning button visibility and badge (main thread only)
     void updateAuxFieldWidths();
     void updateBackgroundText();
@@ -150,8 +162,9 @@ private:
     wxStaticText*  m_backgroundTxt;
     BITMAP_BUTTON* m_notificationsButton;
     BITMAP_BUTTON* m_warningButton;
+    STATUSBAR_WARNING_LIST* m_warningList;        ///< Overlay panel listing the warning messages
     mutable std::mutex m_warningMutex;  ///< Protects m_warningMessages
-    std::unordered_map<wxString, std::vector<LOAD_MESSAGE>> m_warningMessages;
+    std::unordered_map<wxString, std::vector<KI_ERROR>> m_warningMessages;
     int            m_normalFieldsCount;
     STYLE_FLAGS    m_styleFlags;
     wxString       m_savedStatusText;       ///< Saved text from adjacent field during background jobs

@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /*
@@ -159,9 +155,9 @@ std::string PLACE_FILE_EXPORTER::GenPositionData()
 
         LIST_MOD item;
         item.m_Footprint = footprint;
-        item.m_Reference = footprint->Reference().GetShownText( false );
+        item.m_Reference = footprint->Reference().GetShownText( RESOLVED );
         item.m_Value     = UnescapeString( footprint->GetFieldValueForVariant( m_variant,
-                                                               GetCanonicalFieldName( FIELD_T::VALUE ) ) );
+                                                               GetDefaultFieldName( FIELD_T::VALUE, UNTRANSLATED ) ) );
         item.m_Layer     = footprint->GetLayer();
 
         lenRefText = std::max( lenRefText, (int) item.m_Reference.length() );
@@ -335,15 +331,15 @@ std::string PLACE_FILE_EXPORTER::GenReportData()
     std::sort( sortedFootprints.begin(), sortedFootprints.end(),
                []( FOOTPRINT* a, FOOTPRINT* b ) -> bool
                {
-                   return StrNumCmp( a->GetReference(), b->GetReference(), true ) < 0;
+                   return StrNumCmp( a->GetReference(), b->GetReference(), CMP_T::IGNORE_CASE ) < 0;
                });
 
     for( FOOTPRINT* footprint : sortedFootprints )
     {
-        wxString ref = footprint->Reference().GetShownText( false );
+        wxString ref = footprint->Reference().GetShownText( RESOLVED );
         wxString value = UnescapeString(
                 footprint->GetFieldValueForVariant( m_variant,
-                                                    GetCanonicalFieldName( FIELD_T::VALUE ) ) );
+                                                    GetDefaultFieldName( FIELD_T::VALUE, UNTRANSLATED ) ) );
 
         buffer += fmt::format( "$MODULE {}\n", TO_UTF8( ref ) );
 
@@ -387,7 +383,7 @@ std::string PLACE_FILE_EXPORTER::GenReportData()
         std::sort( sortedPads.begin(), sortedPads.end(),
                    []( PAD* a, PAD* b ) -> bool
                    {
-                       return StrNumCmp( a->GetNumber(), b->GetNumber(), true ) < 0;
+                       return StrNumCmp( a->GetNumber(), b->GetNumber(), CMP_T::IGNORE_CASE ) < 0;
                    });
 
         for( PAD* pad : sortedPads )
@@ -405,7 +401,7 @@ std::string PLACE_FILE_EXPORTER::GenReportData()
             // TODO(JE) padstacks
             static const char* layer_name[4] = { "nocopper", "back", "front", "both" };
             buffer += fmt::format( "Shape {} Layer {}\n",
-                      TO_UTF8( pad->ShowLegacyPadShape( PADSTACK::ALL_LAYERS ) ),
+                      TO_UTF8( pad->ShowLegacyPadShape( PADSTACK::TEMP_ALL_LAYERS ) ),
                       layer_name[layer] );
 
             VECTOR2I padPos = pad->GetFPRelativePosition();
@@ -413,15 +409,15 @@ std::string PLACE_FILE_EXPORTER::GenReportData()
             buffer += fmt::format( "position {:9.6f} {:9.6f} size {:9.6f} {:9.6f} orientation {:.2f}\n",
                       padPos.x * conv_unit,
                       padPos.y * conv_unit,
-                      pad->GetSize( PADSTACK::ALL_LAYERS ).x * conv_unit,
-                      pad->GetSize( PADSTACK::ALL_LAYERS ).y * conv_unit,
+                      pad->GetSize( PADSTACK::TEMP_ALL_LAYERS ).x * conv_unit,
+                      pad->GetSize( PADSTACK::TEMP_ALL_LAYERS ).y * conv_unit,
                       pad->GetOrientation().AsDegrees() );
 
             buffer += fmt::format( "drill {:9.6f}\n", pad->GetDrillSize().x * conv_unit );
 
             buffer += fmt::format( "shape_offset {:9.6f} {:9.6f}\n",
-                      pad->GetOffset( PADSTACK::ALL_LAYERS ).x * conv_unit,
-                      pad->GetOffset( PADSTACK::ALL_LAYERS ).y * conv_unit );
+                      pad->GetOffset( PADSTACK::TEMP_ALL_LAYERS ).x * conv_unit,
+                      pad->GetOffset( PADSTACK::TEMP_ALL_LAYERS ).y * conv_unit );
 
             buffer += "$EndPAD\n";
         }

@@ -57,5 +57,5 @@ BOOST_FIXTURE_TEST_CASE( Issue25508, ISSUE_25508_FIXTURE )
                                                      settings.m_IntersheetRefsPrefix,
                                                      settings.m_IntersheetRefsSuffix );
 
-    BOOST_CHECK_EQUAL( label->GetShownText( &sheet, false ), expected );
+    BOOST_CHECK_EQUAL( label->GetShownText( &sheet, INTERNAL ), expected );
 }

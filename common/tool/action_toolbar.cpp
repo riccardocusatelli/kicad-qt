@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <algorithm>
@@ -35,7 +31,6 @@
 #include <settings/common_settings.h>
 #include <trace_helpers.h>
 #include <tool/action_toolbar.h>
-#include <tool/actions.h>
 #include <tool/tool_action.h>
 #include <tool/tool_event.h>
 #include <tool/tool_interactive.h>
@@ -52,9 +47,12 @@
 #include <wx/dcclient.h>
 #include <wx/settings.h>
 
+#ifdef __WXMSW__
+#include <windows.h>
+#endif
+
 // Needed to handle adding the plugins to the toolbar
 // TODO (ISM): This should be better abstracted away from the toolbars
-#include <python_scripting.h>
 #include <api/api_plugin_manager.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
@@ -95,14 +93,13 @@ int ACTION_GROUP::GetUIId() const
 
 void ACTION_GROUP::SetDefaultAction( const TOOL_ACTION& aDefault )
 {
-    bool valid = std::any_of( m_actions.begin(), m_actions.end(),
-                              [&]( const TOOL_ACTION* aAction ) -> bool
-                              {
-                                  // For some reason, we can't compare the actions directly
-                                  return aAction->GetId() == aDefault.GetId();
-                              } );
-
-    KI_ASSERT_MSG( valid, wxS( "Action must be present in a group to be the default" ) );
+    KI_ASSERT_MSG( std::any_of( m_actions.begin(), m_actions.end(),
+                               [&]( const TOOL_ACTION* aAction ) -> bool
+                               {
+                                   // For some reason, we can't compare the actions directly
+                                   return aAction->GetId() == aDefault.GetId();
+                               } ),
+                  wxS( "Action must be present in a group to be the default" ) );
 
     m_defaultAction = &aDefault;
 }
@@ -206,6 +203,37 @@ void ACTION_TOOLBAR_PALETTE::onCharHook( wxKeyEvent& aEvent )
     else
         aEvent.Skip();
 }
+
+
+#ifdef __WXMSW__
+bool ACTION_TOOLBAR_PALETTE::MSWHandleMessage( WXLRESULT* aResult, WXUINT aMessage,
+                                               WXWPARAM aWParam, WXLPARAM aLParam )
+{
+    // The Windows "Activate on hover" option (active window tracking) activates whatever
+    // top-level window the pointer is over. As the pointer travels from the toolbar button
+    // toward this palette it crosses the owner frame, which then steals activation and would
+    // normally deactivate and dismiss this transient popup before the user can reach it.
+    // Ignore that specific deactivation so the palette survives the trip. Dismissal by Escape,
+    // by pressing a palette button, or by switching to any other window is unaffected because
+    // those do not hand activation back to the owner frame.
+    if( aMessage == WM_ACTIVATE && LOWORD( aWParam ) == WA_INACTIVE )
+    {
+        BOOL tracking = FALSE;
+
+        if( ::SystemParametersInfo( SPI_GETACTIVEWINDOWTRACKING, 0, &tracking, 0 ) && tracking )
+        {
+            HWND      activated = reinterpret_cast<HWND>( aLParam );
+            wxWindow* owner = MSWGetOwner();
+
+            if( activated && owner && ::GetAncestor( activated, GA_ROOT ) == owner->GetHWND() )
+                return wxPopupTransientWindowBase::MSWHandleMessage( aResult, aMessage, aWParam,
+                                                                     aLParam );
+        }
+    }
+
+    return wxPopupTransientWindow::MSWHandleMessage( aResult, aMessage, aWParam, aLParam );
+}
+#endif
 
 
 ACTION_TOOLBAR::ACTION_TOOLBAR( EDA_BASE_FRAME* parent, wxWindowID id, const wxPoint& pos, const wxSize& size,
@@ -682,6 +710,13 @@ void ACTION_TOOLBAR::UpdateControlWidth( int aID )
 
 void ACTION_TOOLBAR::ClearToolbar()
 {
+    // A group made again gets a new id, so the frame would keep this one's handler for good
+    if( m_toolManager )
+    {
+        for( const auto& [groupId, group] : m_actionGroups )
+            m_toolManager->GetToolHolder()->UnregisterUIUpdateHandler( groupId );
+    }
+
     // Clear all the maps keeping track of our items on the toolbar
     m_toolMenus.clear();
     m_actionGroups.clear();
@@ -756,18 +791,6 @@ void ACTION_TOOLBAR::onToolEvent( wxAuiToolBarEvent& aEvent )
         // Determine if the tool is actually cancellable
         bool isCancellable = ( cancelIt != m_toolCancellable.end() ) ? cancelIt->second : false;
 
-        // The selection tool is a special case because it is the "default" tool and does not show
-        // up on the tool stack. We want to toggle through selection modes only when the tool is
-        // already active.
-        bool selectionSpecialCase = false;
-
-        if( actionIt != m_toolActions.end() )
-        {
-            selectionSpecialCase = m_parent->ToolStackIsEmpty()
-                                   && ( actionIt->second->GetId() == ACTIONS::selectSetRect.GetId()
-                                        || actionIt->second->GetId() == ACTIONS::selectSetLasso.GetId() );
-        }
-
         // The toolbar item is toggled before the event is sent, so we check for it not being
         // toggled to see if it was toggled originally
         if( isCancellable && !GetToolToggled( id ) )
@@ -777,13 +800,12 @@ void ACTION_TOOLBAR::onToolEvent( wxAuiToolBarEvent& aEvent )
             handled = true;
         }
         else if( groupIt != m_actionGroups.end()
-                 && ( selectionSpecialCase
-                      || std::none_of( groupIt->second->GetActions().begin(),
-                                       groupIt->second->GetActions().end(),
-                                       []( const TOOL_ACTION* a )
-                                       {
-                                           return a->IsActivation();
-                                       } ) ) )
+                 && std::none_of( groupIt->second->GetActions().begin(),
+                                  groupIt->second->GetActions().end(),
+                                  []( const TOOL_ACTION* a )
+                                  {
+                                      return a->IsActivation();
+                                  } ) )
         {
             // For non-tool toggle groups (units, crosshair, line modes), cycle to the next
             // action on click. Tool groups (route track, etc.) fall through and just dispatch
@@ -847,7 +869,7 @@ void ACTION_TOOLBAR::onRightUp( wxMouseEvent& aEvent )
     // Hit-test the tool ourselves so the whole button works.
     wxAuiToolBarItem* item = FindToolByPosition( aEvent.GetX(), aEvent.GetY() );
 
-    if( !item )
+    if( !item || ( item->GetState() & wxAUI_BUTTON_STATE_DISABLED ) != 0 )
     {
         aEvent.Skip();
         return;
@@ -902,8 +924,8 @@ void ACTION_TOOLBAR::onMouseClick( wxMouseEvent& aEvent )
 
     if( item )
     {
-        // Ensure there is no active palette
-        if( m_palette )
+        // The release that ends the long press must not close the palette it opened
+        if( aEvent.LeftDown() && m_palette )
         {
             m_palette->Hide();
             m_palette->Destroy();
@@ -1145,8 +1167,11 @@ void ACTION_TOOLBAR::OnCustomRender(wxDC& aDc, const wxAuiToolBarItem& aItem, co
 
 bool ACTION_TOOLBAR::KiRealize()
 {
+    // Realize() leaves out a hidden overflow button and nothing adds it back once the tools stop fitting
+    SetOverflowVisible( true );
+
 #if wxCHECK_VERSION( 3, 3, 0 )
-    return Realize();
+    bool retval = Realize();
 #else
     wxClientDC dc( this );
 
@@ -1187,14 +1212,15 @@ bool ACTION_TOOLBAR::KiRealize()
     }
 
     Refresh( false );
-    return retval;
 #endif
+
+    SetOverflowVisible( !GetToolBarFits() );
+    return retval;
 }
 
 
 void ACTION_TOOLBAR::onThemeChanged( wxSysColourChangedEvent &aEvent )
 {
-    GetBitmapStore()->ThemeChanged();
     RefreshBitmaps();
 
     aEvent.Skip();

@@ -16,8 +16,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PCB_PROPERTIES_PANEL_H
@@ -26,12 +26,29 @@
 #include <widgets/properties_panel.h>
 #include <toolkit/toolkit_types.h>
 #include <memory>
-#include <set>
 
 class SELECTION;
 class BOARD;
 class PCB_BASE_EDIT_FRAME;
 class PROPERTY_MANAGER;
+<<<<<<< ours
+||||||| base
+class PG_UNIT_EDITOR;
+class PG_CHECKBOX_EDITOR;
+class PG_RATIO_EDITOR;
+class PG_NET_SELECTOR_EDITOR;
+class PG_FPID_EDITOR;
+class PG_URL_EDITOR;
+=======
+class PG_UNIT_EDITOR;
+class PG_CHECKBOX_EDITOR;
+class PG_RATIO_EDITOR;
+class PG_NET_SELECTOR_EDITOR;
+class PG_TRACK_WIDTH_EDITOR;
+class PG_FPID_EDITOR;
+class PG_URL_EDITOR;
+class wxButton;
+>>>>>>> theirs
 
 class PCB_PROPERTIES_PANEL : public PROPERTIES_PANEL
 {
@@ -57,14 +74,28 @@ protected:
     bool valueChanging( const wxString& aName, const wxVariant& aValue ) override;
     void valueChanged( const wxString& aName, const wxVariant& aValue ) override;
 
-    ///< Regenerates caches storing layer and net names
+    bool isKeyEditable( const wxPGProperty* aPGProp ) const override;
+    bool isKeyNameInUse( const wxString& aName ) const override;
+    void onKeyRenamed( const wxString& aOldName, const wxString& aNewName ) override;
+
+    bool buildContextMenu( wxMenu& aMenu, wxPGProperty* aPGProp ) override;
+    void onNewItemLeftBlank( const wxString& aKey ) override;
+
+    void addBlankField();
+    void addBlankCustomProperty();
+    void removeField( const wxString& aName );
+    void removeCustomProperty( const wxString& aName );
+    void onContextMenu( wxCommandEvent& aEvent );
+
+    void applyConfirmedScale( const wxString& aPropName, const wxVariant& aValue );
+
+    /// Regenerates caches storing layer and net names
     void updateLists( const BOARD* aBoard );
 
     /**
      * Get the current selection from the selection tool.
      * If the selection is empty and we're in the footprint editor, returns the footprint instead.
      *
-     * @param aSelection [out] reference to a SELECTION pointer that will be set to the selection
      * @param aFallbackSelection [out] local SELECTION object for fallback footprint selection
      * @return const SELECTION& reference to the selection (either real selection or fallback)
      */
@@ -78,6 +109,7 @@ protected:
      */
     EDA_ITEM* getFrontItem();
 
+<<<<<<< ours
 private:
     /// Register the custom editors of the properties with the grid of the GUI toolkit
     /// (pcb_properties_panel_wx.cpp, qt/pcbnew/widgets/pcb_properties_panel_qt.cpp).
@@ -93,11 +125,47 @@ private:
 
     std::unique_ptr<TOOLKIT_STATE, TOOLKIT_STATE_DELETER> m_toolkitState;
 
+||||||| base
+=======
+    /**
+     * Creates a new selection with any generator children removed that are part of a read only generator.
+     *
+     * @param aSelection the selection to filter
+     */
+    static SELECTION filterOutReadOnlyGenChildren( const SELECTION& aSelection );
+
+>>>>>>> theirs
 protected:
     PCB_BASE_EDIT_FRAME* m_frame;
     PROPERTY_MANAGER&    m_propMgr;
+<<<<<<< ours
+||||||| base
+    PG_UNIT_EDITOR*      m_unitEditorInstance;
+    PG_CHECKBOX_EDITOR*  m_checkboxEditorInstance;
+    PG_RATIO_EDITOR*     m_ratioEditorInstance;
+    PG_NET_SELECTOR_EDITOR* m_netSelectorEditorInstance;
+    PG_FPID_EDITOR*      m_fpEditorInstance;
+    PG_URL_EDITOR*       m_urlEditorInstance;
+=======
+    PG_UNIT_EDITOR*      m_unitEditorInstance;
+    PG_CHECKBOX_EDITOR*  m_checkboxEditorInstance;
+    PG_RATIO_EDITOR*     m_ratioEditorInstance;
+    PG_NET_SELECTOR_EDITOR* m_netSelectorEditorInstance;
+    PG_TRACK_WIDTH_EDITOR*  m_trackWidthEditorInstance;
+    PG_FPID_EDITOR*      m_fpEditorInstance;
+    PG_URL_EDITOR*       m_urlEditorInstance;
+>>>>>>> theirs
 
+<<<<<<< ours
     static std::set<wxString> m_currentFieldNames;
+||||||| base
+    static std::set<wxString> m_currentFieldNames;
+    wxPGChoices m_nets;
+=======
+    wxPGChoices m_nets;
+
+    bool m_scaleConfirmPending;
+>>>>>>> theirs
 };
 
 #endif /* PCB_PROPERTIES_PANEL_H */

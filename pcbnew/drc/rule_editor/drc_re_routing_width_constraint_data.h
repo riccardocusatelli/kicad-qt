@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef DRC_RE_ROUTING_WIDTH_CONSTRAINT_DATA_H_
@@ -38,9 +34,9 @@ public:
     {
     }
 
-    explicit DRC_RE_ROUTING_WIDTH_CONSTRAINT_DATA( int aId, int aParentId, const wxString& aRuleName, double aOptWidth,
+    explicit DRC_RE_ROUTING_WIDTH_CONSTRAINT_DATA( int aId, const wxString& aRuleName, double aOptWidth,
                                                    double aWidthTolerance ) :
-            DRC_RE_BASE_CONSTRAINT_DATA( aId, aParentId, aRuleName ),
+            DRC_RE_BASE_CONSTRAINT_DATA( aId, aRuleName ),
             m_optWidth( aOptWidth ),
             m_widthTolerance( aWidthTolerance )
     {
@@ -53,10 +49,11 @@ public:
     std::vector<DRC_RE_FIELD_POSITION> GetFieldPositions() const override
     {
         // Positions measured from constraint_routing_width.png bitmap
-        // Format: { xStart, xEnd, yCenter, tabOrder }
+        // Format: { xStart, xEnd, yCenter }
         return {
-            { 30, 85, 27, 1, wxS( "mm" ), LABEL_POSITION::RIGHT },                    // opt_width
-            { 135, 190, 27, 2, wxS( "mm" ), LABEL_POSITION::RIGHT, wxS( "\u00B1" ) }, // width_tolerance (±)
+            { 30, 85, 27, wxS( "mm" ), LABEL_POSITION::RIGHT, _( "Optimum track width" ) }, // opt_width
+            { 135, 190, 27, wxS( "mm" ), LABEL_POSITION::RIGHT,
+              _( "Allowed deviation above or below the optimum width" ), wxS( "\u00B1" ) }, // width_tolerance (±)
         };
     }
 

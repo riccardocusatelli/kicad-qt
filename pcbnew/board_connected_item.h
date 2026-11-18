@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef BOARD_CONNECTED_ITEM_H
@@ -40,7 +36,7 @@ class Net;
 
 /**
  * A base class derived from #BOARD_ITEM for items that can be connected and have a net, a
- * netname, a clearance ...
+ * netname, a clearance, etc.
  */
 class BOARD_CONNECTED_ITEM : public BOARD_ITEM
 {
@@ -73,14 +69,14 @@ public:
         }
     }
 
-    ///< @copydoc BOARD_ITEM::IsConnected()
+    /// @copydoc BOARD_ITEM::IsConnected()
     bool IsConnected() const override
     {
         return true;
     }
 
     /**
-     * Return #NET_INFO object for a given item.
+     * Return #NETINFO_ITEM object for a given item.
      */
     NETINFO_ITEM* GetNet() const
     {
@@ -89,8 +85,12 @@ public:
 
     /**
      * Set a NET_INFO object for the item.
+     *
+     * Subclasses with a netless invariant (e.g. ZONE in copper-thieving mode)
+     * override this to drop aNetInfo before storing it.  Direct callers of
+     * SetNet bypass the SetNetCode clamp, so this hook is essential.
      */
-    void SetNet( NETINFO_ITEM* aNetInfo )
+    virtual void SetNet( NETINFO_ITEM* aNetInfo )
     {
         m_netinfo = aNetInfo;
     }
@@ -110,6 +110,11 @@ public:
     /**
      * Set net using a net code.
      *
+     * Subclasses that enforce a netless invariant (e.g. ZONE in copper-thieving
+     * mode) override this to clamp aNetCode before it reaches the base routine.
+     * The non-virtual overload below routes through this one, so callers that
+     * reach the setter via a BOARD_CONNECTED_ITEM* still hit the clamp.
+     *
      * @note Pads not on copper layers will have their net code always set to 0 (not connected).
      *
      * @param aNetCode is a net code for the new net. It has to exist in #NETINFO_LIST held
@@ -118,7 +123,7 @@ public:
      *                  to the unconnected net.
      * @return true on success, false if the net did not exist
      */
-    bool SetNetCode( int aNetCode, bool aNoAssert );
+    virtual bool SetNetCode( int aNetCode, bool aNoAssert );
 
     void SetNetCode( int aNetCode )
     {

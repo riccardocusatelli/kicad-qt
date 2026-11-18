@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef FOOTPRINT_FILTER_H
@@ -24,6 +24,22 @@
 #include <eda_pattern_match.h>
 #include <footprint_info.h>
 #include <wx/arrstr.h>
+
+
+/**
+ * Whether a given footprint matches a specified filter.
+ *
+ * A filter containing ':' is matched against "library:footprint". Any other filter
+ * against the footprint name alone. Matching ignores case.
+
+ * @param aFilter the pattern match filter. This must be lower-cased.
+ * @param aLibNickname the nickname of the library containing the footprint.
+ * @param aFootprintName the name of the footprint to check against the filter.
+ *
+ * @return true if the footprint matches the filter, false otherwise.
+ */
+bool FootprintFilterMatchesName( const EDA_PATTERN_MATCH& aFilter, const wxString& aLibNickname,
+                                 const wxString& aFootprintName );
 
 
 /**

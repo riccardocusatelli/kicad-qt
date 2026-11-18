@@ -14,11 +14,7 @@
 * GNU General Public License for more details.
 *
 * You should have received a copy of the GNU General Public License
-* along with this program; if not, you may find one here:
-* http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-* or you may search the http://www.gnu.org website for the version 2 license,
-* or you may write to the Free Software Foundation, Inc.,
-* 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+* along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #ifndef _PCB_CALCULATOR_SETTINGS_H
@@ -138,7 +134,36 @@ public:
 
     struct TRANSMISSION_LINE
     {
-        int type;
+        int type = 0;
+
+        /// Dielectric dispersion model.  0 = CONSTANT (default), 1 = Djordjevic-Sarkar causal.
+        int dielectric_model = 0;
+
+        /// Spec frequency at which EpsilonR and TanD are specified (user-entered text).
+        wxString spec_frequency = wxT( "1" );
+
+        /// UNIT_SELECTOR_FREQUENCY index: 0 = GHz, 1 = MHz, 2 = kHz, 3 = Hz.
+        int spec_frequency_unit = 0;
+
+        /// Soldermask / LPI overlay correction.  0 = disabled (default; math stays
+        /// bit-identical to the pre-mask baseline), 1 = Wan and Hoorfar 2000 / Svacina
+        /// 1992 filling factor applied with Bahl and Stuchly 1980 air-replacement
+        /// decomposition.
+        int soldermask_present = 0;
+
+        /// Cured mask thickness in metres.  20 um is typical for modern green LPI.
+        double soldermask_thickness = 20.0e-6;
+
+        /// Mask relative permittivity.  3.5 is representative of green LPI.
+        double soldermask_epsilonr = 3.5;
+
+        /// Mask loss tangent.  0.025 is the nominal LPI value; high-grade solder resist
+        /// products quote 0.02 - 0.035.
+        double soldermask_tand = 0.025;
+
+        /// CPW / CBCPW only.  1 = mask fills the coplanar slots (standard LPI process),
+        /// 0 = selective mask that covers only the traces.
+        int soldermask_fills_gaps = 1;
 
         /// Transline parameters, per transline type
         std::map<std::string, TL_PARAM_MAP> param_values;

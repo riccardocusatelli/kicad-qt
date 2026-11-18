@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -60,6 +56,18 @@ VERTEX_MANAGER::VERTEX_MANAGER( bool aCached ) :
     m_gpu.reset( GPU_MANAGER::MakeManager( m_container.get() ) );
 
     // There is no shader used by default
+    for( unsigned int i = 0; i < SHADER_STRIDE; ++i )
+        m_shader[i] = 0.0f;
+}
+
+
+VERTEX_MANAGER::VERTEX_MANAGER( std::shared_ptr<VERTEX_CONTAINER> aContainer ) :
+        m_container( std::move( aContainer ) ),
+        m_noTransform( true ),
+        m_transform( 1.0f ),
+        m_reserved( nullptr ),
+        m_reservedSpace( 0 )
+{
     for( unsigned int i = 0; i < SHADER_STRIDE; ++i )
         m_shader[i] = 0.0f;
 }

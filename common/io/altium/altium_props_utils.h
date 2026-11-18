@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef _ALTIUM_PROPS_UTILS_H
@@ -38,10 +34,11 @@ public:
      * Convert a value in Altium's internal unit (0.1 uinch) to KiCad IU, clamped to the
      * representable range.
      *
-     * @param aOutOfRange, when given, is set true if @p aValue did not fit and the result is a
-     *                     clamp rather than a conversion.  A clamped coordinate names the edge
-     *                     of the int range, not a place on the board, so callers that position
-     *                     geometry must reject it instead of using it.
+     * @param aValue
+     * @param aOutOfRange when given, is set true if @p aValue did not fit and the result is a
+     *                    clamp rather than a conversion.  A clamped coordinate names the edge
+     *                    of the int range, not a place on the board, so callers that position
+     *                    geometry must reject it instead of using it.
      */
     static int32_t ConvertToKicadUnit( const double aValue, bool* aOutOfRange = nullptr );
 
@@ -55,6 +52,9 @@ public:
                           bool aDefault );
 
     /**
+     * @param aProps
+     * @param aKey
+     * @param aDefault
      * @param aOutOfRange is forwarded to ConvertToKicadUnit(); it stays false for a missing or
      *                    unparseable property, which yields zero rather than a clamp.
      */

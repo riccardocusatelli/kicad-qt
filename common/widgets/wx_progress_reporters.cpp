@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <thread>
@@ -29,23 +25,30 @@
 #include <widgets/wx_progress_reporters.h>
 
 
-WX_PROGRESS_REPORTER::WX_PROGRESS_REPORTER( wxWindow* aParent, const wxString& aTitle,
-                                            int aNumPhases, int aCanAbort,
+static wxString getPlaceholderText()
+{
+    const int c_numChars = 80;
+
+    return wxString( L'\u2002', c_numChars ); // EN SPACE
+}
+
+
+WX_PROGRESS_REPORTER::WX_PROGRESS_REPORTER( wxWindow* aParent, const wxString& aTitle, int aNumPhases, int aCanAbort,
                                             bool aReserveSpaceForMessage ) :
         PROGRESS_REPORTER_BASE( aNumPhases ),
-        WX_PROGRESS_REPORTER_BASE( aTitle,
-                                   ( aReserveSpaceForMessage ? wxString( ' ', 80 ) : wxString( wxT( "" ) ) ),
+        WX_PROGRESS_REPORTER_BASE( aTitle, aReserveSpaceForMessage ? getPlaceholderText() : wxString( wxEmptyString ),
                                    1, aParent,
                                    // wxPD_APP_MODAL |   // Don't use; messes up OSX when called from
-                                                         // quasi-modal dialog
-                                   wxPD_AUTO_HIDE |      // *MUST* use; otherwise wxWidgets will spin
-                                                         // up another event loop on completion which
-                                                         // causes all sorts of grief
-                                   aCanAbort | wxPD_ELAPSED_TIME ),
+                                   // quasi-modal dialog
+                                   wxPD_AUTO_HIDE | // *MUST* use; otherwise wxWidgets will spin
+                                                    // up another event loop on completion which
+                                                    // causes all sorts of grief
+                                           aCanAbort | wxPD_ELAPSED_TIME ),
         m_appProgressIndicator( aParent ),
-        m_messageWidth( 0 ),
+        m_reservedSize( aReserveSpaceForMessage ),
         m_updateThrottle( std::chrono::milliseconds( 100 ) ),
-        m_lastUpdateResult( true )
+        m_lastUpdateResult( true ),
+        m_indeterminate( false )
 {
     // wxAppProgressIndicator doesn't like value > max, ever. However there are some risks
     // with multithreaded setting of those values making a mess
@@ -74,35 +77,37 @@ bool WX_PROGRESS_REPORTER::updateUI()
 
     SetRange( 1000 );
 
-    wxString message;
-    bool     messageChanged;
-
+    wxString message; // Empty message means unchanged
     {
         std::lock_guard<std::mutex> guard( m_mutex );
-        message = m_rptMessage;
-        messageChanged = m_messageChanged.exchange( false );
+        bool                        messageChanged = m_messageChanged.exchange( false );
+
+        if( messageChanged )
+            message = m_rptMessage;
     }
 
-    // Perhaps the window size is too small if the new message to display is bigger
-    // than the previous message. in this case, resize the WX_PROGRESS_REPORTER window
-    // GetTextExtent has probably bugs in wxWidgets < 3.1.6, so calling it only when
-    // the message has changed is mandatory
-    if( messageChanged )
-    {
-        int newWidth = GetTextExtent( message ).x;
+    // Remove trailing newline
+    if( !message.empty() && message.Last() == '\n' )
+        message.RemoveLast();
 
-        if( newWidth > m_messageWidth )
-        {
-            m_messageWidth = newWidth;
-            Fit();
-        }
+    if( m_reservedSize && !message.empty() )
+    {
+        wxSize maxSize = GetTextExtent( getPlaceholderText() );
+
+        wxClientDC dc( this );
+        message = wxControl::Ellipsize( message, dc, wxELLIPSIZE_MIDDLE, maxSize.x );
     }
 
     // Allowing interaction with other windows has unintended consequences
     wxWindowDisabler ed( this );
 
-    // Returns false when cancelled (if it's a cancellable dialog)
-    bool diag = WX_PROGRESS_REPORTER_BASE::Update( cur, message );
+    // Returns false when cancelled (if it's a cancellable dialog). A phase whose total is not
+    // known yet pulses instead, so the gauge shows that work is still going on.
+    bool diag = m_indeterminate.load() ? WX_PROGRESS_REPORTER_BASE::Pulse( message )
+                                       : WX_PROGRESS_REPORTER_BASE::Update( cur, message );
+
+    if( !message.empty() )
+        Fit();
 
     DrainPendingEvents();
 

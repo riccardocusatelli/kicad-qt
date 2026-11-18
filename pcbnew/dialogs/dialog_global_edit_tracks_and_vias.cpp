@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <algorithm>
@@ -374,7 +370,9 @@ void DIALOG_GLOBAL_EDIT_TRACKS_AND_VIAS::visitItem( PICKED_ITEMS_LIST* aUndoList
 
     if( aItem->Type() == PCB_VIA_T )
     {
-        if( m_filterByViaSize->GetValue() && aItem->GetWidth() != m_viaSizeFilter.GetValue() )
+        PCB_VIA* via = static_cast<PCB_VIA*>( aItem );
+
+        if( m_filterByViaSize->GetValue() && via->GetWidth( PADSTACK::ALL_LAYERS ) != m_viaSizeFilter.GetValue() )
             return;
     }
     else
@@ -433,9 +431,9 @@ bool DIALOG_GLOBAL_EDIT_TRACKS_AND_VIAS::TransferDataFromWindow()
         m_brd->OnItemsChanged( m_items_changed );
         m_parent->OnModify();
 
-        auto connectivity = m_brd->GetConnectivity();
-        connectivity->RecalculateRatsnest();
-        connectivity->ClearLocalRatsnest();
+        m_brd->GetConnectivity()->ClearLocalRatsnest();
+        m_brd->CompileRatsnest();
+
         m_parent->GetCanvas()->RedrawRatsnest();
         m_brd->OnRatsnestChanged();
     }

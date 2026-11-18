@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef GL_CONTEXT_MANAGER_H
@@ -34,6 +30,7 @@
 
 #include <mutex>
 #include <map>
+#include <set>
 
 /// The OpenGL context and canvas of the GUI toolkit (each GUI build has its own
 /// gl_context_mgr.h).
@@ -59,6 +56,9 @@ public:
      *
      * It is assured that the created context is freed upon exit.  See the documentation of the
      * context of the toolkit for the parameters description.
+     *
+     * The reset strategy is chosen here; with \a aOther it follows that context's strategy and
+     * returns nullptr rather than create a context whose strategy does not match.
      *
      * @return Created OpenGL context.
      */
@@ -125,9 +125,19 @@ public:
     }
 
     /**
+     * @return true if \a aContext was created to report GPU resets.  Contexts sharing objects
+     *         with it must be created the same way.
+     */
+    bool IsLoseOnReset( const wxGLContext* aContext ) const
+    {
+        return m_loseOnResetContexts.count( aContext ) > 0;
+    }
+
+    /**
      * Run the given function first releasing the GL context lock, then restoring it.
      *
      * @param aFunction is the function to be executed.
+     * @param args is the list of arguements.
      */
     template<typename Func, typename... Args>
     auto RunWithoutCtxLock( Func&& aFunction, Args&&... args )
@@ -157,7 +167,10 @@ private:
     ///< Currently bound GL context.
     KIGL_CONTEXT* m_glCtx;
 
-    ///< Lock to prevent unexpected GL context switching.
+    /// Contexts created with the lose-on-reset notification strategy.
+    std::set<const wxGLContext*> m_loseOnResetContexts;
+
+    /// Lock to prevent unexpected GL context switching.
     std::mutex m_glCtxMutex;
 };
 

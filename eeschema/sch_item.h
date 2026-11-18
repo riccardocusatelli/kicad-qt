@@ -15,15 +15,13 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
 
+#include <memory>
+#include <optional>
 #include <unordered_map>
 #include <unordered_set>
 #include <map>
@@ -32,14 +30,15 @@
 #include <eda_item.h>
 #include <properties/property.h>
 #include <sch_sheet_path.h>
-#include <netclass.h>
 #include <stroke_params.h>
 #include <layer_ids.h>
-#include <sch_render_settings.h>
-#include <plotters/plotter.h>
 #include <core/ki_assert.h>
 
+class NETCLASS;
+class PLOTTER;
+class SCH_RENDER_SETTINGS;
 class CONNECTION_GRAPH;
+struct CONNECTION_GRAPH_LIFETIME;
 class SCH_CONNECTION;
 class SCH_SHEET_PATH;
 class SCHEMATIC;
@@ -49,6 +48,11 @@ class LINE_READER;
 class SCH_EDIT_FRAME;
 class SCH_RULE_AREA;
 struct SCH_PLOT_OPTS;
+
+namespace KIGFX
+{
+class RENDER_SETTINGS;
+}
 
 namespace KIFONT
 {
@@ -150,12 +154,10 @@ public:
     static std::vector<DANGLING_END_ITEM>::iterator
     get_lower_type( std::vector<DANGLING_END_ITEM>& aItemListByType, const DANGLING_END_T& aType );
 
-    /** Both contain the same information */
+    // Both contain the same information
     static void sort_dangling_end_items( std::vector<DANGLING_END_ITEM>& aItemListByType,
                                          std::vector<DANGLING_END_ITEM>& aItemListByPos );
 };
-
-typedef std::vector<SCH_ITEM*> SCH_ITEM_VEC;
 
 
 /**
@@ -231,11 +233,13 @@ public:
      * @param addToParentGroup Indicates whether or not the new item is added to the group
      *                         (if any) containing the old item.  If true, aCommit must be
      *                         provided.
+     * @param[out] aCommit is the optional commit object for undo/redo operations.
      * @param aDoClone (default = false) indicates unique values (such as timestamp and
      *                 sheet name) should be duplicated.  Use only for undo/redo operations.
      */
-    SCH_ITEM* Duplicate( bool addToParentGroup, SCH_COMMIT* aCommit = nullptr, bool doClone = false ) const;
+    SCH_ITEM* Duplicate( bool addToParentGroup, SCH_COMMIT* aCommit = nullptr, bool aDoClone = false ) const;
 
+    // Note: 0 represents "All Units", NOT the first unit
     virtual void SetUnit( int aUnit ) { m_unit = aUnit; }
     int GetUnit() const { return m_unit; }
 
@@ -245,6 +249,7 @@ public:
     virtual wxString GetUnitDisplayName( int aUnit, bool aLabel ) const;
     virtual wxString GetBodyStyleDescription( int aBodyStyle, bool aLabel ) const;
 
+    // Note: 0 represents "All Body Styles, NOT the first body style
     virtual void SetBodyStyle( int aBodyStyle ) { m_bodyStyle = aBodyStyle; }
     int  GetBodyStyle() const { return m_bodyStyle; }
 
@@ -253,6 +258,9 @@ public:
 
     void SetPrivate( bool aPrivate ) { m_private = aPrivate; }
     bool IsPrivate() const { return m_private; }
+
+    bool IsLocked() const override;
+    void SetLocked( bool aLocked ) override { m_isLocked = aLocked; }
 
     virtual void SetExcludedFromSim( bool aExclude, const SCH_SHEET_PATH* aInstance = nullptr,
                                      const wxString& aVariantName = wxEmptyString ) { }
@@ -290,6 +298,8 @@ public:
                      const wxString& aVariantName = wxEmptyString ) const;
 
     wxString ResolveText( const wxString& aText, const SCH_SHEET_PATH* aPath, int aDepth = 0 ) const;
+    wxString ResolveText( const wxString& aText, const SCH_SHEET_PATH* aPath, int aDepth,
+                          const wxString& aVariantName ) const;
 
     /**
      * Check if object is movable from the anchor point.
@@ -318,6 +328,8 @@ public:
      * @return the parent schematic this item lives on, or nullptr.
      */
     SCHEMATIC* Schematic() const;
+
+    SCH_SCREEN* GetParentScreen() const;
 
     const SYMBOL* GetParentSymbol() const;
     SYMBOL* GetParentSymbol();
@@ -351,6 +363,12 @@ public:
      */
     std::vector<int> ViewGetLayers() const override;
 
+    /**
+     * The view bounds of text that shows a net name must match the drawing, so this reads
+     * connectivity inside a SCH_CONNECTIVITY::RENDER_SCOPE.
+     */
+    const BOX2I ViewBBox() const override;
+
     int GetMaxError() const;
 
     /**
@@ -360,11 +378,16 @@ public:
 
     int GetEffectivePenWidth( const SCH_RENDER_SETTINGS* aSettings ) const;
 
-    const wxString& GetDefaultFont( const RENDER_SETTINGS* aSettings ) const;
+    const wxString& GetDefaultFont( const KIGFX::RENDER_SETTINGS* aSettings ) const;
 
     const KIFONT::METRICS& GetFontMetrics() const;
 
     bool RenderAsBitmap( double aWorldScale ) const override;
+
+    /**
+     * The world scale below which the item is drawn as bitmap text, or 0 if it never is.
+     */
+    double BitmapWorldScaleLimit() const;
 
     /**
      * Return a measure of how likely the other object is to represent the same
@@ -541,8 +564,6 @@ public:
      * Add all the connection points for this item to \a aPoints.
      *
      * Not all schematic items have connection points so the default method does nothing.
-     *
-     * @param aPoints is the list of connection points to add to.
      */
     virtual std::vector<VECTOR2I> GetConnectionPoints() const { return {}; }
 
@@ -562,9 +583,34 @@ public:
     SCH_CONNECTION* Connection( const SCH_SHEET_PATH* aSheet = nullptr ) const;
 
     /**
+     * Return the active connection name; absent for missing or stale published rows.
+     * aIgnoreSheet removes only the hierarchy prefix of the canonical name.
+     */
+    std::optional<wxString> GetConnectionName( const SCH_SHEET_PATH* aSheet = nullptr,
+                                              bool aLocal = false, bool aIgnoreSheet = false ) const;
+
+    // Missing or stale published connections are not buses.
+    bool HasBusConnection( const SCH_SHEET_PATH* aSheet = nullptr ) const;
+
+    /**
+     * Names of the bus members of this item's connection, empty when it does not have a bus.
+     *
+     * The published connectivity gives the leaf names, so a nested bus is flattened here.
+     */
+    std::vector<wxString> GetBusMemberNames( const SCH_SHEET_PATH* aSheet = nullptr ) const;
+
+    /**
+     * Match \a aSearchData against the connection of this item on \a aSheet.
+     *
+     * A bus matches when one of its members matches.  An item without a connection never matches,
+     * which is also what a search finds while connectivity is out of date.
+     */
+    bool MatchesNetName( const EDA_SEARCH_DATA& aSearchData, const SCH_SHEET_PATH* aSheet ) const;
+
+    /**
      * Retrieve the set of items connected to this item on the given sheet.
      */
-    const SCH_ITEM_VEC& ConnectedItems( const SCH_SHEET_PATH& aPath );
+    const std::vector<SCH_ITEM*>& ConnectedItems( const SCH_SHEET_PATH& aPath ) const;
 
     /**
      * Add a connection link between this item and another.
@@ -579,7 +625,8 @@ public:
     /**
      * Create a new connection object associated with this object.
      *
-     * @param aPath is the sheet path to initialize.
+     * @param[in] aPath is the sheet path to initialize.
+     * @param[in] aGraph is the connection graph to initialize.
      */
     SCH_CONNECTION* InitializeConnection( const SCH_SHEET_PATH& aPath, CONNECTION_GRAPH* aGraph );
 
@@ -592,7 +639,12 @@ public:
 
     bool IsConnectivityDirty() const { return m_connectivity_dirty; }
 
-    void SetConnectivityDirty( bool aDirty = true ) { m_connectivity_dirty = aDirty; }
+    /**
+     * Set the dirty flag.  Setting it also bumps the parent screen revision for a connectivity
+     * source, so an edit outside SCH_COMMIT can use this call.  Clearing it does not bump.  The
+     * bump follows the draw list check of invalidateConnectivity().
+     */
+    void SetConnectivityDirty( bool aDirty = true );
 
     /**
      * Check if \a aItem has connectivity changes against this object.
@@ -655,12 +707,14 @@ public:
     /**
      * Plot the item to \a aPlotter.
      *
+     * @param[in] aPlotter is the #PLOTTER object to plot to.
      * @param aBackground a poor-man's Z-order.  The routine will get called twice, first with
      *                    aBackground true and then with aBackground false.
-     * @param aUnit - which unit to print.
-     * @param aBodyStyle - which body style to print.
-     * @param aOffset relative offset.
-     * @param aDimmed reduce brightness of item.
+     * @param[in] aPlotOpts are the options that control the plot output.
+     * @param aUnit is which unit to print.
+     * @param aBodyStyle is which body style to print.
+     * @param aOffset is a relative offset.
+     * @param aDimmed to reduce brightness of item.
      */
     virtual void Plot( PLOTTER* aPlotter, bool aBackground, const SCH_PLOT_OPTS& aPlotOpts,
                        int aUnit, int aBodyStyle, const VECTOR2I& aOffset, bool aDimmed)
@@ -694,25 +748,27 @@ public:
     const std::vector<wxString>* GetEmbeddedFonts() override;
 
     /**
-     * The list of flags used by the #compare function.
-     *
-     * UNIT  This flag relaxes unit, body-style and pin-number constraints.  It is used for
-     *       #SCH_ITEM object unit comparisons.
-     *
-     * EQUALITY  This flag relaxes ordering constraints so that fields, etc. don't have to
-     *           appear in the same order to be considered equal.
-     *
-     * ERC  This flag relaxes constraints on data that is settable in the schematic editor.
-     *      It compares only symbol-editor-only data.
-     *
-     * SKIP_TST_POS   This flag relaxes comparisons on position (mainly for fields) for ERC.
+     * The list of flags used by various compare functions.
      */
     enum COMPARE_FLAGS : int
     {
-        UNIT          = 0x01,
-        EQUALITY      = 0x02,
-        ERC           = 0x04,
-        SKIP_TST_POS  = 0x08
+        UNIT                   = 1 << 0,
+        POSITION               = 1 << 1,
+        UUID                   = 1 << 2,
+        MISSING_FIELDS         = 1 << 3,
+        EXTRA_FIELDS           = 1 << 4,
+        FIELD_TEXT             = 1 << 5,
+        FIELD_VISIBILITY       = 1 << 6,
+        FIELD_SIZE_AND_STYLE   = 1 << 7,
+        FIELD_POSITIONS        = 1 << 8,
+        PIN_VISIBILITIES       = 1 << 9,
+        PIN_ALT_DEFS           = 1 << 10,
+        EXCLUDE_FROM_SIM       = 1 << 11,
+        EXCLUDE_FROM_BOARD     = 1 << 12,
+        DNP                    = 1 << 13,
+        EXCLUDE_FROM_BOM       = 1 << 15,
+        EXCLUDE_FROM_POS_FILES = 1 << 16,
+        IDENTITY               = 1 << 17,
     };
 
     virtual bool operator==( const SCH_ITEM& aOther ) const;
@@ -729,10 +785,15 @@ protected:
      */
     virtual void swapData( SCH_ITEM* aItem );
 
-    SCH_RENDER_SETTINGS* getRenderSettings( PLOTTER* aPlotter ) const
-    {
-        return static_cast<SCH_RENDER_SETTINGS*>( aPlotter->RenderSettings() );
-    }
+    /**
+     * Bump the parent screen's connectivity revision when this item, or the item owning it as a
+     * child, is on its draw list.  Call it from each setter that changes captured state.
+     *
+     * @param aChangedType is passed to SCH_SCREEN::BumpConnectivityRevision().
+     */
+    void invalidateConnectivity( KICAD_T aChangedType = TYPE_NOT_INIT );
+
+    SCH_RENDER_SETTINGS* getRenderSettings( PLOTTER* aPlotter ) const;
 
     struct cmp_items
     {
@@ -759,10 +820,14 @@ protected:
      *         zero if the object is equal to \a aOther object, or greater than 0 if the
      *         object is greater than \a aOther object.
      */
-    virtual int compare( const SCH_ITEM& aOther, int aCompareFlags = 0 ) const;
+    virtual int compare( const SCH_ITEM& aOther, int aCompareFlags = ~COMPARE_FLAGS::UNIT ) const;
 
 private:
     friend class CONNECTION_GRAPH;
+    friend class LIB_SYMBOL;
+
+    /// Graph membership belongs to this item identity and must not propagate to clones.
+    void registerConnectivityOwner( const std::shared_ptr<CONNECTION_GRAPH_LIFETIME>& aOwner );
 
     /**
      * Provide the object specific test to see if it is connected to \a aPosition.
@@ -789,21 +854,21 @@ protected:
                                             // an initial position of the item or mouse cursor
 
     /// Store pointers to other items that are connected to this one, per sheet.
-    std::map<SCH_SHEET_PATH, SCH_ITEM_VEC, SHEET_PATH_CMP> m_connected_items;
+    std::map<SCH_SHEET_PATH, std::vector<SCH_ITEM*>, SHEET_PATH_CMP> m_connected_items;
 
     /// Store connectivity information, per sheet.
-    std::unordered_map<SCH_SHEET_PATH, SCH_CONNECTION*>    m_connection_map;
+    std::unordered_map<SCH_SHEET_PATH, SCH_CONNECTION*>              m_connection_map;
 
-    bool                                                   m_connectivity_dirty;
+    bool                                                             m_connectivity_dirty;
 
     /// Store pointers to rule areas which this item is contained within
-    std::unordered_set<SCH_RULE_AREA*>                     m_rule_areas_cache;
+    std::unordered_set<SCH_RULE_AREA*>                               m_rule_areas_cache;
+
+    bool                                                             m_isLocked;
 
 private:
-    friend class LIB_SYMBOL;
+    /// An item may be indexed by multiple graphs, each with an independent lifetime.
+    std::vector<std::weak_ptr<CONNECTION_GRAPH_LIFETIME>>            m_connectivityOwners;
 };
 
-#ifndef SWIG
 DECLARE_ENUM_TO_WXANY( SCH_LAYER_ID );
-#endif
-

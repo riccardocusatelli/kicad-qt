@@ -14,8 +14,8 @@
 * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 * General Public License for more details.
 *
-* You should have received a copy of the GNU General Public License along
-* with this program.  If not, see <http://www.gnu.org/licenses/>.
+* You should have received a copy of the GNU General Public License
+* along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #ifndef KIPLATFORM_APP_H_
@@ -95,6 +95,24 @@ namespace KIPLATFORM
          * @param aPath is the full path to insert
          */
         void AddDynamicLibrarySearchPath( const wxString& aPath );
+
+        /**
+         * Raise or lower the scheduling priority of the calling thread.
+         *
+         * Raising it may need privileges the process does not have.
+         *
+         * @param aRaise is true to schedule the thread above normal, false to schedule it below.
+         * @return true if the priority was changed.
+         */
+        bool SetCurrentThreadPriority( bool aRaise );
+
+        /**
+         * End the process at once with the given exit code, skipping static destruction, atexit handlers and
+         * library unload.  For use after the application has flushed what it needs to keep.
+         *
+         * @param aExitCode is the process exit code
+         */
+        [[noreturn]] void TerminateWithCode( int aExitCode );
     }
 }
 

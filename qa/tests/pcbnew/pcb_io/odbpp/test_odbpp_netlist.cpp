@@ -44,52 +44,13 @@
 #include <wx/dir.h>
 #include <wx/ffile.h>
 #include <wx/filename.h>
-#include <wx/utils.h>
 #include <wx/regex.h>
+
+#include "odb_test_utils.h"
 
 
 namespace
 {
-
-wxFileName MakeTempDir( const wxString& aPrefix )
-{
-    wxFileName tempDir(
-            wxFileName::CreateTempFileName( wxString::Format( wxT( "kicad-%s-" ), aPrefix ) ) );
-
-    BOOST_REQUIRE( tempDir.FileExists() );
-    BOOST_REQUIRE( wxRemoveFile( tempDir.GetFullPath() ) );
-    BOOST_REQUIRE( tempDir.Mkdir( wxS_DIR_DEFAULT, wxPATH_MKDIR_FULL ) );
-
-    return tempDir;
-}
-
-
-// Save and restore the static ODB++ exporter formatting state so this regression
-// test does not change formatting defaults for later tests in the shared binary.
-struct ODB_EXPORT_STATE_GUARD
-{
-    ODB_EXPORT_STATE_GUARD() :
-            m_scale( PCB_IO_ODBPP::m_scale ),
-            m_symbolScale( PCB_IO_ODBPP::m_symbolScale ),
-            m_sigfig( PCB_IO_ODBPP::m_sigfig ),
-            m_unitsStr( PCB_IO_ODBPP::m_unitsStr )
-    {
-    }
-
-    ~ODB_EXPORT_STATE_GUARD()
-    {
-        PCB_IO_ODBPP::m_scale = m_scale;
-        PCB_IO_ODBPP::m_symbolScale = m_symbolScale;
-        PCB_IO_ODBPP::m_sigfig = m_sigfig;
-        PCB_IO_ODBPP::m_unitsStr = m_unitsStr;
-    }
-
-    double      m_scale;
-    double      m_symbolScale;
-    int         m_sigfig;
-    std::string m_unitsStr;
-};
-
 
 wxString ReadFile( const wxFileName& aPath )
 {
@@ -105,9 +66,7 @@ wxString ReadFile( const wxFileName& aPath )
 
 BOOST_AUTO_TEST_CASE( ODBNetlistCoordinatesMatchFeatures )
 {
-    wxFileName tempDir = MakeTempDir( wxT( "odb-netlist" ) );
-
-    ODB_EXPORT_STATE_GUARD odbExportStateGuard;
+    KI_TEST::SCOPED_TEMP_DIR tempDir( wxT( "odb-netlist" ) );
 
     BOARD board;
     board.SetCopperLayerCount( 2 );
@@ -122,6 +81,7 @@ BOOST_AUTO_TEST_CASE( ODBNetlistCoordinatesMatchFeatures )
     fp->SetReference( wxT( "U1" ) );
 
     PAD* pad = new PAD( fp );
+    pad->SetPadstackMode( PADSTACK::MODE::NORMAL );
     pad->SetAttribute( PAD_ATTRIB::SMD );
     pad->SetShape( PADSTACK::ALL_LAYERS, PAD_SHAPE::RECTANGLE );
     pad->SetSize( PADSTACK::ALL_LAYERS, VECTOR2I( pcbIUScale.mmToIU( 1.0 ), pcbIUScale.mmToIU( 0.5 ) ) );
@@ -138,15 +98,16 @@ BOOST_AUTO_TEST_CASE( ODBNetlistCoordinatesMatchFeatures )
 
     // Add a via at a known position
     PCB_VIA* via = new PCB_VIA( &board );
+    via->SetPadstackMode( PADSTACK::MODE::NORMAL );
     via->SetPosition( VECTOR2I( pcbIUScale.mmToIU( 120.0 ), pcbIUScale.mmToIU( 60.0 ) ) );
     via->SetLayerPair( F_Cu, B_Cu );
     via->SetDrill( pcbIUScale.mmToIU( 0.3 ) );
-    via->SetWidth( pcbIUScale.mmToIU( 0.6 ) );
+    via->SetWidth( PADSTACK::ALL_LAYERS, pcbIUScale.mmToIU( 0.6 ) );
     via->SetNet( net1 );
     board.Add( via );
 
     // Export ODB++
-    wxFileName odbRoot( tempDir.GetFullPath(), wxEmptyString );
+    wxFileName odbRoot( tempDir.PathStr(), wxEmptyString );
     odbRoot.AppendDir( wxT( "odb_out" ) );
     BOOST_REQUIRE( odbRoot.Mkdir( wxS_DIR_DEFAULT, wxPATH_MKDIR_FULL ) );
 
@@ -154,7 +115,7 @@ BOOST_AUTO_TEST_CASE( ODBNetlistCoordinatesMatchFeatures )
     std::map<std::string, UTF8> props;
     props["units"] = "mm";
     props["sigfig"] = "6";
-    BOOST_REQUIRE_NO_THROW( odbExporter.SaveBoard( odbRoot.GetFullPath(), &board, &props ) );
+    BOOST_REQUIRE_NO_THROW( odbExporter.SaveBoard( odbRoot.GetFullPath(), board, &props ) );
 
     // Read the netlist file
     wxFileName netlistFile( odbRoot.GetFullPath(), wxEmptyString );
@@ -195,8 +156,4 @@ BOOST_AUTO_TEST_CASE( ODBNetlistCoordinatesMatchFeatures )
                          "Netlist should not contain aux-origin-shifted X coordinate 50.0" );
     BOOST_CHECK_MESSAGE( netlistContent.Contains( wxT( "100.0" ) ),
                          "Netlist should contain the raw pad X coordinate 100.0" );
-
-    // Clean up
-    wxFileName::Rmdir( odbRoot.GetFullPath(), wxPATH_RMDIR_RECURSIVE );
-    wxFileName::Rmdir( tempDir.GetFullPath(), wxPATH_RMDIR_RECURSIVE );
 }

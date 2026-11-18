@@ -18,11 +18,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -67,6 +63,16 @@ public:
     void onScroll( wxScrollWinEvent& aEvent );
     void onCaptureLost( wxMouseEvent& WXUNUSED( aEvent ) );
 
+    /**
+     * Apply a platform gesture expressed in canvas pixel coordinates.
+     *
+     * @param aPanDelta is the content translation since the previous update.
+     * @param aZoomFactor is the relative scale change since the previous update.
+     * @param aZoomAnchor is the canvas position around which zooming is applied.
+     */
+    void ApplyPanAndZoomGesture( const VECTOR2D& aPanDelta, double aZoomFactor,
+                                 const VECTOR2D& aZoomAnchor );
+
 
     /**
      * Force the cursor to stay within the drawing panel area.
@@ -95,7 +101,6 @@ public:
     /// @copydoc VIEW_CONTROLS::SetCrossHairCursorPosition()
     void SetCrossHairCursorPosition( const VECTOR2D& aPosition, bool aWarpView ) override;
 
-    /// @copydoc VIEW_CONTROLS::CursorWarp()
     void WarpMouseCursor( const VECTOR2D& aPosition, bool aWorldCoordinates = false, bool aWarpView = false ) override;
 
     /// @copydoc VIEW_CONTROLS::CenterOnCursor()
@@ -134,6 +139,16 @@ private:
     void setState( STATE aNewState );
 
     /**
+     * Set the panel's cursor-in-canvas state from the pointer position after a capture change.
+     */
+    void syncCursorInCanvas();
+
+    /**
+     * @return true if the window under the pointer is the panel or one of its children.
+     */
+    bool isPointerOverCanvas() const;
+
+    /**
      * Compute new viewport settings while in autopanning mode.
      *
      * @param aEvent is an event to be processed and decide if autopanning should happen.
@@ -149,6 +164,12 @@ private:
      * @param y Mouse position
      */
     void handleCursorCapture( int x, int y );
+
+    /**
+     * Repaint only when the canvas keeps a retained scene. Other canvases repaint from the refresh
+     * the mouse event posts.
+     */
+    void repaintRetained();
 
     /**
      * Send an event to refresh mouse position.

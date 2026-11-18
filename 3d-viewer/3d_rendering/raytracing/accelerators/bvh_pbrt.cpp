@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -269,7 +265,7 @@ BVH_PBRT::BVH_PBRT( const CONTAINER_3D_BASE& aObjectContainer, int aMaxPrimsInNo
     // Build BVH tree for primitives using _primitiveInfo_
     int totalNodes = 0;
 
-    CONST_VECTOR_OBJECT orderedPrims;
+    std::vector<const OBJECT_3D*> orderedPrims;
     orderedPrims.clear();
     orderedPrims.reserve( m_primitives.size() );
 
@@ -426,7 +422,7 @@ struct BucketInfo
 
 BVHBuildNode *BVH_PBRT::recursiveBuild ( std::vector<BVHPrimitiveInfo>& primitiveInfo,
                                          int start, int end, int* totalNodes,
-                                         CONST_VECTOR_OBJECT& orderedPrims )
+                                         std::vector<const OBJECT_3D*>& orderedPrims )
 {
     KI_ASSERT( totalNodes != nullptr );
     KI_ASSERT( start >= 0 );
@@ -677,7 +673,7 @@ BVHBuildNode *BVH_PBRT::recursiveBuild ( std::vector<BVHPrimitiveInfo>& primitiv
 
 
 BVHBuildNode *BVH_PBRT::HLBVHBuild( const std::vector<BVHPrimitiveInfo>& primitiveInfo,
-                                    int* totalNodes, CONST_VECTOR_OBJECT& orderedPrims )
+                                    int* totalNodes, std::vector<const OBJECT_3D*>& orderedPrims )
 {
     // Compute bounding box of all primitive centroids
     BBOX_3D bounds;
@@ -793,11 +789,9 @@ BVHBuildNode *BVH_PBRT::HLBVHBuild( const std::vector<BVHPrimitiveInfo>& primiti
 }
 
 
-BVHBuildNode *BVH_PBRT::emitLBVH( BVHBuildNode* &buildNodes,
-                                  const std::vector<BVHPrimitiveInfo>& primitiveInfo,
+BVHBuildNode *BVH_PBRT::emitLBVH( BVHBuildNode* &buildNodes, const std::vector<BVHPrimitiveInfo>& primitiveInfo,
                                   MortonPrimitive* mortonPrims, int nPrimitives, int* totalNodes,
-                                  CONST_VECTOR_OBJECT& orderedPrims, int *orderedPrimsOffset,
-                                  int bit )
+                                  std::vector<const OBJECT_3D*>& orderedPrims, int *orderedPrimsOffset, int bit )
 {
     KI_ASSERT( nPrimitives > 0 );
     KI_ASSERT( totalNodes != nullptr );

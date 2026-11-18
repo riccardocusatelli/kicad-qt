@@ -17,14 +17,11 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <core/kicad_algo.h>
+#include <scoped_set_reset.h>
 #include <chrono>
 #include <optional>
 #include <thread>
@@ -345,7 +342,7 @@ bool TOOL_MANAGER::doRunAction( const TOOL_ACTION& aAction, bool aNow, const ki:
     TOOL_EVENT event = aAction.MakeEvent();
 
     if( event.Category() == TC_COMMAND )
-        event.SetMousePosition( GetCursorPosition() );
+        event.SetMousePosition( m_hotKeyPos.value_or( GetCursorPosition() ) );
 
     // Allow to override the action parameter
     if( aParam.has_value() )
@@ -457,7 +454,11 @@ bool TOOL_MANAGER::invokeTool( TOOL_BASE* aTool )
     KI_ASSERT( aTool != nullptr );
 
     TOOL_EVENT evt( TC_COMMAND, TA_ACTIVATE, aTool->GetName() );
-    evt.SetMousePosition( GetCursorPosition() );
+
+    // Attach the cursor position if there is a canvas to query
+    if( m_viewControls )
+        evt.SetMousePosition( GetCursorPosition() );
+
     processEvent( evt );
 
     if( TOOL_STATE* active = GetCurrentToolState() )
@@ -488,21 +489,14 @@ bool TOOL_MANAGER::runTool( TOOL_BASE* aTool )
     if( aTool->GetType() == INTERACTIVE )
         static_cast<TOOL_INTERACTIVE*>( aTool )->resetTransitions();
 
+    auto it = std::find( m_activeTools.begin(), m_activeTools.end(), id );
+
     // If the tool is already active, bring it to the top of the active tools stack
-    if( isActive( aTool ) && m_activeTools.size() > 1 )
+    if( it != m_activeTools.end() )
     {
-        auto it = std::find( m_activeTools.begin(), m_activeTools.end(), id );
-
-        if( it != m_activeTools.end() )
-        {
-            if( it != m_activeTools.begin() )
-            {
-                m_activeTools.erase( it );
-                m_activeTools.push_front( id );
-            }
-
-            return false;
-        }
+        // Splice keeps the node, so dispatchInternal() can still iterate from it
+        m_activeTools.splice( m_activeTools.begin(), m_activeTools, it );
+        return false;
     }
 
     setActiveState( m_toolIdIndex[id] );
@@ -568,36 +562,38 @@ void TOOL_MANAGER::ShutdownTool( TOOL_BASE* aTool )
 {
     KI_ASSERT( aTool != nullptr );
 
-    TOOL_ID id = aTool->GetId();
-
-    if( isActive( aTool ) )
+    while( isActive( aTool ) )
     {
-        TOOL_MANAGER::ID_LIST::iterator it = std::find( m_activeTools.begin(),
-                                                        m_activeTools.end(), id );
+        TOOL_STATE* st = m_toolState[aTool];
 
-        TOOL_STATE* st = m_toolIdIndex[*it];
+        // Pop() restores saved contexts without the flag
+        st->shutdown = true;
 
-        // the tool state handler is waiting for events (i.e. called Wait() method)
-        if( st && st->pendingWait )
+        if( st->cofunc && st->cofunc->Running() )
         {
+            // An executing handler is up the native stack and unwinds at its next Wait()
+            if( !st->pendingWait )
+                break;
+
             // Wake up the tool and tell it to shutdown
-            st->shutdown = true;
             st->pendingWait = false;
             st->waitEvents.clear();
 
-            if( st->cofunc )
+            KI_LOG_TRACE( kicadTraceToolStack, wxS( "TOOL_MANAGER::ShutdownTool - Shutting down tool %s" ),
+                        st->theTool->GetName() );
+
+            setActiveState( st );
+
+            if( st->cofunc->Resume() )
             {
-                KI_LOG_TRACE( kicadTraceToolStack,
-                            wxS( "TOOL_MANAGER::ShutdownTool - Shutting down tool %s" ),
-                            st->theTool->GetName() );
-
-                setActiveState( st );
-                bool end = !st->cofunc->Resume();
-
-                if( end )
-                    finishTool( st );
+                KI_FAIL_MSG( wxS( "Tool suspended again during shutdown" ) );
+                break;
             }
         }
+
+        // finishTool() restores the previous context when the same tool was re-entered
+        // Keep unwinding until every saved context has seen the shutdown request
+        finishTool( st );
     }
 }
 
@@ -655,18 +651,17 @@ void TOOL_MANAGER::ResetTools( TOOL_BASE::RESET_REASON aReason )
 
 void TOOL_MANAGER::InitTools()
 {
-    for( auto it = m_toolOrder.begin(); it != m_toolOrder.end(); /* iter inside */ )
+    for( auto it = m_toolOrder.begin(); it != m_toolOrder.end(); ++it )
     {
         TOOL_BASE* tool = *it;
+
         KI_ASSERT( m_toolState.count( tool ) );
         TOOL_STATE* state = m_toolState[tool];
         setActiveState( state );
-        ++it;   // keep the iterator valid if the element is going to be erased
 
         if( !tool->Init() )
         {
-            KI_LOG_TRACE( kicadTraceToolStack,
-                        wxS( "TOOL_MANAGER initialization of tool '%s' failed" ),
+            KI_LOG_TRACE( kicadTraceToolStack, wxS( "TOOL_MANAGER initialization of tool '%s' failed" ),
                         tool->GetName() );
 
             // Unregister the tool
@@ -678,8 +673,16 @@ void TOOL_MANAGER::InitTools()
 
             delete state;
             delete tool;
+            *it = nullptr;
         }
     }
+
+    // Clear out any tools that failed to initialize
+    std::erase_if( m_toolOrder,
+                   []( const TOOL_BASE* aTool )
+                   {
+                       return aTool == nullptr;
+                   } );
 
     m_actionMgr->UpdateHotKeys( true );
 
@@ -731,6 +734,10 @@ TOOL_EVENT* TOOL_MANAGER::ScheduleWait( TOOL_BASE* aTool, const TOOL_EVENT_LIST&
 {
     TOOL_STATE* st = m_toolState[aTool];
 
+    // A handler unwinding from shutdown must not suspend again, or nested loops outlive the resume
+    if( st->shutdown )
+        return nullptr;
+
     KI_CHECK( !st->pendingWait, nullptr ); // everything collapses on two KiYield() in a row
 
     // indicate to the manager that we are going to sleep and we shall be
@@ -754,6 +761,8 @@ TOOL_EVENT* TOOL_MANAGER::ScheduleWait( TOOL_BASE* aTool, const TOOL_EVENT_LIST&
 bool TOOL_MANAGER::dispatchInternal( TOOL_EVENT& aEvent )
 {
     bool handled = false;
+
+    std::vector<COROUTINE<int, const TOOL_EVENT&>*> reactivated;
 
     KI_LOG_TRACE( kicadTraceToolStack, wxS( "TOOL_MANAGER::dispatchInternal - received event: %s" ),
                 aEvent.Format() );
@@ -790,9 +799,12 @@ bool TOOL_MANAGER::dispatchInternal( TOOL_EVENT& aEvent )
             st->pendingWait = false;
             st->waitEvents.clear();
 
-            KI_LOG_TRACE( kicadTraceToolStack,
-                        wxS( "TOOL_MANAGER::dispatchInternal - Waking tool %s for event: %s" ),
+            KI_LOG_TRACE( kicadTraceToolStack, wxS( "TOOL_MANAGER::dispatchInternal - Waking tool %s for event: %s" ),
                         st->theTool->GetName(), aEvent.Format() );
+
+            bool ownActivation = aEvent.IsActivate() && st->initialEvent.IsActivate()
+                                 && st->initialEvent.Matches( aEvent );
+            auto resumed = st->cofunc;
 
             setActiveState( st );
             bool end = !st->cofunc->Resume();
@@ -802,13 +814,16 @@ bool TOOL_MANAGER::dispatchInternal( TOOL_EVENT& aEvent )
                 it = finishTool( st );
                 increment = false;
             }
+            else if( ownActivation )
+            {
+                reactivated.push_back( resumed );
+            }
 
             // If the tool did not request the event be passed to other tools, we're done
             if( !st->wakeupEvent.PassEvent() )
             {
                 KI_LOG_TRACE( kicadTraceToolStack,
-                            wxS( "TOOL_MANAGER::dispatchInternal - tool %s stopped passing "
-                                 "event: %s" ),
+                            wxS( "TOOL_MANAGER::dispatchInternal - tool %s stopped passing event: %s" ),
                             st->theTool->GetName(), aEvent.Format() );
 
                 return true;
@@ -832,6 +847,14 @@ bool TOOL_MANAGER::dispatchInternal( TOOL_EVENT& aEvent )
             {
                 if( tr.first.Matches( aEvent ) )
                 {
+                    // The live handler owns its reactivation, so a nested copy would only duplicate it
+                    if( st->cofunc && alg::contains( reactivated, st->cofunc ) )
+                    {
+                        handled = true;
+                        finished = true;
+                        break;
+                    }
+
                     auto func_copy = tr.second;
 
                     if( !aEvent.FirstResponder() )
@@ -849,8 +872,7 @@ bool TOOL_MANAGER::dispatchInternal( TOOL_EVENT& aEvent )
                     st->cofunc = new COROUTINE<int, const TOOL_EVENT&>( std::move( func_copy ) );
 
                     KI_LOG_TRACE( kicadTraceToolStack,
-                                wxS( "TOOL_MANAGER::dispatchInternal - Running tool %s for "
-                                     "event: %s" ),
+                                wxS( "TOOL_MANAGER::dispatchInternal - Running tool %s for event: %s" ),
                                 st->theTool->GetName(), aEvent.Format() );
 
                     // got match? Run the handler.
@@ -1179,6 +1201,26 @@ void TOOL_MANAGER::applyViewControls( const TOOL_STATE* aState )
 bool TOOL_MANAGER::processEvent( const TOOL_EVENT& aEvent )
 {
     KI_LOG_TRACE( kicadTraceToolStack, wxS( "TOOL_MANAGER::processEvent - %s" ), aEvent.Format() );
+
+    // Capture the cursor position from the keyboard event so that hotkey-triggered actions use
+    // the position at keypress time rather than polling a potentially stale position later in the
+    // dispatch chain.  The scoped guard restores any prior value so a nested hotkey dispatch does
+    // not clobber the outer position.
+    std::optional<VECTOR2D> hotKeyPos = m_hotKeyPos;
+
+    if( aEvent.HasPosition() && aEvent.Action() == TA_KEY_PRESSED )
+        hotKeyPos = aEvent.Position();
+
+    // The guard's restore vectorises into an unconditional load of the optional's payload, which
+    // GCC then reports as an uninitialized read on the disengaged path it can never observe.
+#if defined( __GNUC__ ) && !defined( __clang__ )
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
+    SCOPED_SET_RESET<std::optional<VECTOR2D>> scopedHotKeyPos( m_hotKeyPos, hotKeyPos );
+#if defined( __GNUC__ ) && !defined( __clang__ )
+#pragma GCC diagnostic pop
+#endif
 
     // First try to dispatch the action associated with the event if it is a key press event
     bool handled = DispatchHotKey( aEvent );

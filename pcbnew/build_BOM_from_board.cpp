@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /* build_BOM_from_board.cpp */
@@ -94,7 +90,7 @@ bool WriteBoardBOM( BOARD* aBoard, const wxString& aFullFileName )
         {
             if( curEntry.m_Val == footprint->GetValue() && curEntry.m_FPID == footprint->GetFPID() )
             {
-                curEntry.m_Refs.emplace_back( footprint->Reference().GetShownText( false ) );
+                curEntry.m_Refs.emplace_back( footprint->Reference().GetShownText( RESOLVED ) );
                 curEntry.m_Count++;
 
                 valExist = true;
@@ -107,8 +103,8 @@ bool WriteBoardBOM( BOARD* aBoard, const wxString& aFullFileName )
         {
             list.emplace_back();
             BOM_ENTRY& newEntry = list.back();
-            newEntry.m_Val = footprint->Value().GetShownText( false );
-            newEntry.m_Refs.emplace_back( footprint->Reference().GetShownText( false ) );
+            newEntry.m_Val = footprint->Value().GetShownText( RESOLVED );
+            newEntry.m_Refs.emplace_back( footprint->Reference().GetShownText( RESOLVED ) );
             newEntry.m_FPID = footprint->GetFPID();
             newEntry.m_Count = 1;
         }
@@ -119,14 +115,14 @@ bool WriteBoardBOM( BOARD* aBoard, const wxString& aFullFileName )
         std::sort( curEntry.m_Refs.begin(), curEntry.m_Refs.end(),
                 []( const wxString& lhs, const wxString& rhs )
                 {
-                    return StrNumCmp( lhs, rhs, true /* ignore case */ ) < 0;
+                    return StrNumCmp( lhs, rhs, CMP_T::IGNORE_CASE ) < 0;
                 } );
     }
 
     std::sort( list.begin(), list.end(),
             []( const BOM_ENTRY& lhs, const BOM_ENTRY& rhs )
             {
-                return StrNumCmp( lhs.m_Refs[0], rhs.m_Refs[0], true /* ignore case */ ) < 0;
+                return StrNumCmp( lhs.m_Refs[0], rhs.m_Refs[0], CMP_T::IGNORE_CASE ) < 0;
             } );
 
     // Print list.

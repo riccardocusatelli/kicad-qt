@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef KICAD_API_PLUGIN_H
@@ -69,8 +69,6 @@ struct PLUGIN_RUNTIME
 
 /**
  * An action performed by a plugin via the IPC API
- * (not to be confused with ACTION_PLUGIN, the old SWIG plugin system, which will be removed
- * in the future)
  */
 struct PLUGIN_ACTION
 {
@@ -140,4 +138,23 @@ struct CompareApiPluginIdentifiers
         return item1->Identifier() < item2->Identifier();
     }
 };
+
+
+class LOGGING_ERROR_HANDLER : public nlohmann::json_schema::error_handler
+{
+public:
+    LOGGING_ERROR_HANDLER();
+
+    bool HasError() const { return m_hasError; }
+
+    const wxString& ErrorMessage() const { return m_errorMessage; }
+
+    void error( const nlohmann::json::json_pointer& ptr, const nlohmann::json& instance,
+                const std::string& message ) override;
+
+private:
+    bool m_hasError;
+    wxString m_errorMessage;
+};
+
 #endif //KICAD_API_PLUGIN_H

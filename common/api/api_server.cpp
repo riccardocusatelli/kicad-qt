@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <fmt/format.h>
@@ -24,6 +24,7 @@
 
 #include <advanced_config.h>
 #include <api/api_handler.h>
+#include <api/api_task_scheduler.h>
 #include <api/api_utils.h> // traceApi
 #include <api/api_server.h>
 #include <kiid.h>
@@ -48,10 +49,13 @@ using kiapi::common::ApiRequest, kiapi::common::ApiResponse, kiapi::common::ApiS
 wxString KICAD_API_SERVER::s_logFileName = "api.log";
 
 
-KICAD_API_SERVER::KICAD_API_SERVER() :
+KICAD_API_SERVER::KICAD_API_SERVER( bool aAutoStart ) :
         m_token( KIID().AsStdString() ),
         m_readyToReply( false )
 {
+    if( !aAutoStart )
+        return;
+
     if( !Pgm().GetCommonSettings()->m_Api.enable_server )
     {
         KI_LOG_TRACE( traceApi, "Server: disabled by user preferences." );
@@ -68,19 +72,47 @@ KICAD_API_SERVER::~KICAD_API_SERVER()
 }
 
 
+wxFileName KICAD_API_SERVER::StandardSocketPath()
+{
+    wxFileName socket;
+
+#ifdef __WXMAC__
+    socket.AssignDir( wxS( "/tmp" ) );
+#else
+    socket.AssignDir( wxStandardPaths::Get().GetTempDir() );
+#endif
+
+    socket.AppendDir( wxS( "kicad" ) );
+    socket.SetFullName( wxS( "api.sock" ) );
+
+    return socket;
+}
+
+
+std::string KICAD_API_SERVER::StandardSocketUrl()
+{
+    return fmt::format( "ipc://{}", StandardSocketPath().GetFullPath().ToUTF8().data() );
+}
+
+
 void KICAD_API_SERVER::Start()
 {
     if( Running() )
         return;
 
     wxFileName socket;
-#ifdef __WXMAC__
-    socket.AssignDir( wxS( "/tmp" ) );
-#else
-    socket.AssignDir( wxStandardPaths::Get().GetTempDir() );
-#endif
-    socket.AppendDir( wxS( "kicad" ) );
-    socket.SetFullName( wxS( "api.sock" ) );
+
+    if( m_socketPathOverride.IsEmpty() )
+    {
+        socket = StandardSocketPath();
+    }
+    else
+    {
+        socket.Assign( m_socketPathOverride );
+
+        if( !socket.IsAbsolute() )
+            socket.MakeAbsolute();
+    }
 
     if( !PATHS::EnsurePathExists( socket.GetPath() ) )
     {
@@ -125,6 +157,13 @@ void KICAD_API_SERVER::Start()
             fmt::format( "ipc://{}", socket.GetFullPath().ToStdString() ) );
     m_server->SetCallback( [&]( std::string* aRequest ) { onApiRequest( aRequest ); } );
 
+    if( !m_server->Start() )
+    {
+        KI_LOG_TRACE( traceApi, "Server: failed to start KINNG listener thread" );
+        m_server.reset( nullptr );
+        return;
+    }
+
     m_logFilePath.AssignDir( PATHS::GetLogsPath() );
     m_logFilePath.SetName( s_logFileName );
 
@@ -165,13 +204,33 @@ bool KICAD_API_SERVER::Running() const
 void KICAD_API_SERVER::RegisterHandler( API_HANDLER* aHandler )
 {
     KI_CHECK( aHandler, /* void */ );
+
+    aHandler->setApiServer( this );
     m_handlers.insert( aHandler );
 }
 
 
 void KICAD_API_SERVER::DeregisterHandler( API_HANDLER* aHandler )
 {
+    if( aHandler )
+        aHandler->setApiServer( nullptr );
+
     m_handlers.erase( aHandler );
+}
+
+
+void KICAD_API_SERVER::NotifyNetSettingsChanged()
+{
+    for( API_HANDLER* handler : m_handlers )
+        handler->onNetSettingsChanged();
+}
+
+
+void KICAD_API_SERVER::NotifyDocumentRenamed( kiapi::common::types::DocumentType aType,
+                                              const wxString& aOldPath, const wxString& aNewPath )
+{
+    if( m_renameListener )
+        m_renameListener( aType, aOldPath, aNewPath );
 }
 
 
@@ -183,7 +242,7 @@ std::string KICAD_API_SERVER::SocketPath() const
 
 void KICAD_API_SERVER::onApiRequest( std::string* aRequest )
 {
-    if( !m_readyToReply )
+    if( !m_readyToReply.load( std::memory_order_acquire ) )
     {
         ApiResponse notHandled;
         notHandled.mutable_status()->set_status( ApiStatusCode::AS_NOT_READY );
@@ -208,9 +267,15 @@ void KICAD_API_SERVER::onApiRequest( std::string* aRequest )
 void KICAD_API_SERVER::handleApiRequest( std::string* aRequest )
 {
     std::string& requestString = *aRequest;
+    handleApiRequestString( requestString );
+}
+
+
+void KICAD_API_SERVER::handleApiRequestString( std::string& aRequestString )
+{
     ApiRequest request;
 
-    if( !request.ParseFromString( requestString ) )
+    if( !request.ParseFromString( aRequestString ) )
     {
         ApiResponse error;
         error.mutable_header()->set_kicad_token( m_token );
@@ -220,6 +285,8 @@ void KICAD_API_SERVER::handleApiRequest( std::string* aRequest )
 
         if( ADVANCED_CFG::GetCfg().m_EnableAPILogging )
             log( "Response (ERROR): " + error.Utf8DebugString() );
+
+        return;
     }
 
     if( ADVANCED_CFG::GetCfg().m_EnableAPILogging )
@@ -241,17 +308,60 @@ void KICAD_API_SERVER::handleApiRequest( std::string* aRequest )
         return;
     }
 
+    // Only allow-listed API requests can be handled while a task is running; anything else
+    // is assumed to possible mess with state that the task might be depending on not changing.
+    if( request.has_message() && API_TASK_SCHEDULER::Instance().AnyTaskRunning() )
+    {
+        std::string requestType;
+
+        if( google::protobuf::Any::ParseAnyTypeUrl( request.message().type_url(), &requestType ) )
+        {
+            bool typeHandled = false;
+            bool allowedDuringTask = false;
+
+            for( API_HANDLER* handler : m_handlers )
+            {
+                if( handler->CanHandle( requestType ) )
+                {
+                    typeHandled = true;
+                    allowedDuringTask = handler->AllowsDuringTask( requestType );
+                    break;
+                }
+            }
+
+            if( typeHandled && !allowedDuringTask )
+            {
+                ApiResponse error;
+                error.mutable_header()->set_kicad_token( m_token );
+                error.mutable_status()->set_status( ApiStatusCode::AS_BUSY );
+                error.mutable_status()->set_error_message(
+                        "a task is running; only task status and result queries are available until it completes" );
+                m_server->Reply( error.SerializeAsString() );
+
+                if( ADVANCED_CFG::GetCfg().m_EnableAPILogging )
+                    log( "Response (ERROR): " + error.Utf8DebugString() );
+
+                return;
+            }
+        }
+    }
+
     API_RESULT result;
+    bool notifyNetSettings = false;
 
     for( API_HANDLER* handler : m_handlers )
     {
         result = handler->Handle( request );
+        notifyNetSettings |= handler->clearNetSettingsNotification();
 
         if( result.has_value() )
             break;
         else if( result.error().status() != ApiStatusCode::AS_UNHANDLED )
             break;
     }
+
+    if( notifyNetSettings )
+        NotifyNetSettingsChanged();
 
     // Note: at the point we call Reply(), we no longer own requestString.
 
@@ -271,8 +381,11 @@ void KICAD_API_SERVER::handleApiRequest( std::string* aRequest )
 
         if( result.error().status() == ApiStatusCode::AS_UNHANDLED )
         {
-            std::string type = "<unparseable Any>";
-            google::protobuf::Any::ParseAnyTypeUrl( request.message().type_url(), &type );
+            std::string type;
+
+            if( !google::protobuf::Any::ParseAnyTypeUrl( request.message().type_url(), &type ) )
+                type = "<unparseable Any>";
+
             std::string msg = fmt::format( "no handler available for request of type {}", type );
             error.mutable_status()->set_error_message( msg );
         }

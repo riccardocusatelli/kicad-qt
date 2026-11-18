@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -207,7 +207,8 @@ int GERBVIEW_INSPECTION_TOOL::MeasureTool( const TOOL_EVENT& aEvent )
     EDA_UNITS                  units = m_frame->GetUserUnits();
     KIGFX::PREVIEW::RULER_ITEM ruler( twoPtMgr, gerbIUScale, units, false, false );
 
-    m_frame->PushTool( aEvent );
+    TOOL_EVENT         originalEvent = aEvent;          // This can change out from under us when the event loop runs
+    SCOPED_TOOL_PUSHER raii( m_frame, originalEvent );
 
     auto setCursor =
             [&]()
@@ -216,7 +217,7 @@ int GERBVIEW_INSPECTION_TOOL::MeasureTool( const TOOL_EVENT& aEvent )
             };
 
     auto cleanup =
-            [&] ()
+            [&]()
             {
                 getView()->SetVisible( &ruler, false );
                 controls.SetAutoPan( false );
@@ -241,14 +242,9 @@ int GERBVIEW_INSPECTION_TOOL::MeasureTool( const TOOL_EVENT& aEvent )
         if( evt->IsCancelInteractive() )
         {
             if( originSet )
-            {
                 cleanup();
-            }
             else
-            {
-                m_frame->PopTool( aEvent );
                 break;
-            }
         }
         else if( evt->IsActivate() )
         {
@@ -257,16 +253,15 @@ int GERBVIEW_INSPECTION_TOOL::MeasureTool( const TOOL_EVENT& aEvent )
 
             if( evt->IsMoveTool() )
             {
-                // leave ourselves on the stack so we come back after the move
-                break;
+                // Make sure we come back after the move tool runs
+                m_frame->PushTool( originalEvent );
             }
-            else
-            {
-                m_frame->PopTool( aEvent );
-                break;
-            }
+
+            break;
         }
-        else if( !originSet && ( evt->IsDrag( BUT_LEFT ) || evt->IsClick( BUT_LEFT ) ) )
+        else if( !originSet && (   evt->IsDrag( BUT_LEFT )
+                                || evt->IsClick( BUT_LEFT )
+                                || evt->IsAction( &ACTIONS::cursorClick ) ) )
         {
             // click or drag starts
             twoPtMgr.SetOrigin( cursorPos );
@@ -277,7 +272,9 @@ int GERBVIEW_INSPECTION_TOOL::MeasureTool( const TOOL_EVENT& aEvent )
 
             originSet = true;
         }
-        else if( originSet && ( evt->IsClick( BUT_LEFT ) || evt->IsMouseUp( BUT_LEFT ) ) )
+        else if( originSet && (    evt->IsClick( BUT_LEFT )
+                                || evt->IsAction( &ACTIONS::cursorClick )
+                                || evt->IsMouseUp( BUT_LEFT ) ) )
         {
             // second click or mouse up after drag ends
             originSet = false;
@@ -285,7 +282,9 @@ int GERBVIEW_INSPECTION_TOOL::MeasureTool( const TOOL_EVENT& aEvent )
             controls.SetAutoPan( false );
             controls.CaptureCursor( false );
         }
-        else if( originSet && ( evt->IsMotion() || evt->IsDrag( BUT_LEFT ) ) )
+        else if( originSet && (    evt->IsMotion()
+                                || evt->IsAction( &ACTIONS::refreshPreview )
+                                || evt->IsDrag( BUT_LEFT ) ) )
         {
             // move or drag when origin set updates rules
             twoPtMgr.SetAngleSnap( evt->Modifier( MD_SHIFT ) ? LEADER_MODE::DEG45

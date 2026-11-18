@@ -20,11 +20,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <am_param.h>
@@ -37,24 +33,13 @@ extern int    ReadInt( char*& text, bool aSkipSeparator = true );
 extern double ReadDouble( char*& text, bool aSkipSeparator = true );
 extern double Evaluate( AM_PARAM_EVAL_STACK& aExp );
 
-/* Class AM_PARAM
- * holds a parameter value for an "aperture macro" as defined within
- * standard RS274X.  The parameter can be a constant, i.e. "immediate" parameter,
- * or depend on some defered values, defined in a D_CODE, by the ADD command.
- * Note the actual value could need an evaluation from an arithmetical expression
- * items in the expression are stored in .
- * A simple definition is just a value stored in one item in m_paramStack
- */
+
 AM_PARAM::AM_PARAM( )
 {
     m_index = -1;
 }
 
-/**
- * Function IsImmediate
- * tests if this AM_PARAM holds an immediate parameter or has parameter
- * held by an owning D_CODE.
- */
+
 bool AM_PARAM::IsImmediate() const
 {
     bool is_immediate = true;
@@ -136,16 +121,12 @@ double AM_PARAM::GetValueFromMacro( APERTURE_MACRO* aApertureMacro ) const
 }
 
 
-/**
- * add an operator/operand to the current stack
- * aType = NOP, PUSHVALUE, PUSHPARM, ADD, SUB, MUL, DIV, EQUATE
- * aValue required only for PUSHVALUE (double) or PUSHPARM (int) aType.
- */
 void AM_PARAM::PushOperator( parm_item_type aType, double aValue )
 {
     AM_PARAM_ITEM item( aType, aValue);
     m_paramStack.push_back( item );
 }
+
 
 void AM_PARAM::PushOperator( parm_item_type aType, int aValue )
 {
@@ -153,19 +134,7 @@ void AM_PARAM::PushOperator( parm_item_type aType, int aValue )
     m_paramStack.push_back( item );
 }
 
-/**
- * Function ReadParam
- * Read one aperture macro parameter
- * a parameter can be:
- *      a number
- *      a reference to an aperture definition parameter value: $1 ot $3 ...
- * a parameter definition can be complex and have operators between numbers and/or other parameter
- * like $1+3 or $2x2..
- * Note minus sign is not always an operator. It can be the sign of a value.
- * Parameters are separated by a comma ( of finish by *)
- * @param aText = pointer to the parameter to read. Will be modified to point to the next field
- * @return true if a param is read, or false
- */
+
 bool AM_PARAM::ReadParamFromAmDef( char*& aText  )
 {
     bool found = false;

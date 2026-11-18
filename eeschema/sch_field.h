@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -33,8 +29,15 @@
 #include <string_utils.h>
 #include <algorithm>
 
+class SCINTILLA_TRICKS;
+class wxStyledTextEvent;
 class SCH_EDIT_FRAME;
 class SCH_TEXT;
+
+namespace kiapi::schematic::types
+{
+    class SchematicField;
+}
 
 
 struct SCH_FIELD_RENDER_CACHE_DATA
@@ -54,6 +57,14 @@ public:
     explicit SCH_FIELD( SCH_ITEM* aParent, SCH_TEXT* aText );
 
     SCH_FIELD( const SCH_FIELD& aText );
+
+    void Serialize( google::protobuf::Any& aContainer ) const override;
+    bool Deserialize( const google::protobuf::Any& aContainer ) override;
+
+    void Serialize( kiapi::schematic::types::SchematicField& aOutput,
+                    const EDA_IU_SCALE& aScale ) const;
+    bool Deserialize( const kiapi::schematic::types::SchematicField& aInput,
+                      const EDA_IU_SCALE& aScale );
 
     ~SCH_FIELD() override
     { }
@@ -108,14 +119,14 @@ public:
     wxString GetName( bool aUseDefaultName = true ) const;
 
     /**
-     * Get a non-language-specific name for a field which can be used for storage, variable look-up, etc.
+     * Get the untranslated field name for storage, variable look-up, etc.
      */
-    wxString GetCanonicalName() const;
+    wxString GetUntranslatedName() const;
 
     /**
      * Test whether @a aName is one of the known translations of the directive-label net class
      * field name (used to recognise legacy/cross-locale files where the field name was saved as
-     * a translated string instead of the canonical "Netclass" token).
+     * a translated string instead of the untranslated "Netclass" token).
      */
     static bool IsNetclassLabelFieldName( const wxString& aName );
 
@@ -135,11 +146,7 @@ public:
     {
         return IsMandatory() ? (int) m_id : m_ordinal;
     }
-    void SetOrdinal( int aOrdinal )
-    {
-        m_id = FIELD_T::USER;
-        m_ordinal = aOrdinal;
-    }
+    void SetOrdinal( int aOrdinal, FIELD_T aType );
 
     /**
      * Get the field's name as displayed on the schematic or in the symbol fields table. This is
@@ -147,10 +154,10 @@ public:
      * with the ${} stripped.
      */
     wxString GetShownName() const;
-    wxString GetShownText( const SCH_SHEET_PATH* aPath, bool aAllowExtraText, int aDepth = 0,
-                           const wxString& aVariantName = wxEmptyString ) const;
+    wxString GetShownText( const SCH_SHEET_PATH* aPath, RESOLUTION_CONTEXT aContext,
+                           const wxString& aVariantName = wxEmptyString, int aDepth = 0 ) const;
 
-    wxString GetShownText( bool aAllowExtraText, int aDepth = 0 ) const override;
+    wxString GetShownText( RESOLUTION_CONTEXT aContextx, int aDepth = 0 ) const override;
 
     /**
      * Return the text of a field.
@@ -268,6 +275,8 @@ public:
     BITMAPS GetMenuImage() const override;
 
     bool IsReplaceable() const override;
+
+    bool IsLocked() const override;
 
     VECTOR2I GetLibPosition() const { return EDA_TEXT::GetTextPos(); }
 
@@ -433,7 +442,7 @@ inline std::string GetFieldValue( const std::vector<SCH_FIELD>* aFields, const w
         return "";
 
     if( const SCH_FIELD* field = FindField( *aFields, aFieldName ) )
-        return ( aResolve ? field->GetShownText( false, aDepth ) : field->GetText() ).ToStdString();
+        return ( aResolve ? field->GetShownText( INTERNAL, aDepth ) : field->GetText() ).ToStdString();
 
     return "";
 }
@@ -451,9 +460,9 @@ inline void SetFieldValue( std::vector<SCH_FIELD>& aFields, const wxString& aFie
         if( aValue == "" )
         {
             std::erase_if( aFields, [&]( const SCH_FIELD& field )
-                                     {
-                                         return field.GetName() == aFieldName;
-                                     } );
+                                    {
+                                        return field.GetName() == aFieldName;
+                                    } );
             return;
         }
 

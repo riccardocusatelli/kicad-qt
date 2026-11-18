@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef _GIT_PULL_HANDLER_H_
@@ -26,19 +22,6 @@
 
 #include <git/git_repo_mixin.h>
 #include <import_export.h>
-
-#include <vector>
-#include <string>
-#include <wx/string.h>
-
-// Structure to store commit details
-struct CommitDetails
-{
-    std::string m_sha;
-    std::string m_firstLine;
-    std::string m_author;
-    std::string m_date;
-};
 
 // Enum for result codes, error codes are negative, success codes are positive
 enum class PullResult : int
@@ -52,31 +35,14 @@ enum class PullResult : int
     FastForward
 };
 
-class LIBGIT_BACKEND;
-
 class APIEXPORT GIT_PULL_HANDLER : public KIGIT_REPO_MIXIN
 {
 public:
-    friend class LIBGIT_BACKEND;
     GIT_PULL_HANDLER( KIGIT_COMMON* aCommon );
     ~GIT_PULL_HANDLER();
 
     bool       PerformFetch( bool aSkipLock = false );
     PullResult PerformPull();
-
-    // Conflict-recovery actions, offered after PerformPull() returns Conflict.
-    // ResetToUpstream discards local commits and matches the remote branch.
-    // RebaseOntoUpstream replays local commits on top of the remote branch.
-    bool       ResetToUpstream();
-    PullResult RebaseOntoUpstream();
-
-    const std::vector<std::pair<std::string, std::vector<CommitDetails>>>& GetFetchResults() const;
-
-    // Implementation for progress updates
-    void UpdateProgress( int aCurrent, int aTotal, const wxString& aMessage ) override;
-
-private:
-    std::vector<std::pair<std::string, std::vector<CommitDetails>>> m_fetchResults;
 };
 
 #endif // _GIT_PULL_HANDLER_H_

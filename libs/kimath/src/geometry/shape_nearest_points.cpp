@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the https://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <cmath>
@@ -46,16 +42,16 @@ static bool NearestPoints( const SEG& aSeg, const SHAPE_LINE_CHAIN_BASE& aChain,
                            VECTOR2I& aPtA, VECTOR2I& aPtB );
 
 /**
- * Find the nearest points between two circles.
+ * Find the nearest points between two (solid) circles.
  *
  * @param aA first circle
  * @param aB second circle
- * @param aPtA [out] nearest point on first circle
- * @param aPtB [out] nearest point on second circle
+ * @param[out] aPtA nearest point on first circle
+ * @param[out] aPtB nearest point on second circle
  * @return true (circles always have nearest points)
  */
 static bool NearestPoints( const SHAPE_CIRCLE& aA, const SHAPE_CIRCLE& aB,
-                          VECTOR2I& aPtA, VECTOR2I& aPtB )
+                           VECTOR2I& aPtA, VECTOR2I& aPtB )
 {
     const VECTOR2I delta = aB.GetCenter() - aA.GetCenter();
     const int dist = delta.EuclideanNorm();
@@ -78,16 +74,16 @@ static bool NearestPoints( const SHAPE_CIRCLE& aA, const SHAPE_CIRCLE& aB,
 
 
 /**
- * Find the nearest points between a circle and a rectangle.
+ * Find the nearest points between a (solid) circle and a (solid) rectangle.
  *
  * @param aCircle the circle
  * @param aRect the rectangle
- * @param aPtA [out] nearest point on circle
- * @param aPtB [out] nearest point on rectangle
+ * @param[out] aPtA nearest point on circle
+ * @param[out] aPtB nearest point on rectangle
  * @return true (always succeeds)
  */
 static bool NearestPoints( const SHAPE_CIRCLE& aCircle, const SHAPE_RECT& aRect,
-                          VECTOR2I& aPtA, VECTOR2I& aPtB )
+                           VECTOR2I& aPtA, VECTOR2I& aPtB )
 {
     const VECTOR2I c = aCircle.GetCenter();
     const VECTOR2I p0 = aRect.GetPosition();
@@ -140,16 +136,16 @@ static bool NearestPoints( const SHAPE_CIRCLE& aCircle, const SHAPE_RECT& aRect,
 
 
 /**
- * Find the nearest points between a circle and a line segment.
+ * Find the nearest points between a (solid) circle and a line segment.
  *
  * @param aCircle the circle
  * @param aSeg the segment
- * @param aPtA [out] nearest point on circle
- * @param aPtB [out] nearest point on segment
+ * @param[out] aPtA nearest point on circle
+ * @param[out] aPtB nearest point on segment
  * @return true (always succeeds)
  */
 static bool NearestPoints( const SHAPE_CIRCLE& aCircle, const SEG& aSeg,
-                          VECTOR2I& aPtA, VECTOR2I& aPtB )
+                           VECTOR2I& aPtA, VECTOR2I& aPtB )
 {
     aPtB = aSeg.NearestPoint( aCircle.GetCenter() );
 
@@ -926,15 +922,6 @@ static bool nearestPoints( const SHAPE* aA, const SHAPE* aB, VECTOR2I& aPtA, VEC
 }
 
 
-/**
- * Public interface for finding nearest points between two shapes.
- *
- * @param aA first shape
- * @param aB second shape
- * @param aPtA [out] nearest point on first shape
- * @param aPtB [out] nearest point on second shape
- * @return true if nearest points were found, false otherwise
- */
 bool SHAPE::NearestPoints( const SHAPE* aOther, VECTOR2I& aPtThis, VECTOR2I& aPtOther ) const
 {
     return nearestPoints( this, aOther, aPtThis, aPtOther );

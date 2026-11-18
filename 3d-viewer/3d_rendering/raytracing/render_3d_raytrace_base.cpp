@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "render_3d_raytrace_base.h"
@@ -99,7 +95,6 @@ RENDER_3D_RAYTRACE_BASE::RENDER_3D_RAYTRACE_BASE( BOARD_ADAPTER& aAdapter, CAMER
 
     //m_pboId       = GL_NONE;
     //m_pboDataSize = 0;
-    m_accelerator = nullptr;
     m_convertedDummyBlockCount = 0;
     m_converted2dRoundSegmentCount = 0;
     m_oldWindowsSize.x = 0;
@@ -124,9 +119,6 @@ RENDER_3D_RAYTRACE_BASE::RENDER_3D_RAYTRACE_BASE( BOARD_ADAPTER& aAdapter, CAMER
 RENDER_3D_RAYTRACE_BASE::~RENDER_3D_RAYTRACE_BASE()
 {
     KI_LOG_TRACE( m_logTrace, wxT( "RENDER_3D_RAYTRACE_BASE::~RENDER_3D_RAYTRACE_BASE" ) );
-
-    delete m_accelerator;
-    m_accelerator = nullptr;
 
     delete m_outlineBoard2dObjects;
     m_outlineBoard2dObjects = nullptr;
@@ -189,7 +181,7 @@ SFVEC4F RENDER_3D_RAYTRACE_BASE::premultiplyAlpha( const SFVEC4F& aInput )
 }
 
 
-void RENDER_3D_RAYTRACE_BASE::render( uint8_t* ptrPBO, REPORTER* aStatusReporter )
+void RENDER_3D_RAYTRACE_BASE::render( uint8_t* ptrPBO )
 {
     if( ( m_renderState == RT_RENDER_STATE_FINISH ) || ( m_renderState >= RT_RENDER_STATE_MAX ) )
     {
@@ -222,15 +214,15 @@ void RENDER_3D_RAYTRACE_BASE::render( uint8_t* ptrPBO, REPORTER* aStatusReporter
     switch( m_renderState )
     {
     case RT_RENDER_STATE_TRACING:
-        renderTracing( ptrPBO, aStatusReporter );
+        renderTracing( ptrPBO );
         break;
 
     case RT_RENDER_STATE_POST_PROCESS_SHADE:
-        postProcessShading( ptrPBO, aStatusReporter );
+        postProcessShading( ptrPBO );
         break;
 
     case RT_RENDER_STATE_POST_PROCESS_BLUR_AND_FINISH:
-        postProcessBlurFinish( ptrPBO, aStatusReporter );
+        postProcessBlurFinish( ptrPBO );
         break;
 
     default:
@@ -239,48 +231,46 @@ void RENDER_3D_RAYTRACE_BASE::render( uint8_t* ptrPBO, REPORTER* aStatusReporter
         break;
     }
 
-    if( aStatusReporter && ( m_renderState == RT_RENDER_STATE_FINISH ) )
+    if( m_activityReporter && ( m_renderState == RT_RENDER_STATE_FINISH ) )
     {
         // Calculation time in seconds
         const double elapsed_time = (double) ( GetRunningMicroSecs() - m_renderStartTime ) / 1e6;
 
-        aStatusReporter->Report( wxString::Format( _( "Rendering time %.3f s" ), elapsed_time ) );
+        m_activityReporter->Report( wxString::Format( _( "Rendering time %.3f s" ), elapsed_time ) );
     }
 }
 
 
-void RENDER_3D_RAYTRACE_BASE::renderTracing( uint8_t* ptrPBO, REPORTER* aStatusReporter )
+void RENDER_3D_RAYTRACE_BASE::renderTracing( uint8_t* ptrPBO )
 {
     m_isPreview = false;
 
-    auto startTime = std::chrono::steady_clock::now();
+    auto                startTime = std::chrono::steady_clock::now();
     std::atomic<size_t> numBlocksRendered( 0 );
     std::atomic<size_t> currentBlock( 0 );
 
     thread_pool& tp = GetKiCadThreadPool();
-    const int timeLimit = m_blockPositions.size() > 40000 ? 750 : 400;
+    const int    timeLimit = m_blockPositions.size() > 40000 ? 750 : 400;
 
-    auto processBlocks =
-            [&]()
+    auto processBlocks = [&]()
+    {
+        for( size_t iBlock = currentBlock.fetch_add( 1 ); iBlock < m_blockPositions.size();
+             iBlock = currentBlock.fetch_add( 1 ) )
+        {
+            if( !m_blockPositionsWasProcessed[iBlock] )
             {
-                for( size_t iBlock = currentBlock.fetch_add( 1 );
-                            iBlock < m_blockPositions.size();
-                            iBlock = currentBlock.fetch_add( 1 ) )
-                {
-                    if( !m_blockPositionsWasProcessed[iBlock] )
-                    {
-                        renderBlockTracing( ptrPBO, iBlock );
-                        m_blockPositionsWasProcessed[iBlock] = 1;
-                        numBlocksRendered++;
-                    }
+                renderBlockTracing( ptrPBO, iBlock );
+                m_blockPositionsWasProcessed[iBlock] = 1;
+                numBlocksRendered++;
+            }
 
-                    auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(
-                            std::chrono::steady_clock::now() - startTime );
+            auto diff = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::steady_clock::now()
+                                                                               - startTime );
 
-                    if( diff.count() > timeLimit )
-                        break;
-                }
-            };
+            if( diff.count() > timeLimit )
+                break;
+        }
+    };
 
     BS::multi_future<void> futures;
 
@@ -291,10 +281,12 @@ void RENDER_3D_RAYTRACE_BASE::renderTracing( uint8_t* ptrPBO, REPORTER* aStatusR
 
     m_blockRenderProgressCount += numBlocksRendered;
 
-    if( aStatusReporter )
-        aStatusReporter->Report( wxString::Format( _( "Rendering: %.0f %%" ),
-                                                   (float) ( m_blockRenderProgressCount * 100 )
-                                                   / (float) m_blockPositions.size() ) );
+    if( m_activityReporter )
+    {
+        m_activityReporter->Report(
+                wxString::Format( _( "Rendering: %.0f %%" ),
+                                  (float) ( m_blockRenderProgressCount * 100 ) / (float) m_blockPositions.size() ) );
+    }
 
     // Check if it finish the rendering and if should continue to a post processing
     // or mark it as finished
@@ -690,12 +682,12 @@ void RENDER_3D_RAYTRACE_BASE::renderBlockTracing( uint8_t* ptrPBO, signed int iB
 }
 
 
-void RENDER_3D_RAYTRACE_BASE::postProcessShading( uint8_t* /* ptrPBO */, REPORTER* aStatusReporter )
+void RENDER_3D_RAYTRACE_BASE::postProcessShading( uint8_t* /* ptrPBO */ )
 {
     if( m_boardAdapter.m_Cfg->m_Render.raytrace_post_processing )
     {
-        if( aStatusReporter )
-            aStatusReporter->Report( _( "Rendering: Post processing shader" ) );
+        if( m_activityReporter )
+            m_activityReporter->Report( _( "Rendering: Post processing shader" ) );
 
         m_postShaderSsao.SetShadowsEnabled( m_boardAdapter.m_Cfg->m_Render.raytrace_shadows );
 
@@ -742,8 +734,7 @@ void RENDER_3D_RAYTRACE_BASE::postProcessShading( uint8_t* /* ptrPBO */, REPORTE
 }
 
 
-void RENDER_3D_RAYTRACE_BASE::postProcessBlurFinish( uint8_t* ptrPBO,
-                                                     REPORTER* /* aStatusReporter */ )
+void RENDER_3D_RAYTRACE_BASE::postProcessBlurFinish( uint8_t* ptrPBO )
 {
     if( m_boardAdapter.m_Cfg->m_Render.raytrace_post_processing )
     {
@@ -1770,8 +1761,18 @@ void RENDER_3D_RAYTRACE_BASE::initializeBlockPositions()
 }
 
 
+void RENDER_3D_RAYTRACE_BASE::InvalidateHitTesting()
+{
+    std::lock_guard<std::mutex> lock( m_hitTestMutex );
+
+    m_accelerator.reset();
+}
+
+
 BOARD_ITEM* RENDER_3D_RAYTRACE_BASE::IntersectBoardItem( const RAY& aRay )
 {
+    std::lock_guard<std::mutex> lock( m_hitTestMutex );
+
     HITINFO hitInfo;
     hitInfo.m_tHit = std::numeric_limits<float>::infinity();
 

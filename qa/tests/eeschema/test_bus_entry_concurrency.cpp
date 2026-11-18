@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.en.html
- * or you may search the http://www.gnu.org website for the version 32 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
@@ -104,8 +100,8 @@ BOOST_FIXTURE_TEST_CASE( BusEntryConcurrency, BUS_ENTRY_CONCURRENCY_FIXTURE )
         BOOST_CHECK( entry->m_connected_bus_items[1] == bus2 );
     }
 
-    SCH_ITEM_VEC bus1_items = bus1->ConnectedItems( path );
-    SCH_ITEM_VEC bus2_items = bus2->ConnectedItems( path );
+    std::vector<SCH_ITEM*> bus1_items = bus1->ConnectedItems( path );
+    std::vector<SCH_ITEM*> bus2_items = bus2->ConnectedItems( path );
 
     BOOST_CHECK_EQUAL( bus1_items.size(), entries.size() );
     BOOST_CHECK_EQUAL( bus2_items.size(), entries.size() );

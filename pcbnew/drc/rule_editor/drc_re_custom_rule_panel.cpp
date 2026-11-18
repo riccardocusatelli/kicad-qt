@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "drc_re_custom_rule_panel.h"
@@ -30,7 +26,6 @@
 #include <ki_exception.h>
 #include <reporter.h>
 #include <scintilla_tricks.h>
-#include <dialogs/rule_editor_dialog_base.h>
 #include <wx/button.h>
 #include <wx/sizer.h>
 #include <wx/stc/stc.h>
@@ -46,21 +41,13 @@ DRC_RE_CUSTOM_RULE_PANEL::DRC_RE_CUSTOM_RULE_PANEL(
     wxBoxSizer* sizer = new wxBoxSizer( wxVERTICAL );
 
     m_textCtrl = new wxStyledTextCtrl( this, wxID_ANY );
+    m_textCtrl->SetToolTip( _( "Complete rule text in the DRC rule language" ) );
     sizer->Add( m_textCtrl, 1, wxEXPAND | wxALL, 5 );
 
     m_checkSyntaxBtn = new wxButton( this, wxID_ANY, _( "Check Syntax" ) );
     sizer->Add( m_checkSyntaxBtn, 0, wxALIGN_RIGHT | wxRIGHT | wxBOTTOM, 5 );
 
     SetSizer( sizer );
-
-    m_textCtrl->Bind( wxEVT_STC_CHANGE,
-                      [this]( wxStyledTextEvent& )
-                      {
-                          RULE_EDITOR_DIALOG_BASE* dlg = RULE_EDITOR_DIALOG_BASE::GetDialog( this );
-
-                          if( dlg )
-                              dlg->SetModified();
-                      } );
 
     m_scintillaTricks = std::make_unique<SCINTILLA_TRICKS>(
             m_textCtrl, wxT( "()" ), false,
@@ -98,9 +85,7 @@ bool DRC_RE_CUSTOM_RULE_PANEL::TransferDataToWindow()
         wxString text = m_constraintData->GetRuleText();
 
         if( text.IsEmpty() )
-        {
-            text = wxS( "   (constraint clearance (min 0.2mm))" );
-        }
+            text = wxS( "(constraint clearance (min 0.2mm))" );
 
         m_textCtrl->SetValue( text );
     }
@@ -138,28 +123,7 @@ wxString DRC_RE_CUSTOM_RULE_PANEL::GenerateRule( const RULE_GENERATION_CONTEXT& 
     if( body.Trim().IsEmpty() )
         return wxEmptyString;
 
-    wxString ruleName = aContext.ruleName;
-    ruleName.Replace( wxS( "\"" ), wxS( "\\\"" ) );
-
-    wxString rule;
-    rule << wxS( "(rule \"" ) << ruleName << wxS( "\"\n" );
-
-    if( !aContext.comment.IsEmpty() )
-    {
-        wxArrayString lines = wxSplit( aContext.comment, '\n', '\0' );
-
-        for( const wxString& line : lines )
-        {
-            if( line.IsEmpty() )
-                continue;
-
-            rule << wxS( "\t# " ) << line << wxS( "\n" );
-        }
-    }
-
-    rule << body << wxS( ")" );
-
-    return rule;
+    return DRC_RE_CUSTOM_RULE_CONSTRAINT_DATA::FormatRule( aContext, body );
 }
 
 
@@ -179,7 +143,6 @@ void DRC_RE_CUSTOM_RULE_PANEL::onScintillaCharAdded( wxStyledTextEvent& aEvent )
 
     m_textCtrl->SearchAnchor();
 
-    wxString rules = m_textCtrl->GetText();
     int      currentPos = m_textCtrl->GetCurrentPos();
     int      startPos = 0;
 
@@ -288,6 +251,7 @@ void DRC_RE_CUSTOM_RULE_PANEL::onScintillaCharAdded( wxStyledTextEvent& aEvent )
                           "hole_size|"
                           "hole_to_hole|"
                           "length|"
+                          "line_width|"
                           "max_error|"
                           "min_resolved_spokes|"
                           "physical_clearance|"
@@ -295,7 +259,6 @@ void DRC_RE_CUSTOM_RULE_PANEL::onScintillaCharAdded( wxStyledTextEvent& aEvent )
                           "silk_clearance|"
                           "skew|"
                           "text_height|"
-                          "text_thickness|"
                           "thermal_relief_gap|"
                           "thermal_spoke_width|"
                           "track_angle|"
@@ -334,7 +297,7 @@ void DRC_RE_CUSTOM_RULE_PANEL::onCheckSyntax( wxCommandEvent& aEvent )
     wxString body = m_textCtrl->GetText();
     wxString ruleName = m_constraintData ? m_constraintData->GetRuleName() : wxString( wxS( "test" ) );
     ruleName.Replace( wxS( "\"" ), wxS( "\\\"" ) );
-    wxString rulesText = wxString::Format( wxS( "(version 1)\n(rule \"%s\"\n%s)" ), ruleName, body );
+    wxString rulesText = wxString::Format( wxS( "(version 2)\n(rule \"%s\"\n%s)" ), ruleName, body );
 
     if( body.Trim().IsEmpty() )
     {

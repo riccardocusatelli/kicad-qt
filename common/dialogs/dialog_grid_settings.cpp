@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <bitmaps.h>
@@ -65,9 +61,7 @@ bool DIALOG_GRID_SETTINGS::TransferDataToWindow()
         m_textName->SetValue( m_grid.name );
         m_checkLinked->SetValue( linked );
         m_gridSizeX.SetDoubleValue( grid.x );
-
-        if( !linked )
-            m_gridSizeY.SetDoubleValue( grid.y );
+        m_gridSizeY.SetDoubleValue( grid.y );
 
         m_textY->Enable( !linked );
     }
@@ -105,5 +99,8 @@ bool DIALOG_GRID_SETTINGS::TransferDataFromWindow()
 
 void DIALOG_GRID_SETTINGS::OnLinkedChecked( wxCommandEvent& event )
 {
+    if( !m_checkLinked->IsChecked() )
+        m_gridSizeY.SetDoubleValue( m_gridSizeX.GetDoubleValue() );
+
     m_textY->Enable( !m_checkLinked->IsChecked() );
 }

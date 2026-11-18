@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "pcb_picker_tool.h"
@@ -84,6 +80,10 @@ int PCB_PICKER_TOOL::Main( const TOOL_EVENT& aEvent )
     PCB_GRID_HELPER       grid( m_toolMgr, frame->GetMagneticItemsSettings() );
     int                   finalize_state = WAIT_CANCEL;
 
+    grid.SetConstructionGeometryEnabled( m_constructionGeometry );
+
+    grid.SetSuppressedSnapSubtypes( m_suppressedSnaps );
+
     TOOL_EVENT sourceEvent;
 
     if( aEvent.IsAction( &ACTIONS::pickerTool ) )
@@ -122,7 +122,7 @@ int PCB_PICKER_TOOL::Main( const TOOL_EVENT& aEvent )
             if( !evt->IsActivate() && !evt->IsCancelInteractive() )
             {
                 // If we are switching, the canvas may not be valid any more
-                cursorPos = grid.BestSnapAnchor( cursorPos, nullptr );
+                cursorPos = grid.ResolveSnap( cursorPos, nullptr ).position;
                 controls->ForceCursorPosition( true, cursorPos );
             }
             else
@@ -152,7 +152,7 @@ int PCB_PICKER_TOOL::Main( const TOOL_EVENT& aEvent )
 
             break;
         }
-        else if( evt->IsClick( BUT_LEFT ) )
+        else if( evt->IsClick( BUT_LEFT ) || evt->IsAction( &ACTIONS::cursorClick ) )
         {
             bool getNext = false;
 
@@ -181,7 +181,7 @@ int PCB_PICKER_TOOL::Main( const TOOL_EVENT& aEvent )
                 setControls();
             }
         }
-        else if( evt->IsMotion() )
+        else if( evt->IsMotion() || evt->IsAction( &ACTIONS::refreshPreview ) )
         {
             if( m_motionHandler )
             {
@@ -194,7 +194,39 @@ int PCB_PICKER_TOOL::Main( const TOOL_EVENT& aEvent )
                 }
             }
         }
-        else if( evt->IsDblClick( BUT_LEFT ) || evt->IsDrag( BUT_LEFT ) )
+        else if( evt->IsDrag( BUT_LEFT ) && m_areaHandler )
+        {
+            bool getNext = false;
+
+            // Wait() suspends the coroutine of the tool it is called on.  The selection tool
+            // cannot pump its own area loop while we own the stream.
+            if( m_toolMgr->GetTool<PCB_SELECTION_TOOL>()->DragSelectionArea( *this, m_areaPreviewHandler ) )
+            {
+                finalize_state = EVT_CANCEL;
+                break;
+            }
+
+            try
+            {
+                getNext = (*m_areaHandler)();
+            }
+            catch( std::exception& )
+            {
+                finalize_state = EXCEPTION_CANCEL;
+                break;
+            }
+
+            if( !getNext )
+            {
+                finalize_state = CLICK_CANCEL;
+                break;
+            }
+
+            setControls();
+        }
+        else if( evt->IsDblClick( BUT_LEFT )
+                || evt->IsAction( &ACTIONS::cursorDblClick )
+                || evt->IsDrag( BUT_LEFT ) )
         {
             // Not currently used, but we don't want to pass them either
         }
@@ -240,6 +272,9 @@ int PCB_PICKER_TOOL::Main( const TOOL_EVENT& aEvent )
 void PCB_PICKER_TOOL::reset()
 {
     m_layerMask = LSET::AllLayersMask();
+    m_areaPreviewHandler = nullptr;
+    m_constructionGeometry = true;
+    m_suppressedSnaps.clear();
     PICKER_TOOL_BASE::reset();
 }
 
@@ -265,7 +300,7 @@ int PCB_PICKER_TOOL::SelectPointInteractively( const TOOL_EVENT& aEvent )
 
     // By pushing this tool, we stop the Selection tool popping a disambiuation menu
     // in cases like returning to the Position Relative dialog after the selection.
-    frame()->PushTool( aEvent );
+    SCOPED_TOOL_PUSHER raii( frame(), aEvent );
     Activate();
 
     statusPopup.SetText( wxGetTranslation( params.m_Prompt ) );
@@ -319,7 +354,6 @@ int PCB_PICKER_TOOL::SelectPointInteractively( const TOOL_EVENT& aEvent )
 
     ClearHandlers();
     canvas()->SetStatusPopup( nullptr );
-    frame()->PopTool( aEvent );
     return 0;
 }
 
@@ -329,11 +363,9 @@ int PCB_PICKER_TOOL::SelectItemInteractively( const TOOL_EVENT& aEvent )
     INTERACTIVE_PARAMS params = aEvent.Parameter<INTERACTIVE_PARAMS>();
     STATUS_TEXT_POPUP  statusPopup( frame() );
     bool               done = false;
-    EDA_ITEM*          anchor_item = nullptr;
 
     PCB_SELECTION_TOOL* selectionTool = m_toolMgr->GetTool<PCB_SELECTION_TOOL>();
-
-    frame()->PushTool( aEvent );
+    SCOPED_TOOL_PUSHER  raii( frame(), aEvent );
     Activate();
 
     statusPopup.SetText( wxGetTranslation( params.m_Prompt ) );
@@ -361,12 +393,12 @@ int PCB_PICKER_TOOL::SelectItemInteractively( const TOOL_EVENT& aEvent )
                 if( sel.Empty() )
                     return true; // still looking for an item
 
-                anchor_item = sel.Front();
+                EDA_ITEM* item = sel.Front();
 
-                if( params.m_ItemFilter && !params.m_ItemFilter( anchor_item ) )
+                if( params.m_ItemFilter && !params.m_ItemFilter( item ) )
                     return true;
 
-                sendItem( sel.Front() );
+                sendItem( item );
                 return false; // got our item; don't need any more
             } );
 
@@ -379,8 +411,7 @@ int PCB_PICKER_TOOL::SelectItemInteractively( const TOOL_EVENT& aEvent )
     SetCancelHandler(
             [&]()
             {
-                if( anchor_item && ( !params.m_ItemFilter || params.m_ItemFilter( anchor_item ) ) )
-                    sendItem( anchor_item );
+                sendItem( nullptr );
             } );
 
     SetFinalizeHandler(
@@ -398,7 +429,6 @@ int PCB_PICKER_TOOL::SelectItemInteractively( const TOOL_EVENT& aEvent )
 
     ClearHandlers();
     canvas()->SetStatusPopup( nullptr );
-    frame()->PopTool( aEvent );
     return 0;
 }
 

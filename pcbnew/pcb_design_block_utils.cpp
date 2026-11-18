@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <pgm_base.h>
@@ -78,7 +74,7 @@ bool checkOverwriteDbLayout( wxWindow* aFrame, const LIB_ID& aLibId )
 }
 
 
-bool PCB_EDIT_FRAME::saveBoardAsFile( BOARD* aBoard, const wxString& aFileName, bool aHeadless )
+bool PCB_EDIT_FRAME::saveBoardAsFile( BOARD& aBoard, const wxString& aFileName, bool aHeadless )
 {
     // Ensure the "C" locale is temporary set, before saving any file
     // It also avoid wxWidget alerts about locale issues, later, when using Python 3
@@ -189,22 +185,15 @@ bool PCB_EDIT_FRAME::UpdateDesignBlockFromBoard( const LIB_ID& aLibId )
         return false;
     }
 
+    wxString                      error;
     std::unique_ptr<DESIGN_BLOCK> blk;
 
-    try
-    {
-        blk.reset( Prj().DesignBlockLibs()->LoadDesignBlock( aLibId.GetLibNickname(), aLibId.GetLibItemName() ) );
-    }
-    catch( const IO_ERROR& ioe )
-    {
-        DisplayError( this, ioe.What() );
-        return false;
-    }
+    blk.reset( Prj().DesignBlockLibs()->LoadDesignBlock( aLibId.GetLibNickname(), aLibId.GetLibItemName(), false,
+                                                         &error ) );
 
     if( !blk )
     {
-        DisplayErrorMessage(
-                this, wxString::Format( _( "Design block '%s' does not exist." ), aLibId.GetUniStringLibItemName() ) );
+        DisplayErrorMessage( this, error );
         return false;
     }
 
@@ -343,7 +332,7 @@ bool PCB_EDIT_FRAME::saveSelectionToDesignBlock( const wxString& aNickname, PCB_
 
     wxString tempFile = wxFileName::CreateTempFileName( "design_block" );
 
-    if( !saveBoardAsFile( tempBoard, tempFile, false ) )
+    if( !saveBoardAsFile( *tempBoard, tempFile, false ) )
     {
         DisplayErrorMessage( this, _( "Error saving temporary board file to create design block." ) );
         wxRemoveFile( tempFile );
@@ -366,6 +355,7 @@ bool PCB_EDIT_FRAME::saveSelectionToDesignBlock( const wxString& aNickname, PCB_
 
     // Clean up the temporary file
     wxRemoveFile( tempFile );
+    delete tempBoard;
 
     m_designBlocksPane->RefreshLibs();
     m_designBlocksPane->SelectLibId( aBlock.GetLibId() );
@@ -507,9 +497,9 @@ bool PCB_EDIT_FRAME::UpdateDesignBlockFromSelection( const LIB_ID& aLibId )
     }
 
     // Get all selected items
-    PCB_SELECTION selection = m_toolManager->GetTool<PCB_SELECTION_TOOL>()->GetSelection();
+    PCB_SELECTION selectionCopy = m_toolManager->GetTool<PCB_SELECTION_TOOL>()->GetSelection();
 
-    if( selection.Empty() )
+    if( selectionCopy.Empty() )
     {
         DisplayErrorMessage( this, _( "Please select some items to save as a design block." ) );
         return false;
@@ -520,9 +510,9 @@ bool PCB_EDIT_FRAME::UpdateDesignBlockFromSelection( const LIB_ID& aLibId )
     PCB_GROUP*               group = nullptr;
     std::vector<BOARD_ITEM*> extraItems;
 
-    if( selection.Size() == 1 )
+    if( selectionCopy.Size() == 1 )
     {
-        EDA_ITEM* item = selection.Front();
+        EDA_ITEM* item = selectionCopy.Front();
 
         if( item->Type() == PCB_GROUP_T || item->Type() == PCB_GENERATOR_T )
             group = static_cast<PCB_GROUP*>( item );
@@ -531,7 +521,7 @@ bool PCB_EDIT_FRAME::UpdateDesignBlockFromSelection( const LIB_ID& aLibId )
     {
         std::vector<PCB_GROUP*> linkedGroups;
 
-        for( EDA_ITEM* item : selection )
+        for( EDA_ITEM* item : selectionCopy )
         {
             if( item->Type() == PCB_GROUP_T && static_cast<PCB_GROUP*>( item )->GetDesignBlockLibId() == aLibId )
                 linkedGroups.push_back( static_cast<PCB_GROUP*>( item ) );
@@ -550,53 +540,46 @@ bool PCB_EDIT_FRAME::UpdateDesignBlockFromSelection( const LIB_ID& aLibId )
 
     if( group )
     {
-        for( EDA_ITEM* item : selection )
+        for( EDA_ITEM* item : selectionCopy )
         {
             if( item != group && item->IsBOARD_ITEM() )
                 extraItems.push_back( static_cast<BOARD_ITEM*>( item ) );
         }
 
-        selection.Remove( group );
+        selectionCopy.Remove( group );
 
         // Don't recurse. If we have a group of groups the user probably intends the inner groups to be saved.
         group->RunOnChildren(
                 [&]( EDA_ITEM* aItem )
                 {
-                    selection.Add( aItem );
+                    selectionCopy.Add( aItem );
                 },
                 RECURSE_MODE::NO_RECURSE );
     }
 
+    wxString                      error;
     std::unique_ptr<DESIGN_BLOCK> blk;
 
-    try
-    {
-        blk.reset( Prj().DesignBlockLibs()->LoadDesignBlock( aLibId.GetLibNickname(), aLibId.GetLibItemName() ) );
-    }
-    catch( const IO_ERROR& ioe )
-    {
-        DisplayError( this, ioe.What() );
-        return false;
-    }
+    blk.reset( Prj().DesignBlockLibs()->LoadDesignBlock( aLibId.GetLibNickname(), aLibId.GetLibItemName(), false,
+                                                         &error ) );
 
     if( !blk )
     {
-        DisplayErrorMessage(
-                this, wxString::Format( _( "Design block '%s' does not exist." ), aLibId.GetUniStringLibItemName() ) );
+        DisplayErrorMessage( this, error );
         return false;
     }
 
     if( !blk->GetBoardFile().IsEmpty() && !checkOverwriteDbLayout( this, aLibId ) )
         return false;
 
-    if( !saveSelectionToDesignBlock( aLibId.GetLibNickname(), selection, *blk ) )
+    if( !saveSelectionToDesignBlock( aLibId.GetLibNickname(), selectionCopy, *blk ) )
         return false;
 
     // If we had a group, extend it with the extra items and reselect it
     if( group )
     {
-        selection.Clear();
-        selection.Add( group );
+        m_toolManager->RunAction( ACTIONS::selectionClear );
+        m_toolManager->RunAction( ACTIONS::selectItem, group->AsEdaItem() );
 
         BOARD_COMMIT commit( m_toolManager );
         bool         changed = false;
@@ -641,7 +624,7 @@ bool PCB_EDIT_FRAME::UpdateDesignBlockFromSelection( const LIB_ID& aLibId )
 
         int addedCount = 0;
 
-        for( EDA_ITEM* edaItem : selection )
+        for( EDA_ITEM* edaItem : selectionCopy )
         {
             if( !edaItem->IsBOARD_ITEM() )
                 continue;

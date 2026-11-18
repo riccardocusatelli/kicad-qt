@@ -15,17 +15,15 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
 
+#include <optional>
 #include <raster_image.h>
 #include <wx/buffer.h>
+
 
 #include <core/mirror.h>
 #include <kiid.h>
@@ -122,6 +120,16 @@ public:
     }
 
     /**
+     * Recompute the PPI the way it was computed before the pixels/cm truncation fix.
+     *
+     * Used only to migrate the stored image scale of pre-fix designs.  Returns the same
+     * value as GetPPI() whenever the embedded resolution has no fractional pixels/cm.
+     *
+     * @return the PPI a pre-fix KiCad would have derived from the embedded image.
+     */
+    int GetLegacyPPI() const;
+
+    /**
      * Return the orthogonal, bounding box of this object for display purposes.
      *
      * This box should be an enclosing perimeter for visible components of this object,
@@ -175,21 +183,36 @@ public:
     bool SetImage( const RASTER_IMAGE& aImage );
 
     /**
-    * Write the bitmap data to \a aOutStream.
-    *
-    * This writes binary data, not hexadecimal strings
-    *
-    * @param aOutStream The output stream to write to.
-    * @return true if success writing else false.
-    */
+     * Show finished pixels in place of the image, without disturbing the scale or the
+     * resolution.
+     *
+     * Used for a temporary view, such as a conversion preview. Any rotation or mirroring
+     * already in the image is taken as final. Calling this again replaces the view;
+     * EndPreviewImage() puts the real image back.
+     */
+    void BeginPreviewImage( const RASTER_IMAGE& aImage );
+
+    /**
+     * Put back the image a preview stood in for, and do nothing if none is showing.
+     */
+    void EndPreviewImage();
+
+    /**
+     * Write the bitmap data to \a aOutStream.
+     *
+     * This writes binary data, not hexadecimal strings
+     *
+     * @param aOutStream The output stream to write to.
+     * @return true if success writing else false.
+     */
     bool SaveImageData( wxOutputStream& aOutStream ) const;
 
     /**
-     * Load an image data saved by #SaveData.
+     * Load an image data saved by #SaveImageData.
      *
      * The file format must be png format in hexadecimal.
      *
-     * @param aLine the LINE_READER used to read the data file.
+     * @param aLine the #LINE_READER used to read the data file.
      * @param aErrorMsg Description of the error if an error occurs while loading the
      *                  png bitmap data.
      * @return true if the bitmap loaded successfully.
@@ -211,6 +234,23 @@ public:
     void Rotate( bool aRotateCCW );
 
     void ConvertToGreyscale();
+
+    /**
+     * Invert the colours of the image (e.g. white becomes black).
+     *
+     * The alpha channel is not modified.
+     */
+    void InvertColors();
+
+    /**
+     * Convert \a aColour to transparent in the image, proportionally to the 'distance'
+     * of each pixel from \a aColour.
+     *
+     * Pixels matching \a aColour exactly become fully transparent. Pixels further
+     * away from it keep proportionally more opacity. The alpha channel is added
+     * if the image does not have one.
+     */
+    void ConvertColourToAlpha( const KIGFX::COLOR4D& aColour );
 
     bool IsMirroredX() const { return m_isMirroredX; }
     bool IsMirroredY() const { return m_isMirroredY; }
@@ -254,6 +294,19 @@ private:
                                     ///< with #m_pixelSizeIu, controls the actual draw size.
     mutable wxMemoryBuffer m_imageData; ///< Cached encoded image data (PNG/JPEG).
     RASTER_IMAGE::TYPE m_imageType; ///< The image type (png, jpeg, etc.).
+
+    /// Everything a preview image stands in for, kept so it can be put back exactly.
+    struct PREVIEW_SAVE
+    {
+        RASTER_IMAGE m_image;
+        RASTER_IMAGE m_originalImage;
+        KIID         m_imageId;
+        EDA_ANGLE    m_rotation;
+        bool         m_isMirroredX;
+        bool         m_isMirroredY;
+    };
+
+    std::optional<PREVIEW_SAVE> m_previewSave; ///< Set only while a preview is showing.
 
     RASTER_IMAGE m_image;           ///< The raw, uncompressed image data.
     RASTER_IMAGE m_originalImage;   ///< Raw image data, not transformed by rotate/mirror.

@@ -15,15 +15,16 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef SCH_SHEEET_H
 #define SCH_SHEEET_H
+
+#include <map>
+#include <memory>
+#include <functional>
+#include <set>
 
 #include <sch_field.h>
 
@@ -35,6 +36,7 @@ class SCH_SHEET_PIN;
 class SCH_SHEET_PATH;
 class EDA_DRAW_FRAME;
 class SCH_NO_CONNECT;
+class SCH_SHEET_FIELD_PROPERTY;
 
 
 #define MIN_SHEET_WIDTH  500    // Units are mils.
@@ -51,10 +53,13 @@ public:
                VECTOR2I aSize = VECTOR2I( schIUScale.MilsToIU( MIN_SHEET_WIDTH ),
                                           schIUScale.MilsToIU( MIN_SHEET_HEIGHT ) ) );
 
+    void Serialize( google::protobuf::Any& aContainer ) const override;
+    bool Deserialize( const google::protobuf::Any& aContainer ) override;
+
     /**
      * Copy \a aSheet into a new object.
      *
-     * All sheet pins are copied as is except and the #SCH_SHEET_PIN object's #m_Parent pointers
+     * All sheet pins are copied as is except and the #SCH_SHEET_PIN object's #m_parent pointers
      * are set to the new copied parent object.
      */
     SCH_SHEET( const SCH_SHEET& aSheet );
@@ -98,12 +103,14 @@ public:
     /**
      * Return a field in this sheet.
      *
-     * @param aFieldName is the canonical name of the field.
+     * @param aFieldName is the untranslated name of the field.
      *
      * @return Both non-const and const versions return nullptr if the field is not found.
      */
     SCH_FIELD* GetField( const wxString& aFieldName );
     const SCH_FIELD* GetField( const wxString& aFieldName ) const;
+
+    std::vector<PROPERTY_BASE*> GetDynamicProperties() const override;
 
     /**
      * Return the next ordinal for a user field for this sheet
@@ -118,23 +125,63 @@ public:
     void SetFields( const std::vector<SCH_FIELD>& aFields );
 
     /**
-     * Add a @aField to the list of fields.
+     * Add @a aFieldName to the list of fields.
      *
-     * @note This has no affect if @aField is the sheet file name or sheet name fields.
+     * @note This has no affect if @a aFieldName is the sheet file name or sheet name fields.
      */
     SCH_FIELD* AddField( const SCH_FIELD& aField );
+
+    void SetFieldText( SCH_FIELD* aField, const wxString& aFieldName, const wxString& aFieldText,
+                       const SCH_SHEET_PATH* aPath, const wxString& aVariantName );
 
     void SetFieldText( const wxString& aFieldName, const wxString& aFieldText, const SCH_SHEET_PATH* aPath = nullptr,
                        const wxString& aVariantName = wxEmptyString );
 
+    wxString GetFieldText( const SCH_FIELD* aField, const wxString& aFieldName, const SCH_SHEET_PATH* aPath,
+                           const wxString& aVariantName ) const;
+
     wxString GetFieldText( const wxString& aFieldName, const SCH_SHEET_PATH* aPath = nullptr,
                            const wxString& aVariantName = wxEmptyString ) const;
 
-    wxString GetShownName( bool aAllowExtraText ) const
+    wxString GetShownName( RESOLUTION_CONTEXT aContext ) const
     {
-        return GetField( FIELD_T::SHEET_NAME )->GetShownText( aAllowExtraText );
+        return GetField( FIELD_T::SHEET_NAME )->GetShownText( aContext );
     }
     wxString GetName() const { return GetField( FIELD_T::SHEET_NAME )->GetText(); }
+
+    /**
+     * Return this sheet's own reference suffix with text variables resolved.
+     *
+     * Only base user field values of this sheet and the sheets on its path resolve, so the result
+     * never depends on the variant, project, title block, file name or attributes.
+     *
+     * @param aParentPath is the path of the sheet that holds this sheet symbol.
+     */
+    wxString GetRefSuffix( const SCH_SHEET_PATH& aParentPath ) const;
+
+    /**
+     * Resolve \a aText as if it were this sheet's reference suffix, with the same rules as GetRefSuffix.
+     */
+    wxString ResolveRefSuffix( const wxString& aText, const SCH_SHEET_PATH& aParentPath ) const;
+
+    /**
+     * @return the composed reference suffix of this sheet below the current sheet.
+     */
+    wxString GetFullRefSuffixProp() const;
+
+    /**
+     * Return the suffix a pasted copy of a sheet should take.
+     *
+     * A suffix that is not in use is kept. Otherwise a trailing number or a trailing run of up to two
+     * letters continues past the highest suffix of the same series, so _M1 becomes _M4 when _M3 is in
+     * use, _M09 becomes _M10 and _Z becomes _AA. Any other suffix is kept verbatim.
+     *
+     * @param aSuffix is the raw suffix field text of the pasted sheet.
+     * @param aInUse is the suffix of every sheet in the schematic, both raw and resolved.
+     * @param aIsTaken also refuses a candidate, for one that only collides once resolved.
+     */
+    static wxString NextRefSuffix( const wxString& aSuffix, const std::set<wxString>& aInUse,
+                                   const std::function<bool( const wxString& )>& aIsTaken = nullptr );
     void SetName( const wxString& aName ) { GetField( FIELD_T::SHEET_NAME )->SetText( aName ); }
 
     SCH_SCREEN* GetScreen() const { return m_screen; }
@@ -181,6 +228,14 @@ public:
     void SetScreen( SCH_SCREEN* aScreen );
 
     /**
+     * Take the identity of the screen this sheet owns.
+     *
+     * A sheet and its screen are one object to the rest of the schematic, so loaders and
+     * importers that build the pair together have to give them a single UUID.
+     */
+    void SyncUuidToScreen();
+
+    /**
      * Return the number of times the associated screen for the sheet is being used.
      *
      * If no screen is associated with the sheet, then zero is returned.
@@ -195,6 +250,8 @@ public:
     /**
      * Resolve any references to system tokens supported by the sheet.
      *
+     * @param aPath is the sheet instance to resolve with.
+     * @param token is the text variable to resolve.
      * @param aDepth is a counter to limit recursion and circular references.
      */
     bool ResolveTextVar( const SCH_SHEET_PATH* aPath, wxString* token, int aDepth = 0 ) const;
@@ -505,6 +562,12 @@ public:
      */
     const std::vector<SCH_SHEET_INSTANCE>& GetInstances() const { return m_instances; }
 
+    /// Return this sheet's placement record under @a aParentPath, or nullptr if it has none.
+    const SCH_SHEET_INSTANCE* GetInstance( const KIID_PATH& aParentPath ) const
+    {
+        return getInstance( aParentPath );
+    }
+
     /**
      * Check to see if this sheet has a root sheet instance.
      *
@@ -531,6 +594,10 @@ public:
     void AddInstance( const SCH_SHEET_INSTANCE& aInstance );
 
     void DeleteVariant( const KIID_PATH& aPath, const wxString& aVariantName );
+
+    // Remove a variant's override of one field
+    void ClearVariantField( const KIID_PATH& aPath, const wxString& aVariantName,
+                            const wxString& aFieldName );
 
     void RenameVariant( const KIID_PATH& aPath, const wxString& aOldName, const wxString& aNewName );
 
@@ -563,6 +630,20 @@ public:
      */
     bool HasPageNumberChanges( const SCH_SHEET& aOther ) const;
 
+    bool HasHierarchyChanges( const SCH_SHEET& aOther ) const;
+
+    /// True when an edit may change the reference suffix this sheet adds to the paths below it.
+    bool HasRefSuffixChanges( const SCH_SHEET& aOther ) const;
+
+    /**
+     * Flag every screen at or below this sheet as modified.
+     *
+     * Files store composed references, so a suffix change rewrites the files below the sheet.
+     */
+    void SetDescendantsModified();
+
+    bool HasPinIdentityChanges( const SCH_SHEET& aOther ) const;
+
     /**
      * Compare page numbers of schematic sheets.
      *
@@ -581,6 +662,7 @@ public:
 protected:
     friend SCH_SHEET_PATH;
     friend SCH_IO_KICAD_SEXPR_PARSER;
+    friend SCHEMATIC;          // Only to swap a staged screen in, see SCHEMATIC::AdoptContent().
 
     void setInstances( const std::vector<SCH_SHEET_INSTANCE>& aInstances )
     {
@@ -620,12 +702,15 @@ protected:
      *          at index 0 must be the root sheet.
      *
      * @param[in] aInstance is the hierarchical path of the sheet.
-     * @param[in] aReference is the new page number for the sheet.
+     * @param[in] aPageNumber is the new page number for the sheet.
      */
     void setPageNumber( const KIID_PATH& aInstance, const wxString& aPageNumber );
 
     bool getInstance( SCH_SHEET_INSTANCE& aInstance, const KIID_PATH& aSheetPath,
                       bool aTestFromEnd = false ) const;
+
+    void setVariantAttribute( bool aEnable, const SCH_SHEET_PATH* aInstance, const wxString& aVariantName,
+                              bool SCH_SHEET::*aBase, bool SCH_SHEET_VARIANT::*aOverride );
 
     SCH_SHEET_INSTANCE* getInstance( const KIID_PATH& aPath );
     const SCH_SHEET_INSTANCE* getInstance( const KIID_PATH& aPath ) const;
@@ -645,6 +730,9 @@ protected:
     /**
      * Get the sheetpath of this sheet.  NB: REQUIRES that the current sheet hierarchy contains
      * the given sheet.
+     *
+     * @todo Verify if this function is actually used correctly.  Technically findSelf() should reture a list of
+     *       #SCH_SHEET_PATH objects in a complex hierarcy.
      */
     SCH_SHEET_PATH findSelf() const;
 
@@ -674,6 +762,8 @@ private:
     KIGFX::COLOR4D              m_backgroundColor;
 
     std::vector<SCH_SHEET_INSTANCE> m_instances;
+
+    mutable std::map<wxString, std::unique_ptr<SCH_SHEET_FIELD_PROPERTY>> m_dynamicPropertyCache;
 };
 
 

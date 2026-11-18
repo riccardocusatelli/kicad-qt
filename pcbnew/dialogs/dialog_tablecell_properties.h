@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef DIALOG_TABLECELL_PROPERTIES_H
@@ -51,18 +47,20 @@ public:
 
     DIALOG_TABLECELL_PROPERTIES( PCB_BASE_EDIT_FRAME* aParentFrame, std::vector<PCB_TABLECELL*> aCells );
     ~DIALOG_TABLECELL_PROPERTIES();
-    ///< @return the value depending on the way the dialog was closed.
+
+    /// @return the value depending on the way the dialog was closed.
     enum TABLECELL_PROPS_RETVALUE GetReturnValue() { return m_returnValue; }
 
-private:
     bool TransferDataToWindow() override;
     bool TransferDataFromWindow() override;
 
+private:
+    void onBold( wxCommandEvent& aEvent ) override;
+    void onItalic( wxCommandEvent& aEvent ) override;
     void onHAlignButton( wxCommandEvent& aEvent );
     void onVAlignButton( wxCommandEvent& aEvent );
     void onTextSize( wxCommandEvent& aEvent ) override;
     void onAutoTextThickness( wxCommandEvent& aEvent ) override;
-    void onBoldToggle( wxCommandEvent& aEvent ) override;
     void onEditTable( wxCommandEvent& aEvent ) override;
 
     virtual void onMultiLineTCLostFocus( wxFocusEvent& event ) { event.Skip(); }
@@ -77,20 +75,28 @@ private:
     PCB_TABLE*                  m_table;
     std::vector<PCB_TABLECELL*> m_cells;
 
-    UNIT_BINDER m_textHeight;
-    UNIT_BINDER m_textWidth;
-    UNIT_BINDER m_textThickness;
-    UNIT_BINDER m_marginLeft;
-    UNIT_BINDER m_marginTop;
-    UNIT_BINDER m_marginRight;
-    UNIT_BINDER m_marginBottom;
+    UNIT_BINDER                 m_textHeight;
+    UNIT_BINDER                 m_textWidth;
+    UNIT_BINDER                 m_textThickness;
+    UNIT_BINDER                 m_marginLeft;
+    UNIT_BINDER                 m_marginTop;
+    UNIT_BINDER                 m_marginRight;
+    UNIT_BINDER                 m_marginBottom;
 
-    wxStyledTextCtrl* m_cellText;
-    SCINTILLA_TRICKS* m_scintillaTricks;
+    bool                        m_mixedBoldSetting;
+    bool                        m_mixedItalicSetting;
 
-    HTML_MESSAGE_BOX* m_helpWindow;
+    wxStyledTextCtrl*           m_cellText;
+    SCINTILLA_TRICKS*           m_scintillaTricks;
 
-    enum TABLECELL_PROPS_RETVALUE m_returnValue; // the option that closed the dialog
+    /**
+     * Generated cell text, shown so the user can read it but not theirs to change.
+     */
+    bool                        m_cellTextIsGenerated;
+
+    HTML_MESSAGE_BOX*           m_helpWindow;
+
+    TABLECELL_PROPS_RETVALUE    m_returnValue; // the option that closed the dialog
 };
 
 

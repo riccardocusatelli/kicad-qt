@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <advanced_config.h>
@@ -83,8 +79,7 @@ int PL_SELECTION_TOOL::Main( const TOOL_EVENT& aEvent )
     while( TOOL_EVENT* evt = Wait() )
     {
         // on left click, a selection is made, depending on modifiers ALT, SHIFT, CTRL:
-        setModifiersState( evt->Modifier( MD_SHIFT ), evt->Modifier( MD_CTRL ),
-                           evt->Modifier( MD_ALT ) );
+        setModifiersState( evt->Modifier( MD_SHIFT ), evt->Modifier( MD_CTRL ), evt->Modifier( MD_ALT ) );
 
         if( evt->IsMouseDown( BUT_LEFT ) )
         {
@@ -98,7 +93,7 @@ int PL_SELECTION_TOOL::Main( const TOOL_EVENT& aEvent )
             }
         }
         // Single click? Select single object
-        else if( evt->IsClick( BUT_LEFT ) )
+        else if( evt->IsClick( BUT_LEFT ) || evt->IsAction( &ACTIONS::cursorClick ) )
         {
             // If the timer has stopped, then we have already run the disambiguate routine
             // and we don't want to register an extra click here
@@ -131,8 +126,7 @@ int PL_SELECTION_TOOL::Main( const TOOL_EVENT& aEvent )
                 m_menu->ShowContextMenu( m_selection );
         }
 
-        // double click? Display the properties window
-        else if( evt->IsDblClick( BUT_LEFT ) )
+        else if( evt->IsDblClick( BUT_LEFT ) || evt->IsAction( &ACTIONS::cursorDblClick ) )
         {
             // No double-click actions currently defined
         }
@@ -339,8 +333,8 @@ PL_SELECTION& PL_SELECTION_TOOL::RequestSelection()
 
 bool PL_SELECTION_TOOL::selectMultiple()
 {
-    bool cancelled = false;     // Was the tool cancelled while it was running?
-    m_multiple = true;          // Multiple selection mode is active
+    bool cancelled = false;         // Was the tool cancelled while it was running?
+    m_inSelectMultiple = true;      // A selection box is being dragged out
     KIGFX::VIEW* view = getView();
 
     KIGFX::PREVIEW::SELECTION_AREA area;
@@ -432,7 +426,7 @@ bool PL_SELECTION_TOOL::selectMultiple()
 
     // Stop drawing the selection box
     view->Remove( &area );
-    m_multiple = false;         // Multiple selection mode is inactive
+    m_inSelectMultiple = false;         // Multiple selection mode is inactive
 
     if( !cancelled )
         m_selection.ClearReferencePoint();

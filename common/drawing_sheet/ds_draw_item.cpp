@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /*
@@ -181,7 +177,7 @@ const BOX2I DS_DRAW_ITEM_TEXT::GetApproxBBox()
     // shows up large in profiles.
 
     const TEXT_ATTRIBUTES& attrs = GetAttributes();
-    const wxString         text = GetShownText( true );
+    const wxString         text = GetShownText( FOR_CANVAS );
     BOX2I                  bbox( GetTextPos() );
 
     bbox.SetWidth( KiROUND( (int) text.length() * attrs.m_Size.x * 1.3 ) );
@@ -232,8 +228,8 @@ bool DS_DRAW_ITEM_TEXT::HitTest( const BOX2I& aRect, bool aContains, int aAccura
 
 wxString DS_DRAW_ITEM_TEXT::GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool aFull ) const
 {
-    return wxString::Format( _( "Text '%s'" ),
-                             aFull ? GetShownText( false ) : EllipsizeMenuText( GetText() ) );
+    return wxString::Format( _( "Text '%s'" ), aFull ? GetShownText( FOR_GUI )
+                                                     : EllipsizeMenuText( GetText() ) );
 }
 
 
@@ -419,7 +415,7 @@ bool DS_DRAW_ITEM_LINE::HitTest( const VECTOR2I& aPosition, int aAccuracy ) cons
 wxString DS_DRAW_ITEM_LINE::GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool aFull ) const
 {
     return wxString::Format( _( "Line, length %s" ),
-                             aUnitsProvider->MessageTextFromValue( GetStart().Distance( GetEnd() ) ) );
+                             aUnitsProvider->MessageTextFromValue( GetLength() ) );
 }
 
 

@@ -15,15 +15,12 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
 
+#include <tool/arc_draw_mode.h>
 #include <tool/tool_action.h>
 #include <tool/actions.h>
 
@@ -31,6 +28,15 @@ class DESIGN_BLOCK;
 class SCH_SYMBOL;
 class TOOL_EVENT;
 class TOOL_MANAGER;
+
+
+// These are macros so that it will re-resolve if the language is changed
+#define NO_PIN_FUNCTIONS_WITH_MULTIPLE_BODY_STYLES \
+    _( "Alternate pin functions are not available on symbols with multiple body styles." )
+
+#define NO_BODY_STYLES_WITH_ALTERNATE_PIN_FUNCTIONS \
+    _( "Multiple body styles are not supported on symbols with alternate pin functions." )
+
 
 /**
  * Gather all the actions that are shared by tools. The instance of SCH_ACTIONS is created
@@ -94,14 +100,25 @@ public:
     static TOOL_ACTION drawTable;
     static TOOL_ACTION drawRectangle;
     static TOOL_ACTION drawCircle;
+    static TOOL_ACTION drawEllipse;
+    static TOOL_ACTION drawEllipseArc;
     static TOOL_ACTION drawArc;
+    static TOOL_ACTION drawArcCenter;
+    static TOOL_ACTION drawArcStartEndMid;
+    static TOOL_ACTION drawArcStartEndCenter;
+    static TOOL_ACTION drawArcTangent;
+    static TOOL_ACTION drawArcStartDirEnd;
+
+    /// Tool action that starts the arc tool in the given mode.
+    static const TOOL_ACTION& DrawArcForMode( ARC_DRAW_MODE aMode );
     static TOOL_ACTION drawBezier;
+    static TOOL_ACTION drawPolygon;
     static TOOL_ACTION drawLines;
     static TOOL_ACTION placeImage;
+    static TOOL_ACTION        convertImageToOutlines;
     static TOOL_ACTION undoLastSegment;
     static TOOL_ACTION switchSegmentPosture;
     static TOOL_ACTION drawRuleArea;
-    static TOOL_ACTION deleteLastPoint;
     static TOOL_ACTION closeOutline;
 
     // Symbol Tools
@@ -158,6 +175,7 @@ public:
     static TOOL_ACTION showLibFieldsTable;
     static TOOL_ACTION showRelatedLibFieldsTable;
     static TOOL_ACTION symbolProperties;
+    static TOOL_ACTION editSymbolPinMaps;
     static TOOL_ACTION pinTable;
     static TOOL_ACTION convertStackedPins;
     static TOOL_ACTION explodeStackedPin;
@@ -165,6 +183,8 @@ public:
     static TOOL_ACTION updateSymbols;
     static TOOL_ACTION changeSymbol;
     static TOOL_ACTION updateSymbol;
+    static TOOL_ACTION setVariantSymbol;
+    static TOOL_ACTION clearVariantSymbol;
     static TOOL_ACTION assignFootprints;
     static TOOL_ACTION assignNetclass;
     static TOOL_ACTION findNetInInspector;
@@ -172,6 +192,8 @@ public:
     static TOOL_ACTION editPageNumber;
     static TOOL_ACTION checkSymbol;
     static TOOL_ACTION diffSymbol;
+    static TOOL_ACTION compareSchematicWithFile;
+    static TOOL_ACTION compareSchematicWithHistory;
     static TOOL_ACTION showBusSyntaxHelp;
 
     static TOOL_ACTION rescueSymbols;
@@ -196,6 +218,8 @@ public:
     static TOOL_ACTION addVariant;
     static TOOL_ACTION removeVariant;
     static TOOL_ACTION editVariantDescription;
+    static TOOL_ACTION renameVariant;
+    static TOOL_ACTION copyVariant;
 
     // Attribute Toggles
     static TOOL_ACTION setExcludeFromBOM;
@@ -216,6 +240,9 @@ public:
 
     // Library management
     static TOOL_ACTION saveLibraryAs;
+    static TOOL_ACTION saveLibraryAsPacked;
+    static TOOL_ACTION saveLibraryAsUnpacked;
+    static TOOL_ACTION compareLibraryWithFile;
     static TOOL_ACTION saveSymbolAs;
     static TOOL_ACTION saveSymbolCopyAs;
     static TOOL_ACTION newSymbol;
@@ -231,6 +258,11 @@ public:
     static TOOL_ACTION exportSymbol;
     static TOOL_ACTION updateSymbolFields;
     static TOOL_ACTION flattenSymbol;
+
+    // Symbol Editor document tabs
+    static TOOL_ACTION nextSymbolTab;
+    static TOOL_ACTION prevSymbolTab;
+    static TOOL_ACTION closeSymbolTab;
 
     // Hierarchy navigation
     static TOOL_ACTION changeSheet;
@@ -275,7 +307,6 @@ public:
     static TOOL_ACTION importNonKicadSchematic;
     static TOOL_ACTION exportSymbolView;
     static TOOL_ACTION exportSymbolAsSVG;
-    static TOOL_ACTION showPythonConsole;
     static TOOL_ACTION previousUnit;
     static TOOL_ACTION nextUnit;
     static TOOL_ACTION previousSymbol;
@@ -308,7 +339,9 @@ public:
     static TOOL_ACTION toggleSimSidePanel;
     static TOOL_ACTION toggleLegend;
     static TOOL_ACTION toggleDottedSecondary;
+    static TOOL_ACTION toggleSmithChart;
     static TOOL_ACTION toggleDarkModePlots;
+    static TOOL_ACTION toggleTrackCursor;
     static TOOL_ACTION simAnalysisProperties;
     static TOOL_ACTION runSimulation;
     static TOOL_ACTION stopSimulation;
@@ -320,6 +353,12 @@ public:
     static TOOL_ACTION clearHighlight;
     static TOOL_ACTION updateNetHighlighting;
     static TOOL_ACTION highlightNetTool;
+    static TOOL_ACTION highlightNetChain;
+    static TOOL_ACTION removeFromNetChain;
+    static TOOL_ACTION replaceTerminalPin;
+    static TOOL_ACTION nameNetChain;
+    static TOOL_ACTION createNetChainBetweenPins;
+    static TOOL_ACTION createNetChain;
     static TOOL_ACTION showNetNavigator;
 
     // Drag and drop
@@ -329,17 +368,22 @@ public:
 
     struct PLACE_SYMBOL_PARAMS
     {
-        ///< Provide a symbol to place
+        /// Provide a symbol to place
         SCH_SYMBOL* m_Symbol = nullptr;
-        ///< If a symbol is provide, reannotate it?
+
+        /// If a symbol is provide, reannotate it?
         bool m_Reannotate = true;
+
+        /// For a preselected multi-unit symbol, keep placing remaining units instead of exiting
+        bool m_PlaceAllUnits = false;
     };
 
     struct PLACE_SYMBOL_UNIT_PARAMS
     {
-        ///< Symbol used as reference for unit placement
+        /// Symbol used as reference for unit placement
         SCH_SYMBOL* m_Symbol = nullptr;
-        ///< Unit number to place; 0 means next available unit
+
+        /// Unit number to place; 0 means next available unit
         int m_Unit = 0;
     };
 };

@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "import_fabmaster.h"
@@ -42,6 +38,7 @@
 #include <board_design_settings.h>
 #include <board_item.h>
 #include <footprint.h>
+#include <trace_helpers.h>
 #include <pad.h>
 #include <padstack.h>
 #include <pcb_group.h>
@@ -62,12 +59,6 @@
 #include <core/ki_assert.h>
 
 
-/**
- * Flag to enable #FABMASTER plugin debugging output.
- *
- * @ingroup trace_env_vars
- */
-static const wxChar traceFabmaster[] = wxT( "KICAD_FABMASTER" );
 
 
 void FABMASTER::checkpoint()
@@ -82,7 +73,7 @@ void FABMASTER::checkpoint()
                                                             / std::max( 1U, m_totalCount ) );
 
             if( !m_progressReporter->KeepRefreshing() )
-                THROW_IO_ERROR( _( "File import canceled by user." ) );
+                THROW_IO_CANCELLED();
 
             m_lastProgressCount = m_doneCount;
         }
@@ -268,10 +259,10 @@ FABMASTER::section_type FABMASTER::detectType( size_t aOffset )
     if( row1 == "LAYERSORT" )
         return EXTRACT_FULL_LAYERS;
 
-    wxLogError( _( "Unknown FABMASTER section %s:%s at row %zu." ),
-                row1.c_str(),
-                row2.c_str(),
-                aOffset );
+    reportError( _( "Unknown FABMASTER section %s:%s at row %zu." ),
+                 row1.c_str(),
+                 row2.c_str(),
+                 aOffset );
     return UNKNOWN_EXTRACT;
 
 }
@@ -286,9 +277,9 @@ double FABMASTER::processScaleFactor( size_t aRow )
 
     if( rows[aRow].size() < 11 )
     {
-        wxLogError( _( "Invalid row size in J row %zu. Expecting 11 elements but found %zu." ),
-                    aRow,
-                    rows[aRow].size() );
+        reportError( _( "Invalid row size in J row %zu. Expecting 11 elements but found %zu." ),
+                     aRow,
+                     rows[aRow].size() );
         return -1.0;
     }
 
@@ -309,7 +300,7 @@ double FABMASTER::processScaleFactor( size_t aRow )
 
     if( retval < 1.0 )
     {
-        wxLogError( _( "Could not find units value, defaulting to mils." ) );
+        reportError( _( "Could not find units value, defaulting to mils." ) );
         retval = pcbIUScale.IU_PER_MILS;
     }
 
@@ -334,7 +325,7 @@ int FABMASTER::getColFromName( size_t aRow, const std::string& aStr )
             return i;
     }
 
-    THROW_IO_ERROR( wxString::Format( _( "Could not find column label %s." ), aStr.c_str() ) );
+    THROW_IO_ERRORF( _( "Could not find column label %s." ), aStr.c_str() );
     return -1;
 }
 
@@ -368,10 +359,10 @@ size_t FABMASTER::processPadStackLayers( size_t aRow )
 
         if( row.size() != header.size() )
         {
-            wxLogError( _( "Invalid row size in row %zu. Expecting %zu elements but found %zu." ),
-                        rownum,
-                        header.size(),
-                        row.size() );
+            reportError( _( "Invalid row size in row %zu. Expecting %zu elements but found %zu." ),
+                         rownum,
+                         header.size(),
+                         row.size() );
             continue;
         }
 
@@ -439,10 +430,10 @@ size_t FABMASTER::processPadStacks( size_t aRow )
 
         if( row.size() != header.size() )
         {
-            wxLogError( _( "Invalid row size in row %zu. Expecting %zu elements but found %zu." ),
-                        rownum,
-                        header.size(),
-                        row.size() );
+            reportError( _( "Invalid row size in row %zu. Expecting %zu elements but found %zu." ),
+                         rownum,
+                         header.size(),
+                         row.size() );
             continue;
         }
 
@@ -489,11 +480,11 @@ size_t FABMASTER::processPadStacks( size_t aRow )
             }
             catch( ... )
             {
-                wxLogError( _( "Expecting drill size value but found %s!%s!%s in row %zu." ),
-                            pad_shape.c_str(),
-                            pad_width.c_str(),
-                            pad_height.c_str(),
-                            rownum );
+                reportError( _( "Expecting drill size value but found %s!%s!%s in row %zu." ),
+                             pad_shape.c_str(),
+                             pad_width.c_str(),
+                             pad_height.c_str(),
+                             rownum );
                 continue;
             }
 
@@ -537,10 +528,10 @@ size_t FABMASTER::processPadStacks( size_t aRow )
         }
         catch( ... )
         {
-            wxLogError( _( "Expecting pad size values but found %s : %s in row %zu." ),
-                        pad_width.c_str(),
-                        pad_height.c_str(),
-                        rownum );
+            reportError( _( "Expecting pad size values but found %s : %s in row %zu." ),
+                         pad_width.c_str(),
+                         pad_height.c_str(),
+                         rownum );
             continue;
         }
 
@@ -562,7 +553,7 @@ size_t FABMASTER::processPadStacks( size_t aRow )
 
         if( w > std::numeric_limits<int>::max() || h > std::numeric_limits<int>::max() )
         {
-            wxLogError( _( "Invalid pad size in row %zu." ), rownum );
+            reportError( _( "Invalid pad size in row %zu." ), rownum );
             continue;
         }
 
@@ -600,10 +591,10 @@ size_t FABMASTER::processPadStacks( size_t aRow )
         }
         catch( ... )
         {
-            wxLogError( _( "Expecting pad offset values but found %s:%s in row %zu." ),
-                        pad_xoff.c_str(),
-                        pad_yoff.c_str(),
-                        rownum );
+            reportError( _( "Expecting pad offset values but found %s:%s in row %zu." ),
+                         pad_xoff.c_str(),
+                         pad_yoff.c_str(),
+                         rownum );
             continue;
         }
 
@@ -656,10 +647,10 @@ size_t FABMASTER::processPadStacks( size_t aRow )
             }
             else
             {
-                wxLogError( _( "Unknown pad shape name '%s' on layer '%s' in row %zu." ),
-                            pad_shape.c_str(),
-                            pad_layer.c_str(),
-                            rownum );
+                reportError( _( "Unknown pad shape name '%s' on layer '%s' in row %zu." ),
+                             pad_shape.c_str(),
+                             pad_layer.c_str(),
+                             rownum );
                 continue;
             }
 
@@ -709,10 +700,10 @@ size_t FABMASTER::processSimpleLayers( size_t aRow )
 
          if( row.size() != header.size() )
          {
-             wxLogError( _( "Invalid row size in row %zu. Expecting %zu elements but found %zu." ),
-                         rownum,
-                         header.size(),
-                         row.size() );
+             reportError( _( "Invalid row size in row %zu. Expecting %zu elements but found %zu." ),
+                          rownum,
+                          header.size(),
+                          row.size() );
              continue;
          }
 
@@ -809,7 +800,7 @@ bool FABMASTER::assignLayers()
                     // For now, drop it, but maybr we could gather onto some other layer.
                     // Or implement a proper layer remapper.
                     layer.disable = true;
-                    wxLogWarning( _( "No user layer to put layer %s" ), layer.name );
+                    reportWarning( _( "No user layer to put layer %s" ), layer.name );
                 }
             }
         }
@@ -892,10 +883,10 @@ size_t FABMASTER::processLayers( size_t aRow )
 
         if( row.size() != header.size() )
         {
-            wxLogError( _( "Invalid row size in row %zu. Expecting %zu elements but found %zu." ),
-                        rownum,
-                        header.size(),
-                        row.size() );
+            reportError( _( "Invalid row size in row %zu. Expecting %zu elements but found %zu." ),
+                         rownum,
+                         header.size(),
+                         row.size() );
             continue;
         }
 
@@ -976,10 +967,10 @@ size_t FABMASTER::processCustomPads( size_t aRow )
 
         if( row.size() != header.size() )
         {
-            wxLogError( _( "Invalid row size in row %zu. Expecting %zu elements but found %zu." ),
-                        rownum,
-                        header.size(),
-                        row.size() );
+            reportError( _( "Invalid row size in row %zu. Expecting %zu elements but found %zu." ),
+                         rownum,
+                         header.size(),
+                         row.size() );
 
             continue;
         }
@@ -1022,9 +1013,9 @@ size_t FABMASTER::processCustomPads( size_t aRow )
 
         if( std::sscanf( pad_record_tag.c_str(), "%d %d", &id, &seq ) != 2 )
         {
-            wxLogError( _( "Invalid format for id string '%s' in custom pad row %zu." ),
-                        pad_record_tag.c_str(),
-                        rownum );
+            reportError( _( "Invalid format for id string '%s' in custom pad row %zu." ),
+                         pad_record_tag.c_str(),
+                         rownum );
             continue;
         }
 
@@ -1064,16 +1055,16 @@ size_t FABMASTER::processCustomPads( size_t aRow )
 
             if( !retval.second )
             {
-                wxLogError( _( "Could not insert graphical item %d into padstack '%s'." ),
-                            seq,
-                            pad_stack_name.c_str() );
+                reportError( _( "Could not insert graphical item %d into padstack '%s'." ),
+                             seq,
+                             pad_stack_name.c_str() );
             }
         }
         else
         {
-            wxLogError( _( "Unrecognized pad shape primitive '%s' in row %zu." ),
-                        gr_data.graphic_dataname,
-                        rownum );
+            reportError( _( "Unrecognized pad shape primitive '%s' in row %zu." ),
+                         gr_data.graphic_dataname,
+                         rownum );
         }
     }
 
@@ -1175,7 +1166,7 @@ FABMASTER::GRAPHIC_ARC* FABMASTER::processCircle( const GRAPHIC_DATA& aData, dou
 
     if( size.x != size.y )
     {
-        wxLogError( _( "Circle with unequal x and y radii (x=%d, y=%d)" ), size.x, size.y );
+        reportError( _( "Circle with unequal x and y radii (x=%d, y=%d)" ), size.x, size.y );
         return nullptr;
     }
 
@@ -1415,7 +1406,7 @@ FABMASTER::GRAPHIC_TEXT* FABMASTER::processText( const FABMASTER::GRAPHIC_DATA& 
     if( toks.size() < 8 )
     {
             // We log the error here but continue in the case of too few tokens
-            wxLogError( _( "Invalid token count. Expected 8 but found %zu." ), toks.size() );
+            reportError( _( "Invalid token count. Expected 8 but found %zu." ), toks.size() );
             new_text->height = 0;
             new_text->width  = 0;
             new_text->ital   = false;
@@ -1532,10 +1523,10 @@ size_t FABMASTER::processGeometry( size_t aRow )
 
         if( row.size() != header.size() )
         {
-            wxLogError( _( "Invalid row size in row %zu. Expecting %zu elements but found %zu." ),
-                        rownum,
-                        header.size(),
-                        row.size() );
+            reportError( _( "Invalid row size in row %zu. Expecting %zu elements but found %zu." ),
+                         rownum,
+                         header.size(),
+                         row.size() );
             continue;
         }
 
@@ -1564,9 +1555,9 @@ size_t FABMASTER::processGeometry( size_t aRow )
 
         if( std::sscanf( geo_tag.c_str(), "%d %d %d", &id, &seq, &subseq ) < 2 )
         {
-            wxLogError( _( "Invalid format for record_tag string '%s' in row %zu." ),
-                        geo_tag.c_str(),
-                        rownum );
+            reportError( _( "Invalid format for record_tag string '%s' in row %zu." ),
+                         geo_tag.c_str(),
+                         rownum );
             continue;
         }
 
@@ -1651,10 +1642,10 @@ size_t FABMASTER::processVias( size_t aRow )
 
         if( row.size() != header.size() )
         {
-            wxLogError( _( "Invalid row size in row %zu. Expecting %zu elements but found %zu." ),
-                        rownum,
-                        header.size(),
-                        row.size() );
+            reportError( _( "Invalid row size in row %zu. Expecting %zu elements but found %zu." ),
+                         rownum,
+                         header.size(),
+                         row.size() );
             continue;
         }
 
@@ -1718,10 +1709,10 @@ size_t FABMASTER::processTraces( size_t aRow )
 
         if( row.size() != header.size() )
         {
-            wxLogError( _( "Invalid row size in row %zu.  Expecting %zu elements but found %zu." ),
-                        rownum,
-                        header.size(),
-                        row.size() );
+            reportError( _( "Invalid row size in row %zu.  Expecting %zu elements but found %zu." ),
+                         rownum,
+                         header.size(),
+                         row.size() );
             continue;
         }
 
@@ -1747,9 +1738,9 @@ size_t FABMASTER::processTraces( size_t aRow )
 
         if( std::sscanf( geo_tag.c_str(), "%d %d %d", &id, &seq, &subseq ) < 2 )
         {
-            wxLogError( _( "Invalid format for record_tag string '%s' in row %zu." ),
-                        geo_tag.c_str(),
-                        rownum );
+            reportError( _( "Invalid format for record_tag string '%s' in row %zu." ),
+                         geo_tag.c_str(),
+                         rownum );
             continue;
         }
 
@@ -1757,7 +1748,7 @@ size_t FABMASTER::processTraces( size_t aRow )
 
         if( !gr_item )
         {
-            KI_LOG_TRACE( traceFabmaster,  _( "Unhandled graphic item '%s' in row %zu." ),
+            KI_LOG_TRACE( traceFabmaster, wxT( "Unhandled graphic item '%s' in row %zu." ),
                         gr_data.graphic_dataname.c_str(),
                         rownum );
             continue;
@@ -1802,10 +1793,10 @@ size_t FABMASTER::processTraces( size_t aRow )
 
             if( !gr_result.second )
             {
-                wxLogError( _( "Duplicate item for ID %d and sequence %d in row %zu." ),
-                            id,
-                            seq,
-                            rownum );
+                reportError( _( "Duplicate item for ID %d and sequence %d in row %zu." ),
+                             id,
+                             seq,
+                             rownum );
             }
         }
         else
@@ -1816,10 +1807,10 @@ size_t FABMASTER::processTraces( size_t aRow )
 
             if( !gr_result.second )
             {
-                wxLogError( _( "Duplicate item for ID %d and sequence %d in row %zu." ),
-                            id,
-                            seq,
-                            rownum );
+                reportError( _( "Duplicate item for ID %d and sequence %d in row %zu." ),
+                             id,
+                             seq,
+                             rownum );
             }
         }
     }
@@ -1901,10 +1892,10 @@ size_t FABMASTER::processFootprints( size_t aRow )
 
         if( row.size() != header.size() )
         {
-            wxLogError( _( "Invalid row size in row %zu. Expecting %zu elements but found %zu." ),
-                        rownum,
-                        header.size(),
-                        row.size() );
+            reportError( _( "Invalid row size in row %zu. Expecting %zu elements but found %zu." ),
+                         rownum,
+                         header.size(),
+                         row.size() );
             continue;
         }
 
@@ -1912,9 +1903,9 @@ size_t FABMASTER::processFootprints( size_t aRow )
 
         if( row[symx_col].empty() || row[symy_col].empty() || row[symrotate_col].empty() )
         {
-            wxLogError( _( "Missing X, Y, or rotation data in row %zu for refdes %s. "
-                           "This may be an unplaced component." ),
-                        rownum, comp_refdes );
+            reportError( _( "Missing X, Y, or rotation data in row %zu for refdes %s. "
+                            "This may be an unplaced component." ),
+                         rownum, comp_refdes );
             continue;
         }
 
@@ -1991,10 +1982,10 @@ size_t FABMASTER::processPins( size_t aRow )
 
         if( row.size() != header.size() )
         {
-            wxLogError( _( "Invalid row size in row %zu. Expecting %zu elements but found %zu." ),
-                        rownum,
-                        header.size(),
-                        row.size() );
+            reportError( _( "Invalid row size in row %zu. Expecting %zu elements but found %zu." ),
+                         rownum,
+                         header.size(),
+                         row.size() );
             continue;
         }
 
@@ -2064,10 +2055,10 @@ size_t FABMASTER::processNets( size_t aRow )
 
         if( row.size() != header.size() )
         {
-            wxLogError( _( "Invalid row size in row %zu. Expecting %zu elements but found %zu." ),
-                        rownum,
-                        header.size(),
-                        row.size() );
+            reportError( _( "Invalid row size in row %zu. Expecting %zu elements but found %zu." ),
+                         rownum,
+                         header.size(),
+                         row.size() );
             continue;
         }
 
@@ -2412,8 +2403,8 @@ void FABMASTER::createComponentsFromOrphanPins()
 
 bool FABMASTER::loadFootprints( BOARD* aBoard )
 {
-    const NETNAMES_MAP& netinfo = aBoard->GetNetInfo().NetsByName();
-    const auto& ds = aBoard->GetDesignSettings();
+    const NETNAMES_MAP&          netinfo = aBoard->GetNetInfo().NetsByName();
+    const BOARD_DESIGN_SETTINGS& bds = aBoard->GetDesignSettings();
 
     for( auto& mod : components )
     {
@@ -2476,8 +2467,7 @@ bool FABMASTER::loadFootprints( BOARD* aBoard )
 
                     if( !IsPcbLayer( layer ) )
                     {
-                        KI_LOG_TRACE( traceFabmaster, wxS( "The layer %s is not mapped?" ),
-                                                         ref->layer.c_str() );
+                        KI_LOG_TRACE( traceFabmaster, wxS( "The layer %s is not mapped?" ), ref->layer.c_str() );
                         continue;
                     }
 
@@ -2519,7 +2509,7 @@ bool FABMASTER::loadFootprints( BOARD* aBoard )
                     if( IsPcbLayer( getLayer( seg->layer ) ) )
                         layer = getLayer( seg->layer );
 
-                    STROKE_PARAMS defaultStroke( ds.GetLineThickness( layer ) );
+                    STROKE_PARAMS defaultStroke( bds.GetLineThickness( layer ) );
 
                     switch( seg->shape )
                     {
@@ -2578,7 +2568,7 @@ bool FABMASTER::loadFootprints( BOARD* aBoard )
                             if( lsrc.layer == "DISPLAY_TOP" || lsrc.layer == "DISPLAY_BOTTOM" )
                                 circle->SetFilled( true );
                             else
-                                circle->SetWidth( ds.GetLineThickness( circle->GetLayer() ) );
+                                circle->SetWidth( bds.GetLineThickness( circle->GetLayer() ) );
                         }
 
                         if( src->mirror )
@@ -2592,8 +2582,7 @@ bool FABMASTER::loadFootprints( BOARD* aBoard )
                     {
                         const GRAPHIC_ARC* lsrc = static_cast<const GRAPHIC_ARC*>( seg.get() );
 
-                        std::unique_ptr<PCB_SHAPE> arc =
-                                std::make_unique<PCB_SHAPE>( fp, SHAPE_T::ARC );
+                        std::unique_ptr<PCB_SHAPE> arc = std::make_unique<PCB_SHAPE>( fp, SHAPE_T::ARC );
 
                         SHAPE_ARC sarc = lsrc->result;
 
@@ -2622,8 +2611,7 @@ bool FABMASTER::loadFootprints( BOARD* aBoard )
 
                     case GR_SHAPE_RECTANGLE:
                     {
-                        const GRAPHIC_RECTANGLE *lsrc =
-                                static_cast<const GRAPHIC_RECTANGLE*>( seg.get() );
+                        const GRAPHIC_RECTANGLE *lsrc = static_cast<const GRAPHIC_RECTANGLE*>( seg.get() );
 
                         PCB_SHAPE* rect = new PCB_SHAPE( fp, SHAPE_T::RECTANGLE );
 
@@ -2692,8 +2680,7 @@ bool FABMASTER::loadFootprints( BOARD* aBoard )
             {
                 for( auto& pin : pin_it->second )
                 {
-                    auto pin_net_it = pin_nets.find( std::make_pair( pin->refdes,
-                                                                     pin->pin_number ) );
+                    auto pin_net_it = pin_nets.find( std::make_pair( pin->refdes, pin->pin_number ) );
                     auto padstack = pads.find( pin->padstack );
                     std::string netname = "";
 
@@ -2720,8 +2707,9 @@ bool FABMASTER::loadFootprints( BOARD* aBoard )
 
                     if( padstack == pads.end() )
                     {
-                        wxLogError( _( "Unable to locate padstack %s in file %s\n" ),
-                                      pin->padstack.c_str(), aBoard->GetFileName().wc_str() );
+                        reportError( _( "Unable to locate padstack %s in file %s\n" ),
+                                     pin->padstack.c_str(),
+                                     aBoard->GetFileName().wc_str() );
                         continue;
                     }
                     else
@@ -2741,8 +2729,7 @@ bool FABMASTER::loadFootprints( BOARD* aBoard )
                             if( layer_it == layers.end() || !layer_it->second.conductive )
                                 continue;
 
-                            PCB_LAYER_ID kicad_layer =
-                                    static_cast<PCB_LAYER_ID>( layer_it->second.layerid );
+                            PCB_LAYER_ID kicad_layer = static_cast<PCB_LAYER_ID>( layer_it->second.layerid );
 
                             if( kicad_layer == F_Cu )
                                 front_layer = &layer_data;
@@ -2752,16 +2739,17 @@ bool FABMASTER::loadFootprints( BOARD* aBoard )
                                 inner_layer = &layer_data;
                         }
 
-                        auto layersDiffer = []( const FM_PAD_LAYER& aA, const FM_PAD_LAYER& aB )
-                        {
-                            return aA.shape != aB.shape
-                                   || aA.width != aB.width
-                                   || aA.height != aB.height
-                                   || aA.x_offset != aB.x_offset
-                                   || aA.y_offset != aB.y_offset
-                                   || aA.is_octogon != aB.is_octogon
-                                   || aA.custom_name != aB.custom_name;
-                        };
+                        auto layersDiffer =
+                                []( const FM_PAD_LAYER& aA, const FM_PAD_LAYER& aB )
+                                {
+                                    return aA.shape != aB.shape
+                                           || aA.width != aB.width
+                                           || aA.height != aB.height
+                                           || aA.x_offset != aB.x_offset
+                                           || aA.y_offset != aB.y_offset
+                                           || aA.is_octogon != aB.is_octogon
+                                           || aA.custom_name != aB.custom_name;
+                                };
 
                         std::vector<const FM_PAD_LAYER*> copper_defs;
 
@@ -2785,25 +2773,18 @@ bool FABMASTER::loadFootprints( BOARD* aBoard )
                         if( needs_padstack )
                             newpad->Padstack().SetMode( PADSTACK::MODE::FRONT_INNER_BACK );
 
-                        auto applyLayerShape = [&]( PCB_LAYER_ID aLayer,
-                                                    const FM_PAD_LAYER& aLayerData )
-                        {
-                            newpad->SetShape( aLayer, aLayerData.shape );
+                        auto applyLayerShape =
+                                [&]( PCB_LAYER_ID aLayer, const FM_PAD_LAYER& aLayerData )
+                                {
+                                    newpad->SetShape( aLayer, aLayerData.shape );
 
-                            if( aLayerData.shape == PAD_SHAPE::CIRCLE )
-                            {
-                                newpad->SetSize( aLayer,
-                                                 VECTOR2I( aLayerData.width, aLayerData.width ) );
-                            }
-                            else
-                            {
-                                newpad->SetSize( aLayer,
-                                                 VECTOR2I( aLayerData.width, aLayerData.height ) );
-                            }
+                                    if( aLayerData.shape == PAD_SHAPE::CIRCLE )
+                                        newpad->SetSize( aLayer, VECTOR2I( aLayerData.width, aLayerData.width ) );
+                                    else
+                                        newpad->SetSize( aLayer, VECTOR2I( aLayerData.width, aLayerData.height ) );
 
-                            newpad->SetOffset( aLayer,
-                                               VECTOR2I( aLayerData.x_offset, aLayerData.y_offset ) );
-                        };
+                                    newpad->SetOffset( aLayer, VECTOR2I( aLayerData.x_offset, aLayerData.y_offset ) );
+                                };
 
                         if( needs_padstack )
                         {
@@ -2820,25 +2801,23 @@ bool FABMASTER::loadFootprints( BOARD* aBoard )
 
                             if( pad.shape == PAD_SHAPE::CUSTOM )
                             {
-                                wxLogWarning( _( "Pad '%s' has custom shape with per-layer "
-                                                 "geometry; custom primitives not supported "
-                                                 "in padstack mode." ),
-                                              pad.name );
+                                reportWarning( _( "Pad '%s' has custom shape with per-layer geometry; "
+                                                  "custom primitives not supported in padstack mode." ),
+                                               pad.name );
                             }
                         }
                         else if( pad.shape == PAD_SHAPE::CUSTOM )
                         {
+                            newpad->SetPadstackMode( PADSTACK::MODE::NORMAL );
                             newpad->SetShape( PADSTACK::ALL_LAYERS, pad.shape );
 
                             // Choose the smaller dimension to ensure the base pad
                             // is fully hidden by the custom pad
                             int pad_size = std::min( pad.width, pad.height );
 
-                            newpad->SetSize( PADSTACK::ALL_LAYERS,
-                                             VECTOR2I( pad_size / 2, pad_size / 2 ) );
+                            newpad->SetSize( PADSTACK::ALL_LAYERS, VECTOR2I( pad_size / 2, pad_size / 2 ) );
 
-                            std::string custom_name = pad.custom_name + "_" + pin->refdes + "_" +
-                                                      pin->pin_number;
+                            std::string custom_name = pad.custom_name + "_" + pin->refdes + "_" + pin->pin_number;
                             auto custom_it = pad_shapes.find( custom_name );
 
                             if( custom_it != pad_shapes.end() )
@@ -2871,14 +2850,12 @@ bool FABMASTER::loadFootprints( BOARD* aBoard )
 
                                         if( seg->shape == GR_SHAPE_LINE )
                                         {
-                                            const GRAPHIC_LINE* line_seg = static_cast<const GRAPHIC_LINE*>( seg.get() );
+                                            const GRAPHIC_LINE* line = static_cast<const GRAPHIC_LINE*>( seg.get() );
 
                                             if( poly_outline.VertexCount( 0, hole_idx ) == 0 )
-                                                poly_outline.Append( line_seg->start_x, line_seg->start_y,
-                                                                     0, hole_idx );
+                                                poly_outline.Append( line->start_x, line->start_y, 0, hole_idx );
 
-                                            poly_outline.Append( line_seg->end_x, line_seg->end_y, 0,
-                                                                 hole_idx );
+                                            poly_outline.Append( line->end_x, line->end_y, 0, hole_idx );
                                         }
                                         else if( seg->shape == GR_SHAPE_ARC )
                                         {
@@ -2893,9 +2870,8 @@ bool FABMASTER::loadFootprints( BOARD* aBoard )
                                 if( poly_outline.OutlineCount() < 1
                                         || poly_outline.Outline( 0 ).PointCount() < 3 )
                                 {
-                                    wxLogError( _( "Invalid custom pad '%s'. Replacing with "
-                                                   "circular pad." ),
-                                                custom_name.c_str() );
+                                    reportError( _( "Invalid custom pad '%s'. Replacing with circular pad." ),
+                                                 custom_name.c_str() );
                                     newpad->SetShape( F_Cu, PAD_SHAPE::CIRCLE );
                                 }
                                 else
@@ -2908,13 +2884,11 @@ bool FABMASTER::loadFootprints( BOARD* aBoard )
                                     {
                                         poly_outline.Mirror( VECTOR2I( 0, ( pin->pin_y - src->y ) ),
                                                              FLIP_DIRECTION::TOP_BOTTOM );
-                                        poly_outline.Rotate( EDA_ANGLE( src->rotate - pin->rotation,
-                                                                        DEGREES_T ) );
+                                        poly_outline.Rotate( EDA_ANGLE( src->rotate - pin->rotation, DEGREES_T ) );
                                     }
                                     else
                                     {
-                                        poly_outline.Rotate( EDA_ANGLE( -src->rotate + pin->rotation,
-                                                                        DEGREES_T ) );
+                                        poly_outline.Rotate( EDA_ANGLE( -src->rotate + pin->rotation, DEGREES_T ) );
                                     }
 
                                     newpad->AddPrimitivePoly( PADSTACK::ALL_LAYERS, poly_outline, 0, true );
@@ -2925,30 +2899,25 @@ bool FABMASTER::loadFootprints( BOARD* aBoard )
 
                                 if( mergedPolygon.OutlineCount() > 1 )
                                 {
-                                    wxLogError( _( "Invalid custom pad '%s'. Replacing with "
-                                                   "circular pad." ),
-                                                custom_name.c_str() );
+                                    reportError( _( "Invalid custom pad '%s'. Replacing with circular pad." ),
+                                                 custom_name.c_str() );
                                     newpad->SetShape( PADSTACK::ALL_LAYERS, PAD_SHAPE::CIRCLE );
                                 }
                             }
                             else
                             {
-                                wxLogError( _( "Could not find custom pad '%s'." ),
-                                            custom_name.c_str() );
+                                reportError( _( "Could not find custom pad '%s'." ), custom_name.c_str() );
                             }
                         }
                         else
                         {
+                            newpad->SetPadstackMode( PADSTACK::MODE::NORMAL );
                             newpad->SetShape( PADSTACK::ALL_LAYERS, pad.shape );
-                            newpad->SetSize( PADSTACK::ALL_LAYERS,
-                                             VECTOR2I( pad.width, pad.height ) );
+                            newpad->SetSize( PADSTACK::ALL_LAYERS, VECTOR2I( pad.width, pad.height ) );
                         }
 
                         if( !needs_padstack && ( pad.x_offset || pad.y_offset ) )
-                        {
-                            newpad->SetOffset( PADSTACK::ALL_LAYERS,
-                                               VECTOR2I( pad.x_offset, pad.y_offset ) );
-                        }
+                            newpad->SetOffset( PADSTACK::ALL_LAYERS, VECTOR2I( pad.x_offset, pad.y_offset ) );
 
                         if( pad.drill )
                         {
@@ -2982,20 +2951,29 @@ bool FABMASTER::loadFootprints( BOARD* aBoard )
                     }
 
                     if( src->mirror )
-                        newpad->SetOrientation( EDA_ANGLE( -src->rotate + pin->rotation,
-                                                           DEGREES_T ) );
+                        newpad->SetOrientation( EDA_ANGLE( -src->rotate + pin->rotation, DEGREES_T ) );
                     else
-                        newpad->SetOrientation( EDA_ANGLE( src->rotate - pin->rotation,
-                                                           DEGREES_T ) );
+                        newpad->SetOrientation( EDA_ANGLE( src->rotate - pin->rotation, DEGREES_T ) );
 
-                    if( newpad->GetSizeX() > 0 || newpad->GetSizeY() > 0 )
+                    bool badPad = false;
+
+                    newpad->Padstack().ForEachUniqueLayer(
+                            [&]( PCB_LAYER_ID layer )
+                            {
+                                VECTOR2I padSize = newpad->GetSize( layer );
+
+                                if( padSize.x <= 0 && padSize.y <= 0 )
+                                    badPad = true;
+                            } );
+
+                    if( badPad )
                     {
-                        fp->Add( newpad.release(), ADD_MODE::APPEND );
+                        reportError( _( "Invalid zero-sized pad ignored in\nfile: %s" ),
+                                     aBoard->GetFileName().wc_str() );
                     }
                     else
                     {
-                        wxLogError( _( "Invalid zero-sized pad ignored in\nfile: %s" ),
-                                    aBoard->GetFileName().wc_str() );
+                        fp->Add( newpad.release(), ADD_MODE::APPEND );
                     }
                 }
             }
@@ -3031,13 +3009,10 @@ bool FABMASTER::loadLayers( BOARD* aBoard )
 
     aBoard->SetEnabledLayers( layer_set );
 
-    for( auto& layer : layers )
+    for( const auto& [name, layer] : layers )
     {
-        if( layer.second.conductive )
-        {
-            aBoard->SetLayerName( static_cast<PCB_LAYER_ID>( layer.second.layerid ),
-                    layer.second.name );
-        }
+        if( layer.conductive )
+            aBoard->SetLayerName( static_cast<PCB_LAYER_ID>( layer.layerid ), layer.name );
     }
 
     return true;
@@ -3046,21 +3021,21 @@ bool FABMASTER::loadLayers( BOARD* aBoard )
 
 bool FABMASTER::loadVias( BOARD* aBoard )
 {
-    const NETNAMES_MAP& netinfo = aBoard->GetNetInfo().NetsByName();
-    const auto& ds = aBoard->GetDesignSettings();
+    const NETNAMES_MAP&          netinfo = aBoard->GetNetInfo().NetsByName();
+    const BOARD_DESIGN_SETTINGS& bds = aBoard->GetDesignSettings();
 
     // Build a sorted list of conductive layers by their layer id for via span determination
     std::vector<const FABMASTER_LAYER*> conductiveLayers;
 
-    for( const auto& layer : layers )
+    for( const auto& [name, layer] : layers )
     {
-        if( layer.second.conductive )
-            conductiveLayers.push_back( &layer.second );
+        if( layer.conductive )
+            conductiveLayers.push_back( &layer );
     }
 
     std::sort( conductiveLayers.begin(), conductiveLayers.end(), FABMASTER_LAYER::BY_ID() );
 
-    for( auto& via : vias )
+    for( std::unique_ptr<FM_VIA>& via : vias )
     {
         checkpoint();
 
@@ -3070,6 +3045,7 @@ bool FABMASTER::loadVias( BOARD* aBoard )
         PCB_VIA* new_via = new PCB_VIA( aBoard );
 
         new_via->SetPosition( VECTOR2I( via->x, via->y ) );
+        new_via->SetPadstackMode( PADSTACK::MODE::NORMAL );
 
         if( net_it != netinfo.end() )
             new_via->SetNet( net_it->second );
@@ -3078,15 +3054,15 @@ bool FABMASTER::loadVias( BOARD* aBoard )
         {
             new_via->SetDrillDefault();
 
-            if( !ds.m_ViasDimensionsList.empty() )
+            if( !bds.m_ViasDimensionsList.empty() )
             {
-                new_via->SetWidth( PADSTACK::ALL_LAYERS, ds.m_ViasDimensionsList[0].m_Diameter );
-                new_via->SetDrill( ds.m_ViasDimensionsList[0].m_Drill );
+                new_via->SetWidth( PADSTACK::ALL_LAYERS, bds.m_ViasDimensionsList[0].m_Diameter );
+                new_via->SetDrill( bds.m_ViasDimensionsList[0].m_Drill );
             }
             else
             {
                 new_via->SetDrillDefault();
-                new_via->SetWidth( PADSTACK::ALL_LAYERS, ds.m_ViasMinSize );
+                new_via->SetWidth( PADSTACK::ALL_LAYERS, bds.m_ViasMinSize );
             }
         }
         else
@@ -3149,8 +3125,7 @@ bool FABMASTER::loadNets( BOARD* aBoard )
     {
         checkpoint();
 
-        NETINFO_ITEM *newnet = new NETINFO_ITEM( aBoard, net );
-        aBoard->Add( newnet, ADD_MODE::APPEND );
+        aBoard->FindOrAddNet( net, -1, ADD_MODE::APPEND );
     }
 
     return true;
@@ -3213,8 +3188,8 @@ bool FABMASTER::loadEtch( BOARD* aBoard, const std::unique_ptr<FABMASTER::TRACE>
         }
         else
         {
-            wxLogError( _( "Expecting etch data to be on copper layer. Row found on layer '%s'" ),
-                        seg->layer.c_str() );
+            reportError( _( "Expecting etch data to be on copper layer. Row found on layer '%s'" ),
+                         seg->layer.c_str() );
         }
     }
 
@@ -3364,13 +3339,14 @@ FABMASTER::createBoardItems( BOARD& aBoard, PCB_LAYER_ID aLayer, FABMASTER::GRAP
     const BOARD_DESIGN_SETTINGS& boardSettings = aBoard.GetDesignSettings();
     const STROKE_PARAMS          defaultStroke( boardSettings.GetLineThickness( aLayer ) );
 
-    const auto setShapeParameters = [&]( PCB_SHAPE& aShape )
-    {
-        aShape.SetStroke( STROKE_PARAMS( aGraphic.width, LINE_STYLE::SOLID ) );
+    const auto setShapeParameters =
+            [&]( PCB_SHAPE& aShape )
+            {
+                aShape.SetStroke( STROKE_PARAMS( aGraphic.width, LINE_STYLE::SOLID ) );
 
-        if( aShape.GetWidth() == 0 )
-            aShape.SetStroke( defaultStroke );
-    };
+                if( aShape.GetWidth() == 0 )
+                    aShape.SetStroke( defaultStroke );
+            };
 
     switch( aGraphic.shape )
     {
@@ -3381,9 +3357,7 @@ FABMASTER::createBoardItems( BOARD& aBoard, PCB_LAYER_ID aLayer, FABMASTER::GRAP
         auto new_text = std::make_unique<PCB_TEXT>( &aBoard );
 
         if( IsBackLayer( aLayer ) )
-        {
             new_text->SetMirrored( true );
-        }
 
         setupText( src, aLayer, *new_text, aBoard, std::nullopt );
 
@@ -3438,8 +3412,7 @@ FABMASTER::createBoardItems( BOARD& aBoard, PCB_LAYER_ID aLayer, FABMASTER::GRAP
             const GRAPHIC_ARC& src = static_cast<const GRAPHIC_ARC&>( aGraphic );
 
             new_shape->SetShape( SHAPE_T::ARC );
-            new_shape->SetArcGeometry( src.result.GetP0(), src.result.GetArcMid(),
-                                       src.result.GetP1() );
+            new_shape->SetArcGeometry( src.result.GetP0(), src.result.GetArcMid(), src.result.GetP1() );
             break;
         }
 
@@ -3504,7 +3477,10 @@ FABMASTER::createBoardItems( BOARD& aBoard, PCB_LAYER_ID aLayer, FABMASTER::GRAP
         }
 
         default:
-            wxLogError( _( "Unhandled shape type %d in polygon on layer %s, seq %d %d" ),
+            // Static context, so no reporter is reachable here. This is an internal dispatch
+            // fallthrough rather than something the user can act on.
+            KI_LOG_TRACE( traceFabmaster,
+                        wxT( "Unhandled shape type %d in polygon on layer %s, seq %d %d" ),
                         aGraphic.shape, aGraphic.layer, aGraphic.seq, aGraphic.subseq );
         }
 
@@ -3513,18 +3489,16 @@ FABMASTER::createBoardItems( BOARD& aBoard, PCB_LAYER_ID aLayer, FABMASTER::GRAP
     }
 
     for( std::unique_ptr<BOARD_ITEM>& new_item : new_items )
-    {
         new_item->SetLayer( aLayer );
-    }
 
     // If there's more than one, group them
     if( new_items.size() > 1 )
     {
         auto new_group = std::make_unique<PCB_GROUP>( &aBoard );
+
         for( std::unique_ptr<BOARD_ITEM>& new_item : new_items )
-        {
             new_group->AddItem( new_item.get() );
-        }
+
         new_items.emplace_back( std::move( new_group ) );
     }
 
@@ -3683,9 +3657,9 @@ bool FABMASTER::loadZone( BOARD* aBoard, const std::unique_ptr<FABMASTER::TRACE>
             // will cause crashes later.
             if( !KIGEOM::AddHoleIfValid( *zone_outline, std::move( *pending_hole ) ) )
             {
-                wxLogMessage( _( "Invalid hole with %d points in zone on layer %s with net %s" ),
-                              pending_hole->PointCount(), zone->GetLayerName(),
-                              zone->GetNetname() );
+                reportInfo( _( "Invalid hole with %d points in zone on layer %s with net %s" ),
+                            pending_hole->PointCount(), zone->GetLayerName(),
+                            zone->GetNetname() );
             }
 
             pending_hole.reset();
@@ -3725,9 +3699,9 @@ bool FABMASTER::loadZone( BOARD* aBoard, const std::unique_ptr<FABMASTER::TRACE>
                 // Not if this can ever happen, or what do if it does (add both points?).
                 if( last != start )
                 {
-                    wxLogError( _( "Outline seems discontinuous: last point was %s, "
-                                   "start point of next segment is %s" ),
-                                last.Format(), start.Format() );
+                    reportError( _( "Outline seems discontinuous: last point was %s, "
+                                    "start point of next segment is %s" ),
+                                 last.Format(), start.Format() );
                 }
             }
 
@@ -3741,7 +3715,7 @@ bool FABMASTER::loadZone( BOARD* aBoard, const std::unique_ptr<FABMASTER::TRACE>
         }
         else
         {
-            wxLogError( _( "Invalid shape type %d in zone outline" ), seg->shape );
+            reportError( _( "Invalid shape type %d in zone outline" ), seg->shape );
         }
     }
 

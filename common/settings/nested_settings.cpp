@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <wx/log.h>
@@ -47,6 +47,7 @@ bool NESTED_SETTINGS::LoadFromFile( const wxString& aDirectory )
 {
     m_internals->clear();
     bool success = false;
+    bool migrationFailed = false;
 
     if( m_parent )
     {
@@ -106,6 +107,7 @@ bool NESTED_SETTINGS::LoadFromFile( const wxString& aDirectory )
             {
                 KI_LOG_TRACE( traceSettings, wxT( "%s: migration failed!" ), GetFullFilename() );
                 success = false;
+                migrationFailed = true;
             }
         }
         else if( filever > m_schemaVersion )
@@ -122,6 +124,18 @@ bool NESTED_SETTINGS::LoadFromFile( const wxString& aDirectory )
     }
 
     Load();
+
+    // A reread of the file must reach settings nested more than one level down
+    for( NESTED_SETTINGS* settings : m_nested_settings )
+        settings->LoadFromFile();
+
+    // Hand migration and default fill to the parent so they do not read as a change later, unless
+    // the migration failed (as in a load from the base ctor) and a later load must rerun it
+    if( !m_writeImplicitly && !migrationFailed )
+    {
+        SaveToFile( wxEmptyString, true );
+        m_modified = false;
+    }
 
     return success;
 }
@@ -147,18 +161,28 @@ bool NESTED_SETTINGS::SaveToFile( const wxString& aDirectory, bool aForce )
         // Store() additionally reports user edits to registered params, not yet reflected above.
         modified |= Store();
 
-        // Params that own their subtree need to be able to delete keys. The parent
-        // merge only adds and updates, so clear the old copy from the baseline first.
+        // The parent merge only adds and updates, so clear subtree-owning params from the baseline
+        // of every ancestor; only the file-backed root holds one
         for( const PARAM_BASE* param : m_params )
         {
             if( !param->ClearUnknownKeys() )
                 continue;
 
-            nlohmann::json::json_pointer ptr =
-                    JSON_SETTINGS_INTERNALS::PointerFromString( m_path + "." + param->GetJsonPath() );
+            std::string      path = param->GetJsonPath();
+            NESTED_SETTINGS* nested = this;
 
-            if( m_parent->m_internals->m_original.contains( ptr ) )
-                m_parent->m_internals->m_original[ptr] = nlohmann::json::object();
+            while( nested && nested->m_parent )
+            {
+                path = nested->m_path + "." + path;
+
+                nlohmann::json&              original = nested->m_parent->m_internals->m_original;
+                nlohmann::json::json_pointer ptr = JSON_SETTINGS_INTERNALS::PointerFromString( path );
+
+                if( original.contains( ptr ) )
+                    original[ptr] = nlohmann::json::object();
+
+                nested = dynamic_cast<NESTED_SETTINGS*>( nested->m_parent );
+            }
         }
 
         if( modified || aForce )
@@ -190,6 +214,7 @@ void NESTED_SETTINGS::SetParent( JSON_SETTINGS* aParent, bool aLoadFromFile )
 
     if( m_parent )
     {
+        m_writeImplicitly = m_parent->m_writeImplicitly;
         m_parent->AddNestedSettings( this );
 
         // In case we were created after the parent's ctor

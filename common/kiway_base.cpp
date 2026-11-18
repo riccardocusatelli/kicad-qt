@@ -32,6 +32,8 @@
 #include <kiface.h>
 #include <kiplatform/app.h>
 #include <kiplatform/environment.h>
+#include <paths.h>
+#include <cli/exit_codes.h>
 #include <pgm_base.h>
 #include <settings/settings_manager.h>
 #include <core/ki_assert.h>
@@ -39,6 +41,7 @@
 #include <wx/dynlib.h>
 #include <wx/filename.h>
 #include <wx/intl.h>
+#include <wx/log.h>
 #include <wx/stdpaths.h>
 #include <wx/utils.h>
 
@@ -70,8 +73,6 @@ const wxString KIWAY_BASE::dso_search_path( FACE_T aFaceId )
     case FACE_GERBVIEW:         name = KIFACE_PREFIX "gerbview";            break;
     case FACE_PL_EDITOR:        name = KIFACE_PREFIX "pl_editor";           break;
     case FACE_PCB_CALCULATOR:   name = KIFACE_PREFIX "pcb_calculator";      break;
-    case FACE_BMP2CMP:          name = KIFACE_PREFIX "bitmap2component";    break;
-    case FACE_PYTHON:           name = KIFACE_PREFIX "kipython";            break;
 
     default:
         KI_ASSERT_MSG( 0, wxT( "caller has a bug, passed a bad aFaceId" ) );
@@ -112,9 +113,8 @@ const wxString KIWAY_BASE::dso_search_path( FACE_T aFaceId )
         dsoName += wxT( "_cli" );
     else if( ( m_ctl & KFCTL_QT_GUI )
              && ( aFaceId == FACE_SCH || aFaceId == FACE_PCB || aFaceId == FACE_CVPCB
-                  || aFaceId == FACE_PYTHON || aFaceId == FACE_PL_EDITOR
-                  || aFaceId == FACE_GERBVIEW || aFaceId == FACE_PCB_CALCULATOR
-                  || aFaceId == FACE_BMP2CMP ) )
+                  || aFaceId == FACE_PL_EDITOR || aFaceId == FACE_GERBVIEW
+                  || aFaceId == FACE_PCB_CALCULATOR ) )
         dsoName += wxT( "_qtgui" );
     else if( ( m_ctl & KFCTL_QT ) && ( aFaceId == FACE_SCH || aFaceId == FACE_PCB ) )
         dsoName += wxT( "_qt" );
@@ -124,7 +124,7 @@ const wxString KIWAY_BASE::dso_search_path( FACE_T aFaceId )
     // To speed up development, it's sometimes nice to run kicad from inside
     // the build path.  In that case, each program will be in a subdirectory.
     // To find the DSOs, we need to go up one directory and then enter a subdirectory.
-    if( wxGetEnv( wxT( "KICAD_RUN_FROM_BUILD_DIR" ), nullptr ) )
+    if( PATHS::RunningFromBuildDir() )
     {
 #ifdef __WXMAC__
         // On Mac, all of the kifaces are placed in the kicad.app bundle, even though the individual
@@ -149,12 +149,18 @@ const wxString KIWAY_BASE::dso_search_path( FACE_T aFaceId )
         switch( aFaceId )
         {
             case FACE_PL_EDITOR: dirName = "pagelayout_editor";   break;
-            case FACE_PYTHON:    dirName = "scripting";           break;
             default:             dirName = name + 1;              break;
         }
 
-        fn.RemoveLastDir();
+        const wxString& buildRoot = PATHS::GetBuildRoot();
+
+        if( !buildRoot.IsEmpty() )
+            fn.AssignDir( buildRoot );
+        else
+            fn.RemoveLastDir();
+
         fn.AppendDir( dirName );
+        fn.SetName( dsoName );
 #endif
     }
 
@@ -186,38 +192,50 @@ KIFACE* KIWAY_BASE::KiFACE( FACE_T aFaceId, bool doLoad )
     if( m_kiface[aFaceId] )
         return m_kiface[aFaceId];
 
+    // A missing or broken DSO stays that way, so report it once per session
+    if( m_kifaceLoadFailed[aFaceId] )
+        return nullptr;
+
     // DSO with KIFACE has not been loaded yet, does caller want to load it?
     if( doLoad )
     {
         wxString dname = dso_search_path( aFaceId );
 
         // Insert DLL search path for kicad_3dsg from build dir
-        if( wxGetEnv( wxT( "KICAD_RUN_FROM_BUILD_DIR" ), nullptr ) )
+        const wxString& buildRoot = PATHS::GetBuildRoot();
+
+        if( PATHS::RunningFromBuildDir() )
         {
-            wxFileName myPath = wxStandardPaths::Get().GetExecutablePath();
+            wxFileName myPath;
+
+            if( !buildRoot.IsEmpty() )
+                myPath.AssignDir( buildRoot );
+            else
+                myPath.Assign( wxStandardPaths::Get().GetExecutablePath() );
 
             if( !myPath.GetPath().EndsWith( wxT( "pcbnew" ) ) )
             {
-                myPath.RemoveLastDir();
+                if( buildRoot.IsEmpty() )
+                    myPath.RemoveLastDir();
+
                 myPath.AppendDir( wxT( "pcbnew" ) );
                 KIPLATFORM::APP::AddDynamicLibrarySearchPath( myPath.GetPath() );
             }
         }
 
-        wxString msg;
-
 #ifdef KICAD_WIN32_VERIFY_CODESIGN
         bool codeSignOk = KIPLATFORM::ENV::VerifyFileSignature( dname );
+
         if( !codeSignOk )
         {
-            msg.Printf( _( "Failed to verify kiface library '%s' signature." ), dname );
-            THROW_IO_ERROR( msg );
+            wxLogError( _( "Failed to verify kiface library '%s' signature." ), dname );
+            m_kifaceLoadFailed[aFaceId] = true;
+            return nullptr;
         }
 #endif
 
         wxDynamicLibrary dso;
-
-        void*   addr = nullptr;
+        void*            addr = nullptr;
 
         // For some reason wxDynamicLibrary::Load() crashes in some languages
         // (chinese for instance) when loading the dynamic library.
@@ -231,28 +249,20 @@ KIFACE* KIWAY_BASE::KiFACE( FACE_T aFaceId, bool doLoad )
 
         setlocale( lc_new_type, user_locale.c_str() );
 
-        msg = wxString::Format( "Loading kiface %d", aFaceId );
-        APP_MONITOR::AddNavigationBreadcrumb( msg, "kiway.kiface" );
+        APP_MONITOR::AddNavigationBreadcrumb( wxString::Format( "Loading kiface %d", aFaceId ), "kiway.kiface" );
 
+        // Return null instead of throwing, since an exception escaping an event handler or startup ends the program
         if( !success )
         {
-            // Failure: error reporting UI was done via wxLogSysError().
-            // No further reporting required here.  Apparently this is not true on all
-            // platforms and/or wxWidgets builds and KiCad will crash.  Throwing the exception
-            // here and catching it in the KiCad launcher resolves the crash issue.  See bug
-            // report https://bugs.launchpad.net/kicad/+bug/1577786.
-
-            msg.Printf( _( "Failed to load kiface library '%s'." ), dname );
-            THROW_IO_ERROR( msg );
+            wxLogError( _( "Failed to load kiface library '%s'." ), dname );
+            m_kifaceLoadFailed[aFaceId] = true;
+            return nullptr;
         }
         else if( ( addr = dso.GetSymbol( wxT( KIFACE_INSTANCE_NAME_AND_VERSION ) ) ) == nullptr )
         {
-            // Failure: error reporting UI was done via wxLogSysError().
-            // No further reporting required here.  Assume the same thing applies here as
-            // above with the Load() call.  This has not been tested.
-            msg.Printf( _( "Could not read instance name and version from kiface library '%s'." ),
-                        dname );
-            THROW_IO_ERROR( msg );
+            wxLogError( _( "Could not read instance name and version from kiface library '%s'." ), dname );
+            m_kifaceLoadFailed[aFaceId] = true;
+            return nullptr;
         }
         else
         {
@@ -320,6 +330,17 @@ int KIWAY_BASE::ProcessJob( KIWAY_FACES::FACE_T aFace, JOB* aJob, REPORTER* aRep
                             PROGRESS_REPORTER* aProgressReporter )
 {
     KIFACE* kiface = KiFACE( aFace );
+
+    if( !kiface )
+    {
+        if( aReporter )
+        {
+            aReporter->Report( wxString::Format( _( "Failed to load kiface library '%s'." ), dso_search_path( aFace ) ),
+                               RPT_SEVERITY_ERROR );
+        }
+
+        return CLI::EXIT_CODES::ERR_UNKNOWN;
+    }
 
     return kiface->HandleJob( aJob, aReporter, aProgressReporter );
 }

@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "command_pcb_export_pos.h"
@@ -38,6 +38,7 @@
 #define ARG_SMD_ONLY "--smd-only"
 #define ARG_EXCLUDE_FOOTPRINTS_TH "--exclude-fp-th"
 #define ARG_EXCLUDE_DNP "--exclude-dnp"
+#define ARG_EXCLUDE_BOM "--exclude-bom"
 #define ARG_GERBER_BOARD_EDGE "--gerber-board-edge"
 
 
@@ -83,6 +84,10 @@ CLI::PCB_EXPORT_POS_COMMAND::PCB_EXPORT_POS_COMMAND() :
             .help( UTF8STDSTR( _( "Exclude all footprints with the Do Not Populate flag set" ) ) )
             .flag();
 
+    m_argParser.add_argument( ARG_EXCLUDE_BOM )
+            .help( UTF8STDSTR( _( "Exclude all footprints with the Exclude from BOM flag set" ) ) )
+            .flag();
+
     m_argParser.add_argument( ARG_GERBER_BOARD_EDGE )
             .help( UTF8STDSTR( _( "Include board edge layer (Gerber only)" ) ) )
             .flag();
@@ -111,6 +116,7 @@ int CLI::PCB_EXPORT_POS_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
     aPosJob->m_excludeFootprintsWithTh = m_argParser.get<bool>( ARG_EXCLUDE_FOOTPRINTS_TH );
     aPosJob->m_useDrillPlaceFileOrigin = m_argParser.get<bool>( ARG_USE_DRILL_FILE_ORIGIN );
     aPosJob->m_excludeDNP = m_argParser.get<bool>( ARG_EXCLUDE_DNP );
+    aPosJob->m_excludeBOM = m_argParser.get<bool>( ARG_EXCLUDE_BOM );
     aPosJob->m_gerberBoardEdge = m_argParser.get<bool>( ARG_GERBER_BOARD_EDGE );
 
     if( !m_argVariantNames.empty() )

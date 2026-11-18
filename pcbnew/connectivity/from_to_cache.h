@@ -13,13 +13,15 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef FROM_TO_CACHE_H
 #define FROM_TO_CACHE_H
 
+#include <list>
+#include <mutex>
 #include <set>
 
 class PAD;
@@ -66,7 +68,8 @@ private:
 
 private:
     std::vector<FT_ENDPOINT> m_ftEndpoints;
-    std::vector<FT_PATH>     m_ftPaths;
+    std::list<FT_PATH>       m_ftPaths;
+    std::recursive_mutex     m_mutex;
 
     BOARD*                   m_board;
 };

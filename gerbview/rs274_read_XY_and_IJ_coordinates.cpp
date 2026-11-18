@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <math/util.h>      // for KiROUND
@@ -78,9 +74,7 @@ static bool IsNumber( char x )
 
 VECTOR2I GERBER_FILE_IMAGE::ReadXYCoord( char*& aText, bool aExcellonMode )
 {
-    VECTOR2I pos( 0, 0 );
-    bool    is_float   = false;
-
+    VECTOR2I    pos( 0, 0 );
     std::string line;
 
     // Reserve the anticipated length plus an optional sign and decimal
@@ -96,6 +90,7 @@ VECTOR2I GERBER_FILE_IMAGE::ReadXYCoord( char*& aText, bool aExcellonMode )
     while( *aText && ( ( *aText == 'X' ) || ( *aText == 'Y' ) || ( *aText == 'A' ) ) )
     {
         double decimal_scale = 1.0;
+        bool   is_float = false;
         int    nbdigits = 0;
         int    current_coord = 0;
         char   type_coord = *aText++;
@@ -114,9 +109,11 @@ VECTOR2I GERBER_FILE_IMAGE::ReadXYCoord( char*& aText, bool aExcellonMode )
             line.push_back( *( aText++ ) );
         }
 
-        double val;
+        double   val = 0.0;
         wxString text( line.data() );
-        text.ToCDouble( &val );
+
+        if( !text.ToCDouble( &val ) )
+            continue;
 
         if( is_float )
         {
@@ -172,9 +169,7 @@ VECTOR2I GERBER_FILE_IMAGE::ReadXYCoord( char*& aText, bool aExcellonMode )
 
 VECTOR2I GERBER_FILE_IMAGE::ReadIJCoord( char*& aText )
 {
-    VECTOR2I pos( 0, 0 );
-    bool    is_float   = false;
-
+    VECTOR2I    pos( 0, 0 );
     std::string line;
 
     // Reserve the anticipated length plus an optional sign and decimal
@@ -186,6 +181,7 @@ VECTOR2I GERBER_FILE_IMAGE::ReadIJCoord( char*& aText )
     while( *aText && ( ( *aText == 'I' ) || ( *aText == 'J' ) ) )
     {
         double decimal_scale = 1.0;
+        bool   is_float = false;
         int    nbdigits = 0;
         int    current_coord = 0;
         char   type_coord = *aText++;
@@ -204,10 +200,12 @@ VECTOR2I GERBER_FILE_IMAGE::ReadIJCoord( char*& aText )
             line.push_back( *( aText++ ) );
         }
 
-        double val;
+        double   val = 0.0;
         wxString text( line.data() );
         text.Trim( true ).Trim( false );
-        text.ToCDouble( &val );
+
+        if( !text.ToCDouble( &val ) )
+            continue;
 
         if( is_float )
         {
@@ -308,7 +306,11 @@ int ReadInt( char*& text, bool aSkipSeparator = true )
 
 double ReadDouble( char*& text, bool aSkipSeparator = true )
 {
-    double ret;
+    double ret = 0.0;
+
+    // Skip spaces at the beginning of string: they are here not an operand separator
+    while( isspace( *text ) )
+        text++;
 
     // For strtod, a string starting by 0X or 0x is a valid number in hexadecimal or octal.
     // However, 'X'  is a separator in Gerber strings with numbers.
@@ -321,19 +323,18 @@ double ReadDouble( char*& text, bool aSkipSeparator = true )
     else
     {
         wxString line( text );
-        line.Trim( false );
 
         // Warning: in locales using ',' as separator, wxString::ToCDouble accept both '.' and ','
         // as separator (wxWidgets 3.2.6 bug?, look fixed in 3.2.8). So because ',' is used also
         // to separe 2 operands in Gerber strings, remove the first ',' that is a operand separator,
         // not a float separator
-        line.Replace(","," ", false);
+        line.Replace( ",", " ", false );
         line.ToCDouble( &ret );
         // Find the end of the float number. The float number contains only chars
         // "0123456789." but can start by a '+' or '-' char.
         // others chars (usually '+' '-' '$' ',' ) are separators between operands and are not members
         // of the current float number
-        if( ( line[0] == '+' || line[0] == '-' ) && line.Length() > 1 && line[1] != '$' )
+        if( line.Length() > 1 && ( line[0] == '+' || line[0] == '-' ) && line[1] != '$' )
         {
             // It is the sign of a number, not an operator. Remove it to find the last digit
             line[0] = '0';
@@ -361,4 +362,3 @@ double ReadDouble( char*& text, bool aSkipSeparator = true )
 
     return ret;
 }
-

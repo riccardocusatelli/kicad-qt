@@ -18,13 +18,10 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <cwchar>
 #include <mutex>
 #include <macros.h>
 #include <reporter.h>
@@ -32,9 +29,14 @@
 #include <string_utils.h>
 #include <wx/crt.h>
 #include <wx/log.h>
+#include <wx/msgout.h>
 #include <wx/tokenzr.h>
 #include <core/ki_log.h>
 #include <core/ki_assert.h>
+
+#ifdef __WXMSW__
+#include <io.h>
+#endif
 
 
 /**
@@ -54,6 +56,12 @@ REPORTER& REPORTER::Report( const char* aText, SEVERITY aSeverity )
 }
 
 
+REPORTER& REPORTER::Report( const KI_ERROR& aError )
+{
+    return Report( aError.AsString(), aError.GetSeverity() );
+}
+
+
 
 REPORTER& WX_STRING_REPORTER::Report( const wxString& aText, SEVERITY aSeverity )
 {
@@ -68,7 +76,7 @@ REPORTER& SYNC_REPORTER::Report( const wxString& aText, SEVERITY aSeverity )
 {
     std::lock_guard lock( m_mutex );
 
-    m_reporter.Report( aText, aSeverity );
+    m_reporter->Report( aText, aSeverity );
     return *this;
 }
 
@@ -77,7 +85,7 @@ REPORTER& SYNC_REPORTER::ReportTail( const wxString& aText, SEVERITY aSeverity )
 {
     std::lock_guard lock( m_mutex );
 
-    m_reporter.ReportTail( aText, aSeverity );
+    m_reporter->ReportTail( aText, aSeverity );
     return *this;
 }
 
@@ -86,7 +94,7 @@ REPORTER& SYNC_REPORTER::ReportHead( const wxString& aText, SEVERITY aSeverity )
 {
     std::lock_guard lock( m_mutex );
 
-    m_reporter.ReportHead( aText, aSeverity );
+    m_reporter->ReportHead( aText, aSeverity );
     return *this;
 }
 
@@ -95,7 +103,23 @@ void SYNC_REPORTER::Clear()
 {
     std::lock_guard lock( m_mutex );
 
-    m_reporter.Clear();
+    m_reporter->Clear();
+}
+
+
+void SYNC_REPORTER::Finalize()
+{
+    std::lock_guard lock( m_mutex );
+
+    m_reporter->Finalize();
+}
+
+
+void SYNC_REPORTER::SetNullReporter()
+{
+    std::lock_guard lock( m_mutex );
+
+    m_reporter = &NULL_REPORTER::GetInstance();
 }
 
 
@@ -103,7 +127,7 @@ bool SYNC_REPORTER::HasMessage() const
 {
     std::lock_guard lock( m_mutex );
 
-    return m_reporter.HasMessage();
+    return m_reporter->HasMessage();
 }
 
 
@@ -111,7 +135,7 @@ bool SYNC_REPORTER::HasMessageOfSeverity( int aSeverityMask ) const
 {
     std::lock_guard lock( m_mutex );
 
-    return m_reporter.HasMessageOfSeverity( aSeverityMask );
+    return m_reporter->HasMessageOfSeverity( aSeverityMask );
 }
 
 
@@ -119,7 +143,7 @@ EDA_UNITS SYNC_REPORTER::GetUnits() const
 {
     std::lock_guard lock( m_mutex );
 
-    return m_reporter.GetUnits();
+    return m_reporter->GetUnits();
 }
 
 
@@ -166,10 +190,27 @@ REPORTER& CLI_REPORTER::Report( const wxString& aMsg, SEVERITY aSeverity )
     if( aSeverity == RPT_SEVERITY_ERROR )
         target = stderr;
 
+#ifdef __WXMSW__
+    const int fd = _fileno( target );
+
+    if( fd >= 0 && !_isatty( fd ) )
+    {
+        wxMessageOutputStderr( target, wxConvUTF8 ).Output( aMsg );
+        return *this;
+    }
+#else
+    // Tracing can orient the stream for byte output before the first report.
+    if( std::fwide( target, 0 ) < 0 )
+    {
+        wxMessageOutputStderr( target ).Output( aMsg );
+        return *this;
+    }
+#endif
+
     if( aMsg.EndsWith( wxS( "\n" ) ) )
-        wxFprintf( target, aMsg );
+        wxFprintf( target, wxS( "%s" ), aMsg );
     else
-        wxFprintf( target, aMsg + wxS( "\n" ) );
+        wxFprintf( target, wxS( "%s" ), aMsg + wxS( "\n" ) );
 
     // Needed  after wxPrintf (or printf) to be sure the message is immediately printed
     // (i.e. not stored in some i/o buffer)
@@ -224,16 +265,18 @@ REPORTER& WXLOG_REPORTER::Report( const wxString& aMsg, SEVERITY aSeverity )
 {
     REPORTER::Report( aMsg, aSeverity );
 
+    // aMsg is finished content; pass it as a "%s" argument so a stray '%' in
+    // reported data is not read as a format specifier (bogus varargs -> assert).
     switch( aSeverity )
     {
-    case RPT_SEVERITY_ERROR:     wxLogError( aMsg );                  break;
-    case RPT_SEVERITY_WARNING:   wxLogWarning( aMsg );                break;
-    case RPT_SEVERITY_UNDEFINED: wxLogMessage( aMsg );                break;
-    case RPT_SEVERITY_INFO:      wxLogInfo( aMsg );                   break;
-    case RPT_SEVERITY_ACTION:    wxLogInfo( aMsg );                   break;
-    case RPT_SEVERITY_DEBUG:     KI_LOG_TRACE( traceReporter, aMsg );   break;
-    case RPT_SEVERITY_EXCLUSION:                                      break;
-    case RPT_SEVERITY_IGNORE:                                         break;
+    case RPT_SEVERITY_ERROR:     wxLogError( wxS( "%s" ), aMsg );                break;
+    case RPT_SEVERITY_WARNING:   wxLogWarning( wxS( "%s" ), aMsg );              break;
+    case RPT_SEVERITY_UNDEFINED: wxLogMessage( wxS( "%s" ), aMsg );             break;
+    case RPT_SEVERITY_INFO:      wxLogInfo( wxS( "%s" ), aMsg );                 break;
+    case RPT_SEVERITY_ACTION:    wxLogInfo( wxS( "%s" ), aMsg );                 break;
+    case RPT_SEVERITY_DEBUG:     KI_LOG_TRACE( traceReporter, wxS( "%s" ), aMsg ); break;
+    case RPT_SEVERITY_EXCLUSION:                                                 break;
+    case RPT_SEVERITY_IGNORE:                                                    break;
     }
 
     return *this;
@@ -305,7 +348,7 @@ LOAD_INFO_REPORTER_SCOPE::~LOAD_INFO_REPORTER_SCOPE()
 
 
 FONTCONFIG_REPORTER_SCOPE::FONTCONFIG_REPORTER_SCOPE( REPORTER* aReporter ) :
-        m_previousReporter( fontconfig::FONTCONFIG::GetReporter() )
+        m_previousReporter( &fontconfig::FONTCONFIG::GetReporter() )
 {
     fontconfig::FONTCONFIG::SetReporter( aReporter );
 }

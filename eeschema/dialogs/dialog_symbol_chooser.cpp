@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <dialog_symbol_chooser.h>
@@ -71,8 +67,7 @@ DIALOG_SYMBOL_CHOOSER::DIALOG_SYMBOL_CHOOSER( SCH_BASE_FRAME* aParent, const LIB
 
     m_originalTitle = GetTitle();
     onLazyLoadUpdate();
-    m_chooserPanel->Adapter()->RegisterLazyLoadHandler(
-            std::bind( &DIALOG_SYMBOL_CHOOSER::onLazyLoadUpdate, this ) );
+    m_chooserPanel->Adapter()->RegisterLazyLoadHandler( std::bind( &DIALOG_SYMBOL_CHOOSER::onLazyLoadUpdate, this ) );
 
     wxBoxSizer* buttonsSizer = new wxBoxSizer( wxHORIZONTAL );
 
@@ -115,9 +110,18 @@ DIALOG_SYMBOL_CHOOSER::~DIALOG_SYMBOL_CHOOSER()
 }
 
 
-LIB_ID DIALOG_SYMBOL_CHOOSER::GetSelectedLibId( int* aUnit ) const
+bool DIALOG_SYMBOL_CHOOSER::TransferDataToWindow()
 {
-    return m_chooserPanel->GetSelectedLibId( aUnit );
+    // Regenerate tree after saved search string is loaded by RestoreState().
+    m_chooserPanel->Regenerate();
+
+    return true;
+}
+
+
+LIB_ID DIALOG_SYMBOL_CHOOSER::GetSelectedLibId( int* aUnit, int* aBodyStyle ) const
+{
+    return m_chooserPanel->GetSelectedLibId( aUnit, aBodyStyle );
 }
 
 
@@ -130,7 +134,6 @@ std::vector<std::pair<FIELD_T, wxString>> DIALOG_SYMBOL_CHOOSER::GetFields() con
 
 void DIALOG_SYMBOL_CHOOSER::onLazyLoadUpdate()
 {
-    SetTitle( m_originalTitle + wxString::Format( _( " (%d items loaded)" ),
-                                                  m_chooserPanel->GetItemCount() ) );
+    SetTitle( m_originalTitle + wxString::Format( _( " (%d items loaded)" ), m_chooserPanel->GetItemCount() ) );
     m_chooserPanel->Regenerate();
 }

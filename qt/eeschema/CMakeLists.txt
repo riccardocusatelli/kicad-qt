@@ -102,7 +102,7 @@ set( KIQT_EESCHEMA_GUI_SRCS
     eeschema_config.cpp
     eeschema_jobs_handler_gui.cpp
     erc/erc_tree_model.cpp
-    fields_editor_grid_data_model.cpp
+    symbol_fields_data_model.cpp
     fields_grid_table.cpp
     files-io.cpp
     generate_alias_info.cpp

@@ -18,11 +18,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef SYMBOL_EDIT_FRAME_H
@@ -31,7 +27,10 @@
 #include <sch_base_frame.h>
 #include <sch_screen.h>
 #include <symbol_tree_pane.h>
+#include <widgets/editor_tab_context.h>
+#include <memory>
 #include <optional>
+#include <vector>
 
 class SCH_EDIT_FRAME;
 class LIB_SYMBOL;
@@ -39,7 +38,14 @@ class LIB_TREE_NODE;
 class LIB_ID;
 class LIB_SYMBOL_LIBRARY_MANAGER;
 class SYMBOL_EDITOR_SETTINGS;
+class SYMBOL_EDITOR_TAB_CONTEXT;
+class EDITOR_TABS_PANEL;
+class EDITOR_TABS_MODEL;
 class EDA_LIST_DIALOG;
+class UNDO_REDO_CONTAINER;
+class API_HANDLER_COMMON;
+class API_HANDLER_LIBRARIES;
+class API_HANDLER_SYMBOL;
 
 
 #define UNITS_ALL _HKI( "ALL" )
@@ -49,10 +55,25 @@ class EDA_LIST_DIALOG;
 
 
 /**
+ * Types of KiCad symbol library save actions.
+ */
+enum class SAVE_LIBRARY_AS
+{
+    ORIGINAL,              ///< Save to the original symbol library format.
+    NEW,                   ///< Save to a new library in the original symbol library format.
+    PACKED,                ///< Save an unpacked symbol library to the packed format.
+    UNPACKED               ///< Save a packed symbol library to the unpacked format.
+};
+
+
+/**
  * The symbol library editor main window.
  */
 class SYMBOL_EDIT_FRAME : public SCH_BASE_FRAME
 {
+    // Lets the headless tab tests drive the static undo/redo helpers without a full GUI frame.
+    friend struct SYMBOL_EDITOR_TABS_TEST_FIXTURE;
+
 public:
     SYMBOL_EDIT_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent );
 
@@ -84,17 +105,39 @@ public:
 
     bool CanCloseSymbolFromSchematic( bool doClose );
 
-    /**
-     * The nickname of the current library being edited and empty string if none.
-     */
-    wxString GetCurLib() const;
-
-    /**
-     * Set the current library nickname and returns the old library nickname.
-     */
-    wxString SetCurLib( const wxString& aLibNickname );
-
     LIB_TREE* GetLibTree() const override { return m_treePane->GetLibTree(); }
+
+    /**
+     * The tab strip fronting the shared canvas, or nullptr before it is mounted.
+     */
+    EDITOR_TABS_PANEL* GetTabsPanel() const { return m_tabsPanel; }
+
+    /**
+     * Cycle symbol tabs from the char hook, since GTK cannot register WXK_TAB as an accelerator.
+     */
+    void OnTabCharHook( wxKeyEvent& aEvent );
+
+    /**
+     * Clear the unsaved-edits flag on every tab in a saved library so its dirty indicator clears.
+     */
+    void clearSymbolTabsModifiedForLibrary( const wxString& aLibrary );
+
+    /**
+     * Clear a tab's dirty state on both the context (read on repaint) and the strip model (read on
+     * close), keeping the two stores that diverge after a save in agreement.
+     */
+    static void clearTabModifiedState( SYMBOL_EDITOR_TAB_CONTEXT& aContext, EDITOR_TABS_MODEL& aModel );
+
+    /**
+     * Free a detached context's undo/redo, which the frame's own teardown path never reaches.
+     */
+    static void clearSymbolTabUndoRedo( SYMBOL_EDITOR_TAB_CONTEXT& aContext );
+
+    /**
+     * Free every command in the list and the UR_TRANSIENT-flagged copies it owns, which the shared
+     * deleters miss. aLiveSymbol is the working symbol, guarded against to avoid a double-free.
+     */
+    static void freeTransientUndoCommands( UNDO_REDO_CONTAINER& aList, const LIB_SYMBOL* aLiveSymbol );
 
     /**
      * Resolve whether the library tree's auto-hide for a schematic edit still needs restoring on
@@ -166,7 +209,7 @@ public:
     /**
      * Save the currently selected library to a new file.
      */
-    void SaveLibraryAs();
+    void SaveLibraryAs( SAVE_LIBRARY_AS aSaveType = SAVE_LIBRARY_AS::NEW );
 
     /**
      * Save all modified symbols and libraries.
@@ -174,12 +217,25 @@ public:
     void SaveAll();
 
     /**
-     * Revert unsaved changes in a symbol, restoring to the last saved state.
+     * Save the given library (including buffered changes) without user interaction.
+     * Used by the API handler; returns false if the library is read-only or the save fails.
      */
-    void Revert( bool aConfirm = true );
+    bool SaveLibraryHeadless( const wxString& aLibrary );
+
+    /**
+     * Revert unsaved changes in a symbol, restoring to the last saved state.
+     * Can modify aTarget if the unsaved changes include a change in symbol name.
+     */
+    void Revert( LIB_ID& aTarget, bool aConfirm = true );
     void RevertAll();
 
     void DeleteSymbolFromLibrary();
+
+    /**
+     * Update the open tab for aOldId, if any, to the renamed symbol aNewId so its label and key
+     * track the rename.
+     */
+    void RenameSymbolTab( const LIB_ID& aOldId, const LIB_ID& aNewId );
 
     void CopySymbolToClipboard();
 
@@ -250,6 +306,12 @@ public:
 
     int  GetBodyStyle() const { return m_bodyStyle; }
     void SetBodyStyle( int aBodyStyle );
+
+    void SetDrawSpecificUnit( bool aSpecific ) { m_drawSpecificUnit = aSpecific; }
+    bool GetDrawSpecificUnit() const { return m_drawSpecificUnit; }
+
+    void SetDrawSpecificBodyStyle( bool aSpecific ) { m_drawSpecificBodyStyle = aSpecific; }
+    bool GetDrawSpecificBodyStyle() const { return m_drawSpecificBodyStyle; }
 
     bool GetShowInvisibleFields();
     bool GetShowInvisiblePins();
@@ -329,9 +391,8 @@ public:
     /**
      * Create the SVG print file for the current edited symbol.
      * @param aFullFileName is the full filename
-     * @param aOffset is a plot offset, in iu
      */
-    void SVGPlotSymbol( const wxString& aFullFileName, const VECTOR2I& aOffset );
+    void SVGPlotSymbol( const wxString& aFullFileName );
 
     /**
      * Synchronize the library manager to the symbol library table, and then the symbol tree
@@ -403,17 +464,29 @@ public:
      *  - The symbol must not be from a legacy library.
      *
      * Note that many things are not editable in a non-root symbol (ie: an alias), but others
-     * are so this routine no longer returns false for an alias.
+     * are so this routine is true for an alias symbol.  Use #IsSymbolGraphicallyEditable()
+     * to test if a symbol's graphical elements can be edited.
      */
     bool IsSymbolEditable() const;
 
+    /**
+     * Test if a symbol is loaded and can be edited graphically.
+     *
+     * The following conditions are required for a symbol to be graphically editable:
+     *  - The symbol must be selected from either a library or the schematic.
+     *  - The symbol must not be from a legacy library.
+     *  - The symbol must not be an alias unless it is from a schematic.
+     *
+     * This returns false for an alias symbol that is not from a schematic, even
+     * though some of its fields can be edited.  Use #IsSymbolEditable() to test if a symbol
+     * can be edited in any way.
+     */
+    bool IsSymbolGraphicallyEditable() const;
+
     bool IsSymbolAlias() const;
 
-    ///< Return true if \a aLibId is an alias for the editor screen symbol.
+    /// Return true if \a aLibId is an alias for the editor screen symbol.
     bool IsCurrentSymbol( const LIB_ID& aLibId ) const;
-
-    ///< Restore the empty editor screen, without any symbol or library selected.
-    void emptyScreen();
 
     void ClearToolbarControl( int aId ) override;
 
@@ -432,11 +505,25 @@ protected:
 
     void doReCreateMenuBar() override;
 
+    PLUGIN_ACTION_SCOPE PluginActionScope() const override
+    {
+        return PLUGIN_ACTION_SCOPE::SYMBOL;
+    }
+
     void updateSelectionFilterVisbility() override;
+
+    bool hasUnsavedLibraryEdits( const wxString& aLibNickname ) const override;
+
+    void onPluginAvailabilityChanged();
+
+    /// The id of the listener of the plugin availability (-1 for none)
+    int m_pluginAvailabilityListener = -1;
 
 private:
     // Set up the tool framework
     void setupTools();
+
+    void updateInfoBar();
 
     void saveSymbolCopyAs( bool aOpenCopy );
 
@@ -447,29 +534,21 @@ private:
      * changes made to the library are saved.
      *
      * @param aLibrary is the library name.
-     * @param aNewFile Ask for a new file name to save the library.
+     * @param aSaveType is the type library save to perform. @see LIBRARY_SAVE_AS
      * @return True if the library was successfully saved.
      */
-    bool saveLibrary( const wxString& aLibrary, bool aNewFile );
+    bool saveLibrary( const wxString& aLibrary,  SAVE_LIBRARY_AS aSaveType = SAVE_LIBRARY_AS::ORIGINAL );
 
     /**
-     * Set the current active library to \a aLibrary.
+     * Load a symbol from a library, optionally setting the selected unit and body style.
      *
-     * @param aLibrary the nickname of the library in the symbol library table.  If empty,
-     *                 display list of available libraries to select from.
-     */
-    void SelectActiveLibrary( const wxString& aLibrary = wxEmptyString );
-
-    /**
-     * Load a symbol from the current active library, optionally setting the selected unit
-     * and convert.
-     *
+     * @param aLibName The nickname of the library
      * @param aSymbolName The symbol alias name to load from the current library.
      * @param aUnit Unit to be selected
-     * @param aBodyStyle Convert to be selected
+     * @param aBodyStyle Body style to be selected
      * @return true if the symbol loaded correctly.
      */
-    bool LoadSymbolFromCurrentLib( const wxString& aSymbolName, int aUnit = 0, int aBodyStyle = 0 );
+    bool LoadSymbolFromLib( const wxString& aLibName, const wxString& aSymbolName, int aUnit = 0,  int aBodyStyle = 0 );
 
     /**
      * Create a copy of \a aLibEntry into memory.
@@ -481,22 +560,32 @@ private:
      * @param aBodyStyle the initial DeMorgan variant to show.
      * @return True if a copy of \a aLibEntry was successfully copied.
      */
-    bool LoadOneLibrarySymbolAux( LIB_SYMBOL* aLibEntry, const wxString& aLibrary, int aUnit,
-                                  int aBodyStyle );
+    bool LoadOneLibrarySymbol( LIB_SYMBOL* aLibEntry, const wxString& aLibrary, int aUnit, int aBodyStyle );
 
-    ///< Create a backup copy of a file with requested extension.
-    bool backupFile( const wxFileName& aOriginalFile, const wxString& aBackupExt );
+    /**
+     * Create a backup copy of a symbol library.
+     *
+     * For packed symbol libraries, a copy is made of the original file name with extension is set to .bak.
+     * For unpacked symbol libraries, a zip archive is created containing all of the symbol library files
+     * (.kicad_sym) is created using the last file path name + "_backup.zip".
+     *
+     * @param aOriginalFile contains the library path and/or file name.
+     * @param[out] aErrorMsg will contain an error message if the backup fails.
+     * @retval true if the backup succeeded.
+     * @retval false if the backup failed.
+     */
+    bool backupLibrary( const wxFileName& aOriginalFile, wxString& aErrorMsg );
 
-    ///< Return currently edited symbol.
+    /// Return currently edited symbol.
     LIB_SYMBOL* getTargetSymbol() const;
 
-    ///< Return either the library selected in the symbol tree, if context menu is active or
-    ///< the library that is currently modified.
+    /// Return either the library selected in the symbol tree, if context menu is active or
+    /// the library that is currently modified.
     wxString getTargetLib() const;
 
     void centerItemIdleHandler( wxIdleEvent& aEvent );
 
-    /*
+    /**
      * Return true when the operation has succeeded (all requested libraries have been saved
      * or none was selected and confirmed by OK).
      *
@@ -504,13 +593,10 @@ private:
      */
     bool saveAllLibraries( bool aRequireConfirmation );
 
-    ///< Save the current symbol.
+    /// Save the current symbol.
     bool saveCurrentSymbol();
 
-    ///< Store the currently modified symbol in the library manager buffer.
-    void storeCurrentSymbol();
-
-    ///< Rename LIB_SYMBOL aliases to avoid conflicts before adding a symbol to a library.
+    /// Rename LIB_SYMBOL aliases to avoid conflicts before adding a symbol to a library.
     void ensureUniqueName( LIB_SYMBOL* aSymbol, const wxString& aLibrary );
 
     /**
@@ -530,40 +616,136 @@ private:
      *
      * @note The library defined by \a aLibFile must be a KiCad (s-expression) library.
      *
-     * @param aLibNickmane is the nickname of an existing library table entry.
+     * @param aLibNickname is the nickname of an existing library table entry.
      * @param aLibFile is the full path and file name of the symbol library to replace in the
      *                 table.
      * @return true if successful or false if a failure occurs.
      */
     bool replaceLibTableEntry( const wxString& aLibNickname, const wxString& aLibFile );
 
+    /**
+     * Snapshot the active tab's view and selection into its context without deleting the document.
+     */
+    void detachActiveSymbolTab();
+
+    /**
+     * Make aContext the active tab, borrowing its working symbol, undo/redo, view and selection,
+     * without deleting the previously active document.
+     */
+    void activateSymbolTab( SYMBOL_EDITOR_TAB_CONTEXT* aContext );
+
+    /**
+     * Open aName from aLib in a tab, creating it when absent, and return the activated context.
+     */
+    SYMBOL_EDITOR_TAB_CONTEXT* findOrCreateSymbolTab( const wxString& aLib, const wxString& aName,
+                                                      int aUnit, int aBodyStyle, bool aAsPreview,
+                                                      bool* aWasCreated = nullptr );
+
+    /**
+     * Find or create the instance tab for a placed schematic symbol and make it active.
+     *
+     * Re-editing the same placed symbol focuses the existing tab; otherwise a session-only instance
+     * tab is created over the supplied transient working symbol/screen, which the context adopts. The
+     * caller's objects are consumed only when a new tab is created; on a focus of an existing tab they
+     * are deleted here.
+     */
+    SYMBOL_EDITOR_TAB_CONTEXT* findOrCreateSymbolInstanceTab( LIB_SYMBOL* aSymbol, SCH_SCREEN* aScreen,
+                                                              const KIID&     aSchematicSymbolUUID,
+                                                              const wxString& aReference, int aUnit,
+                                                              int aBodyStyle );
+
+    /**
+     * Open a new tab over a transient working symbol and screen and make it active.
+     *
+     * For a brand-new symbol with no library identity yet: the tab reads as unnamed and is never
+     * de-duplicated against another tab; RenameSymbolTab() promotes it once a save names it.  The
+     * context takes ownership of both objects.
+     */
+    SYMBOL_EDITOR_TAB_CONTEXT* CreateUnsavedSymbolTab( LIB_SYMBOL* aSymbol, SCH_SCREEN* aScreen );
+
+    /**
+     * Resolve the tab context for a panel tab index, or nullptr. The panel owns tab order, so the
+     * index maps through the panel's key, not into m_tabContexts directly.
+     */
+    SYMBOL_EDITOR_TAB_CONTEXT* symbolTabContextForIndex( int aIdx ) const;
+
+    /**
+     * Resolve the tab context for a tab key, or nullptr.
+     */
+    SYMBOL_EDITOR_TAB_CONTEXT* symbolTabContextForKey( const wxString& aKey ) const;
+
+    /**
+     * Drop the inactive context for aKey from m_tabContexts, freeing its undo/redo. Used when the
+     * panel evicts a preview tab so its now-orphaned context is not left behind to be persisted.
+     */
+    void dropSymbolTabContext( const wxString& aKey );
+
+    /**
+     * Prompt for unsaved changes on the tab and drop its context. Returns false if the user cancels.
+     */
+    bool promptAndCloseSymbolTab( int aIdx );
+
+    /**
+     * Prompt to save each dirty instance (symbol from schematic) tab that is not the active one, since
+     * the active tab's unsaved state is handled by CanCloseSymbolFromSchematic. Returns false if the
+     * user cancels so the window close can be vetoed.
+     */
+    bool promptToSaveInactiveInstanceTabs();
+
+    /**
+     * True if any non-active instance (schematic) tab has unsaved edits. Used to veto a session-end
+     * query early, since those tabs are invisible to IsContentModified (which sees only the active tab).
+     */
+    bool hasDirtyInactiveInstanceTabs() const;
+
+    /**
+     * Close the open tab for aLibId, if any, without prompting and leaving the other tabs open. The
+     * panel selects a successor when the closed tab was active.
+     */
+    void closeSymbolTab( const LIB_ID& aLibId );
+
+    /**
+     * Close the library tabs of aLibrary, or of every library when it is empty, limited to aSymbol
+     * when given. Schematic instance tabs stay open.
+     *
+     * @return the closed active tab's symbol, or an empty LIB_ID.
+     */
+    LIB_ID closeLibraryTabs( const wxString& aLibrary, const wxString& aSymbol );
+
+    /**
+     * Capture the current view zoom/center for the active tab's snapshot.
+     */
+    EDITOR_TAB_CONTEXT::VIEW_SNAPSHOT captureSymbolViewSnapshot() const;
+
+    /**
+     * Restore a previously captured view zoom/center.
+     */
+    void restoreSymbolViewSnapshot( const EDITOR_TAB_CONTEXT::VIEW_SNAPSHOT& aSnapshot );
+
+    /**
+     * Capture the KIIDs of the current selection for the active tab's snapshot.
+     */
+    std::vector<KIID> captureSymbolSelectionKiids() const;
+
+    /**
+     * Reselect the items named by aKiids after a reload rebuilt the view.
+     */
+    void restoreSymbolSelectionKiids( const std::vector<KIID>& aKiids );
+
+    /**
+     * Recreate tabs from the persisted open-tab list once the libraries have loaded.
+     */
+    void restoreSymbolTabsFromSettings();
+
+    /**
+     * Write the current tab set into the editor settings for the next session.
+     */
+    void storeSymbolTabsToSettings();
+
 
 public:
-    /**
-     * Set to true to synchronize pins at the same position when editing symbols with multiple
-     * units or multiple body styles.  Deleting or moving pins will affect all pins at the same
-     * location.
-     * When units are interchangeable, synchronizing editing of pins is usually the best way,
-     * because if units are interchangeable, it implies that all similar pins are at the same
-     * location.
-     * When units are not interchangeable, do not synchronize editing of pins, because each symbol
-     * is specific, and there are no (or few) similar pins between units.
-     *
-     * Setting this to false allows editing each pin per symbol or body style regardless other
-     * pins at the same location. This requires the user to open each symbol or body style to make
-     * changes to the other pins at the same location.
-     *
-     * To know if others pins must be coupled when editing a pin, use SynchronizePins() instead
-     * of m_syncPinEdit, because SynchronizePins() is more reliable (takes in account the fact
-     * units are interchangeable, there are more than one unit).
-     *
-     * @todo Determine why this member variable is public when all the rest are private and
-     *       either make it private or document why it needs to be public.
-     */
-    bool          m_SyncPinEdit;
-
 private:
-    ///< Helper screen used when no symbol is loaded
+    /// Helper screen used when no symbol is loaded
     SCH_SCREEN*         m_dummyScreen;
 
     LIB_SYMBOL*         m_symbol;                // a symbol I own, it is not in any library, but a copy could be.
@@ -575,23 +757,43 @@ private:
     LIB_SYMBOL_LIBRARY_MANAGER* m_libMgr;        // manager taking care of temporary modifications
     SYMBOL_EDITOR_SETTINGS*     m_settings;      // Handle to the settings
 
+    // Tabbed editing. One context per open symbol, owning a working symbol/screen copy plus its
+    // per-tab undo/redo and view/selection snapshot. The active tab lends its objects to the frame
+    // and reclaims them on detach. m_activeTab is the context currently bound to the frame.
+    std::vector<std::unique_ptr<SYMBOL_EDITOR_TAB_CONTEXT>> m_tabContexts;
+    SYMBOL_EDITOR_TAB_CONTEXT*                              m_activeTab = nullptr;
+    EDITOR_TABS_PANEL*                                      m_tabsPanel = nullptr;
+
+    // Guards against re-entering tab activation while a tab is being created or restored, since
+    // AddTab() activates synchronously.
+    bool m_loadingSymbolTab = false;
+
+    /// While true, promptAndCloseSymbolTab() skips the unsaved-changes dialog.
+    bool m_silentSymbolTabClose = false;
+
     LIB_ID                      m_centerItemOnIdle;
 
-    // The unit number to edit and show
+    /// The unit number to edit and show
     int         m_unit;
 
-    // Show the normal shape (m_bodyStyle <= 1) or the DeMorgan converted shape (m_bodyStyle > 1)
+    /// Show the normal shape (m_bodyStyle <= 1) or the DeMorgan converted shape (m_bodyStyle > 1)
     int         m_bodyStyle;
 
-    ///< Flag if the symbol being edited was loaded directly from a schematic.
+    /// When editing a symbol: only apply new graphic items to the current unit.
+    bool        m_drawSpecificUnit;
+
+    /// When editing a symbol: only apply new graphic items to the current body style.
+    bool        m_drawSpecificBodyStyle;
+
+    /// Flag if the symbol being edited was loaded directly from a schematic.
     bool        m_isSymbolFromSchematic;
 
-    ///< True while a schematic-edit auto-hide of the library tree still needs restoring on save.
+    /// True while a schematic-edit auto-hide of the library tree still needs restoring on save.
     bool        m_libTreeAutoHiddenForSchematicEdit;
 
     KIID        m_schematicSymbolUUID;
 
-     ///< RefDes of the symbol (only valid if symbol was loaded from schematic)
+    /// RefDes of the symbol (only valid if symbol was loaded from schematic)
     wxString    m_reference;
 
     // True to force DeMorgan/normal tools selection enabled.
@@ -604,6 +806,10 @@ private:
     // accumulated while the app was busy).  Without this guard, opening the symbol library
     // table dialog from within an active SyncLibraries call corrupts the library tree.
     bool        m_syncLibrariesInProgress;
+
+    std::unique_ptr<API_HANDLER_SYMBOL>    m_apiHandler;
+    std::unique_ptr<API_HANDLER_COMMON>    m_apiHandlerCommon;
+    std::unique_ptr<API_HANDLER_LIBRARIES> m_apiLibrariesHandler;
 };
 
 #endif  // SYMBOL_EDIT_FRAME_H

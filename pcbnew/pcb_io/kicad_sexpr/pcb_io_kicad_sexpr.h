@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef PCB_IO_KICAD_SEXPR_H_
@@ -32,7 +28,6 @@
 #include <richio.h>
 #include <string>
 #include <optional>
-#include <unordered_set>
 #include <layer_ids.h>
 #include <zone_settings.h>
 #include <lset.h>
@@ -52,15 +47,19 @@ class PCB_POINT;
 class PCB_REFERENCE_IMAGE;
 class PCB_SHAPE;
 class PCB_TARGET;
+class PCB_GRID_ITEM;
 class PAD;
 class PADSTACK;
 class PCB_GROUP;
 class PCB_GENERATOR;
+class PCB_CONSTRAINT;
 class PCB_TRACK;
 class ZONE;
 class PCB_TEXT;
 class PCB_TEXTBOX;
 class PCB_TABLE;
+class PCB_GENERATED_TABLE;
+class PCB_DRILL_MAP;
 class PCB_BARCODE;
 class EDA_TEXT;
 class SHAPE_LINE_CHAIN;
@@ -201,13 +200,54 @@ class PCB_IO_KICAD_SEXPR;   // forward decl
 //#define SEXPR_BOARD_FILE_VERSION    20251028  // Stop writing netcodes; they're an internal implementation detail
 //#define SEXPR_BOARD_FILE_VERSION    20251101  // Backdrill and tertiary drill support
 //#define SEXPR_BOARD_FILE_VERSION    20260101  // PCB variants with per-footprint overrides
-#define SEXPR_BOARD_FILE_VERSION      20260206  // Fix barcode and variant attribute serialization 
+//#define SEXPR_BOARD_FILE_VERSION    20260206  // Fix barcode and variant attribute serialization
+//----------------- Start of 11.0 development -----------------
+//#define SEXPR_BOARD_FILE_VERSION    20260410  // Extruded 3D body
+//#define SEXPR_BOARD_FILE_VERSION    20260508  // Native ellipse primitive
+//#define SEXPR_BOARD_FILE_VERSION    20260511  // Dielectric frequency-dependent models in board stackup
+//#define SEXPR_BOARD_FILE_VERSION    20260512  // Net chains
+//#define SEXPR_BOARD_FILE_VERSION    20260513  // Copper thieving zone fill mode
+//#define SEXPR_BOARD_FILE_VERSION    20260521  // Pad simulation electrical types
+//#define SEXPR_BOARD_FILE_VERSION    20260603  // Knockout flag on table cells
+//#define SEXPR_BOARD_FILE_VERSION    20260616  // Footprint affine transform: lib-frame storage and (transform) block
+//#define SEXPR_BOARD_FILE_VERSION    20260623  // Migrate reference image scale for PNG pixel-density fix
+//#define SEXPR_BOARD_FILE_VERSION    20260624  // Geometric constraints (#2329)
+//#define SEXPR_BOARD_FILE_VERSION    20260728  // Grid items
+//#define SEXPR_BOARD_FILE_VERSION    20260816  // Via stitching and guarding
+//#define SEXPR_BOARD_FILE_VERSION    20260818  // Line ending shapes
+//#define SEXPR_BOARD_FILE_VERSION    20260826  // Bold is a stroke-width multiplier; thickness stores the base width
+//#define SEXPR_BOARD_FILE_VERSION    20260828  // Exclude-from-simulation footprint attribute
+//#define SEXPR_BOARD_FILE_VERSION    20260830  // Microvia stack generator (via_stack)
+//#define SEXPR_BOARD_FILE_VERSION    20260831  // Custom user properties
+//#define SEXPR_BOARD_FILE_VERSION    20260901  // Drill charts and maps
+//#define SEXPR_BOARD_FILE_VERSION    20260930  // UUID for extruded 3D body
+//#define SEXPR_BOARD_FILE_VERSION    20261017  // Footprint overall height
+//#define SEXPR_BOARD_FILE_VERSION    20261018  // Linked placement rule areas
+//#define SEXPR_BOARD_FILE_VERSION    20261025  // Reference image rotation and opacity
+//#define SEXPR_BOARD_FILE_VERSION    20261030  // Live stackup tables
+#define SEXPR_BOARD_FILE_VERSION      20261031  // Non-component pads
 
 #define BOARD_FILE_HOST_VERSION       20200825  ///< Earlier files than this include the host tag
 #define LEGACY_ARC_FORMATTING         20210925  ///< These were the last to use old arc formatting
 #define LEGACY_NET_TIES               20220815  ///< These were the last to use the keywords field
                                                 ///<   to indicate a net-tie.
 #define FIRST_NORMALIZED_VERISON      20230924  ///< Earlier files did not have normalized bools
+#define FIRST_FP_AFFINE_TRANSFORM     20260616  ///< First version that stores footprint children
+                                                ///<   in library frame. Earlier files stored them
+                                                ///<   in board frame, so zone outlines need to be
+                                                ///<   un-baked on load.
+
+// The footprint library now has a header and is a separate format from the board file FOOTPRINT
+// object parser and formatter.  If you make any footprint library file format changes that do not
+// affect the board file format, please do not bump the board file format.
+#define SEXPR_FOOTPRINT_LIB_FILE_VERSION  20261031
+
+// A footprint body uses the board format, so a library file stamped older than the board format would
+// run migrations on current data
+static_assert( SEXPR_FOOTPRINT_LIB_FILE_VERSION >= SEXPR_BOARD_FILE_VERSION,
+               "Bump SEXPR_FOOTPRINT_LIB_FILE_VERSION with SEXPR_BOARD_FILE_VERSION" );
+
+
 // clang-format on
 
 // common combinations of the above:
@@ -228,7 +268,7 @@ class PCB_IO_KICAD_SEXPR;   // forward decl
  *
  * The new footprint library design is a file path of individual footprint files that contain
  * a single footprint per file.  This class is a helper only for the footprint portion of the
- * PLUGIN API, and only for the #PCB_PLUGIN plugin.  It is private to this implementation file so
+ * PLUGIN API, and only for the #PCB_IO plugin.  It is private to this implementation file so
  * it is not placed into a header.
  */
 class FP_CACHE_ENTRY
@@ -314,7 +354,7 @@ public:
 
 
 /**
- * A #PLUGIN derivation for saving and loading Pcbnew s-expression formatted files.
+ * A #PCB_IO derivation for saving and loading Pcbnew s-expression formatted files.
  *
  * @note This class is not thread safe, but it is re-entrant multiple times in sequence.
  */
@@ -348,26 +388,23 @@ public:
 
     bool CanReadBoard( const wxString& aFileName ) const override;
 
-    void SaveBoard( const wxString& aFileName, BOARD* aBoard,
+    void SaveBoard( const wxString& aFileName, BOARD& aBoard,
                     const std::map<std::string, UTF8>* aProperties = nullptr ) override;
 
-    /** Serialize a BOARD to an OUTPUTFORMATTER without file I/O or Prettify.
-     *  Handles init(), EmbedFonts/ClearEmbeddedFonts, header, Format(), and footer.
-     *  The caller owns the formatter and is responsible for flushing/closing it.
-     *  Skips GroupsSanityCheck (no UI interaction allowed from timer callbacks). */
+    /**
+     * Serialize a #BOARD to an #OUTPUTFORMATTER without file I/O or Prettify.
+     *
+     * Handles init(), EmbedFonts/ClearEmbeddedFonts, header, Format(), and footer.
+     * The caller owns the formatter and is responsible for flushing/closing it.
+     * Skips GroupsSanityCheck (no UI interaction allowed from timer callbacks). */
     void FormatBoardToFormatter( OUTPUTFORMATTER* aOut, BOARD* aBoard,
                                  const std::map<std::string, UTF8>* aProperties = nullptr );
 
-    BOARD* LoadBoard( const wxString& aFileName, BOARD* aAppendToMe,
-                      const std::map<std::string, UTF8>* aProperties = nullptr,
-                      PROJECT* aProject = nullptr ) override;
+    void DoLoad( LINE_READER& aReader, BOARD& aBoard, bool aIsNewLoad, const std::map<std::string, UTF8>* aProperties,
+                 PROGRESS_REPORTER* aProgressReporter, unsigned aLineCount );
 
-    BOARD* DoLoad( LINE_READER& aReader, BOARD* aAppendToMe, const std::map<std::string,
-                   UTF8>* aProperties, PROGRESS_REPORTER* aProgressReporter, unsigned aLineCount );
-
-    void FootprintEnumerate( wxArrayString& aFootprintNames, const wxString& aLibraryPath,
-                             bool aBestEfforts, const std::map<std::string,
-                             UTF8>* aProperties = nullptr ) override;
+    void FootprintEnumerate( wxArrayString& aFootprintNames, const wxString& aLibraryPath, bool aBestEfforts,
+                             const std::map<std::string, UTF8>* aProperties = nullptr ) override;
 
     const FOOTPRINT* GetEnumeratedFootprint( const wxString& aLibraryPath,
                                              const wxString& aFootprintName,
@@ -376,15 +413,17 @@ public:
 
     bool CachesEnumeratedFootprints() const override { return true; }
 
+    void LeakCacheAtExit() override { m_leakCacheAtExit = true; }
+
     bool FootprintExists( const wxString& aLibraryPath, const wxString& aFootprintName,
                           const std::map<std::string, UTF8>* aProperties = nullptr ) override;
 
-    FOOTPRINT* ImportFootprint( const wxString& aFootprintPath, wxString& aFootprintNameOut,
-                                const std::map<std::string, UTF8>* aProperties = nullptr ) override;
+    std::unique_ptr<FOOTPRINT> ImportFootprint( const wxString& aFootprintPath, wxString& aFootprintNameOut,
+                                                const std::map<std::string, UTF8>* aProperties = nullptr ) override;
 
-    FOOTPRINT* FootprintLoad( const wxString& aLibraryPath, const wxString& aFootprintName,
-                              bool  aKeepUUID = false,
-                              const std::map<std::string, UTF8>* aProperties = nullptr ) override;
+    std::unique_ptr<FOOTPRINT> FootprintLoad( const wxString& aLibraryPath, const wxString& aFootprintName,
+                                              bool                               aKeepUUID = false,
+                                              const std::map<std::string, UTF8>* aProperties = nullptr ) override;
 
     void FootprintSave( const wxString& aLibraryPath, const FOOTPRINT* aFootprint,
                         const std::map<std::string, UTF8>* aProperties = nullptr ) override;
@@ -416,6 +455,13 @@ public:
      */
     void Format( const BOARD_ITEM* aItem ) const;
 
+    /**
+     * Output \a aFootprint as a complete footprint library file.
+     *
+     * @param aFootprint has its embedded fonts updated to match its settings, so pass a copy of a live footprint.
+     */
+    void FormatFootprintLibFile( FOOTPRINT* aFootprint ) const;
+
     std::string GetStringOutput( bool doClear )
     {
         std::string ret = m_sf.GetString();
@@ -431,16 +477,20 @@ public:
     BOARD_ITEM* Parse( const wxString& aClipboardSourceInput );
 
 protected:
+    void loadBoard( const wxString& aFileName, BOARD& aBoard, bool aIsNewLoad,
+                    const std::map<std::string, UTF8>* aProperties = nullptr, PROJECT* aProject = nullptr ) override;
+
     void validateCache( const wxString& aLibraryPath, bool checkModified = true );
 
     const FOOTPRINT* getFootprint( const wxString& aLibraryPath, const wxString& aFootprintName,
-                                   const std::map<std::string, UTF8>* aProperties,
-                                   bool checkModified );
+                                   const std::map<std::string, UTF8>* aProperties, bool checkModified );
 
     void init( const std::map<std::string, UTF8>* aProperties );
 
     /// formats the board setup information
     void formatSetup( const BOARD* aBoard ) const;
+
+    void formatDrillSymbolProfile( const BOARD_DESIGN_SETTINGS& aSettings ) const;
 
     /// formats the General section of the file
     void formatGeneral( const BOARD* aBoard ) const;
@@ -468,12 +518,21 @@ private:
 
     void format( const PCB_GROUP* aGroup ) const;
 
+    void format( const PCB_CONSTRAINT* aConstraint ) const;
+
     void format( const PCB_SHAPE* aSegment ) const;
 
     void format( const PCB_TARGET* aTarget ) const;
     void format( const PCB_POINT* aPoint ) const;
 
-    void format( const FOOTPRINT* aFootprint ) const;
+    void format( const PCB_GRID_ITEM* aGridItem ) const;
+
+    /**
+     * @param aInLibFile leaves the initial comments and version to the enclosing library file.
+     */
+    void format( const FOOTPRINT* aFootprint, bool aInLibFile = false ) const;
+
+    void formatInitialComments( const FOOTPRINT* aFootprint ) const;
 
     void format( const PAD* aPad ) const;
 
@@ -483,6 +542,19 @@ private:
     void format( const PCB_TEXTBOX* aTextBox ) const;
 
     void format( const PCB_TABLE* aTable ) const;
+    void format( const PCB_GENERATED_TABLE* aTable ) const;
+
+    /**
+     * What only one kind of generated table carries, written after the shared settings.
+     */
+    void formatGeneratedTableExtras( const PCB_GENERATED_TABLE* aTable ) const;
+
+    void format( const PCB_DRILL_MAP* aMap ) const;
+
+    /**
+     * Geometry and cells with no identity, so an enclosing form owns uuid/layer/locked.
+     */
+    void formatTableData( const PCB_TABLE* aTable ) const;
 
     void format( const PCB_GENERATOR* aGenerator ) const;
 
@@ -490,11 +562,9 @@ private:
 
     void format( const ZONE* aZone ) const;
 
-    void format( const ZONE_LAYER_PROPERTIES& aZoneLayerProperties, int aNestLevel,
-                 PCB_LAYER_ID aLayer ) const;
+    void format( const ZONE_LAYER_PROPERTIES& aZoneLayerProperties, int aNestLevel, PCB_LAYER_ID aLayer ) const;
 
-    void formatPolyPts( const SHAPE_LINE_CHAIN& outline,
-                        const FOOTPRINT* aParentFP = nullptr ) const;
+    void formatPolyPts( const SHAPE_LINE_CHAIN& outline, const FOOTPRINT* aParentFP = nullptr ) const;
 
     void formatRenderCache( const EDA_TEXT* aText ) const;
 
@@ -508,6 +578,7 @@ protected:
     wxString               m_error;      ///< for throwing exceptions
 
     FP_CACHE*              m_cache;      ///< Footprint library cache
+    bool                   m_leakCacheAtExit = false;
 
     LINE_READER*           m_reader;     ///< no ownership
     wxString               m_filename;   ///< for saves only, name is in m_reader for loads
@@ -517,11 +588,6 @@ protected:
     int                    m_ctl;
 
     std::function<bool( wxString aTitle, int aIcon, wxString aMsg, wxString aAction )> m_queryUserCallback;
-
-    // Set of pointers held by m_board, used to validate PCB_GROUP members against
-    // use-after-free.  Rebuilt at the start of every board-level save; see format( const BOARD* )
-    // and format( const PCB_GROUP* ).
-    mutable std::unordered_set<const BOARD_ITEM*> m_groupValidPtrs;
 };
 
 #endif  // PCB_IO_KICAD_SEXPR_H_

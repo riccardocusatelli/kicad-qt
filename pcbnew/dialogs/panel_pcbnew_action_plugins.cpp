@@ -14,11 +14,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <action_plugin.h>
 #include <api/api_plugin.h>
 #include <bitmaps.h>
 #include <dialog_footprint_wizard_list.h>
@@ -26,9 +25,8 @@
 #include <kiface_base.h>
 #include <kiplatform/ui.h>
 #include <panel_pcbnew_action_plugins.h>
+#include <paths.h>
 #include <pcb_edit_frame.h>
-#include <python/scripting/pcbnew_scripting.h>
-#include <pcb_scripting_tool.h>
 #include <pcbnew_settings.h>
 #include <pgm_base.h>
 #include <pgm_gui.h>
@@ -84,8 +82,15 @@ void PLUGINS_GRID_TRICKS::showPopupMenu( wxMenu& menu, wxGridEvent& aEvent )
         m_grid->ClearSelection();
         m_grid->SelectRow( clickedRow );
 
+<<<<<<< b2e17e0a
 #ifdef KICAD_IPC_API
         API_PLUGIN_MANAGER& mgr = PgmGui().GetPluginManager();
+||||||| 1304b76aad
+#ifdef KICAD_IPC_API
+        API_PLUGIN_MANAGER& mgr = PgmGui().GetPluginManager();
+=======
+        API_PLUGIN_MANAGER& mgr = PgmGui().GetPluginManager();
+>>>>>>> ed8c16703e
         wxString id = m_grid->GetCellValue( clickedRow,
                                             PANEL_PCBNEW_ACTION_PLUGINS::COLUMN_SETTINGS_IDENTIFIER );
 
@@ -95,7 +100,6 @@ void PLUGINS_GRID_TRICKS::showPopupMenu( wxMenu& menu, wxGridEvent& aEvent )
             menu.Append( MYID_RECREATE_ENV, _( "Recreate Plugin Environment" ), _( "Recreate Plugin Environment" ) );
             menu.AppendSeparator();
         }
-#endif
     }
 
     GRID_TRICKS::showPopupMenu( menu, aEvent );
@@ -106,8 +110,15 @@ void PLUGINS_GRID_TRICKS::doPopupSelection( wxCommandEvent& event )
 {
     if( event.GetId() == MYID_RECREATE_ENV )
     {
+<<<<<<< b2e17e0a
 #ifdef KICAD_IPC_API
         API_PLUGIN_MANAGER& mgr = PgmGui().GetPluginManager();
+||||||| 1304b76aad
+#ifdef KICAD_IPC_API
+        API_PLUGIN_MANAGER& mgr = PgmGui().GetPluginManager();
+=======
+        API_PLUGIN_MANAGER& mgr = PgmGui().GetPluginManager();
+>>>>>>> ed8c16703e
         wxString id = m_grid->GetCellValue( m_grid->GetGridCursorRow(),
                                             PANEL_PCBNEW_ACTION_PLUGINS::COLUMN_SETTINGS_IDENTIFIER );
 
@@ -117,7 +128,6 @@ void PLUGINS_GRID_TRICKS::doPopupSelection( wxCommandEvent& event )
             if( mgr.RecreatePluginEnvironment( ( *action )->plugin.Identifier() ) )
                 mgr.ProcessJobs();
         }
-#endif
     }
     else
     {
@@ -145,6 +155,7 @@ PANEL_PCBNEW_ACTION_PLUGINS::PANEL_PCBNEW_ACTION_PLUGINS( wxWindow* aParent ) :
     m_errorDialog = new DIALOG_HTML_REPORTER( aParent );
     m_allowErrorDialog = false;
 
+<<<<<<< b2e17e0a
 #ifdef KICAD_IPC_API
     m_pluginAvailabilityListener = PgmGui().GetPluginManager().AddAvailabilityChangedListener(
             [this]()
@@ -152,21 +163,50 @@ PANEL_PCBNEW_ACTION_PLUGINS::PANEL_PCBNEW_ACTION_PLUGINS( wxWindow* aParent ) :
                 onPluginAvailabilityChanged();
             } );
 #endif
+||||||| 1304b76aad
+#ifdef KICAD_IPC_API
+    wxTheApp->Bind( EDA_EVT_PLUGIN_AVAILABILITY_CHANGED,
+          &PANEL_PCBNEW_ACTION_PLUGINS::onPluginAvailabilityChanged, this );
+#endif
+=======
+    wxTheApp->Bind( EDA_EVT_PLUGIN_AVAILABILITY_CHANGED,
+          &PANEL_PCBNEW_ACTION_PLUGINS::onPluginAvailabilityChanged, this );
+>>>>>>> ed8c16703e
 }
 
 
 PANEL_PCBNEW_ACTION_PLUGINS::~PANEL_PCBNEW_ACTION_PLUGINS()
 {
+    if( m_reloadReporter )
+        m_reloadReporter->SetNullReporter();
+
     delete m_errorDialog;
+<<<<<<< b2e17e0a
 #ifdef KICAD_IPC_API
     PgmGui().GetPluginManager().RemoveAvailabilityChangedListener( m_pluginAvailabilityListener );
 #endif
+||||||| 1304b76aad
+#ifdef KICAD_IPC_API
+    wxTheApp->Unbind( EDA_EVT_PLUGIN_AVAILABILITY_CHANGED,
+            &PANEL_PCBNEW_ACTION_PLUGINS::onPluginAvailabilityChanged, this );
+#endif
+=======
+    wxTheApp->Unbind( EDA_EVT_PLUGIN_AVAILABILITY_CHANGED,
+            &PANEL_PCBNEW_ACTION_PLUGINS::onPluginAvailabilityChanged, this );
+>>>>>>> ed8c16703e
     m_grid->PopEventHandler( true );
 }
 
 
+<<<<<<< b2e17e0a
 #ifdef KICAD_IPC_API
 void PANEL_PCBNEW_ACTION_PLUGINS::onPluginAvailabilityChanged()
+||||||| 1304b76aad
+#ifdef KICAD_IPC_API
+void PANEL_PCBNEW_ACTION_PLUGINS::onPluginAvailabilityChanged( wxCommandEvent& aEvt )
+=======
+void PANEL_PCBNEW_ACTION_PLUGINS::onPluginAvailabilityChanged( wxCommandEvent& aEvt )
+>>>>>>> ed8c16703e
 {
     m_grid->Enable();
     TransferDataToWindow();
@@ -178,7 +218,6 @@ void PANEL_PCBNEW_ACTION_PLUGINS::onPluginAvailabilityChanged()
         m_errorDialog->ShowModal();
     }
 }
-#endif
 
 
 void PANEL_PCBNEW_ACTION_PLUGINS::OnGridCellClick( wxGridEvent& event )
@@ -231,17 +270,22 @@ void PANEL_PCBNEW_ACTION_PLUGINS::SwapRows( int aRowA, int aRowB )
 
 void PANEL_PCBNEW_ACTION_PLUGINS::OnReloadButtonClick( wxCommandEvent& event )
 {
+<<<<<<< b2e17e0a
     SCRIPTING_TOOL::ReloadPlugins();
 #ifdef KICAD_IPC_API
     API_PLUGIN_MANAGER& mgr = PgmGui().GetPluginManager();
+||||||| 1304b76aad
+    SCRIPTING_TOOL::ReloadPlugins();
+#ifdef KICAD_IPC_API
+    API_PLUGIN_MANAGER& mgr = PgmGui().GetPluginManager();
+=======
+    API_PLUGIN_MANAGER& mgr = PgmGui().GetPluginManager();
+>>>>>>> ed8c16703e
     m_errorDialog->m_Reporter->Clear();
-    auto reporter = std::make_shared<REDIRECT_REPORTER>( m_errorDialog->m_Reporter );
+    m_reloadReporter = std::make_shared<SYNC_REPORTER>( *m_errorDialog->m_Reporter );
     m_allowErrorDialog = true;
-    mgr.ReloadPlugins( std::nullopt, reporter );
+    mgr.ReloadPlugins( std::nullopt, m_reloadReporter );
     m_grid->Disable();
-#else
-    TransferDataToWindow();
-#endif
 }
 
 
@@ -250,12 +294,18 @@ bool PANEL_PCBNEW_ACTION_PLUGINS::TransferDataFromWindow()
     PCBNEW_SETTINGS* settings = dynamic_cast<PCBNEW_SETTINGS*>( Kiface().KifaceSettings() );
     KI_ASSERT( settings );
 
+<<<<<<< b2e17e0a
 #ifdef KICAD_IPC_API
     API_PLUGIN_MANAGER& mgr = PgmGui().GetPluginManager();
+||||||| 1304b76aad
+#ifdef KICAD_IPC_API
+    API_PLUGIN_MANAGER& mgr = PgmGui().GetPluginManager();
+=======
+    API_PLUGIN_MANAGER& mgr = PgmGui().GetPluginManager();
+>>>>>>> ed8c16703e
 
     if( settings )
     {
-        settings->m_VisibleActionPlugins.clear();
         settings->m_Plugins.actions.clear();
 
         for( int ii = 0; ii < m_grid->GetNumberRows(); ii++ )
@@ -267,27 +317,8 @@ bool PANEL_PCBNEW_ACTION_PLUGINS::TransferDataFromWindow()
                 settings->m_Plugins.actions.emplace_back( std::make_pair(
                         id, m_grid->GetCellValue( ii, COLUMN_VISIBLE ) == wxT( "1" ) ) );
             }
-            else
-            {
-                settings->m_VisibleActionPlugins.emplace_back( std::make_pair(
-                        id, m_grid->GetCellValue( ii, COLUMN_VISIBLE ) == wxT( "1" ) ) );
-            }
         }
     }
-#else
-    if( settings )
-    {
-        settings->m_VisibleActionPlugins.clear();
-
-        for( int ii = 0; ii < m_grid->GetNumberRows(); ii++ )
-        {
-            wxString id = m_grid->GetCellValue( ii, COLUMN_SETTINGS_IDENTIFIER );
-
-            settings->m_VisibleActionPlugins.emplace_back( std::make_pair(
-                    id, m_grid->GetCellValue( ii, COLUMN_VISIBLE ) == wxT( "1" ) ) );
-        }
-    }
-#endif
 
     return true;
 }
@@ -299,7 +330,7 @@ bool PANEL_PCBNEW_ACTION_PLUGINS::TransferDataToWindow()
 
     m_grid->ClearRows();
 
-    const std::vector<LEGACY_OR_API_PLUGIN>& orderedPlugins = PCB_EDIT_FRAME::GetOrderedActionPlugins();
+    const std::vector<const PLUGIN_ACTION*>& orderedPlugins = PCB_EDIT_FRAME::GetOrderedPluginActions();
     m_grid->AppendRows( orderedPlugins.size() );
 
     int size = Pgm().GetCommonSettings()->m_Appearance.toolbar_icon_size;
@@ -307,6 +338,7 @@ bool PANEL_PCBNEW_ACTION_PLUGINS::TransferDataToWindow()
 
     for( size_t row = 0; row < orderedPlugins.size(); row++ )
     {
+<<<<<<< b2e17e0a
         if( std::holds_alternative<ACTION_PLUGIN*>( orderedPlugins[row] ) )
         {
             auto ap = std::get<ACTION_PLUGIN*>( orderedPlugins[row] );
@@ -335,6 +367,38 @@ bool PANEL_PCBNEW_ACTION_PLUGINS::TransferDataToWindow()
         {
 #ifdef KICAD_IPC_API
             auto action = std::get<const PLUGIN_ACTION*>( orderedPlugins[row] );
+||||||| 1304b76aad
+        if( std::holds_alternative<ACTION_PLUGIN*>( orderedPlugins[row] ) )
+        {
+            auto ap = std::get<ACTION_PLUGIN*>( orderedPlugins[row] );
+
+            // Icon
+            m_grid->SetCellRenderer( row, COLUMN_ACTION_NAME,
+                    new GRID_CELL_ICON_TEXT_RENDERER( ap->iconBitmap.IsOk() ? wxBitmapBundle( ap->iconBitmap )
+                                                                            : m_genericIcon,
+                                                      iconSize ) );
+            m_grid->SetCellValue( row, COLUMN_ACTION_NAME, ap->GetName() );
+            m_grid->SetCellValue( row, COLUMN_SETTINGS_IDENTIFIER, ap->GetPluginPath() );
+
+            // Toolbar button checkbox
+            m_grid->SetCellRenderer( row, COLUMN_VISIBLE, new wxGridCellBoolRenderer() );
+            m_grid->SetCellAlignment( row, COLUMN_VISIBLE, wxALIGN_CENTER, wxALIGN_CENTER );
+
+            bool show = PCB_EDIT_FRAME::GetActionPluginButtonVisible( ap->GetPluginPath(),
+                                                                      ap->GetShowToolbarButton() );
+
+            m_grid->SetCellValue( row, COLUMN_VISIBLE, show ? wxT( "1" ) : wxEmptyString );
+
+            m_grid->SetCellValue( row, COLUMN_PLUGIN_NAME, ap->GetClassName() );
+            m_grid->SetCellValue( row, COLUMN_DESCRIPTION, ap->GetDescription() );
+        }
+        else
+        {
+#ifdef KICAD_IPC_API
+            auto action = std::get<const PLUGIN_ACTION*>( orderedPlugins[row] );
+=======
+            const PLUGIN_ACTION* action = orderedPlugins[row];
+>>>>>>> ed8c16703e
 
             const wxBitmapBundle& icon = KIPLATFORM::UI::IsDarkTheme() && action->icon_dark.IsOk() ? action->icon_dark
                                                                                                    : action->icon_light;
@@ -349,14 +413,12 @@ bool PANEL_PCBNEW_ACTION_PLUGINS::TransferDataToWindow()
             m_grid->SetCellRenderer( row, COLUMN_VISIBLE, new wxGridCellBoolRenderer() );
             m_grid->SetCellAlignment( row, COLUMN_VISIBLE, wxALIGN_CENTER, wxALIGN_CENTER );
 
-            bool show = PCB_EDIT_FRAME::GetActionPluginButtonVisible( action->identifier, action->show_button );
+            bool show = PCB_EDIT_FRAME::GetPluginActionButtonVisible( action->identifier, action->show_button );
 
             m_grid->SetCellValue( row, COLUMN_VISIBLE, show ? wxString( wxT( "1" ) ) : wxString() );
 
             m_grid->SetCellValue( row, COLUMN_PLUGIN_NAME, action->plugin.Name() );
             m_grid->SetCellValue( row, COLUMN_DESCRIPTION, action->description );
-#endif
-        }
     }
 
     const int colMaxWidth = FromDIP( 400 );
@@ -381,9 +443,6 @@ bool PANEL_PCBNEW_ACTION_PLUGINS::TransferDataToWindow()
     // Show errors button should be disabled if there are no errors.
     wxString trace;
 
-    if( ACTION_PLUGINS::GetActionsCount() )
-        pcbnewGetWizardsBackTrace( trace );
-
     if( trace.empty() )
     {
         m_showErrorsButton->Disable();
@@ -401,14 +460,14 @@ bool PANEL_PCBNEW_ACTION_PLUGINS::TransferDataToWindow()
 
 void PANEL_PCBNEW_ACTION_PLUGINS::OnOpenDirectoryButtonClick( wxCommandEvent& event )
 {
-    SCRIPTING_TOOL::ShowPluginFolder();
+    wxString dir( PATHS::GetUserPluginsPath() );
+    LaunchExternal( dir );
 }
 
 
 void PANEL_PCBNEW_ACTION_PLUGINS::OnShowErrorsButtonClick( wxCommandEvent& event )
 {
     wxString trace;
-    pcbnewGetWizardsBackTrace( trace );
 
     // Now display the filtered trace in our dialog
     // (a simple wxMessageBox is really not suitable for long messages)

@@ -13,8 +13,8 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 # General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License along
-# with this program.  If not, see <http://www.gnu.org/licenses/>.
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 # Sources for the pcbnew pcb_io called ODB++
 
@@ -23,6 +23,7 @@ include_directories( ${CMAKE_CURRENT_SOURCE_DIR} )
 
 set( ODBPP_SRCS
     odb_util.cpp
+    odb_export_job.cpp
     odb_attribute.cpp
     odb_feature.cpp
     odb_component.cpp

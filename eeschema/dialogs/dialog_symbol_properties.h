@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -34,6 +30,7 @@ class LIB_SYMBOL;
 class SCH_PIN_TABLE_DATA_MODEL;
 class SCH_EDIT_FRAME;
 class PANEL_EMBEDDED_FILES;
+class PANEL_SYMBOL_PIN_MAP;
 
 
 // The dialog can be closed for several reasons.
@@ -41,6 +38,8 @@ enum SYMBOL_PROPS_RETVALUE
 {
     SYMBOL_PROPS_WANT_UPDATE_SYMBOL,
     SYMBOL_PROPS_WANT_EXCHANGE_SYMBOL,
+    SYMBOL_PROPS_WANT_SET_VARIANT_SYMBOL,
+    SYMBOL_PROPS_WANT_CLEAR_VARIANT_SYMBOL,
     SYMBOL_PROPS_EDIT_OK,
     SYMBOL_PROPS_EDIT_SCHEMATIC_SYMBOL,
     SYMBOL_PROPS_EDIT_LIBRARY_SYMBOL
@@ -60,6 +59,12 @@ public:
     ~DIALOG_SYMBOL_PROPERTIES() override;
 
     SCH_EDIT_FRAME* GetParent();
+
+    /**
+     * Select the Pin Map page so the dialog opens directly on the pin-to-pad mapping editor
+     * (issue #2282).  Call before showing the dialog.
+     */
+    void SelectPinMapPage();
 
 private:
     bool TransferDataToWindow() override;
@@ -89,6 +94,7 @@ private:
     void OnEditLibrarySymbol( wxCommandEvent&  ) override;
     void OnUpdateSymbol( wxCommandEvent&  ) override;
     void OnExchangeSymbol( wxCommandEvent&  ) override;
+    void OnClearVariantSymbol( wxCommandEvent& ) override;
 
     void AdjustPinsGridColumns();
     void HandleDelayedFocus( wxCommandEvent& event );
@@ -98,17 +104,22 @@ private:
     virtual void onUpdateEditLibrarySymbol( wxUpdateUIEvent& event ) override;
 
 private:
-    SCH_SYMBOL*               m_symbol;
-    LIB_SYMBOL*               m_part;
+    SCH_SYMBOL*                 m_symbol;
 
-    wxSize                    m_pinsSize;
-    wxSize                    m_lastRequestedPinsSize;
-    bool                      m_editorShown;
-    std::bitset<64>           m_shownColumns;
+    // Owns a private copy of the schematic symbol's library part because the still-live schematic
+    // could free the one pointed to my m_symbol while this quasi-modal dialog is open.
+    std::unique_ptr<LIB_SYMBOL> m_part;
 
-    FIELDS_GRID_TABLE*        m_fields;
-    SCH_PIN_TABLE_DATA_MODEL* m_dataModel;
-    PANEL_EMBEDDED_FILES*     m_embeddedFiles;
+    wxSize                      m_pinsSize;
+    wxSize                      m_lastRequestedPinsSize;
+    bool                        m_editorShown;
+    std::bitset<64>             m_shownColumns;
+
+    FIELDS_GRID_TABLE*          m_fields;
+    SCH_PIN_TABLE_DATA_MODEL*   m_dataModel;
+    PANEL_EMBEDDED_FILES*       m_embeddedFiles;
+    PANEL_SYMBOL_PIN_MAP*       m_pinMapPanel;
+    bool                        m_forcePinMapPage = false;
 };
 
 #endif // DIALOG_SYMBOL_PROPERTIES_H

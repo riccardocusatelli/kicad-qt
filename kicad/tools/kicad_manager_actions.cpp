@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <tool/tool_action.h>
@@ -149,16 +145,6 @@ TOOL_ACTION KICAD_MANAGER_ACTIONS::viewGerbers( TOOL_ACTION_ARGS()
         .FriendlyName( _( "Gerber Viewer" ) )
         .Tooltip( _( "Preview Gerber output files" ) )
         .Icon( BITMAPS::icon_gerbview_24 )
-        .Parameter<wxString*>( nullptr ) );      // Default to no filename
-
-TOOL_ACTION KICAD_MANAGER_ACTIONS::convertImage( TOOL_ACTION_ARGS()
-        .Name( "kicad.Control.convertImage" )
-        .Scope( AS_GLOBAL )
-        .DefaultHotkey( MD_CTRL + 'B' )
-        .LegacyHotkeyName( "Run Bitmap2Component" )
-        .FriendlyName( _( "Image Converter" ) )
-        .Tooltip( _( "Convert bitmap images to schematic or PCB components" ) )
-        .Icon( BITMAPS::icon_bitmap2component_24 )
         .Parameter<wxString*>( nullptr ) );      // Default to no filename
 
 TOOL_ACTION KICAD_MANAGER_ACTIONS::showCalculator( TOOL_ACTION_ARGS()

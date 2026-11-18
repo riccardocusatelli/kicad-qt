@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <pgm_base.h>
@@ -44,7 +40,7 @@ static void AddSymbolToHistory( const PICKED_SYMBOL& aSymbol )
                     {
                         return candidate.LibId == aSymbol.LibId
                                 && candidate.Unit == aSymbol.Unit
-                                && candidate.Convert == aSymbol.Convert;
+                                && candidate.BodyStyle == aSymbol.BodyStyle;
                     } );
 
     // Add the new name at the beginning of the history list
@@ -73,7 +69,8 @@ END_EVENT_TABLE()
 SYMBOL_CHOOSER_FRAME::SYMBOL_CHOOSER_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent, bool& aCancelled ) :
         SCH_BASE_FRAME( aKiway, aParent, FRAME_SYMBOL_CHOOSER, _( "Symbol Chooser" ),
                         wxDefaultPosition, wxDefaultSize, aParent ? PARENT_STYLE : MODAL_STYLE,
-                        SYMBOL_CHOOSER_FRAME_NAME )
+                        SYMBOL_CHOOSER_FRAME_NAME ),
+        m_firstPaintEvent( true )
 {
     SetModal( true );
 

@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <settings/bom_settings.h>
@@ -27,8 +27,10 @@
 // Implementations for BOM_FMT_PRESET
 bool BOM_FIELD::operator==( const BOM_FIELD& rhs ) const
 {
-    return this->name == rhs.name && this->label == rhs.label && this->show == rhs.show
-           && this->groupBy == rhs.groupBy;
+    return this->name == rhs.name
+            && this->label == rhs.label
+            && this->show == rhs.show
+            && this->groupBy == rhs.groupBy;
 }
 
 
@@ -47,7 +49,10 @@ bool operator<( const BOM_FIELD& lhs, const BOM_FIELD& rhs )
 void to_json( nlohmann::json& j, const BOM_FIELD& f )
 {
     j = nlohmann::json{
-        { "name", f.name }, { "label", f.label }, { "show", f.show }, { "group_by", f.groupBy }
+        { "name", f.name },
+        { "label", f.label },
+        { "show", f.show },
+        { "group_by", f.groupBy }
     };
 }
 
@@ -77,26 +82,26 @@ void to_json( nlohmann::json& j, const BOM_PRESET& p )
 {
     j = nlohmann::json{
         { "name", p.name },
+        { "fields_ordered", p.fieldsOrdered },
         { "sort_field", p.sortField },
         { "sort_asc", p.sortAsc },
         { "filter_string", p.filterString },
+        { "filter_scope", p.filterScope },
         { "group_symbols", p.groupSymbols },
         { "exclude_dnp", p.excludeDNP },
         { "include_excluded_from_bom", p.includeExcludedFromBOM },
     };
-
-    if( p.fieldsOrdered.size() > 0 )
-        j["fields_ordered"] = p.fieldsOrdered;
 }
 
 
 void from_json( const nlohmann::json& j, BOM_PRESET& f )
 {
     j.at( "name" ).get_to( f.name );
-    j.at( "fields_ordered" ).get_to( f.fieldsOrdered );
+    f.fieldsOrdered = j.value( "fields_ordered", std::vector<BOM_FIELD>{} );
     j.at( "sort_field" ).get_to( f.sortField );
     j.at( "sort_asc" ).get_to( f.sortAsc );
     j.at( "filter_string" ).get_to( f.filterString );
+    f.filterScope = j.value( "filter_scope", BOM_FILTER_SCOPE::REFERENCE );
     j.at( "group_symbols" ).get_to( f.groupSymbols );
     j.at( "exclude_dnp" ).get_to( f.excludeDNP );
 
@@ -114,6 +119,7 @@ bool BOM_PRESET::operator==( const BOM_PRESET& rhs ) const
         && this->sortField == rhs.sortField
         && this->sortAsc == rhs.sortAsc
         && this->filterString == rhs.filterString
+        && this->filterScope == rhs.filterScope
         && this->groupSymbols == rhs.groupSymbols
         && this->excludeDNP == rhs.excludeDNP
         && this->includeExcludedFromBOM == rhs.includeExcludedFromBOM;
@@ -123,7 +129,8 @@ bool BOM_PRESET::operator==( const BOM_PRESET& rhs ) const
 BOM_PRESET BOM_PRESET::DefaultEditing()
 {
     BOM_PRESET p{
-        _HKI( "Default Editing" ), true, {}, _( "Reference" ), true, "", true, false, true
+        _HKI( "Default Editing" ), true, {}, wxS( "Reference" ), true, "", BOM_FILTER_SCOPE::REFERENCE,
+        true, false, true
     };
 
     p.fieldsOrdered = std::vector<BOM_FIELD>{
@@ -146,7 +153,8 @@ BOM_PRESET BOM_PRESET::DefaultEditing()
 BOM_PRESET BOM_PRESET::GroupedByValue()
 {
     BOM_PRESET p{
-        _HKI( "Grouped By Value" ), true, {}, _( "Reference" ), true, "", true, false, false
+        _HKI( "Grouped By Value" ), true, {}, wxS( "Reference" ), true, "", BOM_FILTER_SCOPE::REFERENCE,
+        true, false, false
     };
 
     p.fieldsOrdered = std::vector<BOM_FIELD>{
@@ -165,8 +173,8 @@ BOM_PRESET BOM_PRESET::GroupedByValue()
 BOM_PRESET BOM_PRESET::GroupedByValueFootprint()
 {
     BOM_PRESET p{
-        _HKI( "Grouped By Value and Footprint" ), true, {}, _( "Reference" ), true, "",
-        true, false, false
+        _HKI( "Grouped By Value and Footprint" ), true, {}, wxS( "Reference" ), true, "",
+        BOM_FILTER_SCOPE::REFERENCE, true, false, false
     };
 
     p.fieldsOrdered = std::vector<BOM_FIELD>{
@@ -185,7 +193,8 @@ BOM_PRESET BOM_PRESET::GroupedByValueFootprint()
 BOM_PRESET BOM_PRESET::Attributes()
 {
     BOM_PRESET p{
-        _HKI( "Attributes" ), true, {}, _( "Reference" ), true, "", true, false, true
+        _HKI( "Attributes" ), true, {}, wxS( "Reference" ), true, "", BOM_FILTER_SCOPE::REFERENCE,
+        true, false, true
     };
 
     p.fieldsOrdered = std::vector<BOM_FIELD>{
@@ -206,19 +215,25 @@ BOM_PRESET BOM_PRESET::Attributes()
 
 std::vector<BOM_PRESET> BOM_PRESET::BuiltInPresets()
 {
-    return { BOM_PRESET::DefaultEditing(), BOM_PRESET::GroupedByValue(),
-             BOM_PRESET::GroupedByValueFootprint(), BOM_PRESET::Attributes() };
+    return { BOM_PRESET::DefaultEditing(),
+             BOM_PRESET::GroupedByValue(),
+             BOM_PRESET::GroupedByValueFootprint(),
+             BOM_PRESET::Attributes() };
 }
 
 
 //Implementations for BOM_FMT_PRESET
 bool BOM_FMT_PRESET::operator==( const BOM_FMT_PRESET& rhs ) const
 {
-    return this->name == rhs.name && this->readOnly == rhs.readOnly
+    return this->name == rhs.name
+           && this->readOnly == rhs.readOnly
            && this->fieldDelimiter == rhs.fieldDelimiter
-           && this->stringDelimiter == rhs.stringDelimiter && this->refDelimiter == rhs.refDelimiter
-           && this->refRangeDelimiter == rhs.refRangeDelimiter && this->keepTabs == rhs.keepTabs
-           && this->keepLineBreaks == rhs.keepLineBreaks;
+           && this->stringDelimiter == rhs.stringDelimiter
+           && this->refDelimiter == rhs.refDelimiter
+           && this->refRangeDelimiter == rhs.refRangeDelimiter
+           && this->keepTabs == rhs.keepTabs
+           && this->keepLineBreaks == rhs.keepLineBreaks
+           && this->includeByteOrderMark == rhs.includeByteOrderMark;
 }
 
 
@@ -242,7 +257,8 @@ void to_json( nlohmann::json& j, const BOM_FMT_PRESET& p )
                         { "ref_delimiter", p.refDelimiter },
                         { "ref_range_delimiter", p.refRangeDelimiter },
                         { "keep_tabs", p.keepTabs },
-                        { "keep_line_breaks", p.keepLineBreaks } };
+                        { "keep_line_breaks", p.keepLineBreaks },
+                        { "include_byte_order_mark", p.includeByteOrderMark } };
 }
 
 
@@ -255,25 +271,27 @@ void from_json( const nlohmann::json& j, BOM_FMT_PRESET& f )
     j.at( "ref_range_delimiter" ).get_to( f.refRangeDelimiter );
     j.at( "keep_tabs" ).get_to( f.keepTabs );
     j.at( "keep_line_breaks" ).get_to( f.keepLineBreaks );
+    // Added after the other options, so may not be present in old settings
+    f.includeByteOrderMark = j.value( "include_byte_order_mark", false );
 }
 
 
 BOM_FMT_PRESET BOM_FMT_PRESET::CSV()
 {
-    return { _HKI( "CSV" ), true, wxS( "," ), wxT( "\"" ), wxT( "," ), wxT( "" ), false, false };
+    return { _HKI( "CSV" ), true, wxS( "," ), wxT( "\"" ), wxT( "," ), wxT( "" ), false, false, false };
 }
 
 
 BOM_FMT_PRESET BOM_FMT_PRESET::TSV()
 {
-    return { _HKI( "TSV" ), true, wxS( "\t" ), wxT( "" ), wxT( "," ), wxT( "" ), false, false };
+    return { _HKI( "TSV" ), true, wxS( "\t" ), wxT( "" ), wxT( "," ), wxT( "" ), false, false, false };
 }
 
 
 BOM_FMT_PRESET BOM_FMT_PRESET::Semicolons()
 {
     return {
-        _HKI( "Semicolons" ), true, wxS( ";" ), wxT( "'" ), wxT( "," ), wxT( "" ), false, false
+        _HKI( "Semicolons" ), true, wxS( ";" ), wxT( "'" ), wxT( "," ), wxT( "" ), false, false, false
     };
 }
 

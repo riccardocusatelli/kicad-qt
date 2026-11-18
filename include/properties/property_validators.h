@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef KICAD_PROPERTY_VALIDATORS_H
@@ -39,8 +39,7 @@ public:
     T Maximum;
     EDA_DATA_TYPE DataType;
 
-    VALIDATION_ERROR_TOO_LARGE( T aActual, T aMaximum,
-                                EDA_DATA_TYPE aType = EDA_DATA_TYPE::DISTANCE ) :
+    VALIDATION_ERROR_TOO_LARGE( T aActual, T aMaximum, EDA_DATA_TYPE aType = EDA_DATA_TYPE::DISTANCE ) :
             Actual( aActual ),
             Maximum( aMaximum ),
             DataType( aType )
@@ -63,8 +62,7 @@ public:
     T Minimum;
     EDA_DATA_TYPE DataType;
 
-    VALIDATION_ERROR_TOO_SMALL( T aActual, T aMinimum,
-                                EDA_DATA_TYPE aType = EDA_DATA_TYPE::DISTANCE ) :
+    VALIDATION_ERROR_TOO_SMALL( T aActual, T aMinimum, EDA_DATA_TYPE aType = EDA_DATA_TYPE::DISTANCE ) :
             Actual( aActual ),
             Minimum( aMinimum ),
             DataType( aType )
@@ -164,15 +162,9 @@ public:
         double val = aValue.As<double>();
 
         if( val > 1.0 )
-        {
-            return std::make_unique<VALIDATION_ERROR_TOO_LARGE<double>>( val, 1.0,
-                                                                         EDA_DATA_TYPE::UNITLESS );
-        }
+            return std::make_unique<VALIDATION_ERROR_TOO_LARGE<double>>( val, 1.0, EDA_DATA_TYPE::UNITLESS );
         else if( val < 0.0 )
-        {
-            return std::make_unique<VALIDATION_ERROR_TOO_SMALL<double>>( val, 0.0,
-                                                                         EDA_DATA_TYPE::UNITLESS );
-        }
+            return std::make_unique<VALIDATION_ERROR_TOO_SMALL<double>>( val, 0.0, EDA_DATA_TYPE::UNITLESS );
 
         return std::nullopt;
     }

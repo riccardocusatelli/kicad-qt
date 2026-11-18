@@ -15,16 +15,15 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <algorithm>
 
 #include <bitmaps.h>
+#include <api/api_enums.h>
+#include <api/api_utils.h>
+#include <api/schematic/schematic_types.pb.h>
 #include <general.h>
 #include <geometry/shape_line_chain.h>
 #include <string_utils.h>
@@ -60,6 +59,64 @@ SCH_SHEET_PIN::SCH_SHEET_PIN( SCH_SHEET* parent, const VECTOR2I& pos, const wxSt
 }
 
 
+void SCH_SHEET_PIN::Serialize( kiapi::schematic::types::SheetPin& pin ) const
+{
+    using namespace kiapi::schematic::types;
+
+
+    pin.mutable_id()->set_value( m_Uuid.AsStdString() );
+    kiapi::common::PackVector2( *pin.mutable_position(), GetPosition(), schIUScale );
+    pin.set_spin_style( ToProtoEnum<SPIN_STYLE::SPIN,
+                        SchematicLabelSpinStyle>( static_cast<SPIN_STYLE::SPIN>( (int) GetSpinStyle() ) ) );
+    pin.set_shape( ToProtoEnum<LABEL_FLAG_SHAPE, SchematicLabelShape>( GetShape() ) );
+    pin.set_side( ToProtoEnum<SHEET_SIDE, SheetSide>( GetSide() ) );
+    pin.set_locked( SCH_ITEM::IsLocked() ? kiapi::common::types::LockedState::LS_LOCKED
+                                         : kiapi::common::types::LockedState::LS_UNLOCKED );
+
+    EDA_TEXT::Serialize( *pin.mutable_text(), schIUScale );
+
+    kiapi::common::PackCustomProperties( pin.mutable_custom_properties(), *this );
+}
+
+void SCH_SHEET_PIN::Serialize( google::protobuf::Any& aContainer ) const
+{
+    kiapi::schematic::types::SheetPin pin;
+    Serialize( pin );
+
+    if( !aContainer.PackFrom( pin ) )
+        KI_FAIL_MSG( wxT( "Failed to pack SCH_SHEET_PIN" ) );
+}
+
+
+bool SCH_SHEET_PIN::Deserialize( const kiapi::schematic::types::SheetPin& pin )
+{
+    using namespace kiapi::schematic::types;
+
+    const_cast<KIID&>( m_Uuid ) = KIID( pin.id().value() );
+
+    if( !EDA_TEXT::Deserialize( pin.text(), schIUScale ) )
+        return false;
+
+    SetPosition( kiapi::common::UnpackVector2( pin.position(), schIUScale ) );
+    SetSide( FromProtoEnum<SHEET_SIDE, SheetSide>( pin.side() ) );
+    SetSpinStyle( FromProtoEnum<SPIN_STYLE::SPIN, SchematicLabelSpinStyle>( pin.spin_style() ) );
+    SetShape( FromProtoEnum<LABEL_FLAG_SHAPE, SchematicLabelShape>( pin.shape() ) );
+    SetLocked( pin.locked() == kiapi::common::types::LockedState::LS_LOCKED );
+    kiapi::common::UnpackCustomProperties( pin.custom_properties(), *this );
+    return true;
+}
+
+bool SCH_SHEET_PIN::Deserialize( const google::protobuf::Any& aContainer )
+{
+    kiapi::schematic::types::SheetPin pin;
+
+    if( !aContainer.UnpackTo( &pin ) )
+        return false;
+
+    return Deserialize( pin );
+}
+
+
 EDA_ITEM* SCH_SHEET_PIN::Clone() const
 {
     return new SCH_SHEET_PIN( *this );
@@ -71,19 +128,12 @@ void SCH_SHEET_PIN::swapData( SCH_ITEM* aItem )
     SCH_HIERLABEL::swapData( aItem );
 
     KI_CHECK_RET( aItem->Type() == SCH_SHEET_PIN_T,
-                 wxString::Format( "SCH_SHEET_PIN object cannot swap data with %s object.",
-                                   aItem->GetClass() ) );
+                 wxString::Format( "SCH_SHEET_PIN object cannot swap data with %s object.", aItem->GetClass() ) );
 
     SCH_SHEET_PIN* pin = static_cast<SCH_SHEET_PIN*>( aItem );
 
     std::swap( m_number, pin->m_number );
     std::swap( m_edge, pin->m_edge );
-}
-
-
-bool SCH_SHEET_PIN::operator==( const SCH_SHEET_PIN* aPin ) const
-{
-    return aPin == this;
 }
 
 
@@ -298,8 +348,8 @@ void SCH_SHEET_PIN::Rotate( const VECTOR2I& aCenter, bool aRotateCCW )
 }
 
 
-void SCH_SHEET_PIN::CreateGraphicShape( const RENDER_SETTINGS* aSettings,
-                                        std::vector<VECTOR2I>& aPoints, const VECTOR2I& aPos ) const
+void SCH_SHEET_PIN::CreateGraphicShape( const RENDER_SETTINGS* aSettings, std::vector<VECTOR2I>& aPoints,
+                                        const VECTOR2I& aPos ) const
 {
     /*
      * These are the same icon shapes as SCH_HIERLABEL but the graphic icon is slightly
@@ -329,8 +379,8 @@ void SCH_SHEET_PIN::GetEndPoints( std::vector<DANGLING_END_ITEM>& aItemList )
 
 wxString SCH_SHEET_PIN::GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool aFull ) const
 {
-    return wxString::Format( _( "Hierarchical Sheet Pin '%s'" ),
-                             aFull ? GetShownText( false ) : EllipsizeMenuText( GetText() ) );
+    return wxString::Format( _( "Hierarchical Sheet Pin '%s'" ), aFull ? GetShownText( FOR_GUI )
+                                                                       : EllipsizeMenuText( GetText() ) );
 }
 
 
@@ -357,8 +407,13 @@ bool SCH_SHEET_PIN::operator==( const SCH_ITEM& aOther ) const
 
     const SCH_SHEET_PIN* other = static_cast<const SCH_SHEET_PIN*>( &aOther );
 
-    return m_edge == other->m_edge && m_number == other->m_number
-           && SCH_HIERLABEL::operator==( aOther );
+    if( GetNumber() != other->GetNumber() )
+        return false;
+
+    if( GetSide() != other->GetSide() )
+        return false;
+
+    return SCH_HIERLABEL::operator==( *other );
 }
 
 
@@ -383,8 +438,7 @@ double SCH_SHEET_PIN::Similarity( const SCH_ITEM& aOther ) const
 }
 
 
-bool SCH_SHEET_PIN::HasConnectivityChanges( const SCH_ITEM* aItem,
-                                            const SCH_SHEET_PATH* aInstance ) const
+bool SCH_SHEET_PIN::HasConnectivityChanges( const SCH_ITEM* aItem, const SCH_SHEET_PATH* aInstance ) const
 {
     // Do not compare to ourself.
     if( aItem == this )
@@ -399,6 +453,18 @@ bool SCH_SHEET_PIN::HasConnectivityChanges( const SCH_ITEM* aItem,
         return true;
 
     return GetText() != pin->GetText();
+}
+
+
+bool SCH_SHEET_PIN::IsLocked() const
+{
+    if( SCH_SHEET* parentSheet = GetParent() )
+    {
+        if( parentSheet->IsLocked() )
+            return true;
+    }
+
+    return SCH_ITEM::IsLocked();
 }
 
 
@@ -427,5 +493,8 @@ static struct SCH_SHEET_PIN_DESC
         propMgr.AddTypeCast( new TYPE_CAST<SCH_SHEET_PIN, EDA_TEXT> );
 
         propMgr.InheritsAfter( TYPE_HASH( SCH_SHEET_PIN ), TYPE_HASH( SCH_HIERLABEL ) );
+
+        // Lock state is inherited from parent sheet
+        propMgr.Mask( TYPE_HASH( SCH_SHEET_PIN ), TYPE_HASH( SCH_ITEM ), _HKI( "Locked" ) );
     }
 } _SCH_SHEET_PIN_DESC;

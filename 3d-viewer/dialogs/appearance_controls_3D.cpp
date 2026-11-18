@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /**
@@ -29,11 +29,21 @@
 #include <dialogs/appearance_controls_3D.h>
 
 #include <eda_3d_viewer_frame.h>
+#include <layer_range.h>
 #include <tools/eda_3d_actions.h>
 #include <widgets/color_swatch.h>
+#include <wx/menu.h>
 
 #include <algorithm>
 #include <core/ki_assert.h>
+
+static constexpr int ID_SHOW_ALL_COPPER_LAYERS = wxID_HIGHEST + 1;
+static constexpr int ID_HIDE_ALL_COPPER_LAYERS = ID_SHOW_ALL_COPPER_LAYERS + 1;
+static constexpr int ID_SHOW_ALL_INNER_LAYERS  = ID_HIDE_ALL_COPPER_LAYERS + 1;
+static constexpr int ID_HIDE_ALL_INNER_LAYERS  = ID_SHOW_ALL_INNER_LAYERS + 1;
+
+/// Debounce delay for rebuilding the 3D view after control changes
+static constexpr int REBUILD_DELAY_MS = 250;
 
 /// Render Row abbreviation to reduce source width.
 #define RR  APPEARANCE_CONTROLS_3D::APPEARANCE_SETTING_3D
@@ -56,6 +66,10 @@ const std::vector<APPEARANCE_CONTROLS_3D::APPEARANCE_SETTING_3D> APPEARANCE_CONT
     RR(  wxS( "User.Comments" ), LAYER_3D_USER_COMMENTS,     _HKI( "Show user comments layer" ) ),
     RR(  wxS( "User.Eco1" ),     LAYER_3D_USER_ECO1,         _HKI( "Show user ECO1 layer" ) ),
     RR(  wxS( "User.Eco2" ),     LAYER_3D_USER_ECO2,         _HKI( "Show user ECO2 layer" ) ),
+    RR(  wxS( "F.Fab" ),         LAYER_3D_F_FAB,             _HKI( "Show front fabrication layer" ) ),
+    RR(  wxS( "B.Fab" ),         LAYER_3D_B_FAB,             _HKI( "Show back fabrication layer" ) ),
+    RR(  wxS( "F.Courtyard" ),   LAYER_3D_F_COURTYARD,       _HKI( "Show front courtyard layer" ) ),
+    RR(  wxS( "B.Courtyard" ),   LAYER_3D_B_COURTYARD,       _HKI( "Show back courtyard layer" ) ),
     RR(  wxS( "User.1" ),        LAYER_3D_USER_1,            _HKI( "Show user defined layer 1" ) ),
     RR(  wxS( "User.2" ),        LAYER_3D_USER_2,            _HKI( "Show user defined layer 2" ) ),
     RR(  wxS( "User.3" ),        LAYER_3D_USER_3,            _HKI( "Show user defined layer 3" ) ),
@@ -128,9 +142,36 @@ const std::vector<int> APPEARANCE_CONTROLS_3D::s_inStackupColors{ LAYER_3D_BOARD
                                          LAYER_3D_SOLDERMASK_TOP, LAYER_3D_SOLDERMASK_BOTTOM
                                         };
 
+// The 3D viewer uses a single color for all copper layers.
+static bool isCopperLayer3D( int aLayer )
+{
+    return aLayer == LAYER_3D_COPPER_TOP
+        || aLayer == LAYER_3D_COPPER_BOTTOM
+        || aLayer == LAYER_3D_PLATED_BARRELS
+        || IsInnerCopperLayer( Map3DLayerToPCBLayer( aLayer ) );
+}
+
+
+// Layers that can have colors coming from the board stackup, and cannot be modified if
+// use colors from stackup is activated.
+static bool isStackupColorLayer3D( int aLayer )
+{
+    return aLayer == LAYER_3D_BOARD
+        || aLayer == LAYER_3D_SOLDERPASTE
+        || aLayer == LAYER_3D_SILKSCREEN_TOP
+        || aLayer == LAYER_3D_SILKSCREEN_BOTTOM
+        || aLayer == LAYER_3D_SOLDERMASK_TOP
+        || aLayer == LAYER_3D_SOLDERMASK_BOTTOM
+        || isCopperLayer3D( aLayer );
+}
+
+
 void APPEARANCE_CONTROLS_3D::CommonSettingsChanged()
 {
     rebuildControls();
+
+    if( EDA_3D_VIEWER_SETTINGS* cfg = m_frame->GetAdapter().m_Cfg )
+        m_layerScaleCtrl->SetValue( cfg->m_Render.board_layer_thickness_scale );
 
     UpdateLayerCtls();
 
@@ -171,6 +212,7 @@ std::vector<VIEWPORT3D> APPEARANCE_CONTROLS_3D::GetUserViewports() const
 void APPEARANCE_CONTROLS_3D::SetUserViewports( std::vector<VIEWPORT3D>& aViewportList )
 {
     m_viewports.clear();
+    m_viewportMRU.clear();
 
     for( const VIEWPORT3D& viewport : aViewportList )
     {
@@ -187,6 +229,7 @@ void APPEARANCE_CONTROLS_3D::SetUserViewports( std::vector<VIEWPORT3D>& aViewpor
     // Now is as good a time as any to initialize the layer presets as well.
     rebuildLayerPresetsWidget( true );
 
+    m_presetMRU.clear();
     m_presetMRU.Add( FOLLOW_PCB );
     m_presetMRU.Add( FOLLOW_PLOT_SETTINGS );
 
@@ -243,6 +286,10 @@ void APPEARANCE_CONTROLS_3D::OnLayerVisibilityChanged( int aLayer, bool isVisibl
     case LAYER_3D_USER_DRAWINGS:
     case LAYER_3D_USER_ECO1:
     case LAYER_3D_USER_ECO2:
+    case LAYER_3D_F_FAB:
+    case LAYER_3D_B_FAB:
+    case LAYER_3D_F_COURTYARD:
+    case LAYER_3D_B_COURTYARD:
         visibleLayers.set( aLayer, isVisible );
         killFollow = true;
         break;
@@ -259,8 +306,11 @@ void APPEARANCE_CONTROLS_3D::OnLayerVisibilityChanged( int aLayer, bool isVisibl
     default:
         visibleLayers.set( aLayer, isVisible );
 
-        if( aLayer >= LAYER_3D_USER_1 && aLayer <= LAYER_3D_USER_45 )
+        if( ( aLayer >= LAYER_3D_USER_1 && aLayer <= LAYER_3D_USER_45 )
+         || ( aLayer >= LAYER_3D_COPPER_INNER_1 && aLayer <= LAYER_3D_COPPER_INNER_30 ) )
+        {
             killFollow = true;
+        }
 
         break;
     }
@@ -279,7 +329,7 @@ void APPEARANCE_CONTROLS_3D::OnLayerVisibilityChanged( int aLayer, bool isVisibl
     {
         RENDER_3D_OPENGL* renderer = static_cast<RENDER_3D_OPENGL*>( m_frame->GetCanvas()->GetCurrentRender() );
         renderer->Load3dModelsIfNeeded();
-        m_frame->GetCanvas()->RequestRaytracingHitTestReload();
+        renderer->RebuildHitTestAsync();
         m_frame->GetCanvas()->Request_refresh();
     }
     else
@@ -299,37 +349,29 @@ void APPEARANCE_CONTROLS_3D::onColorSwatchChanged( COLOR_SWATCH* aSwatch )
     int     layer = aSwatch->GetId();
     COLOR4D newColor = aSwatch->GetSwatchColor();
 
-    colors[ layer ] = newColor;
-
     // The internals of the 3D viewer only supports a single color for copper, which must
     // be applied to all copper layers.
-    COLOR_SWATCH* otherSwatch = nullptr;
-
-    const std::vector<int> copperIndices{
-        LAYER_3D_COPPER_TOP,
-        LAYER_3D_COPPER_BOTTOM,
-        LAYER_3D_PLATED_BARRELS,
-    };
-
-    // If the changed swatch is one of the copper layers, we need to update the other copper layers
-    if( std::find( copperIndices.begin(), copperIndices.end(), layer ) != copperIndices.end() )
+    if( isCopperLayer3D( layer ) )
     {
-        for( int index : copperIndices )
+        for( const auto& [index, setting] : m_layerSettingsMap )
         {
-            if( layer != index && colors.count( index ) )
-            {
+            if( !isCopperLayer3D( index ) )
+                continue;
+
+            if( colors.count( index ) )
                 colors[index] = newColor;
-                otherSwatch = m_layerSettingsMap[index]->m_Ctl_color;
+
+            if( setting->m_Ctl_color )
+            {
+                // Don't send an event, because that will cause an event loop
+                setting->m_Ctl_color->SetSwatchColor( newColor, false );
             }
         }
     }
-
-    if( otherSwatch )
+    else
     {
-        // Don't send an event, because that will cause an event loop
-        otherSwatch->SetSwatchColor( newColor, false );
+        colors[layer] = newColor;
     }
-
 
     m_frame->GetAdapter().SetLayerColors( colors );
 

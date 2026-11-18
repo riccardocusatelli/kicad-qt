@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "symbol_preview_widget.h"
@@ -54,9 +54,12 @@ SYMBOL_PREVIEW_WIDGET::SYMBOL_PREVIEW_WIDGET( wxWindow* aParent, KIWAY* aKiway, 
 
     EDA_DRAW_PANEL_GAL::GAL_TYPE canvasType = aCanvasType;
 
-    // Allows only a CAIRO or OPENGL canvas:
-    if( canvasType != EDA_DRAW_PANEL_GAL::GAL_TYPE_OPENGL && canvasType != EDA_DRAW_PANEL_GAL::GAL_FALLBACK )
+    // Only a canvas that can draw is allowed
+    if( canvasType != EDA_DRAW_PANEL_GAL::GAL_TYPE_OPENGL && canvasType != EDA_DRAW_PANEL_GAL::GAL_TYPE_MODERN
+        && canvasType != EDA_DRAW_PANEL_GAL::GAL_FALLBACK )
+    {
         canvasType = EDA_DRAW_PANEL_GAL::GAL_TYPE_OPENGL;
+    }
 
     m_preview = new SCH_PREVIEW_PANEL( this, wxID_ANY, wxDefaultPosition, wxSize( -1, -1 ),
                                        m_galDisplayOptions, canvasType );
@@ -257,7 +260,7 @@ void SYMBOL_PREVIEW_WIDGET::DisplaySymbol( const LIB_ID& aSymbolID, int aUnit, i
 }
 
 
-void SYMBOL_PREVIEW_WIDGET::DisplayPart( LIB_SYMBOL* aSymbol, int aUnit, int aBodyStyle )
+void SYMBOL_PREVIEW_WIDGET::DisplayPart( const LIB_SYMBOL* aSymbol, int aUnit, int aBodyStyle )
 {
     KIGFX::VIEW* view = m_preview->GetView();
 

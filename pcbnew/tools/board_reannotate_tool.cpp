@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "tools/board_reannotate_tool.h"
@@ -133,7 +129,7 @@ int BOARD_REANNOTATE_TOOL::ReannotateDuplicates( const PCB_SELECTION& aSelection
     std::sort( fpInSelection.begin(), fpInSelection.end(),
                []( const FOOTPRINT* aA, const FOOTPRINT* aB ) -> bool
                {
-                   int ii = StrNumCmp( aA->GetReference(), aB->GetReference(), true );
+                   int ii = StrNumCmp( aA->GetReference(), aB->GetReference(), CMP_T::IGNORE_CASE );
 
                    if( ii == 0 )
                    {

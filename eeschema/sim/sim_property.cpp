@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * https://www.gnu.org/licenses/gpl-3.0.html
- * or you may search the http://www.gnu.org website for the version 3 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <wx/combo.h>
@@ -183,8 +179,12 @@ bool SIM_STRING_PROPERTY::allowEval() const
 }
 
 
+#if wxCHECK_VERSION( 3, 3, 0 )
 bool SIM_STRING_PROPERTY::StringToValue( wxVariant& aVariant, const wxString& aText,
-                                         int aArgFlags ) const
+                                         wxPGPropValFormatFlags aArgFlags ) const
+#else
+bool SIM_STRING_PROPERTY::StringToValue( wxVariant& aVariant, const wxString& aText, int aArgFlags ) const
+#endif
 {
     if( m_disabled )
         return false;

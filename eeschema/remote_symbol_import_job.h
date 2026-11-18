@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef REMOTE_SYMBOL_IMPORT_JOB_H
@@ -43,7 +43,7 @@ public:
                                        REMOTE_SYMBOL_DOWNLOAD_MANAGER* aDownloader = nullptr );
 
     bool Import( const REMOTE_PROVIDER_METADATA& aProvider, const REMOTE_SYMBOL_IMPORT_CONTEXT& aContext,
-                 const REMOTE_PROVIDER_PART_MANIFEST& aManifest, bool aPlaceSymbol, wxString& aError );
+                 const REMOTE_PROVIDER_PART_MANIFEST& aManifest, bool doPlaceSymbol, wxString& aError );
 
 private:
     const REMOTE_SYMBOL_DOWNLOAD_MANAGER& downloader() const;

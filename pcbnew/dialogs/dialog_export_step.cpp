@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "dialog_export_step.h"
@@ -32,6 +28,7 @@
 #include <wx/filedlg.h>
 #include <kiplatform/ui.h>
 
+#include <bitmaps.h>
 #include <pgm_base.h>
 #include <settings/common_settings.h>
 #include <board.h>
@@ -55,6 +52,7 @@
 #include <core/map_helpers.h>
 #include <settings/settings_manager.h>
 #include <jobs/job_export_pcb_3d.h>
+#include <paths.h>
 
 #include <wx/filefn.h>
 #include <wx/msgdlg.h>
@@ -498,7 +496,7 @@ wxString DIALOG_EXPORT_STEP::StageBoardForExport( const wxString& aBoardPath, bo
     try
     {
         IO_RELEASER<PCB_IO> pi( PCB_IO_MGR::FindPlugin( PCB_IO_MGR::KICAD_SEXP ) );
-        pi->SaveBoard( tempBoardFn.GetFullPath(), aBoard, nullptr );
+        pi->SaveBoard( tempBoardFn.GetFullPath(), *aBoard, nullptr );
     }
     catch( const IO_ERROR& ioe )
     {
@@ -600,7 +598,7 @@ void DIALOG_EXPORT_STEP::onExportButton( wxCommandEvent& aEvent )
             appK2S.AppendDir( wxT( "MacOS" ) );
         }
     #else
-        if( wxGetEnv( wxT( "KICAD_RUN_FROM_BUILD_DIR" ), nullptr ) )
+        if( PATHS::RunningFromBuildDir() )
         {
             appK2S.RemoveLastDir();
             appK2S.AppendDir( "kicad" );

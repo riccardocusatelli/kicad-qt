@@ -20,11 +20,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "netinfo.h"
@@ -51,9 +47,15 @@ NETINFO_ITEM::NETINFO_ITEM( BOARD* aParent, const wxString& aNetName, int aNetCo
         m_netname( aNetName ),
         m_shortNetname( m_netname.AfterLast( '/' ) ),
         m_displayNetname( UnescapeString( m_shortNetname ) ),
+        m_netChain(),
         m_isCurrent( true )
 {
     m_parent = aParent;
+
+    m_terminalPads[0] = nullptr;
+    m_terminalPads[1] = nullptr;
+    m_terminalPadUuids[0] = niluuid;
+    m_terminalPadUuids[1] = niluuid;
 
     if( aParent )
         m_netClass = aParent->GetDesignSettings().m_NetSettings->GetDefaultNetclass();
@@ -72,6 +74,11 @@ void NETINFO_ITEM::Clear()
 {
     KI_CHECK( m_parent, /* void */ );
     m_netClass = m_parent->GetDesignSettings().m_NetSettings->GetDefaultNetclass();
+    m_netChain.clear();
+    m_terminalPads[0] = nullptr;
+    m_terminalPads[1] = nullptr;
+    m_terminalPadUuids[0] = niluuid;
+    m_terminalPadUuids[1] = niluuid;
 }
 
 
@@ -86,7 +93,33 @@ void NETINFO_ITEM::SetNetClass( const std::shared_ptr<NETCLASS>& aNetClass )
 }
 
 
+<<<<<<< b2e17e0a
 void NETINFO_ITEM::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
+||||||| 1304b76aad
+void NETINFO_ITEM::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+=======
+void NETINFO_ITEM::ResolveTerminalPads( BOARD* aBoard )
+{
+    for( int i = 0; i < 2; ++i )
+    {
+        if( m_terminalPads[i] )
+            continue;
+
+        if( aBoard )
+            m_terminalPads[i] = aBoard->FindPadByUuid( m_terminalPadUuids[i] );
+    }
+}
+
+
+void NETINFO_ITEM::SetTerminal( int aIndex, PAD* aPad )
+{
+    m_terminalPads[aIndex] = aPad;
+    m_terminalPadUuids[aIndex] = aPad ? aPad->m_Uuid : niluuid;
+}
+
+
+void NETINFO_ITEM::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+>>>>>>> ed8c16703e
 {
     aList.emplace_back( _( "Net Name" ), UnescapeString( GetNetname() ) );
 

@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <qa_utils/wx_utils/unit_test_utils.h>
@@ -45,6 +41,9 @@ struct FPLIB_LOAD_FP_TEST_CASE
     // If set, the expected number of pads in the footprint
     std::optional<unsigned> m_expectedPadCount;
 
+    // If set, the expected number of zones in the footprint
+    std::optional<unsigned> m_expectedZoneCount;
+
     // For printing the test name
     friend std::ostream& operator<<( std::ostream& os, const FPLIB_LOAD_FP_TEST_CASE& aTestCase )
     {
@@ -61,7 +60,15 @@ const std::vector<FPLIB_LOAD_FP_TEST_CASE> FpLibLoadSave_testCases{
             20240108U,
             // 2 SMD pads, 2 paste pads
             4U,
+            0U,
     },
+    {
+            "plugins/kicad_sexpr/Issue25447_FpHasZoneWithNetName",
+            "zone_with_netname",
+            20260831U,
+            1U,
+            1U,
+    }
 };
 
 } // namespace
@@ -81,6 +88,10 @@ BOOST_DATA_TEST_CASE( FpLibLoadSave, boost::unit_test::data::make( FpLibLoadSave
         if( testCase.m_expectedPadCount )
         {
             BOOST_CHECK_EQUAL( aBoard.Pads().size(), *testCase.m_expectedPadCount );
+        }
+        if( testCase.m_expectedZoneCount )
+        {
+            BOOST_CHECK_EQUAL( aBoard.Zones().size(), *testCase.m_expectedZoneCount );
         }
     };
 

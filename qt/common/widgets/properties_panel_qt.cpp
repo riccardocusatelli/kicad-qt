@@ -142,6 +142,13 @@ void PROPERTIES_PANEL::setCaption( const wxString& aCaption )
 }
 
 
+void PROPERTIES_PANEL::commitEditorIfSelected( TOOLKIT_PG_PROPERTY* aProp )
+{
+    if( aProp == m_grid->GetSelectedProperty() && m_grid->IsEditorFocused() )
+        m_grid->CommitChangesFromEditor();
+}
+
+
 void PROPERTIES_PANEL::gridReset()
 {
     m_grid->Clear();

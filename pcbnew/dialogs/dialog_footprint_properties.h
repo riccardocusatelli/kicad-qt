@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef DIALOG_FOOTPRINT_PROPERTIES_H
@@ -60,7 +56,7 @@ public:
     bool TransferDataToWindow() override;
     bool TransferDataFromWindow() override;
 
-    ///< @return the value depending on the way the dialog was closed.
+    /// @return the value depending on the way the dialog was closed.
     enum FP_PROPS_RETVALUE GetReturnValue() { return m_returnValue; }
 
 private:
@@ -71,6 +67,7 @@ private:
     void ChangeFootprint( wxCommandEvent&  ) override;
     void OnAddField( wxCommandEvent&  ) override;
     void OnDeleteField( wxCommandEvent&  ) override;
+    void OnGridCellChanging( wxGridEvent& aEvent );
     void OnUpdateUI( wxUpdateUIEvent&  ) override;
     void OnPageChanging( wxNotebookEvent& event ) override;
     void OnCombobox( wxCommandEvent& event ) override;
@@ -88,6 +85,7 @@ private:
     UNIT_BINDER                      m_posX;
     UNIT_BINDER                      m_posY;
     UNIT_BINDER                      m_orientation;
+    UNIT_BINDER                      m_height;
 
     UNIT_BINDER                      m_netClearance;
     UNIT_BINDER                      m_solderMask;

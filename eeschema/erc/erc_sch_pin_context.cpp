@@ -16,11 +16,7 @@
 * GNU General Public License for more details.
 *
 * You should have received a copy of the GNU General Public License
-* along with this program; if not, you may find one here:
-* http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-* or you may search the http://www.gnu.org website for the version 2 license,
-* or you may write to the Free Software Foundation, Inc.,
-* 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+* along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 /**
@@ -28,8 +24,6 @@
  */
 
 #include "erc/erc_sch_pin_context.h"
-
-#include <hash.h>
 
 
 SCH_PIN* ERC_SCH_PIN_CONTEXT::Pin() const
@@ -46,18 +40,23 @@ const SCH_SHEET_PATH& ERC_SCH_PIN_CONTEXT::Sheet() const
 
 bool ERC_SCH_PIN_CONTEXT::operator==( const ERC_SCH_PIN_CONTEXT& other ) const
 {
-    return m_hash == other.m_hash;
+    if( m_sheet.PathRef() != other.m_sheet.PathRef() )
+        return false;
+
+    if( m_pin && other.m_pin )
+        return m_pin->m_Uuid == other.m_pin->m_Uuid;
+
+    return m_pin == other.m_pin;
 }
 
 
 bool ERC_SCH_PIN_CONTEXT::operator<( const ERC_SCH_PIN_CONTEXT& other ) const
 {
-    return m_hash < other.m_hash;
-}
+    if( m_sheet.PathRef() != other.m_sheet.PathRef() )
+        return m_sheet.PathRef() < other.m_sheet.PathRef();
 
+    if( !m_pin || !other.m_pin )
+        return !m_pin && other.m_pin;
 
-void ERC_SCH_PIN_CONTEXT::rehash()
-{
-    m_hash = 0;
-    hash_combine( m_hash, m_pin, m_sheet.GetCurrentHash() );
+    return m_pin->m_Uuid < other.m_pin->m_Uuid;
 }

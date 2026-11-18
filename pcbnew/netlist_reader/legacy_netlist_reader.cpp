@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <config.h> // to define strncasecmp for some platforms
@@ -34,9 +30,9 @@
 
 void LEGACY_NETLIST_READER::LoadNetlist()
 {
-    int state            = 0;
-    bool is_comment      = false;
-    COMPONENT* component = nullptr;
+    int        state      = 0;
+    bool       is_comment = false;
+    COMPONENT* component  = nullptr;
 
     while( m_lineReader->ReadLine() )
     {
@@ -55,8 +51,9 @@ void LEGACY_NETLIST_READER::LoadNetlist()
         {
             is_comment = true;
 
-            if( m_loadFootprintFilters && state == 0
-              && (strncasecmp( line, "{ Allowed footprints", 20 ) == 0) )
+            if( m_loadFootprintFilters
+                    && state == 0
+                    && strncasecmp( line, "{ Allowed footprints", 20 ) == 0 )
             {
                 loadFootprintFilters();
                 continue;
@@ -64,6 +61,8 @@ void LEGACY_NETLIST_READER::LoadNetlist()
 
             if( ( line = strchr( line, '}' ) ) == nullptr )
                 continue;
+            else
+                is_comment = false;
         }
 
         if( *line == '(' )
@@ -102,7 +101,7 @@ COMPONENT* LEGACY_NETLIST_READER::loadComponent( char* aText )
     wxString value;             // the component value read from netlist
     wxString reference;         // the component schematic reference designator read from netlist
     wxString name;              // the name of component that was placed in the schematic
-    char     line[1024];
+    char     line[4096];
 
     strncpy( line, aText, sizeof(line)-1 );
     line[sizeof(line)-1] = '\0';

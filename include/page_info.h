@@ -16,11 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -88,12 +84,11 @@ public:
      * Set the name of the page type and also the sizes and margins commonly associated with
      * that type name.
      *
-     * @param aStandardPageDescriptionName is a wxString constant giving one of:
-     * "A5" "A4" "A3" "A2" "A1" "A0" "A" "B" "C" "D" "E" "GERBER", "USLetter", "USLegal",
-     * "USLedger", or "User".  If "User" then the width and height are custom,
-     * and will be set according to <b>previous</b> calls to
-     * static PAGE_INFO::SetUserWidthMils() and
-     * static PAGE_INFO::SetUserHeightMils();
+     * @param aPageSize is a #PAGE_SIZE_TYPE constant giving one of "A5" "A4" "A3" "A2" "A1" "A0"
+     *                  "A" "B" "C" "D" "E" "GERBER", "USLetter", "USLegal", "USLedger", or "User".
+     *                  If "User" then the width and height are custom, and will be set according
+     *                  to <b>previous</b> calls to static PAGE_INFO::SetUserWidthMils() and
+     *                  static PAGE_INFO::SetUserHeightMils();
      * @param aIsPortrait Set to true to set page orientation to portrait mode.
      * @return true if @a aStandarePageDescription was a recognized type.
      */
@@ -150,7 +145,7 @@ public:
     const VECTOR2D& GetSizeMils() const { return m_size; }
 
     /**
-     * Gets the page width in IU
+     * Get the page width in IU
      *
      * @param aIUScale The IU scale, this is most likely always going to be IU_PER_MILS
      * variable being passed. Note, this constexpr variable changes depending
@@ -159,7 +154,7 @@ public:
     int GetWidthIU( double aIUScale ) const { return aIUScale * GetWidthMils(); }
 
     /**
-     * Gets the page height in IU
+     * Get the page height in IU
      *
      * @param aIUScale The IU scale, this is most likely always going to be IU_PER_MILS
      * variable being passed. Note, this constexpr variable changes depending

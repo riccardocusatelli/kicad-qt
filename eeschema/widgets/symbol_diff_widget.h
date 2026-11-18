@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef SYMBOL_DIFF_WIDGET_H
@@ -36,7 +36,7 @@ public:
      * a library symbol, and a slider for fading between the two.
      *
      * @param aParent - parent window
-     * @param aCanvasType = the type of canvas (GAL_TYPE_OPENGL or GAL_TYPE_CAIRO only)
+     * @param aCanvasType = the type of canvas (GAL_TYPE_OPENGL, GAL_TYPE_MODERN or GAL_TYPE_CAIRO)
      */
     SYMBOL_DIFF_WIDGET( wxWindow* aParent, EDA_DRAW_PANEL_GAL::GAL_TYPE aCanvasType );
 

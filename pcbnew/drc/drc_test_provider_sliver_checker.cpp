@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <atomic>
@@ -41,6 +37,22 @@
     Errors generated:
     - DRCE_COPPER_SLIVER
 */
+
+
+static void addItemPolysWithEndings( BOARD_ITEM* aItem, SHAPE_POLY_SET& aBuffer, PCB_LAYER_ID aLayer, int aClearance,
+                                     int aError, ERROR_LOC aErrorLoc )
+{
+    if( aItem->Type() == PCB_SHAPE_T )
+    {
+        PCB_SHAPE* shape = static_cast<PCB_SHAPE*>( aItem );
+        shape->TransformWithLineEndingsToPolygon( aBuffer, aClearance, aError, aErrorLoc );
+    }
+    else
+    {
+        aItem->TransformShapeToPolygon( aBuffer, aLayer, aClearance, aError, aErrorLoc );
+    }
+}
+
 
 class DRC_TEST_PROVIDER_SLIVER_CHECKER : public DRC_TEST_PROVIDER
 {
@@ -132,8 +144,7 @@ bool DRC_TEST_PROVIDER_SLIVER_CHECKER::Run()
                             }
                             else
                             {
-                                item->TransformShapeToPolygon( poly, layer, 0, ARC_LOW_DEF,
-                                                               ERROR_INSIDE );
+                                addItemPolysWithEndings( item, poly, layer, 0, ARC_LOW_DEF, ERROR_INSIDE );
                             }
 
                             if( m_drcEngine->IsCancelled() )

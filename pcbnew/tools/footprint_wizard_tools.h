@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef FOOTPRINT_WIZARD_TOOLS_H
@@ -50,14 +46,12 @@ public:
     /// @copydoc TOOL_BASE::Reset()
     void Reset( RESET_REASON aReason ) override;
 
-    ///< Set up handlers for various events.
+    /// Set up handlers for various events.
     void setTransitions() override;
 
 protected:
     int ShowWizards( const TOOL_EVENT& aEvent );
     int ResetWizardPrms( const TOOL_EVENT& aEvent );
-    int SelectPreviousWizardPage( const TOOL_EVENT& aEvent );
-    int SelectNextWizardPage( const TOOL_EVENT& aEvent );
     int ExportFpToEditor( const TOOL_EVENT& aEvent );
 
     FOOTPRINT_WIZARD_FRAME* frame() const

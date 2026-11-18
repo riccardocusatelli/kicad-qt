@@ -15,18 +15,21 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <sch_render_settings.h>
+#include <plotters/plotter.h>
 #include <pgm_base.h>
+#include <connectivity/conn_text.h>
+#include <connectivity/conn_facade.h>
+#include <advanced_config.h>
+#include <wx/thread.h>
 #include <settings/settings_manager.h>
 #include <eeschema_settings.h>
 #include <eda_item.h>
 #include <sch_connection.h>
+#include <sch_screen.h>
 #include <sch_group.h>
 #include <sch_rule_area.h>
 #include <connection_graph.h>
@@ -37,6 +40,12 @@
 #include <properties/property.h>
 #include <properties/property_mgr.h>
 #include <core/ki_assert.h>
+
+
+SCH_RENDER_SETTINGS* SCH_ITEM::getRenderSettings( PLOTTER* aPlotter ) const
+{
+    return static_cast<SCH_RENDER_SETTINGS*>( aPlotter->RenderSettings() );
+}
 
 
 // Rendering fonts is expensive (particularly when using outline fonts).  At small effective
@@ -56,7 +65,8 @@ SCH_ITEM::SCH_ITEM( EDA_ITEM* aParent, KICAD_T aType, int aUnit, int aBodyStyle 
         EDA_ITEM( aParent, aType, true, false ),
         m_unit( aUnit ),
         m_bodyStyle( aBodyStyle ),
-        m_private( false )
+        m_private( false ),
+        m_isLocked( false )
 {
     m_layer              = LAYER_WIRE;   // It's only a default, in fact
     m_fieldsAutoplaced   = AUTOPLACE_NONE;
@@ -73,17 +83,23 @@ SCH_ITEM::SCH_ITEM( const SCH_ITEM& aItem ) :
     m_private            = aItem.m_private;
     m_fieldsAutoplaced   = aItem.m_fieldsAutoplaced;
     m_connectivity_dirty = aItem.m_connectivity_dirty;
+    m_isLocked           = aItem.m_isLocked;
 }
 
 
 SCH_ITEM& SCH_ITEM::operator=( const SCH_ITEM& aItem )
 {
+    if( SCH_SCREEN* screen = GetParentScreen() )
+        screen->BumpConnectivityRevision( Type() );
+
+    m_customProperties   = aItem.m_customProperties;
     m_layer              = aItem.m_layer;
     m_unit               = aItem.m_unit;
     m_bodyStyle          = aItem.m_bodyStyle;
     m_private            = aItem.m_private;
     m_fieldsAutoplaced   = aItem.m_fieldsAutoplaced;
     m_connectivity_dirty = aItem.m_connectivity_dirty;
+    m_isLocked           = aItem.m_isLocked;
 
     return *this;
 }
@@ -91,22 +107,36 @@ SCH_ITEM& SCH_ITEM::operator=( const SCH_ITEM& aItem )
 
 SCH_ITEM::~SCH_ITEM()
 {
-    for( const auto& it : m_connection_map )
-        delete it.second;
+    for( const std::weak_ptr<CONNECTION_GRAPH_LIFETIME>& weakOwner : m_connectivityOwners )
+    {
+        if( const std::shared_ptr<CONNECTION_GRAPH_LIFETIME>& owner = weakOwner.lock() )
+            owner->graph->RemoveItem( this );
+    }
+
+    for( const auto& [path, connection] : m_connection_map )
+        delete connection;
 
     // Remove this item from any rule areas that contain it
     for( SCH_RULE_AREA* ruleArea : m_rule_areas_cache )
         ruleArea->RemoveItem( this );
+}
 
-    // Do not try to modify SCHEMATIC::ConnectionGraph()
-    // if the schematic does not exist
-    if( !SCHEMATIC::m_IsSchematicExists )
-        return;
 
-    SCHEMATIC* sch = Schematic();
+void SCH_ITEM::registerConnectivityOwner( const std::shared_ptr<CONNECTION_GRAPH_LIFETIME>& aOwner )
+{
+    std::erase_if( m_connectivityOwners,
+                   []( const auto& owner )
+                   {
+                       return owner.expired();
+                   } );
 
-    if( sch != nullptr )
-        sch->ConnectionGraph()->RemoveItem( this );
+    for( const std::weak_ptr<CONNECTION_GRAPH_LIFETIME>& owner : m_connectivityOwners )
+    {
+        if( owner.lock() == aOwner )
+            return;
+    }
+
+    m_connectivityOwners.emplace_back( aOwner );
 }
 
 
@@ -145,6 +175,18 @@ bool SCH_ITEM::IsGroupableType() const
 }
 
 
+bool SCH_ITEM::IsLocked() const
+{
+    if( EDA_GROUP* group = GetParentGroup() )
+    {
+        if( group->AsEdaItem()->IsLocked() )
+            return true;
+    }
+
+    return m_isLocked;
+}
+
+
 SCH_ITEM* SCH_ITEM::Duplicate( bool addToParentGroup, SCH_COMMIT* aCommit, bool doClone ) const
 {
     SCH_ITEM* newItem = (SCH_ITEM*) Clone();
@@ -155,8 +197,11 @@ SCH_ITEM* SCH_ITEM::Duplicate( bool addToParentGroup, SCH_COMMIT* aCommit, bool 
     newItem->ClearFlags( SELECTED | BRIGHTENED );
 
     newItem->RunOnChildren(
-            []( SCH_ITEM* aChild )
+            [renewIdentity = !doClone && Type() == SCH_SYMBOL_T]( SCH_ITEM* aChild )
             {
+                if( renewIdentity )
+                    const_cast<KIID&>( aChild->m_Uuid ) = KIID();
+
                 aChild->ClearFlags( SELECTED | BRIGHTENED );
             },
             RECURSE_MODE::NO_RECURSE );
@@ -259,6 +304,48 @@ SCHEMATIC* SCH_ITEM::Schematic() const
 }
 
 
+SCH_SCREEN* SCH_ITEM::GetParentScreen() const
+{
+    return static_cast<SCH_SCREEN*>( findParent( SCH_SCREEN_T ) );
+}
+
+
+void SCH_ITEM::SetConnectivityDirty( bool aDirty )
+{
+    m_connectivity_dirty = aDirty;
+
+    if( aDirty && SCH_SCREEN::IsConnectivitySource( this ) )
+        invalidateConnectivity( Type() );
+}
+
+
+void SCH_ITEM::invalidateConnectivity( KICAD_T aChangedType )
+{
+    SCH_SCREEN* screen = GetParentScreen();
+
+    if( !screen )
+        return;
+
+    if( auto* owner = dynamic_cast<SCH_ITEM*>( GetParent() ) )
+    {
+        // Plotting and property dialogs use child copies with a live parent pointer
+        bool owned = false;
+        owner->RunOnChildren( [&]( SCH_ITEM* child )
+                              {
+                                  owned |= child == this;
+                              },
+                              RECURSE_MODE::NO_RECURSE );
+
+        if( owned && screen->CheckIfOnDrawList( owner ) )
+            screen->BumpConnectivityRevision( aChangedType );
+    }
+    else if( screen->CheckIfOnDrawList( this ) )
+    {
+        screen->BumpConnectivityRevision( aChangedType );
+    }
+}
+
+
 const SYMBOL* SCH_ITEM::GetParentSymbol() const
 {
     if( SYMBOL* sch_symbol = static_cast<SCH_SYMBOL*>( findParent( SCH_SYMBOL_T ) ) )
@@ -283,11 +370,13 @@ SYMBOL* SCH_ITEM::GetParentSymbol()
 }
 
 
-bool SCH_ITEM::ResolveExcludedFromSim( const SCH_SHEET_PATH* aInstance,
-                                       const wxString& aVariantName ) const
+bool SCH_ITEM::ResolveExcludedFromSim( const SCH_SHEET_PATH* aInstance, const wxString& aVariantName ) const
 {
     if( GetExcludedFromSim( aInstance, aVariantName ) )
         return true;
+
+    if( SCH_CONNECTIVITY::INPUT_TEXT_SCOPE::Active() )
+        return false;
 
     for( SCH_RULE_AREA* area : m_rule_areas_cache )
     {
@@ -299,11 +388,13 @@ bool SCH_ITEM::ResolveExcludedFromSim( const SCH_SHEET_PATH* aInstance,
 }
 
 
-bool SCH_ITEM::ResolveExcludedFromBOM( const SCH_SHEET_PATH* aInstance,
-                                       const wxString& aVariantName ) const
+bool SCH_ITEM::ResolveExcludedFromBOM( const SCH_SHEET_PATH* aInstance, const wxString& aVariantName ) const
 {
     if( GetExcludedFromBOM( aInstance, aVariantName ) )
         return true;
+
+    if( SCH_CONNECTIVITY::INPUT_TEXT_SCOPE::Active() )
+        return false;
 
     for( SCH_RULE_AREA* area : m_rule_areas_cache )
     {
@@ -315,11 +406,13 @@ bool SCH_ITEM::ResolveExcludedFromBOM( const SCH_SHEET_PATH* aInstance,
 }
 
 
-bool SCH_ITEM::ResolveExcludedFromBoard( const SCH_SHEET_PATH* aInstance,
-                                         const wxString& aVariantName ) const
+bool SCH_ITEM::ResolveExcludedFromBoard( const SCH_SHEET_PATH* aInstance, const wxString& aVariantName ) const
 {
     if( GetExcludedFromBoard( aInstance, aVariantName ) )
         return true;
+
+    if( SCH_CONNECTIVITY::INPUT_TEXT_SCOPE::Active() )
+        return false;
 
     for( SCH_RULE_AREA* area : m_rule_areas_cache )
     {
@@ -331,11 +424,13 @@ bool SCH_ITEM::ResolveExcludedFromBoard( const SCH_SHEET_PATH* aInstance,
 }
 
 
-bool SCH_ITEM::ResolveExcludedFromPosFiles( const SCH_SHEET_PATH* aInstance,
-                                            const wxString& aVariantName ) const
+bool SCH_ITEM::ResolveExcludedFromPosFiles( const SCH_SHEET_PATH* aInstance, const wxString& aVariantName ) const
 {
     if( GetExcludedFromPosFiles( aInstance, aVariantName ) )
         return true;
+
+    if( SCH_CONNECTIVITY::INPUT_TEXT_SCOPE::Active() )
+        return false;
 
     for( SCH_RULE_AREA* area : m_rule_areas_cache )
     {
@@ -352,6 +447,9 @@ bool SCH_ITEM::ResolveDNP( const SCH_SHEET_PATH* aInstance, const wxString& aVar
     if( GetDNP( aInstance, aVariantName ) )
         return true;
 
+    if( SCH_CONNECTIVITY::INPUT_TEXT_SCOPE::Active() )
+        return false;
+
     for( SCH_RULE_AREA* area : m_rule_areas_cache )
     {
         if( area->GetDNP( aInstance, aVariantName ) )
@@ -363,6 +461,14 @@ bool SCH_ITEM::ResolveDNP( const SCH_SHEET_PATH* aInstance, const wxString& aVar
 
 
 wxString SCH_ITEM::ResolveText( const wxString& aText, const SCH_SHEET_PATH* aPath, int aDepth ) const
+{
+    const SCHEMATIC* schematic = Schematic();
+    return ResolveText( aText, aPath, aDepth, schematic ? schematic->GetCurrentVariant() : wxString() );
+}
+
+
+wxString SCH_ITEM::ResolveText( const wxString& aText, const SCH_SHEET_PATH* aPath, int aDepth,
+                                const wxString& aVariantName ) const
 {
     // Use aDepth to track recursion across nested GetShownText/ResolveText calls
     int depth = aDepth;
@@ -378,7 +484,7 @@ wxString SCH_ITEM::ResolveText( const wxString& aText, const SCH_SHEET_PATH* aPa
             [&]( wxString* token ) -> bool
             {
                 SCH_SYMBOL* symbol = static_cast<SCH_SYMBOL*>( m_parent );
-                return symbol->ResolveTextVar( aPath, token, depth + 1 );
+                return symbol->ResolveTextVar( aPath, token, aVariantName, depth + 1 );
             };
 
     std::function<bool( wxString* )> schematicResolver =
@@ -399,18 +505,14 @@ wxString SCH_ITEM::ResolveText( const wxString& aText, const SCH_SHEET_PATH* aPa
                 if( !aPath )
                     return false;
 
-                SCH_SHEET* sheet = static_cast<SCH_SHEET*>( m_parent );
-
-                SCHEMATIC*     schematic = Schematic();
+                SCH_SHEET*     sheet = static_cast<SCH_SHEET*>( m_parent );
                 SCH_SHEET_PATH path = *aPath;
-                path.push_back( sheet );
 
-                bool retval = sheet->ResolveTextVar( &path, token, depth + 1 );
+                if( path.Last() != sheet )
+                    path.push_back( sheet );
 
-                if( schematic )
-                    retval |= schematic->ResolveTextVar( &path, token, depth + 1 );
-
-                return retval;
+                // Sheet resolver will recurse to ancestors, including the schematic itself
+                return sheet->ResolveTextVar( &path, token, depth + 1 );
             };
 
     std::function<bool( wxString* )> labelResolver =
@@ -422,11 +524,6 @@ wxString SCH_ITEM::ResolveText( const wxString& aText, const SCH_SHEET_PATH* aPa
                 SCH_LABEL_BASE* label = static_cast<SCH_LABEL_BASE*>( m_parent );
                 return label->ResolveTextVar( aPath, token, depth + 1 );
             };
-
-    wxString variantName;
-
-    if( SCHEMATIC* schematic = Schematic() )
-        variantName = schematic->GetCurrentVariant();
 
     // Create a unified resolver that delegates to the appropriate resolver based on parent type
     std::function<bool( wxString* )> fieldResolver =
@@ -453,6 +550,13 @@ wxString SCH_ITEM::ResolveText( const wxString& aText, const SCH_SHEET_PATH* aPa
             };
 
     return ResolveTextVars( aText, &fieldResolver, depth );
+}
+
+
+const BOX2I SCH_ITEM::ViewBBox() const
+{
+    SCH_CONNECTIVITY::RENDER_SCOPE renderScope;
+    return EDA_ITEM::ViewBBox();
 }
 
 
@@ -508,6 +612,123 @@ void SCH_ITEM::SetConnectionGraph( CONNECTION_GRAPH* aGraph )
 }
 
 
+static std::optional<SCH_CONNECTIVITY::ITEM_VIEW> publishedConnection( const SCH_ITEM& aItem,
+                                                                       const SCH_SHEET_PATH* aSheet )
+{
+    SCHEMATIC* schematic = aItem.Schematic();
+
+    if( !schematic || !schematic->IsValid() )
+        return std::nullopt;
+
+    const SCH_SHEET_PATH& path = aSheet ? *aSheet : schematic->CurrentSheet();
+    return schematic->Connectivity().Connection( aItem.m_Uuid, path.PathRef() );
+}
+
+
+std::optional<wxString> SCH_ITEM::GetConnectionName( const SCH_SHEET_PATH* aSheet, bool aLocal,
+                                                     bool aIgnoreSheet ) const
+{
+    if( ADVANCED_CFG::GetCfg().m_ConnectivityEngine && wxThread::IsMain() )
+    {
+        if( const auto connection = publishedConnection( *this, aSheet ) )
+            return aLocal ? connection->LocalName() : connection->Name( aIgnoreSheet );
+
+        return std::nullopt;
+    }
+
+    if( const SCH_CONNECTION* connection = Connection( aSheet ) )
+        return aLocal ? connection->LocalName() : connection->Name( aIgnoreSheet );
+
+    return std::nullopt;
+}
+
+
+std::vector<wxString> SCH_ITEM::GetBusMemberNames( const SCH_SHEET_PATH* aSheet ) const
+{
+    std::vector<wxString> names;
+
+    if( ADVANCED_CFG::GetCfg().m_ConnectivityEngine && wxThread::IsMain() )
+    {
+        const auto connection = publishedConnection( *this, aSheet );
+
+        if( connection && connection->IsBus() )
+        {
+            for( const auto& member : connection->Members().leaves )
+                names.push_back( member.Name() );
+        }
+
+        return names;
+    }
+
+    const SCH_CONNECTION* connection = Connection( aSheet );
+
+    if( connection && connection->IsBus() )
+    {
+        for( const std::shared_ptr<SCH_CONNECTION>& member : connection->Members() )
+            names.push_back( member->Name() );
+    }
+
+    return names;
+}
+
+
+bool SCH_ITEM::MatchesNetName( const EDA_SEARCH_DATA& aSearchData, const SCH_SHEET_PATH* aSheet ) const
+{
+    if( ADVANCED_CFG::GetCfg().m_ConnectivityEngine && wxThread::IsMain() )
+    {
+        const std::optional<SCH_CONNECTIVITY::ITEM_VIEW> connection = publishedConnection( *this, aSheet );
+
+        if( !connection )
+            return false;
+
+        if( !connection->IsBus() )
+            return EDA_ITEM::Matches( connection->Name(), aSearchData );
+
+        for( const SCH_CONNECTIVITY::NET_VIEW& member : connection->Members().leaves )
+        {
+            if( EDA_ITEM::Matches( member.Name(), aSearchData ) )
+                return true;
+        }
+
+        return false;
+    }
+
+    const SCH_CONNECTION* connection = Connection( aSheet );
+
+    if( !connection )
+        return false;
+
+    if( !connection->IsBus() )
+        return EDA_ITEM::Matches( connection->GetNetName(), aSearchData );
+
+    std::set<wxString> netNames;
+
+    for( const std::shared_ptr<SCH_CONNECTION>& member : connection->AllMembers() )
+        netNames.insert( member->GetNetName() );
+
+    for( const wxString& netName : netNames )
+    {
+        if( EDA_ITEM::Matches( netName, aSearchData ) )
+            return true;
+    }
+
+    return false;
+}
+
+
+bool SCH_ITEM::HasBusConnection( const SCH_SHEET_PATH* aSheet ) const
+{
+    if( ADVANCED_CFG::GetCfg().m_ConnectivityEngine )
+    {
+        const auto connection = wxThread::IsMain() ? publishedConnection( *this, aSheet ) : std::nullopt;
+        return connection && connection->IsBus();
+    }
+
+    const SCH_CONNECTION* connection = Connection( aSheet );
+    return connection && connection->IsBus();
+}
+
+
 std::shared_ptr<NETCLASS> SCH_ITEM::GetEffectiveNetClass( const SCH_SHEET_PATH* aSheet ) const
 {
     static std::shared_ptr<NETCLASS> nullNetclass = std::make_shared<NETCLASS>( wxEmptyString );
@@ -522,10 +743,8 @@ std::shared_ptr<NETCLASS> SCH_ITEM::GetEffectiveNetClass( const SCH_SHEET_PATH* 
     if( !netSettings )
         return nullNetclass;
 
-    SCH_CONNECTION* connection = Connection( aSheet );
-
-    if( connection )
-        return netSettings->GetEffectiveNetClass( connection->Name() );
+    if( const auto name = GetConnectionName( aSheet ) )
+        return netSettings->GetEffectiveNetClass( *name );
 
     if( std::shared_ptr<NETCLASS> defaultNetclass = netSettings->GetDefaultNetclass() )
         return defaultNetclass;
@@ -543,15 +762,17 @@ void SCH_ITEM::ClearConnectedItems( const SCH_SHEET_PATH& aSheet )
 }
 
 
-const SCH_ITEM_VEC& SCH_ITEM::ConnectedItems( const SCH_SHEET_PATH& aSheet )
+const std::vector<SCH_ITEM*>& SCH_ITEM::ConnectedItems( const SCH_SHEET_PATH& aSheet ) const
 {
-    return m_connected_items[ aSheet ];
+    static const std::vector<SCH_ITEM*> empty;
+    const auto it = m_connected_items.find( aSheet );
+    return it == m_connected_items.end() ? empty : it->second;
 }
 
 
 void SCH_ITEM::AddConnectionTo( const SCH_SHEET_PATH& aSheet, SCH_ITEM* aItem )
 {
-    SCH_ITEM_VEC& vec = m_connected_items[ aSheet ];
+    std::vector<SCH_ITEM*>& vec = m_connected_items[ aSheet ];
 
     // The vector elements are small, so reserve 1k at a time to prevent re-allocations
     if( vec.size() == vec.capacity() )
@@ -565,8 +786,7 @@ void SCH_ITEM::AddConnectionTo( const SCH_SHEET_PATH& aSheet, SCH_ITEM* aItem )
 }
 
 
-SCH_CONNECTION* SCH_ITEM::InitializeConnection( const SCH_SHEET_PATH& aSheet,
-                                                CONNECTION_GRAPH* aGraph )
+SCH_CONNECTION* SCH_ITEM::InitializeConnection( const SCH_SHEET_PATH& aSheet, CONNECTION_GRAPH* aGraph )
 {
     SCH_CONNECTION* connection = Connection( &aSheet );
 
@@ -589,8 +809,7 @@ SCH_CONNECTION* SCH_ITEM::InitializeConnection( const SCH_SHEET_PATH& aSheet,
 }
 
 
-SCH_CONNECTION* SCH_ITEM::GetOrInitConnection( const SCH_SHEET_PATH& aSheet,
-                                               CONNECTION_GRAPH* aGraph )
+SCH_CONNECTION* SCH_ITEM::GetOrInitConnection( const SCH_SHEET_PATH& aSheet, CONNECTION_GRAPH* aGraph )
 {
     if( !IsConnectable() )
         return nullptr;
@@ -622,6 +841,12 @@ void SCH_ITEM::SwapItemData( SCH_ITEM* aImage )
     if( aImage == nullptr )
         return;
 
+    if( SCH_SCREEN* screen = GetParentScreen() )
+        screen->BumpConnectivityRevision( Type() );
+
+    if( SCH_SCREEN* screen = aImage->GetParentScreen() )
+        screen->BumpConnectivityRevision( aImage->Type() );
+
     EDA_ITEM* parent = GetParent();
 
     SwapFlags( aImage );
@@ -630,9 +855,11 @@ void SCH_ITEM::SwapItemData( SCH_ITEM* aImage )
     std::swap( m_bodyStyle, aImage->m_bodyStyle );
     std::swap( m_private, aImage->m_private );
     std::swap( m_fieldsAutoplaced, aImage->m_fieldsAutoplaced );
+    std::swap( m_customProperties, aImage->m_customProperties );
 
     // Don't swap m_group. Group membership is restored by SCH_GROUP::swapData, and the undo copy
     // has no group, so swapping it here would drop the item out of its group.
+    std::swap( m_isLocked, aImage->m_isLocked );
     swapData( aImage );
 
     SetParent( parent );
@@ -685,7 +912,7 @@ bool SCH_ITEM::operator==( const SCH_ITEM& aOther ) const
     if( Type() != aOther.Type() )
         return false;
 
-    return compare( aOther, SCH_ITEM::COMPARE_FLAGS::EQUALITY ) == 0;
+    return compare( aOther, ~COMPARE_FLAGS::UUID ) == 0;
 }
 
 
@@ -700,7 +927,7 @@ bool SCH_ITEM::operator<( const SCH_ITEM& aOther ) const
 
 bool SCH_ITEM::cmp_items::operator()( const SCH_ITEM* aFirst, const SCH_ITEM* aSecond ) const
 {
-    return aFirst->compare( *aSecond, COMPARE_FLAGS::EQUALITY ) < 0;
+    return aFirst->compare( *aSecond, ~COMPARE_FLAGS::UUID ) < 0;
 }
 
 
@@ -709,16 +936,19 @@ int SCH_ITEM::compare( const SCH_ITEM& aOther, int aCompareFlags ) const
     if( Type() != aOther.Type() )
         return Type() - aOther.Type();
 
-    if( !( aCompareFlags & SCH_ITEM::COMPARE_FLAGS::UNIT ) && m_unit != aOther.m_unit )
-        return m_unit - aOther.m_unit;
+    if( aCompareFlags & SCH_ITEM::COMPARE_FLAGS::UNIT )
+    {
+        if( m_unit != aOther.m_unit )
+            return m_unit - aOther.m_unit;
 
-    if( !( aCompareFlags & SCH_ITEM::COMPARE_FLAGS::UNIT ) && m_bodyStyle != aOther.m_bodyStyle )
-        return m_bodyStyle - aOther.m_bodyStyle;
+        if( m_bodyStyle != aOther.m_bodyStyle )
+            return m_bodyStyle - aOther.m_bodyStyle;
+    }
 
     if( IsPrivate() != aOther.IsPrivate() )
         return IsPrivate() ? 1 : -1;
 
-    if( !( aCompareFlags & SCH_ITEM::COMPARE_FLAGS::SKIP_TST_POS ) )
+    if( aCompareFlags & COMPARE_FLAGS::POSITION )
     {
         if( GetPosition().x != aOther.GetPosition().x )
             return GetPosition().x - aOther.GetPosition().x;
@@ -727,17 +957,39 @@ int SCH_ITEM::compare( const SCH_ITEM& aOther, int aCompareFlags ) const
             return GetPosition().y - aOther.GetPosition().y;
     }
 
-    if( ( aCompareFlags & SCH_ITEM::COMPARE_FLAGS::EQUALITY )
-        || ( aCompareFlags & SCH_ITEM::COMPARE_FLAGS::ERC ) )
+    if( aCompareFlags & COMPARE_FLAGS::UUID )
     {
-        return 0;
+        if( m_Uuid < aOther.m_Uuid )
+            return -1;
+
+        if( m_Uuid > aOther.m_Uuid )
+            return 1;
     }
 
-    if( m_Uuid < aOther.m_Uuid )
-        return -1;
+    for( const auto& [name, value] : m_customProperties )
+    {
+        if( !aOther.m_customProperties.contains( name ) )
+        {
+            if( !value.IsEmpty() )
+                return 1;
 
-    if( m_Uuid > aOther.m_Uuid )
-        return 1;
+            continue;
+        }
+
+        int cmp = aOther.m_customProperties.at( name ).Cmp( value );
+
+        if( cmp != 0 )
+            return cmp;
+    }
+
+    for( const auto& [name, value] : aOther.m_customProperties )
+    {
+        if( !m_customProperties.contains( name ) )
+        {
+            if( !value.IsEmpty() )
+                return -1;
+        }
+    }
 
     return 0;
 }
@@ -752,7 +1004,7 @@ int SCH_ITEM::GetMaxError() const
 }
 
 
-const wxString& SCH_ITEM::GetDefaultFont( const RENDER_SETTINGS* aSettings ) const
+const wxString& SCH_ITEM::GetDefaultFont( const KIGFX::RENDER_SETTINGS* aSettings ) const
 {
     static wxString defaultName = KICAD_FONT_NAME;
 
@@ -799,13 +1051,22 @@ int SCH_ITEM::GetEffectivePenWidth( const SCH_RENDER_SETTINGS* aSettings ) const
 
 bool SCH_ITEM::RenderAsBitmap( double aWorldScale ) const
 {
+    return aWorldScale < BitmapWorldScaleLimit();
+}
+
+
+double SCH_ITEM::BitmapWorldScaleLimit() const
+{
     if( HasHypertext() )
-        return false;
+        return 0.0;
 
     if( const EDA_TEXT* text = dynamic_cast<const EDA_TEXT*>( this ) )
-        return text->GetTextHeight() * aWorldScale < BITMAP_FONT_SIZE_THRESHOLD;
+    {
+        if( text->GetTextHeight() > 0 )
+            return BITMAP_FONT_SIZE_THRESHOLD / static_cast<double>( text->GetTextHeight() );
+    }
 
-    return false;
+    return 0.0;
 }
 
 
@@ -848,11 +1109,9 @@ static struct SCH_ITEM_DESC
         REGISTER_TYPE( SCH_ITEM );
         propMgr.InheritsAfter( TYPE_HASH( SCH_ITEM ), TYPE_HASH( EDA_ITEM ) );
 
-#ifdef NOTYET
-        // Not yet functional in UI
         propMgr.AddProperty( new PROPERTY<SCH_ITEM, bool>( _HKI( "Locked" ),
-                &SCH_ITEM::SetLocked, &SCH_ITEM::IsLocked ) );
-#endif
+                    &SCH_ITEM::SetLocked, &SCH_ITEM::IsLocked ) )
+                .SetIsHiddenFromLibraryEditors();
 
         auto multiUnit =
                 [=]( INSPECTABLE* aItem ) -> bool

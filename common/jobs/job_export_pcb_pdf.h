@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef JOB_EXPORT_PCB_PDF_H
@@ -41,23 +41,23 @@ public:
 
     bool m_pdfSingle;
 
-    ///< This is a hack to deal with cli having the wrong behavior
-    ///< We will deprecate out the wrong behavior, at which point this enum
-    ///< can be replaced with a bool
+    /// This is a hack to deal with cli having the wrong behavior
+    /// We will deprecate out the wrong behavior, at which point this enum
+    /// can be replaced with a bool
     enum class GEN_MODE
     {
-        ///< DEPRECATED MODE
+        /// DEPRECATED MODE
         ALL_LAYERS_ONE_FILE,
-        ///< "Single Document" mode
+        /// "Single Document" mode
         ONE_PAGE_PER_LAYER_ONE_FILE,
-        ///< The most traditional output mode KiCad has had
+        /// The most traditional output mode KiCad has had
         ALL_LAYERS_SEPARATE_FILE
     };
 
-    ///< uused by the cli, will be removed when the other behavior is deprecated
+    /// uused by the cli, will be removed when the other behavior is deprecated
     GEN_MODE m_pdfGenMode;
 
-    ///< The background color specified in a hex string
+    /// The background color specified in a hex string
     wxString m_pdfBackgroundColor;
 };
 

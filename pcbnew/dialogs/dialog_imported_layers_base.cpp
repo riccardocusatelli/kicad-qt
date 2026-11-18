@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version 3.10.1-0-g8feb16b)
+// C++ code generated with wxFormBuilder (version 4.2.1-0-g80c4cb6)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO *NOT* EDIT THIS FILE!
@@ -94,7 +94,10 @@ DIALOG_IMPORTED_LAYERS_BASE::DIALOG_IMPORTED_LAYERS_BASE( wxWindow* parent, wxWi
 	m_button_automatch = new wxButton( this, wxID_ANY, _("Auto-Match Layers"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_button_automatch->SetToolTip( _("Automatically match any unmatched layers to their KiCad equivalent.") );
 
-	bSizerBottom->Add( m_button_automatch, 0, wxALL, 5 );
+	bSizerBottom->Add( m_button_automatch, 0, wxALL|wxALIGN_CENTER_VERTICAL, 5 );
+
+
+	bSizerBottom->Add( 20, 0, 0, wxEXPAND, 5 );
 
 	m_cbKeepKiCadLayerNames = new wxCheckBox( this, wxID_ANY, _("Keep KiCad layer names"), wxDefaultPosition, wxDefaultSize, 0 );
 	m_cbKeepKiCadLayerNames->SetToolTip( _("If checked, layers will keep their standard KiCad names instead of being renamed to the imported layer names.") );
@@ -104,6 +107,8 @@ DIALOG_IMPORTED_LAYERS_BASE::DIALOG_IMPORTED_LAYERS_BASE( wxWindow* parent, wxWi
 	m_sdbSizer = new wxStdDialogButtonSizer();
 	m_sdbSizerOK = new wxButton( this, wxID_OK );
 	m_sdbSizer->AddButton( m_sdbSizerOK );
+	m_sdbSizerCancel = new wxButton( this, wxID_CANCEL );
+	m_sdbSizer->AddButton( m_sdbSizerCancel );
 	m_sdbSizer->Realize();
 
 	bSizerBottom->Add( m_sdbSizer, 1, wxEXPAND, 5 );

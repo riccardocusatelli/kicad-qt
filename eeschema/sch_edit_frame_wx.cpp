@@ -103,7 +103,25 @@ void SCH_EDIT_FRAME::setupLayout()
                       .DestroyOnClose( false )
                       .Show( m_show_search ) );
 
+    m_auimgr.AddPane( m_gitCommitPane,
+                      EDA_PANE()
+                              .Name( GitCommitPaneName() )
+                              .Right()
+                              .Layer( 5 )
+                              .Caption( _( "Version Control" ) )
+                              .PaneBorder( false )
+                              .MinSize( wxSize( m_gitCommitPane->GetMinDockWidth(), FromDIP( 120 ) ) )
+                              .BestSize( wxSize( std::max( m_gitCommitPane->GetMinDockWidth(), FromDIP( 300 ) ),
+                                                 FromDIP( 300 ) ) )
+                              .FloatingSize( FromDIP( wxSize( 300, 400 ) ) )
+                              .DestroyOnClose( false )
+                              .CloseButton( true )
+                              .Hide() );
+
     RestoreAuiLayout();
+
+    // A saved layout brings its own minimum, so the one the panel needs is set again.
+    m_auimgr.GetPane( GitCommitPaneName() ).min_size.x = m_gitCommitPane->GetMinDockWidth();
     FinishAUIInitialization();
 
     wxAuiPaneInfo& hierarchy_pane = m_auimgr.GetPane( SchematicHierarchyPaneName() );
@@ -117,6 +135,7 @@ void SCH_EDIT_FRAME::setupLayout()
     netNavigatorPane.Show( aui_cfg.show_net_nav_panel );
     propertiesPane.Show( aui_cfg.show_properties );
     designBlocksPane.Show( aui_cfg.design_blocks_show );
+    m_auimgr.GetPane( GitCommitPaneName() ).Show( aui_cfg.show_git_commit_pane );
 
     if( m_remoteSymbolPane && !m_remoteSymbolPane->HasDataSources() )
         remoteSymbolPane.Show( false );

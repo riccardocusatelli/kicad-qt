@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <lib_table_grid_data_model.h>
@@ -31,6 +31,7 @@ LIB_TABLE_GRID_DATA_MODEL::LIB_TABLE_GRID_DATA_MODEL( DIALOG_SHIM* aDialog, WX_G
                                                       const wxArrayString& aPluginChoices,
                                                       wxString* aMRUDirectory, const wxString& aProjectPath ) :
         m_table( aTableToEdit ),
+        m_readOnly( m_table.IsReadOnly() ),
         m_adapter( aAdapter )
 {
     m_uriEditor = new wxGridCellAttr;
@@ -119,8 +120,8 @@ wxString LIB_TABLE_GRID_DATA_MODEL::GetValue( int aRow, int aCol )
         if( !r.IsOk() )
             return r.ErrorDescription();
 
-        if( m_adapter->SupportsConfigurationDialog( r.Nickname() ) )
-            return _( "Edit settings" );
+        if( m_adapter && m_adapter->SupportsConfigurationDialog( r ) )
+            return _( "Edit library settings" );
         else if( r.Type() == LIBRARY_TABLE_ROW::TABLE_TYPE_NAME )
             return _( "Open library table" );
 
@@ -138,7 +139,7 @@ wxGridCellAttr* LIB_TABLE_GRID_DATA_MODEL::GetAttr( int aRow, int aCol, wxGridCe
         return enhanceAttr( nullptr, aRow, aCol, aKind );
 
     LIBRARY_TABLE_ROW& tableRow = at( aRow );
-    bool               readOnly = m_table.IsReadOnly();
+    bool               readOnly = m_readOnly;
 
     switch( aCol )
     {
@@ -174,7 +175,7 @@ wxGridCellAttr* LIB_TABLE_GRID_DATA_MODEL::GetAttr( int aRow, int aCol, wxGridCe
             return enhanceAttr( m_warningAttr, aRow, aCol, aKind );
         }
 
-        if( m_adapter->SupportsConfigurationDialog( tableRow.Nickname() ) )
+        if( m_adapter && m_adapter->SupportsConfigurationDialog( tableRow ) )
         {
             m_editSettingsAttr->IncRef();
             return enhanceAttr( m_editSettingsAttr, aRow, aCol, aKind );
@@ -240,7 +241,7 @@ void LIB_TABLE_GRID_DATA_MODEL::SetValue( int aRow, int aCol, const wxString& aV
         return;
 
     // For read-only tables, only enable/visible changes are allowed
-    if( m_table.IsReadOnly() && aCol != COL_ENABLED && aCol != COL_VISIBLE )
+    if( m_readOnly && aCol != COL_ENABLED && aCol != COL_VISIBLE )
         return;
 
     LIBRARY_TABLE_ROW& lrow = at( aRow );
@@ -295,13 +296,13 @@ void LIB_TABLE_GRID_DATA_MODEL::SetValueAsBool( int aRow, int aCol, bool aValue 
 
 bool LIB_TABLE_GRID_DATA_MODEL::InsertRows( size_t aPos, size_t aNumRows  )
 {
-    if( m_table.IsReadOnly() )
+    if( m_readOnly )
         return false;
 
-    if( aPos < size() )
+    if( aPos <= size() )
     {
         for( size_t i = 0; i < aNumRows; i++ )
-            insert( begin() + i, makeNewRow() );
+            insert( begin() + aPos + i, makeNewRow() );
 
         // use the (wxGridStringTable) source Luke.
         if( GetView() )
@@ -322,7 +323,7 @@ bool LIB_TABLE_GRID_DATA_MODEL::InsertRows( size_t aPos, size_t aNumRows  )
 
 bool LIB_TABLE_GRID_DATA_MODEL::AppendRows( size_t aNumRows )
 {
-    if( m_table.IsReadOnly() )
+    if( m_readOnly )
         return false;
 
     // do not modify aNumRows, original value needed for wxGridTableMessage below
@@ -344,12 +345,12 @@ bool LIB_TABLE_GRID_DATA_MODEL::AppendRows( size_t aNumRows )
 
 bool LIB_TABLE_GRID_DATA_MODEL::DeleteRows( size_t aPos, size_t aNumRows )
 {
-    if( m_table.IsReadOnly() )
+    if( m_readOnly )
         return false;
 
     // aPos may be a large positive, e.g. size_t(-1), and the sum of
     // aPos+aNumRows may wrap here, so both ends of the range are tested.
-    if( aPos < size() && aPos + aNumRows <= size() )
+    if( aPos < size() && aNumRows <= size() - aPos )
     {
         LIBRARY_TABLE_ROWS_ITER start = begin() + aPos;
         erase( start, start + aNumRows );

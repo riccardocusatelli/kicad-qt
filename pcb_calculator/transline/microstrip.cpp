@@ -18,9 +18,7 @@
  * General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this package; see the file COPYING.  If not, write to
- * the Free Software Foundation, Inc., 51 Franklin Street - Fifth Floor,
- * Boston, MA 02110-1301, USA.
+ * along with this package.  If not, see <https://www.gnu.org/licenses/>.
  *
  */
 
@@ -100,6 +98,9 @@ void MICROSTRIP_UI::getProperties()
     m_calc.SetParameter( TRANSLINE_PARAMETERS::EPSILON_EFF, m_parameters[EPSILON_EFF_PRM] );
     m_calc.SetParameter( TRANSLINE_PARAMETERS::SKIN_DEPTH, m_parameters[SKIN_DEPTH_PRM] );
     m_calc.SetParameter( TRANSLINE_PARAMETERS::EPSILONR, m_parameters[EPSILONR_PRM] );
+    m_calc.SetParameter( TRANSLINE_PARAMETERS::DIELECTRIC_MODEL_SEL, m_parameters[DIELECTRIC_MODEL_PRM] );
+    m_calc.SetParameter( TRANSLINE_PARAMETERS::EPSILONR_SPEC_FREQ, m_parameters[EPSILONR_SPEC_FREQ_PRM] );
+    pushSoldermaskParameters( m_calc );
     m_calc.SetParameter( TRANSLINE_PARAMETERS::H_T, m_parameters[H_T_PRM] );
     m_calc.SetParameter( TRANSLINE_PARAMETERS::H, m_parameters[H_PRM] );
     m_calc.SetParameter( TRANSLINE_PARAMETERS::PHYS_WIDTH, m_parameters[PHYS_WIDTH_PRM] );

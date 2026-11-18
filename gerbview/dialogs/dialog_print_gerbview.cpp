@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <kiface_base.h>
@@ -63,13 +59,13 @@ private:
     void onSelectAllClick( wxCommandEvent& event );
     void onDeselectAllClick( wxCommandEvent& event );
 
-    ///< (Un)check all items in a checklist box
+    /// (Un)check all items in a checklist box
     void setListBoxValue( wxCheckListBox* aList, bool aValue );
 
-    ///< Check whether a layer is enabled in a listbox
+    /// Check whether a layer is enabled in a listbox
     bool isLayerEnabled( unsigned int aLayer ) const;
 
-    ///< Update layerset basing on the selected layers
+    /// Update layerset basing on the selected layers
     int setLayerSetFromList();
 
     void saveSettings() override;
@@ -137,7 +133,7 @@ bool DIALOG_PRINT_GERBVIEW::TransferDataToWindow()
         listBox->Append( filename.GetFullName() );
 
         if( settings()->m_LayerSet.test( ii) )
-            listBox->Check( ii, true );
+            listBox->Check( itemIdx % LAYER_PER_LIST, true );
 
         KI_ASSERT( m_layerToItemMap.count( ii ) == 0 );
         m_layerToItemMap[ii] = itemIdx;

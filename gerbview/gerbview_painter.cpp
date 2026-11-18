@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <gerbview_painter.h>
@@ -107,6 +107,12 @@ COLOR4D GERBVIEW_RENDER_SETTINGS::GetColor( const VIEW_ITEM* aItem, int aLayer )
 
     if( item && item->Type() == GERBER_DRAW_ITEM_T )
         gbrItem = static_cast<const GERBER_DRAW_ITEM*>( item );
+
+    if( gbrItem && m_contrastMode == GBR_INACTIVE_LAYER_MODE::HIDDEN
+        && !GetLayerIsHighContrast( aLayer ) )
+    {
+        return transparent;
+    }
 
     // All DCODE layers stored under a single color setting
     if( IsDCodeLayer( aLayer ) )
@@ -225,6 +231,12 @@ bool GERBVIEW_PAINTER::Draw( const VIEW_ITEM* aItem, int aLayer )
 // Probably that can be refactored in GERBER_DRAW_ITEM to allow const here.
 void GERBVIEW_PAINTER::draw( /*const*/ GERBER_DRAW_ITEM* aItem, int aLayer )
 {
+    if( m_gerbviewSettings.GetContrastMode() == GBR_INACTIVE_LAYER_MODE::HIDDEN
+        && !m_gerbviewSettings.GetLayerIsHighContrast( aLayer ) )
+    {
+        return;
+    }
+
     VECTOR2D start( aItem->GetABPosition( aItem->m_Start ) );   // TODO(JE) Getter
     VECTOR2D end( aItem->GetABPosition( aItem->m_End ) );       // TODO(JE) Getter
     int      width = aItem->m_Size.x;   // TODO(JE) Getter
@@ -317,7 +329,8 @@ void GERBVIEW_PAINTER::draw( /*const*/ GERBER_DRAW_ITEM* aItem, int aLayer )
             // We use the fastest CacheTriangulation calculation mode: no partition created because
             // the partition is useless in Gerbview, and very time consumming (optimized only
             // for pcbnew that has different internal unit)
-            if( m_gal->IsOpenGlEngine() && !aItem->m_AbsolutePolygon.IsTriangulationUpToDate() )
+            if( m_gal->UsesPolygonTriangulationCache()
+                && !aItem->m_AbsolutePolygon.IsTriangulationUpToDate() )
                 aItem->m_AbsolutePolygon.CacheTriangulation( false /* fastest triangulation calculation mode */ );
 
             m_gal->DrawPolygon( aItem->m_AbsolutePolygon );
@@ -485,11 +498,7 @@ void GERBVIEW_PAINTER::drawFlashedShape( GERBER_DRAW_ITEM* aItem, bool aFilled )
 {
     D_CODE* code = aItem->GetDcodeDescr();
 
-    if( !code )
-    {
-        KI_LOG_DEBUG( wxT( "drawFlashedShape: Item has no D_CODE" ) );
-        return;
-    }
+    KI_CHECK_MSG( code, /* void */, wxT( "drawFlashedShape: Item has no D_CODE" ) );
 
     m_gal->SetIsFill( aFilled );
     m_gal->SetIsStroke( !aFilled );

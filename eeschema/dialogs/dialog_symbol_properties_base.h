@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////
-// C++ code generated with wxFormBuilder (version 4.2.1-0-g80c4cb6)
+// C++ code generated with wxFormBuilder (version 4.2.1-0-g80c4cb6a)
 // http://www.wxformbuilder.org/
 //
 // PLEASE DO *NOT* EDIT THIS FILE!
@@ -56,6 +56,8 @@ class DIALOG_SYMBOL_PROPERTIES_BASE : public DIALOG_SHIM
 		wxStaticText* m_unitLabel;
 		wxChoice* m_unitChoice;
 		wxStaticText* m_bodyStyle;
+		wxStaticText* m_composedRefLabel;
+		wxStaticText* m_composedRef;
 		wxChoice* m_bodyStyleChoice;
 		wxStaticText* m_orientationLabel;
 		wxChoice* m_orientationCtrl;
@@ -63,17 +65,22 @@ class DIALOG_SYMBOL_PROPERTIES_BASE : public DIALOG_SHIM
 		wxChoice* m_mirrorCtrl;
 		wxCheckBox* m_ShowPinNumButt;
 		wxCheckBox* m_ShowPinNameButt;
+		wxCheckBox* m_LocalPower;
 		wxCheckBox* m_cbExcludeFromSim;
-		wxCheckBox* m_cbExcludeFromBom;
 		wxCheckBox* m_cbExcludeFromBoard;
-		wxCheckBox* m_cbExcludeFromPosFiles;
 		wxCheckBox* m_cbDNP;
+		wxCheckBox* m_cbExcludeFromBom;
+		wxCheckBox* m_cbExcludeFromPosFiles;
+		wxChoice* m_choicePassthrough;
 		wxButton* m_updateSymbolBtn;
 		wxButton* m_changeSymbolBtn;
+		wxButton* m_clearVariantSymbolBtn;
 		wxButton* m_editSchematicSymbolBtn;
 		wxButton* m_editLibrarySymbolBtn;
 		wxPanel* m_pinTablePage;
 		WX_GRID* m_pinGrid;
+		wxPanel* m_pinMapPage;
+		wxBoxSizer* bPinMapPageSizer;
 		wxStaticText* m_libraryIDLabel;
 		wxTextCtrl* m_tcLibraryID;
 		wxButton* m_spiceFieldsButton;
@@ -95,6 +102,7 @@ class DIALOG_SYMBOL_PROPERTIES_BASE : public DIALOG_SHIM
 		virtual void OnCheckBox( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnUpdateSymbol( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnExchangeSymbol( wxCommandEvent& event ) { event.Skip(); }
+		virtual void OnClearVariantSymbol( wxCommandEvent& event ) { event.Skip(); }
 		virtual void OnEditSymbol( wxCommandEvent& event ) { event.Skip(); }
 		virtual void onUpdateEditSymbol( wxUpdateUIEvent& event ) { event.Skip(); }
 		virtual void OnEditLibrarySymbol( wxCommandEvent& event ) { event.Skip(); }

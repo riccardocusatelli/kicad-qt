@@ -14,16 +14,22 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef JOB_EXPORT_PCB_DRILL_H
-#define JOB_EXPORT_PCB_DRILL_H
+#pragma once
 
 #include <kicommon.h>
 #include <layer_ids.h>
 #include "job.h"
+
+
+// default trailing digits in Gerber coordinates, when units are mm
+// This is also the max usable precision (i.e. internal Pcbnew Units)
+static const int GBR_DEFAULT_PRECISION = 6;
+
+
 
 class KICOMMON_API JOB_EXPORT_PCB_DRILL : public JOB
 {
@@ -91,4 +97,3 @@ public:
     wxString     m_reportPath;
 };
 
-#endif

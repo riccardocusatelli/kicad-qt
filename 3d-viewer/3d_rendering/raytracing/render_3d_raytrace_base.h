@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef RENDER_3D_RAYTRACE_BASE_H
@@ -34,6 +30,9 @@
 #include <plugins/3dapi/c3dmodel.h>
 
 #include <map>
+#include <memory>
+#include <mutex>
+#include <stop_token>
 
 class PAD;
 class PCB_VIA;
@@ -67,8 +66,15 @@ public:
 
     int GetWaitForEditingTimeOut() override;
 
-    void Reload( REPORTER* aStatusReporter, REPORTER* aWarningReporter,
-                 bool aOnlyLoadCopperAndShapes );
+    void Reload( bool aOnlyLoadCopperAndShapes, std::stop_token aStop = {} );
+
+    /**
+     * Drop the hover BVH so #IntersectBoardItem becomes a no-op.
+     *
+     * Must be called before board-adapter layers are destroyed/rebuilt (e.g. OpenGL
+     * CreateLayers), because LAYER_ITEM still references those OBJECT_2Ds.
+     */
+    void InvalidateHitTesting();
 
     BOARD_ITEM *IntersectBoardItem( const RAY& aRay );
 
@@ -80,9 +86,9 @@ protected:
                                    float aLayerZOffset );
 
     void restartRenderState();
-    void renderTracing( uint8_t* ptrPBO, REPORTER* aStatusReporter );
-    void postProcessShading( uint8_t* ptrPBO, REPORTER* aStatusReporter );
-    void postProcessBlurFinish( uint8_t* ptrPBO, REPORTER* aStatusReporter );
+    void renderTracing( uint8_t* ptrPBO );
+    void postProcessShading( uint8_t* ptrPBO );
+    void postProcessBlurFinish( uint8_t* ptrPBO );
     void renderBlockTracing( uint8_t* ptrPBO , signed int iBlock );
     void renderFinalColor( uint8_t* ptrPBO, const SFVEC4F& rgbColor,
                            bool applyColorSpaceConversion );
@@ -120,7 +126,10 @@ protected:
                                 float aBottomInnerRadius, float aSurfaceZ, float aDepth,
                                 bool aIsFront );
     void backfillPostMachine();
-    void load3DModels( CONTAINER_3D& aDstContainer, bool aSkipMaterialInformation );
+    void load3DModels( CONTAINER_3D& aDstContainer, bool aSkipMaterialInformation, std::stop_token aStop = {} );
+    void addPlaceholderToRaytracer( CONTAINER_3D& aDstContainer, const FOOTPRINT* aFootprint,
+                                    const glm::mat4& aFpMatrix, bool aHasExtrudedBody = false, float aOpacity = 1.0f );
+    bool addExtrudedBodyToRaytracer( CONTAINER_3D& aDstContainer, const FOOTPRINT* aFootprint );
     void addModels( CONTAINER_3D& aDstContainer, const S3DMODEL* a3DModel,
                     const glm::mat4& aModelMatrix, float aFPOpacity,
                     bool aSkipMaterialInformation, BOARD_ITEM* aBoardItem );
@@ -129,7 +138,7 @@ protected:
 
     void initializeBlockPositions();
 
-    void render( uint8_t* ptrPBO, REPORTER* aStatusReporter );
+    void render( uint8_t* ptrPBO );
     void renderPreview( uint8_t* ptrPBO );
 
     static SFVEC4F premultiplyAlpha( const SFVEC4F& aInput );
@@ -137,6 +146,7 @@ protected:
     struct
     {
         BLINN_PHONG_MATERIAL m_Paste;
+        BLINN_PHONG_MATERIAL m_Adhesive;
         BLINN_PHONG_MATERIAL m_SilkS;
         BLINN_PHONG_MATERIAL m_SolderMask;
         BLINN_PHONG_MATERIAL m_EpoxyBoard;
@@ -144,6 +154,8 @@ protected:
         BLINN_PHONG_MATERIAL m_NonPlatedCopper;
         BLINN_PHONG_MATERIAL m_Floor;
     } m_materials;
+
+    std::vector<std::unique_ptr<BLINN_PHONG_MATERIAL>> m_extrusionMaterials;
 
     BOARD_NORMAL         m_boardMaterial;
     COPPER_NORMAL        m_copperMaterial;
@@ -183,7 +195,10 @@ protected:
     CONTAINER_2D* m_outlineBoard2dObjects;
     BVH_CONTAINER_2D* m_antioutlineBoard2dObjects;
 
-    ACCELERATOR_3D* m_accelerator;
+    std::unique_ptr<ACCELERATOR_3D> m_accelerator;
+
+    /// Serializes hover BVH use
+    std::mutex m_hitTestMutex;
 
     SFVEC4F m_backgroundColorTop;
     SFVEC4F m_backgroundColorBottom;

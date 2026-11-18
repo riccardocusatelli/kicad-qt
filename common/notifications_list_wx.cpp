@@ -24,9 +24,9 @@
 
 // The window of the list of the notifications with wxWidgets (see notifications_list.h).
 
+#include <algorithm>
 #include <unordered_map>
 
-#include <wx/frame.h>
 #include <wx/hyperlink.h>
 #include <wx/panel.h>
 #include <wx/scrolwin.h>
@@ -34,17 +34,14 @@
 #include <wx/settings.h>
 #include <wx/stattext.h>
 #include <wx/string.h>
-#include <wx/time.h>
 #include <wx/utils.h>
 
 #include <kiplatform/ui.h>
 #include <notifications_manager.h>
+#include <widgets/kistatusbar_popup.h>
 #include <widgets/ui_common.h>
 
 #include "notifications_list.h"
-
-
-static long long g_last_closed_timer = 0;
 
 
 class NOTIFICATION_PANEL : public wxPanel
@@ -72,7 +69,11 @@ public:
         mainSizer->Add( m_stTitle, 0, wxALL | wxEXPAND, 1 );
 
         m_stDescription = new wxStaticText( this, wxID_ANY, aNoti->description );
-        m_stDescription->Wrap( -1 );
+
+        // Leave room for the borders and a scrollbar that may appear later
+        int margin = FromDIP( 8 ) + wxSystemSettings::GetMetric( wxSYS_VSCROLL_X, aParent );
+
+        m_stDescription->Wrap( std::max( FromDIP( 100 ), aParent->GetClientSize().x - margin ) );
         mainSizer->Add( m_stDescription, 0, wxALL | wxEXPAND, 1 );
 
         wxBoxSizer* tailSizer;
@@ -95,6 +96,9 @@ public:
         m_hlDismiss->Bind( wxEVT_HYPERLINK, &NOTIFICATION_PANEL::onDismiss, this );
 
         SetSizer( mainSizer );
+
+        // Grow past the default height when the description wraps
+        SetMinSize( wxSize( -1, std::max( GetMinSize().y, mainSizer->GetMinSize().y ) ) );
         Layout();
     }
 
@@ -138,16 +142,13 @@ private:
 };
 
 
-class NOTIFICATIONS_LIST_WX : public wxFrame, public NOTIFICATIONS_LIST
+class NOTIFICATIONS_LIST_WX : public KISTATUSBAR_POPUP, public NOTIFICATIONS_LIST
 {
 public:
-    NOTIFICATIONS_LIST_WX( NOTIFICATIONS_MANAGER* aManager, wxWindow* parent, const wxPoint& pos ) :
-            wxFrame( parent, wxID_ANY, _( "Notifications" ), pos, wxSize( 300, 150 ),
-                     wxFRAME_NO_TASKBAR | wxBORDER_SIMPLE ),
+    NOTIFICATIONS_LIST_WX( NOTIFICATIONS_MANAGER* aManager, wxWindow* parent ) :
+            KISTATUSBAR_POPUP( parent ),
             m_manager( aManager )
     {
-        SetSizeHints( wxDefaultSize, wxDefaultSize );
-
         wxBoxSizer* bSizer1;
         bSizer1 = new wxBoxSizer( wxVERTICAL );
 
@@ -173,39 +174,8 @@ public:
         m_noNotificationsText->Wrap( -1 );
         m_contentSizer->Add( m_noNotificationsText, 1, wxALL | wxEXPAND, 5 );
 
-        Bind( wxEVT_KILL_FOCUS, &NOTIFICATIONS_LIST_WX::onFocusLoss, this );
-        m_scrolledWindow->Bind( wxEVT_KILL_FOCUS, &NOTIFICATIONS_LIST_WX::onFocusLoss, this );
-
         SetSizer( bSizer1 );
         Layout();
-
-        SetFocus();
-    }
-
-
-    ~NOTIFICATIONS_LIST_WX()
-    {
-        // Unbind focus handlers before base class destructors run. GTK fires focus-out signals
-        // during window teardown, which would invoke onFocusLoss through a partially-destroyed
-        // object and crash in the wxWidgets event handler chain.
-        Unbind( wxEVT_KILL_FOCUS, &NOTIFICATIONS_LIST_WX::onFocusLoss, this );
-        m_scrolledWindow->Unbind( wxEVT_KILL_FOCUS, &NOTIFICATIONS_LIST_WX::onFocusLoss, this );
-    }
-
-
-    void onFocusLoss( wxFocusEvent& aEvent )
-    {
-        if( IsDescendant( aEvent.GetWindow() ) )
-        {
-            // Child (such as the hyperlink texts) got focus
-        }
-        else
-        {
-            Close( true );
-            g_last_closed_timer = wxGetLocalTimeMillis().GetValue();
-        }
-
-        aEvent.Skip();
     }
 
 
@@ -248,6 +218,9 @@ public:
         }
     }
 
+    /// Tell the manager that the window closes.
+    void NotifyClosed() { notifyClosed( m_manager, this ); }
+
 private:
     wxScrolledWindow*                                      m_scrolledWindow;
 
@@ -256,11 +229,6 @@ private:
     std::unordered_map<NOTIFICATION*, NOTIFICATION_PANEL*> m_panelMap;
     NOTIFICATIONS_MANAGER*                                 m_manager;
 
-public:
-    /// Tell the manager that the window closes.
-    void NotifyClosed() { notifyClosed( m_manager, this ); }
-
-private:
     /// Text to be displayed when no notifications are present, this gets a Show/Hide call as
     /// needed.
     wxStaticText*                                          m_noNotificationsText;
@@ -269,33 +237,25 @@ private:
 
 void NOTIFICATIONS_MANAGER::ShowList( wxWindow* aParent, wxPoint aPos )
 {
-    // Debounce clicking on the icon with a list already showing.  The button will get focus
-    // first, which will cause a focus-loss on the list (thereby closing it), and then we'd open
-    // it again without this guard.
-    if( wxGetLocalTimeMillis().GetValue() - g_last_closed_timer < 300 )
-    {
-        g_last_closed_timer = 0;
+    if( KISTATUSBAR_POPUP::IsDismissingClick( typeid( NOTIFICATIONS_LIST_WX ) ) )
         return;
-    }
 
-    NOTIFICATIONS_LIST_WX* list = new NOTIFICATIONS_LIST_WX( this, aParent, aPos );
+    NOTIFICATIONS_LIST_WX* list = new NOTIFICATIONS_LIST_WX( this, aParent );
 
     for( NOTIFICATION& job : m_notifications )
         list->Add( &job );
 
     m_shownDialogs.push_back( list );
 
-    list->Bind( wxEVT_CLOSE_WINDOW,
-                [list]( wxCloseEvent& aEvent )
+    // The popup is destroyed when it is dismissed
+    list->Bind( wxEVT_DESTROY,
+                [list]( wxWindowDestroyEvent& aEvent )
                 {
-                    list->NotifyClosed();
+                    if( aEvent.GetEventObject() == static_cast<wxObject*>( list ) )
+                        list->NotifyClosed();
+
                     aEvent.Skip();
                 } );
 
-    // correct the position
-    wxSize windowSize = list->GetSize();
-    list->SetPosition( aPos - windowSize );
-
-    list->Show();
-    KIPLATFORM::UI::ForceFocus( list );
+    list->PopupAt( aPos );
 }

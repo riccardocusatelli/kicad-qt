@@ -17,11 +17,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <wx/log.h>
@@ -30,11 +26,17 @@
 #include <gal/definitions.h>
 #include <font/font.h>
 
+#include <geometry/shape_ellipse.h>
+#include <geometry/shape_line_chain.h>
+
 #include <math/util.h>      // for KiROUND
 #include <pgm_base.h>
 #include <settings/common_settings.h>
 
+#include <algorithm>
+#include <deque>
 #include <cmath>
+#include <limits>
 
 using namespace KIGFX;
 
@@ -84,6 +86,7 @@ GAL::GAL( GAL_DISPLAY_OPTIONS& aDisplayOptions ) :
     SetCursorColor( COLOR4D( 1.0, 1.0, 1.0, 1.0 ) );
     m_crossHairMode = CROSS_HAIR_MODE::SMALL_CROSS;
     m_forceDisplayCursor = false;
+    m_cursorInCanvas = false;
     SetCursorEnabled( false );
 
     // Initialize the native widget to an arrow cursor
@@ -122,6 +125,30 @@ void GAL::OnGalDisplayOptionsChanged( const GAL_DISPLAY_OPTIONS& aOptions )
 }
 
 
+void GAL::DrawEllipse( const VECTOR2D& aCenterPoint, double aMajorRadius, double aMinorRadius,
+                       const EDA_ANGLE& aRotation )
+{
+    const VECTOR2I intCenter( KiROUND( aCenterPoint.x ), KiROUND( aCenterPoint.y ) );
+
+    SHAPE_ELLIPSE e( intCenter, KiROUND( aMajorRadius ), KiROUND( aMinorRadius ), aRotation );
+
+    SHAPE_LINE_CHAIN chain = e.ConvertToPolyline( std::max( 1, KiROUND( aMajorRadius / 500.0 ) ) );
+    DrawPolyline( chain );
+}
+
+
+void GAL::DrawEllipseArc( const VECTOR2D& aCenterPoint, double aMajorRadius, double aMinorRadius,
+                          const EDA_ANGLE& aRotation, const EDA_ANGLE& aStartAngle, const EDA_ANGLE& aEndAngle )
+{
+    const VECTOR2I intCenter( KiROUND( aCenterPoint.x ), KiROUND( aCenterPoint.y ) );
+
+    SHAPE_ELLIPSE e( intCenter, KiROUND( aMajorRadius ), KiROUND( aMinorRadius ), aRotation, aStartAngle, aEndAngle );
+
+    SHAPE_LINE_CHAIN chain = e.ConvertToPolyline( std::max( 1, KiROUND( aMajorRadius / 500.0 ) ) );
+    DrawPolyline( chain );
+}
+
+
 bool GAL::updatedGalDisplayOptions( const GAL_DISPLAY_OPTIONS& aOptions )
 {
     bool refresh = false;
@@ -144,6 +171,16 @@ bool GAL::updatedGalDisplayOptions( const GAL_DISPLAY_OPTIONS& aOptions )
         refresh = true;
     }
 
+    {
+        // For now we only allow 10 or none, but it could be made adjustable (e.g. 5?)
+        const int newInterval = m_options.m_gridShowMajor ? 10 : 0;
+        if( m_gridTick != newInterval )
+        {
+            m_gridTick = newInterval;
+            refresh = true;
+        }
+    }
+
     if( m_options.m_axesEnabled != m_axesEnabled )
     {
         m_axesEnabled = m_options.m_axesEnabled;
@@ -164,6 +201,17 @@ bool GAL::updatedGalDisplayOptions( const GAL_DISPLAY_OPTIONS& aOptions )
 
     // tell the derived class if the base class needs an update or not
     return refresh;
+}
+
+
+void GAL::DrawTrack( const VECTOR2D& aStart, const VECTOR2D& aEnd,
+                     double aWidth, const COLOR4D& aColor )
+{
+    SetFillColor( aColor );
+    SetStrokeColor( aColor );
+    SetIsFill( true );
+    SetIsStroke( false );
+    DrawSegment( aStart, aEnd, aWidth );
 }
 
 
@@ -190,7 +238,8 @@ void GAL::ComputeWorldScreenMatrix()
     MATRIX3x3D translation;
     translation.SetIdentity();
     // We're deliberately dividing integers to avoid fractional pixel offsets.
-    translation.SetTranslation( VECTOR2D( m_screenSize.x/2, m_screenSize.y/2 ) );
+    const VECTOR2I layoutSize = GetLayoutPixelSize();
+    translation.SetTranslation( VECTOR2D( layoutSize.x / 2, layoutSize.y / 2 ) );
 
     MATRIX3x3D rotate;
     rotate.SetIdentity();
@@ -236,16 +285,148 @@ double GAL::computeMinGridSpacing() const
 }
 
 
+void GAL::SetGridSources( std::vector<GRID_SOURCE> aSources )
+{
+    std::stable_sort( aSources.begin(), aSources.end(),
+                      []( const GRID_SOURCE& a, const GRID_SOURCE& b )
+                      {
+                          return a.TakesPrecedenceOver( b );
+                      } );
+
+    m_gridSources = std::move( aSources );
+}
+
+
+BOX2D GAL::gridScreenBBox( const GRID_SOURCE& aSrc ) const
+{
+    const VECTOR2D corners[4] = { m_screenWorldMatrix * VECTOR2D( 0, 0 ),
+                                  m_screenWorldMatrix * VECTOR2D( m_screenSize.x, 0 ),
+                                  m_screenWorldMatrix * VECTOR2D( 0, m_screenSize.y ),
+                                  m_screenWorldMatrix * VECTOR2D( m_screenSize ) };
+
+    const double co = std::cos( aSrc.orientation );
+    const double so = std::sin( aSrc.orientation );
+
+    BOX2D bbox;
+
+    for( const VECTOR2D& w : corners )
+    {
+        const VECTOR2D off = w - aSrc.origin;
+        bbox.Merge( VECTOR2D( co * off.x - so * off.y, so * off.x + co * off.y ) );
+    }
+
+    return bbox;
+}
+
+
+GAL::GRID_LATTICE GAL::gridLattice( const GRID_SOURCE& aSrc ) const
+{
+    GRID_LATTICE lattice;
+    lattice.tick = aSrc.tick > 0 ? aSrc.tick : static_cast<unsigned>( m_gridTick );
+    lattice.extent = aSrc.extent;
+
+    const double threshold =
+            computeMinGridSpacing() / m_worldScale * ( aSrc.style == GRID_STYLE::SMALL_CROSS ? 2.0 : 1.0 );
+
+    if( aSrc.kind == GRID_SOURCE::KIND::POLAR )
+    {
+        if( aSrc.unbounded )
+        {
+            const BOX2D  screen = gridScreenBBox( aSrc );
+            const double farX = std::max( std::abs( screen.GetLeft() ), std::abs( screen.GetRight() ) );
+            const double farY = std::max( std::abs( screen.GetTop() ), std::abs( screen.GetBottom() ) );
+
+            // Bleed past the farthest corner
+            lattice.extent = VECTOR2D( std::hypot( farX, farY ) * 1.01, 2 * M_PI );
+        }
+
+        lattice.pitch.x = AutoSparsePitch( aSrc.pitch.x, lattice.tick, threshold );
+        lattice.pitch.y = aSrc.pitch.y;
+
+        if( lattice.extent.x > 0.0 )
+            lattice.pitch.y = AutoSparsePitch( aSrc.pitch.y, lattice.tick, threshold / lattice.extent.x );
+    }
+    else
+    {
+        // Both axes thin out by the same factor, which keeps the cells' shape
+        const double minPitch = std::min( aSrc.pitch.x, aSrc.pitch.y );
+        const double sparse = AutoSparsePitch( minPitch, lattice.tick, threshold ) / minPitch;
+
+        lattice.pitch = VECTOR2D( aSrc.pitch.x * sparse, aSrc.pitch.y * sparse );
+    }
+
+    return lattice;
+}
+
+
+COLOR4D GAL::gridSourceColor( const GRID_SOURCE& aSrc ) const
+{
+    COLOR4D color = aSrc.color.a > 0 ? aSrc.color : m_gridColor;
+
+    if( aSrc.highlighted )
+        color.Brighten( GRID_SELECTED_BRIGHTEN );
+
+    return color;
+}
+
+
+void GAL::drawGridCoverageShape( const GRID_SOURCE& aSrc )
+{
+    Save();
+    Translate( aSrc.origin );
+
+    // GAL rotation is counterclockwise and grid orientation clockwise on the screen
+    Rotate( -aSrc.orientation );
+
+    const double rMax = aSrc.extent.x;
+    const double phiMax = aSrc.extent.y;
+
+    if( aSrc.unbounded )
+    {
+        const BOX2D screen = gridScreenBBox( aSrc );
+
+        DrawRectangle( screen.GetOrigin(), screen.GetEnd() );
+    }
+    else if( aSrc.kind == GRID_SOURCE::KIND::CARTESIAN )
+    {
+        DrawRectangle( -aSrc.extent, aSrc.extent );
+    }
+    else if( rMax > 0.0 && phiMax >= 2 * M_PI - 1e-6 )
+    {
+        DrawCircle( VECTOR2D( 0, 0 ), rMax );
+    }
+    else if( rMax > 0.0 && phiMax > 0.0 )
+    {
+        const int            segments = std::max( 16, static_cast<int>( phiMax / ( M_PI / 16 ) ) );
+        std::deque<VECTOR2D> sector;
+
+        sector.emplace_back( 0.0, 0.0 );
+
+        for( int ii = 0; ii <= segments; ++ii )
+        {
+            const double phi = phiMax * ii / segments;
+            sector.emplace_back( rMax * std::cos( phi ), rMax * std::sin( phi ) );
+        }
+
+        sector.emplace_back( 0.0, 0.0 );
+        DrawPolygon( sector );
+    }
+
+    Restore();
+}
+
+
 VECTOR2D GAL::GetGridPoint( const VECTOR2D& aPoint ) const
 {
-#if 0
-    // This old code expects a non zero grid size, which can be wrong here.
-    return VECTOR2D( KiROUND( ( aPoint.x - m_gridOffset.x ) / m_gridSize.x ) *
-                     m_gridSize.x + m_gridOffset.x,
-                     KiROUND( ( aPoint.y - m_gridOffset.y ) / m_gridSize.y ) *
-                     m_gridSize.y + m_gridOffset.y );
-#else
-    // if grid size == 0.0 there is no grid, so use aPoint as grid reference position
+    // m_gridSources is precedence-ordered by SetGridSources, so the first cursor-snap
+    // source covering aPoint is the one that owns it.
+    for( const GRID_SOURCE& src : m_gridSources )
+    {
+        if( src.snapCursor && src.Contains( aPoint ) )
+            return src.Snap( aPoint );
+    }
+
+    // Display-grid fallback.  Grid size 0 = no grid, return aPoint unchanged.
     double cx = m_gridSize.x > 0.0 ? KiROUND( ( aPoint.x - m_gridOffset.x ) / m_gridSize.x ) *
                 m_gridSize.x + m_gridOffset.x
                                    : aPoint.x;
@@ -254,7 +435,6 @@ VECTOR2D GAL::GetGridPoint( const VECTOR2D& aPoint ) const
                                    : aPoint.y;
 
     return VECTOR2D( cx, cy );
-#endif
 }
 
 

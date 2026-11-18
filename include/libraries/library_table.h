@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef LIBRARY_TABLE_H
@@ -60,7 +60,13 @@ struct KICOMMON_API LIBRARY_ERROR
         message( aMessage )
     {};
 
+    LIBRARY_ERROR( const wxString& aMessage, const wxString& aExtraDetails ) :
+        message( aMessage ),
+        details( aExtraDetails )
+    {};
+
     wxString message;
+    wxString details;
 };
 
 
@@ -149,11 +155,17 @@ public:
      * Creates a library table from a file on disk
      * @param aPath is the path to a library table file to parse
      * @param aScope is the scope of this table (is it global or part of a project)
+     * @param aExpectedType is expected library type.
      */
-    LIBRARY_TABLE( const wxFileName &aPath, LIBRARY_TABLE_SCOPE aScope, LIBRARY_TABLE_TYPE aExpectedType = LIBRARY_TABLE_TYPE::UNINITIALIZED );
+    LIBRARY_TABLE( const wxFileName &aPath, LIBRARY_TABLE_SCOPE aScope,
+                   LIBRARY_TABLE_TYPE aExpectedType = LIBRARY_TABLE_TYPE::UNINITIALIZED );
 
     /**
      * Creates a library table from parsed text
+     *
+     * @note \a aFromClipboard isn't actually used, but might keep people from calling this with a string
+     *       filepath, which isn't going to do what they expected.
+     *
      * @param aFromClipboard isn't actually used, but might keep people from calling this with a string
      *                       filepath, which isn't going to do what they expected.
      * @param aBuffer is a string containing data to parse
@@ -172,7 +184,14 @@ public:
     LIBRARY_TABLE_ROW& InsertRow();
 
     const wxString& Path() const { return m_path; }
-    void SetPath( const wxString &aPath ) { m_path = aPath; }
+    void            SetPath( const wxString& aPath )
+    {
+        m_path = aPath;
+        m_loadedStamp.reset();
+    }
+
+    /// True when the file's content differs from what this table was loaded from or last saved to
+    bool DiskChanged() const;
 
     LIBRARY_TABLE_TYPE Type() const { return m_type; }
     void SetType( const LIBRARY_TABLE_TYPE aType ) { m_type = aType; }
@@ -201,6 +220,9 @@ public:
 
     /**
      * Returns true if the given (fully-expanded) URI exists as a library in this table
+     *
+     * @param aUri is the URI to test for.
+     * @param aProject is the currently loaded project.
      * @param aSubstituted is true if the URI should be compared with full (expanded/substituted)
      *                     versions of the row URIs
      */
@@ -210,7 +232,8 @@ public:
     std::optional<LIBRARY_TABLE_ROW*> Row( const wxString& aNickname );
     std::optional<const LIBRARY_TABLE_ROW*> Row( const wxString& aNickname ) const;
 
-    LIBRARY_RESULT<void> Save();
+    /// @param aOverwriteChanged writes even when the file changed on disk since it was loaded
+    LIBRARY_RESULT<void> Save( bool aOverwriteChanged = false );
 
     static std::map<std::string, UTF8> ParseOptions( const std::string& aOptionsList );
     static UTF8 FormatOptions( const std::map<std::string, UTF8>* aProperties );
@@ -218,9 +241,13 @@ public:
 private:
     bool initFromIR( const LIBRARY_TABLE_IR& aIR );
     bool addRowFromIR( const LIBRARY_TABLE_ROW_IR& aIR );
+    wxString diskStamp() const;
 
     /// The full path to the file this table was parsed from, if any
     wxString m_path;
+
+    /// A hash of the file content when it was loaded or last saved, so a write can tell it would clobber a newer file
+    std::optional<wxString> m_loadedStamp;
 
     LIBRARY_TABLE_SCOPE m_scope = LIBRARY_TABLE_SCOPE::UNINITIALIZED;
 

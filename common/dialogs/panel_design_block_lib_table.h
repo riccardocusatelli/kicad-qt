@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
@@ -44,6 +44,8 @@ public:
 
     void AddTable( LIBRARY_TABLE* table, const wxString& aTitle, bool aClosable );
     void OpenTable( const std::shared_ptr<LIBRARY_TABLE>& table, const wxString& aTitle );
+
+    wxAuiNotebook* GetNotebook() const { return m_notebook; }
 
 private:
     /**

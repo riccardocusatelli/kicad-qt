@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "project_tree_traverser.h"
@@ -58,6 +54,22 @@ wxDirTraverseResult PROJECT_TREE_TRAVERSER::OnFile( const wxString& aSrcFilePath
     wxFileName destFile( aSrcFilePath );
     wxString   ext = destFile.GetExt();
     bool       atRoot = destFile.GetPath() == m_projectDirPath;
+
+    auto saveAs =
+            [&]( KIWAY_FACES::FACE_T aFace )
+            {
+                if( KIFACE* kiface = m_frame->Kiway().KiFACE( aFace ) )
+                {
+                    kiface->SaveFileAs( m_projectDirPath, m_projectName, m_newProjectDirPath, m_newProjectName,
+                                        aSrcFilePath, m_errors );
+                    return;
+                }
+
+                if( !m_errors.empty() )
+                    m_errors += "\n";
+
+                m_errors += wxString::Format( _( "Cannot copy file '%s'." ), aSrcFilePath );
+            };
 
     if( ext == FILEEXT::LegacyProjectFileExtension
       || ext == FILEEXT::ProjectFileExtension
@@ -108,9 +120,7 @@ wxDirTraverseResult PROJECT_TREE_TRAVERSER::OnFile( const wxString& aSrcFilePath
              || ext == FILEEXT::NetlistFileExtension
              || destFile.GetName() == FILEEXT::SymbolLibraryTableFileName ) )
     {
-        KIFACE* eeschema = m_frame->Kiway().KiFACE( KIWAY_FACES::FACE_SCH );
-        eeschema->SaveFileAs( m_projectDirPath, m_projectName, m_newProjectDirPath,
-                              m_newProjectName, aSrcFilePath, m_errors );
+        saveAs( KIWAY_FACES::FACE_SCH );
     }
     else if( m_frame && ( ext == FILEEXT::KiCadPcbFileExtension
              || ext == FILEEXT::KiCadPcbFileExtension + FILEEXT::BackupFileSuffix
@@ -120,23 +130,17 @@ wxDirTraverseResult PROJECT_TREE_TRAVERSER::OnFile( const wxString& aSrcFilePath
              || ext == FILEEXT::FootprintAssignmentFileExtension
              || destFile.GetName() == FILEEXT::FootprintLibraryTableFileName ) )
     {
-        KIFACE* pcbnew = m_frame->Kiway().KiFACE( KIWAY_FACES::FACE_PCB );
-        pcbnew->SaveFileAs( m_projectDirPath, m_projectName, m_newProjectDirPath,
-                            m_newProjectName, aSrcFilePath, m_errors );
+        saveAs( KIWAY_FACES::FACE_PCB );
     }
     else if( m_frame && ext == FILEEXT::DrawingSheetFileExtension )
     {
-        KIFACE* pleditor = m_frame->Kiway().KiFACE( KIWAY_FACES::FACE_PL_EDITOR );
-        pleditor->SaveFileAs( m_projectDirPath, m_projectName, m_newProjectDirPath,
-                              m_newProjectName, aSrcFilePath, m_errors );
+        saveAs( KIWAY_FACES::FACE_PL_EDITOR );
     }
     else if( m_frame && ( ext == FILEEXT::GerberJobFileExtension
            || ext == FILEEXT::DrillFileExtension
              || FILEEXT::IsGerberFileExtension( ext ) ) )
     {
-        KIFACE* gerbview = m_frame->Kiway().KiFACE( KIWAY_FACES::FACE_GERBVIEW );
-        gerbview->SaveFileAs( m_projectDirPath, m_projectName, m_newProjectDirPath,
-                              m_newProjectName, aSrcFilePath, m_errors );
+        saveAs( KIWAY_FACES::FACE_GERBVIEW );
     }
     else if( destFile.GetName().StartsWith( FILEEXT::LockFilePrefix )
              && ext == FILEEXT::LockFileExtension )

@@ -14,11 +14,7 @@
 * GNU General Public License for more details.
 *
 * You should have received a copy of the GNU General Public License
-* along with this program; if not, you may find one here:
-* http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
-* or you may search the http://www.gnu.org website for the version 2 license,
-* or you may write to the Free Software Foundation, Inc.,
-* 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+* along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include <settings/cvpcb_settings.h>
@@ -81,13 +77,12 @@ bool CVPCB_SETTINGS::MigrateFromLegacy( wxConfigBase* aCfg )
 
     ret &= migrateWindowConfig( aCfg, "FootprintViewerFrame", "footprint_viewer" );
 
-    ret &= fromLegacy<bool>( aCfg, "FootprintViewerFrameDiPadFi", "footprint_viewer.pad_fill" );
-    ret &= fromLegacy<bool>( aCfg, "FootprintViewerFrameDiPadNu", "footprint_viewer.pad_numbers" );
-    ret &= fromLegacy<bool>(
-            aCfg, "FootprintViewerFrameDiModTx", "footprint_viewer.footprint_text_fill" );
+    ret &= fromLegacy<bool>( aCfg, "FootprintViewerFrameDiPadFi", "footprint_viewer.show_pad_fill" );
+    ret &= fromLegacy<bool>( aCfg, "FootprintViewerFrameDiPadNu", "footprint_viewer.show_pad_number" );
+    ret &= fromLegacy<bool>( aCfg, "FootprintViewerFrameDiModTx", "footprint_viewer.show_text_fill" );
 
-    ret &= fromLegacy<bool>( aCfg, "FootprintViewerFrameAutoZoom",   "footprint_viewer.auto_zoom" );
-    ret &= fromLegacy<double>( aCfg, "FootprintViewerFrameZoom",     "footprint_viewer.zoom" );
+    ret &= fromLegacy<bool>( aCfg, "FootprintViewerFrameAutoZoom", "footprint_viewer.autozoom" );
+    ret &= fromLegacy<double>( aCfg, "FootprintViewerFrameZoom", "footprint_viewer.zoom" );
 
     return ret;
 }

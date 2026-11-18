@@ -30,8 +30,9 @@ enum GAL_BACKEND_TYPE
 {
     GAL_TYPE_UNKNOWN = -1,  ///< not specified: a GAL engine must be set by the client
     GAL_TYPE_NONE = 0,      ///< GAL not used (the legacy wxDC engine is used)
-    GAL_TYPE_OPENGL,        ///< OpenGL implementation
-    GAL_TYPE_CAIRO,         ///< Cairo implementation
+    GAL_TYPE_OPENGL = 1,    ///< OpenGL implementation
+    GAL_TYPE_CAIRO = 2,     ///< Cairo implementation
+    GAL_TYPE_MODERN = 3,    ///< RHI implementation, Vulkan or Metal on macOS
     GAL_TYPE_LAST           ///< Sentinel, do not use as a parameter
 };
 

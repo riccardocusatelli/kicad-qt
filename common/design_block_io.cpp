@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <common.h>
@@ -128,6 +124,7 @@ bool DESIGN_BLOCK_IO_MGR::ConvertLibrary( std::map<std::string, UTF8>* aOldFileP
 
     wxArrayString dbNames;
     wxFileName    newFileName( aNewFilePath );
+    wxString      newLibName = LIB_ID::FixIllegalChars( newFileName.GetName(), true ).wx_str();
 
     if( newFileName.HasExt() )
     {
@@ -147,8 +144,9 @@ bool DESIGN_BLOCK_IO_MGR::ConvertLibrary( std::map<std::string, UTF8>* aOldFileP
 
         for( const wxString& dbName : dbNames )
         {
-            std::unique_ptr<const DESIGN_BLOCK> db( oldFilePI->GetEnumeratedDesignBlock( aOldFilePath, dbName,
-                                                                                         aOldFileProps ) );
+            std::unique_ptr<DESIGN_BLOCK> db(
+                    oldFilePI->DesignBlockLoad( aOldFilePath, dbName, false, aOldFileProps ) );
+            db->SetLibId( LIB_ID( newLibName, dbName ) );
             kicadPI->DesignBlockSave( aNewFilePath, db.get() );
         }
     }
@@ -199,20 +197,15 @@ void DESIGN_BLOCK_IO::CreateLibrary( const wxString&                    aLibrary
                                      const std::map<std::string, UTF8>* aProperties )
 {
     if( wxDir::Exists( aLibraryPath ) )
-    {
-        THROW_IO_ERROR( wxString::Format( _( "Cannot overwrite library path '%s'." ),
-                                          aLibraryPath.GetData() ) );
-    }
+        THROW_IO_ERRORF( _( "Cannot overwrite library path '%s'." ), aLibraryPath.GetData() );
 
     wxFileName dir;
     dir.SetPath( aLibraryPath );
 
     if( !dir.Mkdir() )
     {
-        THROW_IO_ERROR(
-                wxString::Format( _( "Library path '%s' could not be created.\n\n"
-                                     "Make sure you have write permissions and try again." ),
-                                  dir.GetPath() ) );
+        THROW_IO_ERRORF( _( "Library path '%s' could not be created.\n\n"
+                            "Make sure you have write permissions and try again." ), dir.GetPath() );
     }
 }
 
@@ -228,19 +221,13 @@ bool DESIGN_BLOCK_IO::DeleteLibrary( const wxString&                    aLibrary
         return false;
 
     if( !fn.IsDirWritable() )
-    {
-        THROW_IO_ERROR( wxString::Format( _( "Insufficient permissions to delete folder '%s'." ),
-                                          aLibraryPath.GetData() ) );
-    }
+        THROW_IO_ERRORF( _( "Insufficient permissions to delete folder '%s'." ), aLibraryPath.GetData() );
 
     wxDir dir( aLibraryPath );
 
     // Design block folders should only contain sub-folders for each design block
     if( dir.HasFiles() )
-    {
-        THROW_IO_ERROR( wxString::Format( _( "Library folder '%s' has unexpected files." ),
-                                          aLibraryPath.GetData() ) );
-    }
+        THROW_IO_ERRORF( _( "Library folder '%s' has unexpected files." ), aLibraryPath.GetData() );
 
     // Must delete all sub-directories before deleting the library directory
     if( dir.HasSubDirs() )
@@ -254,10 +241,11 @@ bool DESIGN_BLOCK_IO::DeleteLibrary( const wxString&                    aLibrary
         {
             wxFileName tmp = dirs[i];
 
-            if( tmp.GetExt() != FILEEXT::KiCadDesignBlockLibPathExtension )
+            if( tmp.GetExt() != FILEEXT::KiCadDesignBlockPathExtension )
             {
-                THROW_IO_ERROR( wxString::Format( _( "Unexpected folder '%s' found in library path '%s'." ),
-                                                  dirs[i].GetData(), aLibraryPath.GetData() ) );
+                THROW_IO_ERRORF( _( "Unexpected folder '%s' found in library path '%s'." ),
+                                 dirs[i].GetData(),
+                                 aLibraryPath.GetData() );
             }
         }
 
@@ -265,16 +253,12 @@ bool DESIGN_BLOCK_IO::DeleteLibrary( const wxString&                    aLibrary
             wxRemoveFile( dirs[i] );
     }
 
-    KI_LOG_TRACE( traceDesignBlocks, wxT( "Removing design block library '%s'." ),
-                aLibraryPath.GetData() );
+    KI_LOG_TRACE( traceDesignBlocks, wxT( "Removing design block library '%s'." ), aLibraryPath.GetData() );
 
     // Some of the more elaborate wxRemoveFile() crap puts up its own wxLog dialog
     // we don't want that.  we want bare metal portability with no UI here.
     if( !wxFileName::Rmdir( aLibraryPath, wxPATH_RMDIR_RECURSIVE ) )
-    {
-        THROW_IO_ERROR( wxString::Format( _( "Design block library '%s' cannot be deleted." ),
-                                          aLibraryPath.GetData() ) );
-    }
+        THROW_IO_ERRORF( _( "Design block library '%s' cannot be deleted." ), aLibraryPath.GetData() );
 
     // For some reason removing a directory in Windows is not immediately updated.  This delay
     // prevents an error when attempting to immediately recreate the same directory when over
@@ -295,9 +279,7 @@ void DESIGN_BLOCK_IO::DesignBlockEnumerate( wxArrayString&  aDesignBlockNames,
     wxDir dir( aLibraryPath );
 
     if( !dir.IsOpened() )
-    {
-        THROW_IO_ERROR( wxString::Format( _( "Design block '%s' does not exist." ), aLibraryPath ) );
-    }
+        THROW_IO_ERRORF( _( "Design block library folder '%s' could not be opened." ), aLibraryPath );
 
     wxString dirname;
     wxString fileSpec = wxT( "*." ) + wxString( FILEEXT::KiCadDesignBlockPathExtension );
@@ -305,7 +287,7 @@ void DESIGN_BLOCK_IO::DesignBlockEnumerate( wxArrayString&  aDesignBlockNames,
 
     while( cont )
     {
-        aDesignBlockNames.Add( dirname.Before( wxT( '.' ) ) );
+        aDesignBlockNames.Add( dirname.BeforeLast( wxT( '.' ) ) );
         cont = dir.GetNext( &dirname );
     }
 }
@@ -323,7 +305,7 @@ DESIGN_BLOCK* DESIGN_BLOCK_IO::DesignBlockLoad( const wxString& aLibraryPath,
     wxString dbMetadataPath = dbPath + aDesignBlockName + wxT( "." ) + FILEEXT::JsonFileExtension;
 
     if( !wxDir::Exists( dbPath ) )
-        THROW_IO_ERROR( wxString::Format( _( "Design block '%s' does not exist." ), dbPath ) );
+        THROW_IO_ERRORF( _( "Design block '%s' does not exist in library '%s'." ), aDesignBlockName, aLibraryPath );
 
     DESIGN_BLOCK* newDB = new DESIGN_BLOCK();
 
@@ -368,8 +350,7 @@ DESIGN_BLOCK* DESIGN_BLOCK_IO::DesignBlockLoad( const wxString& aLibraryPath,
         catch( ... )
         {
             delete newDB;
-            THROW_IO_ERROR( wxString::Format( _( "Design block metadata file '%s' could not be read." ),
-                                              dbMetadataPath ) );
+            THROW_IO_ERRORF( _( "Design block metadata file '%s' could not be read." ), dbMetadataPath );
         }
     }
 
@@ -394,28 +375,19 @@ void DESIGN_BLOCK_IO::DesignBlockSave( const wxString&                    aLibra
 {
     // Make sure we have a valid LIB_ID or we can't save the design block
     if( !aDesignBlock->GetLibId().IsValid() )
-    {
         THROW_IO_ERROR( _( "Design block does not have a valid library ID." ) );
-    }
 
     if( aDesignBlock->GetSchematicFile().IsEmpty() && aDesignBlock->GetBoardFile().IsEmpty() )
-    {
         THROW_IO_ERROR( _( "Design block does not have a schematic or board file." ) );
-    }
 
     wxFileName schematicFile( aDesignBlock->GetSchematicFile() );
     wxFileName boardFile( aDesignBlock->GetBoardFile() );
 
     if( !aDesignBlock->GetSchematicFile().IsEmpty() && !schematicFile.FileExists() )
-    {
-        THROW_IO_ERROR(
-                wxString::Format( _( "Schematic source file '%s' does not exist." ), schematicFile.GetFullPath() ) );
-    }
+        THROW_IO_ERRORF( _( "Schematic source file '%s' does not exist." ), schematicFile.GetFullPath() );
 
     if( !aDesignBlock->GetBoardFile().IsEmpty() && !boardFile.FileExists() )
-    {
-        THROW_IO_ERROR( wxString::Format( _( "Board source file '%s' does not exist." ), boardFile.GetFullPath() ) );
-    }
+        THROW_IO_ERRORF( _( "Board source file '%s' does not exist." ), boardFile.GetFullPath() );
 
     // Create the design block folder
     wxFileName dbFolder( aLibraryPath + wxFileName::GetPathSeparator()
@@ -426,10 +398,7 @@ void DESIGN_BLOCK_IO::DesignBlockSave( const wxString&                    aLibra
     if( !dbFolder.DirExists() )
     {
         if( !dbFolder.Mkdir() )
-        {
-            THROW_IO_ERROR( wxString::Format( _( "Design block folder '%s' could not be created." ),
-                                              dbFolder.GetFullPath().GetData() ) );
-        }
+            THROW_IO_ERRORF( _( "Design block folder '%s' could not be created." ), dbFolder.GetFullPath().GetData() );
     }
 
     if( !aDesignBlock->GetSchematicFile().IsEmpty() )
@@ -445,9 +414,9 @@ void DESIGN_BLOCK_IO::DesignBlockSave( const wxString&                    aLibra
             // Copy the source sheet file to the design block folder, under the design block name
             if( !wxCopyFile( schematicFile.GetFullPath(), dbSchematicFile ) )
             {
-                THROW_IO_ERROR(
-                        wxString::Format( _( "Schematic file '%s' could not be saved as design block at '%s'." ),
-                                          schematicFile.GetFullPath(), dbSchematicFile ) );
+                THROW_IO_ERRORF( _( "Schematic file '%s' could not be saved as design block at '%s'." ),
+                                 schematicFile.GetFullPath(),
+                                 dbSchematicFile );
             }
         }
     }
@@ -465,8 +434,9 @@ void DESIGN_BLOCK_IO::DesignBlockSave( const wxString&                    aLibra
             // Copy the source sheet file to the design block folder, under the design block name
             if( !wxCopyFile( boardFile.GetFullPath(), dbBoardFile ) )
             {
-                THROW_IO_ERROR( wxString::Format( _( "Board file '%s' could not be saved as design block at '%s'." ),
-                                                  boardFile.GetFullPath(), dbBoardFile ) );
+                THROW_IO_ERRORF( _( "Board file '%s' could not be saved as design block at '%s'." ),
+                                 boardFile.GetFullPath(),
+                                 dbBoardFile );
             }
         }
     }
@@ -486,14 +456,10 @@ void DESIGN_BLOCK_IO::DesignBlockSave( const wxString&                    aLibra
     {
         std::string payload = dbMetadata.dump( 0 );
         wxString    writeError;
-        success = KIPLATFORM::IO::AtomicWriteFile( dbMetadataFile, payload.data(), payload.size(),
-                                                   &writeError );
+        success = KIPLATFORM::IO::AtomicWriteFile( dbMetadataFile, payload.data(), payload.size(), &writeError );
 
         if( !success )
-        {
-            wxLogError( _( "Cannot save design block metadata '%s': %s" ), dbMetadataFile,
-                        writeError );
-        }
+            wxLogError( _( "Cannot save design block metadata '%s': %s" ), dbMetadataFile, writeError );
     }
     catch( ... )
     {
@@ -501,10 +467,7 @@ void DESIGN_BLOCK_IO::DesignBlockSave( const wxString&                    aLibra
     }
 
     if( !success )
-    {
-        THROW_IO_ERROR( wxString::Format(
-                _( "Design block metadata file '%s' could not be saved." ), dbMetadataFile ) );
-    }
+        THROW_IO_ERRORF( _( "Design block metadata file '%s' could not be saved." ), dbMetadataFile );
 }
 
 
@@ -514,18 +477,12 @@ void DESIGN_BLOCK_IO::DesignBlockDelete( const wxString& aLibPath, const wxStrin
     wxFileName dbDir = wxFileName( aLibPath + wxFileName::GetPathSeparator() + aDesignBlockName
                                    + wxT( "." ) + FILEEXT::KiCadDesignBlockPathExtension );
 
-    if( !dbDir.DirExists() )
-    {
-        THROW_IO_ERROR(
-                wxString::Format( _( "Design block '%s' does not exist." ), dbDir.GetFullName() ) );
-    }
+    if( !wxFileName::DirExists( dbDir.GetFullPath() ) )
+        THROW_IO_ERRORF( _( "Design block '%s' does not exist." ), dbDir.GetFullName() );
 
     // Delete the whole design block folder
     if( !wxFileName::Rmdir( dbDir.GetFullPath(), wxPATH_RMDIR_RECURSIVE ) )
-    {
-        THROW_IO_ERROR( wxString::Format( _( "Design block folder '%s' could not be deleted." ),
-                                          dbDir.GetFullPath().GetData() ) );
-    }
+        THROW_IO_ERRORF( _( "Design block folder '%s' could not be deleted." ), dbDir.GetFullPath().GetData() );
 }
 
 

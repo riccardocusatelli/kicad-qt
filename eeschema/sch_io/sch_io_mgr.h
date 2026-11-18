@@ -16,8 +16,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef _SCH_IO_MGR_H_
@@ -65,10 +65,16 @@ public:
         SCH_EAGLE,            ///< Autodesk Eagle file format
         SCH_EASYEDA,          ///< EasyEDA Std schematic file
         SCH_EASYEDAPRO,       ///< EasyEDA Pro archive
+        SCH_EASYEDAPRO_V3,    ///< EasyEDA Pro v3 archive
         SCH_GEDA,             ///< gEDA/gschem schematic format
         SCH_LTSPICE,          ///< LtSpice Schematic format
         SCH_HTTP,             ///< KiCad HTTP library
         SCH_PADS,             ///< PADS Logic schematic format
+        SCH_DIPTRACE,         ///< DipTrace schematic format
+        SCH_PCAD,             ///< P-CAD 2006 ASCII schematic format
+        SCH_ORCAD,            ///< OrCAD Capture schematic format
+        SCH_EASYPC,           ///< Easy-PC / DesignSpark PCB schematic and project
+        SCH_TARGET3001,       ///< TARGET 3001! project
 
         // Add your schematic type here.
         SCH_FILE_UNKNOWN,
@@ -77,24 +83,23 @@ public:
     // clang-format on
 
     /**
-     * Return a #SCH_IO which the caller can use to import, export, save, or load
+     * Return a #SCH_IO plugin which the caller can use to import, export, save, or load
      * design documents.
      *
-     * @param aFileType is from #SCH_FILE_T and tells which plugin to find.
+     * @param aFileType is the file type of which plugin to find.
      *
      * @return the plugin corresponding to aFileType or NULL if not found.
      *  Caller owns the returned object.
      */
-    APIEXPORT
-    static SCH_IO* FindPlugin( SCH_FILE_T aFileType );
+    APIEXPORT static SCH_IO* FindPlugin( SCH_FILE_T aFileType );
 
     /**
-     * Return a brief name for a plugin, given aFileType enum.
+     * Return a brief name for a plugin, given \a aFileType enum.
      */
     static const wxString ShowType( SCH_FILE_T aFileType );
 
     /**
-     * Return the #SCH_FILE_T from the corresponding plugin type name: "kicad", "legacy", etc.
+     * Return the file type from the corresponding plugin type name: "kicad", "legacy", etc.
      */
     static SCH_FILE_T EnumFromStr( const wxString& aFileType );
 
@@ -112,7 +117,7 @@ public:
      * Convert a schematic symbol library to the latest KiCad format
      */
     static bool ConvertLibrary( std::map<std::string, UTF8>* aOldFileProps, const wxString& aOldFilePath,
-                                const wxString& aNewFilepath );
+                                const wxString& aNewFilepath, REPORTER* aReporter = nullptr );
 };
 
 #endif // _SCH_IO_MGR_H_

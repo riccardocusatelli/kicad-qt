@@ -17,17 +17,16 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef __PCB_ACTIONS_H
 #define __PCB_ACTIONS_H
 
+#include <vector>
+
 #include <layer_ids.h>
+#include <tool/arc_draw_mode.h>
 #include <tool/tool_action.h>
 #include <tool/actions.h>
 
@@ -36,7 +35,8 @@ enum class ZONE_MODE
     ADD,             ///< Add a new zone/keepout with fresh settings
     CUTOUT,          ///< Make a cutout to an existing zone
     SIMILAR,         ///< Add a new zone with the same settings as an existing one
-    GRAPHIC_POLYGON
+    GRAPHIC_POLYGON,
+    STITCH
 };
 
 class DESIGN_BLOCK;
@@ -84,6 +84,9 @@ public:
     /// Remove all connections belonging to a single net from the active selection
     static TOOL_ACTION deselectNet;
 
+    /// Select all connections belonging to every net in the current item's net chain.
+    static TOOL_ACTION selectNetChain;
+
     /// Select unconnected footprints from ratsnest of selection
     static TOOL_ACTION selectUnconnected;
 
@@ -124,6 +127,7 @@ public:
     /// Mirroring of selected items
     static TOOL_ACTION mirrorH;
     static TOOL_ACTION mirrorV;
+    static TOOL_ACTION mirrorInteractive;
 
     /// Swapping of selected items
     static TOOL_ACTION swap;
@@ -156,6 +160,10 @@ public:
     static TOOL_ACTION healShapes;
     /// Extend selected lines to meet at a point
     static TOOL_ACTION extendLines;
+    /// Extend one graphical line or arc to the nearest boundary
+    static TOOL_ACTION extendGraphic;
+    /// Trim a section from one graphical line or arc
+    static TOOL_ACTION trimGraphic;
     /// Simplify polygon outlines
     static TOOL_ACTION simplifyPolygons;
     /// Edit polygon vertices in a table
@@ -172,6 +180,8 @@ public:
 
     /// Activation of the edit tool
     static TOOL_ACTION properties;
+    static TOOL_ACTION matchProperties;
+    static TOOL_ACTION matchPropertiesSettings;
 
     /// Activation of the exact move tool
     static TOOL_ACTION moveExact;
@@ -196,10 +206,21 @@ public:
     static TOOL_ACTION drawPolygon;
     static TOOL_ACTION drawRectangle;
     static TOOL_ACTION drawCircle;
+    static TOOL_ACTION drawEllipse;
+    static TOOL_ACTION drawEllipseArc;
     static TOOL_ACTION drawArc;
+    static TOOL_ACTION drawArcCenter;
+    static TOOL_ACTION drawArcStartEndMid;
+    static TOOL_ACTION drawArcStartEndCenter;
+    static TOOL_ACTION drawArcTangent;
+    static TOOL_ACTION drawArcStartDirEnd;
+
+    /// Tool action that starts the arc tool in the given mode.
+    static const TOOL_ACTION& DrawArcForMode( ARC_DRAW_MODE aMode );
     static TOOL_ACTION drawBezier;
     static TOOL_ACTION placePoint;
     static TOOL_ACTION placeReferenceImage;
+    static TOOL_ACTION convertImageToOutlines;
     static TOOL_ACTION placeText;
     static TOOL_ACTION drawTextBox;
     static TOOL_ACTION drawTable;
@@ -215,16 +236,21 @@ public:
     static TOOL_ACTION drawLeader;
     static TOOL_ACTION placeBarcode;
     static TOOL_ACTION drawZone;
+    static TOOL_ACTION drawCopperThievingZone;
     static TOOL_ACTION drawVia;
+    static TOOL_ACTION placeViaStack;
+    static TOOL_ACTION makeViaStack;
     static TOOL_ACTION drawRuleArea;
     static TOOL_ACTION drawZoneCutout;
     static TOOL_ACTION drawSimilarZone;
     static TOOL_ACTION placeCharacteristics;
     static TOOL_ACTION placeStackup;
+    static TOOL_ACTION placeDrillChart;
+    static TOOL_ACTION placeDrillMap;
+    static TOOL_ACTION showDrillGroups;
     static TOOL_ACTION placeFootprint;
     static TOOL_ACTION placeImportedGraphics;
     static TOOL_ACTION setAnchor;
-    static TOOL_ACTION deleteLastPoint;
 
     // Line mode grouping and events
     static TOOL_ACTION lineModeFree;         ///< Unconstrained angle mode (icon lines_any)
@@ -233,15 +259,13 @@ public:
     static TOOL_ACTION lineModeNext;         ///< Cycle through angle modes
     static TOOL_ACTION angleSnapModeChanged; ///< Notification event when angle mode changes
     static TOOL_ACTION closeOutline;
+    static TOOL_ACTION drawViaStitchArea;
 
     /// Increase width of currently drawn line
     static TOOL_ACTION incWidth;
 
     /// Decrease width of currently drawn line
     static TOOL_ACTION decWidth;
-
-    /// Switch posture when drawing arc
-    static TOOL_ACTION arcPosture;
 
     /// Switch between dimension arrow directions
     static TOOL_ACTION changeDimensionArrows;
@@ -270,6 +294,9 @@ public:
     static TOOL_ACTION routerRouteSelected;
     static TOOL_ACTION routerRouteSelectedFromEnd;
     static TOOL_ACTION routerAutorouteSelected;
+    static TOOL_ACTION routerOptimizeSelected;
+    static TOOL_ACTION routerSpreadTracks;
+
     static TOOL_ACTION cancelCurrentItem;
 
     /// Activation of the Push and Shove settings dialogs
@@ -297,6 +324,12 @@ public:
     static TOOL_ACTION genRemove;
 
     static TOOL_ACTION generatorsShowManager;
+
+    /// Exclude selected stitching vias from their parent via-stitch generator.
+    static TOOL_ACTION excludeStitchVia;
+
+    /// Restore every manually-excluded via in the selected via-stitch generators.
+    static TOOL_ACTION clearStitchViaExclusions;
 
     // Point Editor
     static TOOL_ACTION pointEditorAddCorner;
@@ -420,9 +453,6 @@ public:
     static TOOL_ACTION zonePriorityLower;
     static TOOL_ACTION zonePriorityMoveToBottom;
 
-    /// Scripting Actions
-    static TOOL_ACTION pluginsShowFolder;
-
     // Board editor control
     static TOOL_ACTION appendBoard;
     static TOOL_ACTION rescueAutosave;
@@ -435,6 +465,8 @@ public:
     static TOOL_ACTION importSpecctraSession;
     static TOOL_ACTION exportSpecctraDSN;
 
+    static TOOL_ACTION editFootprintFields;
+
     static TOOL_ACTION generateGerbers;
     static TOOL_ACTION generateDrillFiles;
     static TOOL_ACTION generatePosFile;
@@ -443,6 +475,7 @@ public:
     static TOOL_ACTION generateODBPPFile;
     static TOOL_ACTION generateD356File;
     static TOOL_ACTION generateBOM;
+    static TOOL_ACTION generateBOMLegacy;
 
     static TOOL_ACTION exportGenCAD;
     static TOOL_ACTION exportVRML;
@@ -473,11 +506,11 @@ public:
     static TOOL_ACTION editLibFpInFpEditor;
 
     static TOOL_ACTION toggleExcludeFromBOM;
+    static TOOL_ACTION toggleExcludeFromSim;
     static TOOL_ACTION toggleExcludeFromPosFiles;
 
     static TOOL_ACTION showLayersManager;
     static TOOL_ACTION showNetInspector;
-    static TOOL_ACTION showPythonConsole;
     static TOOL_ACTION zonesManager;
 
     // Design Block management
@@ -511,12 +544,15 @@ public:
     static TOOL_ACTION pasteFootprint;
     static TOOL_ACTION importFootprint;
     static TOOL_ACTION exportFootprint;
+    static TOOL_ACTION exportFootprintAsSVG;
 
+    static TOOL_ACTION compareFpLibraryWithFile;
+    static TOOL_ACTION showLibFootprintFieldsTable;
     static TOOL_ACTION footprintProperties;
-    static TOOL_ACTION defaultPadProperties;
     static TOOL_ACTION padTable;
 
     static TOOL_ACTION checkFootprint;
+    static TOOL_ACTION showFootprintUsers;
 
     static TOOL_ACTION loadFpFromBoard;
     static TOOL_ACTION saveFpToBoard;
@@ -526,6 +562,10 @@ public:
 
     /// Activation of the drawing tool (placing a PAD)
     static TOOL_ACTION placePad;
+    static TOOL_ACTION placeThtPad;
+    static TOOL_ACTION placeSmdPad;
+    static TOOL_ACTION placeNpthPad;
+    static TOOL_ACTION placePasteAperturePad;
 
     static TOOL_ACTION explodePad;
     static TOOL_ACTION recombinePad;
@@ -581,9 +621,17 @@ public:
     static TOOL_ACTION boardReannotate;
     static TOOL_ACTION repairBoard;
     static TOOL_ACTION repairFootprint;
+
+    // Footprint Editor document tabs
+    static TOOL_ACTION nextFootprintTab;
+    static TOOL_ACTION prevFootprintTab;
+    static TOOL_ACTION closeFootprintTab;
+
     static TOOL_ACTION inspectClearance;
     static TOOL_ACTION inspectConstraints;
     static TOOL_ACTION diffFootprint;
+    static TOOL_ACTION compareBoardWithFile;
+    static TOOL_ACTION compareBoardWithHistory;
     static TOOL_ACTION showFootprintAssociations;
     static TOOL_ACTION collect3DModels;
 
@@ -594,6 +642,8 @@ public:
     static TOOL_ACTION toggleNetHighlight;      // Toggles between highlight off and highlight on
     static TOOL_ACTION highlightNetSelection;   // Turns on highlight and takes net from selection
     static TOOL_ACTION highlightItem;           // Select component via cross-probe
+    static TOOL_ACTION highlightNetChain;
+    static TOOL_ACTION setTerminalPad;
 
     // Ratsnest
     static TOOL_ACTION hideNetInRatsnest;
@@ -604,6 +654,9 @@ public:
 
     /// Find an item
     static TOOL_ACTION find;
+
+    /// Find items by property criteria or expression
+    static TOOL_ACTION findByProperties;
 
     /// Find an item and start moving
     static TOOL_ACTION getAndPlace;
@@ -619,20 +672,61 @@ public:
     static TOOL_ACTION convertToArc;
     static TOOL_ACTION convertToTracks;
 
+    // Geometric constraints (#2329).  Each per-type action bakes its PCB_CONSTRAINT_TYPE parameter
+    // for menu items and hotkeys.
+    static TOOL_ACTION addConstraintParallel;
+    static TOOL_ACTION addConstraintPerpendicular;
+    static TOOL_ACTION addConstraintEqualLength;
+    static TOOL_ACTION addConstraintCollinear;
+    static TOOL_ACTION addConstraintAngular;
+    static TOOL_ACTION addConstraintTangent;
+    static TOOL_ACTION addConstraintHorizontal;
+    static TOOL_ACTION addConstraintVertical;
+    static TOOL_ACTION addConstraintFixedLength;
+    static TOOL_ACTION addConstraintConcentric;
+    static TOOL_ACTION addConstraintEqualRadius;
+    static TOOL_ACTION addConstraintFixedRadius;
+    static TOOL_ACTION addConstraintArcAngle;
+    // Point-anchored families authored by clicking anchors (route to AddPointConstraint).
+    static TOOL_ACTION addConstraintCoincident;
+    static TOOL_ACTION addConstraintPointOnLine;
+    static TOOL_ACTION addConstraintMidpoint;
+    static TOOL_ACTION addConstraintSymmetric;
+    static TOOL_ACTION addConstraintFixedPosition;   ///< Ground a point, and the cluster holding it.
+    static TOOL_ACTION removeConstraints;
+    static TOOL_ACTION showConstraints;     ///< Toggle the constraint diagnostics overlay.
+    static TOOL_ACTION hideConstraints;     ///< Same toggle, shown while the overlay is visible.
+    static TOOL_ACTION manageConstraints;      ///< Open the constraint list dialog.
+    static TOOL_ACTION showConstraintsPanel;   ///< Toggle the docked constraints pane (board editor).
+    static TOOL_ACTION toggleAutoConstraints;  ///< Toggle authoring constraints automatically while drawing.
+
+    /// Canonical ordered list of the geometric-constraint "add" actions, shared by the context
+    /// submenu (gated per selection) and the Place menu (ungated) so the two cannot drift.
+    static const std::vector<const TOOL_ACTION*>& ConstraintAddActions();
+
     /// Drag and drop
     static TOOL_ACTION ddAppendBoard;
     static TOOL_ACTION ddImportFootprint;
     static TOOL_ACTION ddImportGraphics;
+    static TOOL_ACTION ddPlaceReferenceImage;
 
     static TOOL_ACTION repeatLayout;
+    static TOOL_ACTION updateLinkedLayouts;
+    static TOOL_ACTION unlinkLayout;
+    static TOOL_ACTION expandToMatchingTopology;
+    static TOOL_ACTION expandToLargestTopology;
     static TOOL_ACTION generatePlacementRuleAreas;
 
     /// Footprint wizard frame actions:
     static TOOL_ACTION showWizards;
     static TOOL_ACTION resetWizardPrms;
-    static TOOL_ACTION selectPreviousWizardPage;
-    static TOOL_ACTION selectNextWizardPage;
     static TOOL_ACTION exportFpToEditor;
+
+    /// Display of phase skew between differential pair tracks
+    static TOOL_ACTION showDiffPhaseSkew;
+
+    /// Grid Item
+    static TOOL_ACTION placeSubGrid;
 };
 
 class PCB_EVENTS

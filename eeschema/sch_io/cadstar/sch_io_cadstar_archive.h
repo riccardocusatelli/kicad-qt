@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef SCH_IO_CADSTAR_ARCHIVE_H_
@@ -70,6 +70,8 @@ public:
                                   SCH_SHEET*             aAppendToMe = nullptr,
                                   const std::map<std::string, UTF8>* aProperties = nullptr ) override;
 
+    std::vector<LIB_SYMBOL*> GetImportedCachedLibrarySymbols() override;
+
     void EnumerateSymbolLib( wxArrayString&    aSymbolNameList,
                              const wxString&   aLibraryPath,
                              const std::map<std::string, UTF8>* aProperties = nullptr ) override;
@@ -98,6 +100,9 @@ private:
     NAME_TO_SYMBOL_MAP m_libCache;
     long long          m_cacheTimestamp;
     wxString           m_cachePath;
+
+    /// Definitions from the last LoadSchematicFile, cloned out to the import reconciler on request.
+    std::vector<std::unique_ptr<LIB_SYMBOL>> m_importedLibSymbols;
     wxFileName         m_cachecsafn;
     wxString           m_cachefplibname;
 };

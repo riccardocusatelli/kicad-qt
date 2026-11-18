@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -61,10 +57,11 @@ KICOMMON_API wxBitmap KiBitmap( BITMAPS aBitmap, int aHeightTag = -1 );
 KICOMMON_API wxBitmapBundle KiBitmapBundle( BITMAPS aBitmap, int aMinHeight = -1 );
 
 /**
- * Constructs and returns a bitmap bundle for the given icon ID, with the default
+ * Construct and return a bitmap bundle for the given icon ID, with the default
  * bitmap size being aDefHeight. Rescaling is applied if no bitmap of that size
  * is available.
- * @param aBitmapId is from the BITMAPS enum in bitmaps_list.h
+ *
+ * @param aBitmap is from the BITMAPS enum in bitmaps_list.h
  * @param aDefHeight is the desired height of the default bitmap in the bundle.
  */
 KICOMMON_API wxBitmapBundle KiBitmapBundleDef( BITMAPS aBitmap, int aDefHeight );

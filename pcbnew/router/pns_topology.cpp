@@ -15,8 +15,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <wx/log.h>
@@ -549,7 +549,8 @@ std::vector<LINE> TOPOLOGY::findLinesFromVia( ROUTER_IFACE* aRouterIface, VIA* a
     COLLISION_SEARCH_OPTIONS opts;
 
     opts.m_differentNetsOnly = false;
-    opts.m_overrideClearance = 0;
+    opts.SetFixedClearanceOverride( 0 );
+    opts.m_overrideExemptPairs = true;
     opts.m_kindMask = ITEM::SEGMENT_T | ITEM::ARC_T;
 
     m_world->QueryColliding( aVia, obstacles, opts );
@@ -1094,7 +1095,7 @@ bool TOPOLOGY::AssembleDiffPair( ITEM* aStart, DIFF_PAIR& aPair )
                 if( n_seg->Width() != p_seg->Width() )
                     continue;
 
-                if( !p_seg->Seg().ApproxParallel( n_seg->Seg(), DP_PARALLELITY_THRESHOLD ) )
+                if( !p_seg->Seg().ApproxParallel( n_seg->Seg(), DIFF_PAIR::DP_PARALLELITY_THRESHOLD ) )
                     continue;
 
                 SEG p_clip, n_clip;
@@ -1115,7 +1116,7 @@ bool TOPOLOGY::AssembleDiffPair( ITEM* aStart, DIFF_PAIR& aPair )
                 VECTOR2I    centerDiff = n_arc->CArc().GetCenter() - p_arc->CArc().GetCenter();
                 SEG::ecoord centerDist_sq = centerDiff.SquaredEuclideanNorm();
 
-                if( centerDist_sq > SEG::Square( DP_PARALLELITY_THRESHOLD ) )
+                if( centerDist_sq > SEG::Square( DIFF_PAIR::DP_PARALLELITY_THRESHOLD ) )
                     continue;
 
                 dist_sq = SEG::Square( p_arc->CArc().GetRadius() - n_arc->CArc().GetRadius() );
@@ -1185,15 +1186,13 @@ bool TOPOLOGY::AssembleDiffPair( ITEM* aStart, DIFF_PAIR& aPair )
         gap = (int) std::abs( refArc->CArc().GetRadius() - coupledArc->CArc().GetRadius() ) - lp.Width();
     }
 
-    aPair = DIFF_PAIR( lp, ln );
-    aPair.SetWidth( lp.Width() );
+    aPair = DIFF_PAIR( lp, ln, DP_DIMENSIONS( lp.Width(), gap ) );
     aPair.SetLayers( lp.Layers() );
-    aPair.SetGap( gap );
 
     return true;
 }
 
-const TOPOLOGY::CLUSTER TOPOLOGY::AssembleCluster( ITEM* aStart, int aLayer, double aAreaExpansionLimit, NET_HANDLE aExcludedNet )
+const TOPOLOGY::CLUSTER TOPOLOGY::AssembleCluster( ITEM* aStart, int aLayer, double aAreaExpansionLimit, NET_HANDLE aExcludedNet, int aOverrideClearance )
 {
     CLUSTER cluster;
     std::deque<ITEM*> pending;
@@ -1201,7 +1200,7 @@ const TOPOLOGY::CLUSTER TOPOLOGY::AssembleCluster( ITEM* aStart, int aLayer, dou
     COLLISION_SEARCH_OPTIONS opts;
 
     opts.m_differentNetsOnly = false;
-    opts.m_overrideClearance = 0;
+    opts.SetFixedClearanceOverride( aOverrideClearance );
 
     pending.push_back( aStart );
 

@@ -14,8 +14,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "dialog_destination.h"
@@ -69,6 +69,14 @@ DIALOG_DESTINATION::DIALOG_DESTINATION( wxWindow* aParent, JOBSET* aJobsFile,
 
     m_buttonOutputPath->SetBitmap( KiBitmapBundle( BITMAPS::small_folder ) );
 
+    m_buttonDeselectAll->Connect( wxEVT_COMMAND_BUTTON_CLICKED,
+                                  wxCommandEventHandler( DIALOG_DESTINATION::onDeselectAllClicked ),
+                                  NULL, this );
+
+    m_includeJobs->Connect( wxEVT_CHECKLISTBOX,
+                           wxCommandEventHandler( DIALOG_DESTINATION::onIncludeJobsCheck ),
+                           NULL, this );
+
     SetupStandardButtons();
 }
 
@@ -84,7 +92,7 @@ void DIALOG_DESTINATION::onOutputPathBrowseClicked(wxCommandEvent& event)
     wxString projectPath = Prj().GetProjectPath();
 
     // Expand the same way JOBS_OUTPUT_FOLDER and JOBS_OUTPUT_ARCHIVE do so the picker opens where output lands
-    wxString current = ExpandTextVars( m_textCtrlOutputPath->GetValue(), &Prj() );
+    wxString current = ExpandTextVars( m_textCtrlOutputPath->GetValue(), &Prj(), INTERNAL );
     current = ExpandEnvVarSubstitutions( current, &Prj() );
 
     if( isFolder )
@@ -150,6 +158,36 @@ void DIALOG_DESTINATION::onOutputPathBrowseClicked(wxCommandEvent& event)
     }
 
 }
+
+
+void DIALOG_DESTINATION::onDeselectAllClicked(wxCommandEvent& event)
+{
+    for( size_t idx = 0; idx < m_includeJobs->GetCount(); ++idx )
+    {
+        m_includeJobs->Check( idx, false );
+    }
+
+    event.Skip();
+}
+
+
+void DIALOG_DESTINATION::onIncludeJobsCheck(wxCommandEvent& event)
+{
+    int clickedIndex = event.GetInt();
+
+    bool newCheckedState = m_includeJobs->IsChecked( clickedIndex );
+
+    wxArrayInt currentSelections;
+    m_includeJobs->GetSelections( currentSelections );
+
+    for( size_t i = 0; i < currentSelections.GetCount(); i++ )
+    {
+        m_includeJobs->Check( currentSelections[i], newCheckedState );
+    }
+
+    event.Skip();
+}
+
 
 bool DIALOG_DESTINATION::TransferDataFromWindow()
 {

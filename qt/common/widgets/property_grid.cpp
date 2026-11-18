@@ -23,6 +23,7 @@
  * The property grid of the properties panels with Qt (see widgets/property_grid.h).
  */
 
+#include <i18n_utility.h>
 #include <widgets/property_grid.h>
 
 #include <dialogs/dialog_color_picker.h>
@@ -155,6 +156,7 @@ public:
 
                 case PG_UNIT_KIND::ANGLE:
                     binder->SetCoordType( ORIGIN_TRANSFORMS::NOT_A_COORD );
+                    binder->SetDataType( EDA_DATA_TYPE::ANGLE );
                     binder->SetUnits( EDA_UNITS::DEGREES );
                     break;
 
@@ -266,7 +268,12 @@ public:
         {
             auto it = m_binders.find( text );
 
-            if( it != m_binders.end() )
+            if( it != m_binders.end() && prop->IsValueUnspecified() )
+            {
+                // Shown as a mix, not blank: set on the control since the binder would append units
+                text->setText( ToQString( INDETERMINATE_STATE ) );
+            }
+            else if( it != m_binders.end() )
             {
                 PGUnitBinderShowValue( *it->second, prop->GetValue(), prop->GetUnitKind(),
                                        prop->GetAngleScale(), prop->IsValueUnspecified() );

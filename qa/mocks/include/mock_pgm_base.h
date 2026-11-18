@@ -14,15 +14,13 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #pragma once
-#include <qa_utils/wx_utils/unit_test_utils.h>
+
+#include <qa_utils/mock_utils.h>
+
 #include <pgm_base.h>
 #include <config.h>
 
@@ -42,8 +40,6 @@ MOCK_BASE_CLASS( MOCK_PGM_BASE, PGM_BASE )
     MOCK_METHOD( SetTextEditor, 1, void( const wxString& ) );
     MOCK_METHOD( GetTextEditor, 1, wxString&( bool ) );
     MOCK_METHOD( AskUserForPreferredEditor, 1, const wxString( const wxString& ) );
-    MOCK_CONST_METHOD( IsKicadEnvVariableDefined, 0, bool() );
-    MOCK_CONST_METHOD( GetKicadEnvVariable, 0, const wxString&() );
     MOCK_CONST_METHOD( GetPdfBrowserName, 0, const wxString&() );
     MOCK_METHOD( SetPdfBrowserName, 1, void( const wxString& ) );
     MOCK_CONST_METHOD( UseSystemPdfBrowser, 0, bool() );

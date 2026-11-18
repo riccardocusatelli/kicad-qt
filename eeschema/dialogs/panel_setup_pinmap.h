@@ -15,15 +15,10 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef _PANEL_SETUP_PINMAP_H_
-#define _PANEL_SETUP_PINMAP_H_
+#pragma once
 
 #include <sch_pin.h>        // For PINTYPE_COUNT definition
 #include <erc/erc_settings.h>
@@ -46,8 +41,12 @@ public:
 
     void ResetPanel() override;
 
+    bool TransferDataToWindow() override;
+    bool TransferDataFromWindow() override;
+
     void OnMouseEnter( wxMouseEvent& aEvent );
     void OnMouseLeave( wxMouseEvent& aEvent );
+
 private:
     void changeErrorLevel( wxCommandEvent& event );
     void reBuildMatrixPanel();
@@ -55,12 +54,12 @@ private:
 
     DECLARE_EVENT_TABLE()
 
+private:
     SCH_EDIT_FRAME*  m_parent;
     SCHEMATIC*       m_schematic;
     wxColour         m_btnBackground;
     wxWindow*        m_buttonList[ELECTRICAL_PINTYPES_TOTAL][ELECTRICAL_PINTYPES_TOTAL];
+    PIN_ERROR        m_buttonStateList[ELECTRICAL_PINTYPES_TOTAL][ELECTRICAL_PINTYPES_TOTAL];
     bool             m_initialized;
 };
 
-
-#endif    // _PANEL_SETUP_PINMAP_H_

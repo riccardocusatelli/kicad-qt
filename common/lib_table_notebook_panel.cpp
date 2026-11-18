@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <wx/sizer.h>
@@ -126,8 +126,7 @@ bool LIB_TABLE_NOTEBOOK_PANEL::TableModified()
     LIBRARY_TABLE& table = GetModel()->Table();
     wxFileName     file( table.Path() );
 
-    std::unique_ptr<LIBRARY_TABLE> sourceTable =
-            std::make_unique<LIBRARY_TABLE>( file, LIBRARY_TABLE_SCOPE::GLOBAL );
+    std::unique_ptr<LIBRARY_TABLE> sourceTable = std::make_unique<LIBRARY_TABLE>( file, table.Scope(), table.Type() );
 
     if( table.IsReadOnly() )
     {

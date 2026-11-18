@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef TRIGO_H
@@ -124,6 +120,16 @@ inline void RotatePoint( VECTOR2D& point, const VECTOR2D& aCenter, const EDA_ANG
 }
 
 /**
+ * Return a new VECTOR2D that is the result of rotating aVector by aAngle.
+ */
+inline VECTOR2D GetRotated( const VECTOR2D& aVector, const EDA_ANGLE& aAngle )
+{
+    VECTOR2D result = aVector;
+    RotatePoint( &result.x, &result.y, aAngle );
+    return result;
+}
+
+/**
  * Determine the center of an arc or circle given three points on its circumference.
  *
  * @param aStart The starting point of the circle (equivalent to aEnd).
@@ -135,6 +141,12 @@ const VECTOR2I CalcArcCenter( const VECTOR2I& aStart, const VECTOR2I& aMid, cons
 const VECTOR2D CalcArcCenter( const VECTOR2D& aStart, const VECTOR2D& aMid, const VECTOR2D& aEnd );
 const VECTOR2D CalcArcCenter( const VECTOR2D& aStart, const VECTOR2D& aEnd,
                               const EDA_ANGLE& aAngle );
+
+/**
+ * @return true if the three points describe no arc whose center fits in VECTOR2I, which is the case
+ *         for collinear points.  Coincident start and end make a full circle, not a line.
+ */
+bool IsStraightArc( const VECTOR2I& aStart, const VECTOR2I& aMid, const VECTOR2I& aEnd );
 
 /**
  * Return the middle point of an arc, half-way between aStart and aEnd.
@@ -152,7 +164,7 @@ const VECTOR2I CalcArcMid( const VECTOR2I& aStart, const VECTOR2I& aEnd, const V
                            bool aMinArcAngle = true );
 
 /**
- * Test if \a aRefPoint is with \a aDistance on the line defined by \a aStart and \a aEnd..
+ * Test if \a aRefPoint is with \a aDistance on the line defined by \a aStart and \a aEnd.
  *
  * @param aRefPoint = reference point to test
  * @param aStart is the first end-point of the line segment

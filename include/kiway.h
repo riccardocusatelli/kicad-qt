@@ -15,11 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef KIWAY_H_
@@ -105,6 +101,9 @@
 #include <frame_type.h>
 #include <mail_type.h>
 #include <ki_exception.h>
+#include <lib_id.h>
+
+class KICAD_API_SERVER;
 
 
 #include <kiface.h>
@@ -224,7 +223,7 @@ public:
     LOCAL_HISTORY& LocalHistory() { return *m_local_history; }
 
     /**
-     * Change the language and then calls ShowChangedLanguage() on all #KIWAY_PLAYERs.
+     * Change the language and then calls ShowChangedLanguage() on all #KIWAY_PLAYER objects.
      */
     virtual void SetLanguage( int aLanguage );
 
@@ -266,6 +265,14 @@ public:
 
     bool ProcessJobConfigDialog( KIWAY_FACES::FACE_T aFace, JOB* aJob, wxWindow* aWindow );
 
+    bool ProcessApiOpenDocument( KIWAY_FACES::FACE_T aFace, const KIFACE::DOCUMENT_SPEC& aSpec,
+                                 KICAD_API_SERVER* aServer,
+                                 wxString* aError = nullptr );
+
+    bool ProcessApiCloseDocument( KIWAY_FACES::FACE_T aFace, const KIFACE::DOCUMENT_SPEC& aSpec,
+                                  KICAD_API_SERVER* aServer,
+                                  wxString* aError = nullptr );
+
     /**
      * Gets the window pointer to the blocking dialog (to send it signals)
      * @return Pointer to blocking dialog window or null if none
@@ -297,11 +304,7 @@ private:
 };
 
 
-#ifndef SWIG
-// provided by single_top.cpp and kicad.cpp;
 extern KIWAY Kiway;
-// whereas python launchers: single_top.py and project manager instantiate as a python object
-#endif
 
 
 

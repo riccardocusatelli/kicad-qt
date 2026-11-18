@@ -14,11 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, you may find one here:
- * http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
- * or you may search the http://www.gnu.org website for the version 2 license,
- * or you may write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -34,20 +30,21 @@ class PAGED_DIALOG;
 class PCB_EDIT_FRAME;
 class SCINTILLA_TRICKS;
 class HTML_MESSAGE_BOX;
+class DRC_RULE_DOCUMENT;
 
 
 class PANEL_SETUP_RULES : public PANEL_SETUP_RULES_BASE
 {
 public:
-    PANEL_SETUP_RULES( wxWindow* aParentWindow, PCB_EDIT_FRAME* aFrame );
+    PANEL_SETUP_RULES( wxWindow* aParentWindow, PCB_EDIT_FRAME* aFrame, DRC_RULE_DOCUMENT* aDocument );
     ~PANEL_SETUP_RULES( ) override;
-
-    void ImportSettingsFrom( BOARD* aBoard );
 
     /**
      * @return true if the rules text differs from what was loaded and can be saved.
      */
     bool IsModified() const;
+
+    void RefreshFromDocument();
 
 private:
     void onScintillaCharAdded( wxStyledTextEvent &aEvent );
@@ -65,6 +62,7 @@ private:
     bool TransferDataFromWindow() override;
 
     PCB_EDIT_FRAME*   m_frame;
+    DRC_RULE_DOCUMENT* m_document;
     SCINTILLA_TRICKS* m_scintillaTricks;
     wxString          m_originalText;
 
