@@ -46,7 +46,7 @@ WRL2TRANSFORM::WRL2TRANSFORM( WRL2NODE* aParent ) : WRL2NODE()
 
 WRL2TRANSFORM::~WRL2TRANSFORM()
 {
-    wxLogTrace( traceVrmlPlugin,
+    KI_LOG_TRACE( traceVrmlPlugin,
                 wxT( " * [INFO] Destroying Transform node with %zu children, %zu"
                      "references, and %zu back pointers." ),
                 m_Children.size(), m_Refs.size(), m_BackPointers.size() );
@@ -79,7 +79,7 @@ bool WRL2TRANSFORM::Read( WRLPROC& proc, WRL2BASE* aTopNode )
      * }
      */
 
-    wxCHECK_MSG( aTopNode, false, wxT( "Invalid top node." ) );
+    KI_CHECK_MSG( aTopNode, false, wxT( "Invalid top node." ) );
 
     center.x = 0.0;
     center.y = 0.0;
@@ -107,7 +107,7 @@ bool WRL2TRANSFORM::Read( WRLPROC& proc, WRL2BASE* aTopNode )
 
     if( proc.eof() )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                           " * [INFO] bad file format; unexpected eof %s." ),
                     __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition() );
 
@@ -116,7 +116,7 @@ bool WRL2TRANSFORM::Read( WRLPROC& proc, WRL2BASE* aTopNode )
 
     if( '{' != tok )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( "%s:%s:%d\n"
                          " * [INFO] bad file format; expecting '{' but got '%s' %s." ),
                     __FILE__, __FUNCTION__, __LINE__, tok, proc.GetFilePosition() );
@@ -137,7 +137,7 @@ bool WRL2TRANSFORM::Read( WRLPROC& proc, WRL2BASE* aTopNode )
 
         if( !proc.ReadName( glob ) )
         {
-            wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+            KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                               "%s" ),
                         __FILE__, __FUNCTION__, __LINE__ , proc.GetError() );
 
@@ -155,7 +155,7 @@ bool WRL2TRANSFORM::Read( WRLPROC& proc, WRL2BASE* aTopNode )
         {
             if( !proc.ReadSFVec3f( center ) )
             {
-                wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+                KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                                   " * [INFO] invalid center %s\n"
                                                   " * [INFO] file: '%s'\n"
                                                   "%s" ),
@@ -178,7 +178,7 @@ bool WRL2TRANSFORM::Read( WRLPROC& proc, WRL2BASE* aTopNode )
         {
             if( !proc.ReadSFRotation( rotation ) )
             {
-                wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+                KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                                   " * [INFO] invalid rotation %s\n"
                                                   " * [INFO] file: '%s'\n"
                                                   "%s" ),
@@ -192,7 +192,7 @@ bool WRL2TRANSFORM::Read( WRLPROC& proc, WRL2BASE* aTopNode )
         {
             if( !proc.ReadSFVec3f( scale ) )
             {
-                wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+                KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                                   " * [INFO] invalid scale %s\n"
                                                   " * [INFO] file: '%s'\n"
                                                   "%s" ),
@@ -210,7 +210,7 @@ bool WRL2TRANSFORM::Read( WRLPROC& proc, WRL2BASE* aTopNode )
             {
                 aTopNode->SetApplyUnitConversion( false );
 
-                wxLogTrace( traceVrmlPlugin,
+                KI_LOG_TRACE( traceVrmlPlugin,
                             wxT( " * [INFO] Detected top-level scale in VRML file, "
                                  "disabling unit conversion." ) );
             }
@@ -219,7 +219,7 @@ bool WRL2TRANSFORM::Read( WRLPROC& proc, WRL2BASE* aTopNode )
         {
             if( !proc.ReadSFRotation( scaleOrientation ) )
             {
-                wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+                KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                                   " * [INFO] invalid scaleOrientation %s\n"
                                                   " * [INFO] file: '%s'\n"
                                                   "%s" ),
@@ -233,7 +233,7 @@ bool WRL2TRANSFORM::Read( WRLPROC& proc, WRL2BASE* aTopNode )
         {
             if( !proc.ReadSFVec3f( translation ) )
             {
-                wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+                KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                                   " * [INFO] invalid translation %s\n"
                                                   " * [INFO] file: '%s'\n"
                                                   "%s" ),
@@ -259,7 +259,7 @@ bool WRL2TRANSFORM::Read( WRLPROC& proc, WRL2BASE* aTopNode )
         }
         else
         {
-            wxLogTrace( traceVrmlPlugin,
+            KI_LOG_TRACE( traceVrmlPlugin,
                         wxT( "%s:%s:%d\n"
                              " * [INFO] invalid Transform %s.\n"
                              " * [INFO] file: '%s'\n" ),
@@ -287,7 +287,7 @@ bool WRL2TRANSFORM::HasNonUnityScale() const
 
 bool WRL2TRANSFORM::AddRefNode( WRL2NODE* aNode )
 {
-    wxCHECK_MSG( aNode, false, wxT( "Invalid node." ) );
+    KI_CHECK_MSG( aNode, false, wxT( "Invalid node." ) );
 
     // take possession if the node is dangling WRL2_SHAPE
 
@@ -319,7 +319,7 @@ bool WRL2TRANSFORM::readChildren( WRLPROC& proc, WRL2BASE* aTopNode )
 
     if( proc.eof() )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                           " * [INFO] bad file format; unexpected eof %s." ),
                     __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition() );
 
@@ -361,7 +361,7 @@ bool WRL2TRANSFORM::readChildren( WRLPROC& proc, WRL2BASE* aTopNode )
 
 SGNODE* WRL2TRANSFORM::TranslateToSG( SGNODE* aParent )
 {
-    wxLogTrace( traceVrmlPlugin,
+    KI_LOG_TRACE( traceVrmlPlugin,
                 wxT( " * [INFO] Translating Switch with %zu children, %zu references, and"
                      "%zu back pointers." ),
                 m_Children.size(), m_Refs.size(), m_BackPointers.size() );
@@ -371,7 +371,7 @@ SGNODE* WRL2TRANSFORM::TranslateToSG( SGNODE* aParent )
 
     S3D::SGTYPES ptype = S3D::GetSGNodeType( aParent );
 
-    wxCHECK_MSG( aParent && ( ptype == S3D::SGTYPE_TRANSFORM ), nullptr,
+    KI_CHECK_MSG( aParent && ( ptype == S3D::SGTYPE_TRANSFORM ), nullptr,
                  wxString::Format( wxT( "Transform does not have a Transform parent (parent "
                                         "ID: %d)." ), ptype ) );
 

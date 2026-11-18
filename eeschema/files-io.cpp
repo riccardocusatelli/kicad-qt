@@ -193,7 +193,7 @@ bool SCH_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
     wxFileName wx_filename( fullFileName );
 
     // We insist on caller sending us an absolute path, if it does not, we say it's a bug.
-    wxASSERT_MSG( wx_filename.IsAbsolute(), wxS( "Path is not absolute!" ) );
+    KI_ASSERT_MSG( wx_filename.IsAbsolute(), wxS( "Path is not absolute!" ) );
 
     if( !LockFile( fullFileName ) )
     {
@@ -418,7 +418,7 @@ bool SCH_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
                             sheet->SetName( sheetInfo.name );
                             loadedSheets.push_back( sheet );
 
-                            wxLogTrace( tracePathsAndFiles, wxS( "Loaded top-level sheet '%s' (UUID %s) from %s" ),
+                            KI_LOG_TRACE( tracePathsAndFiles, wxS( "Loaded top-level sheet '%s' (UUID %s) from %s" ),
                                         sheet->GetName(), sheet->m_Uuid.AsString(), sheetPath );
                         }
                     }
@@ -429,7 +429,7 @@ bool SCH_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
                     }
                     else
                     {
-                        wxLogTrace( tracePathsAndFiles,
+                        KI_LOG_TRACE( tracePathsAndFiles,
                                     wxS( "Loaded multi-root schematic with no top-level sheets!" ) );
                         newSchematic->CreateDefaultScreens();
                     }
@@ -448,9 +448,9 @@ bool SCH_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
                         if( SCH_SHEET* topSheet = newSchematic->GetTopLevelSheet() )
                             topSheet->SetName( _( "Root" ) );
 
-                        wxLogTrace( tracePathsAndFiles, wxS( "Loaded schematic with root sheet UUID %s" ),
+                        KI_LOG_TRACE( tracePathsAndFiles, wxS( "Loaded schematic with root sheet UUID %s" ),
                                     rootSheet->m_Uuid.AsString() );
-                        wxLogTrace( traceSchCurrentSheet,
+                        KI_LOG_TRACE( traceSchCurrentSheet,
                                     wxS( "After loading: Current sheet path='%s', size=%zu, empty=%d" ),
                                     newSchematic->CurrentSheet().Path().AsString(),
                                     newSchematic->CurrentSheet().size(),
@@ -669,10 +669,10 @@ bool SCH_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
             {
                 wxFileName cacheFn = pro;
 
-                wxLogTrace( traceAutoSave, "[SetName dbg] cacheFn BEFORE path='%s' name='%s' full='%s' arg='%s'",
+                KI_LOG_TRACE( traceAutoSave, "[SetName dbg] cacheFn BEFORE path='%s' name='%s' full='%s' arg='%s'",
                             cacheFn.GetPath(), cacheFn.GetName(), cacheFn.GetFullPath(), cacheFn.GetName() + "-cache" );
                 cacheFn.SetName( cacheFn.GetName() + "-cache" );
-                wxLogTrace( traceAutoSave, "[SetName dbg] cacheFn AFTER  path='%s' name='%s' full='%s'",
+                KI_LOG_TRACE( traceAutoSave, "[SetName dbg] cacheFn AFTER  path='%s' name='%s' full='%s'",
                             cacheFn.GetPath(), cacheFn.GetName(), cacheFn.GetFullPath() );
                 cacheFn.SetExt( FILEEXT::LegacySymbolLibFileExtension );
 
@@ -751,7 +751,7 @@ bool SCH_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
         // instead of the default one.
         LoadDrawingSheet();
 
-        wxLogTrace( traceSchCurrentSheet, "Before CheckForMissingSymbolInstances: Current sheet path='%s', size=%zu",
+        KI_LOG_TRACE( traceSchCurrentSheet, "Before CheckForMissingSymbolInstances: Current sheet path='%s', size=%zu",
                     GetCurrentSheet().Path().AsString(), GetCurrentSheet().size() );
 
         // Check must run before pruning so variant data on a stale instance path is migrated
@@ -770,7 +770,7 @@ bool SCH_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
         if( repairedPageNumbers )
             OnModify();
 
-        wxLogTrace( traceSchCurrentSheet, "After SetScreen: Current sheet path='%s', size=%zu",
+        KI_LOG_TRACE( traceSchCurrentSheet, "After SetScreen: Current sheet path='%s', size=%zu",
                     GetCurrentSheet().Path().AsString(), GetCurrentSheet().size() );
 
         // Older files can omit implied junctions. Repair them before publishing connectivity;
@@ -863,7 +863,7 @@ bool SCH_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
 
     for( wxEvtHandler* listener : m_schematicChangeListeners )
     {
-        wxCHECK2( listener, continue );
+        KI_CHECK2( listener, continue );
 
         // Use the windows variant when handling event messages in case there is any special
         // event handler pre and/or post processing specific to windows.
@@ -900,7 +900,7 @@ bool SCH_EDIT_FRAME::OpenProjectFiles( const std::vector<wxString>& aFileSet, in
     CallAfter(
             [&]()
             {
-                KIFACE *schface = Kiway().KiFACE( KIWAY::FACE_SCH );
+                KIFACE *schface = Kiway().KiFACE( KIWAY_FACES::FACE_SCH );
                 schface->PreloadLibraries( &Kiway() );
 
                 Pgm().PreloadDesignBlockLibraries( &Kiway() );
@@ -1062,7 +1062,7 @@ bool SCH_EDIT_FRAME::saveSchematicFile( SCH_SHEET* aSheet, const wxString& aSave
 
     SCH_SCREEN* screen = aSheet->GetScreen();
 
-    wxCHECK( screen, false );
+    KI_CHECK( screen, false );
 
     // Cannot save to nowhere
     if( aSavePath.IsEmpty() )
@@ -1103,7 +1103,7 @@ bool SCH_EDIT_FRAME::saveSchematicFile( SCH_SHEET* aSheet, const wxString& aSave
     }
 
     // Save
-    wxLogTrace( traceAutoSave, wxS( "Saving file " ) + schematicFileName.GetFullPath() );
+    KI_LOG_TRACE( traceAutoSave, wxS( "Saving file " ) + schematicFileName.GetFullPath() );
 
     SCH_IO_MGR::SCH_FILE_T pluginType = SCH_IO_MGR::GuessPluginTypeFromSchPath( schematicFileName.GetFullPath() );
 
@@ -1155,7 +1155,7 @@ bool PrepareSaveAsFiles( SCHEMATIC& aSchematic, SCH_SCREENS& aScreens, const wxF
     {
         screen = aScreens.GetScreen( i );
 
-        wxCHECK2( screen, continue );
+        KI_CHECK2( screen, continue );
 
         if( screen == aSchematic.RootScreen() )
             continue;
@@ -1181,7 +1181,7 @@ bool PrepareSaveAsFiles( SCHEMATIC& aSchematic, SCH_SCREENS& aScreens, const wxF
             else
                 dest.Assign( aNewRoot.GetPath(), dest.GetFullName() );
 
-            wxLogTrace( tracePathsAndFiles, wxS( "Moving schematic from '%s' to '%s'." ),
+            KI_LOG_TRACE( tracePathsAndFiles, wxS( "Moving schematic from '%s' to '%s'." ),
                         screen->GetFileName(), dest.GetFullPath() );
 
             if( !dest.DirExists() && !dest.Mkdir() )
@@ -1239,7 +1239,7 @@ bool SCH_EDIT_FRAME::SaveProject( bool aSaveAs )
     if( Prj().IsNullProject() || aSaveAs )
     {
         // Null project should only be possible in standalone mode.
-        wxCHECK( Kiface().IsSingle() || aSaveAs, false );
+        KI_CHECK( Kiface().IsSingle() || aSaveAs, false );
 
         wxFileName newFileName;
         wxFileName savePath( Prj().GetProjectFullName() );
@@ -1343,7 +1343,7 @@ bool SCH_EDIT_FRAME::SaveProject( bool aSaveAs )
     {
         screen = screens.GetScreen( i );
 
-        wxCHECK2( screen, continue );
+        KI_CHECK2( screen, continue );
 
         // Convert legacy schematics file name extensions for the new format.
         wxFileName tmpFn = filenameMap[screen];
@@ -1409,7 +1409,7 @@ bool SCH_EDIT_FRAME::SaveProject( bool aSaveAs )
     {
         screen = screens.GetScreen( i );
 
-        wxCHECK2( screen, continue );
+        KI_CHECK2( screen, continue );
 
         // Convert legacy schematics file name extensions for the new format.
         wxFileName tmpFn = filenameMap[screen];
@@ -1483,14 +1483,14 @@ bool SCH_EDIT_FRAME::SaveProject( bool aSaveAs )
     {
         SCH_SHEET* sheet = sheetPath.Last();
 
-        wxCHECK2( sheet, continue );
+        KI_CHECK2( sheet, continue );
 
         // Do not save the virtual root sheet
         if( !sheet->IsVirtualRootSheet() )
             sheets.emplace_back( std::make_pair( sheet->m_Uuid, sheet->GetName() ) );
     }
 
-    wxASSERT( filenameMap.count( Schematic().RootScreen() ) );
+    KI_ASSERT( filenameMap.count( Schematic().RootScreen() ) );
     wxFileName projectPath( filenameMap.at( Schematic().RootScreen() ) );
     projectPath.SetExt( FILEEXT::ProjectFileExtension );
 
@@ -1601,7 +1601,7 @@ bool SCH_EDIT_FRAME::importFile( const wxString& aFileName, int aFileType,
     {
         // We insist on caller sending us an absolute path, if it does not, we say it's a bug.
         // Unless we are passing the files in aproperties, in which case aFileName can be empty.
-        wxCHECK_MSG( aFileName.IsEmpty() || filename.IsAbsolute(), false,
+        KI_CHECK_MSG( aFileName.IsEmpty() || filename.IsAbsolute(), false,
                      wxS( "Import schematic: path is not absolute!" ) );
 
         try
@@ -1767,7 +1767,7 @@ bool SCH_EDIT_FRAME::importFile( const wxString& aFileName, int aFileType,
 
         for( wxEvtHandler* listener : m_schematicChangeListeners )
         {
-            wxCHECK2( listener, continue );
+            KI_CHECK2( listener, continue );
 
             // Use the windows variant when handling event messages in case there is any
             // special event handler pre and/or post processing specific to windows.

@@ -78,7 +78,7 @@ EDA_ITEM* PCB_TRACK::Clone() const
 
 void PCB_TRACK::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther && aOther->Type() == PCB_TRACE_T, /* void */ );
+    KI_CHECK( aOther && aOther->Type() == PCB_TRACE_T, /* void */ );
     *this = *static_cast<const PCB_TRACK*>( aOther );
 }
 
@@ -121,7 +121,7 @@ EDA_ITEM* PCB_ARC::Clone() const
 
 void PCB_ARC::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther && aOther->Type() == PCB_ARC_T, /* void */ );
+    KI_CHECK( aOther && aOther->Type() == PCB_ARC_T, /* void */ );
     *this = *static_cast<const PCB_ARC*>( aOther );
 }
 
@@ -182,7 +182,7 @@ PCB_VIA& PCB_VIA::operator=( const PCB_VIA &aOther )
 
 void PCB_VIA::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther && aOther->Type() == PCB_VIA_T, /* void */ );
+    KI_CHECK( aOther && aOther->Type() == PCB_VIA_T, /* void */ );
     *this = *static_cast<const PCB_VIA*>( aOther );
 }
 
@@ -418,14 +418,14 @@ double PCB_VIA::Similarity( const BOARD_ITEM& aOther ) const
 void PCB_VIA::SetWidth( int aWidth )
 {
     m_padStack.SetSize( { aWidth, aWidth }, PADSTACK::ALL_LAYERS );
-    wxFAIL_MSG( wxT( "Warning: PCB_VIA::SetWidth() called without a layer argument" ) );
+    KI_FAIL_MSG( wxT( "Warning: PCB_VIA::SetWidth() called without a layer argument" ) );
 }
 
 
 int PCB_VIA::GetWidth() const
 {
     // This is present because of the parent class.  It should never be actually called on a via.
-    wxCHECK_MSG( false, m_padStack.Size( PADSTACK::ALL_LAYERS ).x,
+    KI_CHECK_MSG( false, m_padStack.Size( PADSTACK::ALL_LAYERS ).x,
                  wxT( "Warning: PCB_VIA::GetWidth() called without a layer argument" ) );
 }
 
@@ -472,7 +472,7 @@ void PCB_TRACK::Serialize( google::protobuf::Any &aContainer ) const
     kiapi::common::PackCustomProperties( track.mutable_custom_properties(), *this );
 
     if( !aContainer.PackFrom( track ) )
-        wxFAIL_MSG( wxT( "Failed to pack PCB_TRACK" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack PCB_TRACK" ) );
 }
 
 
@@ -543,7 +543,7 @@ void PCB_ARC::Serialize( google::protobuf::Any &aContainer ) const
     kiapi::common::PackCustomProperties( arc.mutable_custom_properties(), *this );
 
     if( !aContainer.PackFrom( arc ) )
-        wxFAIL_MSG( wxT( "Failed to pack PCB_ARC" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack PCB_ARC" ) );
 }
 
 
@@ -597,7 +597,7 @@ void PCB_VIA::Serialize( google::protobuf::Any &aContainer ) const
     Serialize( via );
 
     if( !aContainer.PackFrom( via ) )
-        wxFAIL_MSG( wxT( "Failed to pack PCB_VIA" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack PCB_VIA" ) );
 }
 
 
@@ -1765,7 +1765,7 @@ FILLING_MODE PCB_VIA::ResolveFillingMode() const
 
 bool PCB_VIA::IsTented( PCB_LAYER_ID aLayer ) const
 {
-    wxCHECK_MSG( IsFrontLayer( aLayer ) || IsBackLayer( aLayer ), true, "Invalid layer passed to IsTented" );
+    KI_CHECK_MSG( IsFrontLayer( aLayer ) || IsBackLayer( aLayer ), true, "Invalid layer passed to IsTented" );
 
     bool front = IsFrontLayer( aLayer );
 
@@ -2333,7 +2333,7 @@ bool PCB_VIA::IsGhostLayer( PCB_LAYER_ID aLayer ) const
             break;
 
         default:
-            wxFAIL_MSG( wxT( "Unsupported layer for FRONT_INNER_BACK" ) );
+            KI_FAIL_MSG( wxT( "Unsupported layer for FRONT_INNER_BACK" ) );
         }
     }
 
@@ -3132,7 +3132,7 @@ BITMAPS PCB_TRACK::GetMenuImage() const
 
 void PCB_TRACK::swapData( BOARD_ITEM* aImage )
 {
-    wxASSERT( aImage->Type() == PCB_TRACE_T );
+    KI_ASSERT( aImage->Type() == PCB_TRACE_T );
 
     std::swap( *((PCB_TRACK*) this), *((PCB_TRACK*) aImage) );
 }
@@ -3140,7 +3140,7 @@ void PCB_TRACK::swapData( BOARD_ITEM* aImage )
 
 void PCB_ARC::swapData( BOARD_ITEM* aImage )
 {
-    wxASSERT( aImage->Type() == PCB_ARC_T );
+    KI_ASSERT( aImage->Type() == PCB_ARC_T );
 
     std::swap( *this, *static_cast<PCB_ARC*>( aImage ) );
 }
@@ -3148,7 +3148,7 @@ void PCB_ARC::swapData( BOARD_ITEM* aImage )
 
 void PCB_VIA::swapData( BOARD_ITEM* aImage )
 {
-    wxASSERT( aImage->Type() == PCB_VIA_T );
+    KI_ASSERT( aImage->Type() == PCB_VIA_T );
 
     std::swap( *((PCB_VIA*) this), *((PCB_VIA*) aImage) );
 }
@@ -3303,7 +3303,7 @@ std::shared_ptr<SHAPE> PCB_ARC::GetEffectiveShape( PCB_LAYER_ID aLayer, FLASHING
 void PCB_TRACK::TransformShapeToPolygon( SHAPE_POLY_SET& aBuffer, PCB_LAYER_ID aLayer, int aClearance,
                                          int aError, ERROR_LOC aErrorLoc, bool ignoreLineWidth ) const
 {
-    wxASSERT_MSG( !ignoreLineWidth, wxT( "IgnoreLineWidth has no meaning for tracks." ) );
+    KI_ASSERT_MSG( !ignoreLineWidth, wxT( "IgnoreLineWidth has no meaning for tracks." ) );
 
     switch( Type() )
     {

@@ -55,7 +55,7 @@ GAL_DISPLAY_OPTIONS::GAL_DISPLAY_OPTIONS()
 
 void GAL_DISPLAY_OPTIONS::NotifyChanged()
 {
-    wxLogTrace( traceGalDispOpts, wxS( "Change notification" ) );
+    KI_LOG_TRACE( traceGalDispOpts, wxS( "Change notification" ) );
 
     Notify( &GAL_DISPLAY_OPTIONS_OBSERVER::OnGalDisplayOptionsChanged, *this );
 }

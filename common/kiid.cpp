@@ -101,7 +101,7 @@ KIID::KIID()
 KIID::KIID( int null ) :
         m_uuid( nilGenerator() )
 {
-    wxASSERT( null == 0 );
+    KI_ASSERT( null == 0 );
 }
 
 

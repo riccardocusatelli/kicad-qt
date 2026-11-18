@@ -206,7 +206,7 @@ public:
             }
         }
 
-        wxCHECK( seg1 && seg2, false );
+        KI_CHECK( seg1 && seg2, false );
 
         return seg1->Width() != seg2->Width();
     }

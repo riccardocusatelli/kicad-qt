@@ -87,7 +87,7 @@ std::optional<FOOTPRINT_WIZARD*> FOOTPRINT_WIZARD_MANAGER::GetWizard( const wxSt
 
 bool FOOTPRINT_WIZARD_MANAGER::RefreshInfo( FOOTPRINT_WIZARD* aWizard, std::shared_ptr<REPORTER> aReporter )
 {
-    wxCHECK( aWizard, false );
+    KI_CHECK( aWizard, false );
 
     API_PLUGIN_MANAGER& manager = Pgm().GetPluginManager();
 
@@ -130,7 +130,7 @@ bool FOOTPRINT_WIZARD_MANAGER::RefreshInfo( FOOTPRINT_WIZARD* aWizard, std::shar
 
 tl::expected<FOOTPRINT*, wxString> FOOTPRINT_WIZARD_MANAGER::Generate( FOOTPRINT_WIZARD* aWizard )
 {
-    wxCHECK( aWizard, tl::unexpected( _( "Unexpected error with footprint wizard" ) ) );
+    KI_CHECK( aWizard, tl::unexpected( _( "Unexpected error with footprint wizard" ) ) );
     API_PLUGIN_MANAGER& manager = Pgm().GetPluginManager();
 
     const wxLanguageInfo* lang = wxLocale::GetLanguageInfo( Pgm().GetSelectedLanguageIdentifier() );
@@ -177,7 +177,7 @@ tl::expected<FOOTPRINT*, wxString> FOOTPRINT_WIZARD_MANAGER::Generate( FOOTPRINT
 
     if( !google::protobuf::util::JsonStringToMessage( out.ToStdString(), &response, options ).ok() )
     {
-        wxLogTrace( traceApi, wxString::Format( "Could not decode response:\n%s", out ) );
+        KI_LOG_TRACE( traceApi, wxString::Format( "Could not decode response:\n%s", out ) );
         return tl::unexpected( _( "Unexpected response from footprint wizard" ) );
     }
 
@@ -219,7 +219,7 @@ wxString WIZARD_PARAMETER::ParameterCategoryName( kiapi::common::types::WizardPa
     case WPC_RULES:     return _( "Design Rules" );
     case WPC_UNKNOWN:
     default:
-        wxCHECK_MSG( false, wxEmptyString, "Unhandled parameter category type!" );
+        KI_CHECK_MSG( false, wxEmptyString, "Unhandled parameter category type!" );
     }
 }
 

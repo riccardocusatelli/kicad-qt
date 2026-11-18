@@ -81,7 +81,7 @@ void SCH_JUNCTION::Serialize( google::protobuf::Any& aContainer ) const
     kiapi::common::PackCustomProperties( junction.mutable_custom_properties(), *this );
 
     if( !aContainer.PackFrom( junction ) )
-        wxFAIL_MSG( wxT( "Failed to pack SCH_JUNCTION" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack SCH_JUNCTION" ) );
 }
 
 
@@ -111,7 +111,7 @@ bool SCH_JUNCTION::Deserialize( const google::protobuf::Any& aContainer )
 
 void SCH_JUNCTION::swapData( SCH_ITEM* aItem )
 {
-    wxCHECK_RET( ( aItem != nullptr ) && ( aItem->Type() == SCH_JUNCTION_T ),
+    KI_CHECK_RET( ( aItem != nullptr ) && ( aItem->Type() == SCH_JUNCTION_T ),
                  wxT( "Cannot swap junction data with invalid item." ) );
 
     SCH_JUNCTION* item = (SCH_JUNCTION*) aItem;
@@ -283,7 +283,7 @@ bool SCH_JUNCTION::HasConnectivityChanges( const SCH_ITEM* aItem,
     const SCH_JUNCTION* junction = dynamic_cast<const SCH_JUNCTION*>( aItem );
 
     // Don't compare against a different SCH_ITEM.
-    wxCHECK( junction, false );
+    KI_CHECK( junction, false );
 
     return GetPosition() != junction->GetPosition();
 }

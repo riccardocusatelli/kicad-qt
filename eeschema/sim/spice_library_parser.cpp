@@ -97,7 +97,7 @@ void SPICE_LIBRARY_PARSER::parseFile( const wxString &aFilePath, REPORTER& aRepo
             }
             else
             {
-                wxFAIL_MSG( "Unhandled parse tree node" );
+                KI_FAIL_MSG( "Unhandled parse tree node" );
             }
         }
     }

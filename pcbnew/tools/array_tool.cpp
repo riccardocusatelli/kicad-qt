@@ -133,7 +133,7 @@ void ARRAY_TOOL::onDialogClosed( wxCloseEvent& aEvent )
         return;
     }
 
-    wxCHECK( m_selection, /* void */ );
+    KI_CHECK( m_selection, /* void */ );
 
     PCB_SELECTION&  selection = *m_selection;
     PCB_BASE_FRAME* editFrame = getEditFrame<PCB_BASE_FRAME>();

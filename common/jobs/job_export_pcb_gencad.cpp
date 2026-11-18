@@ -56,5 +56,5 @@ wxString JOB_EXPORT_PCB_GENCAD::GetSettingsDialogTitle() const
 }
 
 
-REGISTER_JOB( pcb_export_gencad, _HKI( "PCB: Export GenCAD" ), KIWAY::FACE_PCB,
+REGISTER_JOB( pcb_export_gencad, _HKI( "PCB: Export GenCAD" ), KIWAY_FACES::FACE_PCB,
               JOB_EXPORT_PCB_GENCAD );

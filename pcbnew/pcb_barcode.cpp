@@ -209,7 +209,7 @@ void PCB_BARCODE::Serialize( google::protobuf::Any& aContainer ) const
     kiapi::common::PackCustomProperties( barcode.mutable_custom_properties(), *this );
 
     if( !aContainer.PackFrom( barcode ) )
-        wxFAIL_MSG( wxT( "Failed to pack PCB_BARCODE" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack PCB_BARCODE" ) );
 }
 
 
@@ -900,7 +900,7 @@ EDA_ITEM* PCB_BARCODE::Clone() const
 
 void PCB_BARCODE::swapData( BOARD_ITEM* aImage )
 {
-    wxCHECK_RET( aImage && aImage->Type() == PCB_BARCODE_T,
+    KI_CHECK_RET( aImage && aImage->Type() == PCB_BARCODE_T,
                  wxT( "Cannot swap data with non-barcode item." ) );
 
     PCB_BARCODE* other = static_cast<PCB_BARCODE*>( aImage );

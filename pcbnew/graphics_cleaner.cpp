@@ -165,7 +165,7 @@ bool GRAPHICS_CLEANER::areEquivalent( PCB_SHAPE* aShape1, PCB_SHAPE* aShape2 )
                          && aShape1->GetEllipseEndAngle() == aShape2->GetEllipseEndAngle() ) );
 
     default:
-        wxFAIL_MSG( wxT( "GRAPHICS_CLEANER::areEquivalent unimplemented for " )
+        KI_FAIL_MSG( wxT( "GRAPHICS_CLEANER::areEquivalent unimplemented for " )
                     + aShape1->SHAPE_T_asString() );
         return false;
     }
@@ -389,7 +389,7 @@ void GRAPHICS_CLEANER::mergeRects()
 
 void GRAPHICS_CLEANER::mergePads()
 {
-    wxCHECK_MSG( m_parentFootprint, /*void*/, wxT( "mergePads() is FootprintEditor only" ) );
+    KI_CHECK_MSG( m_parentFootprint, /*void*/, wxT( "mergePads() is FootprintEditor only" ) );
 
     PAD_TOOL*               padTool = m_toolMgr->GetTool<PAD_TOOL>();
     std::map<wxString, int> padToNetTieGroupMap = m_parentFootprint->MapPadNumbersToNetTieGroups();

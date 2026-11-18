@@ -458,7 +458,7 @@ public:
      */
     virtual void Move( const VECTOR2I& aMoveVector )
     {
-        wxFAIL_MSG( wxT( "virtual BOARD_ITEM::Move called for " ) + GetClass() );
+        KI_FAIL_MSG( wxT( "virtual BOARD_ITEM::Move called for " ) + GetClass() );
     }
 
     /**

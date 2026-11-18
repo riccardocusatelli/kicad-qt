@@ -415,7 +415,7 @@ void WX_GRID::EnableAlternateRowColors( bool aEnable )
 {
     wxGridTableBase* table = wxGrid::GetTable();
 
-    wxCHECK_MSG( table, /* void */, "Tried to enable alternate row colors without a table assigned to the grid" );
+    KI_CHECK_MSG( table, /* void */, "Tried to enable alternate row colors without a table assigned to the grid" );
 
     if( aEnable )
     {
@@ -1198,7 +1198,7 @@ void WX_GRID::SetupColumnAutosizer( int aFlexibleCol )
 
     m_flexibleCol = aFlexibleCol;
 
-    wxASSERT_MSG( m_flexibleCol < colCount, "Flexible column index does not exist in grid" );
+    KI_ASSERT_MSG( m_flexibleCol < colCount, "Flexible column index does not exist in grid" );
 
     Bind( wxEVT_UPDATE_UI,
           [this]( wxUpdateUIEvent& aEvent )

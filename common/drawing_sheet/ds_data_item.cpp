@@ -112,7 +112,7 @@ void DS_DATA_ITEM::SyncDrawItems( DS_DRAW_ITEM_LIST* aCollector, KIGFX::VIEW* aV
             item = new DS_DRAW_ITEM_RECT( this, j, GetStartPosIU( j ), GetEndPosIU( j ), pensize );
         else
         {
-            wxFAIL_MSG( wxS( "Unknown drawing sheet item type" ) );
+            KI_FAIL_MSG( wxS( "Unknown drawing sheet item type" ) );
             continue;
         }
 

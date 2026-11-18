@@ -101,5 +101,5 @@ int CLI::PCB_EXPORT_ODB_COMMAND::doPerform( KIWAY& aKiway )
     job->m_productName = From_UTF8( m_argParser.get<std::string>( ARG_PRODUCT_NAME ).c_str() );
 
     LOCALE_IO dummy;
-    return aKiway.ProcessJob( KIWAY::FACE_PCB, job.get() );
+    return aKiway.ProcessJob( KIWAY_FACES::FACE_PCB, job.get() );
 }

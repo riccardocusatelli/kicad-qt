@@ -57,7 +57,7 @@ std::string SPICE_GENERATOR_TLINE::ModelLine( const SPICE_ITEM& aItem ) const
         break;
     }
     default:
-        wxFAIL_MSG( "Unhandled SIM_MODEL type in SIM_MODEL_TLINE" );
+        KI_FAIL_MSG( "Unhandled SIM_MODEL type in SIM_MODEL_TLINE" );
         return "";
     }
 
@@ -85,7 +85,7 @@ SIM_MODEL_TLINE::SIM_MODEL_TLINE( TYPE aType ) :
         break;
 
     default:
-        wxFAIL_MSG( "Unhandled SIM_MODEL type in SIM_MODEL_TLINE" );
+        KI_FAIL_MSG( "Unhandled SIM_MODEL type in SIM_MODEL_TLINE" );
         break;
     }
 }

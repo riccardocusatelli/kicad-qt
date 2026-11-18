@@ -988,7 +988,7 @@ void DIALOG_PAD_PROPERTIES::afterPadstackModeChanged()
 {
     // NOTE: synchronize changes here with DIALOG_TRACK_VIA_PROPERTIES::afterPadstackModeChanged
 
-    wxCHECK_MSG( m_board, /* void */, "Expected valid board in afterPadstackModeChanged" );
+    KI_CHECK_MSG( m_board, /* void */, "Expected valid board in afterPadstackModeChanged" );
     m_cbEditLayer->Clear();
 
     switch( m_previewPad->Padstack().Mode() )
@@ -2223,7 +2223,7 @@ bool DIALOG_PAD_PROPERTIES::transferDataToPad( PAD* aPad )
         break;
 
     default:
-        wxFAIL_MSG( wxT( "DIALOG_PAD_PROPERTIES::transferDataToPad: unknown pad type" ) );
+        KI_FAIL_MSG( wxT( "DIALOG_PAD_PROPERTIES::transferDataToPad: unknown pad type" ) );
         break;
     }
 

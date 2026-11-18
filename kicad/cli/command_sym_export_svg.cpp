@@ -89,7 +89,7 @@ int CLI::SYM_EXPORT_SVG_COMMAND::doPerform( KIWAY& aKiway )
 
     svgJob->m_colorTheme = From_UTF8( m_argParser.get<std::string>( ARG_THEME ).c_str() );
 
-    int exitCode = aKiway.ProcessJob( KIWAY::FACE_SCH, svgJob.get() );
+    int exitCode = aKiway.ProcessJob( KIWAY_FACES::FACE_SCH, svgJob.get() );
 
     return exitCode;
 }

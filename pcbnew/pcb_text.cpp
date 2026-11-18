@@ -106,7 +106,7 @@ PCB_TEXT::~PCB_TEXT()
 
 void PCB_TEXT::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther && aOther->Type() == PCB_TEXT_T, /* void */ );
+    KI_CHECK( aOther && aOther->Type() == PCB_TEXT_T, /* void */ );
     *this = *static_cast<const PCB_TEXT*>( aOther );
 }
 
@@ -142,7 +142,7 @@ void PCB_TEXT::Serialize( google::protobuf::Any& aContainer ) const
     Serialize( boardText );
 
     if( !aContainer.PackFrom( boardText ) )
-        wxFAIL_MSG( wxT( "Failed to pack PCB_TEXT" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack PCB_TEXT" ) );
 }
 
 
@@ -697,7 +697,7 @@ EDA_ITEM* PCB_TEXT::Clone() const
 
 void PCB_TEXT::swapData( BOARD_ITEM* aImage )
 {
-    wxASSERT( aImage->Type() == PCB_TEXT_T );
+    KI_ASSERT( aImage->Type() == PCB_TEXT_T );
 
     std::swap( *( (PCB_TEXT*) this ), *( (PCB_TEXT*) aImage ) );
 }

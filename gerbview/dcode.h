@@ -116,7 +116,7 @@ public:
      */
     double GetParam( unsigned aIdx ) const
     {
-        wxASSERT( aIdx <= m_am_params.size() );
+        KI_ASSERT( aIdx <= m_am_params.size() );
 
         if( aIdx <= m_am_params.size() )
             return  m_am_params[aIdx - 1];

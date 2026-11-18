@@ -50,7 +50,7 @@ WRL1FACESET::WRL1FACESET( NAMEREGISTER* aDictionary, WRL1NODE* aParent ) :
 
 WRL1FACESET::~WRL1FACESET()
 {
-    wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] Destroying IndexedFaceSet with %zu children, "
+    KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] Destroying IndexedFaceSet with %zu children, "
                                       "%zu references, and %zu back pointers." ),
                 m_Children.size(), m_Refs.size(), m_BackPointers.size() );
 }
@@ -59,14 +59,14 @@ WRL1FACESET::~WRL1FACESET()
 bool WRL1FACESET::AddRefNode( WRL1NODE* aNode )
 {
     // this node may not own or reference any other node
-    wxCHECK_MSG( false, false, wxT( "AddRefNode is not applicable." ) );
+    KI_CHECK_MSG( false, false, wxT( "AddRefNode is not applicable." ) );
 }
 
 
 bool WRL1FACESET::AddChildNode( WRL1NODE* aNode )
 {
     // this node may not own or reference any other node
-    wxCHECK_MSG( false, false, wxT( "AddChildNode is not applicable." ) );
+    KI_CHECK_MSG( false, false, wxT( "AddChildNode is not applicable." ) );
 }
 
 
@@ -76,7 +76,7 @@ bool WRL1FACESET::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 
     if( proc.eof() )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( "%s:%s:%d\n"
                          " * [INFO] bad file format; unexpected eof %s." ),
                     __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition() );
@@ -86,7 +86,7 @@ bool WRL1FACESET::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 
     if( '{' != tok )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( "%s:%s:%d\n"
                          " * [INFO] bad file format; expecting '{' but got '%s' %s." ),
                     __FILE__, __FUNCTION__, __LINE__, tok, proc.GetFilePosition() );
@@ -107,7 +107,7 @@ bool WRL1FACESET::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 
         if( !proc.ReadName( glob ) )
         {
-            wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n%s" ),
+            KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n%s" ),
                         __FILE__, __FUNCTION__, __LINE__, proc.GetError() );
 
             return false;
@@ -121,7 +121,7 @@ bool WRL1FACESET::Read( WRLPROC& proc, WRL1BASE* aTopNode )
         {
             if( !proc.ReadMFInt( coordIndex ) )
             {
-                wxLogTrace( traceVrmlPlugin,
+                KI_LOG_TRACE( traceVrmlPlugin,
                             wxT( "%s:%s:%d\n"
                                  " * [INFO] invalid coordIndex %s.\n"
                                  " * [INFO] file: '%s'\n"
@@ -136,7 +136,7 @@ bool WRL1FACESET::Read( WRLPROC& proc, WRL1BASE* aTopNode )
         {
             if( !proc.ReadMFInt( matIndex ) )
             {
-                wxLogTrace( traceVrmlPlugin,
+                KI_LOG_TRACE( traceVrmlPlugin,
                             wxT( "%s:%s:%d\n"
                                  " * [INFO] invalid materialIndex %s.\n"
                                  " * [INFO] file: '%s'\n"
@@ -151,7 +151,7 @@ bool WRL1FACESET::Read( WRLPROC& proc, WRL1BASE* aTopNode )
         {
             if( !proc.ReadMFInt( normIndex ) )
             {
-                wxLogTrace( traceVrmlPlugin,
+                KI_LOG_TRACE( traceVrmlPlugin,
                             wxT( "%s:%s:%d\n"
                                  " * [INFO] invalid normalIndex %s\n"
                                  " * [INFO] file: '%s'\n"
@@ -166,7 +166,7 @@ bool WRL1FACESET::Read( WRLPROC& proc, WRL1BASE* aTopNode )
         {
             if( !proc.ReadMFInt( texIndex ) )
             {
-                wxLogTrace( traceVrmlPlugin,
+                KI_LOG_TRACE( traceVrmlPlugin,
                             wxT( "%s:%s:%d\n"
                                  " * [INFO] invalid textureCoordIndex %s.\n"
                                  " * [INFO] file: '%s'\n"
@@ -179,7 +179,7 @@ bool WRL1FACESET::Read( WRLPROC& proc, WRL1BASE* aTopNode )
         }
         else
         {
-            wxLogTrace( traceVrmlPlugin,
+            KI_LOG_TRACE( traceVrmlPlugin,
                         wxT( "%s:%s:%d\n"
                              " * [INFO] invalid IndexedFaceSet %s.\n"
                              " * [INFO] file: '%s'" ),
@@ -202,7 +202,7 @@ SGNODE* WRL1FACESET::TranslateToSG( SGNODE* aParent, WRL1STATUS* sp )
     // decompose into Rotate,Scale,Transform via an analytic expression.
     if( !m_Parent )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] bad model: no parent node." ) );
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] bad model: no parent node." ) );
 
         return nullptr;
     }
@@ -210,7 +210,7 @@ SGNODE* WRL1FACESET::TranslateToSG( SGNODE* aParent, WRL1STATUS* sp )
     {
         if( nullptr == sp )
         {
-            wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] bad model: no base data given." ) );
+            KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] bad model: no base data given." ) );
 
             return nullptr;
         }
@@ -220,13 +220,13 @@ SGNODE* WRL1FACESET::TranslateToSG( SGNODE* aParent, WRL1STATUS* sp )
 
     if( nullptr == m_current.coord )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] bad model: no vertex set." ) );
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] bad model: no vertex set." ) );
         return nullptr;
     }
 
     if( nullptr == m_current.mat )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] bad model: no material set." ) );
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] bad model: no material set." ) );
         return nullptr;
     }
 
@@ -238,7 +238,7 @@ SGNODE* WRL1FACESET::TranslateToSG( SGNODE* aParent, WRL1STATUS* sp )
 
     if( coordsize < 3 || vsize < 3 )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( " * [INFO] bad model: coordsize = %zu, indexsize = %zu" ),
                     coordsize, vsize );
 
@@ -261,7 +261,7 @@ SGNODE* WRL1FACESET::TranslateToSG( SGNODE* aParent, WRL1STATUS* sp )
 
         if( matIndex.empty() )
         {
-            wxLogTrace( traceVrmlPlugin,
+            KI_LOG_TRACE( traceVrmlPlugin,
                         wxT( " * [INFO] bad model: per face indexed but no indices" ) );
 
             // support bad models by temporarily switching bindings

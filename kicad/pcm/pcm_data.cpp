@@ -127,7 +127,7 @@ void from_json( const json& j, PCM_PACKAGE& p )
 
     if( p.type == PT_INVALID )
     {
-        wxLogTrace( tracePcm, wxS( "Skipping package '%s' with unrecognized type '%s'" ),
+        KI_LOG_TRACE( tracePcm, wxS( "Skipping package '%s' with unrecognized type '%s'" ),
                     p.identifier, wxString( j.at( "type" ).get<std::string>() ) );
     }
 

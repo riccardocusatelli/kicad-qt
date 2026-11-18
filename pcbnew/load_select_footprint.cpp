@@ -102,7 +102,7 @@ bool FOOTPRINT_EDIT_FRAME::LoadFootprintFromBoard( FOOTPRINT* aFootprint )
 
     // Open the placed footprint as a session-only instance tab over its own fp-holder board instead
     // of replacing the working document; re-editing the same footprint focuses the existing tab.
-    wxCHECK( m_tabsPanel, false );
+    KI_CHECK( m_tabsPanel, false );
 
     const wxString instanceKey = FOOTPRINT_EDITOR_TAB_CONTEXT::MakeInstanceTabKey( aFootprint->m_Uuid );
     const bool     createdNewTab = m_tabsPanel->FindTab( instanceKey ) < 0;

@@ -61,7 +61,7 @@ KICAD_API_SERVER::KICAD_API_SERVER( bool aAutoStart ) :
 
     if( !Pgm().GetCommonSettings()->m_Api.enable_server )
     {
-        wxLogTrace( traceApi, "Server: disabled by user preferences." );
+        KI_LOG_TRACE( traceApi, "Server: disabled by user preferences." );
         return;
     }
 
@@ -119,7 +119,7 @@ void KICAD_API_SERVER::Start()
 
     if( !PATHS::EnsurePathExists( socket.GetPath() ) )
     {
-        wxLogTrace( traceApi, wxString::Format( "Server: socket path %s could not be created",
+        KI_LOG_TRACE( traceApi, wxString::Format( "Server: socket path %s could not be created",
                                                 socket.GetPath() ) );
         return;
     }
@@ -137,7 +137,7 @@ void KICAD_API_SERVER::Start()
     {
         if( socket.Exists() )
         {
-            wxLogTrace( traceApi, wxString::Format( "Server: cleaning up stale socket path %s",
+            KI_LOG_TRACE( traceApi, wxString::Format( "Server: cleaning up stale socket path %s",
                                                     socket.GetFullPath() ) );
             wxRemoveFile( socket.GetFullPath() );
         }
@@ -150,7 +150,7 @@ void KICAD_API_SERVER::Start()
 
         if( socket.Exists() )
         {
-            wxLogTrace( traceApi, wxString::Format( "Server: PID socket path %s already exists!",
+            KI_LOG_TRACE( traceApi, wxString::Format( "Server: PID socket path %s already exists!",
                                                     socket.GetFullPath() ) );
             return;
         }
@@ -162,7 +162,7 @@ void KICAD_API_SERVER::Start()
 
     if( !m_server->Start() )
     {
-        wxLogTrace( traceApi, "Server: failed to start KINNG listener thread" );
+        KI_LOG_TRACE( traceApi, "Server: failed to start KINNG listener thread" );
         m_server.reset( nullptr );
         return;
     }
@@ -176,7 +176,7 @@ void KICAD_API_SERVER::Start()
         log( fmt::format( "--- KiCad API server started at {} ---\n", SocketPath() ) );
     }
 
-    wxLogTrace( traceApi, wxString::Format( "Server: listening at %s", SocketPath() ) );
+    KI_LOG_TRACE( traceApi, wxString::Format( "Server: listening at %s", SocketPath() ) );
     Bind( API_REQUEST_EVENT, &KICAD_API_SERVER::handleApiEvent, this );
 }
 
@@ -186,7 +186,7 @@ void KICAD_API_SERVER::Stop()
     if( !Running() )
         return;
 
-    wxLogTrace( traceApi, "Stopping server" );
+    KI_LOG_TRACE( traceApi, "Stopping server" );
     Unbind( API_REQUEST_EVENT, &KICAD_API_SERVER::handleApiEvent, this );
 
     m_server->Stop();
@@ -202,7 +202,7 @@ bool KICAD_API_SERVER::Running() const
 
 void KICAD_API_SERVER::RegisterHandler( API_HANDLER* aHandler )
 {
-    wxCHECK( aHandler, /* void */ );
+    KI_CHECK( aHandler, /* void */ );
 
     aHandler->setApiServer( this );
     m_handlers.insert( aHandler );

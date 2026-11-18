@@ -133,5 +133,5 @@ int CLI::PCB_EXPORT_IPC2581_COMMAND::doPerform( KIWAY& aKiway )
                                    : JOB_EXPORT_PCB_IPC2581::REF_DES::INCLUDE;
 
     LOCALE_IO dummy;
-    return aKiway.ProcessJob( KIWAY::FACE_PCB, ipc2581Job.get() );
+    return aKiway.ProcessJob( KIWAY_FACES::FACE_PCB, ipc2581Job.get() );
 }

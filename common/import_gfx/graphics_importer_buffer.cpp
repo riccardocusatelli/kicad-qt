@@ -282,7 +282,7 @@ static void convertPolygon( std::list<std::unique_ptr<IMPORTED_SHAPE>>& aShapes,
     double origH = ( maxY - minY );
     double upscaledW, upscaledH;
 
-    wxCHECK( origH && origW, /* void */ );
+    KI_CHECK( origH && origW, /* void */ );
 
     if( origW > origH )
     {

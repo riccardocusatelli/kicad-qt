@@ -154,7 +154,7 @@ public:
         case COL_ALT_NAME:  return _( "Alternate Assignment" );
         case COL_TYPE:      return _( "Electrical Type" );
         case COL_SHAPE:     return _( "Graphic Style" );
-        default:   wxFAIL;  return wxEmptyString;
+        default:   KI_FAIL();  return wxEmptyString;
         }
     }
 
@@ -192,7 +192,7 @@ public:
         case COL_BASE_NAME: return aPin.GetBaseName();
         case COL_TYPE:      return PinTypeNames()[static_cast<int>( aPin.GetType() )];
         case COL_SHAPE:     return PinShapeNames()[static_cast<int>( aPin.GetShape() )];
-        default:   wxFAIL;  return wxEmptyString;
+        default:   KI_FAIL();  return wxEmptyString;
         }
     }
 
@@ -218,7 +218,7 @@ public:
             return enhanceAttr( m_shapeAttr, aRow, aCol, aKind );
 
         default:
-            wxFAIL;
+            KI_FAIL();
             return nullptr;
         }
     }
@@ -244,7 +244,7 @@ public:
             break;
 
         default:
-            wxFAIL;
+            KI_FAIL();
             break;
         }
     }
@@ -578,7 +578,7 @@ bool DIALOG_SYMBOL_PROPERTIES::TransferDataToWindow()
         }
         else
         {
-            wxASSERT( (int) libSymbol->GetBodyStyleNames().size() == libSymbol->GetBodyStyleCount() );
+            KI_ASSERT( (int) libSymbol->GetBodyStyleNames().size() == libSymbol->GetBodyStyleCount() );
 
             for( int ii = 0; ii < libSymbol->GetBodyStyleCount(); ii++ )
             {
@@ -828,7 +828,7 @@ bool DIALOG_SYMBOL_PROPERTIES::TransferDataFromWindow()
     wxString       currentVariant = GetParent()->Schematic().GetCurrentVariant();
     bool           replaceOnCurrentScreen;
 
-    wxCHECK( currentScreen, false );
+    KI_CHECK( currentScreen, false );
 
     // This needs to be done before the LIB_ID is changed to prevent stale library symbols in
     // the schematic file.
@@ -1275,7 +1275,7 @@ void DIALOG_SYMBOL_PROPERTIES::HandleDelayedFocus( wxCommandEvent& event )
 {
     VECTOR2I *loc = static_cast<VECTOR2I*>( event.GetClientData() );
 
-    wxCHECK_RET( loc, wxT( "Missing focus cell location" ) );
+    KI_CHECK_RET( loc, wxT( "Missing focus cell location" ) );
 
     // Run the AutoColumnSizer before setting focus (as it will clear any shown cell edit control
     // if it has to resize that column).
@@ -1301,7 +1301,7 @@ void DIALOG_SYMBOL_PROPERTIES::HandleDelayedSelection( wxCommandEvent& event )
 {
     VECTOR2I *loc = static_cast<VECTOR2I*>( event.GetClientData() );
 
-    wxCHECK_RET( loc, wxT( "Missing focus cell location" ) );
+    KI_CHECK_RET( loc, wxT( "Missing focus cell location" ) );
 
     // Handle a delayed selection
     wxGridCellEditor* cellEditor = m_fieldsGrid->GetCellEditor( loc->x, loc->y );

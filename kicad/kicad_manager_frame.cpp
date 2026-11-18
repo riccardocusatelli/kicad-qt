@@ -516,7 +516,7 @@ void KICAD_MANAGER_FRAME::setupUIConditions()
 
     ACTION_MANAGER* manager = m_toolManager->GetActionManager();
 
-    wxASSERT( manager );
+    KI_ASSERT( manager );
 
     auto activeProject =
             [this] ( const SELECTION& )
@@ -570,7 +570,7 @@ wxWindow* KICAD_MANAGER_FRAME::GetToolCanvas() const
 APP_SETTINGS_BASE* KICAD_MANAGER_FRAME::config() const
 {
     APP_SETTINGS_BASE* ret = PgmTop().PgmSettings();
-    wxASSERT( ret );
+    KI_ASSERT( ret );
     return ret;
 }
 
@@ -578,7 +578,7 @@ APP_SETTINGS_BASE* KICAD_MANAGER_FRAME::config() const
 KICAD_SETTINGS* KICAD_MANAGER_FRAME::kicadSettings() const
 {
     KICAD_SETTINGS* ret = dynamic_cast<KICAD_SETTINGS*>( config() );
-    wxASSERT( ret );
+    KI_ASSERT( ret );
     return ret;
 }
 
@@ -588,7 +588,7 @@ void KICAD_MANAGER_FRAME::PreloadAllLibraries()
     CallAfter(
             [&]()
             {
-                for( KIWAY::FACE_T face : { KIWAY::FACE_SCH, KIWAY::FACE_PCB } )
+                for( KIWAY_FACES::FACE_T face : { KIWAY_FACES::FACE_SCH, KIWAY_FACES::FACE_PCB } )
                 {
                     if( KIFACE* kiface = Kiway().KiFACE( face ) )
                         kiface->PreloadLibraries( &Kiway() );
@@ -847,7 +847,7 @@ bool KICAD_MANAGER_FRAME::CloseProject( bool aSave )
         return false;
 
     // Abort any in-progress background load, since the threads depend on the project not changing
-    for( KIWAY::FACE_T face : { KIWAY::FACE_SCH, KIWAY::FACE_PCB } )
+    for( KIWAY_FACES::FACE_T face : { KIWAY_FACES::FACE_SCH, KIWAY_FACES::FACE_PCB } )
     {
         if( KIFACE* kiface = Kiway().KiFACE( face ) )
             kiface->CancelPreload();
@@ -1110,7 +1110,7 @@ bool KICAD_MANAGER_FRAME::LoadProject( const wxFileName& aProjectFileName )
 
 void KICAD_MANAGER_FRAME::CreateNewProject( const wxFileName& aProjectFileName, bool aCreateStubFiles )
 {
-    wxCHECK_RET( aProjectFileName.DirExists() && aProjectFileName.IsDirWritable(),
+    KI_CHECK_RET( aProjectFileName.DirExists() && aProjectFileName.IsDirWritable(),
                  "Project folder must exist and be writable to create a new project." );
 
     // If the project is legacy, convert it
@@ -1400,7 +1400,7 @@ void KICAD_MANAGER_FRAME::LoadSettings( APP_SETTINGS_BASE* aCfg )
 
     auto settings = dynamic_cast<KICAD_SETTINGS*>( aCfg );
 
-    wxCHECK( settings, /*void*/ );
+    KI_CHECK( settings, /*void*/ );
 
     m_leftWinWidth = settings->m_LeftWinWidth;
     m_showHistoryPanel = settings->m_ShowHistoryPanel;
@@ -1414,7 +1414,7 @@ void KICAD_MANAGER_FRAME::SaveSettings( APP_SETTINGS_BASE* aCfg )
 
     KICAD_SETTINGS* settings = dynamic_cast<KICAD_SETTINGS*>( aCfg );
 
-    wxCHECK( settings, /*void*/ );
+    KI_CHECK( settings, /*void*/ );
 
     settings->m_LeftWinWidth = m_projectTreePane->GetSize().x;
     settings->m_ShowHistoryPanel = m_historyPane && m_auimgr.GetPane( m_historyPane ).IsShown();

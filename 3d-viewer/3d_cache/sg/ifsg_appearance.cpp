@@ -52,7 +52,7 @@ IFSG_APPEARANCE::IFSG_APPEARANCE( SGNODE* aParent )
         delete m_node;
         m_node = nullptr;
 
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d %s" ), __FILE__, __FUNCTION__, __LINE__,
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d %s" ), __FILE__, __FUNCTION__, __LINE__,
                     WrongParent );
 
         return;
@@ -69,7 +69,7 @@ IFSG_APPEARANCE::IFSG_APPEARANCE( IFSG_NODE& aParent )
 #ifdef DEBUG
     if( ! pp )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d %s" ), __FILE__, __FUNCTION__, __LINE__,
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d %s" ), __FILE__, __FUNCTION__, __LINE__,
                     BadParent );
     }
 #endif
@@ -81,7 +81,7 @@ IFSG_APPEARANCE::IFSG_APPEARANCE( IFSG_NODE& aParent )
         delete m_node;
         m_node = nullptr;
 
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d %s" ), __FILE__, __FUNCTION__, __LINE__,
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d %s" ), __FILE__, __FUNCTION__, __LINE__,
                     WrongParent );
 
         return;
@@ -122,7 +122,7 @@ bool IFSG_APPEARANCE::NewNode( SGNODE* aParent )
 
     if( aParent != m_node->GetParent() )
     {
-        wxLogTrace( MASK_3D_SG,
+        KI_LOG_TRACE( MASK_3D_SG,
                     wxT( "%s:%s:%d  * [BUG] invalid SGNODE parent (%s) to SGAPPEARANCE" ),
                     __FILE__, __FUNCTION__, __LINE__,
                     aParent->GetNodeTypeName( aParent->GetNodeType() ) );
@@ -142,7 +142,7 @@ bool IFSG_APPEARANCE::NewNode( IFSG_NODE& aParent )
 {
     SGNODE* np = aParent.GetRawPtr();
 
-    wxCHECK( np, false );
+    KI_CHECK( np, false );
 
     return NewNode( np );
 }
@@ -150,7 +150,7 @@ bool IFSG_APPEARANCE::NewNode( IFSG_NODE& aParent )
 
 bool IFSG_APPEARANCE::SetEmissive( float aRVal, float aGVal, float aBVal )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     return ( (SGAPPEARANCE*) m_node )->SetEmissive( aRVal, aGVal, aBVal );
 }
@@ -158,7 +158,7 @@ bool IFSG_APPEARANCE::SetEmissive( float aRVal, float aGVal, float aBVal )
 
 bool IFSG_APPEARANCE::SetEmissive( const SGCOLOR* aRGBColor )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     return ( (SGAPPEARANCE*) m_node )->SetEmissive( aRGBColor );
 }
@@ -166,7 +166,7 @@ bool IFSG_APPEARANCE::SetEmissive( const SGCOLOR* aRGBColor )
 
 bool IFSG_APPEARANCE::SetEmissive( const SGCOLOR& aRGBColor )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     return ( (SGAPPEARANCE*) m_node )->SetEmissive( aRGBColor );
 }
@@ -174,7 +174,7 @@ bool IFSG_APPEARANCE::SetEmissive( const SGCOLOR& aRGBColor )
 
 bool IFSG_APPEARANCE::SetDiffuse( float aRVal, float aGVal, float aBVal )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     return ( (SGAPPEARANCE*) m_node )->SetDiffuse( aRVal, aGVal, aBVal );
 }
@@ -182,7 +182,7 @@ bool IFSG_APPEARANCE::SetDiffuse( float aRVal, float aGVal, float aBVal )
 
 bool IFSG_APPEARANCE::SetDiffuse( const SGCOLOR* aRGBColor )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     return ( (SGAPPEARANCE*) m_node )->SetDiffuse( aRGBColor );
 }
@@ -190,7 +190,7 @@ bool IFSG_APPEARANCE::SetDiffuse( const SGCOLOR* aRGBColor )
 
 bool IFSG_APPEARANCE::SetDiffuse( const SGCOLOR& aRGBColor )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     return ( (SGAPPEARANCE*) m_node )->SetDiffuse( aRGBColor );
 }
@@ -198,7 +198,7 @@ bool IFSG_APPEARANCE::SetDiffuse( const SGCOLOR& aRGBColor )
 
 bool IFSG_APPEARANCE::SetSpecular( float aRVal, float aGVal, float aBVal )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     return ( (SGAPPEARANCE*) m_node )->SetSpecular( aRVal, aGVal, aBVal );
 }
@@ -206,7 +206,7 @@ bool IFSG_APPEARANCE::SetSpecular( float aRVal, float aGVal, float aBVal )
 
 bool IFSG_APPEARANCE::SetSpecular( const SGCOLOR* aRGBColor )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     return ( (SGAPPEARANCE*) m_node )->SetSpecular( aRGBColor );
 }
@@ -214,7 +214,7 @@ bool IFSG_APPEARANCE::SetSpecular( const SGCOLOR* aRGBColor )
 
 bool IFSG_APPEARANCE::SetSpecular( const SGCOLOR& aRGBColor )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     return ( (SGAPPEARANCE*) m_node )->SetSpecular( aRGBColor );
 }
@@ -222,7 +222,7 @@ bool IFSG_APPEARANCE::SetSpecular( const SGCOLOR& aRGBColor )
 
 bool IFSG_APPEARANCE::SetAmbient( float aRVal, float aGVal, float aBVal )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     return ( (SGAPPEARANCE*) m_node )->SetAmbient( aRVal, aGVal, aBVal );
 }
@@ -230,7 +230,7 @@ bool IFSG_APPEARANCE::SetAmbient( float aRVal, float aGVal, float aBVal )
 
 bool IFSG_APPEARANCE::SetAmbient( const SGCOLOR* aRGBColor )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     return ( (SGAPPEARANCE*) m_node )->SetAmbient( aRGBColor );
 }
@@ -238,7 +238,7 @@ bool IFSG_APPEARANCE::SetAmbient( const SGCOLOR* aRGBColor )
 
 bool IFSG_APPEARANCE::SetAmbient( const SGCOLOR& aRGBColor )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     return ( (SGAPPEARANCE*) m_node )->SetAmbient( aRGBColor );
 }
@@ -246,11 +246,11 @@ bool IFSG_APPEARANCE::SetAmbient( const SGCOLOR& aRGBColor )
 
 bool IFSG_APPEARANCE::SetShininess( float aShininess ) noexcept
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     if( aShininess < 0 || aShininess > 1.0 )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d  * [BUG] shininess out of range [0..1]" ),
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d  * [BUG] shininess out of range [0..1]" ),
                     __FILE__, __FUNCTION__, __LINE__ );
 
         return false;
@@ -264,11 +264,11 @@ bool IFSG_APPEARANCE::SetShininess( float aShininess ) noexcept
 
 bool IFSG_APPEARANCE::SetTransparency( float aTransparency ) noexcept
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     if( aTransparency < 0 || aTransparency > 1.0 )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] transparency out of range [0..1]" ),
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] transparency out of range [0..1]" ),
                     __FILE__, __FUNCTION__, __LINE__ );
 
         return false;

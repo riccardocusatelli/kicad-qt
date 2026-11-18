@@ -28,7 +28,7 @@
 
 void DrawRoundArrow( SFVEC3F aPosition, SFVEC3F aTargetPos, float aSize )
 {
-    wxASSERT( aSize > 0.0f );
+    KI_ASSERT( aSize > 0.0f );
 
     SFVEC3F vec = aTargetPos - aPosition;
     float length = glm::length( vec );
@@ -98,7 +98,7 @@ void DrawRoundArrow( SFVEC3F aPosition, SFVEC3F aTargetPos, float aSize )
 
 void DrawBoundingBox( const BBOX_3D& aBBox )
 {
-    wxASSERT( aBBox.IsInitialized() );
+    KI_ASSERT( aBBox.IsInitialized() );
 
     glBegin( GL_LINE_LOOP );
     glVertex3f( aBBox.Min().x, aBBox.Min().y, aBBox.Min().z );

@@ -45,7 +45,7 @@ WRL2COLOR::WRL2COLOR( WRL2NODE* aParent ) : WRL2NODE()
 
 WRL2COLOR::~WRL2COLOR()
 {
-    wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] Destroying Color node" ) );
+    KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] Destroying Color node" ) );
 }
 
 
@@ -62,14 +62,14 @@ bool WRL2COLOR::isDangling( void )
 bool WRL2COLOR::AddRefNode( WRL2NODE* aNode )
 {
     // this node may not own or reference any other node
-    wxCHECK_MSG( false, false, wxT( "AddRefNode is not applicable." ) );
+    KI_CHECK_MSG( false, false, wxT( "AddRefNode is not applicable." ) );
 }
 
 
 bool WRL2COLOR::AddChildNode( WRL2NODE* aNode )
 {
     // this node may not own or reference any other node
-    wxCHECK_MSG( false, false, wxT( "AddChildNode is not applicable." ) );
+    KI_CHECK_MSG( false, false, wxT( "AddChildNode is not applicable." ) );
 }
 
 
@@ -79,7 +79,7 @@ bool WRL2COLOR::Read( WRLPROC& proc, WRL2BASE* aTopNode )
 
     if( proc.eof() )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                           " * [INFO] bad file format; unexpected eof %s." ),
                     __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition() );
 
@@ -88,7 +88,7 @@ bool WRL2COLOR::Read( WRLPROC& proc, WRL2BASE* aTopNode )
 
     if( '{' != tok )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( "%s:%s:%d\n"
                          " * [INFO] bad file format; expecting '{' but got '%s' %s." ),
                     __FILE__, __FUNCTION__, __LINE__, tok, proc.GetFilePosition() );
@@ -107,7 +107,7 @@ bool WRL2COLOR::Read( WRLPROC& proc, WRL2BASE* aTopNode )
 
     if( !proc.ReadName( glob ) )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                           "%s" ),
                     __FILE__, __FUNCTION__, __LINE__ , proc.GetError() );
 
@@ -119,7 +119,7 @@ bool WRL2COLOR::Read( WRLPROC& proc, WRL2BASE* aTopNode )
     {
         if( !proc.ReadMFVec3f( colors ) )
         {
-                wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+                KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                                   " * [INFO] invalid color set %s\n"
                                                   " * [INFO] file: '%s'\n"
                                                   "%s" ),
@@ -131,7 +131,7 @@ bool WRL2COLOR::Read( WRLPROC& proc, WRL2BASE* aTopNode )
     }
     else
     {
-        wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                           " * [INFO] invalid Color %s\n"
                                           " * [INFO] file: '%s'\n" ),
                     __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition(), proc.GetFileName() );
@@ -145,7 +145,7 @@ bool WRL2COLOR::Read( WRLPROC& proc, WRL2BASE* aTopNode )
         return true;
     }
 
-    wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+    KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                       " * [INFO] invalid Color %s (no closing brace)\n"
                                       " * [INFO] file: '%s'\n" ),
                 __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition(), proc.GetFileName() );

@@ -194,7 +194,7 @@ wxString COMPONENT_CLASS_ASSIGNMENT_DATA::GetConditionName( const CONDITION_TYPE
     case CONDITION_TYPE::SHEET_NAME:      return wxT( "SHEET_NAME" );
     }
 
-    wxASSERT_MSG( false, "Invalid condition type" );
+    KI_ASSERT_MSG( false, "Invalid condition type" );
 
     return wxEmptyString;
 }
@@ -218,7 +218,7 @@ COMPONENT_CLASS_ASSIGNMENT_DATA::GetConditionType( const wxString& aCondition )
     if( aCondition == wxT( "SHEET_NAME" ) )
         return CONDITION_TYPE::SHEET_NAME;
 
-    wxASSERT_MSG( false, "Invalid condition type" );
+    KI_ASSERT_MSG( false, "Invalid condition type" );
 
     return CONDITION_TYPE::REFERENCE;
 }

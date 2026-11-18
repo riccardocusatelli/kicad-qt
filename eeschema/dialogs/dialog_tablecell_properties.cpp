@@ -48,7 +48,7 @@ DIALOG_TABLECELL_PROPERTIES::DIALOG_TABLECELL_PROPERTIES( SCH_EDIT_FRAME* aFrame
         m_cellText( m_cellTextCtrl ),
         m_returnValue( TABLECELL_PROPS_CANCEL )
 {
-    wxASSERT( m_cells.size() > 0 && m_cells[0] );
+    KI_ASSERT( m_cells.size() > 0 && m_cells[0] );
 
     m_cellText->SetEOLMode( wxSTC_EOL_LF );
 

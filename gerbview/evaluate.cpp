@@ -199,7 +199,7 @@ double Evaluate( AM_PARAM_EVAL_STACK& aExp )
         // If the number of operator is n-1 the first value is just copied to result
         optype.insert( optype.begin(), OP_CODE( POPVALUE ) );
 
-    wxASSERT( values.size() == optype.size() );
+    KI_ASSERT( values.size() == optype.size() );
 
     for( unsigned idx = 0; idx < values.size(); idx++ )
     {

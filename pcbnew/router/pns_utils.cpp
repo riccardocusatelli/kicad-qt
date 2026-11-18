@@ -534,7 +534,7 @@ const SHAPE_LINE_CHAIN BuildHullForPrimitiveShape( const SHAPE* aShape, int aCle
 
     default:
     {
-        wxFAIL_MSG( wxString::Format( wxT( "Unsupported hull shape: %d (%s)." ),
+        KI_FAIL_MSG( wxString::Format( wxT( "Unsupported hull shape: %d (%s)." ),
                                       aShape->Type(),
                                       SHAPE_TYPE_asString( aShape->Type() ) ) );
         break;
@@ -702,7 +702,7 @@ const SEG LongestCoveringSegment( const SEG& a, const SEG& b )
         case 1: return SEG( a.A, b.B );
         case 2: return SEG( a.B, b.A );
         case 3: return SEG( a.B, b.B );
-        default: wxASSERT_MSG( false, wxT("failed to find farthest points?")); break;
+        default: KI_ASSERT_MSG( false, wxT("failed to find farthest points?")); break;
     }
     return SEG();
 }

@@ -101,7 +101,7 @@ public:
 
     PCB_LAYER_ID GetLayer() const override
     {
-        wxFAIL_MSG( wxT( "PCB_GROUP::GetLayer() isn't well-defined.  Don't call it." ) );
+        KI_FAIL_MSG( wxT( "PCB_GROUP::GetLayer() isn't well-defined.  Don't call it." ) );
         return UNDEFINED_LAYER;
     }
 

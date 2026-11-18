@@ -76,7 +76,7 @@ wxString PAD_UTILS::GetPadAttributeString( PAD_ATTRIB aAttrib )
         case PAD_ATTRIB::NON_COMPONENT: return _( "Non-component" );
     }
 
-    wxFAIL_MSG( wxT( "Invalid pad attribute" ) );
+    KI_FAIL_MSG( wxT( "Invalid pad attribute" ) );
     return _( "Unknown" );
 }
 

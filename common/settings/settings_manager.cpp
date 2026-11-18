@@ -61,11 +61,11 @@ SETTINGS_MANAGER::SETTINGS_MANAGER() :
         m_migrateLibraryTables( true )
 {
     wxFileName path( PATHS::GetUserSettingsPath(), wxS( "" ) );
-    wxLogTrace( traceSettings, wxT( "Using settings path %s" ), path.GetFullPath() );
+    KI_LOG_TRACE( traceSettings, wxT( "Using settings path %s" ), path.GetFullPath() );
 
     if( !path.DirExists() )
     {
-        wxLogTrace( traceSettings, wxT( "Path didn't exist; creating it" ) );
+        KI_LOG_TRACE( traceSettings, wxT( "Path didn't exist; creating it" ) );
         path.Mkdir( wxS_DIR_DEFAULT, wxPATH_MKDIR_FULL );
     }
 
@@ -74,7 +74,7 @@ SETTINGS_MANAGER::SETTINGS_MANAGER() :
         // This will be picked up by the first-run wizard later in application start,
         // but we allow it for now because many things rely on being able to access the
         // settings manager.  For now, default settings in memory will be used.
-        wxLogTrace( traceSettings, wxT( "Note: no valid settings directory on disk" ) );
+        KI_LOG_TRACE( traceSettings, wxT( "Note: no valid settings directory on disk" ) );
     }
 
     m_ok = true;
@@ -148,7 +148,7 @@ JSON_SETTINGS* SETTINGS_MANAGER::registerSettings( JSON_SETTINGS* aSettings, boo
 
     ptr->SetManager( this );
 
-    wxLogTrace( traceSettings, wxT( "Registered new settings object <%s>" ),
+    KI_LOG_TRACE( traceSettings, wxT( "Registered new settings object <%s>" ),
                 ptr->GetFullFilename() );
 
     if( aLoadNow )
@@ -232,7 +232,7 @@ void SETTINGS_MANAGER::Save( JSON_SETTINGS* aSettings )
 
     if( it != m_settings.end() )
     {
-        wxLogTrace( traceSettings, wxT( "Saving %s" ), ( *it )->GetFullFilename() );
+        KI_LOG_TRACE( traceSettings, wxT( "Saving %s" ), ( *it )->GetFullFilename() );
         ( *it )->SaveToFile( GetPathForSettingsFile( it->get() ) );
     }
 }
@@ -248,7 +248,7 @@ void SETTINGS_MANAGER::FlushAndRelease( JSON_SETTINGS* aSettings, bool aSave )
 
     if( it != m_settings.end() )
     {
-        wxLogTrace( traceSettings, wxT( "Flush and release %s" ), ( *it )->GetFullFilename() );
+        KI_LOG_TRACE( traceSettings, wxT( "Flush and release %s" ), ( *it )->GetFullFilename() );
 
         if( aSave )
             ( *it )->SaveToFile( GetPathForSettingsFile( it->get() ) );
@@ -323,13 +323,13 @@ std::vector<COLOR_SETTINGS*> SETTINGS_MANAGER::GetColorSettingsList()
 
 COLOR_SETTINGS* SETTINGS_MANAGER::loadColorSettingsByName( const wxString& aName )
 {
-    wxLogTrace( traceSettings, wxT( "Attempting to load color theme %s" ), aName );
+    KI_LOG_TRACE( traceSettings, wxT( "Attempting to load color theme %s" ), aName );
 
     wxFileName fn( GetColorSettingsPath(), aName, wxS( "json" ) );
 
     if( !fn.IsOk() || !fn.Exists() )
     {
-        wxLogTrace( traceSettings, wxT( "Theme file %s.json not found, falling back to user" ),
+        KI_LOG_TRACE( traceSettings, wxT( "Theme file %s.json not found, falling back to user" ),
                     aName );
         return nullptr;
     }
@@ -338,7 +338,7 @@ COLOR_SETTINGS* SETTINGS_MANAGER::loadColorSettingsByName( const wxString& aName
 
     if( settings->GetFilename() != aName.ToStdString() )
     {
-        wxLogTrace( traceSettings, wxT( "Warning: stored filename is actually %s, " ),
+        KI_LOG_TRACE( traceSettings, wxT( "Warning: stored filename is actually %s, " ),
                     settings->GetFilename() );
     }
 
@@ -504,7 +504,7 @@ void SETTINGS_MANAGER::ReloadColorSettings()
 void SETTINGS_MANAGER::SaveColorSettings( COLOR_SETTINGS* aSettings, const std::string& aNamespace )
 {
     // The passed settings should already be managed
-    wxASSERT( std::find_if( m_color_settings.begin(), m_color_settings.end(),
+    KI_ASSERT( std::find_if( m_color_settings.begin(), m_color_settings.end(),
                             [aSettings] ( const std::pair<wxString, COLOR_SETTINGS*>& el )
                             {
                                 return el.second->GetFilename() == aSettings->GetFilename();
@@ -516,14 +516,14 @@ void SETTINGS_MANAGER::SaveColorSettings( COLOR_SETTINGS* aSettings, const std::
 
     if( !aSettings->Store() )
     {
-        wxLogTrace( traceSettings, wxT( "Color scheme %s not modified; skipping save" ),
+        KI_LOG_TRACE( traceSettings, wxT( "Color scheme %s not modified; skipping save" ),
                     aNamespace );
         return;
     }
 
-    wxASSERT( aSettings->Contains( aNamespace ) );
+    KI_ASSERT( aSettings->Contains( aNamespace ) );
 
-    wxLogTrace( traceSettings, wxT( "Saving color scheme %s, preserving %s" ),
+    KI_LOG_TRACE( traceSettings, wxT( "Saving color scheme %s, preserving %s" ),
                 aSettings->GetFilename(),
                 aNamespace );
 
@@ -543,7 +543,7 @@ void SETTINGS_MANAGER::SaveColorSettings( COLOR_SETTINGS* aSettings, const std::
 
 wxString SETTINGS_MANAGER::GetPathForSettingsFile( JSON_SETTINGS* aSettings )
 {
-    wxASSERT( aSettings );
+    KI_ASSERT( aSettings );
 
     switch( aSettings->GetLocation() )
     {
@@ -568,7 +568,7 @@ wxString SETTINGS_MANAGER::GetPathForSettingsFile( JSON_SETTINGS* aSettings )
         return "";
 
     default:
-        wxASSERT_MSG( false, wxT( "Unknown settings location!" ) );
+        KI_ASSERT_MSG( false, wxT( "Unknown settings location!" ) );
     }
 
     return "";
@@ -617,7 +617,7 @@ public:
         path.Replace( m_src, m_dest, false );
         file.SetPath( path );
 
-        wxLogTrace( traceSettings, wxT( "Copying %s to %s" ), aSrcFilePath, file.GetFullPath() );
+        KI_LOG_TRACE( traceSettings, wxT( "Copying %s to %s" ), aSrcFilePath, file.GetFullPath() );
 
         // For now, just copy everything
         KiCopyFile( aSrcFilePath, file.GetFullPath(), m_errors );
@@ -664,7 +664,7 @@ bool SETTINGS_MANAGER::SettingsDirectoryValid() const
 
         if( common.Exists() )
         {
-            wxLogTrace( traceSettings, wxT( "Path exists and has a kicad_common, continuing!" ) );
+            KI_LOG_TRACE( traceSettings, wxT( "Path exists and has a kicad_common, continuing!" ) );
             return true;
         }
     }
@@ -680,7 +680,7 @@ bool SETTINGS_MANAGER::MigrateFromPreviousVersion( const wxString& aSourcePath )
     if( aSourcePath.IsEmpty() )
         return false;
 
-    wxLogTrace( traceSettings, wxT( "Migrating from path %s" ), aSourcePath );
+    KI_LOG_TRACE( traceSettings, wxT( "Migrating from path %s" ), aSourcePath );
 
     // TODO(JE) library tables - move library table migration out of here probably
     MIGRATION_TRAVERSER traverser( aSourcePath, path.GetFullPath(), m_migrateLibraryTables );
@@ -731,7 +731,7 @@ bool SETTINGS_MANAGER::MigrateFromPreviousVersion( const wxString& aSourcePath )
 
 bool SETTINGS_MANAGER::GetPreviousVersionPaths( std::vector<wxString>* aPaths )
 {
-    wxASSERT( aPaths );
+    KI_ASSERT( aPaths );
 
     aPaths->clear();
 
@@ -778,7 +778,7 @@ bool SETTINGS_MANAGER::GetPreviousVersionPaths( std::vector<wxString>* aPaths )
                     if( IsSettingsPathValid( sub_path ) )
                     {
                         aPaths->push_back( sub_path );
-                        wxLogTrace( traceSettings, wxT( "GetPreviousVersionName: %s is valid" ), sub_path );
+                        KI_LOG_TRACE( traceSettings, wxT( "GetPreviousVersionName: %s is valid" ), sub_path );
                     }
                 }
             };
@@ -794,12 +794,12 @@ bool SETTINGS_MANAGER::GetPreviousVersionPaths( std::vector<wxString>* aPaths )
 
         if( !dir.Open( base_path.GetFullPath() ) )
         {
-            wxLogTrace( traceSettings, wxT( "GetPreviousVersionName: could not open base path %s" ),
+            KI_LOG_TRACE( traceSettings, wxT( "GetPreviousVersionName: could not open base path %s" ),
                         base_path.GetFullPath() );
             continue;
         }
 
-        wxLogTrace( traceSettings, wxT( "GetPreviousVersionName: checking base path %s" ),
+        KI_LOG_TRACE( traceSettings, wxT( "GetPreviousVersionName: checking base path %s" ),
                     base_path.GetFullPath() );
 
         if( dir.GetFirst( &subdir, wxEmptyString, wxDIR_DIRS ) )
@@ -817,7 +817,7 @@ bool SETTINGS_MANAGER::GetPreviousVersionPaths( std::vector<wxString>* aPaths )
         // If we didn't find one yet, check for legacy settings without a version directory
         if( IsSettingsPathValid( dir.GetNameWithSep() ) )
         {
-            wxLogTrace( traceSettings,
+            KI_LOG_TRACE( traceSettings,
                         wxT( "GetPreviousVersionName: root path %s is valid" ), dir.GetName() );
             aPaths->push_back( dir.GetName() );
         }
@@ -895,7 +895,7 @@ wxString SETTINGS_MANAGER::GetColorSettingsPath()
     {
         if( !wxMkdir( path.GetPath() ) )
         {
-            wxLogTrace( traceSettings,
+            KI_LOG_TRACE( traceSettings,
                         wxT( "GetColorSettingsPath(): Path %s missing and could not be created!" ),
                         path.GetPath() );
         }
@@ -916,7 +916,7 @@ wxString SETTINGS_MANAGER::GetToolbarSettingsPath()
     {
         if( !wxMkdir( path.GetPath() ) )
         {
-            wxLogTrace( traceSettings,
+            KI_LOG_TRACE( traceSettings,
                         wxT( "GetToolbarSettingsPath(): Path %s missing and could not be created!" ),
                         path.GetPath() );
         }
@@ -942,7 +942,7 @@ int SETTINGS_MANAGER::compareVersions( const std::string& aFirst, const std::str
 
     if( !extractVersion( aFirst, &a_maj, &a_min ) || !extractVersion( aSecond, &b_maj, &b_min ) )
     {
-        wxLogTrace( traceSettings, wxT( "compareSettingsVersions: bad input (%s, %s)" ),
+        KI_LOG_TRACE( traceSettings, wxT( "compareSettingsVersions: bad input (%s, %s)" ),
                     aFirst, aSecond );
         return -1;
     }
@@ -1035,7 +1035,7 @@ bool SETTINGS_MANAGER::LoadProject( const wxString& aFullPath, bool aSetActive, 
         lockFile.OverrideLock();
 
     if( !lockFile.Valid() )
-        wxLogTrace( traceSettings, wxT( "Project %s is locked; opening read-only" ), fullPath );
+        KI_LOG_TRACE( traceSettings, wxT( "Project %s is locked; opening read-only" ), fullPath );
 
     const bool switching = aSetActive && !m_projects_list.empty();
 
@@ -1057,7 +1057,7 @@ bool SETTINGS_MANAGER::LoadProject( const wxString& aFullPath, bool aSetActive, 
         m_projects_list.erase( m_projects_list.begin() );
     }
 
-    wxLogTrace( traceSettings, wxT( "Load project %s" ), fullPath );
+    KI_LOG_TRACE( traceSettings, wxT( "Load project %s" ), fullPath );
 
     std::unique_ptr<PROJECT> project = std::make_unique<PROJECT>();
     project->setProjectFullName( fullPath );
@@ -1162,10 +1162,10 @@ void SETTINGS_MANAGER::stopLibraryLoads()
     if( m_kiway )
     {
         // Joined too, so a stale symbol preload cannot cancel the restart that follows
-        if( KIFACE* schFace = m_kiway->KiFACE( KIWAY::FACE_SCH, false ) )
+        if( KIFACE* schFace = m_kiway->KiFACE( KIWAY_FACES::FACE_SCH, false ) )
             schFace->CancelPreload( true );
 
-        if( KIFACE* pcbFace = m_kiway->KiFACE( KIWAY::FACE_PCB, false ) )
+        if( KIFACE* pcbFace = m_kiway->KiFACE( KIWAY_FACES::FACE_PCB, false ) )
             pcbFace->CancelPreload( true );
     }
 
@@ -1188,7 +1188,7 @@ bool SETTINGS_MANAGER::UnloadProject( PROJECT* aProject, bool aSave )
         return false;
 
     wxString projectPath = aProject->GetProjectFullName();
-    wxLogTrace( traceSettings, wxT( "Unload project %s" ), projectPath );
+    KI_LOG_TRACE( traceSettings, wxT( "Unload project %s" ), projectPath );
 
     PROJECT* toRemove = m_projects.at( projectPath );
     bool     wasActiveProject = m_projects_list.begin()->get() == toRemove;
@@ -1211,7 +1211,7 @@ bool SETTINGS_MANAGER::UnloadProject( PROJECT* aProject, bool aSave )
                                 return ptr.get() == toRemove;
                             } );
 
-    wxASSERT( it != m_projects_list.end() );
+    KI_ASSERT( it != m_projects_list.end() );
     m_projects_list.erase( it );
 
     m_projects.erase( projectPath );
@@ -1249,7 +1249,7 @@ PROJECT& SETTINGS_MANAGER::Prj() const
     // No MDI yet:  First project in the list is the active project
     if( m_projects_list.empty() )
     {
-        wxLogTrace( traceSettings, wxT( "Prj() called with no project loaded" ) );
+        KI_LOG_TRACE( traceSettings, wxT( "Prj() called with no project loaded" ) );
 
         static PROJECT s_emptyProject;
         return s_emptyProject;
@@ -1636,19 +1636,19 @@ bool SETTINGS_MANAGER::BackupProject( REPORTER& aReporter, wxFileName& aTarget )
 
     if( !aTarget.DirExists() && !PATHS::EnsurePathExists( aTarget.GetPath() ) )
     {
-        wxLogTrace( traceSettings, wxT( "Could not create project backup path %s" ),
+        KI_LOG_TRACE( traceSettings, wxT( "Could not create project backup path %s" ),
                     aTarget.GetPath() );
         return false;
     }
 
     if( !aTarget.IsDirWritable() )
     {
-        wxLogTrace( traceSettings, wxT( "Backup directory %s is not writable" ),
+        KI_LOG_TRACE( traceSettings, wxT( "Backup directory %s is not writable" ),
                     aTarget.GetPath() );
         return false;
     }
 
-    wxLogTrace( traceSettings, wxT( "Backing up project to %s" ), aTarget.GetPath() );
+    KI_LOG_TRACE( traceSettings, wxT( "Backing up project to %s" ), aTarget.GetPath() );
 
     return PROJECT_ARCHIVER::Archive( Prj().GetProjectPath(), aTarget.GetFullPath(), aReporter, false );
 }
@@ -1718,7 +1718,7 @@ bool SETTINGS_MANAGER::TriggerBackupIfNeeded( REPORTER& aReporter ) const
     // directories may not yet have been created.
     if( !PATHS::EnsurePathExists( backupPath ) )
     {
-        wxLogTrace( traceSettings, wxT( "Could not create backups path %s!  Skipping backup" ),
+        KI_LOG_TRACE( traceSettings, wxT( "Could not create backups path %s!  Skipping backup" ),
                     backupPath );
         return false;
     }
@@ -1729,7 +1729,7 @@ bool SETTINGS_MANAGER::TriggerBackupIfNeeded( REPORTER& aReporter ) const
     // on the user data path; in PROJECT_DIR mode it gates on the project tree.
     if( !backupRoot.IsDirWritable() )
     {
-        wxLogTrace( traceSettings, wxT( "Backup directory %s is not writable!  Skipping backup" ),
+        KI_LOG_TRACE( traceSettings, wxT( "Backup directory %s is not writable!  Skipping backup" ),
                     backupPath );
         return true;
     }
@@ -1738,7 +1738,7 @@ bool SETTINGS_MANAGER::TriggerBackupIfNeeded( REPORTER& aReporter ) const
 
     if( !dir.IsOpened() )
     {
-        wxLogTrace( traceSettings, wxT( "Could not open project backups path %s" ), dir.GetName() );
+        KI_LOG_TRACE( traceSettings, wxT( "Could not open project backups path %s" ), dir.GetName() );
         return false;
     }
 
@@ -1838,7 +1838,7 @@ bool SETTINGS_MANAGER::TriggerBackupIfNeeded( REPORTER& aReporter ) const
         wxDateTime day = modTime( files[0] );
         int        num = 1;
 
-        wxASSERT( day.IsValid() );
+        KI_ASSERT( day.IsValid() );
 
         std::vector<wxString> filesToDelete;
 

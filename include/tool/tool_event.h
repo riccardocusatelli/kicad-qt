@@ -485,7 +485,7 @@ public:
     {
         T param;
 
-        wxCHECK_MSG( m_param.has_value(), T(), "Attempted to get a parameter from an event with "
+        KI_CHECK_MSG( m_param.has_value(), T(), "Attempted to get a parameter from an event with "
                                                "no parameter." );
 
         try
@@ -494,7 +494,7 @@ public:
         }
         catch( const ki::bad_any_cast& )
         {
-            wxCHECK_MSG( false, T(), wxString::Format( "Requested parameter type %s from event "
+            KI_CHECK_MSG( false, T(), wxString::Format( "Requested parameter type %s from event "
                                                        "with parameter type %s.",
                                                        typeid(T).name(),
                                                        m_param.type().name() ) );
@@ -511,7 +511,7 @@ public:
     {
         T param = nullptr;
 
-        wxCHECK_MSG( m_param.has_value(), param, "Attempted to get a parameter from an event with "
+        KI_CHECK_MSG( m_param.has_value(), param, "Attempted to get a parameter from an event with "
                                                  "no parameter." );
 
         try
@@ -520,7 +520,7 @@ public:
         }
         catch( const ki::bad_any_cast& )
         {
-            wxCHECK_MSG( false, param, wxString::Format( "Requested parameter type %s from event "
+            KI_CHECK_MSG( false, param, wxString::Format( "Requested parameter type %s from event "
                                                          "with parameter type %s.",
                                                          typeid(T).name(),
                                                          m_param.type().name() ) );

@@ -94,7 +94,7 @@ int GLOBAL_EDIT_TOOL::ExchangeFootprints( const TOOL_EVENT& aEvent )
     }
     else
     {
-        wxFAIL_MSG( wxT( "ExchangeFootprints: unexpected action" ) );
+        KI_FAIL_MSG( wxT( "ExchangeFootprints: unexpected action" ) );
     }
 
     DIALOG_EXCHANGE_FOOTPRINTS dialog( editFrame, footprint, updateMode, currentMode );

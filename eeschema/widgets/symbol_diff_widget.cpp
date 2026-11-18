@@ -97,7 +97,7 @@ void SYMBOL_DIFF_WIDGET::DisplayDiff( LIB_SYMBOL* aSchSymbol, LIB_SYMBOL* aLibSy
         delete m_previewItem;
         m_previewItem = nullptr;
 
-        wxASSERT( m_libraryItem );
+        KI_ASSERT( m_libraryItem );
 
         view->Remove( m_libraryItem );
         delete m_libraryItem;
@@ -122,7 +122,7 @@ void SYMBOL_DIFF_WIDGET::DisplayDiff( LIB_SYMBOL* aSchSymbol, LIB_SYMBOL* aLibSy
         // Calculate the draw scale to fit the drawing area
         fitOnDrawArea();
 
-        wxCHECK( aLibSymbol, /* void */ );
+        KI_CHECK( aLibSymbol, /* void */ );
 
         m_libraryItem = aLibSymbol;
         view->Add( m_libraryItem );

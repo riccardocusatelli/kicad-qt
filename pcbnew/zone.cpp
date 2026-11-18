@@ -113,7 +113,7 @@ ZONE& ZONE::operator=( const ZONE& aOther )
 
 void ZONE::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther && aOther->Type() == PCB_ZONE_T, /* void */ );
+    KI_CHECK( aOther && aOther->Type() == PCB_ZONE_T, /* void */ );
     *this = *static_cast<const ZONE*>( aOther );
 }
 
@@ -400,7 +400,7 @@ void ZONE::Serialize( google::protobuf::Any& aContainer ) const
     kiapi::common::PackCustomProperties( zone.mutable_custom_properties(), *this );
 
     if( !aContainer.PackFrom( zone ) )
-        wxFAIL_MSG( wxT( "Failed to pack ZONE" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack ZONE" ) );
 }
 
 
@@ -1487,7 +1487,7 @@ void ZONE::RemoveCutout( int aOutlineIdx, int aHoleIdx )
 
 void ZONE::AddPolygon( const SHAPE_LINE_CHAIN& aPolygon )
 {
-    wxASSERT( aPolygon.IsClosed() );
+    KI_ASSERT( aPolygon.IsClosed() );
 
     // Add the outline as a new polygon in the polygon set
     if( m_Poly->OutlineCount() == 0 )
@@ -1706,7 +1706,7 @@ BITMAPS ZONE::GetMenuImage() const
 
 void ZONE::swapData( BOARD_ITEM* aImage )
 {
-    wxASSERT( aImage->Type() == PCB_ZONE_T );
+    KI_ASSERT( aImage->Type() == PCB_ZONE_T );
 
     std::swap( *static_cast<ZONE*>( this ), *static_cast<ZONE*>( aImage) );
 }
@@ -2096,7 +2096,7 @@ double ZONE::GetCoverageArea( int aTextMargin ) const
 void ZONE::TransformShapeToPolygon( SHAPE_POLY_SET& aBuffer, PCB_LAYER_ID aLayer, int aClearance,
                                     int aError, ERROR_LOC aErrorLoc, bool aIgnoreLineWidth ) const
 {
-    wxASSERT_MSG( !aIgnoreLineWidth, wxT( "IgnoreLineWidth has no meaning for zones." ) );
+    KI_ASSERT_MSG( !aIgnoreLineWidth, wxT( "IgnoreLineWidth has no meaning for zones." ) );
 
     std::shared_ptr<SHAPE_POLY_SET> fillPolys;
 
@@ -2576,7 +2576,7 @@ static struct ZONE_DESC
                 {
                     int   val = aValue.As<int>();
                     ZONE* zone = dynamic_cast<ZONE*>( aZone );
-                    wxCHECK( zone, std::nullopt );
+                    KI_CHECK( zone, std::nullopt );
 
                     if( val < zone->GetMinThickness() )
                         return std::make_unique<VALIDATION_ERROR_MSG>( _( "Cannot be less than zone minimum width" ) );

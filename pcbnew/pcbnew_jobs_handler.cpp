@@ -179,7 +179,7 @@ PCBNEW_JOBS_HANDLER::PCBNEW_JOBS_HANDLER( KIWAY* aKiway ) :
 
                   PCB_EDIT_FRAME* editFrame = static_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
 
-                  wxCHECK( bomJob && editFrame, false );
+                  KI_CHECK( bomJob && editFrame, false );
 
                   DIALOG_FOOTPRINT_FIELDS_TABLE dlg( editFrame, bomJob );
 
@@ -196,7 +196,7 @@ PCBNEW_JOBS_HANDLER::PCBNEW_JOBS_HANDLER( KIWAY* aKiway ) :
                   PCB_EDIT_FRAME* editFrame =
                           dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
 
-                  wxCHECK( svgJob && editFrame, false );
+                  KI_CHECK( svgJob && editFrame, false );
 
                   DIALOG_EXPORT_STEP dlg( editFrame, aParent, "", svgJob );
                   return dlg.ShowModal() == wxID_OK;
@@ -206,7 +206,7 @@ PCBNEW_JOBS_HANDLER::PCBNEW_JOBS_HANDLER( KIWAY* aKiway ) :
               {
                   JOB_PCB_RENDER* renderJob = dynamic_cast<JOB_PCB_RENDER*>( job );
 
-                  wxCHECK( renderJob, false );
+                  KI_CHECK( renderJob, false );
 
                   DIALOG_RENDER_JOB dlg( aParent, renderJob );
                   return dlg.ShowModal() == wxID_OK;
@@ -234,7 +234,7 @@ PCBNEW_JOBS_HANDLER::PCBNEW_JOBS_HANDLER( KIWAY* aKiway ) :
                   PCB_EDIT_FRAME* editFrame =
                           dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
 
-                  wxCHECK( svgJob && editFrame, false );
+                  KI_CHECK( svgJob && editFrame, false );
 
                   DIALOG_PLOT dlg( editFrame, aParent, svgJob );
                   return dlg.ShowModal() == wxID_OK;
@@ -247,7 +247,7 @@ PCBNEW_JOBS_HANDLER::PCBNEW_JOBS_HANDLER( KIWAY* aKiway ) :
                   PCB_EDIT_FRAME* editFrame =
                           dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
 
-                  wxCHECK( gencadJob && editFrame, false );
+                  KI_CHECK( gencadJob && editFrame, false );
 
                   DIALOG_GENCAD_EXPORT_OPTIONS dlg( editFrame, gencadJob->GetSettingsDialogTitle(), gencadJob );
                   return dlg.ShowModal() == wxID_OK;
@@ -266,7 +266,7 @@ PCBNEW_JOBS_HANDLER::PCBNEW_JOBS_HANDLER( KIWAY* aKiway ) :
                   PCB_EDIT_FRAME* editFrame =
                           dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
 
-                  wxCHECK( dxfJob && editFrame, false );
+                  KI_CHECK( dxfJob && editFrame, false );
 
                   DIALOG_PLOT dlg( editFrame, aParent, dxfJob );
                   return dlg.ShowModal() == wxID_OK;
@@ -279,7 +279,7 @@ PCBNEW_JOBS_HANDLER::PCBNEW_JOBS_HANDLER( KIWAY* aKiway ) :
                   PCB_EDIT_FRAME* editFrame =
                           dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
 
-                  wxCHECK( pdfJob && editFrame, false );
+                  KI_CHECK( pdfJob && editFrame, false );
 
                   DIALOG_PLOT dlg( editFrame, aParent, pdfJob );
                   return dlg.ShowModal() == wxID_OK;
@@ -292,7 +292,7 @@ PCBNEW_JOBS_HANDLER::PCBNEW_JOBS_HANDLER( KIWAY* aKiway ) :
                   PCB_EDIT_FRAME* editFrame =
                           dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
 
-                  wxCHECK( pngJob && editFrame, false );
+                  KI_CHECK( pngJob && editFrame, false );
 
                   DIALOG_PLOT dlg( editFrame, aParent, pngJob );
                   return dlg.ShowModal() == wxID_OK;
@@ -305,7 +305,7 @@ PCBNEW_JOBS_HANDLER::PCBNEW_JOBS_HANDLER( KIWAY* aKiway ) :
                   PCB_EDIT_FRAME* editFrame =
                           dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
 
-                  wxCHECK( psJob && editFrame, false );
+                  KI_CHECK( psJob && editFrame, false );
 
                   DIALOG_PLOT dlg( editFrame, aParent, psJob );
                   return dlg.ShowModal() == wxID_OK;
@@ -318,7 +318,7 @@ PCBNEW_JOBS_HANDLER::PCBNEW_JOBS_HANDLER( KIWAY* aKiway ) :
                   PCB_EDIT_FRAME* editFrame =
                           dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
 
-                  wxCHECK( statsJob && editFrame, false );
+                  KI_CHECK( statsJob && editFrame, false );
 
                   if( statsJob->m_filename.IsEmpty() && editFrame->GetBoard() )
                   {
@@ -340,7 +340,7 @@ PCBNEW_JOBS_HANDLER::PCBNEW_JOBS_HANDLER( KIWAY* aKiway ) :
                   PCB_EDIT_FRAME* editFrame =
                           dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
 
-                  wxCHECK( stackupJob && editFrame, false );
+                  KI_CHECK( stackupJob && editFrame, false );
 
                   if( stackupJob->m_filename.IsEmpty() && editFrame->GetBoard() )
                   {
@@ -362,7 +362,7 @@ PCBNEW_JOBS_HANDLER::PCBNEW_JOBS_HANDLER( KIWAY* aKiway ) :
                   PCB_EDIT_FRAME* editFrame =
                           dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
 
-                  wxCHECK( gJob && editFrame, false );
+                  KI_CHECK( gJob && editFrame, false );
 
                   DIALOG_PLOT dlg( editFrame, aParent, gJob );
                   return dlg.ShowModal() == wxID_OK;
@@ -375,7 +375,7 @@ PCBNEW_JOBS_HANDLER::PCBNEW_JOBS_HANDLER( KIWAY* aKiway ) :
                   PCB_EDIT_FRAME* editFrame =
                           dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
 
-                  wxCHECK( gJob && editFrame, false );
+                  KI_CHECK( gJob && editFrame, false );
 
                   DIALOG_PLOT dlg( editFrame, aParent, gJob );
                   return dlg.ShowModal() == wxID_OK;
@@ -392,7 +392,7 @@ PCBNEW_JOBS_HANDLER::PCBNEW_JOBS_HANDLER( KIWAY* aKiway ) :
             {
                 PCB_EDIT_FRAME* editFrame = dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
 
-                wxCHECK( editFrame, false );
+                KI_CHECK( editFrame, false );
 
                 DisplayErrorMessage( editFrame, _( "Plotting to HPGL is no longer supported as of KiCad 10.0." ) );
                 return false;
@@ -405,7 +405,7 @@ PCBNEW_JOBS_HANDLER::PCBNEW_JOBS_HANDLER( KIWAY* aKiway ) :
                   PCB_EDIT_FRAME* editFrame =
                           dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
 
-                  wxCHECK( drillJob && editFrame, false );
+                  KI_CHECK( drillJob && editFrame, false );
 
                   DIALOG_GENDRILL dlg( editFrame, drillJob, aParent );
                   return dlg.ShowModal() == wxID_OK;
@@ -418,7 +418,7 @@ PCBNEW_JOBS_HANDLER::PCBNEW_JOBS_HANDLER( KIWAY* aKiway ) :
                   PCB_EDIT_FRAME* editFrame =
                           dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
 
-                  wxCHECK( posJob && editFrame, false );
+                  KI_CHECK( posJob && editFrame, false );
 
                   DIALOG_GEN_FOOTPRINT_POSITION dlg( posJob, editFrame, aParent );
                   return dlg.ShowModal() == wxID_OK;
@@ -453,7 +453,7 @@ PCBNEW_JOBS_HANDLER::PCBNEW_JOBS_HANDLER( KIWAY* aKiway ) :
               {
                   JOB_PCB_DRC* drcJob = dynamic_cast<JOB_PCB_DRC*>( job );
 
-                  wxCHECK( drcJob, false );
+                  KI_CHECK( drcJob, false );
 
                   DIALOG_DRC_JOB_CONFIG dlg( aParent, drcJob );
                   return dlg.ShowModal() == wxID_OK;
@@ -466,7 +466,7 @@ PCBNEW_JOBS_HANDLER::PCBNEW_JOBS_HANDLER( KIWAY* aKiway ) :
                   PCB_EDIT_FRAME* editFrame =
                           dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
 
-                  wxCHECK( ipcJob && editFrame, false );
+                  KI_CHECK( ipcJob && editFrame, false );
 
                   DIALOG_EXPORT_2581 dlg( ipcJob, editFrame, aParent );
                   return dlg.ShowModal() == wxID_OK;
@@ -484,7 +484,7 @@ PCBNEW_JOBS_HANDLER::PCBNEW_JOBS_HANDLER( KIWAY* aKiway ) :
                   PCB_EDIT_FRAME* editFrame =
                           dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
 
-                  wxCHECK( odbJob && editFrame, false );
+                  KI_CHECK( odbJob && editFrame, false );
 
                   DIALOG_EXPORT_ODBPP dlg( odbJob, editFrame, aParent );
                   return dlg.ShowModal() == wxID_OK;
@@ -497,7 +497,7 @@ PCBNEW_JOBS_HANDLER::PCBNEW_JOBS_HANDLER( KIWAY* aKiway ) :
                   PCB_EDIT_FRAME* editFrame =
                           dynamic_cast<PCB_EDIT_FRAME*>( aKiway->Player( FRAME_PCB_EDITOR, false ) );
 
-                  wxCHECK( idfJob && editFrame, false );
+                  KI_CHECK( idfJob && editFrame, false );
 
                   DIALOG_EXPORT_IDF3 dlg( idfJob, editFrame, aParent );
                   return dlg.ShowModal() == wxID_OK;
@@ -706,7 +706,7 @@ int PCBNEW_JOBS_HANDLER::JobExportBom( JOB* aJob )
 {
     JOB_EXPORT_BOM* aBomJob = dynamic_cast<JOB_EXPORT_BOM*>( aJob );
 
-    wxCHECK( aBomJob, CLI::EXIT_CODES::ERR_UNKNOWN );
+    KI_CHECK( aBomJob, CLI::EXIT_CODES::ERR_UNKNOWN );
 
     BOARD* board = getBoard( aBomJob->m_filename );
 
@@ -2535,7 +2535,7 @@ int PCBNEW_JOBS_HANDLER::JobExportPos( JOB* aJob )
         auto exportPlaceFile = [&]( bool frontSide, bool backSide, const wxString& curr_outPath ) -> bool
         {
             FILE* file = wxFopen( curr_outPath, wxS( "wt" ) );
-            wxCHECK( file, false );
+            KI_CHECK( file, false );
 
             PLACE_FILE_EXPORTER exporter( brd, aPosJob->m_units == JOB_EXPORT_PCB_POS::UNITS::MM, aPosJob->m_smdOnly,
                                           aPosJob->m_excludeFootprintsWithTh, aPosJob->m_excludeDNP,
@@ -2974,7 +2974,7 @@ int PCBNEW_JOBS_HANDLER::JobExportDrc( JOB* aJob )
             else
             {
                 KIFACE_NETLIST_SCHEMATIC_SERVICE::Type netlister =
-                        GetKifaceService<KIFACE_NETLIST_SCHEMATIC_SERVICE>( m_kiway->KiFACE( KIWAY::FACE_SCH ) );
+                        GetKifaceService<KIFACE_NETLIST_SCHEMATIC_SERVICE>( m_kiway->KiFACE( KIWAY_FACES::FACE_SCH ) );
 
                 if( netlister )
                     ( *netlister )( schematicPath.GetFullPath(), netlist_str, m_kiway );
@@ -3717,7 +3717,7 @@ int PCBNEW_JOBS_HANDLER::JobFpDowngrade( JOB* aJob )
 {
     JOB_FP_DOWNGRADE* job = dynamic_cast<JOB_FP_DOWNGRADE*>( aJob );
 
-    wxCHECK( job, CLI::EXIT_CODES::ERR_UNKNOWN );
+    KI_CHECK( job, CLI::EXIT_CODES::ERR_UNKNOWN );
 
     const DOWNGRADE_TARGET* target =
             job->m_target.IsEmpty() ? &GetDowngradeTargets().front() : FindDowngradeTarget( job->m_target );

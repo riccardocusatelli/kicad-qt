@@ -395,7 +395,7 @@ void SYMBOL_EDITOR_PIN_TOOL::CreateImagePins( SCH_COMMIT* aCommit, SCH_PIN* aPin
         }
         catch( const boost::bad_pointer& e )
         {
-            wxFAIL_MSG( wxString::Format( wxT( "Boost pointer exception occurred: %s" ), e.what() ));
+            KI_FAIL_MSG( wxString::Format( wxT( "Boost pointer exception occurred: %s" ), e.what() ));
             delete newPin;
             return;
         }

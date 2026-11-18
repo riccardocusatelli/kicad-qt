@@ -203,7 +203,7 @@ void PlotInteractiveLayer( BOARD* aBoard, PLOTTER* aPlotter, const PCB_PLOT_PARA
 
         for( const PCB_FIELD* field : fp->GetFields() )
         {
-            wxCHECK2( field, continue );
+            KI_CHECK2( field, continue );
 
             if( field->IsReference() || field->IsValue() )
                 continue;
@@ -1137,7 +1137,7 @@ void GenerateLayerPoly( SHAPE_POLY_SET* aResult, BOARD *aBoard, PLOTTER* aPlotte
 
             for( const PCB_FIELD* field : footprint->GetFields() )
             {
-                wxCHECK2( field, continue );
+                KI_CHECK2( field, continue );
 
                 if( field->IsReference() && !aPlotReferences )
                     continue;
@@ -1423,7 +1423,7 @@ PLOTTER* StartPlotBoard( BOARD *aBoard, const PCB_PLOT_PARAMS *aPlotOpts, int aL
                          const wxString& aPageName, const wxString& aPageNumber,
                          const int aPageCount )
 {
-    wxCHECK( aBoard && aPlotOpts, nullptr );
+    KI_CHECK( aBoard && aPlotOpts, nullptr );
 
     // Create the plotter driver and set the few plotter specific options
     PLOTTER*    plotter = nullptr;
@@ -1491,7 +1491,7 @@ PLOTTER* StartPlotBoard( BOARD *aBoard, const PCB_PLOT_PARAMS *aPlotOpts, int aL
     }
 
     default:
-        wxASSERT( false );
+        KI_ASSERT( false );
         return nullptr;
     }
 

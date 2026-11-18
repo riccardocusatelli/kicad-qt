@@ -209,7 +209,7 @@ SCH_ITEM* SCH_ITEM::Duplicate( bool addToParentGroup, SCH_COMMIT* aCommit, bool 
 
     if( addToParentGroup )
     {
-        wxCHECK_MSG( aCommit, newItem, "Must supply a commit to update parent group" );
+        KI_CHECK_MSG( aCommit, newItem, "Must supply a commit to update parent group" );
 
         if( EDA_GROUP* group = newItem->GetParentGroup() )
         {

@@ -78,7 +78,7 @@ bool TRANSFORM::MapAngles( EDA_ANGLE* aAngle1, EDA_ANGLE* aAngle2 ) const
 {
     static const EDA_ANGLE epsilon( 0.1, DEGREES_T );
 
-    wxCHECK_MSG( aAngle1 != nullptr && aAngle2 != nullptr, false,
+    KI_CHECK_MSG( aAngle1 != nullptr && aAngle2 != nullptr, false,
                  wxT( "Cannot map NULL point angles." ) );
 
     double   x, y;

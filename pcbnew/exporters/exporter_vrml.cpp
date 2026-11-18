@@ -988,7 +988,7 @@ void EXPORTER_PCB_VRML::ExportVrmlFootprint( FOOTPRINT* aFootprint, std::ostream
     // if m_UseInlineModelsInBrdfile is true, the 3D footprint shape is copied to
     // aOutputFile (with the suitable rotation/translation/scale transform, and the vrml board
     // file contains only the filename of 3D shapes to add to the full vrml scene
-    wxCHECK( aFootprint, /* void */ );
+    KI_CHECK( aFootprint, /* void */ );
 
     wxString libraryName = aFootprint->GetFPID().GetLibNickname();
     wxString footprintBasePath = wxEmptyString;
@@ -1091,7 +1091,7 @@ void EXPORTER_PCB_VRML::ExportVrmlFootprint( FOOTPRINT* aFootprint, std::ostream
 
         if( m_UseInlineModelsInBrdfile )
         {
-            wxCHECK( aOutputFile, /* void */ );
+            KI_CHECK( aOutputFile, /* void */ );
 
             int old_precision = aOutputFile->precision();
             aOutputFile->precision( m_precision );

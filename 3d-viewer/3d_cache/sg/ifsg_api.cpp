@@ -108,13 +108,13 @@ bool S3D::WriteVRML( const char* filename, bool overwrite, SGNODE* aTopNode,
             return false;
     }
 
-    wxCHECK( aTopNode && aTopNode->GetNodeType() == S3D::SGTYPE_TRANSFORM, false );
+    KI_CHECK( aTopNode && aTopNode->GetNodeType() == S3D::SGTYPE_TRANSFORM, false );
 
     OPEN_OSTREAM( op, filename );
 
     if( op.fail() )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d  * [INFO] failed to open file '%s'" ),
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d  * [INFO] failed to open file '%s'" ),
                     __FILE__, __FUNCTION__, __LINE__, filename );
 
         return false;
@@ -139,7 +139,7 @@ bool S3D::WriteVRML( const char* filename, bool overwrite, SGNODE* aTopNode,
 
     CLOSE_STREAM( op );
 
-    wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d  * [INFO] problems encountered writing file '%s'" ),
+    KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d  * [INFO] problems encountered writing file '%s'" ),
                 __FILE__, __FUNCTION__, __LINE__, filename );
 
     return false;
@@ -150,7 +150,7 @@ void S3D::ResetNodeIndex( SGNODE* aNode )
 {
     std::lock_guard<std::recursive_mutex> guard( modelImportMutex );
 
-    wxCHECK( aNode, /* void */ );
+    KI_CHECK( aNode, /* void */ );
 
     aNode->ResetNodeIndex();
 }
@@ -160,7 +160,7 @@ void S3D::RenameNodes( SGNODE* aNode )
 {
     std::lock_guard<std::recursive_mutex> guard( modelImportMutex );
 
-    wxCHECK( aNode, /* void */ );
+    KI_CHECK( aNode, /* void */ );
 
     aNode->ReNameNodes();
 }
@@ -168,7 +168,7 @@ void S3D::RenameNodes( SGNODE* aNode )
 
 void S3D::DestroyNode( SGNODE* aNode ) noexcept
 {
-    wxCHECK( aNode, /* void */ );
+    KI_CHECK( aNode, /* void */ );
 
     delete aNode;
 }
@@ -184,13 +184,13 @@ bool S3D::WriteCache( const char* aFileName, bool overwrite, SGNODE* aNode,
 
     wxString ofile = wxString::FromUTF8Unchecked( aFileName );
 
-    wxCHECK( aNode, false );
+    KI_CHECK( aNode, false );
 
     if( wxFileName::Exists( ofile ) )
     {
         if( !overwrite )
         {
-            wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] file exists not overwriting '%s'" ),
+            KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] file exists not overwriting '%s'" ),
                         __FILE__, __FUNCTION__, __LINE__, aFileName );
 
             return false;
@@ -199,7 +199,7 @@ bool S3D::WriteCache( const char* aFileName, bool overwrite, SGNODE* aNode,
         // make sure we make no attempt to write a directory
         if( !wxFileName::FileExists( aFileName ) )
         {
-            wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] specified path is a directory '%s'" ),
+            KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] specified path is a directory '%s'" ),
                         __FILE__, __FUNCTION__, __LINE__, aFileName );
 
             return false;
@@ -210,7 +210,7 @@ bool S3D::WriteCache( const char* aFileName, bool overwrite, SGNODE* aNode,
 
     if( output.fail() )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] failed to open file '%s'" ),
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] failed to open file '%s'" ),
                     __FILE__, __FUNCTION__, __LINE__, aFileName );
 
         return false;
@@ -228,7 +228,7 @@ bool S3D::WriteCache( const char* aFileName, bool overwrite, SGNODE* aNode,
 
     if( !rval )
     {
-        wxLogTrace( MASK_3D_SG,
+        KI_LOG_TRACE( MASK_3D_SG,
                     wxT( "%s:%s:%d * [INFO] problems encountered writing cache file '%s'" ),
                     __FILE__, __FUNCTION__, __LINE__, aFileName );
 
@@ -252,7 +252,7 @@ SGNODE* S3D::ReadCache( const char* aFileName, void* aPluginMgr,
 
     if( !wxFileName::FileExists( aFileName ) )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] no such file '%s'" ),
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] no such file '%s'" ),
                     __FILE__, __FUNCTION__, __LINE__, aFileName );
 
         return nullptr;
@@ -264,7 +264,7 @@ SGNODE* S3D::ReadCache( const char* aFileName, void* aPluginMgr,
 
     if( file.fail() )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] failed to open file '%s'" ),
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] failed to open file '%s'" ),
                     __FILE__, __FUNCTION__, __LINE__, aFileName );
 
         return nullptr;
@@ -280,7 +280,7 @@ SGNODE* S3D::ReadCache( const char* aFileName, void* aPluginMgr,
 
         if( '(' != schar )
         {
-            wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data; missing left parenthesis"
+            KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data; missing left parenthesis"
                                          " at position '%d'" ),
                         __FILE__, __FUNCTION__, __LINE__,
                         static_cast<int>( file.tellg() ) );
@@ -315,7 +315,7 @@ SGNODE* S3D::ReadCache( const char* aFileName, void* aPluginMgr,
 
         if( '(' != schar )
         {
-            wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data; missing left parenthesis"
+            KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] corrupt data; missing left parenthesis"
                                          " at position '%d'" ),
                         __FILE__, __FUNCTION__, __LINE__,
                         static_cast<int>( file.tellg() ) );
@@ -347,7 +347,7 @@ SGNODE* S3D::ReadCache( const char* aFileName, void* aPluginMgr,
 
     if( !rval )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] problems encountered reading cache file "
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] problems encountered reading cache file "
                                      "'%s'" ),
                     __FILE__, __FUNCTION__, __LINE__,
                     aFileName );

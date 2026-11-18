@@ -164,14 +164,14 @@ double DIALOG_PRINT_GENERIC::getScaleValue()
         return scale;
     }
 
-    wxFAIL_MSG( wxT( "No scale option selected." ) );
+    KI_FAIL_MSG( wxT( "No scale option selected." ) );
     return 1.0;
 }
 
 
 void DIALOG_PRINT_GENERIC::setScaleValue( double aValue )
 {
-    wxASSERT( aValue >= 0.0 );
+    KI_ASSERT( aValue >= 0.0 );
 
     if( aValue == 0.0 )     // fit to page
     {

@@ -253,11 +253,11 @@ std::unique_ptr<ALLEGRO::FILE_HEADER> HEADER_PARSER::ParseHeader()
     // Quick check that the positions line up
     // (start of the m_AllegroVersion string is easy to find)
     if( m_fmtVer < FMT_VER::V_180 )
-        wxASSERT( m_stream.Position() - headerStartPos == 0xF8 );
+        KI_ASSERT( m_stream.Position() - headerStartPos == 0xF8 );
     else if( m_fmtVer < FMT_VER::V_181 )
-        wxASSERT( m_stream.Position() - headerStartPos == 0x124 );
+        KI_ASSERT( m_stream.Position() - headerStartPos == 0x124 );
     else
-        wxASSERT( m_stream.Position() - headerStartPos == 0x144 );
+        KI_ASSERT( m_stream.Position() - headerStartPos == 0x144 );
 
     m_stream.ReadBytes( header->m_AllegroVersion.data(), header->m_AllegroVersion.size() );
     header->m_Unknown4 = m_stream.ReadU32();
@@ -311,7 +311,7 @@ std::unique_ptr<ALLEGRO::FILE_HEADER> HEADER_PARSER::ParseHeader()
         header->m_LayerMap[i].m_LayerList0x2A = m_stream.ReadU32();
     }
 
-    wxLogTrace( traceAllegroParser, wxT( "Parsed header: %d objects, %d strings" ), header->m_ObjectCount,
+    KI_LOG_TRACE( traceAllegroParser, wxT( "Parsed header: %d objects, %d strings" ), header->m_ObjectCount,
                 header->GetStringsCount() );
 
     return header;
@@ -411,7 +411,7 @@ static std::unique_ptr<BLOCK_BASE> ParseBlock_0x03( FILE_STREAM& aStream, FMT_VE
 
     ReadCond( aStream, aVer, data.m_Unknown2 );
 
-    wxLogTrace( traceAllegroParserBlocks, wxT( "  Parsed block 0x03: subtype %#02x, size %d" ), data.m_SubType,
+    KI_LOG_TRACE( traceAllegroParserBlocks, wxT( "  Parsed block 0x03: subtype %#02x, size %d" ), data.m_SubType,
                 data.m_Size );
 
     switch( data.m_SubType )
@@ -2775,7 +2775,7 @@ void ALLEGRO::PARSER::readObjects( BRD_DB& aBoard )
         // objects with non-zero type tags.
         if( blockTypeByte != 0x00 )
         {
-            wxASSERT_MSG( offset % 4 == 0,
+            KI_ASSERT_MSG( offset % 4 == 0,
                           wxString::Format( "Allegro object at %#010zx, offset not aligned to 4 bytes",
                                             offset ) );
         }
@@ -2807,7 +2807,7 @@ void ALLEGRO::PARSER::readObjects( BRD_DB& aBoard )
 
             if( wxLog::IsAllowedTraceMask( traceAllegroParser ) )
             {
-                wxLogTrace( traceAllegroParser,
+                KI_LOG_TRACE( traceAllegroParser,
                             wxString::Format( "End of objects at index %zu, offset %#010zx, "
                                               "%zu bytes of zero padding to the end of the file",
                                               aBoard.GetObjectCount(), offset,
@@ -2828,17 +2828,17 @@ void ALLEGRO::PARSER::readObjects( BRD_DB& aBoard )
             }
             else
             {
-                wxLogTrace( traceAllegroParser,
+                KI_LOG_TRACE( traceAllegroParser,
                             wxString::Format( "Ending at unknown block, index %zu type %#04x at offset %#010zx",
                                               aBoard.GetObjectCount(), blockTypeByte, offset ) );
 
-                wxFAIL_MSG( "Failed to create block" );
+                KI_FAIL_MSG( "Failed to create block" );
                 return;
             }
         }
         else
         {
-            wxLogTrace( traceAllegroParserBlocks,
+            KI_LOG_TRACE( traceAllegroParserBlocks,
                         wxString::Format( "Added block %zu, type %#04x from %#010zx to %#010zx",
                                           aBoard.GetObjectCount(), block->GetBlockType(), offset,
                                           m_stream.Position() ) );
@@ -2862,7 +2862,7 @@ void dumpLL( const char* name, const T& aLL )
 {
     if constexpr( std::is_same_v<T, FILE_HEADER::LINKED_LIST> )
     {
-        wxLogTrace( traceAllegroParser, "  LL %-20s head=%#010x tail=%#010x", name, aLL.m_Head, aLL.m_Tail );
+        KI_LOG_TRACE( traceAllegroParser, "  LL %-20s head=%#010x tail=%#010x", name, aLL.m_Head, aLL.m_Tail );
     }
     else if constexpr( VERSIONED_COND_FIELD<T> && std::is_same_v<typename T::value_type, FILE_HEADER::LINKED_LIST> )
     {
@@ -2895,7 +2895,7 @@ std::unique_ptr<BRD_DB> ALLEGRO::PARSER::Parse()
         board->m_FmtVer = headerParser.GetFormatVersion();
 
         {
-            wxLogTrace( traceAllegroParser, "Header linked lists (ver=%#010x):", board->m_Header->m_Magic );
+            KI_LOG_TRACE( traceAllegroParser, "Header linked lists (ver=%#010x):", board->m_Header->m_Magic );
 
             dumpLL( "0x04", board->m_Header->m_LL_0x04 );
             dumpLL( "0x06", board->m_Header->m_LL_0x06 );
@@ -2924,7 +2924,7 @@ std::unique_ptr<BRD_DB> ALLEGRO::PARSER::Parse()
 
             dumpLL( "0x03_2", board->m_Header->m_LL_0x03_2 );
 
-            wxLogTrace( traceAllegroParser, "  LL trailing word       %#010x",
+            KI_LOG_TRACE( traceAllegroParser, "  LL trailing word       %#010x",
                         board->m_Header->m_Unknown_LlTrailer );
         }
     }
@@ -2942,7 +2942,7 @@ std::unique_ptr<BRD_DB> ALLEGRO::PARSER::Parse()
         THROW_IO_ERROR( s );
     }
 
-    wxLogTrace( traceAllegroPerf, wxT( "  ReadHeader: %.3f ms" ), parseTimer.msecs( true ) ); //format:allow
+    KI_LOG_TRACE( traceAllegroPerf, wxT( "  ReadHeader: %.3f ms" ), parseTimer.msecs( true ) ); //format:allow
 
     if( board->m_FmtVer == FMT_VER::V_PRE_V16 )
     {
@@ -2962,12 +2962,12 @@ std::unique_ptr<BRD_DB> ALLEGRO::PARSER::Parse()
     {
         ReadStringMap( m_stream, *board, stringsCount );
 
-        wxLogTrace( traceAllegroPerf, wxT( "  ReadStringMap (%u strings): %.3f ms" ), //format:allow
+        KI_LOG_TRACE( traceAllegroPerf, wxT( "  ReadStringMap (%u strings): %.3f ms" ), //format:allow
                     stringsCount, parseTimer.msecs( true ) );
 
         readObjects( *board );
 
-        wxLogTrace( traceAllegroPerf, wxT( "  readObjects (%zu objects): %.3f ms" ), //format:allow
+        KI_LOG_TRACE( traceAllegroPerf, wxT( "  readObjects (%zu objects): %.3f ms" ), //format:allow
                     board->GetObjectCount(), parseTimer.msecs( true ) );
     }
     catch( const IO_ERROR& e )
@@ -2984,7 +2984,7 @@ std::unique_ptr<BRD_DB> ALLEGRO::PARSER::Parse()
         THROW_IO_ERROR( s );
     }
 
-    wxLogTrace( traceAllegroPerf, wxT( "  Phase 1 total: %.3f ms" ), parseTimer.msecs() ); //format:allow
+    KI_LOG_TRACE( traceAllegroPerf, wxT( "  Phase 1 total: %.3f ms" ), parseTimer.msecs() ); //format:allow
 
     return board;
 }

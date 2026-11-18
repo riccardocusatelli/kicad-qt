@@ -516,7 +516,7 @@ void PANEL_PACKAGES_VIEW::OnDownloadVersionClicked( wxCommandEvent& event )
                                     return ver.version == version;
                                 } );
 
-    wxASSERT_MSG( ver_it != package.versions.end(), "Could not find package version" );
+    KI_ASSERT_MSG( ver_it != package.versions.end(), "Could not find package version" );
 
     if( !ver_it->download_url )
     {
@@ -608,7 +608,7 @@ void PANEL_PACKAGES_VIEW::OnVersionActionClicked( wxCommandEvent& event )
                                     return ver.version == version;
                                 } );
 
-    wxCHECK_RET( ver_it != package.versions.end(), "Could not find package version" );
+    KI_CHECK_RET( ver_it != package.versions.end(), "Could not find package version" );
 
     if( ( !ver_it->compatible || m_pcm->UsesSWIGRuntime( package, version ) )
         && wxMessageBox( _( "This package version is incompatible with your KiCad version or "
@@ -734,7 +734,7 @@ void PANEL_PACKAGES_VIEW::updateDetailsButtons()
 
 PCM_PACKAGE_ACTION PANEL_PACKAGES_VIEW::getAction() const
 {
-    wxASSERT_MSG( m_gridVersions->GetNumberRows() == 1 || m_gridVersions->GetSelectedRows().size() == 1,
+    KI_ASSERT_MSG( m_gridVersions->GetNumberRows() == 1 || m_gridVersions->GetSelectedRows().size() == 1,
                   wxT( "getAction() called with ambiguous version selection" ) );
 
     int selected_row = 0;

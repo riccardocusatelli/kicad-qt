@@ -37,7 +37,7 @@
 void DIALOG_SHAPE_PROPERTIES::createLineEndingControls( SCH_BASE_FRAME* aParent )
 {
     wxSizer* mainSizer = GetSizer();
-    wxCHECK_RET( mainSizer, wxT( "Shape properties dialog has no main sizer" ) );
+    KI_CHECK_RET( mainSizer, wxT( "Shape properties dialog has no main sizer" ) );
 
     wxGridBagSizer* gbSizerEndings = new wxGridBagSizer( 3, 0 );
     gbSizerEndings->SetFlexibleDirection( wxBOTH );
@@ -258,7 +258,7 @@ bool DIALOG_SHAPE_PROPERTIES::TransferDataToWindow()
     else if( style < (int) lineTypeNames.size() )
         m_borderStyleCombo->SetSelection( style );
     else
-        wxFAIL_MSG( wxT( "Line type not found in the type lookup map" ) );
+        KI_FAIL_MSG( wxT( "Line type not found in the type lookup map" ) );
 
     if( dynamic_cast<SYMBOL_EDIT_FRAME*>( m_frame ) )
     {

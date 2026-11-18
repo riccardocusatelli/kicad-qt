@@ -57,7 +57,7 @@ static struct IFACE : public KIFACE_BASE, public UNITS_PROVIDER
 {
     // Of course all are virtual overloads, implementations of the KIFACE.
 
-    IFACE( const char* aName, KIWAY::FACE_T aType ) :
+    IFACE( const char* aName, KIWAY_FACES::FACE_T aType ) :
             KIFACE_BASE( aName, aType ),
             UNITS_PROVIDER( gerbIUScale, EDA_UNITS::MM )
     {
@@ -144,7 +144,7 @@ static struct IFACE : public KIFACE_BASE, public UNITS_PROVIDER
 private:
     std::unique_ptr<GERBVIEW_JOBS_HANDLER> m_jobHandler;
 
-} kiface( "gerbview", KIWAY::FACE_GERBVIEW );
+} kiface( "gerbview", KIWAY_FACES::FACE_GERBVIEW );
 
 } // namespace GERBV
 
@@ -305,6 +305,6 @@ void IFACE::SaveFileAs( const wxString& aProjectBasePath, const wxString& aProje
     }
     else
     {
-        wxFAIL_MSG( wxT( "Unexpected filetype for GerbView::SaveFileAs()" ) );
+        KI_FAIL_MSG( wxT( "Unexpected filetype for GerbView::SaveFileAs()" ) );
     }
 }

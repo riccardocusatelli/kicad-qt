@@ -136,7 +136,7 @@ void SYMBOLS_LISTBOX::OnChar( wxKeyEvent& event )
     if( m_isClosing )
         return;
 
-    wxLogTrace( kicadTraceKeyEvent, wxS( "SYMBOLS_LISTBOX::OnChar %s" ), dump( event ) );
+    KI_LOG_TRACE( kicadTraceKeyEvent, wxS( "SYMBOLS_LISTBOX::OnChar %s" ), dump( event ) );
 
     int key = event.GetKeyCode();
 

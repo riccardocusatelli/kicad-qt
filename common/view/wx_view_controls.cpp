@@ -224,7 +224,7 @@ void WX_VIEW_CONTROLS::onMotion( wxMouseEvent& aEvent )
 
 #ifdef KICAD_GAL_PROFILE
     latencyProbeRepaintToMotion.Checkpoint("motion-event");
-    wxLogTrace( traceGalProfile, "%s", latencyProbeRepaintToMotion.to_string() );
+    KI_LOG_TRACE( traceGalProfile, "%s", latencyProbeRepaintToMotion.to_string() );
     latencyProbeZoomToRender.Reset();
 #endif
 
@@ -402,7 +402,7 @@ void WX_VIEW_CONTROLS::onMotion( wxMouseEvent& aEvent )
 
                 double scale = exp( d.y * m_settings.m_zoomSpeed * 0.001 );
 
-                wxLogTrace( traceZoomScroll, wxString::Format( "dy: %f  scale: %f", d.y, scale ) );
+                KI_LOG_TRACE( traceZoomScroll, wxString::Format( "dy: %f  scale: %f", d.y, scale ) );
 
                 m_view->SetScale( m_view->GetScale() * scale, m_view->ToWorld( m_zoomStartPoint ) );
                 aEvent.StopPropagation();
@@ -514,7 +514,7 @@ void WX_VIEW_CONTROLS::onWheel( wxMouseEvent& aEvent )
 
 
 #ifdef KICAD_GAL_PROFILE
-            wxLogTrace( traceGalProfile, "Zoom: %.5f",  m_view->GetScale() * zoomScale );
+            KI_LOG_TRACE( traceGalProfile, "Zoom: %.5f",  m_view->GetScale() * zoomScale );
             latencyProbeZoomToRender.Checkpoint("mouse-wheel-zoom");
 #endif
 
@@ -887,7 +887,7 @@ void WX_VIEW_CONTROLS::onScroll( wxScrollWinEvent& aEvent )
         }
         else
         {
-            wxCHECK_MSG( false, /* void */, wxT( "Unhandled event type" ) );
+            KI_CHECK_MSG( false, /* void */, wxT( "Unhandled event type" ) );
         }
 
         VECTOR2D scroll = m_view->ToWorld( m_view->GetGAL()->GetLayoutPixelSize(), false ) * dist;
@@ -1191,7 +1191,7 @@ bool WX_VIEW_CONTROLS::handleAutoPanning( const wxMouseEvent& aEvent )
     case DRAG_ZOOMING: return false;
     }
 
-    wxCHECK_MSG( false, false, wxT( "This line should never be reached" ) );
+    KI_CHECK_MSG( false, false, wxT( "This line should never be reached" ) );
 
     return false;
 }

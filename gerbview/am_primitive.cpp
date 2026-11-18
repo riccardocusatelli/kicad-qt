@@ -59,7 +59,7 @@ bool AM_PRIMITIVE::IsAMPrimitiveExposureOn( APERTURE_MACRO* aApertMacro ) const
      * In a aperture macro shape, a basic primitive with exposure off is a hole in the shape
      * it is NOT a negative shape
     */
-    wxASSERT( m_Params.size() );
+    KI_ASSERT( m_Params.size() );
 
     switch( m_Primitive_id )
     {

@@ -47,7 +47,7 @@ WRL2SWITCH::WRL2SWITCH( WRL2NODE* aParent ) : WRL2NODE()
 
 WRL2SWITCH::~WRL2SWITCH()
 {
-    wxLogTrace( traceVrmlPlugin,
+    KI_LOG_TRACE( traceVrmlPlugin,
                 wxT( " * [INFO] Destroying Switch node with %zu children, %zu"
                      "references, and %zu back pointers." ),
                 m_Children.size(), m_Refs.size(), m_BackPointers.size() );
@@ -72,13 +72,13 @@ bool WRL2SWITCH::Read( WRLPROC& proc, WRL2BASE* aTopNode )
      * }
      */
 
-    wxCHECK_MSG( aTopNode, false, wxT( "Invalid top node." ) );
+    KI_CHECK_MSG( aTopNode, false, wxT( "Invalid top node." ) );
 
     char tok = proc.Peek();
 
     if( proc.eof() )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                           " * [INFO] bad file format; unexpected eof %s." ),
                     __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition() );
 
@@ -87,7 +87,7 @@ bool WRL2SWITCH::Read( WRLPROC& proc, WRL2BASE* aTopNode )
 
     if( '{' != tok )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( "%s:%s:%d\n"
                          " * [INFO] bad file format; expecting '{' but got '%s' %s." ),
                     __FILE__, __FUNCTION__, __LINE__, tok, proc.GetFilePosition() );
@@ -108,7 +108,7 @@ bool WRL2SWITCH::Read( WRLPROC& proc, WRL2BASE* aTopNode )
 
         if( !proc.ReadName( glob ) )
         {
-            wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+            KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                               "%s" ),
                         __FILE__, __FUNCTION__, __LINE__ , proc.GetError() );
 
@@ -122,7 +122,7 @@ bool WRL2SWITCH::Read( WRLPROC& proc, WRL2BASE* aTopNode )
         {
             if( !proc.ReadSFInt( whichChoice ) )
             {
-                wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+                KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                                   " * [INFO] invalid whichChoice %s\n"
                                                   " * [INFO] file: '%s'\n"
                                                   "%s" ),
@@ -139,7 +139,7 @@ bool WRL2SWITCH::Read( WRLPROC& proc, WRL2BASE* aTopNode )
         }
         else
         {
-            wxLogTrace( traceVrmlPlugin,
+            KI_LOG_TRACE( traceVrmlPlugin,
                         wxT( "%s:%s:%d\n"
                              " * [INFO] invalid Switch %s.\n"
                              " * [INFO] file: '%s'\n" ),
@@ -156,7 +156,7 @@ bool WRL2SWITCH::Read( WRLPROC& proc, WRL2BASE* aTopNode )
 
 bool WRL2SWITCH::AddRefNode( WRL2NODE* aNode )
 {
-    wxCHECK_MSG( aNode, false, wxT( "Invalid node." ) );
+    KI_CHECK_MSG( aNode, false, wxT( "Invalid node." ) );
 
     // take possession if the node is dangling WRL2_SHAPE
     if( WRL2NODES::WRL2_SHAPE == aNode->GetNodeType() && aNode->isDangling() )
@@ -186,7 +186,7 @@ bool WRL2SWITCH::readChildren( WRLPROC& proc, WRL2BASE* aTopNode )
 
     if( proc.eof() )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                           " * [INFO] bad file format; unexpected eof %s." ),
                     __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition() );
 
@@ -237,27 +237,27 @@ bool WRL2SWITCH::readChildren( WRLPROC& proc, WRL2BASE* aTopNode )
 
 SGNODE* WRL2SWITCH::TranslateToSG( SGNODE* aParent )
 {
-    wxLogTrace( traceVrmlPlugin,
+    KI_LOG_TRACE( traceVrmlPlugin,
                 wxT( " * [INFO] Translating Switch with %zu children, %zu references, and"
                      "%zu back pointers." ),
                 m_Children.size(), m_Refs.size(), m_BackPointers.size() );
 
     if( choices.empty() )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] Switch translation: no choices." ) );
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] Switch translation: no choices." ) );
 
         return nullptr;
     }
 
     S3D::SGTYPES ptype = S3D::GetSGNodeType( aParent );
 
-    wxCHECK_MSG( aParent && ( ptype == S3D::SGTYPE_TRANSFORM ), nullptr,
+    KI_CHECK_MSG( aParent && ( ptype == S3D::SGTYPE_TRANSFORM ), nullptr,
                  wxString::Format( wxT( "Switch does not have a Transform parent (parent "
                                         "ID: %d)." ), ptype ) );
 
     if( whichChoice < 0 || whichChoice >= (int)choices.size() )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( " * [INFO] Switch translation: no choice (choices = %zu), "
                          "whichChoice = %d." ), choices.size(), whichChoice );
 

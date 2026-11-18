@@ -140,7 +140,7 @@ void PCB_DESIGN_BLOCK_PANE::UpdateCheckboxes()
 FILEDLG_IMPORT_BOARD_CONTENTS::FILEDLG_IMPORT_BOARD_CONTENTS( PCBNEW_SETTINGS* aSettings ) :
         m_cbRepeatedPlacement( nullptr ), m_cbPlaceAsGroup( nullptr ), m_cbKeepAnnotations( nullptr )
 {
-    wxASSERT( aSettings );
+    KI_ASSERT( aSettings );
     m_settings = aSettings;
 };
 

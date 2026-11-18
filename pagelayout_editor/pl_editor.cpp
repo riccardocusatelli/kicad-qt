@@ -44,7 +44,7 @@ static struct IFACE : public KIFACE_BASE, public UNITS_PROVIDER
 {
     // Of course all are virtual overloads, implementations of the KIFACE.
 
-    IFACE( const char* aName, KIWAY::FACE_T aType ) :
+    IFACE( const char* aName, KIWAY_FACES::FACE_T aType ) :
             KIFACE_BASE( aName, aType ),
             UNITS_PROVIDER( drawSheetIUScale, EDA_UNITS::MM )
     {}
@@ -130,7 +130,7 @@ static struct IFACE : public KIFACE_BASE, public UNITS_PROVIDER
                      const wxString& aNewProjectBasePath, const wxString& aNewProjectName,
                      const wxString& aSrcFilePath, wxString& aErrors ) override;
 
-} kiface( "pl_editor", KIWAY::FACE_PL_EDITOR );
+} kiface( "pl_editor", KIWAY_FACES::FACE_PL_EDITOR );
 
 } // namespace
 
@@ -187,7 +187,7 @@ void IFACE::SaveFileAs( const wxString& aProjectBasePath, const wxString& aSrcPr
     }
     else
     {
-        wxFAIL_MSG( "Unexpected filetype for Pcbnew::SaveFileAs()" );
+        KI_FAIL_MSG( "Unexpected filetype for Pcbnew::SaveFileAs()" );
     }
 }
 

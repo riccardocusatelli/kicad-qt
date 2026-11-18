@@ -73,7 +73,7 @@ void FP_TREE_SYNCHRONIZING_ADAPTER::Sync( FOOTPRINT_LIBRARY_ADAPTER* aLibs )
 {
     m_libs = aLibs;
 
-    wxLogTrace( wxT( "KICAD_TABS_DBG" ), wxT( "FpSyncAdapter::Sync enter" ) );
+    KI_LOG_TRACE( wxT( "KICAD_TABS_DBG" ), wxT( "FpSyncAdapter::Sync enter" ) );
 
     // The work below frees nodes while the caller yields the event loop, so a GtkTreeView scroll
     // queued earlier would point at freed rows and crash the next frame-clock tick. Drop it first.
@@ -83,7 +83,7 @@ void FP_TREE_SYNCHRONIZING_ADAPTER::Sync( FOOTPRINT_LIBRARY_ADAPTER* aLibs )
     // the caller's yield has no stale rows to validate. The RAII guard re-attaches on all paths.
     ResetTreeView resetGuard( *this );
 
-    wxLogTrace( wxT( "KICAD_TABS_DBG" ), wxT( "FpSyncAdapter::Sync freeing/updating nodes" ) );
+    KI_LOG_TRACE( wxT( "KICAD_TABS_DBG" ), wxT( "FpSyncAdapter::Sync freeing/updating nodes" ) );
 
     // Process already stored libraries
     for( auto it = m_tree.m_Children.begin(); it != m_tree.m_Children.end(); )
@@ -155,7 +155,7 @@ void FP_TREE_SYNCHRONIZING_ADAPTER::Sync( FOOTPRINT_LIBRARY_ADAPTER* aLibs )
     if( m_libMap.size() > count )
         m_tree.AssignIntrinsicRanks( m_shownColumns );
 
-    wxLogTrace( wxT( "KICAD_TABS_DBG" ), wxT( "FpSyncAdapter::Sync exit" ) );
+    KI_LOG_TRACE( wxT( "KICAD_TABS_DBG" ), wxT( "FpSyncAdapter::Sync exit" ) );
 }
 
 
@@ -309,7 +309,7 @@ bool FP_TREE_SYNCHRONIZING_ADAPTER::GetAttr( wxDataViewItem const& aItem, unsign
         return false;
 
     LIB_TREE_NODE* node = ToNode( aItem );
-    wxCHECK( node, false );
+    KI_CHECK( node, false );
 
     switch( node->m_Type )
     {
@@ -353,7 +353,7 @@ bool FP_TREE_SYNCHRONIZING_ADAPTER::GetAttr( wxDataViewItem const& aItem, unsign
 bool FP_TREE_SYNCHRONIZING_ADAPTER::HasPreview( const wxDataViewItem& aItem )
 {
     LIB_TREE_NODE* node = ToNode( aItem );
-    wxCHECK( node, false );
+    KI_CHECK( node, false );
 
     return node->m_Type == LIB_TREE_NODE::TYPE::ITEM && node->m_LibId != m_frame->GetLoadedFPID();
 }
@@ -365,7 +365,7 @@ static const wxString c_previewName = wxS( "fpHoverPreview" );
 void FP_TREE_SYNCHRONIZING_ADAPTER::ShowPreview( wxWindow* aParent, const wxDataViewItem& aItem )
 {
     LIB_TREE_NODE* node = ToNode( aItem );
-    wxCHECK( node, /* void */ );
+    KI_CHECK( node, /* void */ );
 
     wxWindow* previewWindow = wxWindow::FindWindowByName( c_previewName, aParent );
     FOOTPRINT_PREVIEW_PANEL* preview = dynamic_cast<FOOTPRINT_PREVIEW_PANEL*>( previewWindow );

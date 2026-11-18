@@ -665,9 +665,9 @@ public:
      */
     virtual void SetLayerDepth( double aLayerDepth )
     {
-        wxCHECK_MSG( aLayerDepth <= m_depthRange.y, /*void*/,
+        KI_CHECK_MSG( aLayerDepth <= m_depthRange.y, /*void*/,
                      wxT( "SetLayerDepth: below minimum" ) );
-        wxCHECK_MSG( aLayerDepth >= m_depthRange.x, /*void*/,
+        KI_CHECK_MSG( aLayerDepth >= m_depthRange.x, /*void*/,
                      wxT( "SetLayerDepth: above maximum" ) );
 
         m_layerDepth = aLayerDepth;

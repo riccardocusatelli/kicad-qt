@@ -108,7 +108,7 @@ enum class PLOT_TEXT_MODE
 class PLOT_PARAMS
 {
 public:
-    virtual DXF_OUTLINE_MODE GetDXFPlotMode() const { wxFAIL; return DXF_OUTLINE_MODE::FILLED; }
+    virtual DXF_OUTLINE_MODE GetDXFPlotMode() const { KI_FAIL(); return DXF_OUTLINE_MODE::FILLED; }
     virtual PLOT_TEXT_MODE GetTextMode() const { return PLOT_TEXT_MODE::DEFAULT; }
 };
 

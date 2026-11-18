@@ -41,7 +41,7 @@ wxString GetDefaultPlotExtension( PLOT_FORMAT aFormat )
     case PLOT_FORMAT::GERBER: return GERBER_PLOTTER::GetDefaultFileExtension();
     case PLOT_FORMAT::SVG:    return SVG_PLOTTER::GetDefaultFileExtension();
     case PLOT_FORMAT::PNG:    return PNG_PLOTTER::GetDefaultFileExtension();
-    default:    wxFAIL;       return wxEmptyString;
+    default:    KI_FAIL();       return wxEmptyString;
     }
 }
 
@@ -195,13 +195,13 @@ void PlotDrawingSheet( PLOTTER* plotter, const PROJECT* aProject, const TITLE_BL
             }
 
             default:
-                wxFAIL_MSG( wxT( "PlotDrawingSheet(): Unknown drawing sheet item." ) );
+                KI_FAIL_MSG( wxT( "PlotDrawingSheet(): Unknown drawing sheet item." ) );
                 break;
             }
         }
     }
     catch( ... )
     {
-        wxFAIL_MSG( wxT( "PlotDrawingSheet(): Exception during plot." ) );
+        KI_FAIL_MSG( wxT( "PlotDrawingSheet(): Exception during plot." ) );
     }
 }

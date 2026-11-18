@@ -210,7 +210,7 @@ size_t GetNodeCount( const wxXmlNode* aNode )
 
     timer.Stop();
 
-    wxLogTrace( traceEagleIo, wxS( "XML node '%s' count = %zu took %0.4f ms." ), aNode->GetName(), cnt, timer.msecs() );
+    KI_LOG_TRACE( traceEagleIo, wxS( "XML node '%s' count = %zu took %0.4f ms." ), aNode->GetName(), cnt, timer.msecs() );
 
     return cnt;
 }
@@ -275,7 +275,7 @@ long long int ECOORD::ConvertToNm( int aValue, enum EAGLE_UNIT aUnit )
     }
 
     if( ( ret > 0 ) != ( aValue > 0 ) )
-        wxLogTrace( traceEagleIo, wxT( "Invalid size %d: too large" ), aValue );
+        KI_LOG_TRACE( traceEagleIo, wxT( "Invalid size %d: too large" ), aValue );
 
     return ret;
 }

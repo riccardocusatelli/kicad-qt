@@ -75,7 +75,7 @@ static int arcEditModeToComboIndex( ARC_EDIT_MODE aMode )
         case ARC_EDIT_MODE::KEEP_CENTER_ADJUST_ANGLE_RADIUS:   return 0;
         case ARC_EDIT_MODE::KEEP_ENDPOINTS_OR_START_DIRECTION: return 1;
         case ARC_EDIT_MODE::KEEP_CENTER_ENDS_ADJUST_ANGLE:     return 2;
-        default:    wxFAIL_MSG( "Invalid ARC_EDIT_MODE" );     return 0;
+        default:    KI_FAIL_MSG( "Invalid ARC_EDIT_MODE" );     return 0;
     }
 };
 
@@ -89,7 +89,7 @@ static ARC_EDIT_MODE arcEditModeToEnum( int aIndex )
         case 2:  return ARC_EDIT_MODE::KEEP_CENTER_ENDS_ADJUST_ANGLE;
 
         default:
-            wxFAIL_MSG( wxString::Format( "Invalid index for ARC_EDIT_MODE: %d", aIndex ) );
+            KI_FAIL_MSG( wxString::Format( "Invalid index for ARC_EDIT_MODE: %d", aIndex ) );
             return ARC_EDIT_MODE::KEEP_CENTER_ADJUST_ANGLE_RADIUS;
     }
 };

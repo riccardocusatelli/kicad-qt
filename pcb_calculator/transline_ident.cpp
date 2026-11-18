@@ -523,7 +523,7 @@ void TRANSLINE_IDENT::ReadConfig()
             }
             else
             {
-                wxLogTrace( wxT( "KICAD_TRANSLINE" ),
+                KI_LOG_TRACE( wxT( "KICAD_TRANSLINE" ),
                             wxT( "Legacy Coupled_MicroStrip settings look like coupled-microstrip "
                                  "data; Coupled_Stripline will fall back to defaults." ) );
             }
@@ -532,7 +532,7 @@ void TRANSLINE_IDENT::ReadConfig()
 
     if( cfg->m_TransLine.param_values.count( name ) )
     {
-        wxASSERT( cfg->m_TransLine.param_units.count( name ) );
+        KI_ASSERT( cfg->m_TransLine.param_units.count( name ) );
 
         for( auto& p : m_prms_List )
         {

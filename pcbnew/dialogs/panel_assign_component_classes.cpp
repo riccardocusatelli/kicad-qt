@@ -67,7 +67,7 @@ PANEL_ASSIGN_COMPONENT_CLASSES::PANEL_ASSIGN_COMPONENT_CLASSES(
 
         for( const PCB_FIELD* field : fp->GetFields() )
         {
-            wxCHECK2( field, continue );
+            KI_CHECK2( field, continue );
 
             fieldsSet.insert( field->GetName() );
         }
@@ -415,7 +415,7 @@ void PANEL_COMPONENT_CLASS_ASSIGNMENT::onMenu( wxCommandEvent& aEvent )
         break;
 
     default:
-        wxFAIL_MSG( wxT( "Unknown ID in context menu event" ) );
+        KI_FAIL_MSG( wxT( "Unknown ID in context menu event" ) );
     }
 }
 
@@ -587,7 +587,7 @@ void PANEL_COMPONENT_CLASS_CONDITION_REFERENCE::OnImportRefsClick( wxCommandEven
 void PANEL_COMPONENT_CLASS_CONDITION_REFERENCE::onMenu( wxCommandEvent& aEvent )
 {
     if( aEvent.GetId() != ID_IMPORT_REFS )
-        wxFAIL_MSG( wxT( "Unknown ID in context menu event" ) );
+        KI_FAIL_MSG( wxT( "Unknown ID in context menu event" ) );
 
     if( m_selectionRefs.empty() )
         return;

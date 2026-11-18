@@ -77,7 +77,7 @@ void SYMBOL_TREE_SYNCHRONIZING_ADAPTER::Sync( const wxString& aForceRefresh,
 {
     THROTTLE progressThrottle( std::chrono::milliseconds( 120 ) );
 
-    wxLogTrace( wxT( "KICAD_TABS_DBG" ), wxT( "SymbolSyncAdapter::Sync enter (forceRefresh='%s')" ),
+    KI_LOG_TRACE( wxT( "KICAD_TABS_DBG" ), wxT( "SymbolSyncAdapter::Sync enter (forceRefresh='%s')" ),
                 aForceRefresh );
 
     // Cancel any pending GtkTreeView scroll so it cannot touch rows freed by the rebuild below.
@@ -92,7 +92,7 @@ void SYMBOL_TREE_SYNCHRONIZING_ADAPTER::Sync( const wxString& aForceRefresh,
 
     SYMBOL_LIBRARY_ADAPTER* adapter = PROJECT_SCH::SymbolLibAdapter( &m_frame->Prj() );
 
-    wxLogTrace( wxT( "KICAD_TABS_DBG" ), wxT( "SymbolSyncAdapter::Sync freeing/updating nodes" ) );
+    KI_LOG_TRACE( wxT( "KICAD_TABS_DBG" ), wxT( "SymbolSyncAdapter::Sync freeing/updating nodes" ) );
 
     // Process already stored libraries
     for( auto it = m_tree.m_Children.begin(); it != m_tree.m_Children.end(); )
@@ -150,7 +150,7 @@ void SYMBOL_TREE_SYNCHRONIZING_ADAPTER::Sync( const wxString& aForceRefresh,
                 aProgressCallback( i++, max, libName );
 
             std::optional<LIBRARY_TABLE_ROW*> optRow = adapter->GetRow( libName );
-            wxCHECK2( optRow.has_value(), continue );
+            KI_CHECK2( optRow.has_value(), continue );
 
             if( optRow.value()->Hidden() )
                 continue;
@@ -168,7 +168,7 @@ void SYMBOL_TREE_SYNCHRONIZING_ADAPTER::Sync( const wxString& aForceRefresh,
 
     m_tree.AssignIntrinsicRanks( m_shownColumns );
 
-    wxLogTrace( wxT( "KICAD_TABS_DBG" ), wxT( "SymbolSyncAdapter::Sync exit" ) );
+    KI_LOG_TRACE( wxT( "KICAD_TABS_DBG" ), wxT( "SymbolSyncAdapter::Sync exit" ) );
 }
 
 
@@ -355,7 +355,7 @@ bool SYMBOL_TREE_SYNCHRONIZING_ADAPTER::GetAttr( wxDataViewItem const& aItem, un
         return false;
 
     LIB_TREE_NODE* node = ToNode( aItem );
-    wxCHECK( node, false );
+    KI_CHECK( node, false );
 
     // Mark both columns of unloaded libraries using grey text color (to look disabled)
     if( node->m_Type == LIB_TREE_NODE::TYPE::LIBRARY && !m_libMgr->IsLibraryLoaded( node->m_Name ) )
@@ -415,7 +415,7 @@ bool SYMBOL_TREE_SYNCHRONIZING_ADAPTER::GetAttr( wxDataViewItem const& aItem, un
 bool SYMBOL_TREE_SYNCHRONIZING_ADAPTER::HasPreview( const wxDataViewItem& aItem )
 {
     LIB_TREE_NODE* node = ToNode( aItem );
-    wxCHECK( node, false );
+    KI_CHECK( node, false );
 
     return node->m_Type == LIB_TREE_NODE::TYPE::ITEM && node->m_LibId != m_frame->GetTargetLibId();
 }
@@ -428,7 +428,7 @@ void SYMBOL_TREE_SYNCHRONIZING_ADAPTER::ShowPreview( wxWindow*             aPare
                                                      const wxDataViewItem& aItem )
 {
     LIB_TREE_NODE* node = ToNode( aItem );
-    wxCHECK( node, /* void */ );
+    KI_CHECK( node, /* void */ );
 
     SYMBOL_PREVIEW_WIDGET* preview = dynamic_cast<SYMBOL_PREVIEW_WIDGET*>(
             wxWindow::FindWindowByName( c_previewName, aParent ) );

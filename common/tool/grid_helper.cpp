@@ -173,7 +173,7 @@ void GRID_HELPER::applySnapResultGuides( const SNAP_RESULT& aResult )
         if( guide.style == SNAP_GUIDE_STYLE::DIMENSION_BRACKET )
         {
             dimensionBrackets.emplace_back( guide.start, guide.end );
-            wxLogTrace( wxT( "KICAD_SNAP_RESOLVER" ), "bracket axis=%c start=(%d,%d) end=(%d,%d)",
+            KI_LOG_TRACE( wxT( "KICAD_SNAP_RESOLVER" ), "bracket axis=%c start=(%d,%d) end=(%d,%d)",
                         guide.start.x == guide.end.x ? 'y' : 'x', guide.start.x, guide.start.y, guide.end.x,
                         guide.end.y );
         }
@@ -236,7 +236,7 @@ void GRID_HELPER::setLayoutReference( const VECTOR2I& aPoint, const std::optiona
     else if( m_layoutReferencePreference.kind == SNAP_REFERENCE_KIND::ANCHOR_POINT )
         referenceKind = "anchor-point";
 
-    wxLogTrace( wxT( "KICAD_SNAP_RESOLVER" ), "drag reference kind=%s x-feature=%d y-feature=%d", referenceKind,
+    KI_LOG_TRACE( wxT( "KICAD_SNAP_RESOLVER" ), "drag reference kind=%s x-feature=%d y-feature=%d", referenceKind,
                 m_layoutReferencePreference.horizontalFeature, m_layoutReferencePreference.verticalFeature );
 }
 
@@ -247,25 +247,25 @@ std::optional<VECTOR2I> GRID_HELPER::SnapToConstructionLines( const VECTOR2I& aP
     const SNAP_LINE_MANAGER& snapLineManager = m_snapManager.GetSnapLineManager();
     const OPT_VECTOR2I&      snapOrigin = snapLineManager.GetSnapLineOrigin();
 
-    wxLogTrace( traceSnap, "SnapToConstructionLines: aPoint=(%d, %d), nearestGrid=(%d, %d), snapRange=%.1f", aPoint.x,
+    KI_LOG_TRACE( traceSnap, "SnapToConstructionLines: aPoint=(%d, %d), nearestGrid=(%d, %d), snapRange=%.1f", aPoint.x,
                 aPoint.y, aNearestGrid.x, aNearestGrid.y, aSnapRange );
 
     if( !snapOrigin || snapLineManager.GetDirections().empty() )
     {
-        wxLogTrace( traceSnap, "  No snap origin or no directions, returning nullopt" );
+        KI_LOG_TRACE( traceSnap, "  No snap origin or no directions, returning nullopt" );
         return std::nullopt;
     }
 
     const VECTOR2I& origin = *snapOrigin;
 
-    wxLogTrace( traceSnap, "  snapOrigin=(%d, %d), directions count=%zu",
+    KI_LOG_TRACE( traceSnap, "  snapOrigin=(%d, %d), directions count=%zu",
                 origin.x, origin.y, snapLineManager.GetDirections().size() );
 
     const std::vector<VECTOR2I>& directions = snapLineManager.GetDirections();
     const std::optional<int>     activeDirection = snapLineManager.GetActiveDirection();
 
     if( activeDirection )
-        wxLogTrace( traceSnap, "  activeDirection=%d", *activeDirection );
+        KI_LOG_TRACE( traceSnap, "  activeDirection=%d", *activeDirection );
 
     const VECTOR2D originVec( origin );
     const VECTOR2D cursorVec( aPoint );
@@ -283,7 +283,7 @@ std::optional<VECTOR2I> GRID_HELPER::SnapToConstructionLines( const VECTOR2I& aP
 
         if( dirLength == 0.0 )
         {
-            wxLogTrace( traceSnap, "    Direction %zu: zero length, skipping", ii );
+            KI_LOG_TRACE( traceSnap, "    Direction %zu: zero length, skipping", ii );
             continue;
         }
 
@@ -299,15 +299,15 @@ std::optional<VECTOR2I> GRID_HELPER::SnapToConstructionLines( const VECTOR2I& aP
         if( activeDirection && *activeDirection == static_cast<int>( ii ) )
         {
             snapThreshold *= 1.5;
-            wxLogTrace( traceSnap, "    Direction %zu: ACTIVE, increased snapThreshold=%.1f", ii, snapThreshold );
+            KI_LOG_TRACE( traceSnap, "    Direction %zu: ACTIVE, increased snapThreshold=%.1f", ii, snapThreshold );
         }
 
-        wxLogTrace( traceSnap, "    Direction %zu: dir=(%d, %d), perpDist=%.1f, threshold=%.1f",
+        KI_LOG_TRACE( traceSnap, "    Direction %zu: dir=(%d, %d), perpDist=%.1f, threshold=%.1f",
                     ii, dir.x, dir.y, perpDistance, snapThreshold );
 
         if( perpDistance > snapThreshold )
         {
-            wxLogTrace( traceSnap, "      perpDistance > threshold, skipping" );
+            KI_LOG_TRACE( traceSnap, "      perpDistance > threshold, skipping" );
             continue;
         }
 
@@ -320,7 +320,7 @@ std::optional<VECTOR2I> GRID_HELPER::SnapToConstructionLines( const VECTOR2I& aP
                 // Vertical construction line: snap to grid intersection
                 candidate.x = origin.x;
                 candidate.y = aNearestGrid.y;
-                wxLogTrace( traceSnap, "      Vertical snap: candidate=(%d, %d)", (int) candidate.x,
+                KI_LOG_TRACE( traceSnap, "      Vertical snap: candidate=(%d, %d)", (int) candidate.x,
                             (int) candidate.y );
             }
             else if( dir.y == 0 && dir.x != 0 )
@@ -328,7 +328,7 @@ std::optional<VECTOR2I> GRID_HELPER::SnapToConstructionLines( const VECTOR2I& aP
                 // Horizontal construction line: snap to grid intersection
                 candidate.x = aNearestGrid.x;
                 candidate.y = origin.y;
-                wxLogTrace( traceSnap, "      Horizontal snap: candidate=(%d, %d)", (int) candidate.x,
+                KI_LOG_TRACE( traceSnap, "      Horizontal snap: candidate=(%d, %d)", (int) candidate.x,
                             (int) candidate.y );
             }
             else
@@ -381,13 +381,13 @@ std::optional<VECTOR2I> GRID_HELPER::SnapToConstructionLines( const VECTOR2I& aP
                 }
 
                 candidate = bestGridPt;
-                wxLogTrace( traceSnap, "      Diagonal snap: candidate=(%.1f, %.1f), perpDist=%.1f",
+                KI_LOG_TRACE( traceSnap, "      Diagonal snap: candidate=(%.1f, %.1f), perpDist=%.1f",
                             candidate.x, candidate.y, bestGridDist );
             }
         }
         else
         {
-            wxLogTrace( traceSnap, "      Grid disabled, using projection candidate=(%.1f, %.1f)",
+            KI_LOG_TRACE( traceSnap, "      Grid disabled, using projection candidate=(%.1f, %.1f)",
                         candidate.x, candidate.y );
         }
 
@@ -395,20 +395,20 @@ std::optional<VECTOR2I> GRID_HELPER::SnapToConstructionLines( const VECTOR2I& aP
 
         if( candidateInt == m_skipPoint )
         {
-            wxLogTrace( traceSnap, "      candidateInt matches m_skipPoint, skipping" );
+            KI_LOG_TRACE( traceSnap, "      candidateInt matches m_skipPoint, skipping" );
             continue;
         }
 
         VECTOR2D candidateDelta( candidateInt.x - aPoint.x, candidateInt.y - aPoint.y );
         double    candidateDistance = candidateDelta.EuclideanNorm();
 
-        wxLogTrace( traceSnap, "      candidateInt=(%d, %d), candidateDist=%.1f",
+        KI_LOG_TRACE( traceSnap, "      candidateInt=(%d, %d), candidateDist=%.1f",
                     candidateInt.x, candidateInt.y, candidateDistance );
 
         if( perpDistance < bestPerp
                 || ( std::abs( perpDistance - bestPerp ) < 1e-9 && candidateDistance < bestDistance ) )
         {
-            wxLogTrace( traceSnap, "      NEW BEST: perpDist=%.1f, candDist=%.1f", perpDistance, candidateDistance );
+            KI_LOG_TRACE( traceSnap, "      NEW BEST: perpDist=%.1f, candDist=%.1f", perpDistance, candidateDistance );
             bestPerp = perpDistance;
             bestDistance = candidateDistance;
             bestPoint = candidateInt;
@@ -417,11 +417,11 @@ std::optional<VECTOR2I> GRID_HELPER::SnapToConstructionLines( const VECTOR2I& aP
 
     if( bestPoint )
     {
-        wxLogTrace( traceSnap, "  RETURNING bestPoint=(%d, %d)", bestPoint->x, bestPoint->y );
+        KI_LOG_TRACE( traceSnap, "  RETURNING bestPoint=(%d, %d)", bestPoint->x, bestPoint->y );
     }
     else
     {
-        wxLogTrace( traceSnap, "  RETURNING nullopt (no valid snap found)" );
+        KI_LOG_TRACE( traceSnap, "  RETURNING nullopt (no valid snap found)" );
     }
 
     return bestPoint;
@@ -626,7 +626,7 @@ SNAP_RESOLVER::TRACE_CALLBACK GRID_HELPER::snapTraceCallback( const SNAP_SOURCE_
     static const wxString traceCategory = wxT( "KICAD_SNAP_RESOLVER" );
     const auto            callback = []( const std::string& aMessage )
     {
-        wxLogTrace( traceCategory, "%s", aMessage.c_str() );
+        KI_LOG_TRACE( traceCategory, "%s", aMessage.c_str() );
     };
 
     if( !wxLog::IsAllowedTraceMask( traceCategory ) )
@@ -634,7 +634,7 @@ SNAP_RESOLVER::TRACE_CALLBACK GRID_HELPER::snapTraceCallback( const SNAP_SOURCE_
 
     if( !aContext.movingBounds )
     {
-        wxLogTrace( traceCategory, "context raw=(%d,%d) reference=none bounds=none", aContext.sourcePoint.x,
+        KI_LOG_TRACE( traceCategory, "context raw=(%d,%d) reference=none bounds=none", aContext.sourcePoint.x,
                     aContext.sourcePoint.y );
         return callback;
     }
@@ -644,7 +644,7 @@ SNAP_RESOLVER::TRACE_CALLBACK GRID_HELPER::snapTraceCallback( const SNAP_SOURCE_
     if( aContext.movingReferencePoint )
         projectedBounds.Offset( aContext.sourcePoint - *aContext.movingReferencePoint );
 
-    wxLogTrace( traceCategory, "context raw=(%d,%d) reference=(%d,%d) bounds=(%d,%d,%d,%d) projected=(%d,%d,%d,%d)",
+    KI_LOG_TRACE( traceCategory, "context raw=(%d,%d) reference=(%d,%d) bounds=(%d,%d,%d,%d) projected=(%d,%d,%d,%d)",
                 aContext.sourcePoint.x, aContext.sourcePoint.y,
                 aContext.movingReferencePoint ? aContext.movingReferencePoint->x : aContext.sourcePoint.x,
                 aContext.movingReferencePoint ? aContext.movingReferencePoint->y : aContext.sourcePoint.y,

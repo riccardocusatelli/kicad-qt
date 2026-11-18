@@ -1338,7 +1338,7 @@ int EDIT_TOOL::ChangeTrackWidth( const TOOL_EVENT& aEvent )
         {
             PCB_TRACK* track = dynamic_cast<PCB_TRACK*>( item );
 
-            wxCHECK( track, 0 );
+            KI_CHECK( track, 0 );
 
             commit.Modify( track );
 
@@ -1405,7 +1405,7 @@ int EDIT_TOOL::ChangeTrackLayer( const TOOL_EVENT& aEvent )
         {
             PCB_TRACK* track = dynamic_cast<PCB_TRACK*>( item );
 
-            wxCHECK( track, 0 );
+            KI_CHECK( track, 0 );
 
             commit.Modify( track );
 
@@ -1676,7 +1676,7 @@ static std::optional<DOGBONE_CORNER_ROUTINE::PARAMETERS> GetDogboneParams( PCB_B
         return std::nullopt;
 
     std::vector<WX_MULTI_ENTRY_DIALOG::RESULT> results = dlg.GetValues();
-    wxCHECK( results.size() == 2, std::nullopt );
+    KI_CHECK( results.size() == 2, std::nullopt );
 
     try
     {
@@ -1685,7 +1685,7 @@ static std::optional<DOGBONE_CORNER_ROUTINE::PARAMETERS> GetDogboneParams( PCB_B
     }
     catch( const std::bad_variant_access& )
     {
-        wxASSERT( false );
+        KI_ASSERT( false );
         return std::nullopt;
     }
 
@@ -2183,7 +2183,7 @@ int EDIT_TOOL::BooleanPolygons( const TOOL_EVENT& aEvent )
                 // go again in the reverse order.
 
                 BOARD_ITEM_CONTAINER* const model = frame()->GetModel();
-                wxCHECK( model, nullptr );
+                KI_CHECK( model, nullptr );
 
                 if( aEvent.IsAction( &PCB_ACTIONS::mergePolygons ) )
                 {
@@ -2212,7 +2212,7 @@ int EDIT_TOOL::BooleanPolygons( const TOOL_EVENT& aEvent )
 
     boolean_routine = create_routine();
 
-    wxCHECK_MSG( boolean_routine, 0, "Could not find a polygon routine for this action" );
+    KI_CHECK_MSG( boolean_routine, 0, "Could not find a polygon routine for this action" );
 
     // First run the routine and see what we get
     run_routine();
@@ -3306,7 +3306,7 @@ void EDIT_TOOL::DeleteItems( const PCB_SELECTION& aItems, bool aIsCut )
         {
             PCB_FIELD* field = static_cast<PCB_FIELD*>( board_item );
 
-            wxASSERT( parentFP );
+            KI_ASSERT( parentFP );
             commit.Modify( parentFP );
 
             if( field->IsVisible() )

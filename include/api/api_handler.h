@@ -138,7 +138,7 @@ protected:
     {
         std::string typeName { RequestType().GetTypeName() };
 
-        wxASSERT_MSG( !m_handlers.contains( typeName ),
+        KI_ASSERT_MSG( !m_handlers.contains( typeName ),
                       wxString::Format( "Duplicate API handler for type %s", typeName ) );
 
         m_handlers[typeName] =
@@ -159,7 +159,7 @@ protected:
                     {
                         if( !envelope.mutable_message()->PackFrom( *response ) )
                         {
-                            wxFAIL_MSG( wxString::Format( "Failed to pack '%s'", typeName ) );
+                            KI_FAIL_MSG( wxString::Format( "Failed to pack '%s'", typeName ) );
 
                             ApiResponseStatus status;
                             status.set_status( ApiStatusCode::AS_INTERNAL_ERROR );

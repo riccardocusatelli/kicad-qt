@@ -184,5 +184,5 @@ int CLI::PCB_EXPORT_POS_COMMAND::doPerform( KIWAY& aKiway )
     }
 
     LOCALE_IO dummy;
-    return aKiway.ProcessJob( KIWAY::FACE_PCB, aPosJob.get() );
+    return aKiway.ProcessJob( KIWAY_FACES::FACE_PCB, aPosJob.get() );
 }

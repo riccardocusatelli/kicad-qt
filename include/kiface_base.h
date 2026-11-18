@@ -57,11 +57,11 @@ public:
      *                    name of the DSO.  Examples: "eeschema", "pcbnew", etc.  This controls
      *                    the name of the wxConfigBase established in m_bm, so it should be
      *                    lowercase.
-     * @param aId is the type of DSO ( #KIWAY::FACE_SCH, #KIWAY::FACE_PCB, #KIWAY::FACE_CVPCB,
-     *            #KIWAY::FACE_GERBVIEW, #KIWAY::FACE_PL_EDITOR, #KIWAY::FACE_PCB_CALCULATOR,
-     *            #KIWAY::FACE_BMP2CMP )
+     * @param aId is the type of DSO ( #KIWAY_FACES::FACE_SCH, #KIWAY_FACES::FACE_PCB, #KIWAY_FACES::FACE_CVPCB,
+     *            #KIWAY_FACES::FACE_GERBVIEW, #KIWAY_FACES::FACE_PL_EDITOR, #KIWAY_FACES::FACE_PCB_CALCULATOR,
+     *            #KIWAY_FACES::FACE_BMP2CMP )
      */
-    KIFACE_BASE( const char* aKifaceName, KIWAY::FACE_T aId ) :
+    KIFACE_BASE( const char* aKifaceName, KIWAY_FACES::FACE_T aId ) :
         m_start_flags( 0 ),
         m_id( aId ),
         m_bm( aKifaceName )
@@ -122,7 +122,7 @@ protected:
     int m_start_flags;      ///< flags provided in OnKifaceStart()
 
 private:
-    KIWAY::FACE_T m_id;
+    KIWAY_FACES::FACE_T m_id;
     BIN_MOD       m_bm;
 };
 

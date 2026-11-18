@@ -74,7 +74,7 @@ void DESIGN_BLOCK::Serialize( google::protobuf::Any &aContainer ) const
     Serialize( designBlock );
 
     if( !aContainer.PackFrom( designBlock ) )
-        wxFAIL_MSG( wxT( "Failed to pack DESIGN_BLOCK" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack DESIGN_BLOCK" ) );
 }
 
 

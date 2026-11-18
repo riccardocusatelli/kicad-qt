@@ -484,7 +484,7 @@ void WIDGET_HOTKEY_LIST::onMenu( wxCommandEvent& aEvent )
         break;
 
     default:
-        wxFAIL_MSG( wxT( "Unknown ID in context menu event" ) );
+        KI_FAIL_MSG( wxT( "Unknown ID in context menu event" ) );
     }
 }
 

@@ -141,7 +141,7 @@ SCH_DESIGN_BLOCK_PREVIEW_WIDGET::~SCH_DESIGN_BLOCK_PREVIEW_WIDGET()
 
 void SCH_DESIGN_BLOCK_PREVIEW_WIDGET::SetStatusText( wxString const& aText )
 {
-    wxCHECK( m_statusPanel, /* void */ );
+    KI_CHECK( m_statusPanel, /* void */ );
 
     m_status->SetLabel( aText );
     m_preview->Hide();

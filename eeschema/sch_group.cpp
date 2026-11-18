@@ -77,7 +77,7 @@ void SCH_GROUP::Serialize( google::protobuf::Any& aContainer ) const
     kiapi::common::PackCustomProperties( group.mutable_custom_properties(), *this );
 
     if( !aContainer.PackFrom( group ) )
-        wxFAIL_MSG( wxT( "Failed to pack SCH_GROUP" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack SCH_GROUP" ) );
 }
 
 
@@ -460,7 +460,7 @@ void SCH_GROUP::RunOnChildren( const std::function<void( SCH_ITEM* )>& aFunction
     }
     catch( std::bad_function_call& )
     {
-        wxFAIL_MSG( wxT( "Error calling function in SCH_GROUP::RunOnChildren" ) );
+        KI_FAIL_MSG( wxT( "Error calling function in SCH_GROUP::RunOnChildren" ) );
     }
 }
 

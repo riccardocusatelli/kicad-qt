@@ -220,7 +220,7 @@ void SCH_SHEET::Serialize( google::protobuf::Any& aContainer ) const
     kiapi::common::PackCustomProperties( sheet.mutable_custom_properties(), *this );
 
     if( !aContainer.PackFrom( sheet ) )
-        wxFAIL_MSG( wxT( "Failed to pack SCH_SHEET" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack SCH_SHEET" ) );
 }
 
 
@@ -441,7 +441,7 @@ void SCH_SHEET::SetScreen( SCH_SCREEN* aScreen )
 
 void SCH_SHEET::SyncUuidToScreen()
 {
-    wxCHECK_RET( m_screen, wxS( "Cannot sync a sheet UUID without a screen" ) );
+    KI_CHECK_RET( m_screen, wxS( "Cannot sync a sheet UUID without a screen" ) );
 
     const_cast<KIID&>( m_Uuid ) = m_screen->GetUuid();
 }
@@ -458,7 +458,7 @@ int SCH_SHEET::GetScreenCount() const
 
 bool SCH_SHEET::IsVirtualRootSheet() const
 {
-    wxCHECK_MSG( Schematic(), false, "Can't call IsVirtualRootSheet without setting a schematic" );
+    KI_CHECK_MSG( Schematic(), false, "Can't call IsVirtualRootSheet without setting a schematic" );
 
     return m_Uuid == niluuid;
 }
@@ -466,7 +466,7 @@ bool SCH_SHEET::IsVirtualRootSheet() const
 
 bool SCH_SHEET::IsTopLevelSheet() const
 {
-    wxCHECK_MSG( Schematic(), false, "Can't call IsTopLevelSheet without setting a schematic" );
+    KI_CHECK_MSG( Schematic(), false, "Can't call IsTopLevelSheet without setting a schematic" );
 
     return Schematic()->IsTopLevelSheet( this );
 }
@@ -517,7 +517,7 @@ void SCH_SHEET::GetContextualTextVars( wxArrayString* aVars ) const
 
 bool SCH_SHEET::ResolveTextVar( const SCH_SHEET_PATH* aPath, wxString* token, int aDepth ) const
 {
-    wxCHECK( aPath, false );
+    KI_CHECK( aPath, false );
 
     SCHEMATIC* schematic = Schematic();
 
@@ -630,7 +630,7 @@ bool SCH_SHEET::ResolveTextVar( const SCH_SHEET_PATH* aPath, wxString* token, in
 
 void SCH_SHEET::swapData( SCH_ITEM* aItem )
 {
-    wxCHECK_RET( aItem->Type() == SCH_SHEET_T,
+    KI_CHECK_RET( aItem->Type() == SCH_SHEET_T,
                  wxString::Format( wxT( "SCH_SHEET object cannot swap data with %s object." ),
                                    aItem->GetClass() ) );
 
@@ -920,7 +920,7 @@ void SCH_SHEET::SetFieldText( SCH_FIELD* aField, const wxString& aFieldName, con
         {
             SCH_SHEET_INSTANCE* instance = getInstance( *aPath );
 
-            wxCHECK( instance, /* void */ );
+            KI_CHECK( instance, /* void */ );
 
             bool changed = false;
 
@@ -961,11 +961,11 @@ void SCH_SHEET::SetFieldText( SCH_FIELD* aField, const wxString& aFieldName, con
 void SCH_SHEET::SetFieldText( const wxString& aFieldName, const wxString& aFieldText, const SCH_SHEET_PATH* aPath,
                               const wxString& aVariantName )
 {
-    wxCHECK_MSG( !aFieldName.IsEmpty(), /* void */, wxT( "Can't set text on a field with no name!" ) );
+    KI_CHECK_MSG( !aFieldName.IsEmpty(), /* void */, wxT( "Can't set text on a field with no name!" ) );
 
     SCH_FIELD* field = GetField( aFieldName );
 
-    wxCHECK_MSG( field, /* void */, wxT( "Can't set text on a field not yet added to the sheet!" ) );
+    KI_CHECK_MSG( field, /* void */, wxT( "Can't set text on a field not yet added to the sheet!" ) );
 
     SetFieldText( field, aFieldName, aFieldText, aPath, aVariantName );
 }
@@ -1008,11 +1008,11 @@ wxString SCH_SHEET::GetFieldText( const SCH_FIELD* aField, const wxString& aFiel
 wxString SCH_SHEET::GetFieldText( const wxString& aFieldName, const SCH_SHEET_PATH* aPath,
                                   const wxString& aVariantName ) const
 {
-    wxCHECK_MSG( !aFieldName.IsEmpty(), wxEmptyString, wxT( "Can't get text from a field with no name!" ) );
+    KI_CHECK_MSG( !aFieldName.IsEmpty(), wxEmptyString, wxT( "Can't get text from a field with no name!" ) );
 
     const SCH_FIELD* field = GetField( aFieldName );
 
-    wxCHECK_MSG( field, wxEmptyString, wxT( "Can't get text from a field not yet added to the sheet!" ) );
+    KI_CHECK_MSG( field, wxEmptyString, wxT( "Can't get text from a field not yet added to the sheet!" ) );
 
     return GetFieldText( field, aFieldName, aPath, aVariantName );
 }
@@ -1020,8 +1020,8 @@ wxString SCH_SHEET::GetFieldText( const wxString& aFieldName, const SCH_SHEET_PA
 
 void SCH_SHEET::AddPin( SCH_SHEET_PIN* aSheetPin )
 {
-    wxASSERT( aSheetPin != nullptr );
-    wxASSERT( aSheetPin->Type() == SCH_SHEET_PIN_T );
+    KI_ASSERT( aSheetPin != nullptr );
+    KI_ASSERT( aSheetPin->Type() == SCH_SHEET_PIN_T );
 
     if( SCH_SCREEN* screen = GetParentScreen() )
         screen->BumpConnectivityRevision();
@@ -1034,8 +1034,8 @@ void SCH_SHEET::AddPin( SCH_SHEET_PIN* aSheetPin )
 
 void SCH_SHEET::RemovePin( const SCH_SHEET_PIN* aSheetPin )
 {
-    wxASSERT( aSheetPin != nullptr );
-    wxASSERT( aSheetPin->Type() == SCH_SHEET_PIN_T );
+    KI_ASSERT( aSheetPin != nullptr );
+    KI_ASSERT( aSheetPin->Type() == SCH_SHEET_PIN_T );
 
     for( auto i = m_pins.begin(); i < m_pins.end(); ++i )
     {
@@ -1717,7 +1717,7 @@ void SCH_SHEET::renumberPins()
 
 SCH_SHEET_PATH SCH_SHEET::findSelf() const
 {
-    wxCHECK_MSG( Schematic(), SCH_SHEET_PATH(), "Can't call findSelf without a schematic" );
+    KI_CHECK_MSG( Schematic(), SCH_SHEET_PATH(), "Can't call findSelf without a schematic" );
 
     SCH_SHEET_PATH sheetPath = Schematic()->CurrentSheet();
 
@@ -1739,7 +1739,7 @@ void SCH_SHEET::GetEndPoints( std::vector <DANGLING_END_ITEM>& aItemList )
 {
     for( SCH_SHEET_PIN* sheetPin : m_pins )
     {
-        wxCHECK2_MSG( sheetPin->Type() == SCH_SHEET_PIN_T, continue,
+        KI_CHECK2_MSG( sheetPin->Type() == SCH_SHEET_PIN_T, continue,
                       wxT( "Invalid item in schematic sheet pin list.  Bad programmer!" ) );
 
         sheetPin->GetEndPoints( aItemList );
@@ -1769,7 +1769,7 @@ bool SCH_SHEET::HasConnectivityChanges( const SCH_ITEM* aItem, const SCH_SHEET_P
     const SCH_SHEET* sheet = dynamic_cast<const SCH_SHEET*>( aItem );
 
     // Don't compare against a different SCH_ITEM.
-    wxCHECK( sheet, false );
+    KI_CHECK( sheet, false );
 
     if( GetPosition() != sheet->GetPosition() )
         return true;
@@ -2000,7 +2000,7 @@ void SCH_SHEET::Plot( PLOTTER* aPlotter, bool aBackground, const SCH_PLOT_OPTS& 
 
 SCH_SHEET& SCH_SHEET::operator=( const SCH_ITEM& aItem )
 {
-    wxCHECK_MSG( Type() == aItem.Type(), *this,
+    KI_CHECK_MSG( Type() == aItem.Type(), *this,
                  wxT( "Cannot assign object type " ) + aItem.GetClass() + wxT( " to type " ) + GetClass() );
 
     if( &aItem != this )
@@ -2063,7 +2063,7 @@ void SCH_SHEET::RemoveInstance( const KIID_PATH& aInstancePath )
     {
         if( m_instances[ii].m_Path == aInstancePath )
         {
-            wxLogTrace( traceSchSheetPaths, "Removing sheet instance:\n"
+            KI_LOG_TRACE( traceSchSheetPaths, "Removing sheet instance:\n"
                                             "    sheet path %s\n"
                                             "    page %s, from project %s.",
                         aInstancePath.AsString(),
@@ -2097,7 +2097,7 @@ bool SCH_SHEET::addInstance( const KIID_PATH& aPath )
             return false;
     }
 
-    wxLogTrace( traceSchSheetPaths, wxT( "Adding instance `%s` to sheet `%s`." ), aPath.AsString(),
+    KI_LOG_TRACE( traceSchSheetPaths, wxT( "Adding instance `%s` to sheet `%s`." ), aPath.AsString(),
                 GetName().IsEmpty() ? wxString( wxT( "root" ) ) : GetName() );
 
     SCH_SHEET_INSTANCE instance;
@@ -2177,7 +2177,7 @@ const SCH_SHEET_INSTANCE& SCH_SHEET::GetRootInstance() const
             return instance;
     }
 
-    wxFAIL;
+    KI_FAIL();
 
     static SCH_SHEET_INSTANCE dummy;
 
@@ -2340,7 +2340,7 @@ int SCH_SHEET::ComparePageNum( const wxString& aPageNumberA, const wxString& aPa
     int result = StrNumCmp( aPageNumberA, aPageNumberB );
 
     // Divide by zero bad.
-    wxCHECK( result != 0, 0 );
+    KI_CHECK( result != 0, 0 );
 
     result = result / std::abs( result );
 
@@ -2502,7 +2502,7 @@ void SCH_SHEET::setVariantAttribute( bool aEnable, const SCH_SHEET_PATH* aInstan
     {
         SCH_SHEET_INSTANCE* instance = getInstance( *aInstance );
 
-        wxCHECK_MSG( instance, /* void */,
+        KI_CHECK_MSG( instance, /* void */,
                      wxString::Format( wxS( "Cannot set attribute for invalid sheet path '%s'." ),
                                        aInstance->PathHumanReadable() ) );
 

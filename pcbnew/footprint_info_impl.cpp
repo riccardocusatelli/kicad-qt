@@ -36,7 +36,7 @@
 void FOOTPRINT_INFO_IMPL::load()
 {
     FOOTPRINT_LIBRARY_ADAPTER* adapter = m_owner->GetAdapter();
-    wxCHECK( adapter, /* void */ );
+    KI_CHECK( adapter, /* void */ );
 
     try
     {

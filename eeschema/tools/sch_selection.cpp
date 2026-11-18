@@ -94,7 +94,7 @@ BOX2I SCH_SELECTION::GetBoundingBox() const
             }
             catch( const boost::bad_pointer& )
             {
-                wxFAIL_MSG( "Invalid pointer." );
+                KI_FAIL_MSG( "Invalid pointer." );
             }
         }
         else if( item->Type() == SCH_SHEET_T )

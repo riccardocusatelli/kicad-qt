@@ -118,7 +118,7 @@ struct TOOL_DISPATCHER::BUTTON_STATE
             return mouseState.Aux2IsDown();
 
         default:
-            wxFAIL_MSG( wxT( "unknown button" ) );
+            KI_FAIL_MSG( wxT( "unknown button" ) );
             return false;
         }
     }
@@ -433,7 +433,7 @@ std::optional<TOOL_EVENT> TOOL_DISPATCHER::GetToolEvent( wxKeyEvent* aKeyEvent, 
         return evt;
     }
 
-    wxLogTrace( kicadTraceKeyEvent, wxS( "TOOL_DISPATCHER::GetToolEvent %s" ), dump( *aKeyEvent ) );
+    KI_LOG_TRACE( kicadTraceKeyEvent, wxS( "TOOL_DISPATCHER::GetToolEvent %s" ), dump( *aKeyEvent ) );
 
     // if the key event must be skipped, skip it here if the event is a wxEVT_CHAR_HOOK
     // and do nothing.
@@ -669,7 +669,7 @@ void TOOL_DISPATCHER::DispatchWxEvent( wxEvent& aEvent )
     {
         wxKeyEvent* ke = static_cast<wxKeyEvent*>( &aEvent );
 
-        wxLogTrace( kicadTraceKeyEvent, wxS( "TOOL_DISPATCHER::DispatchWxEvent %s" ), dump( *ke ) );
+        KI_LOG_TRACE( kicadTraceKeyEvent, wxS( "TOOL_DISPATCHER::DispatchWxEvent %s" ), dump( *ke ) );
 
         // Do not process wxEVT_CHAR_HOOK for a shift-modified key, as ACTION_MANAGER::RunHotKey
         // will run the un-shifted key and that's not what we want.  Wait to get the translated
@@ -788,11 +788,11 @@ void TOOL_DISPATCHER::DispatchWxEvent( wxEvent& aEvent )
 
     if( evt )
     {
-        wxLogTrace( kicadTraceToolStack, wxS( "TOOL_DISPATCHER::DispatchWxEvent %s" ), evt->Format() );
+        KI_LOG_TRACE( kicadTraceToolStack, wxS( "TOOL_DISPATCHER::DispatchWxEvent %s" ), evt->Format() );
 
         handled = m_toolMgr->ProcessEvent( *evt );
 
-        wxLogTrace( kicadTraceToolStack, wxS( "TOOL_DISPATCHER::DispatchWxEvent - Handled: %s  %s" ),
+        KI_LOG_TRACE( kicadTraceToolStack, wxS( "TOOL_DISPATCHER::DispatchWxEvent - Handled: %s  %s" ),
                     ( handled ? wxS( "true" ) : wxS( "false" ) ), evt->Format() );
     }
     else if( type == KIGFX::WX_VIEW_CONTROLS::EVT_REFRESH_MOUSE )
@@ -835,7 +835,7 @@ void TOOL_DISPATCHER::DispatchWxEvent( wxEvent& aEvent )
         aEvent.Skip();
     }
 
-    wxLogTrace( kicadTraceToolStack, "TOOL_DISPATCHER::DispatchWxEvent - Wx event skipped: %s",
+    KI_LOG_TRACE( kicadTraceToolStack, "TOOL_DISPATCHER::DispatchWxEvent - Wx event skipped: %s",
                 ( aEvent.GetSkipped() ? "true" : "false" ) );
 }
 

@@ -1622,7 +1622,7 @@ SEVERITY BOARD_DESIGN_SETTINGS::GetSeverity( int aDRCErrorCode ) const
 
     // If not found, return the default severity for unrecognized error codes.
     // As constructed, the default severity for unrecognized error codes is RPT_SEVERITY_ERROR.
-    wxCHECK_MSG( it != m_DRCSeverities.end(), RPT_SEVERITY_ERROR,
+    KI_CHECK_MSG( it != m_DRCSeverities.end(), RPT_SEVERITY_ERROR,
                  wxString::Format( wxT( "DRC error code %d not found" ), aDRCErrorCode ) );
 
     return it->second;

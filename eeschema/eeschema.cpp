@@ -929,7 +929,7 @@ void IFACE::Reset()
 
 void IFACE::PreloadLibraries( KIWAY* aKiway )
 {
-    wxCHECK( aKiway, /* void */ );
+    KI_CHECK( aKiway, /* void */ );
 
     // Use compare_exchange to atomically check and set the flag to prevent race conditions
     // when PreloadLibraries is called multiple times concurrently (e.g., from project manager
@@ -965,7 +965,7 @@ void IFACE::PreloadLibraries( KIWAY* aKiway )
             }
             else
             {
-                wxLogTrace( traceLibraries, "eeschema PreloadLibraries: aborted, skipping symbol processing" );
+                KI_LOG_TRACE( traceLibraries, "eeschema PreloadLibraries: aborted, skipping symbol processing" );
             }
 
             Pgm().GetBackgroundJobMonitor().Remove( m_libraryPreloadBackgroundJob );
@@ -1170,7 +1170,7 @@ void IFACE::SaveFileAs( const wxString& aProjectBasePath, const wxString& aProje
     }
     else
     {
-        wxFAIL_MSG( wxS( "Unexpected filetype for Eeschema::SaveFileAs()" ) );
+        KI_FAIL_MSG( wxS( "Unexpected filetype for Eeschema::SaveFileAs()" ) );
     }
 }
 
@@ -1227,7 +1227,7 @@ void IFACE::closeSymbol( KICAD_API_SERVER* aServer )
 bool IFACE::HandleApiOpenDocument( const DOCUMENT_SPEC& aSpec,
                                    KICAD_API_SERVER* aServer, wxString* aError )
 {
-    wxCHECK( aServer, false );
+    KI_CHECK( aServer, false );
 
     if( aSpec.kind == DOCUMENT_SPEC::KIND::CREATE_KIND )
         return handleCreateSchematic( aSpec.path, aServer, aError );
@@ -1264,7 +1264,7 @@ bool IFACE::HandleApiOpenDocument( const DOCUMENT_SPEC& aSpec,
     if( !project )
     {
         if( !settingsManager.LoadProject( projectPath.GetFullPath(), true ) )
-            wxLogTrace( traceApi, "Warning: no project file found for %s", aSpec.path );
+            KI_LOG_TRACE( traceApi, "Warning: no project file found for %s", aSpec.path );
 
         project = settingsManager.GetProject( projectPath.GetFullPath() );
     }
@@ -1411,7 +1411,7 @@ bool IFACE::handleOpenSymbol( const wxString& aProjectPath, const wxString& aLib
 
     if( !settingsManager.LoadProject( projectPath.GetFullPath(), true ) )
     {
-        wxLogTrace( traceApi, "Warning: no project file found for %s", aProjectPath );
+        KI_LOG_TRACE( traceApi, "Warning: no project file found for %s", aProjectPath );
     }
 
     PROJECT* project = settingsManager.GetProject( projectPath.GetFullPath() );
@@ -1479,7 +1479,7 @@ bool IFACE::handleOpenSymbol( const wxString& aProjectPath, const wxString& aLib
 
 bool IFACE::HandleApiCloseDocument( const DOCUMENT_SPEC& aSpec, KICAD_API_SERVER* aServer, wxString* aError )
 {
-    wxCHECK( aServer, false );
+    KI_CHECK( aServer, false );
 
     if( aSpec.kind == DOCUMENT_SPEC::KIND::LIBID_KIND )
     {
@@ -1531,7 +1531,7 @@ bool IFACE::HandleApiCloseDocument( const DOCUMENT_SPEC& aSpec, KICAD_API_SERVER
 
 void IFACE::RegisterLibraryHandlers( KICAD_API_SERVER* aServer )
 {
-    wxCHECK_RET( aServer, "no API server provided" );
+    KI_CHECK_RET( aServer, "no API server provided" );
 
     if( !m_apiHandlerSchLibs )
     {

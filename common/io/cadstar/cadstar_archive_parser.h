@@ -60,10 +60,10 @@
 // anything the user can act on, so they stay silent unless KICAD_CADSTAR_IO is traced.
 
 #define WARN_UNKNOWN_NODE_IO_ERROR( nodename, location ) \
-    wxLogTrace( traceCadstarIo, wxT( "Unknown node '%s' in '%s'" ), nodename, location )
+    KI_LOG_TRACE( traceCadstarIo, wxT( "Unknown node '%s' in '%s'" ), nodename, location )
 
 #define WARN_UNKNOWN_PARAMETER_IO_ERROR( param, location ) \
-    wxLogTrace( traceCadstarIo, wxT( "Unknown Parameter '%s' in '%s'" ), param, location )
+    KI_LOG_TRACE( traceCadstarIo, wxT( "Unknown Parameter '%s' in '%s'" ), param, location )
 
 //=================================
 // MACRO DEFINITIONS

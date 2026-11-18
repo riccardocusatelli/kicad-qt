@@ -222,7 +222,7 @@ void STARTWIZARD_PROVIDER_SETTINGS::Finish()
     wxString languageErr;
 
     if( !Pgm().SetLanguage( languageErr, true ) )
-        wxLogTrace( traceLocale, wxT( "Unable to apply imported language: %s" ), languageErr );
+        KI_LOG_TRACE( traceLocale, wxT( "Unable to apply imported language: %s" ), languageErr );
 }
 
 

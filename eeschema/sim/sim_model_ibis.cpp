@@ -204,7 +204,7 @@ std::string SPICE_GENERATOR_IBIS::IbisDevice( const SPICE_ITEM& aItem, SCHEMATIC
     }
 
     default:
-        wxFAIL_MSG( "Unknown IBIS model type" );
+        KI_FAIL_MSG( "Unknown IBIS model type" );
         return "";
     }
 
@@ -230,7 +230,7 @@ SIM_MODEL_IBIS::SIM_MODEL_IBIS( TYPE aType ) :
     case SIM_MODEL::TYPE::KIBIS_DRIVER_DC:   paramInfos = &dcDriver;   break;
     case SIM_MODEL::TYPE::KIBIS_DRIVER_RECT: paramInfos = &rectDriver; break;
     case SIM_MODEL::TYPE::KIBIS_DRIVER_PRBS: paramInfos = &prbsDriver; break;
-    default:                                 wxFAIL;                   return;
+    default:                                 KI_FAIL();                   return;
     }
 
     for( const PARAM::INFO& paramInfo : *paramInfos )

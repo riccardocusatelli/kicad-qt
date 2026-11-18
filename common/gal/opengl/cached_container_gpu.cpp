@@ -67,7 +67,7 @@ CACHED_CONTAINER_GPU::CACHED_CONTAINER_GPU( unsigned int aSize ) :
     }
 
 #ifdef KICAD_GAL_PROFILE
-    wxLogTrace( traceGalProfile, "VBO initial size: %u", m_currentSize );
+    KI_LOG_TRACE( traceGalProfile, "VBO initial size: %u", m_currentSize );
 #endif
 
     glGenBuffers( 1, &m_glBufferHandle );
@@ -98,7 +98,7 @@ CACHED_CONTAINER_GPU::~CACHED_CONTAINER_GPU()
 
 void CACHED_CONTAINER_GPU::Map()
 {
-    wxCHECK( !IsMapped(), /*void*/ );
+    KI_CHECK( !IsMapped(), /*void*/ );
 
     // OpenGL version might suddenly stop being available in Windows when an RDP session is started
     if( !glBindBuffer )
@@ -123,7 +123,7 @@ void CACHED_CONTAINER_GPU::Map()
 
 void CACHED_CONTAINER_GPU::Unmap()
 {
-    wxCHECK( IsMapped(), /*void*/ );
+    KI_CHECK( IsMapped(), /*void*/ );
 
     // This gets called from ~CACHED_CONTAINER_GPU.  To avoid throwing an exception from
     // the dtor, catch it here instead.
@@ -168,9 +168,9 @@ bool CACHED_CONTAINER_GPU::defragmentResize( unsigned int aNewSize )
     if( !m_useCopyBuffer )
         return defragmentResizeMemcpy( aNewSize );
 
-    wxCHECK( IsMapped(), false );
+    KI_CHECK( IsMapped(), false );
 
-    wxLogTrace( traceGalCachedContainerGpu,
+    KI_LOG_TRACE( traceGalCachedContainerGpu,
                 wxT( "Resizing & defragmenting container from %d to %d" ), m_currentSize,
                 aNewSize );
 
@@ -195,7 +195,7 @@ bool CACHED_CONTAINER_GPU::defragmentResize( unsigned int aNewSize )
 #ifdef KICAD_GAL_PROFILE
     GLint eaBuffer = -1;
     glGetIntegerv( GL_ELEMENT_ARRAY_BUFFER_BINDING, &eaBuffer );
-    wxASSERT( eaBuffer == 0 );
+    KI_ASSERT( eaBuffer == 0 );
 #endif /* KICAD_GAL_PROFILE */
     glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, newBuffer );
     glBufferData( GL_ELEMENT_ARRAY_BUFFER, aNewSize * VERTEX_SIZE, nullptr, GL_DYNAMIC_DRAW );
@@ -261,14 +261,14 @@ bool CACHED_CONTAINER_GPU::defragmentResize( unsigned int aNewSize )
 #ifdef KICAD_GAL_PROFILE
     totalTime.Stop();
 
-    wxLogTrace( traceGalCachedContainerGpu, "Defragmented container storing %d vertices / %.1f ms",
+    KI_LOG_TRACE( traceGalCachedContainerGpu, "Defragmented container storing %d vertices / %.1f ms",
                 m_currentSize - m_freeSpace, totalTime.msecs() );
 #endif /* KICAD_GAL_PROFILE */
 
     m_freeSpace += ( aNewSize - m_currentSize );
     m_currentSize = aNewSize;
 
-    wxLogTrace( traceGalProfile, "VBO size %d used %d", m_currentSize, AllItemsSize() );
+    KI_LOG_TRACE( traceGalProfile, "VBO size %d used %d", m_currentSize, AllItemsSize() );
 
     // Now there is only one big chunk of free memory
     m_freeChunks.clear();
@@ -280,9 +280,9 @@ bool CACHED_CONTAINER_GPU::defragmentResize( unsigned int aNewSize )
 
 bool CACHED_CONTAINER_GPU::defragmentResizeMemcpy( unsigned int aNewSize )
 {
-    wxCHECK( IsMapped(), false );
+    KI_CHECK( IsMapped(), false );
 
-    wxLogTrace( traceGalCachedContainerGpu,
+    KI_LOG_TRACE( traceGalCachedContainerGpu,
                 wxT( "Resizing & defragmenting container (memcpy) from %d to %d" ), m_currentSize,
                 aNewSize );
 
@@ -305,7 +305,7 @@ bool CACHED_CONTAINER_GPU::defragmentResizeMemcpy( unsigned int aNewSize )
 #ifdef KICAD_GAL_PROFILE
     GLint eaBuffer = -1;
     glGetIntegerv( GL_ELEMENT_ARRAY_BUFFER_BINDING, &eaBuffer );
-    wxASSERT( eaBuffer == 0 );
+    KI_ASSERT( eaBuffer == 0 );
 #endif /* KICAD_GAL_PROFILE */
 
     glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, newBuffer );
@@ -347,14 +347,14 @@ bool CACHED_CONTAINER_GPU::defragmentResizeMemcpy( unsigned int aNewSize )
 #ifdef KICAD_GAL_PROFILE
     totalTime.Stop();
 
-    wxLogTrace( traceGalCachedContainerGpu, "Defragmented container storing %d vertices / %.1f ms",
+    KI_LOG_TRACE( traceGalCachedContainerGpu, "Defragmented container storing %d vertices / %.1f ms",
                 m_currentSize - m_freeSpace, totalTime.msecs() );
 #endif /* KICAD_GAL_PROFILE */
 
     m_freeSpace += ( aNewSize - m_currentSize );
     m_currentSize = aNewSize;
 
-    wxLogTrace( traceGalProfile, "VBO size %d used: %d", m_currentSize, AllItemsSize() );
+    KI_LOG_TRACE( traceGalProfile, "VBO size %d used: %d", m_currentSize, AllItemsSize() );
 
     // Now there is only one big chunk of free memory
     m_freeChunks.clear();
@@ -366,9 +366,9 @@ bool CACHED_CONTAINER_GPU::defragmentResizeMemcpy( unsigned int aNewSize )
 
 bool CACHED_CONTAINER_GPU::defragmentResizeStaged( unsigned int aNewSize )
 {
-    wxCHECK( IsMapped(), false );
+    KI_CHECK( IsMapped(), false );
 
-    wxLogTrace( traceGalCachedContainerGpu,
+    KI_LOG_TRACE( traceGalCachedContainerGpu,
                 wxT( "Resizing & defragmenting container (RAM staged) from %d to %d" ),
                 m_currentSize, aNewSize );
 
@@ -425,7 +425,7 @@ bool CACHED_CONTAINER_GPU::defragmentResizeStaged( unsigned int aNewSize )
     m_freeSpace += ( aNewSize - m_currentSize );
     m_currentSize = aNewSize;
 
-    wxLogTrace( traceGalProfile, "VBO size %d used: %d", m_currentSize, AllItemsSize() );
+    KI_LOG_TRACE( traceGalProfile, "VBO size %d used: %d", m_currentSize, AllItemsSize() );
 
     // Now there is only one big chunk of free memory
     m_freeChunks.clear();

@@ -83,7 +83,7 @@ bool BOARD_ITEM::IsGroupableType() const
 
 void BOARD_ITEM::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther, /* void */ );
+    KI_CHECK( aOther, /* void */ );
     *this = *aOther;
 }
 
@@ -160,7 +160,7 @@ bool BOARD_ITEM::IsLocked() const
 
 STROKE_PARAMS BOARD_ITEM::GetStroke() const
 {
-    wxFAIL_MSG( wxString( "GetStroke() not defined by " ) + GetClass() );
+    KI_FAIL_MSG( wxString( "GetStroke() not defined by " ) + GetClass() );
 
     return STROKE_PARAMS( pcbIUScale.mmToIU( DEFAULT_LINE_WIDTH ) );
 }
@@ -168,7 +168,7 @@ STROKE_PARAMS BOARD_ITEM::GetStroke() const
 
 void BOARD_ITEM::SetStroke( const STROKE_PARAMS& aStroke )
 {
-    wxFAIL_MSG( wxString( "SetStroke() not defined by " ) + GetClass() );
+    KI_FAIL_MSG( wxString( "SetStroke() not defined by " ) + GetClass() );
 }
 
 
@@ -189,7 +189,7 @@ int BOARD_ITEM::GetMaxError() const
 
 PCB_LAYER_ID BOARD_ITEM::GetLayer() const
 {
-    wxASSERT_MSG( IsSingleLayerType( Type() ),
+    KI_ASSERT_MSG( IsSingleLayerType( Type() ),
                   wxString::Format( wxT( "GetLayer() must be overridden for multi-layer types (%s)." ), GetClass() ) );
 
     return m_layer;
@@ -381,7 +381,7 @@ BOARD_ITEM* BOARD_ITEM::Duplicate( bool addToParentGroup, BOARD_COMMIT* aCommit 
 
     if( addToParentGroup )
     {
-        wxCHECK_MSG( aCommit, dupe, "Must supply a commit to update parent group" );
+        KI_CHECK_MSG( aCommit, dupe, "Must supply a commit to update parent group" );
 
         if( EDA_GROUP* group = dupe->GetParentGroup() )
         {
@@ -398,7 +398,7 @@ void BOARD_ITEM::TransformShapeToPolygon( SHAPE_POLY_SET& aBuffer, PCB_LAYER_ID 
                                           int aClearance, int aError, ERROR_LOC aErrorLoc,
                                           bool ignoreLineWidth ) const
 {
-    wxCHECK_MSG( false, /* void */,
+    KI_CHECK_MSG( false, /* void */,
                  wxString::Format( wxT( "%s doesn't implement TransformShapeToPolygon()" ), GetClass() ) );
 }
 

@@ -442,7 +442,7 @@ int MEANDER_SHAPE::cornerRadius() const
     int maxCr2 = spacing() / 2;
     int maxCr = std::min( maxCr1, maxCr2 );
 
-    wxCHECK2_MSG( maxCr >= minCr, return maxCr,
+    KI_CHECK2_MSG( maxCr >= minCr, return maxCr,
                   wxString::Format( "cornerRadius %d < %d amp %d spc %d w %d off %d", maxCr, minCr,
                                     m_amplitude, spacing(), m_width, m_baselineOffset ) );
 

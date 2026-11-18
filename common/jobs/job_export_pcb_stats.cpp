@@ -87,4 +87,4 @@ void JOB_EXPORT_PCB_STATS::SetDefaultOutputPath( const wxString& aReferenceName 
 }
 
 
-REGISTER_JOB( pcb_export_stats, _HKI( "PCB: Export Board Statistics" ), KIWAY::FACE_PCB, JOB_EXPORT_PCB_STATS );
+REGISTER_JOB( pcb_export_stats, _HKI( "PCB: Export Board Statistics" ), KIWAY_FACES::FACE_PCB, JOB_EXPORT_PCB_STATS );

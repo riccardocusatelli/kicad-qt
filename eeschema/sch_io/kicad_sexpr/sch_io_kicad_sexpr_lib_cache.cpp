@@ -65,13 +65,13 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::Load()
     if( !isLibraryPathValid() )
         THROW_IO_ERRORF( _( "Library '%s' not found." ), m_libFileName.GetFullPath() );
 
-    wxCHECK_RET( m_libFileName.IsAbsolute(),
+    KI_CHECK_RET( m_libFileName.IsAbsolute(),
                  wxString::Format( wxT( "Cannot use relative file paths in sexpr plugin to open library '%s'." ),
                                    m_libFileName.GetFullPath() ) );
 
     if( !m_libFileName.IsDir() )
     {
-        wxLogTrace( traceSchLegacyPlugin, "Loading sexpr symbol library file '%s'",
+        KI_LOG_TRACE( traceSchLegacyPlugin, "Loading sexpr symbol library file '%s'",
                     m_libFileName.GetFullPath() );
 
         FILE_LINE_READER reader( m_libFileName.GetFullPath() );
@@ -108,7 +108,7 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::Load()
     {
         wxString libFileName;
 
-        wxLogTrace( traceSchLegacyPlugin, "Loading sexpr symbol library folder '%s'", m_libFileName.GetPath() );
+        KI_LOG_TRACE( traceSchLegacyPlugin, "Loading sexpr symbol library folder '%s'", m_libFileName.GetPath() );
 
         // Clear source file tracking for fresh load
         m_symbolSourceFiles.clear();
@@ -367,7 +367,7 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::Save( const std::optional<bool>& aOpt )
 void SCH_IO_KICAD_SEXPR_LIB_CACHE::SaveSymbol( LIB_SYMBOL* aSymbol, OUTPUTFORMATTER& aFormatter,
                                                const wxString& aLibName, bool aIncludeData )
 {
-    wxCHECK_RET( aSymbol, "Invalid LIB_SYMBOL pointer." );
+    KI_CHECK_RET( aSymbol, "Invalid LIB_SYMBOL pointer." );
 
     // If we've requested to embed the fonts in the symbol, do so.
     // Otherwise, clear the embedded fonts from the symbol.  Embedded
@@ -387,7 +387,7 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::SaveSymbol( LIB_SYMBOL* aSymbol, OUTPUTFORMAT
 
         LIB_ID unitId;
 
-        wxCHECK2( unitId.Parse( aLibName ) < 0, /* do nothing */ );
+        KI_CHECK2( unitId.Parse( aLibName ) < 0, /* do nothing */ );
 
         unitName = unitId.GetLibItemName();
     }
@@ -537,7 +537,7 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::SaveSymbol( LIB_SYMBOL* aSymbol, OUTPUTFORMAT
     {
         std::shared_ptr<LIB_SYMBOL> parent = aSymbol->GetParent().lock();
 
-        wxASSERT( parent );
+        KI_ASSERT( parent );
 
         // Prefer the recorded parent name over dereferencing the live parent pointer. The parent
         // LIB_SYMBOL uses a null_deleter shared_ptr, so the weak_ptr's control block can outlive the
@@ -577,7 +577,7 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::SaveSymbol( LIB_SYMBOL* aSymbol, OUTPUTFORMAT
 void SCH_IO_KICAD_SEXPR_LIB_CACHE::saveDcmInfoAsFields( LIB_SYMBOL* aSymbol,
                                                         OUTPUTFORMATTER& aFormatter )
 {
-    wxCHECK_RET( aSymbol, "Invalid LIB_SYMBOL pointer." );
+    KI_CHECK_RET( aSymbol, "Invalid LIB_SYMBOL pointer." );
 
     if( !aSymbol->GetRawKeyWords().IsEmpty() )
     {
@@ -614,7 +614,7 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::saveDcmInfoAsFields( LIB_SYMBOL* aSymbol,
 
 void SCH_IO_KICAD_SEXPR_LIB_CACHE::savePinMapData( LIB_SYMBOL* aSymbol, OUTPUTFORMATTER& aFormatter )
 {
-    wxCHECK_RET( aSymbol, "Invalid LIB_SYMBOL pointer." );
+    KI_CHECK_RET( aSymbol, "Invalid LIB_SYMBOL pointer." );
 
     // Emit only the symbol's own bundle; derived symbols inheriting the parent's maps write
     // nothing here so the inheritance is preserved on round-trip.
@@ -665,7 +665,7 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::savePinMapData( LIB_SYMBOL* aSymbol, OUTPUTFO
 
 void SCH_IO_KICAD_SEXPR_LIB_CACHE::saveSymbolDrawItem( SCH_ITEM* aItem, OUTPUTFORMATTER& aFormatter )
 {
-    wxCHECK_RET( aItem, "Invalid SCH_ITEM pointer." );
+    KI_CHECK_RET( aItem, "Invalid SCH_ITEM pointer." );
 
     switch( aItem->Type() )
     {
@@ -734,7 +734,7 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::saveSymbolDrawItem( SCH_ITEM* aItem, OUTPUTFO
 
 void SCH_IO_KICAD_SEXPR_LIB_CACHE::saveField( SCH_FIELD* aField, OUTPUTFORMATTER& aFormatter )
 {
-    wxCHECK_RET( aField && aField->Type() == SCH_FIELD_T, "Invalid SCH_FIELD object." );
+    KI_CHECK_RET( aField && aField->Type() == SCH_FIELD_T, "Invalid SCH_FIELD object." );
 
     wxString fieldName = aField->GetName();
 
@@ -764,7 +764,7 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::saveField( SCH_FIELD* aField, OUTPUTFORMATTER
 
 void SCH_IO_KICAD_SEXPR_LIB_CACHE::savePin( SCH_PIN* aPin, OUTPUTFORMATTER& aFormatter )
 {
-    wxCHECK_RET( aPin && aPin->Type() == SCH_PIN_T, "Invalid SCH_PIN object." );
+    KI_CHECK_RET( aPin && aPin->Type() == SCH_PIN_T, "Invalid SCH_PIN object." );
 
     aPin->ClearFlags( IS_CHANGED );
 
@@ -812,7 +812,7 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::savePin( SCH_PIN* aPin, OUTPUTFORMATTER& aFor
 
 void SCH_IO_KICAD_SEXPR_LIB_CACHE::saveText( SCH_TEXT* aText, OUTPUTFORMATTER& aFormatter )
 {
-    wxCHECK_RET( aText && aText->Type() == SCH_TEXT_T, "Invalid SCH_TEXT object." );
+    KI_CHECK_RET( aText && aText->Type() == SCH_TEXT_T, "Invalid SCH_TEXT object." );
 
     aFormatter.Print( "(text %s %s (at %s %s %d)",
                       aText->IsPrivate() ? "private" : "",
@@ -829,7 +829,7 @@ void SCH_IO_KICAD_SEXPR_LIB_CACHE::saveText( SCH_TEXT* aText, OUTPUTFORMATTER& a
 
 void SCH_IO_KICAD_SEXPR_LIB_CACHE::saveTextBox( SCH_TEXTBOX* aTextBox, OUTPUTFORMATTER& aFormatter )
 {
-    wxCHECK_RET( aTextBox && aTextBox->Type() == SCH_TEXTBOX_T, "Invalid SCH_TEXTBOX object." );
+    KI_CHECK_RET( aTextBox && aTextBox->Type() == SCH_TEXTBOX_T, "Invalid SCH_TEXTBOX object." );
 
     aFormatter.Print( "(text_box %s %s",
                       aTextBox->IsPrivate() ? "private" : "",

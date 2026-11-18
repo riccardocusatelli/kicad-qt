@@ -87,7 +87,7 @@ bool ASSET_ARCHIVE::Load()
 long ASSET_ARCHIVE::GetFileContents( const wxString& aFilePath, const unsigned char* aDest,
                                      size_t aMaxLen )
 {
-    wxFAIL_MSG( wxS( "Unimplemented" ) );
+    KI_FAIL_MSG( wxS( "Unimplemented" ) );
     return 0;
 }
 
@@ -97,7 +97,7 @@ long ASSET_ARCHIVE::GetFilePointer( const wxString& aFilePath, const unsigned ch
     if( aFilePath.IsEmpty() )
         return -1;
 
-    wxASSERT( aDest );
+    KI_ASSERT( aDest );
 
     if( !m_fileInfoCache.count( aFilePath ) )
         return -1;

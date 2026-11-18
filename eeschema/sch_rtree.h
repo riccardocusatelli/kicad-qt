@@ -113,7 +113,7 @@ public:
             return false;
 
         const auto member = m_members.find( aItem );
-        wxASSERT( member != m_members.end() );
+        KI_ASSERT( member != m_members.end() );
         m_members.erase( member );
         return true;
     }

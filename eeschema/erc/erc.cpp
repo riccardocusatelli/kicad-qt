@@ -99,7 +99,7 @@ public:
         if( const auto found = m_paths->find( aSheet ); found != m_paths->end() )
             return found->second;
 
-        wxLogTrace( "KICAD_CONNECTIVITY", "ERC connectivity references unknown sheet instance %s", aSheet.AsString() );
+        KI_LOG_TRACE( "KICAD_CONNECTIVITY", "ERC connectivity references unknown sheet instance %s", aSheet.AsString() );
         return nullptr;
     }
 
@@ -2231,7 +2231,7 @@ int ERC_TESTER::TestPinToPin()
     if( m_schematic && m_schematic->ConnectionGraph() )
     {
         auto& netChains = m_schematic->ConnectionGraph()->GetCommittedNetChains();
-        wxLogTrace( traceSchNetChain, "ERC TestPinToPin: cross-chain phase start chains=%zu",
+        KI_LOG_TRACE( traceSchNetChain, "ERC TestPinToPin: cross-chain phase start chains=%zu",
                     netChains.size() );
 
         for( const auto& sig : netChains )
@@ -2264,7 +2264,7 @@ int ERC_TESTER::TestPinToPin()
             if( netChainPins.size() < 2 )
                 continue; // nothing to compare
 
-            wxLogTrace( traceSchNetChain,
+            KI_LOG_TRACE( traceSchNetChain,
                         "ERC TestPinToPin: chain '%s' nets=%zu collectedPins=%zu",
                         TO_UTF8( chainName ), sigNets.size(), netChainPins.size() );
 
@@ -2952,7 +2952,7 @@ int ERC_TESTER::TestSimilarLabels()
 
 int ERC_TESTER::TestLibSymbolIssues()
 {
-    wxCHECK( m_schematic, 0 );
+    KI_CHECK( m_schematic, 0 );
 
     LIBRARY_MANAGER&        manager = Pgm().GetLibraryManager();
     SYMBOL_LIBRARY_ADAPTER* adapter = PROJECT_SCH::SymbolLibAdapter( &m_schematic->Project() );
@@ -2992,7 +2992,7 @@ int ERC_TESTER::TestLibSymbolIssues()
                     if( m_settings.IsTestEnabled( ERCE_LIB_SYMBOL_ISSUES ) )
                     {
                         std::optional<wxString> uri = manager.GetFullURI( LIBRARY_TABLE_TYPE::SYMBOL, libName, true );
-                        wxCHECK2( uri.has_value(), uri = wxEmptyString );
+                        KI_CHECK2( uri.has_value(), uri = wxEmptyString );
                         issues.push_back( { ERCE_LIB_SYMBOL_ISSUES,
                                             wxString::Format( _( "The symbol library '%s' was not found at '%s'" ),
                                                               UnescapeString( libName ), *uri )
@@ -3036,7 +3036,7 @@ int ERC_TESTER::TestLibSymbolIssues()
                 }
                 else
                 {
-                    wxCHECK( aSymbol && aSymbol->GetLibSymbolRef(), issues );
+                    KI_CHECK( aSymbol && aSymbol->GetLibSymbolRef(), issues );
 
                     LIB_SYMBOL*           embedded = aSymbol->GetLibSymbolRef().get();
                     std::vector<wxString> messages;
@@ -3134,7 +3134,7 @@ int ERC_TESTER::TestLibSymbolIssues()
 
 int ERC_TESTER::TestFootprintLinkIssues( KIFACE* aCvPcb, PROJECT* aProject )
 {
-    wxCHECK( m_schematic, 0 );
+    KI_CHECK( m_schematic, 0 );
 
     if( std::optional<LIBRARY_MANAGER_ADAPTER*> adapter =
                 Pgm().GetLibraryManager().Adapter( LIBRARY_TABLE_TYPE::FOOTPRINT ) )
@@ -3194,7 +3194,7 @@ int ERC_TESTER::TestFootprintLinkIssues( KIFACE* aCvPcb, PROJECT* aProject )
 
 int ERC_TESTER::TestFootprintFilters()
 {
-    wxCHECK( m_schematic, 0 );
+    KI_CHECK( m_schematic, 0 );
     ERC_MARKER_PLACER markers( *m_schematic );
 
     for( const auto& source : collectFootprints( *m_schematic ) )
@@ -3368,7 +3368,7 @@ int ERC_TESTER::TestSimModelIssues()
 
 int ERC_TESTER::TestVariantSymbols()
 {
-    wxCHECK( m_schematic, 0 );
+    KI_CHECK( m_schematic, 0 );
 
     SYMBOL_LIBRARY_ADAPTER* adapter = PROJECT_SCH::SymbolLibAdapter( &m_schematic->Project() );
 

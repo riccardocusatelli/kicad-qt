@@ -148,7 +148,7 @@ public:
 
             if( !outerRing )
             {
-                wxLogTrace( TRIANGULATE_TRACE, "Hole elimination failed" );
+                KI_LOG_TRACE( TRIANGULATE_TRACE, "Hole elimination failed" );
                 return false;
             }
         }
@@ -165,7 +165,7 @@ public:
 
         if( !retval )
         {
-            wxLogTrace( TRIANGULATE_TRACE, "Tesselation with holes failed, logging remaining vertices" );
+            KI_LOG_TRACE( TRIANGULATE_TRACE, "Tesselation with holes failed, logging remaining vertices" );
             logRemaining();
         }
         else if( triangulationRefineEnabled() )
@@ -197,7 +197,7 @@ public:
         if( !firstVertex || firstVertex->prev == firstVertex->next )
             return true;
 
-        wxLogTrace( TRIANGULATE_TRACE, "Created list with %f area", firstVertex->area() );
+        KI_LOG_TRACE( TRIANGULATE_TRACE, "Created list with %f area", firstVertex->area() );
 
         m_vertices_original_size = m_vertices.size();
 
@@ -226,7 +226,7 @@ public:
 
             if( !retval )
             {
-                wxLogTrace( TRIANGULATE_TRACE, "Tesselation failed, logging remaining vertices" );
+                KI_LOG_TRACE( TRIANGULATE_TRACE, "Tesselation failed, logging remaining vertices" );
                 logRemaining();
             }
             else if( triangulationRefineEnabled() )
@@ -505,7 +505,7 @@ private:
             return;
 
         msg.RemoveLast();
-        wxLogTrace( TRIANGULATE_TRACE, msg );
+        KI_LOG_TRACE( TRIANGULATE_TRACE, msg );
     }
 
     /**
@@ -551,7 +551,7 @@ private:
             }
         } while( p != aStart && next && p );
 
-        wxLogTrace( TRIANGULATE_TRACE, "Removed %d points in simplifyList", count );
+        KI_LOG_TRACE( TRIANGULATE_TRACE, "Removed %d points in simplifyList", count );
 
         if( count )
             return retval;
@@ -710,7 +710,7 @@ private:
             anchor = end;
         } while( anchor != aStart );
 
-        wxLogTrace( TRIANGULATE_TRACE, "Removed %zu points in decimateList", removed );
+        KI_LOG_TRACE( TRIANGULATE_TRACE, "Removed %zu points in decimateList", removed );
 
         if( removed )
             return aStart;
@@ -733,7 +733,7 @@ private:
         if( ( retval = simplifyList( aStart ) ) )
             aStart = retval;
 
-        wxASSERT( aStart->next && aStart->prev );
+        KI_ASSERT( aStart->next && aStart->prev );
 
         VERTEX* p = aStart->next;
 
@@ -787,7 +787,7 @@ private:
             ++count;
         }
 
-        wxLogTrace( TRIANGULATE_TRACE, "Removed %zu NULL triangles", count );
+        KI_LOG_TRACE( TRIANGULATE_TRACE, "Removed %zu NULL triangles", count );
 
         return retval;
     }
@@ -820,11 +820,11 @@ private:
 
         if( pass >= kMaxRecursion )
         {
-            wxLogTrace( TRIANGULATE_TRACE, "earcutList recursion limit reached; aborting triangulation", pass );
+            KI_LOG_TRACE( TRIANGULATE_TRACE, "earcutList recursion limit reached; aborting triangulation", pass );
             return false;
         }
 
-        wxLogTrace( TRIANGULATE_TRACE, "earcutList starting at %p for pass %d", aPoint, pass );
+        KI_LOG_TRACE( TRIANGULATE_TRACE, "earcutList starting at %p for pass %d", aPoint, pass );
 
         if( !aPoint )
             return true;
@@ -898,7 +898,7 @@ private:
                     locallyInside( prev, nextNext ) &&
                     locallyInside( nextNext, prev ) )
             {
-                wxLogTrace( TRIANGULATE_TRACE,
+                KI_LOG_TRACE( TRIANGULATE_TRACE,
                             "Local intersection detected.  Merging minor triangle with area %f",
                             area( prev, aPoint, nextNext ) );
                 m_result.AddTriangle( prev->i, aPoint->i, nextNext->i );
@@ -950,13 +950,13 @@ private:
                 // again, this time adding one point to each long edge (and thereby changing the locations)
                 if( internal_pass < 4 )
                 {
-                    wxLogTrace( TRIANGULATE_TRACE, "Subdividing polygon" );
+                    KI_LOG_TRACE( TRIANGULATE_TRACE, "Subdividing polygon" );
                     subdividePolygon( aPoint, internal_pass );
                     continue;
                 }
 
                 // If we don't have any NULL triangles left, cut the polygon in two and try again
-                wxLogTrace( TRIANGULATE_TRACE, "Splitting polygon" );
+                KI_LOG_TRACE( TRIANGULATE_TRACE, "Splitting polygon" );
 
                 if( !splitPolygon( aPoint, pass + 1 ) )
                     return false;
@@ -1095,7 +1095,7 @@ private:
 
             if( !p )
             {
-                wxFAIL;
+                KI_FAIL();
                 break;
             }
 
@@ -1108,7 +1108,7 @@ private:
 
                 if( !p )
                 {
-                    wxFAIL;
+                    KI_FAIL();
                     break;
                 }
             }
@@ -1131,7 +1131,7 @@ private:
             }
             else
             {
-                wxLogTrace( TRIANGULATE_TRACE, "Failed to find bridge for hole at (%f, %f)",
+                KI_LOG_TRACE( TRIANGULATE_TRACE, "Failed to find bridge for hole at (%f, %f)",
                             hi.leftmost->x, hi.leftmost->y );
             }
         }
@@ -1318,7 +1318,7 @@ private:
         } while (p != aStart);
 
         avg /= longest.size();
-        wxLogTrace( TRIANGULATE_TRACE, "Average length: %f", avg );
+        KI_LOG_TRACE( TRIANGULATE_TRACE, "Average length: %f", avg );
 
         constexpr double kSubdivideThresholdFactor = 1.1;
         const double     subdivideThreshold = avg * kSubdivideThresholdFactor;
@@ -1326,7 +1326,7 @@ private:
         for( auto it = longest.begin(); it != longest.end() && it->second > subdivideThreshold;
              ++it )
         {
-            wxLogTrace( TRIANGULATE_TRACE, "Subdividing edge with length %f", it->second );
+            KI_LOG_TRACE( TRIANGULATE_TRACE, "Subdividing edge with length %f", it->second );
             VERTEX* a = it->first;
             VERTEX* b = a->next;
             VERTEX* last = a;
@@ -1394,12 +1394,12 @@ private:
 
             if( overlapPoints[0]->area( overlapPoints[1] ) < 0 || overlapPoints[1]->area( overlapPoints[0] ) < 0 )
             {
-                wxLogTrace( TRIANGULATE_TRACE, "Split generated a hole, skipping" );
+                KI_LOG_TRACE( TRIANGULATE_TRACE, "Split generated a hole, skipping" );
                 origPoly = origPoly->next;
                 continue;
             }
 
-            wxLogTrace( TRIANGULATE_TRACE, "Splitting at overlap point %f, %f", overlapPoints[0]->x, overlapPoints[0]->y );
+            KI_LOG_TRACE( TRIANGULATE_TRACE, "Splitting at overlap point %f, %f", overlapPoints[0]->x, overlapPoints[0]->y );
             std::swap( overlapPoints[0]->next, overlapPoints[1]->next );
             overlapPoints[0]->next->prev = overlapPoints[0];
             overlapPoints[1]->next->prev = overlapPoints[1];
@@ -1411,7 +1411,7 @@ private:
             bool retval = earcutList( overlapPoints[0], aPass )
                           && earcutList( overlapPoints[1], aPass );
 
-            wxLogTrace( TRIANGULATE_TRACE, "%s at first overlap split", retval ? "Success" : "Failed" );
+            KI_LOG_TRACE( TRIANGULATE_TRACE, "%s at first overlap split", retval ? "Success" : "Failed" );
             return retval;
 
 
@@ -1437,7 +1437,7 @@ private:
 
                     bool retval = earcutList( origPoly, aPass ) && earcutList( newPoly, aPass );
 
-                    wxLogTrace( TRIANGULATE_TRACE, "%s at split", retval ? "Success" : "Failed" );
+                    KI_LOG_TRACE( TRIANGULATE_TRACE, "%s at split", retval ? "Success" : "Failed" );
                     return retval;
                 }
 
@@ -1447,7 +1447,7 @@ private:
             origPoly = origPoly->next;
         } while( origPoly != start );
 
-        wxLogTrace( TRIANGULATE_TRACE, "Could not find a valid split point" );
+        KI_LOG_TRACE( TRIANGULATE_TRACE, "Could not find a valid split point" );
         return clipRemainingEars( start );
     }
 

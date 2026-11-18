@@ -410,7 +410,7 @@ public:
     template<typename T>
     T GetParam() const
     {
-        wxASSERT_MSG( m_param.has_value(),
+        KI_ASSERT_MSG( m_param.has_value(),
                       "Attempted to get a parameter from an action with no parameter." );
 
         T param;
@@ -421,7 +421,7 @@ public:
         }
         catch( const ki::bad_any_cast& e )
         {
-            wxASSERT_MSG( false,
+            KI_ASSERT_MSG( false,
                           wxString::Format( "Requested parameter type %s from action with "
                                             "parameter type %s.",
                                             typeid(T).name(), m_param.type().name() ) );

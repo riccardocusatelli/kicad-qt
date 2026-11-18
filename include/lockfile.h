@@ -59,12 +59,12 @@ public:
         if( filename.IsEmpty() )
             return;
 
-        wxLogTrace( traceLockFile, "Trying to lock %s", filename );
+        KI_LOG_TRACE( traceLockFile, "Trying to lock %s", filename );
         m_lockFilename = LockPathFor( filename );
 
         if( !wxFileName( m_lockFilename ).IsDirWritable() )
         {
-            wxLogTrace( traceLockFile, "File is not writable: %s", filename );
+            KI_LOG_TRACE( traceLockFile, "File is not writable: %s", filename );
             m_status = true;
             m_removeOnRelease = false;
             return;
@@ -75,7 +75,7 @@ public:
 
         if( !m_lock.IsOpen() )
         {
-            wxLogTrace( traceLockFile, "Could not open a lock file for %s", filename );
+            KI_LOG_TRACE( traceLockFile, "Could not open a lock file for %s", filename );
             return;
         }
 
@@ -85,7 +85,7 @@ public:
         if( created && state != KIPLATFORM::IO::FILE_LOCK::STATE::BUSY )
         {
             claim();
-            wxLogTrace( traceLockFile, "Locked %s", filename );
+            KI_LOG_TRACE( traceLockFile, "Locked %s", filename );
             return;
         }
 
@@ -97,11 +97,11 @@ public:
             && ( IsLockedByMe() || KIPLATFORM::ENV::IsRemovablePath( m_lockFilename ) ) )
         {
             claim();
-            wxLogTrace( traceLockFile, "Reclaimed the abandoned lock on %s", filename );
+            KI_LOG_TRACE( traceLockFile, "Reclaimed the abandoned lock on %s", filename );
             return;
         }
 
-        wxLogTrace( traceLockFile, "Existing Lock for %s", filename );
+        KI_LOG_TRACE( traceLockFile, "Existing Lock for %s", filename );
     }
 
     /**
@@ -164,7 +164,7 @@ public:
      */
     void UnlockFile()
     {
-        wxLogTrace( traceLockFile, "Unlocking %s", m_lockFilename );
+        KI_LOG_TRACE( traceLockFile, "Unlocking %s", m_lockFilename );
 
         // Remove the file before dropping the lock, so that the window in which another
         // process could adopt a lock we are abandoning never opens
@@ -187,7 +187,7 @@ public:
      */
     bool OverrideLock( bool aRemoveOnRelease = true )
     {
-        wxLogTrace( traceLockFile, "Overriding lock on %s", m_lockFilename );
+        KI_LOG_TRACE( traceLockFile, "Overriding lock on %s", m_lockFilename );
 
         if( !m_owned && m_lock.IsOpen() )
             claim();
@@ -270,7 +270,7 @@ private:
         }
         else
         {
-            wxLogTrace( traceLockFile, "Could not write the lock record for %s", m_lockFilename );
+            KI_LOG_TRACE( traceLockFile, "Could not write the lock record for %s", m_lockFilename );
         }
     }
 
@@ -290,7 +290,7 @@ private:
 
         if( aRecord.is_discarded() )
         {
-            wxLogTrace( traceLockFile, "Unreadable lock contents for %s", m_lockFilename );
+            KI_LOG_TRACE( traceLockFile, "Unreadable lock contents for %s", m_lockFilename );
             return false;
         }
 
@@ -344,7 +344,7 @@ private:
             return false;
         }
 
-        wxLogTrace( traceLockFile, "Lock on %s is no longer ours", m_lockFilename );
+        KI_LOG_TRACE( traceLockFile, "Lock on %s is no longer ours", m_lockFilename );
 
         return false;
     }

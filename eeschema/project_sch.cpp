@@ -42,7 +42,7 @@ SEARCH_STACK* PROJECT_SCH::SchSearchS( PROJECT* aProject )
 {
     SEARCH_STACK* ss = (SEARCH_STACK*) aProject->GetElem( PROJECT::ELEM::SCH_SEARCH_STACK );
 
-    wxASSERT( !ss || dynamic_cast<SEARCH_STACK*>( ss ) );
+    KI_ASSERT( !ss || dynamic_cast<SEARCH_STACK*>( ss ) );
 
     if( !ss )
     {
@@ -91,7 +91,7 @@ LEGACY_SYMBOL_LIBS* PROJECT_SCH::LegacySchLibs( PROJECT* aProject )
 {
     auto libs = static_cast<LEGACY_SYMBOL_LIBS*>( aProject->GetElem( PROJECT::ELEM::LEGACY_SYMBOL_LIBS ) );
 
-    wxASSERT( !libs || libs->ProjectElementType() == PROJECT::ELEM::LEGACY_SYMBOL_LIBS );
+    KI_ASSERT( !libs || libs->ProjectElementType() == PROJECT::ELEM::LEGACY_SYMBOL_LIBS );
 
     if( !libs )
     {
@@ -143,10 +143,10 @@ SYMBOL_LIBRARY_ADAPTER* PROJECT_SCH::SymbolLibAdapter( PROJECT* aProject )
                              std::make_unique<SYMBOL_LIBRARY_ADAPTER>( mgr ) );
 
         std::optional<LIBRARY_MANAGER_ADAPTER*> created = mgr.Adapter( LIBRARY_TABLE_TYPE::SYMBOL );
-        wxCHECK( created && ( *created )->Type() == LIBRARY_TABLE_TYPE::SYMBOL, nullptr );
+        KI_CHECK( created && ( *created )->Type() == LIBRARY_TABLE_TYPE::SYMBOL, nullptr );
         return static_cast<SYMBOL_LIBRARY_ADAPTER*>( *created );
     }
 
-    wxCHECK( ( *adapter )->Type() == LIBRARY_TABLE_TYPE::SYMBOL, nullptr );
+    KI_CHECK( ( *adapter )->Type() == LIBRARY_TABLE_TYPE::SYMBOL, nullptr );
     return static_cast<SYMBOL_LIBRARY_ADAPTER*>( *adapter );
 }

@@ -83,7 +83,7 @@ void SIMULATOR_FRAME::doReCreateMenuBar()
     EDA_BASE_FRAME* base_frame = dynamic_cast<EDA_BASE_FRAME*>( this );
 
     // base_frame == nullptr should not happen, but it makes Coverity happy
-    wxCHECK( base_frame, /* void */ );
+    KI_CHECK( base_frame, /* void */ );
 
     // wxWidgets handles the OSX Application menu behind the scenes, but that means
     // we always have to start from scratch with a new wxMenuBar.

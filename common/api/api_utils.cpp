@@ -124,7 +124,7 @@ KICOMMON_API std::optional<KICAD_T> TypeNameFromAny( const google::protobuf::Any
     if( it != s_types.end() )
         return it->second;
 
-    wxLogTrace( traceApi, wxString::Format( wxS( "Any message type %s is not known" ),
+    KI_LOG_TRACE( traceApi, wxString::Format( wxS( "Any message type %s is not known" ),
                                             aMessage.type_url() ) );
 
     return std::nullopt;
@@ -428,7 +428,7 @@ KICOMMON_API bool PackKiwayApiMessage( const google::protobuf::Message& aMessage
 
     if( !request.mutable_message()->PackFrom( aMessage ) )
     {
-        wxFAIL_MSG( "Failed to pack Kiway message" );
+        KI_FAIL_MSG( "Failed to pack Kiway message" );
         return false;
     }
 

@@ -343,7 +343,7 @@ void SVG_PLOTTER::SetCurrentLineWidth( int aWidth, void* aData )
         aWidth = m_renderSettings->GetDefaultPenWidth();
 
     // Note: aWidth == 0 is fine: used for filled shapes with no outline thickness
-    wxASSERT_MSG( aWidth >= 0, "Plotter called to set negative pen width" );
+    KI_ASSERT_MSG( aWidth >= 0, "Plotter called to set negative pen width" );
 
     if( aWidth != m_currentPenWidth )
     {
@@ -791,7 +791,7 @@ void SVG_PLOTTER::PenTo( const VECTOR2I& pos, char plume )
 
 bool SVG_PLOTTER::StartPlot( const wxString& aPageNumber )
 {
-    wxASSERT( m_outputFile );
+    KI_ASSERT( m_outputFile );
 
     std::string header = "<?xml version=\"1.0\" standalone=\"no\"?>\n"
                 " <!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \n"
@@ -919,7 +919,7 @@ void SVG_PLOTTER::Text( const VECTOR2I&        aPos,
     case GR_TEXT_H_ALIGN_RIGHT:  hjust = "end";    break;
     case GR_TEXT_H_ALIGN_LEFT:   hjust = "start";  break;
     case GR_TEXT_H_ALIGN_INDETERMINATE:
-        wxFAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) );
+        KI_FAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) );
         break;
     }
 
@@ -929,7 +929,7 @@ void SVG_PLOTTER::Text( const VECTOR2I&        aPos,
     case GR_TEXT_V_ALIGN_TOP:    text_pos.y += aSize.y;     break;
     case GR_TEXT_V_ALIGN_BOTTOM:                            break;
     case GR_TEXT_V_ALIGN_INDETERMINATE:
-        wxFAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) );
+        KI_FAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) );
         break;
     }
 

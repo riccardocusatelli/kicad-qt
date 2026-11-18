@@ -66,7 +66,7 @@ void BBOX_2D::Set( const SFVEC2F& aPbMin, const SFVEC2F& aPbMax )
 
 void BBOX_2D::Set( const BBOX_2D& aBBox )
 {
-    wxASSERT( aBBox.IsInitialized() );
+    KI_ASSERT( aBBox.IsInitialized() );
 
     Set( aBBox.Min(), aBBox.Max() );
 }
@@ -145,7 +145,7 @@ float BBOX_2D::Perimeter() const
 
 void BBOX_2D::Scale( float aScale )
 {
-    wxASSERT( IsInitialized() );
+    KI_ASSERT( IsInitialized() );
 
     const SFVEC2F scaleV( aScale, aScale );
     const SFVEC2F centerV = GetCenter();
@@ -206,8 +206,8 @@ bool BBOX_2D::Intersects( const SFVEC2F& aCenter, float aRadiusSquared ) const
 
 bool BBOX_2D::Intersects( const BBOX_2D& aBBox ) const
 {
-    wxASSERT( IsInitialized() );
-    wxASSERT( aBBox.IsInitialized() );
+    KI_ASSERT( IsInitialized() );
+    KI_ASSERT( aBBox.IsInitialized() );
 
     const bool x = ( m_max.x >= aBBox.m_min.x ) && ( m_min.x <= aBBox.m_max.x );
     const bool y = ( m_max.y >= aBBox.m_min.y ) && ( m_min.y <= aBBox.m_max.y );
@@ -218,7 +218,7 @@ bool BBOX_2D::Intersects( const BBOX_2D& aBBox ) const
 
 bool BBOX_2D::Inside( const SFVEC2F& aPoint ) const
 {
-    wxASSERT( IsInitialized() );
+    KI_ASSERT( IsInitialized() );
 
     return ( ( aPoint.x >= m_min.x ) && ( aPoint.x <= m_max.x ) &&
              ( aPoint.y >= m_min.y ) && ( aPoint.y <= m_max.y ) );
@@ -227,8 +227,8 @@ bool BBOX_2D::Inside( const SFVEC2F& aPoint ) const
 
 bool BBOX_2D::Inside( const BBOX_2D& aBBox ) const
 {
-    wxASSERT( IsInitialized() );
-    wxASSERT( aBBox.IsInitialized() );
+    KI_ASSERT( IsInitialized() );
+    KI_ASSERT( aBBox.IsInitialized() );
 
     return Inside( aBBox.Min() ) &&
            Inside( aBBox.Max() );
@@ -245,7 +245,7 @@ float BBOX_2D::Area() const
 // http://tavianator.com/fast-branchless-raybounding-box-intersections/
 bool BBOX_2D::Intersect( const RAY2D& aRay, float* t ) const
 {
-    wxASSERT( t );
+    KI_ASSERT( t );
 
     const float tx1 = ( m_min.x - aRay.m_Origin.x ) * aRay.m_InvDir.x;
     const float tx2 = ( m_max.x - aRay.m_Origin.x ) * aRay.m_InvDir.x;
@@ -295,8 +295,8 @@ bool BBOX_2D::Intersect( const RAYSEG2D& aRaySeg ) const
 
 bool BBOX_2D::Intersect( const RAY2D& aRay, float* aOutHitT0, float* aOutHitT1 ) const
 {
-    wxASSERT( aOutHitT0 );
-    wxASSERT( aOutHitT1 );
+    KI_ASSERT( aOutHitT0 );
+    KI_ASSERT( aOutHitT1 );
 
     const float tx1 = ( m_min.x - aRay.m_Origin.x ) * aRay.m_InvDir.x;
     const float tx2 = ( m_max.x - aRay.m_Origin.x ) * aRay.m_InvDir.x;

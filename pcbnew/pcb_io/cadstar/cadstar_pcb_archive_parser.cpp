@@ -69,7 +69,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::Parse( bool aLibrary )
                 break;
 
             default:
-                wxASSERT_MSG( true, wxT( "Unknown File Resolution" ) );
+                KI_ASSERT_MSG( true, wxT( "Unknown File Resolution" ) );
                 break;
             }
 
@@ -134,7 +134,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::Parse( bool aLibrary )
 
 void CADSTAR_PCB_ARCHIVE_PARSER::ASSIGNMENTS::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "ASSIGNMENTS" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "ASSIGNMENTS" ) );
 
     XNODE* cNode = aNode->GetChildren();
 
@@ -163,7 +163,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::ASSIGNMENTS::Parse( XNODE* aNode, PARSER_CONTEX
 
 void CADSTAR_PCB_ARCHIVE_PARSER::LAYERDEFS::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "LAYERDEFS" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "LAYERDEFS" ) );
 
     wxXmlAttribute* xmlAttribute = nullptr;
 
@@ -219,7 +219,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::LAYERDEFS::Parse( XNODE* aNode, PARSER_CONTEXT*
 
 void CADSTAR_PCB_ARCHIVE_PARSER::RULESET::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "RULESET" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "RULESET" ) );
 
     ID   = GetXmlAttributeIDString( aNode, 0 );
     Name = GetXmlAttributeIDString( aNode, 1 );
@@ -254,7 +254,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::RULESET::Parse( XNODE* aNode, PARSER_CONTEXT* a
 
 void CADSTAR_PCB_ARCHIVE_PARSER::CODEDEFS_PCB::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "CODEDEFS" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "CODEDEFS" ) );
 
     XNODE* cNode = aNode->GetChildren();
 
@@ -317,7 +317,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::CODEDEFS_PCB::Parse( XNODE* aNode, PARSER_CONTE
 
 void CADSTAR_PCB_ARCHIVE_PARSER::MATERIAL::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "MATERIAL" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "MATERIAL" ) );
 
     ID   = GetXmlAttributeIDString( aNode, 0 );
     Name = GetXmlAttributeIDString( aNode, 1 );
@@ -375,7 +375,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::MATERIAL::Parse( XNODE* aNode, PARSER_CONTEXT* 
 
 void CADSTAR_PCB_ARCHIVE_PARSER::LAYER::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "LAYER" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "LAYER" ) );
 
     ID   = GetXmlAttributeIDString( aNode, 0 );
     Name = GetXmlAttributeIDString( aNode, 1 );
@@ -585,7 +585,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::LAYER::Parse( XNODE* aNode, PARSER_CONTEXT* aCo
 
 void CADSTAR_PCB_ARCHIVE_PARSER::COPREASSIGN::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "COPREASSIGN" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "COPREASSIGN" ) );
 
     LayerID = GetXmlAttributeIDString( aNode, 0 );
 
@@ -595,7 +595,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::COPREASSIGN::Parse( XNODE* aNode, PARSER_CONTEX
 
 void CADSTAR_PCB_ARCHIVE_PARSER::COPPERCODE::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "COPPERCODE" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "COPPERCODE" ) );
 
     ID   = GetXmlAttributeIDString( aNode, 0 );
     Name = GetXmlAttributeIDString( aNode, 1 );
@@ -623,7 +623,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::COPPERCODE::Parse( XNODE* aNode, PARSER_CONTEXT
 void CADSTAR_PCB_ARCHIVE_PARSER::SPACINGCODE::REASSIGN::Parse( XNODE* aNode,
                                                                PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "SPACEREASSIGN" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "SPACEREASSIGN" ) );
 
     LayerID = GetXmlAttributeIDString( aNode, 0 );
     Spacing = GetXmlAttributeIDLong( aNode, 1 );
@@ -634,7 +634,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::SPACINGCODE::REASSIGN::Parse( XNODE* aNode,
 
 void CADSTAR_PCB_ARCHIVE_PARSER::SPACINGCODE::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "SPACINGCODE" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "SPACINGCODE" ) );
 
     ID      = GetXmlAttributeIDString( aNode, 0 );
     Spacing = GetXmlAttributeIDLong( aNode, 1 );
@@ -682,7 +682,7 @@ bool CADSTAR_PCB_ARCHIVE_PARSER::CADSTAR_PAD_SHAPE::IsPadShape( XNODE* aNode )
 
 void CADSTAR_PCB_ARCHIVE_PARSER::CADSTAR_PAD_SHAPE::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( IsPadShape( aNode ) );
+    KI_ASSERT( IsPadShape( aNode ) );
 
     wxString aNodeName = aNode->GetName();
 
@@ -705,7 +705,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::CADSTAR_PAD_SHAPE::Parse( XNODE* aNode, PARSER_
     else if( aNodeName == wxT( "SQUARE" ) )
         ShapeType = PAD_SHAPE_TYPE::SQUARE;
     else
-        wxASSERT( true );
+        KI_ASSERT( true );
 
     switch( ShapeType )
     {
@@ -752,7 +752,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::CADSTAR_PAD_SHAPE::Parse( XNODE* aNode, PARSER_
 
 void CADSTAR_PCB_ARCHIVE_PARSER::PADREASSIGN::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "PADREASSIGN" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "PADREASSIGN" ) );
 
     LayerID = GetXmlAttributeIDString( aNode, 0 );
 
@@ -775,7 +775,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::PADREASSIGN::Parse( XNODE* aNode, PARSER_CONTEX
 
 void CADSTAR_PCB_ARCHIVE_PARSER::PADCODE::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "PADCODE" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "PADCODE" ) );
 
     ID   = GetXmlAttributeIDString( aNode, 0 );
     Name = GetXmlAttributeIDString( aNode, 1 );
@@ -850,7 +850,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::PADCODE::Parse( XNODE* aNode, PARSER_CONTEXT* a
 
 void CADSTAR_PCB_ARCHIVE_PARSER::VIAREASSIGN::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "VIAREASSIGN" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "VIAREASSIGN" ) );
 
     LayerID = GetXmlAttributeIDString( aNode, 0 );
 
@@ -873,7 +873,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::VIAREASSIGN::Parse( XNODE* aNode, PARSER_CONTEX
 
 void CADSTAR_PCB_ARCHIVE_PARSER::VIACODE::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "VIACODE" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "VIACODE" ) );
 
     ID   = GetXmlAttributeIDString( aNode, 0 );
     Name = GetXmlAttributeIDString( aNode, 1 );
@@ -930,7 +930,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::VIACODE::Parse( XNODE* aNode, PARSER_CONTEXT* a
 
 void CADSTAR_PCB_ARCHIVE_PARSER::LAYERPAIR::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "LAYERPAIR" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "LAYERPAIR" ) );
 
     ID   = GetXmlAttributeIDString( aNode, 0 );
     Name = GetXmlAttributeIDString( aNode, 1 );
@@ -958,7 +958,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::LAYERPAIR::Parse( XNODE* aNode, PARSER_CONTEXT*
 
 void CADSTAR_PCB_ARCHIVE_PARSER::SPCCLASSSPACE::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "SPCCLASSSPACE" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "SPCCLASSSPACE" ) );
 
     SpacingClassID1 = GetXmlAttributeIDString( aNode, 0 );
     SpacingClassID2 = GetXmlAttributeIDString( aNode, 1 );
@@ -969,7 +969,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::SPCCLASSSPACE::Parse( XNODE* aNode, PARSER_CONT
 
 void CADSTAR_PCB_ARCHIVE_PARSER::TECHNOLOGY_SECTION::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "TECHNOLOGY" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "TECHNOLOGY" ) );
 
     XNODE* cNode = aNode->GetChildren();
 
@@ -1044,7 +1044,7 @@ CADSTAR_PCB_ARCHIVE_PARSER::PAD_SIDE CADSTAR_PCB_ARCHIVE_PARSER::GetPadSide(
 
 void CADSTAR_PCB_ARCHIVE_PARSER::COMPONENT_COPPER::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "COMPCOPPER" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "COMPCOPPER" ) );
 
     CopperCodeID = GetXmlAttributeIDString( aNode, 0 );
     LayerID      = GetXmlAttributeIDString( aNode, 1 );
@@ -1098,7 +1098,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::COMPONENT_COPPER::Parse( XNODE* aNode, PARSER_C
 
 void CADSTAR_PCB_ARCHIVE_PARSER::COMPONENT_AREA::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "COMPAREA" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "COMPAREA" ) );
 
     ID         = GetXmlAttributeIDString( aNode, 0 );
     LineCodeID = GetXmlAttributeIDString( aNode, 1 );
@@ -1153,7 +1153,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::COMPONENT_AREA::Parse( XNODE* aNode, PARSER_CON
 
 void CADSTAR_PCB_ARCHIVE_PARSER::PAD_EXITS::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "EXITS" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "EXITS" ) );
 
     wxXmlAttribute* xmlAttribute = aNode->GetAttributes();
 
@@ -1190,7 +1190,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::PAD_EXITS::Parse( XNODE* aNode, PARSER_CONTEXT*
 
 void CADSTAR_PCB_ARCHIVE_PARSER::COMPONENT_PAD::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "PAD" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "PAD" ) );
 
     ID        = GetXmlAttributeIDLong( aNode, 0 );
     PadCodeID = GetXmlAttributeIDString( aNode, 2 );
@@ -1226,7 +1226,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::COMPONENT_PAD::Parse( XNODE* aNode, PARSER_CONT
 
 void CADSTAR_PCB_ARCHIVE_PARSER::DIMENSION::ARROW::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "DIMARROW" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "DIMARROW" ) );
     bool arrowStyleInitialised = false;
     bool upperAngleInitialised = false;
     bool lowerAngleInitialised = false;
@@ -1286,7 +1286,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::DIMENSION::ARROW::Parse( XNODE* aNode, PARSER_C
 void CADSTAR_PCB_ARCHIVE_PARSER::DIMENSION::TEXTFORMAT::Parse( XNODE* aNode,
                                                                PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "DIMTEXT" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "DIMTEXT" ) );
 
     TextGap    = GetXmlAttributeIDLong( aNode, 1 );
     TextOffset = GetXmlAttributeIDLong( aNode, 2 );
@@ -1321,7 +1321,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::DIMENSION::TEXTFORMAT::Parse( XNODE* aNode,
 void CADSTAR_PCB_ARCHIVE_PARSER::DIMENSION::EXTENSION_LINE::Parse( XNODE* aNode,
                                                                    PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "EXTLINE" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "EXTLINE" ) );
 
     LineCodeID = GetXmlAttributeIDString( aNode, 0 );
     Overshoot  = GetXmlAttributeIDLong( aNode, 3 );
@@ -1374,7 +1374,7 @@ bool CADSTAR_PCB_ARCHIVE_PARSER::DIMENSION::LINE::IsLine( XNODE* aNode )
 
 void CADSTAR_PCB_ARCHIVE_PARSER::DIMENSION::LINE::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( IsLine( aNode ) );
+    KI_ASSERT( IsLine( aNode ) );
 
     if( aNode->GetName() == wxT( "LINEARLINE" ) )
         Type = TYPE::LINEARLINE;
@@ -1383,7 +1383,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::DIMENSION::LINE::Parse( XNODE* aNode, PARSER_CO
     else if( aNode->GetName() == wxT( "ANGULARLINE" ) )
         Type = TYPE::ANGULARLINE;
     else
-        wxASSERT_MSG( true, wxT( "Not a valid type. What happened to the node Name?" ) );
+        KI_ASSERT_MSG( true, wxT( "Not a valid type. What happened to the node Name?" ) );
 
     LineCodeID = GetXmlAttributeIDString( aNode, 0 );
 
@@ -1457,13 +1457,13 @@ bool CADSTAR_PCB_ARCHIVE_PARSER::DIMENSION::IsDimension( XNODE* aNode )
 
 void CADSTAR_PCB_ARCHIVE_PARSER::DIMENSION::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( IsDimension( aNode ) );
+    KI_ASSERT( IsDimension( aNode ) );
 
     std::map<wxString, TYPE> typeMap = { { wxT( "LINEARDIM" ), TYPE::LINEARDIM },
         { wxT( "LEADERDIM" ), TYPE::LEADERDIM }, { wxT( "ANGLEDIM" ), TYPE::ANGLEDIM } };
 
     //make sure aNode is valid TYPE
-    wxASSERT_MSG( typeMap.find( aNode->GetName() ) != typeMap.end(),
+    KI_ASSERT_MSG( typeMap.find( aNode->GetName() ) != typeMap.end(),
                   wxT( "Not a valid type. What happened to the node Name?" ) );
 
     Type                = typeMap[aNode->GetName()];
@@ -1566,7 +1566,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::DIMENSION::Parse( XNODE* aNode, PARSER_CONTEXT*
 
 void CADSTAR_PCB_ARCHIVE_PARSER::SYMDEF_PCB::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "SYMDEF" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "SYMDEF" ) );
 
     ParseIdentifiers( aNode, aContext );
 
@@ -1644,7 +1644,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::SYMDEF_PCB::Parse( XNODE* aNode, PARSER_CONTEXT
 
 void CADSTAR_PCB_ARCHIVE_PARSER::LIBRARY::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "LIBRARY" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "LIBRARY" ) );
 
     XNODE* cNode = aNode->GetChildren();
 
@@ -1678,7 +1678,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::LIBRARY::Parse( XNODE* aNode, PARSER_CONTEXT* a
 
 void CADSTAR_PCB_ARCHIVE_PARSER::CADSTAR_BOARD::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "BOARD" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "BOARD" ) );
 
     ID         = GetXmlAttributeIDString( aNode, 0 );
     LineCodeID = GetXmlAttributeIDString( aNode, 1 );
@@ -1727,7 +1727,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::CADSTAR_BOARD::Parse( XNODE* aNode, PARSER_CONT
 
 void CADSTAR_PCB_ARCHIVE_PARSER::AREA::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "AREA" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "AREA" ) );
 
     ID         = GetXmlAttributeIDString( aNode, 0 );
     LineCodeID = GetXmlAttributeIDString( aNode, 1 );
@@ -1807,7 +1807,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::AREA::Parse( XNODE* aNode, PARSER_CONTEXT* aCon
 
 void CADSTAR_PCB_ARCHIVE_PARSER::PIN_ATTRIBUTE::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "PINATTR" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "PINATTR" ) );
 
     Pin = GetXmlAttributeIDLong( aNode, 0 );
 
@@ -1837,7 +1837,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::PIN_ATTRIBUTE::Parse( XNODE* aNode, PARSER_CONT
 
 void CADSTAR_PCB_ARCHIVE_PARSER::PADEXCEPTION::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "PADEXCEPTION" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "PADEXCEPTION" ) );
 
     ID = GetXmlAttributeIDLong( aNode, 0 );
 
@@ -1876,7 +1876,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::PADEXCEPTION::Parse( XNODE* aNode, PARSER_CONTE
 
 void CADSTAR_PCB_ARCHIVE_PARSER::COMPONENT::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "COMP" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "COMP" ) );
 
     ID       = GetXmlAttributeIDString( aNode, 0 );
     Name     = GetXmlAttributeIDString( aNode, 1 );
@@ -1972,7 +1972,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::COMPONENT::Parse( XNODE* aNode, PARSER_CONTEXT*
 CADSTAR_PCB_ARCHIVE_PARSER::TESTLAND_SIDE CADSTAR_PCB_ARCHIVE_PARSER::ParseTestlandSide(
         XNODE* aNode )
 {
-    wxASSERT( aNode->GetName() == wxT( "TESTLAND" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "TESTLAND" ) );
 
     wxString side = GetXmlAttributeIDString( aNode, 0 );
 
@@ -1991,7 +1991,7 @@ CADSTAR_PCB_ARCHIVE_PARSER::TESTLAND_SIDE CADSTAR_PCB_ARCHIVE_PARSER::ParseTestl
 
 void CADSTAR_PCB_ARCHIVE_PARSER::TRUNK::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "TRUNK" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "TRUNK" ) );
 
     ID         = GetXmlAttributeIDString( aNode, 0 );
     Definition = GetXmlAttributeIDString( aNode, 1 );
@@ -2000,7 +2000,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::TRUNK::Parse( XNODE* aNode, PARSER_CONTEXT* aCo
 
 void CADSTAR_PCB_ARCHIVE_PARSER::NET_PCB::PIN::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "PIN" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "PIN" ) );
 
     ID          = GetXmlAttributeIDString( aNode, 0 );
     ComponentID = GetXmlAttributeIDString( aNode, 1 );
@@ -2029,7 +2029,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::NET_PCB::JUNCTION_PCB::Parse( XNODE* aNode,
 
 void CADSTAR_PCB_ARCHIVE_PARSER::NET_PCB::VIA::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "VIA" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "VIA" ) );
 
     ID          = GetXmlAttributeIDString( aNode, 0 );
     ViaCodeID   = GetXmlAttributeIDString( aNode, 1 );
@@ -2062,7 +2062,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::NET_PCB::VIA::Parse( XNODE* aNode, PARSER_CONTE
 void CADSTAR_PCB_ARCHIVE_PARSER::NET_PCB::COPPER_TERMINAL::Parse( XNODE* aNode,
                                                                   PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "COPTERM" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "COPTERM" ) );
 
     ID            = GetXmlAttributeIDString( aNode, 0 );
     CopperID      = GetXmlAttributeIDString( aNode, 1 );
@@ -2085,7 +2085,7 @@ XNODE* CADSTAR_PCB_ARCHIVE_PARSER::NET_PCB::ROUTE_VERTEX::Parse( XNODE* aNode,
     {
         // CADSTAR Revision 7 routes may omit ROUTEWIDTH and start directly with the vertex; the
         // width is derived later from the connection's route code.
-        wxASSERT( VERTEX::IsVertex( aNode ) );
+        KI_ASSERT( VERTEX::IsVertex( aNode ) );
         RouteWidthIsExplicit = false;
         Vertex.Parse( aNode, aContext );
         vertexParsed = true;
@@ -2135,7 +2135,7 @@ XNODE* CADSTAR_PCB_ARCHIVE_PARSER::NET_PCB::ROUTE_VERTEX::Parse( XNODE* aNode,
 
 void CADSTAR_PCB_ARCHIVE_PARSER::NET_PCB::ROUTE::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "ROUTE" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "ROUTE" ) );
 
     LayerID = GetXmlAttributeIDString( aNode, 0 );
 
@@ -2265,7 +2265,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::NET_PCB::Parse( XNODE* aNode, PARSER_CONTEXT* a
 
 void CADSTAR_PCB_ARCHIVE_PARSER::TEMPLATE::POURING::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "POURING" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "POURING" ) );
 
     CopperCodeID           = GetXmlAttributeIDString( aNode, 0 );
     ReliefCopperCodeID     = GetXmlAttributeIDString( aNode, 1 );
@@ -2342,7 +2342,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::TEMPLATE::POURING::Parse( XNODE* aNode, PARSER_
 
 void CADSTAR_PCB_ARCHIVE_PARSER::TEMPLATE::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "TEMPLATE" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "TEMPLATE" ) );
 
     ID         = GetXmlAttributeIDString( aNode, 0 );
     LineCodeID = GetXmlAttributeIDString( aNode, 1 );
@@ -2397,7 +2397,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::TEMPLATE::Parse( XNODE* aNode, PARSER_CONTEXT* 
 void CADSTAR_PCB_ARCHIVE_PARSER::COPPER::NETREF::COPPER_TERM::Parse( XNODE* aNode,
                                                                      PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "TERM" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "TERM" ) );
 
     ID = GetXmlAttributeIDLong( aNode, 0 );
 
@@ -2427,7 +2427,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::COPPER::NETREF::COPPER_TERM::Parse( XNODE* aNod
 
 void CADSTAR_PCB_ARCHIVE_PARSER::COPPER::NETREF::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "NETREF" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "NETREF" ) );
 
     NetID = GetXmlAttributeIDString( aNode, 0 );
 
@@ -2457,7 +2457,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::COPPER::NETREF::Parse( XNODE* aNode, PARSER_CON
 
 void CADSTAR_PCB_ARCHIVE_PARSER::COPPER::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "COPPER" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "COPPER" ) );
 
     ID           = GetXmlAttributeIDString( aNode, 0 );
     CopperCodeID = GetXmlAttributeIDString( aNode, 1 );
@@ -2513,7 +2513,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::COPPER::Parse( XNODE* aNode, PARSER_CONTEXT* aC
 
 void CADSTAR_PCB_ARCHIVE_PARSER::DRILL_TABLE::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "DRILLTABLE" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "DRILLTABLE" ) );
 
     ID      = GetXmlAttributeIDString( aNode, 0 );
     LayerID = GetXmlAttributeIDString( aNode, 1 );
@@ -2564,7 +2564,7 @@ void CADSTAR_PCB_ARCHIVE_PARSER::DRILL_TABLE::Parse( XNODE* aNode, PARSER_CONTEX
 
 void CADSTAR_PCB_ARCHIVE_PARSER::LAYOUT::Parse( XNODE* aNode, PARSER_CONTEXT* aContext )
 {
-    wxASSERT( aNode->GetName() == wxT( "LAYOUT" ) );
+    KI_ASSERT( aNode->GetName() == wxT( "LAYOUT" ) );
 
     XNODE* cNode            = aNode->GetChildren();
     bool   netSynchParsed   = false;

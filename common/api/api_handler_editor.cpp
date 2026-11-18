@@ -71,7 +71,7 @@ HANDLER_RESULT<BeginCommitResponse> API_HANDLER_EDITOR::handleBeginCommit(
         return tl::unexpected( e );
     }
 
-    wxASSERT( !m_activeClients.count( aCtx.ClientName ) );
+    KI_ASSERT( !m_activeClients.count( aCtx.ClientName ) );
 
     BeginCommitResponse response;
 
@@ -109,7 +109,7 @@ HANDLER_RESULT<EndCommitResponse> API_HANDLER_EDITOR::handleEndCommit(
         return tl::unexpected( e );
     }
 
-    wxASSERT( m_activeClients.count( aCtx.ClientName ) );
+    KI_ASSERT( m_activeClients.count( aCtx.ClientName ) );
 
     const std::pair<KIID, std::unique_ptr<COMMIT>>& pair = m_commits.at( aCtx.ClientName );
     const KIID& id = pair.first;
@@ -390,7 +390,7 @@ API_HANDLER_EDITOR::handleGetDocumentModifiedState( const HANDLER_CONTEXT<GetDoc
 
     GetDocumentModifiedStateResponse response;
 
-    wxCHECK( m_frame, response );
+    KI_CHECK( m_frame, response );
     response.set_state( m_frame->IsContentModified() ? DocumentModifiedState::DMS_MODIFIED
                                                      : DocumentModifiedState::DMS_UNMODIFIED );
     return response;

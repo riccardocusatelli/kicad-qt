@@ -41,7 +41,7 @@ SGAPPEARANCE::SGAPPEARANCE( SGNODE* aParent ) : SGNODE( aParent )
     {
         m_Parent = nullptr;
 
-        wxLogTrace( MASK_3D_SG,
+        KI_LOG_TRACE( MASK_3D_SG,
                     wxT( "%s:%s:%d * [BUG] inappropriate parent to SGAPPEARANCE (type %s )" ),
                     __FILE__, __FUNCTION__, __LINE__, aParent->GetNodeType() );
     }
@@ -95,7 +95,7 @@ bool SGAPPEARANCE::SetEmissive( float aRVal, float aGVal, float aBVal )
 
 bool SGAPPEARANCE::SetEmissive( const SGCOLOR* aRGBColor )
 {
-    wxCHECK_MSG( aRGBColor, false, wxT( "NULL pointer passed for aRGBColor" ) );
+    KI_CHECK_MSG( aRGBColor, false, wxT( "NULL pointer passed for aRGBColor" ) );
 
     return emissive.SetColor( aRGBColor );
 }
@@ -115,7 +115,7 @@ bool SGAPPEARANCE::SetDiffuse( float aRVal, float aGVal, float aBVal )
 
 bool SGAPPEARANCE::SetDiffuse( const SGCOLOR* aRGBColor )
 {
-    wxCHECK_MSG( aRGBColor, false, wxT( "NULL pointer passed for aRGBColor" ) );
+    KI_CHECK_MSG( aRGBColor, false, wxT( "NULL pointer passed for aRGBColor" ) );
 
     return diffuse.SetColor( aRGBColor );
 }
@@ -135,7 +135,7 @@ bool SGAPPEARANCE::SetSpecular( float aRVal, float aGVal, float aBVal )
 
 bool SGAPPEARANCE::SetSpecular( const SGCOLOR* aRGBColor )
 {
-    wxCHECK_MSG( aRGBColor, false, wxT( "NULL pointer passed for aRGBColor" ) );
+    KI_CHECK_MSG( aRGBColor, false, wxT( "NULL pointer passed for aRGBColor" ) );
 
     return specular.SetColor( aRGBColor );
 }
@@ -154,7 +154,7 @@ bool SGAPPEARANCE::SetAmbient( float aRVal, float aGVal, float aBVal )
 
 bool SGAPPEARANCE::SetAmbient( const SGCOLOR* aRGBColor )
 {
-    wxCHECK_MSG( aRGBColor, false, wxT( "NULL pointer passed for aRGBColor" ) );
+    KI_CHECK_MSG( aRGBColor, false, wxT( "NULL pointer passed for aRGBColor" ) );
 
     return ambient.SetColor( aRGBColor );
 }
@@ -180,21 +180,21 @@ SGNODE* SGAPPEARANCE::FindNode( const char* aNodeName, const SGNODE* aCaller) no
 
 void SGAPPEARANCE::unlinkChildNode( const SGNODE* aCaller ) noexcept
 {
-    wxCHECK_MSG( aCaller, /* void */,
+    KI_CHECK_MSG( aCaller, /* void */,
                  wxT( "unexpected code branch; node should have no children or refs" ) );
 }
 
 
 void SGAPPEARANCE::unlinkRefNode( const SGNODE* aCaller ) noexcept
 {
-    wxCHECK_MSG( aCaller, /* void */,
+    KI_CHECK_MSG( aCaller, /* void */,
                  wxT( "unexpected code branch; node should have no children or refs" ) );
 }
 
 
 bool SGAPPEARANCE::AddRefNode( SGNODE* aNode ) noexcept
 {
-    wxCHECK_MSG( aNode, false, wxT( "this node does not accept children or refs" ) );
+    KI_CHECK_MSG( aNode, false, wxT( "this node does not accept children or refs" ) );
 
     // This is redundant but it keeps gcc from generating a warning on debug builds.
     return false;
@@ -203,7 +203,7 @@ bool SGAPPEARANCE::AddRefNode( SGNODE* aNode ) noexcept
 
 bool SGAPPEARANCE::AddChildNode( SGNODE* aNode ) noexcept
 {
-    wxCHECK_MSG( aNode, false, wxT( "this node does not accept children or refs" ) );
+    KI_CHECK_MSG( aNode, false, wxT( "this node does not accept children or refs" ) );
 
     // This is redundant but it keeps gcc from generating a warning on debug builds.
     return false;
@@ -301,7 +301,7 @@ bool SGAPPEARANCE::WriteCache( std::ostream& aFile, SGNODE* parentNode )
 {
     if( nullptr == parentNode )
     {
-        wxCHECK_MSG( m_Parent, false, wxT( "corrupt data; m_aParent is NULL" ) );
+        KI_CHECK_MSG( m_Parent, false, wxT( "corrupt data; m_aParent is NULL" ) );
 
         SGNODE* np = m_Parent;
 
@@ -317,11 +317,11 @@ bool SGAPPEARANCE::WriteCache( std::ostream& aFile, SGNODE* parentNode )
         return false;
     }
 
-    wxCHECK_MSG( parentNode == m_Parent, false, wxT( "corrupt data; parentNode != m_aParent" ) );
+    KI_CHECK_MSG( parentNode == m_Parent, false, wxT( "corrupt data; parentNode != m_aParent" ) );
 
     if( !aFile.good() )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] bad stream" ),
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] bad stream" ),
                     __FILE__, __FUNCTION__, __LINE__ );
 
         return false;

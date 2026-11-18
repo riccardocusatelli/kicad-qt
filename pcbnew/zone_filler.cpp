@@ -4158,7 +4158,7 @@ void ZONE_FILLER::buildHatchZoneThermalRings( const ZONE* aZone, PCB_LAYER_ID aL
 bool ZONE_FILLER::addCopperThievingPattern( const ZONE* aZone, PCB_LAYER_ID aLayer,
                                             SHAPE_POLY_SET& aFillPolys )
 {
-    wxCHECK( aZone->IsCopperThieving(), false );
+    KI_CHECK( aZone->IsCopperThieving(), false );
 
     const THIEVING_SETTINGS& settings = aZone->GetThievingSettings();
 

@@ -341,7 +341,7 @@ void BACK_ANNOTATE::getPcbModulesFromString( const std::string& aPayload )
         wxString path, value, footprint;
         bool                         dnp = false, exBOM = false, exSim = false, exPosFiles = false;
         std::map<wxString, wxString> pinNetMap, fieldsMap;
-        wxASSERT( item.first == "ref" );
+        KI_ASSERT( item.first == "ref" );
         wxString ref = getStr( item.second );
 
         try
@@ -412,7 +412,7 @@ void BACK_ANNOTATE::getPcbModulesFromString( const std::string& aPayload )
             {
                 for( const std::pair<const std::string, PTREE>& pin_net : nets.get() )
                 {
-                    wxASSERT( pin_net.first == "pin_net" );
+                    KI_ASSERT( pin_net.first == "pin_net" );
                     wxString pinNumber = UTF8( pin_net.second.front().first );
                     wxString netName = UTF8( pin_net.second.back().first );
                     pinNetMap[ pinNumber ] = netName;
@@ -1322,7 +1322,7 @@ std::set<wxString> BACK_ANNOTATE::applyPinSwaps( SCH_SYMBOL* aSymbol, const SCH_
     if( !screen )
         return swappedPins;
 
-    wxCHECK( m_frame, swappedPins );
+    KI_CHECK( m_frame, swappedPins );
 
     // Used to build the list of schematic pins whose current net assignment does not match the PCB.
     struct PIN_CHANGE
@@ -1508,7 +1508,7 @@ std::set<wxString> BACK_ANNOTATE::applyPinSwaps( SCH_SYMBOL* aSymbol, const SCH_
 
         if( !m_dryRun )
         {
-            wxCHECK2( aCommit, continue );
+            KI_CHECK2( aCommit, continue );
 
             // Record the two pins in the commit and physically swap their local geometry.
             aCommit->Modify( change.pin, screen, RECURSE_MODE::RECURSE );

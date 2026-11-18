@@ -87,7 +87,7 @@ SCH_BUS_WIRE_ENTRY::SCH_BUS_WIRE_ENTRY( const VECTOR2I& pos, int aQuadrant ) :
     case 2: m_size.x *=  1; m_size.y *=  1; break;
     case 3: m_size.x *= -1; m_size.y *=  1; break;
     case 4: m_size.x *= -1; m_size.y *= -1; break;
-    default: wxFAIL_MSG( wxS( "SCH_BUS_WIRE_ENTRY ctor: unexpected quadrant" ) );
+    default: KI_FAIL_MSG( wxS( "SCH_BUS_WIRE_ENTRY ctor: unexpected quadrant" ) );
     }
 
     m_layer  = LAYER_WIRE;
@@ -135,7 +135,7 @@ void SCH_BUS_ENTRY_BASE::Serialize( google::protobuf::Any& aContainer ) const
     kiapi::common::PackCustomProperties( entry.mutable_custom_properties(), *this );
 
     if( !aContainer.PackFrom( entry ) )
-        wxFAIL_MSG( wxT( "Failed to pack SCH_BUS_ENTRY" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack SCH_BUS_ENTRY" ) );
 }
 
 
@@ -200,7 +200,7 @@ VECTOR2I SCH_BUS_ENTRY_BASE::GetEnd() const
 void SCH_BUS_ENTRY_BASE::swapData( SCH_ITEM* aItem )
 {
     SCH_BUS_ENTRY_BASE* item = dynamic_cast<SCH_BUS_ENTRY_BASE*>( aItem );
-    wxCHECK_RET( item, wxT( "Cannot swap bus entry data with invalid item." ) );
+    KI_CHECK_RET( item, wxT( "Cannot swap bus entry data with invalid item." ) );
 
     std::swap( m_pos, item->m_pos );
     std::swap( m_size, item->m_size );
@@ -468,7 +468,7 @@ bool SCH_BUS_ENTRY_BASE::HasConnectivityChanges( const SCH_ITEM* aItem,
     const SCH_BUS_ENTRY_BASE* busEntry = dynamic_cast<const SCH_BUS_ENTRY_BASE*>( aItem );
 
     // Don't compare against a different SCH_ITEM.
-    wxCHECK( busEntry, false );
+    KI_CHECK( busEntry, false );
 
     if( GetPosition() != busEntry->GetPosition() )
         return true;

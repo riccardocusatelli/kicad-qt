@@ -482,8 +482,8 @@ void mpFXY::Plot( wxDC& dc, mpWindow& w )
     if( !GetCount() )
         return;
 
-    wxCHECK_RET( m_scaleX, wxS( "X scale was not set" ) );
-    wxCHECK_RET( m_scaleY, wxS( "Y scale was not set" ) );
+    KI_CHECK_RET( m_scaleX, wxS( "X scale was not set" ) );
+    KI_CHECK_RET( m_scaleY, wxS( "Y scale was not set" ) );
 
     if( !m_visible )
         return;

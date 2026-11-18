@@ -1412,7 +1412,7 @@ void CAIRO_GAL_BASE::drawPoly( const SHAPE_LINE_CHAIN& aLineChain )
 
 unsigned int CAIRO_GAL_BASE::getNewGroupNumber()
 {
-    wxASSERT_MSG( m_groups.size() < std::numeric_limits<unsigned int>::max(),
+    KI_ASSERT_MSG( m_groups.size() < std::numeric_limits<unsigned int>::max(),
                   wxT( "There are no free slots to store a group" ) );
 
     while( m_groups.find( m_groupCounter ) != m_groups.end() )
@@ -1701,7 +1701,7 @@ void CAIRO_GAL::initSurface()
 
 #ifdef DEBUG
     cairo_status_t status = cairo_status( m_context );
-    wxASSERT_MSG( status == CAIRO_STATUS_SUCCESS, wxT( "Cairo context creation error" ) );
+    KI_ASSERT_MSG( status == CAIRO_STATUS_SUCCESS, wxT( "Cairo context creation error" ) );
 #endif /* DEBUG */
 
     m_currentContext = m_context;
@@ -1732,10 +1732,10 @@ void CAIRO_GAL::allocateBitmaps()
     m_stride = cairo_format_stride_for_width( GAL_FORMAT, m_wxBufferWidth );
     m_bufferSize = m_stride * m_screenSize.y;
 
-    wxASSERT( m_bitmapBuffer == nullptr );
+    KI_ASSERT( m_bitmapBuffer == nullptr );
     m_bitmapBuffer = new unsigned char[m_bufferSize];
 
-    wxASSERT( m_wxOutput == nullptr );
+    KI_ASSERT( m_wxOutput == nullptr );
     m_wxOutput = new unsigned char[m_wxBufferWidth * 3 * m_screenSize.y];
 }
 

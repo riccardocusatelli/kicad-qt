@@ -338,7 +338,7 @@ void FOOTPRINT_VIEWER_FRAME::setupUIConditions()
     ACTION_MANAGER*       mgr = m_toolManager->GetActionManager();
     PCB_EDITOR_CONDITIONS cond( this );
 
-    wxASSERT( mgr );
+    KI_ASSERT( mgr );
 
     auto addToBoardCond =
             [this]( const SELECTION& )
@@ -674,7 +674,7 @@ void FOOTPRINT_VIEWER_FRAME::ClickOnLibList( wxCommandEvent& aEvent )
     }
     catch( const IO_ERROR& e )
     {
-        wxLogTrace( traceLibraries, "FP: %s: refresh failed: %s", name, e.What() );
+        KI_LOG_TRACE( traceLibraries, "FP: %s: refresh failed: %s", name, e.What() );
     }
 
     if( getCurNickname() == name )
@@ -836,7 +836,7 @@ void FOOTPRINT_VIEWER_FRAME::LoadSettings( APP_SETTINGS_BASE* aCfg )
 void FOOTPRINT_VIEWER_FRAME::SaveSettings( APP_SETTINGS_BASE* aCfg )
 {
     PCBNEW_SETTINGS* cfg = dynamic_cast<PCBNEW_SETTINGS*>( aCfg );
-    wxCHECK( cfg, /*void*/ );
+    KI_CHECK( cfg, /*void*/ );
 
     GetGalDisplayOptions().m_axesEnabled = true;
 
@@ -857,7 +857,7 @@ WINDOW_SETTINGS* FOOTPRINT_VIEWER_FRAME::GetWindowSettings( APP_SETTINGS_BASE* a
     if( PCBNEW_SETTINGS* cfg = dynamic_cast<PCBNEW_SETTINGS*>( aCfg ) )
         return &cfg->m_FootprintViewer;
 
-    wxFAIL_MSG( wxT( "FOOTPRINT_CHOOSER not running with PCBNEW_SETTINGS" ) );
+    KI_FAIL_MSG( wxT( "FOOTPRINT_CHOOSER not running with PCBNEW_SETTINGS" ) );
     return &aCfg->m_Window;     // non-null fail-safe
 }
 
@@ -1064,7 +1064,7 @@ void FOOTPRINT_VIEWER_FRAME::updateView()
     m_toolManager->ResetTools( TOOL_BASE::MODEL_RELOAD );
 
     PCBNEW_SETTINGS* cfg = dynamic_cast<PCBNEW_SETTINGS*>( config() );
-    wxCHECK( cfg, /* void */ );
+    KI_CHECK( cfg, /* void */ );
 
     if( cfg->m_FootprintViewerAutoZoomOnSelect )
         m_toolManager->RunAction( ACTIONS::zoomFitScreen );

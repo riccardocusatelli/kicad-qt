@@ -391,7 +391,7 @@ int CLI::PCB_EXPORT_3D_COMMAND::doPerform( KIWAY& aKiway )
         }
     }
 
-    int exitCode = aKiway.ProcessJob( KIWAY::FACE_PCB, step.get() );
+    int exitCode = aKiway.ProcessJob( KIWAY_FACES::FACE_PCB, step.get() );
 
     return exitCode;
 }

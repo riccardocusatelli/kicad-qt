@@ -130,7 +130,7 @@ void FOOTPRINTS_LISTBOX::SetFootprints( FOOTPRINT_LIST& aList, const wxString& a
     if( aFilterType & FILTERING_BY_PIN_COUNT && aComponent )
     {
         int pc = aComponent->GetPinCount();
-        wxLogTrace( "CVPCB_PINCOUNT",
+        KI_LOG_TRACE( "CVPCB_PINCOUNT",
                     wxT( "FOOTPRINTS_LISTBOX::SetFootprints: ref='%s' pinCount filter=%d" ),
                     aComponent->GetReference(), pc );
         filter.FilterByPinCount( pc );
@@ -211,7 +211,7 @@ void FOOTPRINTS_LISTBOX::OnChar( wxKeyEvent& event )
     if( m_isClosing )
         return;
 
-    wxLogTrace( kicadTraceKeyEvent, wxS( "FOOTPRINTS_LISTBOX::OnChar %s" ), dump( event ) );
+    KI_LOG_TRACE( kicadTraceKeyEvent, wxS( "FOOTPRINTS_LISTBOX::OnChar %s" ), dump( event ) );
 
     int key = event.GetKeyCode();
 

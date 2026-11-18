@@ -48,7 +48,7 @@ int CLI::PCB_UPGRADE_COMMAND::doPerform( KIWAY& aKiway )
         return EXIT_CODES::ERR_INVALID_INPUT_FILE;
     }
 
-    int exitCode = aKiway.ProcessJob( KIWAY::FACE_PCB, upgradeJob.get() );
+    int exitCode = aKiway.ProcessJob( KIWAY_FACES::FACE_PCB, upgradeJob.get() );
 
     return exitCode;
 }

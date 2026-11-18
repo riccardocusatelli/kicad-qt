@@ -751,7 +751,7 @@ int IDF_EXPORTER::getMaxModelHeight( FOOTPRINT* aFootprint ) const
  */
 void IDF_EXPORTER::exportFootprint( FOOTPRINT* aFootprint, IDF3_BOARD& aIDFBoard ) const
 {
-    wxCHECK( m_board && m_resolver && m_settings, /* void */ );
+    KI_CHECK( m_board && m_resolver && m_settings, /* void */ );
 
     // Reference Designator
     std::string crefdes = TO_UTF8( aFootprint->Reference().GetShownText( RESOLVED ) );
@@ -1025,7 +1025,7 @@ void IDF_EXPORTER::exportFootprint( FOOTPRINT* aFootprint, IDF3_BOARD& aIDFBoard
 VECTOR2D IDF_EXPORTER::getOrigin() const
 {
     VECTOR2D origin;
-    wxCHECK( m_settings && m_board, origin );
+    KI_CHECK( m_settings && m_board, origin );
 
     switch( m_settings->m_originMode )
     {
@@ -1059,9 +1059,9 @@ VECTOR2D IDF_EXPORTER::getOrigin() const
 
 bool IDF_EXPORTER::Export( const wxString& aFullFileName ) const
 {
-    wxCHECK( m_board, false );
-    wxCHECK( m_resolver, false );
-    wxCHECK( m_settings, false );
+    KI_CHECK( m_board, false );
+    KI_CHECK( m_resolver, false );
+    KI_CHECK( m_settings, false );
 
     IDF3_BOARD idfBoard( IDF3::CAD_TYPE::CAD_ELEC );
 

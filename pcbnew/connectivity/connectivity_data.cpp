@@ -617,7 +617,7 @@ CONNECTIVITY_DATA::GetNetItems( int aNetCode, const std::vector<KICAD_T>& aTypes
 
     for( KICAD_T scanType : aTypes )
     {
-        wxASSERT( scanType < MAX_STRUCT_TYPE_ID );
+        KI_ASSERT( scanType < MAX_STRUCT_TYPE_ID );
         type_bits.set( scanType );
     }
 
@@ -810,7 +810,7 @@ bool CONNECTIVITY_DATA::TestTrackEndpointDangling( PCB_TRACK* aTrack, bool aIgno
     // Not in the connectivity system.  This is a bug!
     if( items.empty() )
     {
-        wxFAIL_MSG( wxT( "track not in connectivity system" ) );
+        KI_FAIL_MSG( wxT( "track not in connectivity system" ) );
         return false;
     }
 
@@ -937,7 +937,7 @@ bool CONNECTIVITY_DATA::TestTrackEndpointDangling( PCB_TRACK* aTrack, bool aIgno
     }
     else
     {
-        wxFAIL_MSG( wxT( "CONNECTIVITY_DATA::TestTrackEndpointDangling: unknown track type" ) );
+        KI_FAIL_MSG( wxT( "CONNECTIVITY_DATA::TestTrackEndpointDangling: unknown track type" ) );
     }
 
     return false;

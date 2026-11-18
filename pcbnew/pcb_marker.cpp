@@ -200,7 +200,7 @@ void PCB_MARKER::Serialize( google::protobuf::Any& aContainer ) const
     ToProto( msg, *this );
 
     if( !aContainer.PackFrom( msg ) )
-        wxFAIL_MSG( wxT( "Failed to pack PCB_MARKER" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack PCB_MARKER" ) );
 }
 
 
@@ -310,7 +310,7 @@ EDA_ITEM* PCB_MARKER::Clone() const
 
 void PCB_MARKER::swapData( BOARD_ITEM* aImage )
 {
-    wxASSERT( aImage->Type() == PCB_MARKER_T );
+    KI_ASSERT( aImage->Type() == PCB_MARKER_T );
     PCB_MARKER* image = static_cast<PCB_MARKER*>( aImage );
 
     std::swap( *this, *image );

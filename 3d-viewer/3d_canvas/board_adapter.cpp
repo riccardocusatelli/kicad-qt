@@ -101,7 +101,7 @@ BOARD_ADAPTER::BOARD_ADAPTER() :
         m_layerZcoordTop(),
         m_layerZcoordBottom()
 {
-    wxLogTrace( m_logTrace, wxT( "BOARD_ADAPTER::BOARD_ADAPTER" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "BOARD_ADAPTER::BOARD_ADAPTER" ) );
 
     m_boardPos = VECTOR2I();
     m_boardSize = VECTOR2I();
@@ -254,7 +254,7 @@ void BOARD_ADAPTER::ReloadColorSettings() noexcept
 bool BOARD_ADAPTER::Is3dLayerEnabled( PCB_LAYER_ID aLayer,
                                       const std::bitset<LAYER_3D_END>& aVisibilityFlags ) const
 {
-    wxASSERT( aLayer < PCB_LAYER_ID_COUNT );
+    KI_ASSERT( aLayer < PCB_LAYER_ID_COUNT );
 
     if( m_board && !m_board->IsLayerEnabled( aLayer ) )
         return false;
@@ -377,7 +377,7 @@ int BOARD_ADAPTER::GetHolePlatingThickness() const noexcept
 
 unsigned int BOARD_ADAPTER::GetCircleSegmentCount( float aDiameter3DU ) const
 {
-    wxASSERT( aDiameter3DU > 0.0f );
+    KI_ASSERT( aDiameter3DU > 0.0f );
 
     return GetCircleSegmentCount( (int)( aDiameter3DU / m_biuTo3Dunits ) );
 }
@@ -385,7 +385,7 @@ unsigned int BOARD_ADAPTER::GetCircleSegmentCount( float aDiameter3DU ) const
 
 unsigned int BOARD_ADAPTER::GetCircleSegmentCount( int aDiameterBIU ) const
 {
-    wxASSERT( aDiameterBIU > 0 );
+    KI_ASSERT( aDiameterBIU > 0 );
 
     return GetArcToSegmentCount( aDiameterBIU / 2, m_board->GetDesignSettings().m_MaxError, FULL_CIRCLE );
 }
@@ -394,7 +394,7 @@ unsigned int BOARD_ADAPTER::GetCircleSegmentCount( int aDiameterBIU ) const
 void BOARD_ADAPTER::InitSettings( std::shared_ptr<REPORTER> aStatusReporter,
                                   std::shared_ptr<REPORTER> aWarningReporter )
 {
-    wxLogTrace( m_logTrace, wxT( "BOARD_ADAPTER::InitSettings" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "BOARD_ADAPTER::InitSettings" ) );
 
     if( aStatusReporter )
         aStatusReporter->Report( _( "Build board outline" ) );
@@ -423,7 +423,7 @@ void BOARD_ADAPTER::InitSettings( std::shared_ptr<REPORTER> aStatusReporter,
     m_boardSize = bbbox.GetSize();
     m_boardPos  = bbbox.Centre();
 
-    wxASSERT( (m_boardSize.x > 0) && (m_boardSize.y > 0) );
+    KI_ASSERT( (m_boardSize.x > 0) && (m_boardSize.y > 0) );
 
     m_boardPos.y = -m_boardPos.y; // The y coord is inverted in 3D viewer
 
@@ -1208,7 +1208,7 @@ SFVEC4F BOARD_ADAPTER::GetLayerColor( int aLayerId ) const
     if( aLayerId >= LAYER_3D_USER_1 && aLayerId <= LAYER_3D_USER_45 )
         aLayerId = Map3DLayerToPCBLayer( aLayerId );
 
-    wxASSERT( aLayerId < PCB_LAYER_ID_COUNT );
+    KI_ASSERT( aLayerId < PCB_LAYER_ID_COUNT );
 
     return GetColor( m_BoardEditorColors.at( aLayerId ) );
 }

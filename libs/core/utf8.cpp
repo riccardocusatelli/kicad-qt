@@ -103,7 +103,7 @@ int UTF8::uni_forward( const unsigned char* aSequence, unsigned* aResult )
     default:
     case 0:
         if( aResult )
-            wxFAIL_MSG( wxS( "uni_forward: invalid start byte" ) );
+            KI_FAIL_MSG( wxS( "uni_forward: invalid start byte" ) );
 
         return 0;
         break;
@@ -112,7 +112,7 @@ int UTF8::uni_forward( const unsigned char* aSequence, unsigned* aResult )
         if( ( s[1] & 0xc0 ) != 0x80 )
         {
             if( aResult )
-                wxFAIL_MSG( wxS( "uni_forward: invalid continuation byte" ) );
+                KI_FAIL_MSG( wxS( "uni_forward: invalid continuation byte" ) );
 
             return 0;
         }
@@ -131,7 +131,7 @@ int UTF8::uni_forward( const unsigned char* aSequence, unsigned* aResult )
         )
         {
             if( aResult )
-                wxFAIL_MSG( wxS( "uni_forward: invalid continuation byte" ) );
+                KI_FAIL_MSG( wxS( "uni_forward: invalid continuation byte" ) );
 
             return 0;
         }
@@ -151,7 +151,7 @@ int UTF8::uni_forward( const unsigned char* aSequence, unsigned* aResult )
             (s[0] == 0xF4 && s[1] > 0x8F) )
         {
             if( aResult )
-                wxFAIL_MSG( wxS( "uni_forward: invalid continuation byte" ) );
+                KI_FAIL_MSG( wxS( "uni_forward: invalid continuation byte" ) );
 
             return 0;
         }

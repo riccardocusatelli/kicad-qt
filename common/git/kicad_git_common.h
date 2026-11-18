@@ -841,7 +841,7 @@ APIEXPORT wxWindow*& ActiveAdvancedGitWindow();
  *
  * Runs git_revparse_single followed by git_object_peel( GIT_OBJECT_TREE ), so a
  * commit, tag or tree ref all resolve to the underlying tree.  Returns nullptr
- * on error and logs via wxLogTrace( traceGit ).
+ * on error and logs via KI_LOG_TRACE( traceGit ).
  *
  * The caller owns the returned tree and must free it with git_tree_free (wrap
  * in KIGIT::GitTreePtr for RAII).  The return type is a raw pointer rather than

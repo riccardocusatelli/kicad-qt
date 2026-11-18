@@ -155,7 +155,7 @@ ParseImageTransform( const wxString& transformData )
         for( const wxString& cmdPart : cmdParts )
         {
             double arg = 0;
-            wxASSERT( cmdPart.Strip( wxString::both ).ToCDouble( &arg ) );
+            KI_ASSERT( cmdPart.Strip( wxString::both ).ToCDouble( &arg ) );
 
             cmdArgs.push_back( arg );
         }

@@ -246,7 +246,7 @@ void PCB_IO_CADSTAR_ARCHIVE::ensureLoadedLibrary( const wxString& aLibraryPath )
 
     if( m_cache.count( aLibraryPath ) )
     {
-        wxCHECK( m_timestamps.count( aLibraryPath ), /*void*/ );
+        KI_CHECK( m_timestamps.count( aLibraryPath ), /*void*/ );
 
         if( m_timestamps.at( aLibraryPath ) == GetLibraryTimestamp( aLibraryPath ) )
             return;

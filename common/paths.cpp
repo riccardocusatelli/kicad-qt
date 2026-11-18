@@ -207,7 +207,7 @@ wxString PATHS::GetStockDataPath( bool aRespectRunFromBuildDir )
 #else
         path = GetBuildRoot();
 
-        wxASSERT_MSG( !path.IsEmpty(), wxString::Format( wxT( "Could not find build root directory above %s" ),
+        KI_ASSERT_MSG( !path.IsEmpty(), wxString::Format( wxT( "Could not find build root directory above %s" ),
                                                          GetExecutablePath() ) );
 #endif
     }

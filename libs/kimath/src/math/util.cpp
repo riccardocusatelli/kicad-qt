@@ -55,7 +55,7 @@ void kimathLogDebug( const char* aFormatString, ... )
 void kimathLogOverflow( double v, const char* aTypeName )
 {
     wxString typeName( aTypeName );
-    wxFAIL_MSG( wxString::Format( wxT( "\n\nOverflow converting value %f to %s." ), v, typeName ) );
+    KI_FAIL_MSG( wxString::Format( wxT( "\n\nOverflow converting value %f to %s." ), v, typeName ) );
 }
 
 

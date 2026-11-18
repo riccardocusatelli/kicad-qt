@@ -255,7 +255,7 @@ protected:
     {
         Clear();
 
-        wxLogTrace( "KICAD_NET_CHAIN_MENU", "[NetChainMenu] update() invoked" );
+        KI_LOG_TRACE( "KICAD_NET_CHAIN_MENU", "[NetChainMenu] update() invoked" );
 
         TOOL_MANAGER* toolMgr = getToolManager();
 
@@ -263,7 +263,7 @@ protected:
         {
             // Defer population; parent UpdateAll() will re-run us after SetTool().
             SetDirty();
-            wxLogTrace( "KICAD_NET_CHAIN_MENU", "[NetChainMenu] defer: toolMgr not yet available" );
+            KI_LOG_TRACE( "KICAD_NET_CHAIN_MENU", "[NetChainMenu] defer: toolMgr not yet available" );
             return;
         }
 
@@ -272,7 +272,7 @@ protected:
 
         if( !selTool || !baseFrame || !baseFrame->IsType( FRAME_SCH ) )
         {
-            wxLogTrace( "KICAD_NET_CHAIN_MENU", "[NetChainMenu] abort: selTool=%p baseFrame=%p", (void*) selTool,
+            KI_LOG_TRACE( "KICAD_NET_CHAIN_MENU", "[NetChainMenu] abort: selTool=%p baseFrame=%p", (void*) selTool,
                         (void*) baseFrame );
             return;
         }
@@ -283,11 +283,11 @@ protected:
 
         if( sel.Empty() )
         {
-            wxLogTrace( "KICAD_NET_CHAIN_MENU", "[NetChainMenu] abort: empty selection" );
+            KI_LOG_TRACE( "KICAD_NET_CHAIN_MENU", "[NetChainMenu] abort: empty selection" );
             return; // nothing to show
         }
 
-        wxLogTrace( "KICAD_NET_CHAIN_MENU", "[NetChainMenu] selection size=%u", sel.GetSize() );
+        KI_LOG_TRACE( "KICAD_NET_CHAIN_MENU", "[NetChainMenu] selection size=%u", sel.GetSize() );
 
         frame->RecalculateConnections( nullptr, NO_CLEANUP );
         auto& chains = frame->Schematic().NetChains();
@@ -296,7 +296,7 @@ protected:
         if( sel.OnlyContains( { SCH_SYMBOL_T } ) )
         {
             Add( SCH_ACTIONS::createNetChain );
-            wxLogTrace( "KICAD_NET_CHAIN_MENU", "[NetChainMenu] added createNetChain" );
+            KI_LOG_TRACE( "KICAD_NET_CHAIN_MENU", "[NetChainMenu] added createNetChain" );
             return;
         }
 
@@ -323,12 +323,12 @@ protected:
 
             if( !netName )
             {
-                wxLogTrace( "KICAD_NET_CHAIN_MENU", "[NetChainMenu] sel[%zu]: not a pin or no connection", i );
+                KI_LOG_TRACE( "KICAD_NET_CHAIN_MENU", "[NetChainMenu] sel[%zu]: not a pin or no connection", i );
                 continue;
             }
 
             bool hasSignal = chains.GetNetChainForNet( *netName );
-            wxLogTrace( "KICAD_NET_CHAIN_MENU", "[NetChainMenu] sel[%zu]: pin uuid=%s net=%s committedSignal=%d", i,
+            KI_LOG_TRACE( "KICAD_NET_CHAIN_MENU", "[NetChainMenu] sel[%zu]: pin uuid=%s net=%s committedSignal=%d", i,
                         p->m_Uuid.AsString(), *netName, hasSignal );
 
             if( hasSignal )
@@ -341,21 +341,21 @@ protected:
             }
         }
 
-        wxLogTrace( "KICAD_NET_CHAIN_MENU", "[NetChainMenu] flags: singlePin=%d inSignal=%d canName=%d canRemove=%d",
+        KI_LOG_TRACE( "KICAD_NET_CHAIN_MENU", "[NetChainMenu] flags: singlePin=%d inSignal=%d canName=%d canRemove=%d",
                     singlePin, inSignal, canName, canRemove );
 
         // highlightNetChain action: only if we have a committed chain context
         if( inSignal )
         {
             Add( SCH_ACTIONS::highlightNetChain );
-            wxLogTrace( "KICAD_NET_CHAIN_MENU", "[NetChainMenu] added highlightNetChain" );
+            KI_LOG_TRACE( "KICAD_NET_CHAIN_MENU", "[NetChainMenu] added highlightNetChain" );
         }
 
         // removeFromNetChain action
         if( canRemove )
         {
             Add( SCH_ACTIONS::removeFromNetChain );
-            wxLogTrace( "KICAD_NET_CHAIN_MENU", "[NetChainMenu] added removeFromNetChain" );
+            KI_LOG_TRACE( "KICAD_NET_CHAIN_MENU", "[NetChainMenu] added removeFromNetChain" );
         }
 
         // Replace terminal pin submenu only when a single pin belonging to a chain is selected
@@ -364,21 +364,21 @@ protected:
             auto* replaceMenu = new REPLACE_TERMINAL_PIN_MENU();
             replaceMenu->SetTool( m_tool );
             Add( replaceMenu );
-            wxLogTrace( "KICAD_NET_CHAIN_MENU", "[NetChainMenu] added replaceTerminalPin submenu" );
+            KI_LOG_TRACE( "KICAD_NET_CHAIN_MENU", "[NetChainMenu] added replaceTerminalPin submenu" );
         }
 
         // nameNetChain action
         if( canName )
         {
             Add( SCH_ACTIONS::nameNetChain );
-            wxLogTrace( "KICAD_NET_CHAIN_MENU", "[NetChainMenu] added nameNetChain" );
+            KI_LOG_TRACE( "KICAD_NET_CHAIN_MENU", "[NetChainMenu] added nameNetChain" );
         }
 
         // createNetChainBetweenPins: two pins selected, share potential (uncommitted) chain
         if( sel.GetSize() == 2 )
         {
             bool added = addCreateNetChainBetweenPinsIfApplicable( this, frame, sel );
-            wxLogTrace( "KICAD_NET_CHAIN_MENU", "[NetChainMenu] createNetChainBetweenPins attempted added=%d", added );
+            KI_LOG_TRACE( "KICAD_NET_CHAIN_MENU", "[NetChainMenu] createNetChainBetweenPins attempted added=%d", added );
         }
 
         // Allow opening the Create Net Chain dialog (with the dialog filtered by selection)
@@ -395,7 +395,7 @@ protected:
             if( isConnectedPin || isConnectedWireOrBus )
             {
                 Add( SCH_ACTIONS::createNetChain );
-                wxLogTrace( "KICAD_NET_CHAIN_MENU", "[NetChainMenu] added createNetChain for single connected item" );
+                KI_LOG_TRACE( "KICAD_NET_CHAIN_MENU", "[NetChainMenu] added createNetChain for single connected item" );
             }
         }
 
@@ -1609,7 +1609,7 @@ int SCH_SELECTION_TOOL::Main( const TOOL_EVENT& aEvent )
 
 void SCH_SELECTION_TOOL::EnterGroup()
 {
-    wxCHECK_RET( m_selection.GetSize() == 1 && m_selection[0]->Type() == SCH_GROUP_T,
+    KI_CHECK_RET( m_selection.GetSize() == 1 && m_selection[0]->Type() == SCH_GROUP_T,
                  wxT( "EnterGroup called when selection is not a single group" ) );
     SCH_GROUP* aGroup = static_cast<SCH_GROUP*>( m_selection[0] );
 
@@ -3901,7 +3901,7 @@ void SCH_SELECTION_TOOL::ZoomFitCrossProbeBBox( const BOX2I& aBBox )
         // Use standard KiCad zoom for parts too wide to fit on screen/
         ratio = kicadRatio;
         compRatioBent = 1.0; // Reset so we don't modify the "KiCad" ratio
-        wxLogTrace( "CROSS_PROBE_SCALE",
+        KI_LOG_TRACE( "CROSS_PROBE_SCALE",
                     "Part TOO WIDE for screen.  Using normal KiCad zoom ratio: %1.5f", ratio );
     }
 

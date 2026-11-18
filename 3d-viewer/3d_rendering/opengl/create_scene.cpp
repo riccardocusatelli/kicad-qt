@@ -107,7 +107,7 @@ void RENDER_3D_OPENGL::generateRing( const SFVEC2F& aCenter, float aInnerRadius,
     aInnerContourResult.push_back( aInnerContourResult[0] );
     aOuterContourResult.push_back( aOuterContourResult[0] );
 
-    wxASSERT( aInnerContourResult.size() == aOuterContourResult.size() );
+    KI_ASSERT( aInnerContourResult.size() == aOuterContourResult.size() );
 }
 
 
@@ -264,7 +264,7 @@ std::shared_ptr<OPENGL_RENDER_LIST_DEFERRED> RENDER_3D_OPENGL::generateHoles( co
             break;
 
         default:
-            wxFAIL_MSG( wxT( "RENDER_3D_OPENGL::generateHoles: Object type not implemented" ) );
+            KI_FAIL_MSG( wxT( "RENDER_3D_OPENGL::generateHoles: Object type not implemented" ) );
             break;
         }
     }
@@ -332,7 +332,7 @@ RENDER_3D_OPENGL::generateLayerList( const BVH_CONTAINER_2D* aContainer, const S
             break;
 
         default:
-            wxFAIL_MSG( wxT( "RENDER_3D_OPENGL: Object type is not implemented" ) );
+            KI_FAIL_MSG( wxT( "RENDER_3D_OPENGL: Object type is not implemented" ) );
             break;
         }
     }
@@ -390,7 +390,7 @@ std::shared_ptr<OPENGL_RENDER_LIST_DEFERRED> RENDER_3D_OPENGL::createBoard( cons
         {
             const OBJECT_2D* object2d_A = itemOnLayer;
 
-            wxASSERT( object2d_A->GetObjectType() == OBJECT_2D_TYPE::TRIANGLE );
+            KI_ASSERT( object2d_A->GetObjectType() == OBJECT_2D_TYPE::TRIANGLE );
 
             const TRIANGLE_2D* tri = static_cast<const TRIANGLE_2D*>( object2d_A );
 
@@ -1011,7 +1011,7 @@ void RENDER_3D_OPENGL::bgWorker( std::stop_token aStop )
     const MAP_POLY& innerMapHoles = m_boardAdapter.GetHoleIdPolysMap();
     const MAP_POLY& outerMapHoles = m_boardAdapter.GetHoleOdPolysMap();
 
-    wxASSERT( innerMapHoles.size() == outerMapHoles.size() );
+    KI_ASSERT( innerMapHoles.size() == outerMapHoles.size() );
 
     const MAP_CONTAINER_2D_BASE& map_holes = m_boardAdapter.GetLayerHoleMap();
 
@@ -1221,7 +1221,7 @@ void RENDER_3D_OPENGL::bgWorker( std::stop_token aStop )
 
 void RENDER_3D_OPENGL::startBgWorker()
 {
-    wxLogTrace( m_logTrace, wxT( "RENDER_3D_OPENGL::startBgWorker" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "RENDER_3D_OPENGL::startBgWorker" ) );
 
     // Claim the flag before the thread runs so a rebuild cannot displace the load.
     m_bgWorkerBusy = true;
@@ -1282,7 +1282,7 @@ void RENDER_3D_OPENGL::runHitTestRebuild( std::stop_token aStop )
 
 void RENDER_3D_OPENGL::StopBgWorker()
 {
-    wxLogTrace( m_logTrace, wxT( "RENDER_3D_OPENGL::StopBgWorker" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "RENDER_3D_OPENGL::StopBgWorker" ) );
 
     if( m_bgWorkerThread.joinable() )
     {
@@ -1299,7 +1299,7 @@ void RENDER_3D_OPENGL::StopBgWorker()
 
 void RENDER_3D_OPENGL::JoinBgWorker()
 {
-    wxLogTrace( m_logTrace, wxT( "RENDER_3D_OPENGL::JoinBgWorker" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "RENDER_3D_OPENGL::JoinBgWorker" ) );
 
     if( m_bgWorkerThread.joinable() )
         m_bgWorkerThread.join();
@@ -1857,7 +1857,7 @@ void RENDER_3D_OPENGL::generateSimplePlatedHoleShells( int aPlatingThickness, fl
         {
             const OBJECT_2D* object2d_A = itemOnLayer;
 
-            wxASSERT( object2d_A->GetObjectType() == OBJECT_2D_TYPE::TRIANGLE );
+            KI_ASSERT( object2d_A->GetObjectType() == OBJECT_2D_TYPE::TRIANGLE );
 
             const TRIANGLE_2D* tri = static_cast<const TRIANGLE_2D*>( object2d_A );
 
@@ -1868,7 +1868,7 @@ void RENDER_3D_OPENGL::generateSimplePlatedHoleShells( int aPlatingThickness, fl
             addTopAndBottomTriangles( triangles, v1, v2, v3, layer_z_top, layer_z_bot );
         }
 
-        wxASSERT( tht_outer_holes_poly.OutlineCount() > 0 );
+        KI_ASSERT( tht_outer_holes_poly.OutlineCount() > 0 );
 
         if( tht_outer_holes_poly.OutlineCount() > 0 )
         {

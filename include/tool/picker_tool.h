@@ -80,7 +80,7 @@ public:
      */
     inline void SetClickHandler( CLICK_HANDLER aHandler )
     {
-        wxASSERT( !m_clickHandler );
+        KI_ASSERT( !m_clickHandler );
         m_clickHandler = aHandler;
     }
 
@@ -91,7 +91,7 @@ public:
      */
     inline void SetMotionHandler( MOTION_HANDLER aHandler )
     {
-        wxASSERT( !m_motionHandler );
+        KI_ASSERT( !m_motionHandler );
         m_motionHandler = aHandler;
     }
 
@@ -103,7 +103,7 @@ public:
      */
     inline void SetAreaHandler( AREA_HANDLER aHandler )
     {
-        wxASSERT( !m_areaHandler );
+        KI_ASSERT( !m_areaHandler );
         m_areaHandler = aHandler;
     }
 
@@ -112,7 +112,7 @@ public:
      */
     inline void SetCancelHandler( CANCEL_HANDLER aHandler )
     {
-        wxASSERT( !m_cancelHandler );
+        KI_ASSERT( !m_cancelHandler );
         m_cancelHandler = aHandler;
     }
 
@@ -123,7 +123,7 @@ public:
      */
     inline void SetFinalizeHandler( FINALIZE_HANDLER aHandler )
     {
-        wxASSERT( !m_finalizeHandler );
+        KI_ASSERT( !m_finalizeHandler );
         m_finalizeHandler = aHandler;
     }
 

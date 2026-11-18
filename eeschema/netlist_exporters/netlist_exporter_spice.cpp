@@ -157,7 +157,7 @@ bool NETLIST_EXPORTER_SPICE::ReadSchematicAndLibraries( unsigned aNetlistOptions
 
         if( !cacheDir.DirExists() )
         {
-            wxLogTrace( wxT( "IBIS_CACHE:" ),
+            KI_LOG_TRACE( wxT( "IBIS_CACHE:" ),
                         wxT( "%s:%s:%d\n * failed to create ibis cache directory '%s'" ),
                         __FILE__, __FUNCTION__, __LINE__, cacheDir.GetPath() );
 
@@ -652,7 +652,7 @@ void NETLIST_EXPORTER_SPICE::readRefName( SCH_SHEET_PATH& aSheet, SCH_SYMBOL& aS
     aItem.refName = aSymbol.GetRef( &aSheet );
 
     [[maybe_unused]] bool inserted = aRefNames.insert( aItem.refName ).second;
-    wxASSERT_MSG( inserted, wxT( "Duplicate refdes encountered; what happened to ReadyToNetlist()?" ) );
+    KI_ASSERT_MSG( inserted, wxT( "Duplicate refdes encountered; what happened to ReadyToNetlist()?" ) );
 }
 
 

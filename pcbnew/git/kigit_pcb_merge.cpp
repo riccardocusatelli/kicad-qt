@@ -106,7 +106,7 @@ int KIGIT_PCB_MERGE::Merge()
     // missing ancestor, so this guard is kept explicit to preserve behavior.
     if( !git_merge_driver_source_ancestor( m_mergeDriver ) )
     {
-        wxLogTrace( traceGit, "PCB merge driver: no common ancestor, declining merge" );
+        KI_LOG_TRACE( traceGit, "PCB merge driver: no common ancestor, declining merge" );
         return GIT_PASSTHROUGH;
     }
 
@@ -114,7 +114,7 @@ int KIGIT_PCB_MERGE::Merge()
 
     if( int rc = KIGIT::LoadMergeBlobs( m_mergeDriver, blobs ); rc != 0 )
     {
-        wxLogTrace( traceGit, "PCB merge driver: could not load merge blobs (rc=%d)", rc );
+        KI_LOG_TRACE( traceGit, "PCB merge driver: could not load merge blobs (rc=%d)", rc );
         return rc;
     }
 
@@ -139,12 +139,12 @@ int KIGIT_PCB_MERGE::Merge()
     }
     catch(const IO_ERROR& e)
     {
-        wxLogTrace( traceGit, "Could not parse board: %s", e.What() );
+        KI_LOG_TRACE( traceGit, "Could not parse board: %s", e.What() );
         return GIT_EUSER;
     }
     catch( ... )
     {
-        wxLogTrace( traceGit, "Could not parse board: unknown error" );
+        KI_LOG_TRACE( traceGit, "Could not parse board: unknown error" );
         return GIT_EUSER;
     }
 
@@ -192,7 +192,7 @@ int KIGIT_PCB_MERGE::Merge()
 
     if( !merged )
     {
-        wxLogTrace( traceGit, "PCB merge applier failed to produce a board" );
+        KI_LOG_TRACE( traceGit, "PCB merge applier failed to produce a board" );
         return GIT_EUSER;
     }
 
@@ -205,13 +205,13 @@ int KIGIT_PCB_MERGE::Merge()
     }
     catch( const IO_ERROR& ioe )
     {
-        wxLogTrace( traceGit, "Failed to serialize merged board: %s", ioe.What() );
+        KI_LOG_TRACE( traceGit, "Failed to serialize merged board: %s", ioe.What() );
         return GIT_EUSER;
     }
 
     if( KIGIT::WriteToGitBuf( m_result, serialized ) != 0 )
     {
-        wxLogTrace( traceGit, "Failed to allocate git_buf for merged board" );
+        KI_LOG_TRACE( traceGit, "Failed to allocate git_buf for merged board" );
         return GIT_EUSER;
     }
 

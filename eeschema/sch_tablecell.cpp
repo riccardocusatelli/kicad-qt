@@ -55,7 +55,7 @@ void SCH_TABLECELL::Serialize( google::protobuf::Any& aContainer ) const
     Serialize( cell );
 
     if( !aContainer.PackFrom( cell ) )
-        wxFAIL_MSG( wxT( "Failed to pack SCH_TABLECELL" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack SCH_TABLECELL" ) );
 }
 
 

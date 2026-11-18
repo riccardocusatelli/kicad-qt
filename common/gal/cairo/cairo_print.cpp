@@ -55,7 +55,7 @@ CAIRO_PRINT_CTX::CAIRO_PRINT_CTX( wxImage* aImage, double aDPI ) :
         m_targetImage( aImage ),
         m_dpi( aDPI )
 {
-    wxCHECK( aImage, /* void */ );
+    KI_CHECK( aImage, /* void */ );
 
     m_surface = cairo_image_surface_create( CAIRO_FORMAT_ARGB32, aImage->GetWidth(), aImage->GetHeight() );
 
@@ -117,7 +117,7 @@ CAIRO_PRINT_CTX::CAIRO_PRINT_CTX( wxDC* aDC )
     m_hdc = g->GetHDC();
     m_surface = cairo_win32_printing_surface_create( static_cast<HDC>( m_hdc ) );
     m_ctx = cairo_create( m_surface );
-    wxASSERT( aDC->GetPPI().x == aDC->GetPPI().y );
+    KI_ASSERT( aDC->GetPPI().x == aDC->GetPPI().y );
     m_dpi = aDC->GetPPI().x;
 #endif /* __WXMSW__ */
 
@@ -126,7 +126,7 @@ CAIRO_PRINT_CTX::CAIRO_PRINT_CTX( wxDC* aDC )
     CGContextRef cg = (CGContextRef) gctx->GetNativeContext();
     m_surface = cairo_quartz_surface_create_for_cg_context( cg, size.x, size.y );
     m_ctx = cairo_create( m_surface );
-    wxASSERT( aDC->GetPPI().x == aDC->GetPPI().y );
+    KI_ASSERT( aDC->GetPPI().x == aDC->GetPPI().y );
     m_dpi = aDC->GetPPI().x;
 
     // Printer PPI is typically 300 and the GAL snaps geometry to whole device units

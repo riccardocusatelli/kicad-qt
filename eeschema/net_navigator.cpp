@@ -54,7 +54,7 @@ static wxString GetNetNavigatorItemText( const SCH_ITEM* aItem,
 {
     wxString retv;
 
-    wxCHECK( aItem && aUnitsProvider, retv );
+    KI_CHECK( aItem && aUnitsProvider, retv );
 
     switch( aItem->Type() )
     {
@@ -208,15 +208,15 @@ void SCH_EDIT_FRAME::MakeNetNavigatorNode( const wxString& aNetName, wxTreeItemI
                                            const NET_NAVIGATOR_ITEM_DATA* aSelection,
                                            const SCH_CONNECTIVITY::NAVIGATION_QUERY& aQuery )
 {
-    wxCHECK( !aNetName.IsEmpty(), /* void */ );
-    wxCHECK( m_schematic, /* void */ );
-    wxCHECK( m_netNavigator, /* void */ );
+    KI_CHECK( !aNetName.IsEmpty(), /* void */ );
+    KI_CHECK( m_schematic, /* void */ );
+    KI_CHECK( m_netNavigator, /* void */ );
 
     const auto itemsBySheet = aQuery.NetItems( aNetName, true );
 
     for( const auto& [sheetPath, items] : itemsBySheet )
     {
-        wxCHECK2( sheetPath.Last(), continue );
+        KI_CHECK2( sheetPath.Last(), continue );
         auto* itemData = new NET_NAVIGATOR_ITEM_DATA( sheetPath, nullptr );
 
         // Build path string for net navigator - include top-level sheet name to distinguish
@@ -282,7 +282,7 @@ void SCH_EDIT_FRAME::MakeNetNavigatorNode( const wxString& aNetName, wxTreeItemI
 void SCH_EDIT_FRAME::RefreshNetNavigator( const NET_NAVIGATOR_ITEM_DATA* aSelection,
                                           const std::vector<wxString>* aChangedNets )
 {
-    wxCHECK( m_netNavigator && m_schematic, /* void */ );
+    KI_CHECK( m_netNavigator && m_schematic, /* void */ );
 
     if( !m_netNavigator->IsShownOnScreen() || !m_schematic->HasHierarchy() )
     {
@@ -498,14 +498,14 @@ void SCH_EDIT_FRAME::RefreshNetNavigator( const NET_NAVIGATOR_ITEM_DATA* aSelect
 
     timer.Stop();
 
-    wxLogTrace( traceUiProfile, wxS( "Adding %zu nodes to net navigator took %s." ),
+    KI_LOG_TRACE( traceUiProfile, wxS( "Adding %zu nodes to net navigator took %s." ),
                 nodeCnt, timer.to_string() );
 }
 
 
 const SCH_ITEM* SCH_EDIT_FRAME::SelectNextPrevNetNavigatorItem( bool aNext )
 {
-    wxCHECK( m_netNavigator, nullptr );
+    KI_CHECK( m_netNavigator, nullptr );
 
     wxTreeItemId id = m_netNavigator->GetSelection();
 
@@ -581,8 +581,8 @@ const SCH_ITEM* SCH_EDIT_FRAME::SelectNextPrevNetNavigatorItem( bool aNext )
 
 void SCH_EDIT_FRAME::SelectNetNavigatorItem( const NET_NAVIGATOR_ITEM_DATA* aSelection )
 {
-    wxCHECK( m_netNavigator, /* void */ );
-    wxCHECK( !m_netNavigator->IsFrozen(), /* void */ );
+    KI_CHECK( m_netNavigator, /* void */ );
+    KI_CHECK( !m_netNavigator->IsFrozen(), /* void */ );
 
     // Maybe in the future we can do something like collapse the tree for an empty selection.
     // For now, leave the tree selection in its current state.
@@ -609,7 +609,7 @@ void SCH_EDIT_FRAME::SelectNetNavigatorItem( const NET_NAVIGATOR_ITEM_DATA* aSel
             {
                 itemData = dynamic_cast<NET_NAVIGATOR_ITEM_DATA*>( m_netNavigator->GetItemData( itemId ) );
 
-                wxCHECK2( itemData, continue );
+                KI_CHECK2( itemData, continue );
 
                 if( *itemData == *aSelection )
                 {
@@ -644,7 +644,7 @@ const SCH_ITEM* SCH_EDIT_FRAME::GetSelectedNetNavigatorItem() const
 
     auto* itemData = dynamic_cast<NET_NAVIGATOR_ITEM_DATA*>( m_netNavigator->GetItemData( id ) );
 
-    wxCHECK( itemData, nullptr );
+    KI_CHECK( itemData, nullptr );
 
     return itemData->GetItem();
 }
@@ -659,7 +659,7 @@ void SCH_EDIT_FRAME::onNetNavigatorDPIChanged( wxDPIChangedEvent& aEvent )
     CallAfter(
             [this]
             {
-                wxCHECK( m_netNavigator, /* void */ );
+                KI_CHECK( m_netNavigator, /* void */ );
 
                 NET_NAVIGATOR_ITEM_DATA  selection;
                 NET_NAVIGATOR_ITEM_DATA* selected = nullptr;
@@ -716,8 +716,8 @@ void SCH_EDIT_FRAME::onNetNavigatorSelection( wxTreeEvent& aEvent )
 
         const SCH_SCREEN* screen = itemData->GetSheetPath().LastScreen();
 
-        wxCHECK( screen, /* void */ );
-        wxCHECK( screen->Items().contains( item, true ), /* void */ );
+        KI_CHECK( screen, /* void */ );
+        KI_CHECK( screen->Items().contains( item, true ), /* void */ );
 
         FocusOnLocation( itemData->GetItem()->GetBoundingBox().Centre() );
     }
@@ -739,7 +739,7 @@ void SCH_EDIT_FRAME::ToggleNetNavigator()
 {
     EESCHEMA_SETTINGS* cfg = eeconfig();
 
-    wxCHECK( cfg, /* void */ );
+    KI_CHECK( cfg, /* void */ );
 
     wxAuiPaneInfo& netNavigatorPane = m_auimgr.GetPane( NetNavigatorPaneName() );
 

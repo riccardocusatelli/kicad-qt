@@ -171,7 +171,7 @@ void SystemDirsAppend( SEARCH_STACK* aSearchStack )
 }
 
 
-void GlobalPathsAppend( SEARCH_STACK* aDst, KIWAY::FACE_T aId )
+void GlobalPathsAppend( SEARCH_STACK* aDst, KIWAY_FACES::FACE_T aId )
 {
     SEARCH_STACK bases;
 
@@ -184,7 +184,7 @@ void GlobalPathsAppend( SEARCH_STACK* aDst, KIWAY::FACE_T aId )
 
         // Add schematic library file path to search path list.
         // we must add <kicad path>/library and <kicad path>/library/doc
-        if( aId == KIWAY::FACE_SCH )
+        if( aId == KIWAY_FACES::FACE_SCH )
         {
             // Add schematic doc file path (library/doc) to search path list.
 
@@ -208,7 +208,7 @@ void GlobalPathsAppend( SEARCH_STACK* aDst, KIWAY::FACE_T aId )
         }
 
         // Add PCB library file path to search path list.
-        if( aId == KIWAY::FACE_PCB || aId == KIWAY::FACE_CVPCB )
+        if( aId == KIWAY_FACES::FACE_PCB || aId == KIWAY_FACES::FACE_CVPCB )
         {
             fn.AppendDir( wxT( "modules" ) );
             aDst->AddPaths( fn.GetPath() );

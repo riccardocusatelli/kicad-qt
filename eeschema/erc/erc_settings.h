@@ -182,7 +182,7 @@ public:
      */
     int GetPinTypeWeight( ELECTRICAL_PINTYPE aPinType ) const
     {
-        wxASSERT( static_cast<int>( aPinType ) < ELECTRICAL_PINTYPES_TOTAL );
+        KI_ASSERT( static_cast<int>( aPinType ) < ELECTRICAL_PINTYPES_TOTAL );
         return m_PinTypeWeights.at( aPinType );
     }
 
@@ -194,7 +194,7 @@ public:
 
     PIN_ERROR GetPinMapValue( int aFirstType, int aSecondType ) const
     {
-        wxASSERT( aFirstType < ELECTRICAL_PINTYPES_TOTAL
+        KI_ASSERT( aFirstType < ELECTRICAL_PINTYPES_TOTAL
                   && aSecondType < ELECTRICAL_PINTYPES_TOTAL );
         return m_PinMap[aFirstType][aSecondType];
     }
@@ -206,7 +206,7 @@ public:
 
     void SetPinMapValue( int aFirstType, int aSecondType, PIN_ERROR aValue )
     {
-        wxASSERT( aFirstType < ELECTRICAL_PINTYPES_TOTAL
+        KI_ASSERT( aFirstType < ELECTRICAL_PINTYPES_TOTAL
                   && aSecondType < ELECTRICAL_PINTYPES_TOTAL );
         m_PinMap[aFirstType][aSecondType] = aValue;
     }

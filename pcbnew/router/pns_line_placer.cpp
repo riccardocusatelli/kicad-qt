@@ -194,7 +194,7 @@ bool LINE_PLACER::handlePullback()
 
     DIRECTION_45 first_head, last_tail;
 
-    wxASSERT( tail.PointCount() >= 2 );
+    KI_ASSERT( tail.PointCount() >= 2 );
 
     if( !head.IsPtOnArc( 0 ) )
         first_head = DIRECTION_45( head.CSegment( 0 ) );
@@ -358,7 +358,7 @@ bool LINE_PLACER::mergeHead()
 
     if( n_tail )
     {
-        wxASSERT( tail.PointCount() >= 2 );
+        KI_ASSERT( tail.PointCount() >= 2 );
         int lastSegIdx = tail.PointCount() - 2;
 
         if( !tail.IsPtOnArc( lastSegIdx ) )
@@ -1424,7 +1424,7 @@ void LINE_PLACER::initPlacement()
 
     setWorld( rootNode );
 
-    wxLogTrace( wxT( "PNS" ), wxT( "world %p, intitial-direction %s layer %d" ),
+    KI_LOG_TRACE( wxT( "PNS" ), wxT( "world %p, intitial-direction %s layer %d" ),
                 m_world,
                 m_direction.Format().c_str(),
                 m_currentLayer );
@@ -1799,7 +1799,7 @@ bool LINE_PLACER::CommitPlacement()
 
 bool PLACEMENT_ALGO::simplifyNewLine( NODE* aNode, LINKED_ITEM* aLatest )
 {
-    wxASSERT( aLatest->OfKind( ITEM::SEGMENT_T | ITEM::ARC_T ) );
+    KI_ASSERT( aLatest->OfKind( ITEM::SEGMENT_T | ITEM::ARC_T ) );
 
     // Before we assemble the final line and run the optimizer, do a separate pass to clean up
     // colinear segments that exist on non-line-corner joints, as these will prevent proper assembly

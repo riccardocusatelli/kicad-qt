@@ -689,7 +689,7 @@ void ODB_MATRIX_ENTITY::InitMatrixLayerData()
                            return false;
                        }
 
-                       wxCHECK_MSG( filtered, false, wxS( "ODB++ span layer has no matrix row" ) );
+                       KI_CHECK_MSG( filtered, false, wxS( "ODB++ span layer has no matrix row" ) );
 
                        bool through =
                                aLayer.m_info.m_role == ODB_LAYER_ROLE::ROUT
@@ -1498,7 +1498,7 @@ void ODB_LAYER_ENTITY::InitDrillData()
     std::map<std::pair<PCB_LAYER_ID, PCB_LAYER_ID>, std::vector<BOARD_ITEM*>>& slot_holes =
             m_plugin->GetSlotHolesMap();
 
-    wxCHECK_RET( m_layer.m_drillSpan.has_value(), "Drill matrix row has no span" );
+    KI_CHECK_RET( m_layer.m_drillSpan.has_value(), "Drill matrix row has no span" );
     const DRILL_SPAN& matchedSpan = *m_layer.m_drillSpan;
     const FAB_DRILL_MODEL& model = m_plugin->GetFabDrillModel();
 
@@ -1616,7 +1616,7 @@ void ODB_LAYER_ENTITY::InitAuxilliaryData()
 {
     auto& auxilliary_layers = m_plugin->GetAuxilliaryLayerItemsMap();
 
-    wxCHECK_RET( m_layer.m_auxKey.has_value(), "Auxiliary matrix row has no key" );
+    KI_CHECK_RET( m_layer.m_auxKey.has_value(), "Auxiliary matrix row has no key" );
 
     if( !m_layerItems.empty() )
     {
@@ -1954,7 +1954,7 @@ void ODB_STEP_ENTITY::GenerateProfileFile( ODB_TREE_WRITER& writer )
     SHAPE_POLY_SET board_outline;
 
     if( !m_board->GetBoardPolygonOutlines( board_outline, true ) )
-        wxLogTrace( traceOdbppIo, "Failed to get board outline" );
+        KI_LOG_TRACE( traceOdbppIo, "Failed to get board outline" );
 
     int    count = board_outline.OutlineCount();
     int    largest = 0;
@@ -1972,7 +1972,7 @@ void ODB_STEP_ENTITY::GenerateProfileFile( ODB_TREE_WRITER& writer )
     }
 
     if( !m_profile->AddContour( board_outline, largest ) )
-        wxLogTrace( traceOdbppIo, "Failed to add polygon to profile" );
+        KI_LOG_TRACE( traceOdbppIo, "Failed to add polygon to profile" );
 
     m_profile->GenerateProfileFeatures( fileproxy.GetStream() );
 }
@@ -2064,7 +2064,7 @@ std::vector<SHORT_SHAPE> CollectNetTieShorts( BOARD* aBoard, PCB_IO_ODBPP* aPlug
 
         if( invalidGroup )
         {
-            wxLogTrace( traceOdbppIo, wxT( "Net tie shape touches pads outside one group" ) );
+            KI_LOG_TRACE( traceOdbppIo, wxT( "Net tie shape touches pads outside one group" ) );
             continue;
         }
 
@@ -2086,7 +2086,7 @@ std::vector<SHORT_SHAPE> CollectNetTieShorts( BOARD* aBoard, PCB_IO_ODBPP* aPlug
                                            } );
 
         if( !hasCopperShape )
-            wxLogTrace( traceOdbppIo, wxT( "Net tie has no copper shape for shortf" ) );
+            KI_LOG_TRACE( traceOdbppIo, wxT( "Net tie has no copper shape for shortf" ) );
     }
 
     std::sort( shortShapes.begin(), shortShapes.end(), []( const SHORT_SHAPE& left, const SHORT_SHAPE& right )

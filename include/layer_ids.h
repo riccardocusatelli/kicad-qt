@@ -412,7 +412,7 @@ inline GAL_LAYER_ID operator++( GAL_LAYER_ID& a )
 
 inline GAL_LAYER_ID ToGalLayer( int aInteger )
 {
-    wxASSERT( aInteger >= GAL_LAYER_ID_START && aInteger <= GAL_LAYER_ID_END );
+    KI_ASSERT( aInteger >= GAL_LAYER_ID_START && aInteger <= GAL_LAYER_ID_END );
     return static_cast<GAL_LAYER_ID>( aInteger );
 }
 
@@ -420,7 +420,7 @@ inline GAL_LAYER_ID ToGalLayer( int aInteger )
 inline GAL_LAYER_ID operator+( const GAL_LAYER_ID& a, int b )
 {
     GAL_LAYER_ID t = GAL_LAYER_ID( int( a ) + b );
-    wxASSERT( t <= GAL_LAYER_ID_END );
+    KI_ASSERT( t <= GAL_LAYER_ID_END );
     return t;
 }
 
@@ -985,7 +985,7 @@ inline bool IsDCodeLayer( int aLayer )
 /// Converts KiCad copper layer enum to an ordinal between the front and back layers.
 inline size_t CopperLayerToOrdinal( PCB_LAYER_ID aLayer )
 {
-    wxCHECK( IsCopperLayer( aLayer ), 0 );
+    KI_CHECK( IsCopperLayer( aLayer ), 0 );
 
     switch( aLayer )
     {

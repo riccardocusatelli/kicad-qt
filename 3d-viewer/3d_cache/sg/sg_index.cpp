@@ -31,7 +31,7 @@ SGINDEX::SGINDEX( SGNODE* aParent ) : SGNODE( aParent )
     {
         m_Parent = nullptr;
 
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] inappropriate parent to SGINDEX (type "
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] inappropriate parent to SGINDEX (type "
                                      "'%d')" ),
                     __FILE__, __FUNCTION__, __LINE__,
                     aParent->GetNodeType() );
@@ -90,21 +90,21 @@ SGNODE* SGINDEX::FindNode(const char *aNodeName, const SGNODE *aCaller) noexcept
 void SGINDEX::unlinkChildNode( const SGNODE* aCaller ) noexcept
 {
     // Node should have no children or refs.
-    wxCHECK( false, /* void */ );
+    KI_CHECK( false, /* void */ );
 }
 
 
 void SGINDEX::unlinkRefNode( const SGNODE* aCaller ) noexcept
 {
     // Node should have no children or refs.
-    wxCHECK( false, /* void */ );
+    KI_CHECK( false, /* void */ );
 }
 
 
 bool SGINDEX::AddRefNode( SGNODE* aNode ) noexcept
 {
     // Node should have no children or refs.
-    wxCHECK( false, false );
+    KI_CHECK( false, false );
 
     return false;
 }
@@ -113,7 +113,7 @@ bool SGINDEX::AddRefNode( SGNODE* aNode ) noexcept
 bool SGINDEX::AddChildNode( SGNODE* aNode ) noexcept
 {
     // Node should have no children or refs.
-    wxCHECK( false, false );
+    KI_CHECK( false, false );
 
     return false;
 }
@@ -180,7 +180,7 @@ bool SGINDEX::writeCoordIndex( std::ostream& aFile )
 {
     size_t n = index.size();
 
-    wxCHECK_MSG( n % 3 == 0, false, wxT( "Coordinate index is not divisible by three (violates "
+    KI_CHECK_MSG( n % 3 == 0, false, wxT( "Coordinate index is not divisible by three (violates "
                                          "triangle constraint)" ) );
 
     aFile << " coordIndex [\n  ";
@@ -259,7 +259,7 @@ bool SGINDEX::WriteCache( std::ostream& aFile, SGNODE* parentNode )
 {
     if( nullptr == parentNode )
     {
-        wxCHECK( m_Parent, false );
+        KI_CHECK( m_Parent, false );
 
         SGNODE* np = m_Parent;
 
@@ -275,11 +275,11 @@ bool SGINDEX::WriteCache( std::ostream& aFile, SGNODE* parentNode )
         return false;
     }
 
-    wxCHECK( parentNode == m_Parent, false );
+    KI_CHECK( parentNode == m_Parent, false );
 
     if( !aFile.good() )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] bad stream" ),
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] bad stream" ),
                     __FILE__, __FUNCTION__, __LINE__ );
 
         return false;
@@ -302,7 +302,7 @@ bool SGINDEX::WriteCache( std::ostream& aFile, SGNODE* parentNode )
 
 bool SGINDEX::ReadCache( std::istream& aFile, SGNODE* parentNode )
 {
-    wxCHECK( index.empty(), false );
+    KI_CHECK( index.empty(), false );
 
     size_t npts;
     aFile.read( (char*)&npts, sizeof(size_t) );

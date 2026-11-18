@@ -1726,7 +1726,7 @@ std::vector<std::unique_ptr<PNS::SOLID>> PNS_KICAD_IFACE_BASE::syncPad( PAD* aPa
     }
 
     default:
-        wxLogTrace( wxT( "PNS" ), wxT( "unsupported pad type 0x%x" ), aPad->GetAttribute() );
+        KI_LOG_TRACE( wxT( "PNS" ), wxT( "unsupported pad type 0x%x" ), aPad->GetAttribute() );
         return solids;
     }
 
@@ -1806,7 +1806,7 @@ std::vector<std::unique_ptr<PNS::SOLID>> PNS_KICAD_IFACE_BASE::syncPad( PAD* aPa
                 {
                     const std::shared_ptr<SHAPE_POLY_SET>& poly = aPad->GetEffectivePolygon( aLayer, ERROR_OUTSIDE );
 
-                    wxASSERT_MSG( poly->OutlineCount() <= 1, wxT( "PAD::GetEffectivePolygon() should have fractured "
+                    KI_ASSERT_MSG( poly->OutlineCount() <= 1, wxT( "PAD::GetEffectivePolygon() should have fractured "
                                                                   "the SHAPE_POLY_SET, leaving a single outline." ) );
 
                     if( poly->OutlineCount() )
@@ -2221,7 +2221,7 @@ bool PNS_KICAD_IFACE_BASE::syncBarcode( PNS::NODE* aWorld, PCB_BARCODE* aBarcode
 void PNS_KICAD_IFACE_BASE::SetBoard( BOARD* aBoard )
 {
     m_board = aBoard;
-    wxLogTrace( wxT( "PNS" ), wxT( "m_board = %p" ), m_board );
+    KI_LOG_TRACE( wxT( "PNS" ), wxT( "m_board = %p" ), m_board );
 }
 
 
@@ -2380,7 +2380,7 @@ void PNS_KICAD_IFACE_BASE::SyncWorld( PNS::NODE *aWorld )
 {
     if( !m_board )
     {
-        wxLogTrace( wxT( "PNS" ), wxT( "No board attached, aborting sync." ) );
+        KI_LOG_TRACE( wxT( "PNS" ), wxT( "No board attached, aborting sync." ) );
         return;
     }
 
@@ -2842,7 +2842,7 @@ void PNS_KICAD_IFACE::modifyBoardItem( PNS::ITEM* aItem, BOARD_COMMIT& aCommit )
 
 void PNS_KICAD_IFACE::UpdateItem( PNS::ITEM* aItem )
 {
-    wxCHECK_RET( m_commit, wxS( "Cannot update a router item without a commit" ) );
+    KI_CHECK_RET( m_commit, wxS( "Cannot update a router item without a commit" ) );
     modifyBoardItem( aItem, *m_commit );
 }
 
@@ -3079,7 +3079,7 @@ EDA_UNITS PNS_KICAD_IFACE::GetUnits() const
 
 void PNS_KICAD_IFACE::SetView( KIGFX::VIEW* aView )
 {
-    wxLogTrace( wxT( "PNS" ), wxT( "SetView %p" ), aView );
+    KI_LOG_TRACE( wxT( "PNS" ), wxT( "SetView %p" ), aView );
 
     clearPreviewItems();
     m_view = aView;
@@ -3116,7 +3116,7 @@ wxString PNS_KICAD_IFACE::GetNetName( PNS::NET_HANDLE aNet ) const
 
 void PNS_KICAD_IFACE::UpdateNet( PNS::NET_HANDLE aNet )
 {
-    wxLogTrace( wxT( "PNS" ), wxT( "Update-net %s" ), GetNetName( aNet ) );
+    KI_LOG_TRACE( wxT( "PNS" ), wxT( "Update-net %s" ), GetNetName( aNet ) );
 }
 
 

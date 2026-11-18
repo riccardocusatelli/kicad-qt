@@ -69,7 +69,7 @@ void SCH_NO_CONNECT::Serialize( google::protobuf::Any& aContainer ) const
     kiapi::common::PackCustomProperties( marker.mutable_custom_properties(), *this );
 
     if( !aContainer.PackFrom( marker ) )
-        wxFAIL_MSG( wxT( "Failed to pack SCH_NO_CONNECT" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack SCH_NO_CONNECT" ) );
 }
 
 
@@ -93,7 +93,7 @@ bool SCH_NO_CONNECT::Deserialize( const google::protobuf::Any& aContainer )
 
 void SCH_NO_CONNECT::swapData( SCH_ITEM* aItem )
 {
-    wxCHECK_RET( ( aItem != nullptr ) && ( aItem->Type() == SCH_NO_CONNECT_T ),
+    KI_CHECK_RET( ( aItem != nullptr ) && ( aItem->Type() == SCH_NO_CONNECT_T ),
                  wxT( "Cannot swap no connect data with invalid item." ) );
 
     SCH_NO_CONNECT* item = (SCH_NO_CONNECT*)aItem;
@@ -163,7 +163,7 @@ bool SCH_NO_CONNECT::HasConnectivityChanges( const SCH_ITEM* aItem,
     const SCH_NO_CONNECT* noConnect = dynamic_cast<const SCH_NO_CONNECT*>( aItem );
 
     // Don't compare against a different SCH_ITEM.
-    wxCHECK( noConnect, false );
+    KI_CHECK( noConnect, false );
 
     return GetPosition() != noConnect->GetPosition();
 }

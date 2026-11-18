@@ -47,5 +47,5 @@ int CLI::PCB_EXPORT_IPCD356_COMMAND::doPerform( KIWAY& aKiway )
         return EXIT_CODES::ERR_INVALID_INPUT_FILE;
     }
 
-    return aKiway.ProcessJob( KIWAY::FACE_PCB, ipcd356Job.get() );
+    return aKiway.ProcessJob( KIWAY_FACES::FACE_PCB, ipcd356Job.get() );
 }

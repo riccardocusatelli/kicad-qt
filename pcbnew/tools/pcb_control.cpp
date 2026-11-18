@@ -358,7 +358,7 @@ int PCB_CONTROL::ZoneDisplayMode( const TOOL_EVENT& aEvent )
     }
     else
     {
-        wxFAIL;
+        KI_FAIL();
     }
 
     m_frame->SetDisplayOptions( opts );
@@ -534,7 +534,7 @@ int PCB_CONTROL::LayerNext( const TOOL_EVENT& aEvent )
         }
     }
 
-    wxCHECK( IsCopperLayer( layer ), 0 );
+    KI_CHECK( IsCopperLayer( layer ), 0 );
     m_frame->SwitchLayer( layer );
 
     return 0;
@@ -593,7 +593,7 @@ int PCB_CONTROL::LayerPrev( const TOOL_EVENT& aEvent )
         }
     }
 
-    wxCHECK( IsCopperLayer( layer ), 0 );
+    KI_CHECK( IsCopperLayer( layer ), 0 );
     m_frame->SwitchLayer( layer );
 
     return 0;
@@ -698,7 +698,7 @@ int PCB_CONTROL::CycleLayerPresets( const TOOL_EVENT& aEvent )
 
         if( currentIndex < 0 )
         {
-            wxASSERT_MSG( false, "Current layer pair not found in layer settings" );
+            KI_ASSERT_MSG( false, "Current layer pair not found in layer settings" );
             currentIndex = 0;
         }
 
@@ -950,7 +950,7 @@ static void pasteFootprintItemsToFootprintEditor( FOOTPRINT* aClipFootprint, BOA
     //
     for( PCB_FIELD* field : aClipFootprint->GetFields() )
     {
-        wxCHECK2( field, continue );
+        KI_CHECK2( field, continue );
 
         if( field->IsMandatory() )
         {

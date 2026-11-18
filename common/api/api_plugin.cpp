@@ -43,7 +43,7 @@ void LOGGING_ERROR_HANDLER::error( const nlohmann::json::json_pointer& ptr,
                                    const std::string& message )
 {
     m_hasError = true;
-    wxLogTrace( traceApi,
+    KI_LOG_TRACE( traceApi,
                 wxString::Format( wxS( "JSON error: at %s, value:\n%s\n%s" ),
                                   ptr.to_string(), instance.dump(), message ) );
 
@@ -106,7 +106,7 @@ API_PLUGIN_CONFIG::API_PLUGIN_CONFIG( API_PLUGIN& aParent, const wxFileName& aCo
         return;
     }
 
-    wxLogTrace( traceApi, "Plugin: parsing config file" );
+    KI_LOG_TRACE( traceApi, "Plugin: parsing config file" );
 
     wxFFileInputStream fp( aConfigFile.GetFullPath(), wxT( "rt" ) );
     wxStdInputStream fstream( fp );
@@ -119,7 +119,7 @@ API_PLUGIN_CONFIG::API_PLUGIN_CONFIG( API_PLUGIN& aParent, const wxFileName& aCo
     }
     catch( const std::exception& e )
     {
-        wxLogTrace( traceApi, "Plugin: exception during parse" );
+        KI_LOG_TRACE( traceApi, "Plugin: exception during parse" );
         error_message = wxString::Format( _( "plugin configuration file error: %s" ),
                                           wxString::FromUTF8( e.what() ) );
         return;
@@ -134,7 +134,7 @@ API_PLUGIN_CONFIG::API_PLUGIN_CONFIG( API_PLUGIN& aParent, const wxFileName& aCo
         return;
     }
 
-    wxLogTrace( traceApi, "Plugin: schema validation successful" );
+    KI_LOG_TRACE( traceApi, "Plugin: schema validation successful" );
 
     // All of these are required; any exceptions here leave us with valid == false
     try
@@ -146,7 +146,7 @@ API_PLUGIN_CONFIG::API_PLUGIN_CONFIG( API_PLUGIN& aParent, const wxFileName& aCo
         if( !runtime.FromJson( js.at( "runtime" ) ).or_else(
                 [this]( const wxString& aError )
                 {
-                    wxLogTrace( traceApi, "Plugin %s: %s", identifier, aError );
+                    KI_LOG_TRACE( traceApi, "Plugin %s: %s", identifier, aError );
                     error_message = aError;
                 } ).has_value() )
         {
@@ -155,7 +155,7 @@ API_PLUGIN_CONFIG::API_PLUGIN_CONFIG( API_PLUGIN& aParent, const wxFileName& aCo
     }
     catch( const std::exception& e )
     {
-        wxLogTrace( traceApi, "Plugin: exception while parsing required keys" );
+        KI_LOG_TRACE( traceApi, "Plugin: exception while parsing required keys" );
         error_message = wxString::Format( _( "missing or invalid required keys: %s" ),
                                           wxString::FromUTF8( e.what() ) );
         return;
@@ -163,13 +163,13 @@ API_PLUGIN_CONFIG::API_PLUGIN_CONFIG( API_PLUGIN& aParent, const wxFileName& aCo
 
     if( !API_PLUGIN::IsValidIdentifier( identifier ) )
     {
-        wxLogTrace( traceApi, wxString::Format( "Plugin: identifier %s does not meet requirements",
+        KI_LOG_TRACE( traceApi, wxString::Format( "Plugin: identifier %s does not meet requirements",
                                                 identifier ) );
         error_message = wxString::Format( _( "identifier '%s' is invalid" ), identifier );
         return;
     }
 
-    wxLogTrace( traceApi, wxString::Format( "Plugin: %s (%s)", identifier, name ) );
+    KI_LOG_TRACE( traceApi, wxString::Format( "Plugin: %s (%s)", identifier, name ) );
 
     try
     {
@@ -182,7 +182,7 @@ API_PLUGIN_CONFIG::API_PLUGIN_CONFIG( API_PLUGIN& aParent, const wxFileName& aCo
                 if( std::optional<PLUGIN_ACTION> a = parent.createActionFromJson( actionJs ) )
                 {
                     a->identifier = wxString::Format( "%s.%s", identifier, a->identifier );
-                    wxLogTrace( traceApi, wxString::Format( "Plugin: loaded action %s",
+                    KI_LOG_TRACE( traceApi, wxString::Format( "Plugin: loaded action %s",
                                                             a->identifier ) );
                     actions.emplace_back( *a );
                 }
@@ -191,7 +191,7 @@ API_PLUGIN_CONFIG::API_PLUGIN_CONFIG( API_PLUGIN& aParent, const wxFileName& aCo
     }
     catch( const std::exception& e )
     {
-        wxLogTrace( traceApi, "Plugin: exception while parsing actions" );
+        KI_LOG_TRACE( traceApi, "Plugin: exception while parsing actions" );
         error_message = wxString::Format( _( "actions section is invalid: %s" ),
                                           wxString::FromUTF8( e.what() ) );
         return;
@@ -288,7 +288,7 @@ std::optional<PLUGIN_ACTION> API_PLUGIN::createActionFromJson( const nlohmann::j
     try
     {
         action.identifier = aJson.at( "identifier" ).get<wxString>();
-        wxLogTrace( traceApi, wxString::Format( "Plugin: load action %s", action.identifier ) );
+        KI_LOG_TRACE( traceApi, wxString::Format( "Plugin: load action %s", action.identifier ) );
         action.name = aJson.at( "name" ).get<wxString>();
         action.description = aJson.at( "description" ).get<wxString>();
         action.entrypoint = aJson.at( "entrypoint" ).get<wxString>();
@@ -296,7 +296,7 @@ std::optional<PLUGIN_ACTION> API_PLUGIN::createActionFromJson( const nlohmann::j
     }
     catch( ... )
     {
-        wxLogTrace( traceApi, "Plugin: exception while parsing action required keys" );
+        KI_LOG_TRACE( traceApi, "Plugin: exception while parsing action required keys" );
         return std::nullopt;
     }
 
@@ -304,7 +304,7 @@ std::optional<PLUGIN_ACTION> API_PLUGIN::createActionFromJson( const nlohmann::j
 
     if( !f.IsRelative() )
     {
-        wxLogTrace( traceApi, wxString::Format( "Plugin: action contains abs path %s; skipping",
+        KI_LOG_TRACE( traceApi, wxString::Format( "Plugin: action contains abs path %s; skipping",
                                                 action.entrypoint ) );
         return std::nullopt;
     }
@@ -313,7 +313,7 @@ std::optional<PLUGIN_ACTION> API_PLUGIN::createActionFromJson( const nlohmann::j
 
     if( !f.IsFileReadable() )
     {
-        wxLogTrace( traceApi, wxString::Format( "WARNING: action entrypoint %s is not readable",
+        KI_LOG_TRACE( traceApi, wxString::Format( "WARNING: action entrypoint %s is not readable",
                                                 f.GetFullPath() ) );
     }
 
@@ -327,7 +327,7 @@ std::optional<PLUGIN_ACTION> API_PLUGIN::createActionFromJson( const nlohmann::j
             }
             catch( ... )
             {
-                wxLogTrace( traceApi, "Plugin: exception while parsing action args" );
+                KI_LOG_TRACE( traceApi, "Plugin: exception while parsing action args" );
                 continue;
             }
         }
@@ -345,7 +345,7 @@ std::optional<PLUGIN_ACTION> API_PLUGIN::createActionFromJson( const nlohmann::j
             }
             catch( ... )
             {
-                wxLogTrace( traceApi, "Plugin: exception while parsing action scopes" );
+                KI_LOG_TRACE( traceApi, "Plugin: exception while parsing action scopes" );
                 continue;
             }
         }
@@ -371,14 +371,14 @@ std::optional<PLUGIN_ACTION> API_PLUGIN::createActionFromJson( const nlohmann::j
 
                         iconFile.Normalize( wxPATH_NORM_ABSOLUTE, m_configFile.GetPath() );
 
-                        wxLogTrace( traceApi,
+                        KI_LOG_TRACE( traceApi,
                                     wxString::Format( "Plugin: action %s: loading icon %s",
                                                       action.identifier, iconFile.GetFullPath() ) );
 
 
                         if( !iconFile.IsFileReadable() )
                         {
-                            wxLogTrace( traceApi, "Plugin: icon file could not be read" );
+                            KI_LOG_TRACE( traceApi, "Plugin: icon file could not be read" );
                             continue;
                         }
 
@@ -389,7 +389,7 @@ std::optional<PLUGIN_ACTION> API_PLUGIN::createActionFromJson( const nlohmann::j
                         if( img.IsOk() )
                             aDest.push_back( img );
                         else
-                            wxLogTrace( traceApi, "Plugin: icon file not a valid bitmap" );
+                            KI_LOG_TRACE( traceApi, "Plugin: icon file not a valid bitmap" );
                     }
                 }
             };

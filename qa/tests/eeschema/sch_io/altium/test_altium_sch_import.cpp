@@ -368,7 +368,7 @@ BOOST_AUTO_TEST_CASE( Ticket1303_MultiPageBlock )
     BOOST_REQUIRE( rootSheet->GetScreen() );
 
     // Walking the hierarchy must not trip the recursion guard in SCH_SHEET_LIST::BuildSheetList.
-    // Before the fix this raised a wxASSERT (the pages resolved to sub-sheets whose remapped
+    // Before the fix this raised a KI_ASSERT (the pages resolved to sub-sheets whose remapped
     // filenames collided in the ancestry).
     SCH_SHEET_LIST hierarchy = m_schematic.Hierarchy();
 

@@ -305,7 +305,7 @@ bool JOBS_RUNNER::RunJobsForDestination( JOBSET_DESTINATION* aDestination, bool 
 
         jobNum++;
 
-        KIWAY::FACE_T iface = JOB_REGISTRY::GetKifaceType( job.m_type );
+        KIWAY_FACES::FACE_T iface = JOB_REGISTRY::GetKifaceType( job.m_type );
 
         job.m_job->SetTempOutputDirectory( tempDirPath );
 

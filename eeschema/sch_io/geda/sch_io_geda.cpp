@@ -4495,7 +4495,7 @@ SCH_SHEET* SCH_IO_GEDA::LoadSchematicFile( const wxString& aFileName, SCHEMATIC*
                                              SCH_SHEET*                            aAppendToMe,
                                              const std::map<std::string, UTF8>*    aProperties )
 {
-    wxASSERT( !aFileName.IsEmpty() && aSchematic );
+    KI_ASSERT( !aFileName.IsEmpty() && aSchematic );
 
     m_properties = aProperties;
     m_schematic = aSchematic;
@@ -4516,7 +4516,7 @@ SCH_SHEET* SCH_IO_GEDA::LoadSchematicFile( const wxString& aFileName, SCHEMATIC*
 
     if( aAppendToMe )
     {
-        wxCHECK_MSG( aSchematic->IsValid(), nullptr,
+        KI_CHECK_MSG( aSchematic->IsValid(), nullptr,
                      "Can't append to a schematic with no root!" );
         m_rootSheet = aAppendToMe;
     }

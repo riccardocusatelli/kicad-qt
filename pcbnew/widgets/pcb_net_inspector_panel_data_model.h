@@ -60,7 +60,7 @@ public:
             m_group_type( GROUP_TYPE::NONE ),
             m_net( aNet )
     {
-        wxASSERT( aNet );
+        KI_ASSERT( aNet );
         m_net_name = UnescapeString( aNet->GetNetname() );
         m_net_class = UnescapeString( aNet->GetNetClass()->GetHumanReadableName() );
         m_netChainName = UnescapeString( aNet->GetNetChain() );
@@ -272,7 +272,7 @@ public:
     {
         auto it = m_layer_wire_length.find( aLayer );
 
-        wxCHECK_RET( it != m_layer_wire_length.end(), wxT( "Invalid layer specified" ) );
+        KI_CHECK_RET( it != m_layer_wire_length.end(), wxT( "Invalid layer specified" ) );
 
         auto& [_, length] = *it;
 
@@ -806,7 +806,7 @@ public:
                                            return x.get() == parent;
                                        } );
 
-                wxASSERT( p != m_items.end() );
+                KI_ASSERT( p != m_items.end() );
 
                 // Keep the parent alive through the ItemDeleted notification; erasing it from
                 // m_items destroys the LIST_ITEM, after which parent would be dangling.

@@ -125,7 +125,7 @@ EDA_3D_CANVAS::EDA_3D_CANVAS( wxWindow* aParent, const wxGLAttributes& aGLAttrib
     m_redraw_trigger_timer( this, wxID_HIGHEST + 2 ),
     m_boardAdapter( aBoardAdapter )
 {
-    wxLogTrace( m_logTrace, wxT( "EDA_3D_CANVAS::EDA_3D_CANVAS" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_CANVAS::EDA_3D_CANVAS" ) );
 
     m_editing_timeout_timer.SetOwner( this );
     Connect( m_editing_timeout_timer.GetId(), wxEVT_TIMER,
@@ -155,7 +155,7 @@ EDA_3D_CANVAS::EDA_3D_CANVAS( wxWindow* aParent, const wxGLAttributes& aGLAttrib
 
     m_boardAdapter.ReloadColorSettings();
 
-    wxASSERT( a3DCachePointer != nullptr );
+    KI_ASSERT( a3DCachePointer != nullptr );
     m_boardAdapter.Set3dCacheManager( a3DCachePointer );
 
 #if defined( __WXMSW__ )
@@ -185,7 +185,7 @@ EDA_3D_CANVAS::EDA_3D_CANVAS( wxWindow* aParent, const wxGLAttributes& aGLAttrib
 
 EDA_3D_CANVAS::~EDA_3D_CANVAS()
 {
-    wxLogTrace( m_logTrace, wxT( "EDA_3D_CANVAS::~EDA_3D_CANVAS" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_CANVAS::~EDA_3D_CANVAS" ) );
 
     // Detach UI reporters before joining/destroying renderers that may still report.
     if( m_activityReporterSync )
@@ -211,7 +211,7 @@ void EDA_3D_CANVAS::releaseOpenGL()
     if( m_glRC )
     {
         GL_CONTEXT_MANAGER* gl_mgr = Pgm().GetGLContextManager();
-        wxASSERT( gl_mgr );
+        KI_ASSERT( gl_mgr );
 
         if( gl_mgr )
         {
@@ -253,7 +253,7 @@ void EDA_3D_CANVAS::OnResize( wxSizeEvent& event )
 
 bool  EDA_3D_CANVAS::initializeOpenGL()
 {
-    wxLogTrace( m_logTrace, wxT( "EDA_3D_CANVAS::initializeOpenGL" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_CANVAS::initializeOpenGL" ) );
 
     SetOpenGLBackendInfo( GL_UTILS::DetectGLBackend( this ) );
 
@@ -267,7 +267,7 @@ bool  EDA_3D_CANVAS::initializeOpenGL()
     }
     else
     {
-        wxLogTrace( m_logTrace, wxT( "EDA_3D_CANVAS::initializeOpenGL Using OpenGL version %s" ),
+        KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_CANVAS::initializeOpenGL Using OpenGL version %s" ),
                     From_UTF8( (char*) glGetString( GL_VERSION ) ) );
     }
 
@@ -276,7 +276,7 @@ bool  EDA_3D_CANVAS::initializeOpenGL()
 
     wxString version = From_UTF8( (char *) glGetString( GL_VERSION ) );
 
-    wxLogTrace( m_logTrace, wxT( "EDA_3D_CANVAS::%s OpenGL version string %s." ),
+    KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_CANVAS::%s OpenGL version string %s." ),
                 __WXFUNCTION__, version );
 
     // Extract OpenGL version from string.  This method is used because prior to OpenGL 2,
@@ -302,7 +302,7 @@ bool  EDA_3D_CANVAS::initializeOpenGL()
 
         if( major < 2 || ( ( major == 2 ) && ( minor < 1 ) ) )
         {
-            wxLogTrace( m_logTrace, wxT( "EDA_3D_CANVAS::%s OpenGL ray tracing not supported." ),
+            KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_CANVAS::%s OpenGL ray tracing not supported." ),
                         __WXFUNCTION__ );
 
             if( GetParent() )
@@ -316,7 +316,7 @@ bool  EDA_3D_CANVAS::initializeOpenGL()
 
         if( ( major == 1 ) && ( minor < 5 ) )
         {
-            wxLogTrace( m_logTrace, wxT( "EDA_3D_CANVAS::%s OpenGL not supported." ),
+            KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_CANVAS::%s OpenGL not supported." ),
                         __WXFUNCTION__ );
 
             m_is_opengl_version_supported = false;
@@ -432,7 +432,7 @@ void EDA_3D_CANVAS::DoRePaint()
     // SwapBuffer requires the window to be shown before calling
     if( !IsShownOnScreen() )
     {
-        wxLogTrace( m_logTrace, wxT( "EDA_3D_CANVAS::DoRePaint !IsShown" ) );
+        KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_CANVAS::DoRePaint !IsShown" ) );
         m_is_currently_painting.clear();
         return;
     }
@@ -771,7 +771,7 @@ void EDA_3D_CANVAS::RenderToFrameBuffer( unsigned char* buffer, int width, int h
 
     if( framebufferStatus != GL_FRAMEBUFFER_COMPLETE )
     {
-        wxLogTrace( m_logTrace, wxT( "EDA_3D_CANVAS::RenderToFrameBuffer Framebuffer incomplete: 0x%04X" ),
+        KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_CANVAS::RenderToFrameBuffer Framebuffer incomplete: 0x%04X" ),
                     framebufferStatus );
 
         return;
@@ -789,13 +789,13 @@ void EDA_3D_CANVAS::RenderToFrameBuffer( unsigned char* buffer, int width, int h
     {
         if( !initializeOpenGL() )
         {
-            wxLogTrace( m_logTrace, wxT( "EDA_3D_CANVAS::RenderToFrameBuffer OpenGL initialization failed." ) );
+            KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_CANVAS::RenderToFrameBuffer OpenGL initialization failed." ) );
             return;
         }
 
         if( !m_is_opengl_version_supported )
         {
-            wxLogTrace( m_logTrace, wxT( "EDA_3D_CANVAS::RenderToFrameBuffer OpenGL version not supported." ) );
+            KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_CANVAS::RenderToFrameBuffer OpenGL version not supported." ) );
         }
     }
 
@@ -879,7 +879,7 @@ void EDA_3D_CANVAS::RenderToFrameBuffer( unsigned char* buffer, int width, int h
     GLenum error = glGetError();
     if( error != GL_NO_ERROR )
     {
-        wxLogTrace( m_logTrace, wxT( "EDA_3D_CANVAS::RenderToFrameBuffer OpenGL error: 0x%04X" ), error );
+        KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_CANVAS::RenderToFrameBuffer OpenGL error: 0x%04X" ), error );
         err_messages += wxString::Format( _( "OpenGL error during off-screen rendering: 0x%04X\n" ), error );
     }
 
@@ -910,14 +910,14 @@ void EDA_3D_CANVAS::OnEvent( wxEvent& aEvent )
 
 void EDA_3D_CANVAS::OnEraseBackground( wxEraseEvent& event )
 {
-    wxLogTrace( m_logTrace, wxT( "EDA_3D_CANVAS::OnEraseBackground" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_CANVAS::OnEraseBackground" ) );
     // Do nothing, to avoid flashing.
 }
 
 
 void EDA_3D_CANVAS::OnMouseWheel( wxMouseEvent& event )
 {
-    wxLogTrace( m_logTrace, wxT( "EDA_3D_CANVAS::OnMouseWheel" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "EDA_3D_CANVAS::OnMouseWheel" ) );
 
     OnMouseWheelCamera( event, m_boardAdapter.m_MousewheelPanning );
 
@@ -1380,7 +1380,7 @@ void EDA_3D_CANVAS::Request_refresh( bool aRedrawImmediately )
 
 void EDA_3D_CANVAS::request_start_moving_camera( float aMovingSpeed, bool aRenderPivot )
 {
-    wxASSERT( aMovingSpeed > FLT_EPSILON );
+    KI_ASSERT( aMovingSpeed > FLT_EPSILON );
 
     // Fast forward the animation if the animation is disabled
     if( !m_animation_enabled )

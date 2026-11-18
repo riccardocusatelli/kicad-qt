@@ -714,7 +714,7 @@ void DIALOG_EXPORT_STEP::onExportButton( wxCommandEvent& aEvent )
         }
         else
         {
-            wxFAIL_MSG( wxT( "Unsupported origin option: how did we get here?" ) );
+            KI_FAIL_MSG( wxT( "Unsupported origin option: how did we get here?" ) );
         }
 
         {
@@ -745,7 +745,7 @@ void DIALOG_EXPORT_STEP::onExportButton( wxCommandEvent& aEvent )
         // Input file path.
         cmdK2S.Append( wxString::Format( wxT( " %c%s%c" ), dblquote, inputPath, dblquote ) );
 
-        wxLogTrace( traceKiCad2Step, wxT( "export step command: %s" ), cmdK2S );
+        KI_LOG_TRACE( traceKiCad2Step, wxT( "export step command: %s" ), cmdK2S );
 
         DIALOG_EXPORT_STEP_LOG* log = new DIALOG_EXPORT_STEP_LOG( this, cmdK2S );
         log->SetTempFilesToCleanup( std::move( tempFiles ) );
@@ -781,7 +781,7 @@ void DIALOG_EXPORT_STEP::onExportButton( wxCommandEvent& aEvent )
         }
         else
         {
-            wxASSERT_MSG(false, wxString::Format( "Unknown format value %d", m_choiceFormat->GetSelection() ) );
+            KI_ASSERT_MSG(false, wxString::Format( "Unknown format value %d", m_choiceFormat->GetSelection() ) );
         }
 
 

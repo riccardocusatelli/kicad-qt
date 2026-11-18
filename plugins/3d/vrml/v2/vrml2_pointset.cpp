@@ -50,7 +50,7 @@ WRL2POINTSET::WRL2POINTSET( WRL2NODE* aParent ) : WRL2NODE()
 
 WRL2POINTSET::~WRL2POINTSET()
 {
-    wxLogTrace( traceVrmlPlugin,
+    KI_LOG_TRACE( traceVrmlPlugin,
                 wxT( " * [INFO] Destroying PointSet node with %zu children, %zu"
                      "references, and %zu back pointers." ),
                 m_Children.size(), m_Refs.size(), m_BackPointers.size() );
@@ -97,13 +97,13 @@ bool WRL2POINTSET::isDangling( void )
 
 bool WRL2POINTSET::AddRefNode( WRL2NODE* aNode )
 {
-    wxCHECK_MSG( aNode, false, wxT( "Invalid node." ) );
+    KI_CHECK_MSG( aNode, false, wxT( "Invalid node." ) );
 
     WRL2NODES type = aNode->GetNodeType();
 
     if( !checkNodeType( type ) )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( "%s:%s:%d\n"
                          " * [INFO] bad file format; unexpected child node '%s'." ),
                     __FILE__, __FUNCTION__, __LINE__, aNode->GetNodeTypeName( type ) );
@@ -115,7 +115,7 @@ bool WRL2POINTSET::AddRefNode( WRL2NODE* aNode )
     {
         if( nullptr != color )
         {
-            wxLogTrace( traceVrmlPlugin,
+            KI_LOG_TRACE( traceVrmlPlugin,
                         wxT( "%s:%s:%d\n"
                              " * [INFO] bad file format; multiple color nodes." ),
                         __FILE__, __FUNCTION__, __LINE__ );
@@ -131,7 +131,7 @@ bool WRL2POINTSET::AddRefNode( WRL2NODE* aNode )
     {
         if( nullptr != coord )
         {
-            wxLogTrace( traceVrmlPlugin,
+            KI_LOG_TRACE( traceVrmlPlugin,
                         wxT( "%s:%s:%d\n"
                              " * [INFO] bad file format; multiple coord nodes." ),
                         __FILE__, __FUNCTION__, __LINE__ );
@@ -149,13 +149,13 @@ bool WRL2POINTSET::AddRefNode( WRL2NODE* aNode )
 
 bool WRL2POINTSET::AddChildNode( WRL2NODE* aNode )
 {
-    wxCHECK_MSG( aNode, false, wxT( "Invalid node." ) );
+    KI_CHECK_MSG( aNode, false, wxT( "Invalid node." ) );
 
     WRL2NODES type = aNode->GetNodeType();
 
     if( !checkNodeType( type ) )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( "%s:%s:%d\n"
                          " * [INFO] bad file format; unexpected child node '%s'." ),
                     __FILE__, __FUNCTION__, __LINE__, aNode->GetNodeTypeName( type ) );
@@ -167,7 +167,7 @@ bool WRL2POINTSET::AddChildNode( WRL2NODE* aNode )
     {
         if( nullptr != color )
         {
-            wxLogTrace( traceVrmlPlugin,
+            KI_LOG_TRACE( traceVrmlPlugin,
                         wxT( "%s:%s:%d\n"
                              " * [INFO] bad file format; multiple color nodes." ),
                         __FILE__, __FUNCTION__, __LINE__ );
@@ -183,7 +183,7 @@ bool WRL2POINTSET::AddChildNode( WRL2NODE* aNode )
     {
         if( nullptr != coord )
         {
-            wxLogTrace( traceVrmlPlugin,
+            KI_LOG_TRACE( traceVrmlPlugin,
                         wxT( "%s:%s:%d\n"
                              " * [INFO] bad file format; multiple coord nodes." ),
                         __FILE__, __FUNCTION__, __LINE__ );
@@ -206,7 +206,7 @@ bool WRL2POINTSET::Read( WRLPROC& proc, WRL2BASE* aTopNode )
 
     if( proc.eof() )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                           " * [INFO] bad file format; unexpected eof %s." ),
                     __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition() );
 
@@ -215,7 +215,7 @@ bool WRL2POINTSET::Read( WRLPROC& proc, WRL2BASE* aTopNode )
 
     if( '{' != tok )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( "%s:%s:%d\n"
                          " * [INFO] bad file format; expecting '{' but got '%s' %s." ),
                     __FILE__, __FUNCTION__, __LINE__, tok, proc.GetFilePosition() );
@@ -236,7 +236,7 @@ bool WRL2POINTSET::Read( WRLPROC& proc, WRL2BASE* aTopNode )
 
         if( !proc.ReadName( glob ) )
         {
-            wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+            KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                               "%s" ),
                         __FILE__, __FUNCTION__, __LINE__ , proc.GetError() );
 
@@ -250,7 +250,7 @@ bool WRL2POINTSET::Read( WRLPROC& proc, WRL2BASE* aTopNode )
         {
             if( !aTopNode->ReadNode( proc, this, nullptr ) )
             {
-                wxLogTrace( traceVrmlPlugin,
+                KI_LOG_TRACE( traceVrmlPlugin,
                             wxT( "%s:%s:%d\n"
                                  " * [INFO] could not read color node information." ),
                             __FILE__, __FUNCTION__, __LINE__ );
@@ -262,7 +262,7 @@ bool WRL2POINTSET::Read( WRLPROC& proc, WRL2BASE* aTopNode )
         {
             if( !aTopNode->ReadNode( proc, this, nullptr ) )
             {
-                wxLogTrace( traceVrmlPlugin,
+                KI_LOG_TRACE( traceVrmlPlugin,
                             wxT( "%s:%s:%d\n"
                                  " * [INFO] could not read coord node information." ),
                             __FILE__, __FUNCTION__, __LINE__ );
@@ -272,7 +272,7 @@ bool WRL2POINTSET::Read( WRLPROC& proc, WRL2BASE* aTopNode )
         }
         else
         {
-            wxLogTrace( traceVrmlPlugin,
+            KI_LOG_TRACE( traceVrmlPlugin,
                         wxT( "%s:%s:%d\n"
                              " * [INFO] invalid PointSet %s (no closing brace)\n"
                              " * [INFO] file: '%s'\n" ),

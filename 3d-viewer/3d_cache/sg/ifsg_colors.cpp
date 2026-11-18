@@ -52,7 +52,7 @@ IFSG_COLORS::IFSG_COLORS( SGNODE* aParent )
         delete m_node;
         m_node = nullptr;
 
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d" ), __FILE__, __FUNCTION__, __LINE__ );
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d" ), __FILE__, __FUNCTION__, __LINE__ );
 
         return;
     }
@@ -69,7 +69,7 @@ IFSG_COLORS::IFSG_COLORS( IFSG_NODE& aParent )
     // Braces needed due to dangling else warning from wxLogTrace macro
     if( !pp )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d %s" ), __FILE__, __FUNCTION__, __LINE__,
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d %s" ), __FILE__, __FUNCTION__, __LINE__,
                     BadParent );
     }
 #endif
@@ -81,7 +81,7 @@ IFSG_COLORS::IFSG_COLORS( IFSG_NODE& aParent )
         delete m_node;
         m_node = nullptr;
 
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d %s" ), __FILE__, __FUNCTION__, __LINE__,
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d %s" ), __FILE__, __FUNCTION__, __LINE__,
                     WrongParent );
 
         return;
@@ -122,7 +122,7 @@ bool IFSG_COLORS::NewNode( SGNODE* aParent )
 
     if( aParent != m_node->GetParent() )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d  * [BUG] invalid SGNODE parent (%s) to SGCOLORS" ),
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d  * [BUG] invalid SGNODE parent (%s) to SGCOLORS" ),
                     __FILE__, __FUNCTION__, __LINE__,
                     aParent->GetNodeTypeName( aParent->GetNodeType() ) );
 
@@ -141,7 +141,7 @@ bool IFSG_COLORS::NewNode( IFSG_NODE& aParent )
 {
     SGNODE* np = aParent.GetRawPtr();
 
-    wxCHECK( np, false );
+    KI_CHECK( np, false );
 
     return NewNode( np );
 }
@@ -149,7 +149,7 @@ bool IFSG_COLORS::NewNode( IFSG_NODE& aParent )
 
 bool IFSG_COLORS::GetColorList( size_t& aListSize, SGCOLOR*& aColorList )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     return ( (SGCOLORS*) m_node )->GetColorList( aListSize, aColorList );
 }
@@ -157,7 +157,7 @@ bool IFSG_COLORS::GetColorList( size_t& aListSize, SGCOLOR*& aColorList )
 
 bool IFSG_COLORS::SetColorList( size_t aListSize, const SGCOLOR* aColorList )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     ( (SGCOLORS*) m_node )->SetColorList( aListSize, aColorList );
 
@@ -167,7 +167,7 @@ bool IFSG_COLORS::SetColorList( size_t aListSize, const SGCOLOR* aColorList )
 
 bool IFSG_COLORS::AddColor( double aRedValue, double aGreenValue, double aBlueValue )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     ( (SGCOLORS*) m_node )->AddColor( aRedValue, aGreenValue, aBlueValue );
 
@@ -177,7 +177,7 @@ bool IFSG_COLORS::AddColor( double aRedValue, double aGreenValue, double aBlueVa
 
 bool IFSG_COLORS::AddColor( const SGCOLOR& aColor )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     ( (SGCOLORS*) m_node )->AddColor( aColor );
 

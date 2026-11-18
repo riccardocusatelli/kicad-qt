@@ -1172,7 +1172,7 @@ XNODE* NETLIST_EXPORTER_XML::makeLibParts()
             }
         }
 
-        wxLogTrace( "CVPCB_PINCOUNT",
+        KI_LOG_TRACE( "CVPCB_PINCOUNT",
                 wxString::Format( "makeLibParts: lib='%s' part='%s' pinList(size)=%zu",
                           libNickname, lcomp->GetName(), pinList.size() ) );
 
@@ -1200,7 +1200,7 @@ XNODE* NETLIST_EXPORTER_XML::makeLibParts()
                         pin->AddAttribute( wxT( "name" ), basePin->GetShownName() );
                         pin->AddAttribute( wxT( "type" ), basePin->GetCanonicalElectricalTypeName() );
 
-                        wxLogTrace( "CVPCB_PINCOUNT",
+                        KI_LOG_TRACE( "CVPCB_PINCOUNT",
                                     wxString::Format( "makeLibParts: -> pin num='%s' name='%s' (expanded)",
                                                       num, basePin->GetShownName() ) );
                     }
@@ -1213,7 +1213,7 @@ XNODE* NETLIST_EXPORTER_XML::makeLibParts()
                     pin->AddAttribute( wxT( "name" ), basePin->GetShownName() );
                     pin->AddAttribute( wxT( "type" ), basePin->GetCanonicalElectricalTypeName() );
 
-                    wxLogTrace( "CVPCB_PINCOUNT",
+                    KI_LOG_TRACE( "CVPCB_PINCOUNT",
                                 wxString::Format( "makeLibParts: -> pin num='%s' name='%s'",
                                                   basePin->GetShownNumber(),
                                                   basePin->GetShownName() ) );
@@ -1575,7 +1575,7 @@ void NETLIST_EXPORTER_XML::getSheetComponentClasses()
 
             SCH_SHEET_PATH newPath = sheet;
             newPath.push_back( sheetItem );
-            wxASSERT( !m_sheetComponentClasses.contains( newPath ) );
+            KI_ASSERT( !m_sheetComponentClasses.contains( newPath ) );
 
             m_sheetComponentClasses[newPath] = sheetComponentClasses;
         }

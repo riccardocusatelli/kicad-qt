@@ -259,7 +259,7 @@ public:
         // No Default: handle every case explicitly
         case PAD_MASTER_PROVIDER::TYPE::AUTO:
         {
-            wxFAIL_MSG( "AUTO pad type should not be used for default pad creation" );
+            KI_FAIL_MSG( "AUTO pad type should not be used for default pad creation" );
             break;
         }
         }
@@ -898,7 +898,7 @@ int PAD_TOOL::EnumeratePads( const TOOL_EVENT& aEvent )
                 else if( pad->IsSelected() && evt->IsClick( BUT_LEFT ) )
                 {
                     auto it = oldNumbers.find( pad->GetNumber() );
-                    wxASSERT( it != oldNumbers.end() );
+                    KI_ASSERT( it != oldNumbers.end() );
 
                     if( it != oldNumbers.end() )
                     {

@@ -606,7 +606,7 @@ SCH_SHEET* SCH_IO_EASYEDA::LoadSchematicFile( const wxString& aFileName, SCHEMAT
                                               SCH_SHEET*             aAppendToMe,
                                               const std::map<std::string, UTF8>* aProperties )
 {
-    wxCHECK( !aFileName.IsEmpty() && aSchematic, nullptr );
+    KI_CHECK( !aFileName.IsEmpty() && aSchematic, nullptr );
 
     // Collect the font substitution warnings (RAII - automatically reset on scope exit)
     FONTCONFIG_REPORTER_SCOPE fontconfigScope( &LOAD_INFO_REPORTER::GetInstance() );
@@ -615,7 +615,7 @@ SCH_SHEET* SCH_IO_EASYEDA::LoadSchematicFile( const wxString& aFileName, SCHEMAT
 
     if( aAppendToMe )
     {
-        wxCHECK_MSG( aSchematic->IsValid(), nullptr,
+        KI_CHECK_MSG( aSchematic->IsValid(), nullptr,
                      wxS( "Can't append to a schematic with no root!" ) );
 
         rootSheet = aAppendToMe;

@@ -60,13 +60,13 @@ bool SCH_IO_LTSPICE::CanReadSchematicFile( const wxString& aFileName ) const
 SCH_SHEET* SCH_IO_LTSPICE::LoadSchematicFile( const wxString& aFileName, SCHEMATIC* aSchematic, SCH_SHEET* aAppendToMe,
                                               const std::map<std::string, UTF8>* aProperties )
 {
-    wxASSERT( !aFileName || aSchematic );
+    KI_ASSERT( !aFileName || aSchematic );
 
     SCH_SHEET* rootSheet = nullptr;
 
     if( aAppendToMe )
     {
-        wxCHECK_MSG( aSchematic->IsValid(), nullptr, "Can't append to a schematic with no root!" );
+        KI_CHECK_MSG( aSchematic->IsValid(), nullptr, "Can't append to a schematic with no root!" );
         rootSheet = aAppendToMe;
     }
     else

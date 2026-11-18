@@ -238,7 +238,7 @@ namespace PRINTING
 
         if( error )
         {
-            wxLogTrace( PRINTING_TRACE, "Poppler could not load %s: %s", aFile, error->message );
+            KI_LOG_TRACE( PRINTING_TRACE, "Poppler could not load %s: %s", aFile, error->message );
             g_error_free( error );
             return PRINT_RESULT::FAILED_TO_LOAD;
         }
@@ -298,7 +298,7 @@ namespace PRINTING
 
         if( error )
         {
-            wxLogTrace( PRINTING_TRACE, "GTK print failed: %s", error->message );
+            KI_LOG_TRACE( PRINTING_TRACE, "GTK print failed: %s", error->message );
             g_error_free( error );
             return_result = PRINT_RESULT::FAILED_TO_PRINT;
         }

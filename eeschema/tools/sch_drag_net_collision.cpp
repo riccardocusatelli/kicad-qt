@@ -65,7 +65,7 @@ SCH_DRAG_NET_COLLISION_MONITOR::~SCH_DRAG_NET_COLLISION_MONITOR()
 
 void SCH_DRAG_NET_COLLISION_MONITOR::Initialize( const SCH_SELECTION& aSelection )
 {
-    wxLogTrace( traceSchDragNetCollision, "Initialize: Starting initialization" );
+    KI_LOG_TRACE( traceSchDragNetCollision, "Initialize: Starting initialization" );
 
     m_itemNetCodes.clear();
     m_originalConnections.clear();
@@ -115,7 +115,7 @@ bool SCH_DRAG_NET_COLLISION_MONITOR::Update( const std::vector<SCH_JUNCTION*>& a
         return false;
     }
 
-    wxLogTrace( traceSchDragNetCollision, "Update: Drawing %zu collision markers and %zu disconnection markers",
+    KI_LOG_TRACE( traceSchDragNetCollision, "Update: Drawing %zu collision markers and %zu disconnection markers",
                 markers.size(), disconnections.size() );
 
     ensureOverlay();
@@ -260,7 +260,7 @@ void SCH_DRAG_NET_COLLISION_MONITOR::recordItemNet( SCH_ITEM* aItem )
 
 void SCH_DRAG_NET_COLLISION_MONITOR::recordOriginalConnections( const SCH_SELECTION& aSelection )
 {
-    wxLogTrace( traceSchDragNetCollision, "recordOriginalConnections: Recording connections for %d items",
+    KI_LOG_TRACE( traceSchDragNetCollision, "recordOriginalConnections: Recording connections for %d items",
                 aSelection.GetSize() );
 
     // Don't record original connections for new or pasted items (duplicates, pastes)
@@ -278,7 +278,7 @@ void SCH_DRAG_NET_COLLISION_MONITOR::recordOriginalConnections( const SCH_SELECT
 
     if( hasNewOrPastedItems )
     {
-        wxLogTrace( traceSchDragNetCollision,
+        KI_LOG_TRACE( traceSchDragNetCollision,
                     "recordOriginalConnections: Skipping - selection contains new or pasted items" );
         return;
     }
@@ -362,7 +362,7 @@ void SCH_DRAG_NET_COLLISION_MONITOR::recordOriginalConnections( const SCH_SELECT
         }
     }
 
-    wxLogTrace( traceSchDragNetCollision, "recordOriginalConnections: Tracked %zu connections",
+    KI_LOG_TRACE( traceSchDragNetCollision, "recordOriginalConnections: Tracked %zu connections",
                 m_originalConnections.size() );
 }
 
@@ -424,7 +424,7 @@ SCH_DRAG_NET_COLLISION_MONITOR::collectDisconnectedMarkers( const SCH_SELECTION&
 
     if( !markers.empty() )
     {
-    wxLogTrace( traceSchDragNetCollision,
+    KI_LOG_TRACE( traceSchDragNetCollision,
             "collectDisconnectedMarkers: Identified %zu disconnections", markers.size() );
     }
 

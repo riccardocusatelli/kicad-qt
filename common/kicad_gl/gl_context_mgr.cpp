@@ -74,7 +74,7 @@ wxGLContext* GL_CONTEXT_MANAGER::CreateCtx( wxGLCanvas* aCanvas, const wxGLConte
         }
     }
 
-    wxLogTrace( traceGalContext, wxS( "Created GL context %p on canvas %p, lose on reset %d" ), context,
+    KI_LOG_TRACE( traceGalContext, wxS( "Created GL context %p on canvas %p, lose on reset %d" ), context,
                 aCanvas, loseOnReset ? 1 : 0 );
 
     m_glContexts.insert( std::make_pair( context, aCanvas ) );
@@ -97,7 +97,7 @@ void GL_CONTEXT_MANAGER::DestroyCtx( wxGLContext* aContext )
     else
     {
         // Do not delete unknown GL contexts
-        wxFAIL;
+        KI_FAIL();
     }
 
     if( m_glCtx == aContext )
@@ -121,7 +121,7 @@ void GL_CONTEXT_MANAGER::DeleteAll()
 
 bool GL_CONTEXT_MANAGER::LockCtx( wxGLContext* aContext, wxGLCanvas* aCanvas )
 {
-    wxCHECK( aContext && m_glContexts.count( aContext ) > 0, false );
+    KI_CHECK( aContext && m_glContexts.count( aContext ) > 0, false );
 
     m_glCtxMutex.lock();
     wxGLCanvas* canvas = aCanvas ? aCanvas : m_glContexts.at( aContext );
@@ -142,7 +142,7 @@ bool GL_CONTEXT_MANAGER::LockCtx( wxGLContext* aContext, wxGLCanvas* aCanvas )
 
     if( !current )
     {
-        wxLogTrace( traceGalContext, wxS( "Could not make GL context %p current on canvas %p" ),
+        KI_LOG_TRACE( traceGalContext, wxS( "Could not make GL context %p current on canvas %p" ),
                     aContext, canvas );
     }
 
@@ -154,7 +154,7 @@ bool GL_CONTEXT_MANAGER::LockCtx( wxGLContext* aContext, wxGLCanvas* aCanvas )
 
 void GL_CONTEXT_MANAGER::UnlockCtx( wxGLContext* aContext )
 {
-    wxCHECK( aContext && m_glContexts.count( aContext ) > 0, /* void */ );
+    KI_CHECK( aContext && m_glContexts.count( aContext ) > 0, /* void */ );
 
     if( m_glCtx == aContext )
     {
@@ -163,7 +163,7 @@ void GL_CONTEXT_MANAGER::UnlockCtx( wxGLContext* aContext )
     }
     else
     {
-        wxFAIL_MSG( wxString::Format( wxS( "Trying to unlock GL context mutex from "
+        KI_FAIL_MSG( wxString::Format( wxS( "Trying to unlock GL context mutex from "
                     "a wrong context: aContext %p m_glCtx %p" ), aContext, m_glCtx ) );
     }
 }

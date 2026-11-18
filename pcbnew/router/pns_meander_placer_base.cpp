@@ -122,7 +122,7 @@ int MEANDER_PLACER_BASE::Clearance()
     Router()->GetRuleResolver()->QueryConstraint( PNS::CONSTRAINT_TYPE::CT_CLEARANCE, itemToCheck,
                                                   nullptr, CurrentLayer(), &constraint );
 
-    wxCHECK_MSG( constraint.m_Value.HasMin(), m_currentWidth, wxT( "No minimum clearance?" ) );
+    KI_CHECK_MSG( constraint.m_Value.HasMin(), m_currentWidth, wxT( "No minimum clearance?" ) );
 
     return constraint.m_Value.Min();
 }

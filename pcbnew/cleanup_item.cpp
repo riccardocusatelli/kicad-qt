@@ -56,7 +56,7 @@ wxString CLEANUP_ITEM::GetErrorText( int aCode, bool aTranslate ) const
     case CLEANUP_MERGE_PAD:         msg = _HKI( "Merge overlapping shapes into pad" );          break;
 
     default:
-        wxFAIL_MSG( wxT( "Missing cleanup item description" ) );
+        KI_FAIL_MSG( wxT( "Missing cleanup item description" ) );
         msg = _HKI( "Unknown cleanup action" );
         break;
     }

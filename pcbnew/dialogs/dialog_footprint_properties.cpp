@@ -265,7 +265,7 @@ bool DIALOG_FOOTPRINT_PROPERTIES::TransferDataToWindow()
     // Footprint Fields
     for( PCB_FIELD* srcField : m_footprint->GetFields() )
     {
-        wxCHECK2( srcField, continue );
+        KI_CHECK2( srcField, continue );
 
         PCB_FIELD field( *srcField );
         wxString  text = m_footprint->GetFieldValueForVariant( variantName, field.GetName() );
@@ -562,7 +562,7 @@ bool DIALOG_FOOTPRINT_PROPERTIES::TransferDataFromWindow()
     // Find any files referenced in the old fields that are not in the new fields
     for( PCB_FIELD* field : m_footprint->GetFields() )
     {
-        wxCHECK2( field, continue );
+        KI_CHECK2( field, continue );
 
         if( field->GetText().StartsWith( FILEEXT::KiCadUriPrefix ) )
         {

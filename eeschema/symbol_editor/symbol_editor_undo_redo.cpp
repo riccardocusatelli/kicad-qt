@@ -73,7 +73,7 @@ void SYMBOL_EDIT_FRAME::GetSymbolFromRedoList()
 
     LIB_SYMBOL* symbol = (LIB_SYMBOL*) redoWrapper.GetItem();
     UNDO_REDO   undoRedoType = redoWrapper.GetStatus();
-    wxCHECK( symbol, /* void */ );
+    KI_CHECK( symbol, /* void */ );
     symbol->ClearFlags( UR_TRANSIENT );
 
     // Store the current symbol in the undo buffer
@@ -126,7 +126,7 @@ void SYMBOL_EDIT_FRAME::GetSymbolFromUndoList()
 
     LIB_SYMBOL* symbol = (LIB_SYMBOL*) undoWrapper.GetItem();
     UNDO_REDO   undoRedoType = undoWrapper.GetStatus();
-    wxCHECK( symbol, /* void */ );
+    KI_CHECK( symbol, /* void */ );
     symbol->ClearFlags( UR_TRANSIENT );
 
     // Store the current symbol in the redo buffer

@@ -31,7 +31,7 @@ LAYER_ITEM::LAYER_ITEM( const OBJECT_2D* aObject2D, float aZMin, float aZMax ) :
     OBJECT_3D( OBJECT_3D_TYPE::LAYERITEM ),
     m_object2d( aObject2D )
 {
-    wxASSERT( aObject2D );
+    KI_ASSERT( aObject2D );
 
     BBOX_2D bbox2d = m_object2d->GetBBox();
     bbox2d.ScaleNextUp();

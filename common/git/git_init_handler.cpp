@@ -155,7 +155,7 @@ static bool setConfigIfMissing( git_config* aConfig, const char* aKey, const wxS
 
     if( result == 0 && entry )
     {
-        wxLogTrace( traceGit, "Config key '%s' already set; leaving alone", aKey );
+        KI_LOG_TRACE( traceGit, "Config key '%s' already set; leaving alone", aKey );
         return false;
     }
 
@@ -163,7 +163,7 @@ static bool setConfigIfMissing( git_config* aConfig, const char* aKey, const wxS
 
     if( git_config_set_string( aConfig, aKey, val.c_str() ) != 0 )
     {
-        wxLogTrace( traceGit, "git_config_set_string('%s') failed: %s",
+        KI_LOG_TRACE( traceGit, "git_config_set_string('%s') failed: %s",
                     aKey, KIGIT_COMMON::GetLastGitError() );
         return false;
     }
@@ -183,7 +183,7 @@ static void ensureMergeDriverConfig( git_repository* aRepo )
 
     if( cliPath.IsEmpty() )
     {
-        wxLogTrace( traceGit,
+        KI_LOG_TRACE( traceGit,
                     "kicad-cli not found next to running binary; skipping merge driver "
                     "config (libgit2 in-process driver still works)." );
         return;
@@ -193,7 +193,7 @@ static void ensureMergeDriverConfig( git_repository* aRepo )
 
     if( git_repository_config( &config, aRepo ) != 0 )
     {
-        wxLogTrace( traceGit, "git_repository_config failed: %s",
+        KI_LOG_TRACE( traceGit, "git_repository_config failed: %s",
                     KIGIT_COMMON::GetLastGitError() );
         return;
     }
@@ -282,7 +282,7 @@ InitResult GIT_INIT_HANDLER::InitializeRepository( const wxString& aPath )
         }
         else
         {
-            wxLogTrace( traceGit, "git_repository_open failed: %s", KIGIT_COMMON::GetLastGitError() );
+            KI_LOG_TRACE( traceGit, "git_repository_open failed: %s", KIGIT_COMMON::GetLastGitError() );
         }
     }
 

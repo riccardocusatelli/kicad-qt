@@ -35,7 +35,7 @@ DIALOG_SCH_FIND::DIALOG_SCH_FIND( SCH_BASE_FRAME* aParent, SCH_SEARCH_DATA* aDat
         m_findReplaceData( aData ),
         m_findDirty( true )
 {
-    wxASSERT_MSG( m_findReplaceData, wxT( "can't create find dialog without data" ) );
+    KI_ASSERT_MSG( m_findReplaceData, wxT( "can't create find dialog without data" ) );
 
     OptOut( m_comboFind );
     OptOut( m_comboReplace );
@@ -182,7 +182,7 @@ void DIALOG_SCH_FIND::OnCharHook( wxKeyEvent& aEvent )
 
 void DIALOG_SCH_FIND::onShowSearchPanel( wxHyperlinkEvent& event )
 {
-    wxCHECK2( m_frame->GetFrameType() == FRAME_SCH, /* void */ );
+    KI_CHECK2( m_frame->GetFrameType() == FRAME_SCH, /* void */ );
 
     m_frame->GetToolManager()->RunAction( ACTIONS::showSearch );
 

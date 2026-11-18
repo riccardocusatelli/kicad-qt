@@ -261,7 +261,7 @@ public:
      */
     void PopMatrix()
     {
-        wxASSERT( !m_transformStack.empty() );
+        KI_ASSERT( !m_transformStack.empty() );
 
         m_transform = m_transformStack.top();
         m_transformStack.pop();

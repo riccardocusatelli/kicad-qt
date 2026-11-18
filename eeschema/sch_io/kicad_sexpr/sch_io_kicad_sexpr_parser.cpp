@@ -340,7 +340,7 @@ LIB_SYMBOL* SCH_IO_KICAD_SEXPR_PARSER::ParseSymbol( LIB_SYMBOL_MAP& aSymbolLibMa
 
 LIB_SYMBOL* SCH_IO_KICAD_SEXPR_PARSER::parseLibSymbol( LIB_SYMBOL_MAP& aSymbolLibMap )
 {
-    wxCHECK_MSG( CurTok() == T_symbol, nullptr,
+    KI_CHECK_MSG( CurTok() == T_symbol, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as a symbol." ) );
 
     T token;
@@ -603,7 +603,7 @@ LIB_SYMBOL* SCH_IO_KICAD_SEXPR_PARSER::parseLibSymbol( LIB_SYMBOL_MAP& aSymbolLi
                 case T_text_box:
                     item = ParseSymbolDrawItem();
 
-                    wxCHECK_MSG( item, nullptr, "Invalid draw item pointer." );
+                    KI_CHECK_MSG( item, nullptr, "Invalid draw item pointer." );
 
                     item->SetParent( symbol.get() );
                     symbol->AddDrawItem( item, false );
@@ -632,7 +632,7 @@ LIB_SYMBOL* SCH_IO_KICAD_SEXPR_PARSER::parseLibSymbol( LIB_SYMBOL_MAP& aSymbolLi
         case T_text_box:
             item = ParseSymbolDrawItem();
 
-            wxCHECK_MSG( item, nullptr, "Invalid draw item pointer." );
+            KI_CHECK_MSG( item, nullptr, "Invalid draw item pointer." );
 
             item->SetParent( symbol.get() );
             symbol->AddDrawItem( item, false );
@@ -815,7 +815,7 @@ void SCH_IO_KICAD_SEXPR_PARSER::parseLineEnding( LINE_ENDING& aEnding )
 
 void SCH_IO_KICAD_SEXPR_PARSER::parseFill( FILL_PARAMS& aFill )
 {
-    wxCHECK_RET( CurTok() == T_fill, "Cannot parse " + GetTokenString( CurTok() ) + " as a fill." );
+    KI_CHECK_RET( CurTok() == T_fill, "Cannot parse " + GetTokenString( CurTok() ) + " as a fill." );
 
     aFill.m_FillType = FILL_T::NO_FILL;
     aFill.m_Color = COLOR4D::UNSPECIFIED;
@@ -875,7 +875,7 @@ void SCH_IO_KICAD_SEXPR_PARSER::parseFill( FILL_PARAMS& aFill )
 void SCH_IO_KICAD_SEXPR_PARSER::parseEDA_TEXT( EDA_TEXT* aText, bool aConvertOverbarSyntax,
                                                bool aEnforceMinTextSize )
 {
-    wxCHECK_RET( aText && ( CurTok() == T_effects || CurTok() == T_href ),
+    KI_CHECK_RET( aText && ( CurTok() == T_effects || CurTok() == T_href ),
                  "Cannot parse " + GetTokenString( CurTok() ) + " as an EDA_TEXT." );
 
     // In version 20210606 the notation for overbars was changed from `~...~` to `~{...}`.
@@ -1039,7 +1039,7 @@ void SCH_IO_KICAD_SEXPR_PARSER::parseHeader( TSCHEMATIC_T::T aHeaderType, int aF
 
 void SCH_IO_KICAD_SEXPR_PARSER::parseBodyStyles( std::unique_ptr<LIB_SYMBOL>& aSymbol )
 {
-    wxCHECK_RET( CurTok() == T_body_styles,
+    KI_CHECK_RET( CurTok() == T_body_styles,
                  "Cannot parse " + GetTokenString( CurTok() ) + " as a body_styles token." );
 
     std::vector<wxString> names;
@@ -1067,7 +1067,7 @@ void SCH_IO_KICAD_SEXPR_PARSER::parseBodyStyles( std::unique_ptr<LIB_SYMBOL>& aS
 
 void SCH_IO_KICAD_SEXPR_PARSER::parsePinNames( std::unique_ptr<LIB_SYMBOL>& aSymbol )
 {
-    wxCHECK_RET( CurTok() == T_pin_names,
+    KI_CHECK_RET( CurTok() == T_pin_names,
                  "Cannot parse " + GetTokenString( CurTok() ) + " as a pin_name token." );
 
     /**
@@ -1115,7 +1115,7 @@ void SCH_IO_KICAD_SEXPR_PARSER::parsePinNames( std::unique_ptr<LIB_SYMBOL>& aSym
 
 void SCH_IO_KICAD_SEXPR_PARSER::parsePinNumbers( std::unique_ptr<LIB_SYMBOL>& aSymbol )
 {
-    wxCHECK_RET( CurTok() == T_pin_numbers,
+    KI_CHECK_RET( CurTok() == T_pin_numbers,
                  "Cannot parse " + GetTokenString( CurTok() ) + " as a pin_number token." );
 
     /**
@@ -1156,7 +1156,7 @@ void SCH_IO_KICAD_SEXPR_PARSER::parsePinNumbers( std::unique_ptr<LIB_SYMBOL>& aS
 
 void SCH_IO_KICAD_SEXPR_PARSER::parseAssociatedFootprints( std::unique_ptr<LIB_SYMBOL>& aSymbol )
 {
-    wxCHECK_RET( CurTok() == T_associated_footprints,
+    KI_CHECK_RET( CurTok() == T_associated_footprints,
                  "Cannot parse " + GetTokenString( CurTok() ) + " as an associated_footprints token." );
 
     /**
@@ -1220,7 +1220,7 @@ void SCH_IO_KICAD_SEXPR_PARSER::parseAssociatedFootprints( std::unique_ptr<LIB_S
 
 void SCH_IO_KICAD_SEXPR_PARSER::parsePinMaps( std::unique_ptr<LIB_SYMBOL>& aSymbol )
 {
-    wxCHECK_RET( CurTok() == T_pin_maps, "Cannot parse " + GetTokenString( CurTok() ) + " as a pin_maps token." );
+    KI_CHECK_RET( CurTok() == T_pin_maps, "Cannot parse " + GetTokenString( CurTok() ) + " as a pin_maps token." );
 
     /**
      * (pin_maps
@@ -1250,7 +1250,7 @@ void SCH_IO_KICAD_SEXPR_PARSER::parsePinMaps( std::unique_ptr<LIB_SYMBOL>& aSymb
 
 PIN_MAP SCH_IO_KICAD_SEXPR_PARSER::parseOnePinMap()
 {
-    wxCHECK_MSG( CurTok() == T_pin_map, PIN_MAP(),
+    KI_CHECK_MSG( CurTok() == T_pin_map, PIN_MAP(),
                  "Cannot parse " + GetTokenString( CurTok() ) + " as a pin_map token." );
 
     T token = NextTok();
@@ -1293,7 +1293,7 @@ PIN_MAP SCH_IO_KICAD_SEXPR_PARSER::parseOnePinMap()
 
 PIN_MAP_INSTANCE_OVERRIDE SCH_IO_KICAD_SEXPR_PARSER::parsePinMapOverride()
 {
-    wxCHECK_MSG( CurTok() == T_pin_map_override, PIN_MAP_INSTANCE_OVERRIDE(),
+    KI_CHECK_MSG( CurTok() == T_pin_map_override, PIN_MAP_INSTANCE_OVERRIDE(),
                  "Cannot parse " + GetTokenString( CurTok() ) + " as a pin_map_override token." );
 
     /**
@@ -1369,7 +1369,7 @@ PIN_MAP_INSTANCE_OVERRIDE SCH_IO_KICAD_SEXPR_PARSER::parsePinMapOverride()
 
 LIB_ID SCH_IO_KICAD_SEXPR_PARSER::parseSymbolOverride()
 {
-    wxCHECK_MSG( CurTok() == T_symbol_override, LIB_ID(),
+    KI_CHECK_MSG( CurTok() == T_symbol_override, LIB_ID(),
                  "Cannot parse " + GetTokenString( CurTok() ) + " as a symbol_override token." );
 
     T token = NextTok();
@@ -1402,9 +1402,9 @@ LIB_ID SCH_IO_KICAD_SEXPR_PARSER::parseSymbolOverride()
 
 SCH_FIELD* SCH_IO_KICAD_SEXPR_PARSER::parseProperty( std::unique_ptr<LIB_SYMBOL>& aSymbol )
 {
-    wxCHECK_MSG( CurTok() == T_property, nullptr,
+    KI_CHECK_MSG( CurTok() == T_property, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as a property." ) );
-    wxCHECK( aSymbol, nullptr );
+    KI_CHECK( aSymbol, nullptr );
 
     FIELD_T  fieldId = FIELD_T::USER;
     wxString name;
@@ -1594,7 +1594,7 @@ SCH_FIELD* SCH_IO_KICAD_SEXPR_PARSER::parseProperty( std::unique_ptr<LIB_SYMBOL>
 
 SCH_SHAPE* SCH_IO_KICAD_SEXPR_PARSER::parseSymbolArc()
 {
-    wxCHECK_MSG( CurTok() == T_arc, nullptr,
+    KI_CHECK_MSG( CurTok() == T_arc, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as an arc." ) );
 
     T             token;
@@ -1796,7 +1796,7 @@ SCH_SHAPE* SCH_IO_KICAD_SEXPR_PARSER::parseSymbolArc()
     }
     else
     {
-        wxFAIL_MSG( "Setting arc without either midpoint or angles not implemented." );
+        KI_FAIL_MSG( "Setting arc without either midpoint or angles not implemented." );
     }
 
     return arc.release();
@@ -1805,7 +1805,7 @@ SCH_SHAPE* SCH_IO_KICAD_SEXPR_PARSER::parseSymbolArc()
 
 SCH_SHAPE* SCH_IO_KICAD_SEXPR_PARSER::parseSymbolBezier()
 {
-    wxCHECK_MSG( CurTok() == T_bezier, nullptr,
+    KI_CHECK_MSG( CurTok() == T_bezier, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as a bezier." ) );
 
     T             token;
@@ -1906,7 +1906,7 @@ SCH_SHAPE* SCH_IO_KICAD_SEXPR_PARSER::parseSymbolBezier()
 
 SCH_SHAPE* SCH_IO_KICAD_SEXPR_PARSER::parseSymbolCircle()
 {
-    wxCHECK_MSG( CurTok() == T_circle, nullptr,
+    KI_CHECK_MSG( CurTok() == T_circle, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as a circle." ) );
 
     T             token;
@@ -1976,7 +1976,7 @@ SCH_SHAPE* SCH_IO_KICAD_SEXPR_PARSER::parseSymbolCircle()
 
 SCH_SHAPE* SCH_IO_KICAD_SEXPR_PARSER::parseSymbolEllipse()
 {
-    wxCHECK_MSG( CurTok() == T_ellipse, nullptr,
+    KI_CHECK_MSG( CurTok() == T_ellipse, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as an ellipse." ) );
 
     auto ellipse = std::make_unique<SCH_SHAPE>( SHAPE_T::ELLIPSE, LAYER_DEVICE );
@@ -1998,7 +1998,7 @@ SCH_SHAPE* SCH_IO_KICAD_SEXPR_PARSER::parseSymbolEllipse()
 
 SCH_SHAPE* SCH_IO_KICAD_SEXPR_PARSER::parseSymbolEllipseArc()
 {
-    wxCHECK_MSG( CurTok() == T_ellipse_arc, nullptr,
+    KI_CHECK_MSG( CurTok() == T_ellipse_arc, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as an elliptical arc." ) );
 
     auto arc = std::make_unique<SCH_SHAPE>( SHAPE_T::ELLIPSE_ARC, LAYER_DEVICE );
@@ -2068,7 +2068,7 @@ SCH_PIN* SCH_IO_KICAD_SEXPR_PARSER::parseSymbolPin()
                 }
             };
 
-    wxCHECK_MSG( CurTok() == T_pin, nullptr,
+    KI_CHECK_MSG( CurTok() == T_pin, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as a pin token." ) );
 
     T                        token;
@@ -2241,7 +2241,7 @@ SCH_PIN* SCH_IO_KICAD_SEXPR_PARSER::parseSymbolPin()
 
 SCH_SHAPE* SCH_IO_KICAD_SEXPR_PARSER::parseSymbolPolyLine()
 {
-    wxCHECK_MSG( CurTok() == T_polyline, nullptr,
+    KI_CHECK_MSG( CurTok() == T_polyline, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as a poly." ) );
 
     T token;
@@ -2334,7 +2334,7 @@ SCH_SHAPE* SCH_IO_KICAD_SEXPR_PARSER::parseSymbolPolyLine()
 
 SCH_SHAPE* SCH_IO_KICAD_SEXPR_PARSER::parseSymbolRectangle()
 {
-    wxCHECK_MSG( CurTok() == T_rectangle, nullptr,
+    KI_CHECK_MSG( CurTok() == T_rectangle, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as a rectangle." ) );
 
     T token;
@@ -2399,7 +2399,7 @@ SCH_SHAPE* SCH_IO_KICAD_SEXPR_PARSER::parseSymbolRectangle()
 
 SCH_ITEM* SCH_IO_KICAD_SEXPR_PARSER::parseSymbolText()
 {
-    wxCHECK_MSG( CurTok() == T_text, nullptr,
+    KI_CHECK_MSG( CurTok() == T_text, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as a text token." ) );
 
     T token;
@@ -2460,7 +2460,7 @@ SCH_ITEM* SCH_IO_KICAD_SEXPR_PARSER::parseSymbolText()
 
 SCH_TEXTBOX* SCH_IO_KICAD_SEXPR_PARSER::parseSymbolTextBox()
 {
-    wxCHECK_MSG( CurTok() == T_text_box, nullptr,
+    KI_CHECK_MSG( CurTok() == T_text_box, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as a text box." ) );
 
     T             token;
@@ -2584,7 +2584,7 @@ SCH_TEXTBOX* SCH_IO_KICAD_SEXPR_PARSER::parseSymbolTextBox()
 
 void SCH_IO_KICAD_SEXPR_PARSER::parsePAGE_INFO( PAGE_INFO& aPageInfo )
 {
-    wxCHECK_RET( ( CurTok() == T_page && m_requiredVersion <= 20200506 ) || CurTok() == T_paper,
+    KI_CHECK_RET( ( CurTok() == T_page && m_requiredVersion <= 20200506 ) || CurTok() == T_paper,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as a PAGE_INFO." ) );
 
     T token;
@@ -2633,7 +2633,7 @@ void SCH_IO_KICAD_SEXPR_PARSER::parsePAGE_INFO( PAGE_INFO& aPageInfo )
 
 void SCH_IO_KICAD_SEXPR_PARSER::parseTITLE_BLOCK( TITLE_BLOCK& aTitleBlock )
 {
-    wxCHECK_RET( CurTok() == T_title_block, "Cannot parse " + GetTokenString( CurTok() ) + " as a TITLE_BLOCK." );
+    KI_CHECK_RET( CurTok() == T_title_block, "Cannot parse " + GetTokenString( CurTok() ) + " as a TITLE_BLOCK." );
 
     T token;
 
@@ -2736,7 +2736,7 @@ void SCH_IO_KICAD_SEXPR_PARSER::parseTITLE_BLOCK( TITLE_BLOCK& aTitleBlock )
 
 SCH_FIELD* SCH_IO_KICAD_SEXPR_PARSER::parseSchField( SCH_ITEM* aParent )
 {
-    wxCHECK_MSG( CurTok() == T_property, nullptr,
+    KI_CHECK_MSG( CurTok() == T_property, nullptr,
                  "Cannot parse " + GetTokenString( CurTok() ) + " as a property token." );
 
     bool is_private = false;
@@ -2890,8 +2890,8 @@ SCH_FIELD* SCH_IO_KICAD_SEXPR_PARSER::parseSchField( SCH_ITEM* aParent )
 
 SCH_SHEET_PIN* SCH_IO_KICAD_SEXPR_PARSER::parseSchSheetPin( SCH_SHEET* aSheet )
 {
-    wxCHECK_MSG( aSheet != nullptr, nullptr, "" );
-    wxCHECK_MSG( CurTok() == T_pin, nullptr, "Cannot parse " + GetTokenString( CurTok() ) + " as a sheet pin token." );
+    KI_CHECK_MSG( aSheet != nullptr, nullptr, "" );
+    KI_CHECK_MSG( CurTok() == T_pin, nullptr, "Cannot parse " + GetTokenString( CurTok() ) + " as a sheet pin token." );
 
     T token = NextTok();
 
@@ -2975,9 +2975,9 @@ SCH_SHEET_PIN* SCH_IO_KICAD_SEXPR_PARSER::parseSchSheetPin( SCH_SHEET* aSheet )
 
 void SCH_IO_KICAD_SEXPR_PARSER::parseSchSheetInstances( SCH_SHEET* aRootSheet, SCH_SCREEN* aScreen )
 {
-    wxCHECK_RET( CurTok() == T_sheet_instances,
+    KI_CHECK_RET( CurTok() == T_sheet_instances,
                  "Cannot parse " + GetTokenString( CurTok() ) + " as an instances token." );
-    wxCHECK( aScreen, /* void */ );
+    KI_CHECK( aScreen, /* void */ );
 
     T token;
 
@@ -3072,10 +3072,10 @@ void SCH_IO_KICAD_SEXPR_PARSER::parseSchSheetInstances( SCH_SHEET* aRootSheet, S
 
 void SCH_IO_KICAD_SEXPR_PARSER::parseSchSymbolInstances( SCH_SCREEN* aScreen )
 {
-    wxCHECK_RET( CurTok() == T_symbol_instances,
+    KI_CHECK_RET( CurTok() == T_symbol_instances,
                  "Cannot parse " + GetTokenString( CurTok() ) + " as an instances token." );
-    wxCHECK( aScreen, /* void */ );
-    wxCHECK( m_rootUuid != NilUuid(), /* void */ );
+    KI_CHECK( aScreen, /* void */ );
+    KI_CHECK( m_rootUuid != NilUuid(), /* void */ );
 
     T token;
 
@@ -3160,11 +3160,11 @@ void SCH_IO_KICAD_SEXPR_PARSER::parseSchSymbolInstances( SCH_SCREEN* aScreen )
 void SCH_IO_KICAD_SEXPR_PARSER::ParseSchematic( SCH_SHEET* aSheet, bool aIsCopyableOnly,
                                                 int aFileVersion )
 {
-    wxCHECK( aSheet != nullptr, /* void */ );
+    KI_CHECK( aSheet != nullptr, /* void */ );
 
     SCH_SCREEN* screen = aSheet->GetScreen();
 
-    wxCHECK( screen != nullptr, /* void */ );
+    KI_CHECK( screen != nullptr, /* void */ );
 
     if( SCHEMATIC* schematic = dynamic_cast<SCHEMATIC*>( screen->GetParent() ) )
         m_maxError = schematic->Settings().m_MaxError;
@@ -3579,7 +3579,7 @@ void SCH_IO_KICAD_SEXPR_PARSER::ParseSchematic( SCH_SHEET* aSheet, bool aIsCopya
 
 SCH_SYMBOL* SCH_IO_KICAD_SEXPR_PARSER::parseSchematicSymbol()
 {
-    wxCHECK_MSG( CurTok() == T_symbol, nullptr,
+    KI_CHECK_MSG( CurTok() == T_symbol, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as a symbol." ) );
 
     T token;
@@ -4153,7 +4153,7 @@ SCH_SYMBOL* SCH_IO_KICAD_SEXPR_PARSER::parseSchematicSymbol()
 
 SCH_BITMAP* SCH_IO_KICAD_SEXPR_PARSER::parseImage()
 {
-    wxCHECK_MSG( CurTok() == T_image, nullptr,
+    KI_CHECK_MSG( CurTok() == T_image, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as an image." ) );
 
     T                           token;
@@ -4264,7 +4264,7 @@ SCH_BITMAP* SCH_IO_KICAD_SEXPR_PARSER::parseImage()
 
 SCH_SHEET* SCH_IO_KICAD_SEXPR_PARSER::parseSheet()
 {
-    wxCHECK_MSG( CurTok() == T_sheet, nullptr,
+    KI_CHECK_MSG( CurTok() == T_sheet, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as a sheet." ) );
 
     T token;
@@ -4584,7 +4584,7 @@ SCH_SHEET* SCH_IO_KICAD_SEXPR_PARSER::parseSheet()
 
 SCH_JUNCTION* SCH_IO_KICAD_SEXPR_PARSER::parseJunction()
 {
-    wxCHECK_MSG( CurTok() == T_junction, nullptr,
+    KI_CHECK_MSG( CurTok() == T_junction, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as a junction." ) );
 
     T                             token;
@@ -4649,7 +4649,7 @@ SCH_JUNCTION* SCH_IO_KICAD_SEXPR_PARSER::parseJunction()
 
 SCH_NO_CONNECT* SCH_IO_KICAD_SEXPR_PARSER::parseNoConnect()
 {
-    wxCHECK_MSG( CurTok() == T_no_connect, nullptr,
+    KI_CHECK_MSG( CurTok() == T_no_connect, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as a no connect." ) );
 
     T                               token;
@@ -4695,7 +4695,7 @@ SCH_NO_CONNECT* SCH_IO_KICAD_SEXPR_PARSER::parseNoConnect()
 
 SCH_BUS_WIRE_ENTRY* SCH_IO_KICAD_SEXPR_PARSER::parseBusEntry()
 {
-    wxCHECK_MSG( CurTok() == T_bus_entry, nullptr,
+    KI_CHECK_MSG( CurTok() == T_bus_entry, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as a bus entry." ) );
 
     T token;
@@ -4882,7 +4882,7 @@ SCH_LINE* SCH_IO_KICAD_SEXPR_PARSER::parseLine()
     case T_wire:     layer = LAYER_WIRE;  break;
     case T_bus:      layer = LAYER_BUS;   break;
     default:
-        wxCHECK_MSG( false, nullptr, "Cannot parse " + GetTokenString( CurTok() ) + " as a line." );
+        KI_CHECK_MSG( false, nullptr, "Cannot parse " + GetTokenString( CurTok() ) + " as a line." );
     }
 
     std::unique_ptr<SCH_LINE> line = std::make_unique<SCH_LINE>( VECTOR2I(), layer );
@@ -4963,7 +4963,7 @@ SCH_LINE* SCH_IO_KICAD_SEXPR_PARSER::parseLine()
 
 SCH_SHAPE* SCH_IO_KICAD_SEXPR_PARSER::parseSchArc()
 {
-    wxCHECK_MSG( CurTok() == T_arc, nullptr,
+    KI_CHECK_MSG( CurTok() == T_arc, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as an arc." ) );
 
     T             token;
@@ -5054,7 +5054,7 @@ SCH_SHAPE* SCH_IO_KICAD_SEXPR_PARSER::parseSchArc()
 
 SCH_SHAPE* SCH_IO_KICAD_SEXPR_PARSER::parseSchCircle()
 {
-    wxCHECK_MSG( CurTok() == T_circle, nullptr,
+    KI_CHECK_MSG( CurTok() == T_circle, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as a circle." ) );
 
     T             token;
@@ -5124,7 +5124,7 @@ SCH_SHAPE* SCH_IO_KICAD_SEXPR_PARSER::parseSchCircle()
 
 SCH_SHAPE* SCH_IO_KICAD_SEXPR_PARSER::parseSchRectangle()
 {
-    wxCHECK_MSG( CurTok() == T_rectangle, nullptr,
+    KI_CHECK_MSG( CurTok() == T_rectangle, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as a rectangle." ) );
 
     T             token;
@@ -5194,7 +5194,7 @@ SCH_SHAPE* SCH_IO_KICAD_SEXPR_PARSER::parseSchRectangle()
 
 SCH_RULE_AREA* SCH_IO_KICAD_SEXPR_PARSER::parseSchRuleArea()
 {
-    wxCHECK_MSG( CurTok() == T_rule_area, nullptr,
+    KI_CHECK_MSG( CurTok() == T_rule_area, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as a rule area." ) );
 
     T             token;
@@ -5270,7 +5270,7 @@ SCH_RULE_AREA* SCH_IO_KICAD_SEXPR_PARSER::parseSchRuleArea()
 
 SCH_SHAPE* SCH_IO_KICAD_SEXPR_PARSER::parseSchBezier()
 {
-    wxCHECK_MSG( CurTok() == T_bezier, nullptr,
+    KI_CHECK_MSG( CurTok() == T_bezier, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as a bezier." ) );
 
     T             token;
@@ -5481,7 +5481,7 @@ void SCH_IO_KICAD_SEXPR_PARSER::parseEllipseBody( SCH_SHAPE* aShape, bool aIsArc
 
 SCH_SHAPE* SCH_IO_KICAD_SEXPR_PARSER::parseSchEllipse()
 {
-    wxCHECK_MSG( CurTok() == T_ellipse, nullptr,
+    KI_CHECK_MSG( CurTok() == T_ellipse, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as an ellipse." ) );
 
     auto ellipse = std::make_unique<SCH_SHAPE>( SHAPE_T::ELLIPSE );
@@ -5492,7 +5492,7 @@ SCH_SHAPE* SCH_IO_KICAD_SEXPR_PARSER::parseSchEllipse()
 
 SCH_SHAPE* SCH_IO_KICAD_SEXPR_PARSER::parseSchEllipseArc()
 {
-    wxCHECK_MSG( CurTok() == T_ellipse_arc, nullptr,
+    KI_CHECK_MSG( CurTok() == T_ellipse_arc, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as an elliptical arc." ) );
 
     auto arc = std::make_unique<SCH_SHAPE>( SHAPE_T::ELLIPSE_ARC );
@@ -5515,7 +5515,7 @@ SCH_TEXT* SCH_IO_KICAD_SEXPR_PARSER::parseSchText()
     case T_netclass_flag:       text = std::make_unique<SCH_DIRECTIVE_LABEL>(); break;
     case T_directive_label:     text = std::make_unique<SCH_DIRECTIVE_LABEL>(); break;
     default:
-        wxCHECK_MSG( false, nullptr, "Cannot parse " + GetTokenString( CurTok() ) + " as text." );
+        KI_CHECK_MSG( false, nullptr, "Cannot parse " + GetTokenString( CurTok() ) + " as text." );
     }
 
     // We'll reset this if we find a fields_autoplaced token
@@ -5551,7 +5551,7 @@ SCH_TEXT* SCH_IO_KICAD_SEXPR_PARSER::parseSchText()
                 case 90:  label->SetSpinStyle( SPIN_STYLE::UP );            break;
                 case 180: label->SetSpinStyle( SPIN_STYLE::LEFT );          break;
                 case 270: label->SetSpinStyle( SPIN_STYLE::BOTTOM );        break;
-                default:  wxFAIL; label->SetSpinStyle( SPIN_STYLE::RIGHT ); break;
+                default:  KI_FAIL(); label->SetSpinStyle( SPIN_STYLE::RIGHT ); break;
                 }
             }
 
@@ -5678,7 +5678,7 @@ SCH_TEXT* SCH_IO_KICAD_SEXPR_PARSER::parseSchText()
 
 SCH_TEXTBOX* SCH_IO_KICAD_SEXPR_PARSER::parseSchTextBox()
 {
-    wxCHECK_MSG( CurTok() == T_text_box, nullptr,
+    KI_CHECK_MSG( CurTok() == T_text_box, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as a text box." ) );
 
     std::unique_ptr<SCH_TEXTBOX> textBox = std::make_unique<SCH_TEXTBOX>();
@@ -5691,7 +5691,7 @@ SCH_TEXTBOX* SCH_IO_KICAD_SEXPR_PARSER::parseSchTextBox()
 
 SCH_TABLECELL* SCH_IO_KICAD_SEXPR_PARSER::parseSchTableCell()
 {
-    wxCHECK_MSG( CurTok() == T_table_cell, nullptr,
+    KI_CHECK_MSG( CurTok() == T_table_cell, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as a table cell." ) );
 
     std::unique_ptr<SCH_TABLECELL> cell = std::make_unique<SCH_TABLECELL>();
@@ -5844,7 +5844,7 @@ void SCH_IO_KICAD_SEXPR_PARSER::parseSchTextBoxContent( SCH_TEXTBOX* aTextBox )
 
 SCH_TABLE* SCH_IO_KICAD_SEXPR_PARSER::parseSchTable()
 {
-    wxCHECK_MSG( CurTok() == T_table, nullptr,
+    KI_CHECK_MSG( CurTok() == T_table, nullptr,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as a table." ) );
 
     T             token;
@@ -6013,9 +6013,9 @@ SCH_TABLE* SCH_IO_KICAD_SEXPR_PARSER::parseSchTable()
 
 void SCH_IO_KICAD_SEXPR_PARSER::parseBusAlias( SCH_SCREEN* aScreen )
 {
-    wxCHECK_RET( CurTok() == T_bus_alias,
+    KI_CHECK_RET( CurTok() == T_bus_alias,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as a bus alias." ) );
-    wxCHECK( aScreen, /* void */ );
+    KI_CHECK( aScreen, /* void */ );
 
     T token;
     std::shared_ptr<BUS_ALIAS> busAlias = std::make_shared<BUS_ALIAS>();
@@ -6176,7 +6176,7 @@ void SCH_IO_KICAD_SEXPR_PARSER::parseGroupMembers( GROUP_INFO& aGroupInfo )
 
 void SCH_IO_KICAD_SEXPR_PARSER::parseGroup()
 {
-    wxCHECK_RET( CurTok() == T_group,
+    KI_CHECK_RET( CurTok() == T_group,
                  wxT( "Cannot parse " ) + GetTokenString( CurTok() ) + wxT( " as PCB_GROUP." ) );
 
     T token;

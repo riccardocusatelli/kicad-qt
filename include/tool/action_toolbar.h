@@ -461,7 +461,7 @@ public:
         m_description( aDescription ),
         m_supportedContexts( aSupportedContexts )
     {
-        wxASSERT_MSG( aName.starts_with( "control" ),
+        KI_ASSERT_MSG( aName.starts_with( "control" ),
                       wxString::Format( "Control name \"%s\" must start with \"control\"", aName ) );
 
         ACTION_TOOLBAR::GetAllCustomControls().push_back( this );

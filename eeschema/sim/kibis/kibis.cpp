@@ -1774,7 +1774,7 @@ std::vector<std::pair<int, double>> KIBIS_WAVEFORM_PRBS::GenerateBitSequence() c
     double period = 1/m_bitrate;
     double t = 0;
 
-    wxASSERT( m_bits > 0 );
+    KI_ASSERT( m_bits > 0 );
 
     int bits = 0;
 

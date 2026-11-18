@@ -252,7 +252,7 @@ bool DESIGN_BLOCK_IO::DeleteLibrary( const wxString&                    aLibrary
             wxRemoveFile( dirs[i] );
     }
 
-    wxLogTrace( traceDesignBlocks, wxT( "Removing design block library '%s'." ), aLibraryPath.GetData() );
+    KI_LOG_TRACE( traceDesignBlocks, wxT( "Removing design block library '%s'." ), aLibraryPath.GetData() );
 
     // Some of the more elaborate wxRemoveFile() crap puts up its own wxLog dialog
     // we don't want that.  we want bare metal portability with no UI here.

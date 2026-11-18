@@ -59,7 +59,7 @@ static thread_local int g_language = wxLANGUAGE_UNKNOWN;
 
 PIN_ORIENTATION PinOrientationCode( size_t index )
 {
-    wxASSERT( index < magic_enum::enum_count<PIN_ORIENTATION>() );
+    KI_ASSERT( index < magic_enum::enum_count<PIN_ORIENTATION>() );
     return magic_enum::enum_value<PIN_ORIENTATION>( index );
 }
 
@@ -208,7 +208,7 @@ wxString ElectricalPinTypeGetText( ELECTRICAL_PINTYPE aType )
 
     auto it = g_pinElectricalTypes.find( aType );
 
-    wxCHECK_MSG( it != g_pinElectricalTypes.end(), wxT( "???" ),
+    KI_CHECK_MSG( it != g_pinElectricalTypes.end(), wxT( "???" ),
                  wxString::Format( "Pin type not found for type %d!", (int) aType ) );
 
     return it->second.name;
@@ -222,7 +222,7 @@ BITMAPS ElectricalPinTypeGetBitmap( ELECTRICAL_PINTYPE aType )
 
     auto it = g_pinElectricalTypes.find( aType );
 
-    wxCHECK_MSG( it != g_pinElectricalTypes.end(), BITMAPS::INVALID_BITMAP,
+    KI_CHECK_MSG( it != g_pinElectricalTypes.end(), BITMAPS::INVALID_BITMAP,
                  wxString::Format( "Pin type not found for type %d!", (int) aType ) );
 
     return it->second.bitmap;
@@ -236,7 +236,7 @@ wxString PinShapeGetText( GRAPHIC_PINSHAPE aShape )
 
     auto it = g_pinShapes.find( aShape );
 
-    wxCHECK_MSG( it != g_pinShapes.end(), wxT( "?" ),
+    KI_CHECK_MSG( it != g_pinShapes.end(), wxT( "?" ),
                  wxString::Format( "Pin shape not found for type %d!", (int) aShape ) );
 
     return it->second.name;
@@ -250,7 +250,7 @@ BITMAPS PinShapeGetBitmap( GRAPHIC_PINSHAPE aShape )
 
     auto it = g_pinShapes.find( aShape );
 
-    wxCHECK_MSG( it != g_pinShapes.end(), BITMAPS::INVALID_BITMAP,
+    KI_CHECK_MSG( it != g_pinShapes.end(), BITMAPS::INVALID_BITMAP,
                  wxString::Format( "Pin shape not found for type %d!", (int) aShape ) );
 
     return it->second.bitmap;
@@ -264,7 +264,7 @@ wxString PinOrientationName( PIN_ORIENTATION aOrientation )
 
     auto it = g_pinOrientations.find( aOrientation );
 
-    wxCHECK_MSG( it != g_pinOrientations.end(), wxT( "?" ),
+    KI_CHECK_MSG( it != g_pinOrientations.end(), wxT( "?" ),
                  wxString::Format( "Pin orientation not found for type %d!", (int) aOrientation ) );
 
     return it->second.name;

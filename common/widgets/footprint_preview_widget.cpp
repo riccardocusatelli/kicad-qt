@@ -150,7 +150,7 @@ FOOTPRINT_PREVIEW_PANEL_BASE* FOOTPRINT_PREVIEW_PANEL_BASE::Create( wxWindow* aP
 
     try
     {
-        if( KIFACE* kiface = aKiway.KiFACE( KIWAY::FACE_PCB ) )
+        if( KIFACE* kiface = aKiway.KiFACE( KIWAY_FACES::FACE_PCB ) )
             panel = kiface->CreateKiWindow( aParent, FRAME_FOOTPRINT_PREVIEW, &aKiway );
     }
     catch( ... )

@@ -329,7 +329,7 @@ std::vector<SCH_SYMBOL*> GetSameSymbolMultiUnitSelection( const SELECTION& aSel 
 
 bool SwapPinGeometry( SCH_PIN* aFirst, SCH_PIN* aSecond )
 {
-    wxCHECK_MSG( aFirst && aSecond, false, "Invalid pins supplied to SwapPinGeometry" );
+    KI_CHECK_MSG( aFirst && aSecond, false, "Invalid pins supplied to SwapPinGeometry" );
 
     // If the schematic pin is still backed by a library definition, swap that library pin; once the
     // caller sees the true return value it can decide to clone the updated library data into the
@@ -632,7 +632,7 @@ wxString UniqueGroupName( SCH_SCREEN* aScreen, const wxString& aBaseName )
 
 void PrunePastedSymbolInstances( SCH_SYMBOL* aSymbol, const SCHEMATIC& aSchematic )
 {
-    wxCHECK( aSymbol && aSchematic.IsValid(), /* void */ );
+    KI_CHECK( aSymbol && aSchematic.IsValid(), /* void */ );
 
     const wxString projectName = aSchematic.Project().GetProjectName();
 

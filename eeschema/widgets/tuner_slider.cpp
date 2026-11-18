@@ -263,7 +263,7 @@ void TUNER_SLIDER::updateModeControls()
 
 void TUNER_SLIDER::updateSlider()
 {
-    wxASSERT( m_max >= m_value && m_value >= m_min );
+    KI_ASSERT( m_max >= m_value && m_value >= m_min );
     double value = ( ( m_value - m_min ) / ( m_max - m_min ) ).ToDouble();
     m_slider->SetValue( KiROUND( value * 100.0 ) );
 }

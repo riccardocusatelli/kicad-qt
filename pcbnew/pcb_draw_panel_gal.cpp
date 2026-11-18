@@ -367,7 +367,7 @@ void PCB_DRAW_PANEL_GAL::UpdateColors()
     else if( PCBNEW_SETTINGS* cfg = GetAppSettings<PCBNEW_SETTINGS>( "pcbnew" ) )
         cs = ::GetColorSettings( cfg->m_ColorTheme );
 
-    wxCHECK_RET( cs, wxT( "null COLOR_SETTINGS" ) );
+    KI_CHECK_RET( cs, wxT( "null COLOR_SETTINGS" ) );
 
     auto rs = static_cast<KIGFX::PCB_RENDER_SETTINGS*>( m_view->GetPainter()->GetSettings() );
     rs->LoadColors( cs );
@@ -414,13 +414,13 @@ void PCB_DRAW_PANEL_GAL::prepareGridSources()
         PCB_GRID_ITEM* grid = static_cast<PCB_GRID_ITEM*>( item );
 
         // Priority 0 is the background grid's; a grid item must never sink behind it.
-        wxASSERT( grid->GetAssignedPriority() > 0 );
+        KI_ASSERT( grid->GetAssignedPriority() > 0 );
 
         KIGFX::GRID_SOURCE src;
         static_cast<GRID_GEOMETRY&>( src ) = grid->AsGridGeometry();
 
         // Pitch is a loop step in the renderer; the spacing setters keep it positive.
-        wxASSERT( src.pitch.x > 0.0 && src.pitch.y > 0.0 );
+        KI_ASSERT( src.pitch.x > 0.0 && src.pitch.y > 0.0 );
 
         src.tick = grid->GetTickInterval();
         src.highlighted = grid->IsSelected();
@@ -771,7 +771,7 @@ void ApplyPcbGalLayerOrder( KIGFX::VIEW* aView )
     for( int i = 0; (unsigned) i < sizeof( GAL_LAYER_ORDER ) / sizeof( int ); ++i )
     {
         int layer = GAL_LAYER_ORDER[i];
-        wxASSERT( layer < KIGFX::VIEW::VIEW_MAX_LAYERS );
+        KI_ASSERT( layer < KIGFX::VIEW::VIEW_MAX_LAYERS );
 
         // MW: Gross hack to make SetTopLayer bring the correct bitmap layer to
         // the top of the other bitmaps, but still below all the other layers
@@ -799,7 +799,7 @@ void ApplyPcbGalLayerDeps( KIGFX::VIEW* aView )
 {
     for( int layer : GAL_LAYER_ORDER )
     {
-        wxASSERT( layer < KIGFX::VIEW::VIEW_MAX_LAYERS );
+        KI_ASSERT( layer < KIGFX::VIEW::VIEW_MAX_LAYERS );
 
         if( IsCopperLayer( layer ) )
         {

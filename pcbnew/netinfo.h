@@ -65,7 +65,7 @@ public:
 
     PCB_LAYER_ID GetLayer() const override
     {
-        wxFAIL_MSG( wxT( "NETINFO_ITEM::GetLayer() desn't have meaning.  Don't call it." ) );
+        KI_FAIL_MSG( wxT( "NETINFO_ITEM::GetLayer() desn't have meaning.  Don't call it." ) );
         return UNDEFINED_LAYER;
     }
 

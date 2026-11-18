@@ -90,7 +90,7 @@ void DIALOG_SYMBOL_REMAP::OnRemapSymbols( wxCommandEvent& aEvent )
 {
     SCH_EDIT_FRAME* parent = dynamic_cast< SCH_EDIT_FRAME* >( GetParent() );
 
-    wxCHECK_RET( parent != nullptr, "Parent window is not type SCH_EDIT_FRAME." );
+    KI_CHECK_RET( parent != nullptr, "Parent window is not type SCH_EDIT_FRAME." );
 
     if( !backupProject( m_messagePanel->Reporter() ) )
         return;
@@ -173,7 +173,7 @@ void DIALOG_SYMBOL_REMAP::createProjectSymbolLibTable( REPORTER& aReporter )
     LIBRARY_MANAGER&        manager = Pgm().GetLibraryManager();
 
     std::optional<LIBRARY_TABLE*> optTable = manager.Table( LIBRARY_TABLE_TYPE::SYMBOL, LIBRARY_TABLE_SCOPE::PROJECT );
-    wxCHECK( optTable, /* void */ );
+    KI_CHECK( optTable, /* void */ );
     LIBRARY_TABLE* projectTable = *optTable;
 
     std::vector<LEGACY_SYMBOL_LIB*> libs;
@@ -263,7 +263,7 @@ void DIALOG_SYMBOL_REMAP::remapSymbolsToLibTable( REPORTER& aReporter )
         {
             symbol = dynamic_cast<SCH_SYMBOL*>( item );
 
-            wxCHECK2( symbol, continue );
+            KI_CHECK2( symbol, continue );
 
             if( !remapSymbolToLibTable( symbol ) )
             {
@@ -291,10 +291,10 @@ void DIALOG_SYMBOL_REMAP::remapSymbolsToLibTable( REPORTER& aReporter )
 
 bool DIALOG_SYMBOL_REMAP::remapSymbolToLibTable( SCH_SYMBOL* aSymbol )
 {
-    wxCHECK_MSG( aSymbol != nullptr, false, "Null pointer passed to remapSymbolToLibTable." );
-    wxCHECK_MSG( aSymbol->GetLibId().GetLibNickname().empty(), false,
+    KI_CHECK_MSG( aSymbol != nullptr, false, "Null pointer passed to remapSymbolToLibTable." );
+    KI_CHECK_MSG( aSymbol->GetLibId().GetLibNickname().empty(), false,
                  "Cannot remap symbol that is already mapped." );
-    wxCHECK_MSG( !aSymbol->GetLibId().GetLibItemName().empty(), false,
+    KI_CHECK_MSG( !aSymbol->GetLibId().GetLibItemName().empty(), false,
                  "The symbol LIB_ID name is empty." );
 
     for( LEGACY_SYMBOL_LIB& lib : *PROJECT_SCH::LegacySchLibs( &Prj() ) )

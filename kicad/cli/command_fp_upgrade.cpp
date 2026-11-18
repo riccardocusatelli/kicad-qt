@@ -51,7 +51,7 @@ int CLI::FP_UPGRADE_COMMAND::doPerform( KIWAY& aKiway )
     fpJob->m_outputLibraryPath = m_argOutput;
     fpJob->m_force = m_argParser.get<bool>( ARG_FORCE );
 
-    int exitCode = aKiway.ProcessJob( KIWAY::FACE_PCB, fpJob.get() );
+    int exitCode = aKiway.ProcessJob( KIWAY_FACES::FACE_PCB, fpJob.get() );
 
     return exitCode;
 }

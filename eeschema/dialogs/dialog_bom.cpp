@@ -158,7 +158,7 @@ void DIALOG_BOM::installGeneratorsList()
 
             if( !m_generators[ii]->FindFilePath().Exists( wxFILE_EXISTS_REGULAR ) )
             {
-                wxLogTrace( BOM_TRACE, wxS( "BOM plugin %s not found" ),
+                KI_LOG_TRACE( BOM_TRACE, wxS( "BOM plugin %s not found" ),
                             m_generators[ii]->FindFilePath().GetFullName() );
                 name.Append( wxT( " " ) + _( "(file missing)" ) );
 

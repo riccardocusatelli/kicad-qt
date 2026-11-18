@@ -96,7 +96,7 @@ double AM_PARAM::GetValueFromMacro( APERTURE_MACRO* aApertureMacro ) const
                }
                 else
                 {
-                    wxFAIL_MSG( wxT( "AM_PARAM::GetValue(): NULL param aApertureMacro" ) );
+                    KI_FAIL_MSG( wxT( "AM_PARAM::GetValue(): NULL param aApertureMacro" ) );
                 }
 
                 ops.emplace_back( curr_value );
@@ -108,7 +108,7 @@ double AM_PARAM::GetValueFromMacro( APERTURE_MACRO* aApertureMacro ) const
                 break;
 
             default:
-                wxFAIL_MSG( wxString::Format( wxT( "AM_PARAM::GetValue(): unexpected prm type %d" ),
+                KI_FAIL_MSG( wxString::Format( wxT( "AM_PARAM::GetValue(): unexpected prm type %d" ),
                                                    item.GetType() ) );
                 break;
         }

@@ -68,7 +68,7 @@ void SCH_SHAPE::Serialize( google::protobuf::Any& aContainer ) const
     kiapi::common::PackCustomProperties( msg.mutable_custom_properties(), *this );
 
     if( !aContainer.PackFrom( msg ) )
-        wxFAIL_MSG( wxT( "Failed to pack SCH_SHAPE" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack SCH_SHAPE" ) );
 }
 
 

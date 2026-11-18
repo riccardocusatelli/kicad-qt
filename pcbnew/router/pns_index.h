@@ -173,7 +173,7 @@ int INDEX::Query( const ITEM* aItem, int aMinDistance, Visitor& aVisitor ) const
 {
     int total = 0;
 
-    wxCHECK( aItem->Kind() != ITEM::INVALID_T, 0 );
+    KI_CHECK( aItem->Kind() != ITEM::INVALID_T, 0 );
 
     const PNS_LAYER_RANGE& layers = aItem->Layers();
 

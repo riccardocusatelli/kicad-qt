@@ -72,7 +72,7 @@ int ConvertPadCheckToDrcCode( PAD_UTILS::PAD_CHECK_CODE aCode )
         return DRCE_PADSTACK;
     }
 
-    wxFAIL_MSG( wxT( "Unknown pad check code" ) );
+    KI_FAIL_MSG( wxT( "Unknown pad check code" ) );
     return DRCE_PADSTACK;
 }
 

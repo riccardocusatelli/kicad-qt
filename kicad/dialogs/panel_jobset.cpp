@@ -104,14 +104,14 @@ public:
             m_jobList->SetItem( itemIndex, jobNoColId, wxString::Format( "%d", num++ ) );
             m_jobList->SetItem( itemIndex, jobDescColId, job.GetDescription() );
 
-            KIWAY::FACE_T iface = JOB_REGISTRY::GetKifaceType( job.m_type );
+            KIWAY_FACES::FACE_T iface = JOB_REGISTRY::GetKifaceType( job.m_type );
             wxString source = wxEmptyString;
 
             if( iface < KIWAY::KIWAY_FACE_COUNT )
             {
-                if( iface == KIWAY::FACE_PCB )
+                if( iface == KIWAY_FACES::FACE_PCB )
                     source = wxT( "PCB" );
-                else if( iface == KIWAY::FACE_SCH )
+                else if( iface == KIWAY_FACES::FACE_SCH )
 					source = wxT( "SCH" );
             }
 
@@ -218,7 +218,7 @@ public:
     void ClearStatus()
     {
         JOBSET_DESTINATION* destination = GetDestination();
-        wxCHECK( destination, /*void*/ );
+        KI_CHECK( destination, /*void*/ );
 
         destination->m_lastRunSuccess = std::nullopt;
         destination->m_lastResolvedOutputPath = std::nullopt;
@@ -228,7 +228,7 @@ public:
     void UpdateStatus()
     {
         JOBSET_DESTINATION* destination = GetDestination();
-        wxCHECK( destination, /*void*/ );
+        KI_CHECK( destination, /*void*/ );
 
         if( destination->m_lastRunSuccess.has_value() )
         {
@@ -294,7 +294,7 @@ public:
     void OnOpenOutput( wxCommandEvent& aEvent ) override
     {
         JOBSET_DESTINATION* destination = GetDestination();
-        wxCHECK( destination, /*void*/ );
+        KI_CHECK( destination, /*void*/ );
 
         wxString resolvedPath;
 
@@ -320,7 +320,7 @@ public:
     void OnLastStatusClick( wxMouseEvent& aEvent ) override
     {
         JOBSET_DESTINATION* destination = GetDestination();
-        wxCHECK( destination, /*void*/ );
+        KI_CHECK( destination, /*void*/ );
 
         DIALOG_JOBSET_RUN_LOG dialog( m_frame, m_jobsFile, destination );
         dialog.ShowModal();
@@ -329,7 +329,7 @@ public:
     void OnRightDown( wxMouseEvent& aEvent ) override
     {
         JOBSET_DESTINATION* destination = GetDestination();
-        wxCHECK( destination, /*void*/ );
+        KI_CHECK( destination, /*void*/ );
 
         wxMenu menu;
         menu.Append( wxID_EDIT, _( "Edit Destination Options..." ) );
@@ -348,7 +348,7 @@ public:
     void OnProperties( wxCommandEvent& aEvent ) override
     {
         JOBSET_DESTINATION* destination = GetDestination();
-        wxCHECK( destination, /*void*/ );
+        KI_CHECK( destination, /*void*/ );
 
         DIALOG_DESTINATION dialog( m_frame, m_jobsFile, destination );
 
@@ -411,7 +411,7 @@ private:
                 }
                 break;
 
-                default: wxFAIL_MSG( wxT( "Unknown ID in context menu event" ) );
+                default: KI_FAIL_MSG( wxT( "Unknown ID in context menu event" ) );
                 }
     }
 
@@ -581,14 +581,14 @@ void PANEL_JOBSET::rebuildJobList()
 
         m_jobsGrid->SetReadOnly( num - 1, COL_SOURCE );
 
-        KIWAY::FACE_T iface = JOB_REGISTRY::GetKifaceType( job.m_type );
+        KIWAY_FACES::FACE_T iface = JOB_REGISTRY::GetKifaceType( job.m_type );
         wxString      source = wxEmptyString;
 
         if( iface < KIWAY::KIWAY_FACE_COUNT )
         {
-            if( iface == KIWAY::FACE_PCB )
+            if( iface == KIWAY_FACES::FACE_PCB )
                 source = wxT( "PCB" );
-            else if( iface == KIWAY::FACE_SCH )
+            else if( iface == KIWAY_FACES::FACE_SCH )
                 source = wxT( "SCH" );
         }
 
@@ -665,7 +665,7 @@ bool PANEL_JOBSET::OpenJobOptionsForListItem( size_t aItemIndex )
 {
     bool          success = false;
     JOBSET_JOB&   job = m_jobsFile->GetJobs()[aItemIndex];
-    KIWAY::FACE_T iface = JOB_REGISTRY::GetKifaceType( job.m_type );
+    KIWAY_FACES::FACE_T iface = JOB_REGISTRY::GetKifaceType( job.m_type );
 
     if( iface < KIWAY::KIWAY_FACE_COUNT )
     {

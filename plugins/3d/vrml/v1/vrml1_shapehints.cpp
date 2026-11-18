@@ -52,33 +52,33 @@ WRL1SHAPEHINTS::WRL1SHAPEHINTS( NAMEREGISTER* aDictionary, WRL1NODE* aParent ) :
 
 WRL1SHAPEHINTS::~WRL1SHAPEHINTS()
 {
-    wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] Destroying ShapeHints node." ) );
+    KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] Destroying ShapeHints node." ) );
 }
 
 
 bool WRL1SHAPEHINTS::AddRefNode( WRL1NODE* aNode )
 {
     // this node may not own or reference any other node
-    wxCHECK_MSG( false, false, wxT( "AddRefNode is not applicable." ) );
+    KI_CHECK_MSG( false, false, wxT( "AddRefNode is not applicable." ) );
 }
 
 
 bool WRL1SHAPEHINTS::AddChildNode( WRL1NODE* aNode )
 {
     // this node may not own or reference any other node
-    wxCHECK_MSG( false, false, wxT( "AddChildNode is not applicable." ) );
+    KI_CHECK_MSG( false, false, wxT( "AddChildNode is not applicable." ) );
 }
 
 
 bool WRL1SHAPEHINTS::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 {
-    wxCHECK_MSG( aTopNode, false, wxT( "Invalid top node." ) );
+    KI_CHECK_MSG( aTopNode, false, wxT( "Invalid top node." ) );
 
     char tok = proc.Peek();
 
     if( proc.eof() )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                           " * [INFO] bad file format; unexpected eof %s." ),
                     __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition() );
 
@@ -87,7 +87,7 @@ bool WRL1SHAPEHINTS::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 
     if( '{' != tok )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( "%s:%s:%d\n"
                          " * [INFO] bad file format; expecting '{' but got '%s' %s.\n"
                          "%s" ),
@@ -110,7 +110,7 @@ bool WRL1SHAPEHINTS::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 
         if( !proc.ReadName( glob ) )
         {
-            wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+            KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                               "%s" ),
                         __FILE__, __FUNCTION__, __LINE__ , proc.GetError() );
 
@@ -127,7 +127,7 @@ bool WRL1SHAPEHINTS::Read( WRLPROC& proc, WRL1BASE* aTopNode )
         {
             if( !proc.ReadName( glob ) )
             {
-                wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+                KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                                   "%s" ),
                             __FILE__, __FUNCTION__, __LINE__ , proc.GetError() );
 
@@ -148,7 +148,7 @@ bool WRL1SHAPEHINTS::Read( WRLPROC& proc, WRL1BASE* aTopNode )
             }
             else
             {
-                wxLogTrace( traceVrmlPlugin,
+                KI_LOG_TRACE( traceVrmlPlugin,
                             wxT( "%s:%s:%d\n"
                                  " * [INFO] bad ShapeHints %s (invalid value '%s')\n"
                                  " * [INFO] file: '%s'" ),
@@ -162,7 +162,7 @@ bool WRL1SHAPEHINTS::Read( WRLPROC& proc, WRL1BASE* aTopNode )
         {
             if( !proc.ReadName( glob ) )
             {
-                wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+                KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                                   "%s" ),
                             __FILE__, __FUNCTION__, __LINE__ , proc.GetError() );
 
@@ -177,7 +177,7 @@ bool WRL1SHAPEHINTS::Read( WRLPROC& proc, WRL1BASE* aTopNode )
         {
             if( !proc.ReadName( glob ) )
             {
-                wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+                KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                                   "%s" ),
                             __FILE__, __FUNCTION__, __LINE__ , proc.GetError() );
 
@@ -194,7 +194,7 @@ bool WRL1SHAPEHINTS::Read( WRLPROC& proc, WRL1BASE* aTopNode )
 
             if( !proc.ReadSFFloat( tmp ) )
             {
-                wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+                KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                                   "%s" ),
                             __FILE__, __FUNCTION__, __LINE__ , proc.GetError() );
 
@@ -210,7 +210,7 @@ bool WRL1SHAPEHINTS::Read( WRLPROC& proc, WRL1BASE* aTopNode )
         }
         else
         {
-                wxLogTrace( traceVrmlPlugin,
+                KI_LOG_TRACE( traceVrmlPlugin,
                             wxT( "%s:%s:%d\n"
                                  " * [INFO] bad ShapeHints %s (unexpected keyword '%s')\n"
                                  " * [INFO] file: '%s'" ),
@@ -229,7 +229,7 @@ SGNODE* WRL1SHAPEHINTS::TranslateToSG( SGNODE* aParent, WRL1STATUS* sp )
 {
     // note: this is not fully implemented since it is unlikely we shall
     // ever make use of the fields shapeType, faceType, and creaseAngle
-    wxCHECK_MSG( sp, nullptr, wxT( "Invalid base data." ) );
+    KI_CHECK_MSG( sp, nullptr, wxT( "Invalid base data." ) );
 
     sp->order = m_order;
     sp->creaseLimit = cosf(m_crease);

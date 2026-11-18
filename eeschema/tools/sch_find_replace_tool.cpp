@@ -499,7 +499,7 @@ int SCH_FIND_REPLACE_TOOL::ReplaceAll( const TOOL_EVENT& aEvent )
     auto doReplace =
             [&]( SCH_ITEM* aItem, SCH_SHEET_PATH* aSheet, EDA_SEARCH_DATA& aData )
             {
-                wxCHECK_RET( aSheet, wxT( "must have a sheetpath for undo" ) );
+                KI_CHECK_RET( aSheet, wxT( "must have a sheetpath for undo" ) );
 
                 SCH_FIELD*  field = dynamic_cast<SCH_FIELD*>( aItem );
                 SCH_SYMBOL* parent = field && field->GetId() == FIELD_T::REFERENCE

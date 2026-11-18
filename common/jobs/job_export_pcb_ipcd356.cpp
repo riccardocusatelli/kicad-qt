@@ -52,5 +52,5 @@ void JOB_EXPORT_PCB_IPCD356::SetDefaultOutputPath( const wxString& aReferenceNam
 }
 
 
-REGISTER_JOB( pcb_export_ipcd356, _HKI( "PCB: Export IPC-D-356" ), KIWAY::FACE_PCB,
+REGISTER_JOB( pcb_export_ipcd356, _HKI( "PCB: Export IPC-D-356" ), KIWAY_FACES::FACE_PCB,
               JOB_EXPORT_PCB_IPCD356 );

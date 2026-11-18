@@ -160,7 +160,7 @@ wxString PCB_FIELDS_GRID_TABLE::GetColLabelValue( int aCol )
     case PFC_YOFFSET:     return _( "Y Offset" );
     case PFC_KNOCKOUT:    return _( "Knockout" );
     case PFC_MIRRORED:    return _( "Mirrored" );
-    default:              wxFAIL; return wxEmptyString;
+    default:              KI_FAIL(); return wxEmptyString;
     }
 }
 
@@ -190,7 +190,7 @@ bool PCB_FIELDS_GRID_TABLE::CanGetValueAs( int aRow, int aCol, const wxString& a
         return aTypeName == wxGRID_VALUE_NUMBER;
 
     default:
-        wxFAIL;
+        KI_FAIL();
         return false;
     }
 }
@@ -262,7 +262,7 @@ wxGridCellAttr* PCB_FIELDS_GRID_TABLE::GetAttr( int aRow, int aCol,
         return enhanceAttr( m_orientationColAttr, aRow, aCol, aKind );
 
     default:
-        wxFAIL;
+        KI_FAIL();
         return enhanceAttr( nullptr, aRow, aCol, aKind );
     }
 }
@@ -321,7 +321,7 @@ bool PCB_FIELDS_GRID_TABLE::GetValueAsBool( int aRow, int aCol )
     case PFC_MIRRORED: return field.IsMirrored();
 
     default:
-        wxFAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a bool value" ), aCol ) );
+        KI_FAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a bool value" ), aCol ) );
         return false;
     }
 }
@@ -336,7 +336,7 @@ long PCB_FIELDS_GRID_TABLE::GetValueAsLong( int aRow, int aCol )
     case PFC_LAYER: return field.GetLayer();
 
     default:
-        wxFAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a long value" ), aCol ) );
+        KI_FAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a long value" ), aCol ) );
         return 0;
     }
 }
@@ -392,7 +392,7 @@ void PCB_FIELDS_GRID_TABLE::SetValue( int aRow, int aCol, const wxString &aValue
         break;
 
     default:
-        wxFAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a string value" ), aCol ) );
+        KI_FAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a string value" ), aCol ) );
         break;
     }
 
@@ -414,7 +414,7 @@ void PCB_FIELDS_GRID_TABLE::SetValueAsBool( int aRow, int aCol, bool aValue )
     case PFC_MIRRORED:  field.SetMirrored( aValue );     break;
 
     default:
-        wxFAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a bool value" ), aCol ) );
+        KI_FAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a bool value" ), aCol ) );
         break;
     }
 
@@ -439,7 +439,7 @@ void PCB_FIELDS_GRID_TABLE::SetValueAsLong( int aRow, int aCol, long aValue )
         break;
 
     default:
-        wxFAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a long value" ), aCol ) );
+        KI_FAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a long value" ), aCol ) );
         break;
     }
 

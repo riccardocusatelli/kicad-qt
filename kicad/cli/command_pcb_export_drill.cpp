@@ -277,7 +277,7 @@ int CLI::PCB_EXPORT_DRILL_COMMAND::doPerform( KIWAY& aKiway )
         wxFprintf( stderr, _( "Warning: Report path supplied without --generate-report, no report will be generated\n" ) );
     }
 
-    int exitCode = aKiway.ProcessJob( KIWAY::FACE_PCB, drillJob.get() );
+    int exitCode = aKiway.ProcessJob( KIWAY_FACES::FACE_PCB, drillJob.get() );
 
     return exitCode;
 }

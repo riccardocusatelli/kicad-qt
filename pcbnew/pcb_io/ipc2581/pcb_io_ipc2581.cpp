@@ -245,7 +245,7 @@ void PCB_IO_IPC2581::insertNodeAfter( wxXmlNode* aPrev, wxXmlNode* aNode )
 {
     // insertNode places the node directly after aPrev
 
-    wxCHECK( aPrev, /* void */ );
+    KI_CHECK( aPrev, /* void */ );
 
     aNode->SetNext( aPrev->GetNext() );
     aPrev->SetNext( aNode );
@@ -655,7 +655,7 @@ void PCB_IO_IPC2581::addLocationNode( wxXmlNode* aNode, const PCB_SHAPE& aShape 
         break;
 
     case SHAPE_T::UNDEFINED:
-        wxFAIL;
+        KI_FAIL();
     }
 
     addLocationNode( aNode, pos.x, pos.y );
@@ -910,7 +910,7 @@ void PCB_IO_IPC2581::addFillDesc( wxXmlNode* aNode, FILL_T aFill, bool aForce )
 
 void PCB_IO_IPC2581::addLineDesc( wxXmlNode* aNode, int aWidth, LINE_STYLE aDashType, bool aForce )
 {
-    wxCHECK_RET( aNode, "aNode is null" );
+    KI_CHECK_RET( aNode, "aNode is null" );
 
     if( aWidth < 0 )
         return;
@@ -1647,7 +1647,7 @@ void PCB_IO_IPC2581::addShape( wxXmlNode* aContentNode, const PCB_SHAPE& aShape,
     }
 
     case SHAPE_T::UNDEFINED:
-        wxFAIL;
+        KI_FAIL();
     }
 
     // Only add UserPrimitiveRef when not in inline mode and a dictionary entry was created
@@ -3146,7 +3146,7 @@ bool PCB_IO_IPC2581::addPolygonNode( wxXmlNode* aParentNode, const SHAPE_LINE_CH
     }
     else
     {
-        wxCHECK( aWidth == 0, false );
+        KI_CHECK( aWidth == 0, false );
         make_node();
     }
 
@@ -3160,7 +3160,7 @@ bool PCB_IO_IPC2581::addPolygonCutouts( wxXmlNode* aParentNode, const SHAPE_POLY
 {
     for( size_t ii = 1; ii < aPolygon.size(); ++ii )
     {
-        wxCHECK2( aPolygon[ii].PointCount() >= 3, continue );
+        KI_CHECK2( aPolygon[ii].PointCount() >= 3, continue );
 
         wxXmlNode* cutoutNode = appendNode( aParentNode, "Cutout" );
         wxXmlNode* polybeginNode = appendNode( cutoutNode, "PolyBegin" );
@@ -3205,7 +3205,7 @@ bool PCB_IO_IPC2581::addOutlineNode( wxXmlNode* aParentNode, const SHAPE_POLY_SE
     for( int ii = 0; ii < source->OutlineCount(); ++ii )
     {
         if( !addPolygonNode( outlineNode, source->Outline( ii ) ) )
-            wxLogTrace( traceIpc2581, wxS( "Failed to add polygon to outline" ) );
+            KI_LOG_TRACE( traceIpc2581, wxS( "Failed to add polygon to outline" ) );
     }
 
     if( !outlineNode->GetChildren() )
@@ -3260,7 +3260,7 @@ void PCB_IO_IPC2581::generateProfile( wxXmlNode* aStepNode )
 
     if( !addPolygonNode( profileNode, board_outline.Outline( 0 ) ) )
     {
-        wxLogTrace( traceIpc2581, wxS( "Failed to add polygon to profile" ) );
+        KI_LOG_TRACE( traceIpc2581, wxS( "Failed to add polygon to profile" ) );
         aStepNode->RemoveChild( profileNode );
         deleteNode( profileNode );
         return;
@@ -3482,7 +3482,7 @@ wxXmlNode* PCB_IO_IPC2581::addPackage( wxXmlNode* aContentNode, FOOTPRINT* aFp )
                 else if( aLayer == F_Fab || aLayer == B_Fab )
                     nodeName = "AssemblyDrawing";
                 else
-                    wxASSERT( false );
+                    KI_ASSERT( false );
 
                 wxXmlNode* new_node = appendNode( parent, nodeName );
                 return new_node;
@@ -4417,7 +4417,7 @@ void PCB_IO_IPC2581::generateLayerSetNet( wxXmlNode* aLayerNode, PCB_LAYER_ID aL
             break;
 
         default:
-            wxLogTrace( traceIpc2581, wxS( "Unhandled type %s" ),
+            KI_LOG_TRACE( traceIpc2581, wxS( "Unhandled type %s" ),
                         ENUM_MAP<KICAD_T>::Instance().ToString( item->Type() ) );
         }
     }

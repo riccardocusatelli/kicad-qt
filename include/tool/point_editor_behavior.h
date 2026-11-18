@@ -132,9 +132,9 @@ protected:
 // Helper macros to check the number of points in the edit points object
 // Still a bug, but at least it won't segfault if the number of points is wrong
 #define CHECK_POINT_COUNT( aPoints, aExpected ) \
-    wxCHECK( aPoints.PointsSize() == aExpected, /* void */ )
+    KI_CHECK( aPoints.PointsSize() == aExpected, /* void */ )
 #define CHECK_POINT_COUNT_GE( aPoints, aExpected ) \
-    wxCHECK( aPoints.PointsSize() >= aExpected, /* void */ )
+    KI_CHECK( aPoints.PointsSize() >= aExpected, /* void */ )
 
 
 /**
@@ -214,7 +214,7 @@ public:
     EDA_POLYGON_POINT_EDIT_BEHAVIOR( EDA_SHAPE& aPolygon ) :
             m_shape( aPolygon )
     {
-        wxASSERT( aPolygon.GetShape() == SHAPE_T::POLY );
+        KI_ASSERT( aPolygon.GetShape() == SHAPE_T::POLY );
     }
 
     void MakePoints( EDIT_POINTS& aPoints ) override
@@ -260,7 +260,7 @@ public:
     EDA_SEGMENT_POINT_EDIT_BEHAVIOR( EDA_SHAPE& aSegment ) :
             m_segment( aSegment )
     {
-        wxASSERT( aSegment.GetShape() == SHAPE_T::SEGMENT );
+        KI_ASSERT( aSegment.GetShape() == SHAPE_T::SEGMENT );
     }
 
     void MakePoints( EDIT_POINTS& aPoints ) override;
@@ -296,7 +296,7 @@ public:
     EDA_CIRCLE_POINT_EDIT_BEHAVIOR( EDA_SHAPE& aCircle ) :
             m_circle( aCircle )
     {
-        wxASSERT( aCircle.GetShape() == SHAPE_T::CIRCLE );
+        KI_ASSERT( aCircle.GetShape() == SHAPE_T::CIRCLE );
     }
 
     void MakePoints( EDIT_POINTS& aPoints ) override;
@@ -333,7 +333,7 @@ public:
             m_bezier( aBezier ),
             m_maxError( aMaxError )
     {
-        wxASSERT( aBezier.GetShape() == SHAPE_T::BEZIER );
+        KI_ASSERT( aBezier.GetShape() == SHAPE_T::BEZIER );
     }
 
     void MakePoints( EDIT_POINTS& aPoints ) override;
@@ -378,7 +378,7 @@ public:
     EDA_ELLIPSE_POINT_EDIT_BEHAVIOR( EDA_SHAPE& aEllipse ) :
             m_ellipse( aEllipse )
     {
-        wxASSERT( aEllipse.GetShape() == SHAPE_T::ELLIPSE || aEllipse.GetShape() == SHAPE_T::ELLIPSE_ARC );
+        KI_ASSERT( aEllipse.GetShape() == SHAPE_T::ELLIPSE || aEllipse.GetShape() == SHAPE_T::ELLIPSE_ARC );
     }
 
     void MakePoints( EDIT_POINTS& aPoints ) override;
@@ -477,7 +477,7 @@ public:
             m_cell( aCell )
     {
         // Point editor only supports cardinally-rotated table cells.
-        wxASSERT( aCell.GetShape() == SHAPE_T::RECTANGLE );
+        KI_ASSERT( aCell.GetShape() == SHAPE_T::RECTANGLE );
     }
 
     void MakePoints( EDIT_POINTS& aPoints ) override;

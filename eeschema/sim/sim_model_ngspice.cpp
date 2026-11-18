@@ -310,7 +310,7 @@ SIM_MODEL_NGSPICE::MODEL_TYPE SIM_MODEL_NGSPICE::getModelType() const
     case TYPE::PMOS_HISIMHV2:        return MODEL_TYPE::HISIMHV2;
 
     default:
-        wxFAIL_MSG( "Unhandled SIM_MODEL type in SIM_MODEL_NGSPICE" );
+        KI_FAIL_MSG( "Unhandled SIM_MODEL type in SIM_MODEL_NGSPICE" );
         return MODEL_TYPE::NONE;
     }
 }

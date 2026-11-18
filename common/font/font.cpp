@@ -217,7 +217,7 @@ void FONT::getLinePositions( const wxString& aText, const VECTOR2I& aPosition, w
     case GR_TEXT_V_ALIGN_TOP:                                                                              break;
     case GR_TEXT_V_ALIGN_CENTER:        offset.y -= height / 2;                                            break;
     case GR_TEXT_V_ALIGN_BOTTOM:        offset.y -= height;                                                break;
-    case GR_TEXT_V_ALIGN_INDETERMINATE: wxFAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) ); break;
+    case GR_TEXT_V_ALIGN_INDETERMINATE: KI_FAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) ); break;
     }
 
     for( int i = 0; i < lineCount; i++ )
@@ -232,7 +232,7 @@ void FONT::getLinePositions( const wxString& aText, const VECTOR2I& aPosition, w
         case GR_TEXT_H_ALIGN_LEFT:                                                                             break;
         case GR_TEXT_H_ALIGN_CENTER:        lineOffset.x = -lineSize.x / 2;                                    break;
         case GR_TEXT_H_ALIGN_RIGHT:         lineOffset.x = -( lineSize.x + offset.x );                         break;
-        case GR_TEXT_H_ALIGN_INDETERMINATE: wxFAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) ); break;
+        case GR_TEXT_H_ALIGN_INDETERMINATE: KI_FAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) ); break;
         }
 
         aPositions.push_back( aPosition + lineOffset );
@@ -400,7 +400,7 @@ VECTOR2I FONT::drawMarkup( BOX2I* aBoundingBox, std::vector<std::unique_ptr<GLYP
         markup = &cached;
     }
 
-    wxASSERT( markup && markup->root );
+    KI_ASSERT( markup && markup->root );
 
     return ::drawMarkup( aBoundingBox, aGlyphs, markup->root.get(), aPosition, this, aSize, aAngle,
                          aMirror, aOrigin, aTextStyle, aFontMetrics, aMousePos, aActiveUrl );

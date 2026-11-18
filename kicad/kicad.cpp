@@ -680,7 +680,7 @@ struct APP_KICAD : public wxApp
 
             if( keyEvent )
             {
-                wxLogTrace( kicadTraceKeyEvent, "APP_KICAD::ProcessEvent %s", dump( *keyEvent ) );
+                KI_LOG_TRACE( kicadTraceKeyEvent, "APP_KICAD::ProcessEvent %s", dump( *keyEvent ) );
             }
         }
 

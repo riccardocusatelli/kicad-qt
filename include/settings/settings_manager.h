@@ -157,7 +157,7 @@ public:
         }
         else
         {
-            wxFAIL_MSG( wxString::Format( "Tried to GetAppSettings before registering: %s", aFilename ) );
+            KI_FAIL_MSG( wxString::Format( "Tried to GetAppSettings before registering: %s", aFilename ) );
         }
 
         m_app_settings_cache[typeHash] = ret;

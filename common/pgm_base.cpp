@@ -235,7 +235,7 @@ void PGM_BASE::ExitIfTeardownUnsafe()
 
 wxApp& PGM_BASE::App()
 {
-    wxASSERT( wxTheApp );
+    KI_ASSERT( wxTheApp );
     return *wxTheApp;
 }
 
@@ -567,7 +567,7 @@ void PGM_BASE::loadCommonSettings()
 
     for( const std::pair<wxString, ENV_VAR_ITEM> it : GetCommonSettings()->m_Env.vars )
     {
-        wxLogTrace( traceEnvVars, wxT( "PGM_BASE::loadSettings: Found entry %s = %s" ),
+        KI_LOG_TRACE( traceEnvVars, wxT( "PGM_BASE::loadSettings: Found entry %s = %s" ),
                     it.first, it.second.GetValue() );
 
         // Do not store the env var PROJECT_VAR_NAME ("KIPRJMOD") definition if for some reason
@@ -637,7 +637,7 @@ bool PGM_BASE::SetLanguage( wxString& aErrMsg, bool first_time )
     // false just because it failed to load wxstd catalog
     if( !m_locale->Init( m_language_id ) )
     {
-        wxLogTrace( traceLocale, wxT( "This language is not supported by the system." ) );
+        KI_LOG_TRACE( traceLocale, wxT( "This language is not supported by the system." ) );
 
         setLanguageId( wxLANGUAGE_DEFAULT );
         delete m_locale;
@@ -650,7 +650,7 @@ bool PGM_BASE::SetLanguage( wxString& aErrMsg, bool first_time )
     }
     else if( !first_time )
     {
-        wxLogTrace( traceLocale, wxT( "Search for dictionary %s.mo in %s" ) ,
+        KI_LOG_TRACE( traceLocale, wxT( "Search for dictionary %s.mo in %s" ) ,
                     dictionaryName, m_locale->GetName() );
     }
 
@@ -687,7 +687,7 @@ bool PGM_BASE::SetLanguage( wxString& aErrMsg, bool first_time )
     // the verification is skipped.
     if( !m_locale->IsLoaded( dictionaryName ) && m_language_id != wxLANGUAGE_ENGLISH )
     {
-        wxLogTrace( traceLocale, wxT( "Unable to load dictionary %s.mo in %s" ),
+        KI_LOG_TRACE( traceLocale, wxT( "Unable to load dictionary %s.mo in %s" ),
                     dictionaryName, m_locale->GetName() );
 
         setLanguageId( wxLANGUAGE_DEFAULT );
@@ -728,7 +728,7 @@ bool PGM_BASE::SetDefaultLanguage( wxString& aErrMsg )
     // the verification is skipped.
     if( !m_locale->IsLoaded( dictionaryName ) && m_language_id != wxLANGUAGE_ENGLISH )
     {
-        wxLogTrace( traceLocale, wxT( "Unable to load dictionary %s.mo in %s" ),
+        KI_LOG_TRACE( traceLocale, wxT( "Unable to load dictionary %s.mo in %s" ),
                     dictionaryName, m_locale->GetName() );
 
         setLanguageId( wxLANGUAGE_DEFAULT );
@@ -747,7 +747,7 @@ bool PGM_BASE::SetDefaultLanguage( wxString& aErrMsg )
 
 void PGM_BASE::SetLanguageIdentifier( int menu_id )
 {
-    wxLogTrace( traceLocale, wxT( "Select language ID %d from %d possible languages." ),
+    KI_LOG_TRACE( traceLocale, wxT( "Select language ID %d from %d possible languages." ),
                 menu_id, (int)arrayDim( LanguagesList )-1 );
 
     for( unsigned ii = 0;  LanguagesList[ii].m_KI_Lang_Identifier != 0; ii++ )
@@ -802,7 +802,7 @@ bool PGM_BASE::SetLocalEnvVariable( const wxString& aName, const wxString& aValu
 
     if( aName.IsEmpty() )
     {
-        wxLogTrace( traceEnvVars,
+        KI_LOG_TRACE( traceEnvVars,
                     wxT( "PGM_BASE::SetLocalEnvVariable: Attempt to set empty variable to "
                          "value %s" ),
                     aValue );
@@ -812,14 +812,14 @@ bool PGM_BASE::SetLocalEnvVariable( const wxString& aName, const wxString& aValu
     // Check to see if the environment variable is already set.
     if( wxGetEnv( aName, &env ) )
     {
-        wxLogTrace( traceEnvVars,
+        KI_LOG_TRACE( traceEnvVars,
                     wxT( "PGM_BASE::SetLocalEnvVariable: Environment variable %s already set "
                          "to %s" ),
                     aName, env );
         return env == aValue;
     }
 
-    wxLogTrace( traceEnvVars,
+    KI_LOG_TRACE( traceEnvVars,
                 wxT( "PGM_BASE::SetLocalEnvVariable: Setting local environment variable %s to %s" ),
                 aName, aValue );
 
@@ -833,7 +833,7 @@ void PGM_BASE::SetLocalEnvVariables()
     // is run.
     for( const std::pair<wxString, ENV_VAR_ITEM> m_local_env_var : GetCommonSettings()->m_Env.vars )
     {
-        wxLogTrace( traceEnvVars,
+        KI_LOG_TRACE( traceEnvVars,
                     wxT( "PGM_BASE::SetLocalEnvVariables: Setting local environment variable %s "
                          "to %s" ),
                     m_local_env_var.first,
@@ -1008,18 +1008,18 @@ void PGM_BASE::RegisterLibraryLoadStatusBar( KISTATUSBAR* aStatusBar )
 {
     std::lock_guard<std::mutex> lock( m_libraryLoadStatusBarsMutex );
 
-    wxLogTrace( traceLibraries, "RegisterLibraryLoadStatusBar: statusBar=%p", aStatusBar );
+    KI_LOG_TRACE( traceLibraries, "RegisterLibraryLoadStatusBar: statusBar=%p", aStatusBar );
 
     if( std::find( m_libraryLoadStatusBars.begin(), m_libraryLoadStatusBars.end(), aStatusBar )
         == m_libraryLoadStatusBars.end() )
     {
         m_libraryLoadStatusBars.push_back( aStatusBar );
-        wxLogTrace( traceLibraries, "  -> registered, total count=%zu",
+        KI_LOG_TRACE( traceLibraries, "  -> registered, total count=%zu",
                     m_libraryLoadStatusBars.size() );
     }
     else
     {
-        wxLogTrace( traceLibraries, "  -> already registered" );
+        KI_LOG_TRACE( traceLibraries, "  -> already registered" );
     }
 }
 
@@ -1028,34 +1028,34 @@ void PGM_BASE::UnregisterLibraryLoadStatusBar( KISTATUSBAR* aStatusBar )
 {
     std::lock_guard<std::mutex> lock( m_libraryLoadStatusBarsMutex );
 
-    wxLogTrace( traceLibraries, "UnregisterLibraryLoadStatusBar: statusBar=%p", aStatusBar );
+    KI_LOG_TRACE( traceLibraries, "UnregisterLibraryLoadStatusBar: statusBar=%p", aStatusBar );
 
     m_libraryLoadStatusBars.erase(
             std::remove( m_libraryLoadStatusBars.begin(), m_libraryLoadStatusBars.end(),
                          aStatusBar ),
             m_libraryLoadStatusBars.end() );
 
-    wxLogTrace( traceLibraries, "  -> remaining count=%zu", m_libraryLoadStatusBars.size() );
+    KI_LOG_TRACE( traceLibraries, "  -> remaining count=%zu", m_libraryLoadStatusBars.size() );
 }
 
 
 void PGM_BASE::AddLibraryLoadMessages( const std::vector<KI_ERROR>& aMessages )
 {
-    wxLogTrace( traceLibraries, "AddLibraryLoadMessages: message_count=%zu", aMessages.size() );
+    KI_LOG_TRACE( traceLibraries, "AddLibraryLoadMessages: message_count=%zu", aMessages.size() );
 
     if( aMessages.empty() )
         return;
 
     std::lock_guard<std::mutex> lock( m_libraryLoadStatusBarsMutex );
 
-    wxLogTrace( traceLibraries, "  -> registered status bars=%zu",
+    KI_LOG_TRACE( traceLibraries, "  -> registered status bars=%zu",
                 m_libraryLoadStatusBars.size() );
 
     for( KISTATUSBAR* statusBar : m_libraryLoadStatusBars )
     {
         if( statusBar )
         {
-            wxLogTrace( traceLibraries, "  -> forwarding to statusBar=%p", statusBar );
+            KI_LOG_TRACE( traceLibraries, "  -> forwarding to statusBar=%p", statusBar );
             statusBar->AddWarningMessages( "load", aMessages );
         }
     }
@@ -1066,7 +1066,7 @@ void PGM_BASE::ClearLibraryLoadMessages()
 {
     std::lock_guard<std::mutex> lock( m_libraryLoadStatusBarsMutex );
 
-    wxLogTrace( traceLibraries, "ClearLibraryLoadMessages: status bars=%zu",
+    KI_LOG_TRACE( traceLibraries, "ClearLibraryLoadMessages: status bars=%zu",
                 m_libraryLoadStatusBars.size() );
 
     for( KISTATUSBAR* statusBar : m_libraryLoadStatusBars )
@@ -1116,7 +1116,7 @@ static PGM_BASE* process;
 
 PGM_BASE& Pgm()
 {
-    wxASSERT( process ); // KIFACE_GETTER has already been called.
+    KI_ASSERT( process ); // KIFACE_GETTER has already been called.
     return *process;
 }
 

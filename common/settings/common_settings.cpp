@@ -148,12 +148,12 @@ COMMON_SETTINGS::COMMON_SETTINGS() :
                 {
                     const ENV_VAR_ITEM& var = entry.second;
 
-                    wxASSERT( entry.first == var.GetKey() );
+                    KI_ASSERT( entry.first == var.GetKey() );
 
                     // Default values are never persisted
                     if( var.IsDefault() )
                     {
-                        wxLogTrace( traceEnvVars,
+                        KI_LOG_TRACE( traceEnvVars,
                                     wxS( "COMMON_SETTINGS: Env var %s skipping save (default)" ),
                                     var.GetKey() );
                         continue;
@@ -169,7 +169,7 @@ COMMON_SETTINGS::COMMON_SETTINGS() :
                     {
                         if( var.GetDefinedInSettings() )
                         {
-                            wxLogTrace( traceEnvVars,
+                            KI_LOG_TRACE( traceEnvVars,
                                         wxS( "COMMON_SETTINGS: Env var %s was overridden "
                                              "externally, saving previously-loaded value %s" ),
                                         var.GetKey(), var.GetSettingsValue() );
@@ -177,7 +177,7 @@ COMMON_SETTINGS::COMMON_SETTINGS() :
                         }
                         else
                         {
-                            wxLogTrace( traceEnvVars,
+                            KI_LOG_TRACE( traceEnvVars,
                                         wxS( "COMMON_SETTINGS: Env var %s skipping save "
                                              "(external)" ),
                                         var.GetKey() );
@@ -185,7 +185,7 @@ COMMON_SETTINGS::COMMON_SETTINGS() :
                         }
                     }
 
-                    wxLogTrace( traceEnvVars,
+                    KI_LOG_TRACE( traceEnvVars,
                                 wxS( "COMMON_SETTINGS: Saving env var %s = %s" ),
                                 var.GetKey(), value);
 
@@ -209,7 +209,7 @@ COMMON_SETTINGS::COMMON_SETTINGS() :
                     {
                         if( m_Env.vars[key].GetDefinedExternally() )
                         {
-                            wxLogTrace( traceEnvVars,
+                            KI_LOG_TRACE( traceEnvVars,
                                         wxS( "COMMON_SETTINGS: %s is defined externally" ),
                                         key );
                             m_Env.vars[key].SetDefinedInSettings();
@@ -218,7 +218,7 @@ COMMON_SETTINGS::COMMON_SETTINGS() :
                         }
                         else
                         {
-                            wxLogTrace( traceEnvVars,
+                            KI_LOG_TRACE( traceEnvVars,
                                         wxS( "COMMON_SETTINGS: Updating %s: %s -> %s"),
                                         key, m_Env.vars[key].GetValue(), val );
                             m_Env.vars[key].SetValue( val );
@@ -226,7 +226,7 @@ COMMON_SETTINGS::COMMON_SETTINGS() :
                     }
                     else
                     {
-                        wxLogTrace( traceEnvVars,
+                        KI_LOG_TRACE( traceEnvVars,
                                     wxS( "COMMON_SETTINGS: Loaded new var: %s = %s" ),
                                     key, val );
                         m_Env.vars[key] = ENV_VAR_ITEM( key, val );
@@ -581,7 +581,7 @@ bool COMMON_SETTINGS::migrateSchema0to1()
     }
     catch( ... )
     {
-        wxLogTrace( traceSettings,
+        KI_LOG_TRACE( traceSettings,
                     wxT( "COMMON_SETTINGS::Migrate 0->1: mousewheel_pan not found" ) );
     }
 
@@ -617,7 +617,7 @@ bool COMMON_SETTINGS::migrateSchema1to2()
     }
     catch( ... )
     {
-        wxLogTrace( traceSettings, wxT( "COMMON_SETTINGS::Migrate 1->2: prefer_select_to_drag not found" ) );
+        KI_LOG_TRACE( traceSettings, wxT( "COMMON_SETTINGS::Migrate 1->2: prefer_select_to_drag not found" ) );
     }
 
     if( prefer_selection )
@@ -662,7 +662,7 @@ bool COMMON_SETTINGS::migrateSchema2to3()
 
         if( !m_Env.vars.count( key ) )
         {
-            wxLogTrace( traceEnvVars, wxS( "COMMON_SETTINGS: Loaded new var: %s = %s" ), key, val );
+            KI_LOG_TRACE( traceEnvVars, wxS( "COMMON_SETTINGS: Loaded new var: %s = %s" ), key, val );
             m_Env.vars[key] = ENV_VAR_ITEM( key, val );
         }
     }
@@ -729,7 +729,7 @@ bool COMMON_SETTINGS::migrateSchema3to4()
     }
     catch( ... )
     {
-        wxLogTrace( traceSettings, wxT( "COMMON_SETTINGS::Migrate 3->4: /netclass_panel/shown_columns not found" ) );
+        KI_LOG_TRACE( traceSettings, wxT( "COMMON_SETTINGS::Migrate 3->4: /netclass_panel/shown_columns not found" ) );
     }
 
     return true;
@@ -768,7 +768,7 @@ bool COMMON_SETTINGS::migrateSchema4to5()
     }
     catch( ... )
     {
-        wxLogTrace( traceSettings, wxT( "COMMON_SETTINGS::Migrate 4->5: dialog.controls not found" ) );
+        KI_LOG_TRACE( traceSettings, wxT( "COMMON_SETTINGS::Migrate 4->5: dialog.controls not found" ) );
     }
 
     return true;
@@ -791,7 +791,7 @@ bool COMMON_SETTINGS::migrateSchema5to6()
     }
     catch( ... )
     {
-        wxLogTrace( traceSettings, wxT( "COMMON_SETTINGS::Migrate 5->6: failed to set auto_backup.format" ) );
+        KI_LOG_TRACE( traceSettings, wxT( "COMMON_SETTINGS::Migrate 5->6: failed to set auto_backup.format" ) );
     }
 
     return true;
@@ -827,7 +827,7 @@ bool COMMON_SETTINGS::migrateSchema6to7()
     }
     catch( ... )
     {
-        wxLogTrace( traceSettings, wxT( "COMMON_SETTINGS::Migrate 6->7: failed to import field name templates" ) );
+        KI_LOG_TRACE( traceSettings, wxT( "COMMON_SETTINGS::Migrate 6->7: failed to import field name templates" ) );
     }
 
     return true;
@@ -857,7 +857,7 @@ bool COMMON_SETTINGS::MigrateFromLegacy( wxConfigBase* aCfg )
                 {
                     if( versionedEnvVarRegex.Matches( key ) )
                     {
-                        wxLogTrace( traceSettings,
+                        KI_LOG_TRACE( traceSettings,
                                     wxT( "Migrate Env: %s is blacklisted; skipping." ), key );
                         continue;
                     }
@@ -868,7 +868,7 @@ bool COMMON_SETTINGS::MigrateFromLegacy( wxConfigBase* aCfg )
                     {
                         ptr.push_back( key.ToStdString() );
 
-                        wxLogTrace( traceSettings, wxT( "Migrate Env: %s=%s" ),
+                        KI_LOG_TRACE( traceSettings, wxT( "Migrate Env: %s=%s" ),
                                     ptr.to_string(), value );
                         ( *m_internals )[ptr] = value.ToUTF8();
 
@@ -931,12 +931,12 @@ void COMMON_SETTINGS::InitializeEnvironment()
                 {
                     m_Env.vars[aKey].SetValue( envValue );
                     m_Env.vars[aKey].SetDefinedExternally();
-                    wxLogTrace( traceEnvVars, wxS( "InitializeEnvironment: Entry %s defined externally as %s" ),
+                    KI_LOG_TRACE( traceEnvVars, wxS( "InitializeEnvironment: Entry %s defined externally as %s" ),
                                 aKey, envValue );
                 }
                 else
                 {
-                    wxLogTrace( traceEnvVars, wxS( "InitializeEnvironment: Setting entry %s to default %s" ),
+                    KI_LOG_TRACE( traceEnvVars, wxS( "InitializeEnvironment: Setting entry %s to default %s" ),
                                 aKey, aDefault );
                 }
             };
@@ -972,7 +972,7 @@ bool COMMON_SETTINGS::readLegacy3DResolverCfg( const wxString&                  
         wxString errmsg = "no 3D configuration file";
         ostr << " * " << errmsg.ToUTF8() << " '";
         ostr << cfgname.ToUTF8() << "'";
-        wxLogTrace( traceSettings, "%s\n", ostr.str().c_str() );
+        KI_LOG_TRACE( traceSettings, "%s\n", ostr.str().c_str() );
         return false;
     }
 
@@ -984,7 +984,7 @@ bool COMMON_SETTINGS::readLegacy3DResolverCfg( const wxString&                  
         ostr << __FILE__ << ": " << __FUNCTION__ << ": " << __LINE__ << "\n";
         wxString errmsg = wxS( "Could not open configuration file" );
         ostr << " * " << errmsg.ToUTF8() << " '" << cfgname.ToUTF8() << "'";
-        wxLogTrace( traceSettings, wxS( "%s\n" ), ostr.str().c_str() );
+        KI_LOG_TRACE( traceSettings, wxS( "%s\n" ), ostr.str().c_str() );
         return false;
     }
 
@@ -1064,7 +1064,7 @@ bool COMMON_SETTINGS::getLegacy3DHollerith( const std::string& aString, size_t& 
         ostr << __FILE__ << ": " << __FUNCTION__ << ": " << __LINE__ << "\n";
         wxString errmsg = wxS( "bad Hollerith string on line" );
         ostr << " * " << errmsg.ToUTF8() << "\n'" << aString << "'";
-        wxLogTrace( traceSettings, wxS( "%s\n" ), ostr.str().c_str() );
+        KI_LOG_TRACE( traceSettings, wxS( "%s\n" ), ostr.str().c_str() );
 
         return false;
     }
@@ -1077,7 +1077,7 @@ bool COMMON_SETTINGS::getLegacy3DHollerith( const std::string& aString, size_t& 
         ostr << __FILE__ << ": " << __FUNCTION__ << ": " << __LINE__ << "\n";
         wxString errmsg = wxS( "missing opening quote mark in config file" );
         ostr << " * " << errmsg.ToUTF8() << "\n'" << aString << "'";
-        wxLogTrace( traceSettings, wxS( "%s\n" ), ostr.str().c_str() );
+        KI_LOG_TRACE( traceSettings, wxS( "%s\n" ), ostr.str().c_str() );
 
         return false;
     }
@@ -1090,7 +1090,7 @@ bool COMMON_SETTINGS::getLegacy3DHollerith( const std::string& aString, size_t& 
         ostr << __FILE__ << ": " << __FUNCTION__ << ": " << __LINE__ << "\n";
         wxString errmsg = wxS( "invalid entry (unexpected end of line)" );
         ostr << " * " << errmsg.ToUTF8() << "\n'" << aString << "'";
-        wxLogTrace( traceSettings, wxS( "%s\n" ), ostr.str().c_str() );
+        KI_LOG_TRACE( traceSettings, wxS( "%s\n" ), ostr.str().c_str() );
 
         return false;
     }
@@ -1106,7 +1106,7 @@ bool COMMON_SETTINGS::getLegacy3DHollerith( const std::string& aString, size_t& 
         ostr << __FILE__ << ": " << __FUNCTION__ << ": " << __LINE__ << "\n";
         wxString errmsg = wxS( "bad Hollerith string on line" );
         ostr << " * " << errmsg.ToUTF8() << "\n'" << aString << "'";
-        wxLogTrace( traceSettings, wxS( "%s\n" ), ostr.str().c_str() );
+        KI_LOG_TRACE( traceSettings, wxS( "%s\n" ), ostr.str().c_str() );
 
         return false;
     }
@@ -1122,7 +1122,7 @@ bool COMMON_SETTINGS::getLegacy3DHollerith( const std::string& aString, size_t& 
         ostr << __FILE__ << ": " << __FUNCTION__ << ": " << __LINE__ << "\n";
         wxString errmsg = wxS( "invalid entry (unexpected end of line)" );
         ostr << " * " << errmsg.ToUTF8() << "\n'" << aString << "'";
-        wxLogTrace( traceSettings, wxS( "%s\n" ), ostr.str().c_str() );
+        KI_LOG_TRACE( traceSettings, wxS( "%s\n" ), ostr.str().c_str() );
 
         return false;
     }
@@ -1139,7 +1139,7 @@ bool COMMON_SETTINGS::getLegacy3DHollerith( const std::string& aString, size_t& 
         ostr << __FILE__ << ": " << __FUNCTION__ << ": " << __LINE__ << "\n";
         wxString errmsg = wxS( "missing closing quote mark in config file" );
         ostr << " * " << errmsg.ToUTF8() << "\n'" << aString << "'";
-        wxLogTrace( traceSettings, wxS( "%s\n" ), ostr.str().c_str() );
+        KI_LOG_TRACE( traceSettings, wxS( "%s\n" ), ostr.str().c_str() );
 
         return false;
     }

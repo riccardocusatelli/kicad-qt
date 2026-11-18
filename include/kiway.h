@@ -367,7 +367,7 @@ public:
      * A simple mapping function which returns the FACE_T which is known to implement
      * @a aFrameType.
      *
-     * @return a valid value #KIWAY::FACE_T or FACE_T(-1) if given a bad @a aFrameType.
+     * @return a valid value #KIWAY_FACES::FACE_T or FACE_T(-1) if given a bad @a aFrameType.
      */
     static FACE_T KifaceType( FRAME_T aFrameType );
 
@@ -508,14 +508,14 @@ public:
 
     void QueueEvent( wxEvent* aEvent ) override;
 
-    int  ProcessJob( KIWAY::FACE_T aFace, JOB* aJob, REPORTER* aReporter = nullptr,
+    int  ProcessJob( KIWAY_FACES::FACE_T aFace, JOB* aJob, REPORTER* aReporter = nullptr,
                      PROGRESS_REPORTER* aProgressReporter = nullptr );
-    bool ProcessApiCloseDocument( KIWAY::FACE_T aFace, const KIFACE::DOCUMENT_SPEC& aSpec,
+    bool ProcessApiCloseDocument( KIWAY_FACES::FACE_T aFace, const KIFACE::DOCUMENT_SPEC& aSpec,
                                   KICAD_API_SERVER* aServer,
                                   wxString* aError = nullptr );
-    bool ProcessJobConfigDialog( KIWAY::FACE_T aFace, JOB* aJob, wxWindow* aWindow );
+    bool ProcessJobConfigDialog( KIWAY_FACES::FACE_T aFace, JOB* aJob, wxWindow* aWindow );
 
-    bool ProcessApiOpenDocument( KIWAY::FACE_T aFace, const KIFACE::DOCUMENT_SPEC& aSpec,
+    bool ProcessApiOpenDocument( KIWAY_FACES::FACE_T aFace, const KIFACE::DOCUMENT_SPEC& aSpec,
                                  KICAD_API_SERVER* aServer,
                                  wxString* aError = nullptr );
 

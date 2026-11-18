@@ -57,7 +57,7 @@ wxString DESIGN_BLOCK_LIBRARY_ADAPTER::GlobalPathEnvVariableName()
 DESIGN_BLOCK_IO* DESIGN_BLOCK_LIBRARY_ADAPTER::dbplugin( const LIB_DATA* aRow )
 {
     DESIGN_BLOCK_IO* ret = dynamic_cast<DESIGN_BLOCK_IO*>( aRow->plugin.get() );
-    wxCHECK( aRow->plugin && ret, nullptr );
+    KI_CHECK( aRow->plugin && ret, nullptr );
     return ret;
 }
 
@@ -81,13 +81,13 @@ LIBRARY_RESULT<IO_BASE*> DESIGN_BLOCK_LIBRARY_ADAPTER::createPlugin( const LIBRA
     }
     else if( type == DESIGN_BLOCK_IO_MGR::DESIGN_BLOCK_FILE_UNKNOWN )
     {
-        wxLogTrace( traceLibraries, "Sym: Plugin type %s is unknown!", row->Type() );
+        KI_LOG_TRACE( traceLibraries, "Sym: Plugin type %s is unknown!", row->Type() );
         wxString msg = wxString::Format( _( "Unknown library type %s " ), row->Type() );
         return tl::unexpected( LIBRARY_ERROR( msg ) );
     }
 
     DESIGN_BLOCK_IO* plugin = DESIGN_BLOCK_IO_MGR::FindPlugin( type );
-    wxCHECK( plugin, tl::unexpected( LIBRARY_ERROR( _( "Internal error" ) ) ) );
+    KI_CHECK( plugin, tl::unexpected( LIBRARY_ERROR( _( "Internal error" ) ) ) );
 
     return plugin;
 }
@@ -117,7 +117,7 @@ std::optional<LIB_STATUS> DESIGN_BLOCK_LIBRARY_ADAPTER::LoadOne( LIB_DATA* aLib 
     {
         wxArrayString dummyList;
         dbplugin( aLib )->DesignBlockEnumerate( dummyList, getUri( aLib->row ), false, &options );
-        wxLogTrace( traceLibraries, "DB: %s: library enumerated %zu items", aLib->row->Nickname(), dummyList.size() );
+        KI_LOG_TRACE( traceLibraries, "DB: %s: library enumerated %zu items", aLib->row->Nickname(), dummyList.size() );
         aLib->status.load_status = LOAD_STATUS::LOADED;
         aLib->status.error.reset();
     }
@@ -125,7 +125,7 @@ std::optional<LIB_STATUS> DESIGN_BLOCK_LIBRARY_ADAPTER::LoadOne( LIB_DATA* aLib 
     {
         aLib->status.load_status = LOAD_STATUS::LOAD_ERROR;
         aLib->status.error = LIBRARY_ERROR( e.Problem(), e.Where() );
-        wxLogTrace( traceLibraries, "DB: %s: plugin threw exception: %s", aLib->row->Nickname(), e.What() );
+        KI_LOG_TRACE( traceLibraries, "DB: %s: plugin threw exception: %s", aLib->row->Nickname(), e.What() );
     }
 
     return aLib->status;
@@ -163,7 +163,7 @@ std::vector<DESIGN_BLOCK*> DESIGN_BLOCK_LIBRARY_ADAPTER::GetDesignBlocks( const 
     }
     catch( IO_ERROR& e )
     {
-        wxLogTrace( traceLibraries, "DB: Exception enumerating library %s: %s", lib->row->Nickname(), e.What() );
+        KI_LOG_TRACE( traceLibraries, "DB: Exception enumerating library %s: %s", lib->row->Nickname(), e.What() );
     }
 
     for( const wxString& blockName : blockNames )
@@ -174,7 +174,7 @@ std::vector<DESIGN_BLOCK*> DESIGN_BLOCK_LIBRARY_ADAPTER::GetDesignBlocks( const 
         }
         catch( IO_ERROR& e )
         {
-            wxLogTrace( traceLibraries, "DB: Exception enumerating design block %s: %s", blockName, e.What() );
+            KI_LOG_TRACE( traceLibraries, "DB: Exception enumerating design block %s: %s", blockName, e.What() );
         }
     }
 
@@ -295,7 +295,7 @@ DESIGN_BLOCK* DESIGN_BLOCK_LIBRARY_ADAPTER::LoadDesignBlock( const wxString& aNi
         }
         catch( const IO_ERROR& ioe )
         {
-            wxLogTrace( traceLibraries, "LoadDesignBlock: error loading %s:%s: %s", aNickname, aDesignBlockName,
+            KI_LOG_TRACE( traceLibraries, "LoadDesignBlock: error loading %s:%s: %s", aNickname, aDesignBlockName,
                         ioe.What() );
 
             if( aErrorMsg )
@@ -304,7 +304,7 @@ DESIGN_BLOCK* DESIGN_BLOCK_LIBRARY_ADAPTER::LoadDesignBlock( const wxString& aNi
     }
     else
     {
-        wxLogTrace( traceLibraries, "LoadDesignBlock: requested library %s not loaded", aNickname );
+        KI_LOG_TRACE( traceLibraries, "LoadDesignBlock: requested library %s not loaded", aNickname );
 
         if( aErrorMsg )
             *aErrorMsg = libraryUnavailableMessage( aNickname );

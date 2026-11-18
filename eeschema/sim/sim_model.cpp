@@ -95,7 +95,7 @@ SIM_MODEL::DEVICE_INFO SIM_MODEL::DeviceInfo( DEVICE_T aDeviceType )
     case DEVICE_T::XSPICE:    return { "XSPICE",  "XSPICE Code Model",            true  };
     case DEVICE_T::SPICE:     return { "SPICE",   "Raw SPICE Element",            true  };
 
-    default:    wxFAIL;       return {};
+    default:    KI_FAIL();       return {};
     }
 }
 
@@ -239,7 +239,7 @@ SIM_MODEL::INFO SIM_MODEL::TypeInfo( TYPE aType )
 
     case TYPE::RAWSPICE:             return { DEVICE_T::SPICE,  "",               ""                            };
 
-    default:       wxFAIL;           return {};
+    default:       KI_FAIL();           return {};
     }
 }
 
@@ -380,7 +380,7 @@ SIM_MODEL::SPICE_INFO SIM_MODEL::SpiceInfo( TYPE aType )
     case TYPE::NONE:
     case TYPE::RAWSPICE:             return {};
 
-    default:       wxFAIL;           return {};
+    default:       KI_FAIL();           return {};
     }
 }
 
@@ -503,7 +503,7 @@ std::unique_ptr<SIM_MODEL> SIM_MODEL::Create( TYPE aType, std::span<const wxStri
     }
     catch( IO_ERROR& )
     {
-        wxFAIL_MSG( "Shouldn't throw reading empty fields!" );
+        KI_FAIL_MSG( "Shouldn't throw reading empty fields!" );
     }
 
     return model;
@@ -539,7 +539,7 @@ std::unique_ptr<SIM_MODEL> SIM_MODEL::Create( const SIM_MODEL* aBaseModel, std::
     }
     catch( IO_ERROR& )
     {
-        wxFAIL_MSG( "Shouldn't throw reading empty fields!" );
+        KI_FAIL_MSG( "Shouldn't throw reading empty fields!" );
     }
 
     return model;
@@ -688,7 +688,7 @@ void SIM_MODEL::AddParam( const PARAM::INFO& aInfo )
 
 void SIM_MODEL::SetBaseModel( const SIM_MODEL& aBaseModel )
 {
-    wxASSERT_MSG( GetType() == aBaseModel.GetType(),
+    KI_ASSERT_MSG( GetType() == aBaseModel.GetType(),
                   wxS( "Simulation model type must be the same as its base class!" ) );
 
     m_baseModel = &aBaseModel;
@@ -1769,7 +1769,7 @@ void SIM_MODEL::MigrateSimModel( T& aSymbol, const PROJECT* aProject )
 
                         if( deviceSubtypeInfo.m_Text == wxT( "DC" ) && tokenizer.CountTokens() == 1 )
                         {
-                            wxCHECK( valueField, /* void */ );
+                            KI_CHECK( valueField, /* void */ );
                             valueField->SetText( tokenizer.GetNextToken() );
                             modelFromValueField = false;
                         }

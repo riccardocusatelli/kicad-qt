@@ -416,7 +416,7 @@ void MULTICHANNEL_TOOL::ShowMismatchDetails( wxWindow* aParent, const wxString& 
 bool MULTICHANNEL_TOOL::Init()
 {
     PCB_SELECTION_TOOL* selTool = m_toolMgr->GetTool<PCB_SELECTION_TOOL>();
-    wxCHECK( selTool, false );
+    KI_CHECK( selTool, false );
 
     TOOL_MENU& selToolMenu = selTool->GetToolMenu();
 
@@ -470,7 +470,7 @@ bool MULTICHANNEL_TOOL::findComponentsInRuleArea( RULE_AREA*            aRuleAre
     auto reportError =
             [&]( const wxString& aMessage, int aOffset )
             {
-                wxLogTrace( traceMultichannelTool, wxT( "ERROR: %s"), aMessage );
+                KI_LOG_TRACE( traceMultichannelTool, wxT( "ERROR: %s"), aMessage );
             };
 
     ctx.SetErrorCallback( reportError );
@@ -478,7 +478,7 @@ bool MULTICHANNEL_TOOL::findComponentsInRuleArea( RULE_AREA*            aRuleAre
     compiler.SetErrorCallback( reportError );
     //compiler.SetDebugReporter( m_reporter );
 
-    wxLogTrace( traceMultichannelTool, wxT( "rule area '%s'" ), aRuleArea->m_zone->GetZoneName() );
+    KI_LOG_TRACE( traceMultichannelTool, wxT( "rule area '%s'" ), aRuleArea->m_zone->GetZoneName() );
 
     wxString sourceName = aRuleArea->m_zone->GetPlacementAreaSource();
     sourceName.Replace( wxT( "'" ), wxT( "\\'" ) );
@@ -513,7 +513,7 @@ bool MULTICHANNEL_TOOL::findComponentsInRuleArea( RULE_AREA*            aRuleAre
 
         if( val->AsDouble() != 0.0 )
         {
-            wxLogTrace( traceMultichannelTool, wxT( " - %s [sheet %s]" ),
+            KI_LOG_TRACE( traceMultichannelTool, wxT( " - %s [sheet %s]" ),
                         fp->GetReference(),
                         fp->GetSheetname() );
 
@@ -654,7 +654,7 @@ bool MULTICHANNEL_TOOL::findOtherItemsInRuleArea( RULE_AREA* aRuleArea, std::set
     auto reportError =
             [&]( const wxString& aMessage, int aOffset )
             {
-                wxLogTrace( traceMultichannelTool, wxT( "ERROR: %s"), aMessage );
+                KI_LOG_TRACE( traceMultichannelTool, wxT( "ERROR: %s"), aMessage );
             };
 
     ctx.SetErrorCallback( reportError );
@@ -915,7 +915,7 @@ void MULTICHANNEL_TOOL::GeneratePotentialRuleAreas()
         ent.m_components = queryComponentsInSheet( ent.m_sheetPath );
         m_areas.m_areas.push_back( ent );
 
-        wxLogTrace( traceMultichannelTool, wxT("found sheet '%s' @ '%s' s %d\n"),
+        KI_LOG_TRACE( traceMultichannelTool, wxT("found sheet '%s' @ '%s' s %d\n"),
                     ent.m_sheetName,
                     ent.m_sheetPath,
                     (int) m_areas.m_areas.size() );
@@ -931,7 +931,7 @@ void MULTICHANNEL_TOOL::GeneratePotentialRuleAreas()
         ent.m_components = queryComponentsInComponentClass( ent.m_componentClass );
         m_areas.m_areas.push_back( ent );
 
-        wxLogTrace( traceMultichannelTool, wxT( "found component class '%s' s %d\n" ),
+        KI_LOG_TRACE( traceMultichannelTool, wxT( "found component class '%s' s %d\n" ),
                     ent.m_componentClass,
                     static_cast<int>( m_areas.m_areas.size() ) );
     }
@@ -946,7 +946,7 @@ void MULTICHANNEL_TOOL::GeneratePotentialRuleAreas()
         ent.m_components = queryComponentsInGroup( ent.m_groupName );
         m_areas.m_areas.push_back( ent );
 
-        wxLogTrace( traceMultichannelTool, wxT( "found group '%s' s %d\n" ),
+        KI_LOG_TRACE( traceMultichannelTool, wxT( "found group '%s' s %d\n" ),
                     ent.m_componentClass,
                     static_cast<int>( m_areas.m_areas.size() ) );
     }
@@ -990,11 +990,11 @@ void MULTICHANNEL_TOOL::FindExistingRuleAreas()
 
         m_areas.m_areas.push_back( area );
 
-        wxLogTrace( traceMultichannelTool, wxT( "RA '%s', %d footprints\n" ), area.m_ruleName,
+        KI_LOG_TRACE( traceMultichannelTool, wxT( "RA '%s', %d footprints\n" ), area.m_ruleName,
                     (int) area.m_components.size() );
     }
 
-    wxLogTrace( traceMultichannelTool, wxT( "Total RAs found: %d\n" ), (int) m_areas.m_areas.size() );
+    KI_LOG_TRACE( traceMultichannelTool, wxT( "Total RAs found: %d\n" ), (int) m_areas.m_areas.size() );
 }
 
 
@@ -1596,7 +1596,7 @@ void MULTICHANNEL_TOOL::DiscoverRepeatCandidates( bool aLoose )
     if( unticked && resolved )
         updateSelectionCore();
 
-    wxLogTrace( traceMultichannelTool, wxT( "Discovery: %s, %d candidates" ), timer.to_string(),
+    KI_LOG_TRACE( traceMultichannelTool, wxT( "Discovery: %s, %d candidates" ), timer.to_string(),
                 (int) m_areas.m_compatMap.size() );
 }
 
@@ -2139,7 +2139,7 @@ void MULTICHANNEL_TOOL::UpdateRepeatPreview()
     m_areas.m_options = savedOptions;
     canvas()->Refresh();
     HighlightRepeatAreas( m_focusArea );
-    wxLogTrace( traceMultichannelTool, wxT( "Preview: %s" ), timer.to_string() );
+    KI_LOG_TRACE( traceMultichannelTool, wxT( "Preview: %s" ), timer.to_string() );
 }
 
 
@@ -2485,8 +2485,8 @@ int MULTICHANNEL_TOOL::RepeatLayout( const TOOL_EVENT& aEvent, RULE_AREA& aRefAr
                                      REPEAT_LAYOUT_OPTIONS& aOptions, BOARD_COMMIT* aExternalCommit,
                                      wxString* aErrorOut )
 {
-    wxCHECK_MSG( aRefArea.m_zone, -1, wxT( "Reference Rule Area has no zone." ) );
-    wxCHECK_MSG( aTargetArea.m_zone, -1, wxT( "Target Rule Area has no zone." ) );
+    KI_CHECK_MSG( aRefArea.m_zone, -1, wxT( "Reference Rule Area has no zone." ) );
+    KI_CHECK_MSG( aTargetArea.m_zone, -1, wxT( "Target Rule Area has no zone." ) );
 
     const bool silent = aErrorOut != nullptr;
 
@@ -2580,7 +2580,7 @@ int MULTICHANNEL_TOOL::applyRepeat( BOARD_COMMIT& aCommit )
     {
         if( !compatData.m_doCopy )
         {
-            wxLogTrace( traceMultichannelTool, wxT( "skipping copy to RA '%s' (disabled in dialog)\n" ),
+            KI_LOG_TRACE( traceMultichannelTool, wxT( "skipping copy to RA '%s' (disabled in dialog)\n" ),
                         targetArea->m_ruleName );
             continue;
         }
@@ -3076,7 +3076,7 @@ int MULTICHANNEL_TOOL::findRoutingInRuleArea( RULE_AREA* aRuleArea, std::set<BOA
     auto reportError =
             [&]( const wxString& aMessage, int aOffset )
             {
-                wxLogTrace( traceMultichannelTool, wxT( "ERROR: %s" ), aMessage );
+                KI_LOG_TRACE( traceMultichannelTool, wxT( "ERROR: %s" ), aMessage );
             };
 
     ctx.SetErrorCallback( reportError );
@@ -3235,7 +3235,7 @@ void MULTICHANNEL_TOOL::copyRuleAreaContents( RULE_AREA* aRefArea, RULE_AREA* aT
         std::set<BOARD_CONNECTED_ITEM*> refRouting;
         std::set<BOARD_CONNECTED_ITEM*> targetRouting;
 
-        wxLogTrace( traceMultichannelTool, wxT( "copying routing: %d fps\n" ),
+        KI_LOG_TRACE( traceMultichannelTool, wxT( "copying routing: %d fps\n" ),
                     (int) aCompatData.m_matchingComponents.size() );
 
         std::set<int> refc;
@@ -3681,13 +3681,13 @@ void MULTICHANNEL_TOOL::copyRuleAreaContents( RULE_AREA* aRefArea, RULE_AREA* aT
         {
             if( !aRefArea->m_zone->GetLayerSet().Contains( refFP->GetLayer() ) )
             {
-                wxLogTrace( traceMultichannelTool, wxT( "discard ref:%s (ref layer)\n" ),
+                KI_LOG_TRACE( traceMultichannelTool, wxT( "discard ref:%s (ref layer)\n" ),
                             refFP->GetReference() );
                 continue;
             }
             if( !aTargetArea->m_zone->GetLayerSet().Contains( refFP->GetLayer() ) )
             {
-                wxLogTrace( traceMultichannelTool, wxT( "discard ref:%s (target layer)\n" ),
+                KI_LOG_TRACE( traceMultichannelTool, wxT( "discard ref:%s (target layer)\n" ),
                             refFP->GetReference() );
                 continue;
             }
@@ -3714,7 +3714,7 @@ void MULTICHANNEL_TOOL::copyRuleAreaContents( RULE_AREA* aRefArea, RULE_AREA* aT
 
             for( PCB_FIELD* refField : refFP->GetFields() )
             {
-                wxCHECK2( refField, continue );
+                KI_CHECK2( refField, continue );
 
                 PCB_FIELD* targetField = targetFP->GetField( refField->GetName() );
 
@@ -4130,7 +4130,7 @@ bool MULTICHANNEL_TOOL::resolveConnectionTopology( RULE_AREA* aRefArea, RULE_ARE
                                                                                          globalNets ) );
     timerBuild.Stop();
 
-    wxLogTrace( traceMultichannelTool, wxT( "Graph construction: %s (%d + %d components)" ),
+    KI_LOG_TRACE( traceMultichannelTool, wxT( "Graph construction: %s (%d + %d components)" ),
                 timerBuild.to_string(),
                 (int) aRefArea->m_components.size(),
                 (int) aTargetArea->m_components.size() );
@@ -4142,7 +4142,7 @@ bool MULTICHANNEL_TOOL::resolveConnectionTopology( RULE_AREA* aRefArea, RULE_ARE
                                           mismatchReasons, aParams );
     timerIso.Stop();
 
-    wxLogTrace( traceMultichannelTool, wxT( "FindIsomorphism: %s, result=%d" ),
+    KI_LOG_TRACE( traceMultichannelTool, wxT( "FindIsomorphism: %s, result=%d" ),
                 timerIso.to_string(), status ? 1 : 0 );
 
     // Net topology can legitimately differ between a design block and its placed instance once the
@@ -4264,7 +4264,7 @@ int MULTICHANNEL_TOOL::AutogenerateRuleAreas( const TOOL_EVENT& aEvent )
             return 0;
     }
 
-    wxLogTrace( traceMultichannelTool, wxT( "%d placement areas found\n" ), (int) m_areas.m_areas.size() );
+    KI_LOG_TRACE( traceMultichannelTool, wxT( "%d placement areas found\n" ), (int) m_areas.m_areas.size() );
 
     BOARD_COMMIT commit( GetManager(), true, false );
 
@@ -4316,7 +4316,7 @@ int MULTICHANNEL_TOOL::AutogenerateRuleAreas( const TOOL_EVENT& aEvent )
                 continue;
             }
 
-            wxLogTrace( traceMultichannelTool, existingAreaTraceFormat, source, zone->GetZoneName() );
+            KI_LOG_TRACE( traceMultichannelTool, existingAreaTraceFormat, source, zone->GetZoneName() );
 
             oldZones.push_back( zone );
         }
@@ -4335,7 +4335,7 @@ int MULTICHANNEL_TOOL::AutogenerateRuleAreas( const TOOL_EVENT& aEvent )
 
             if( groupItems.empty() )
             {
-                wxLogTrace( traceMultichannelTool,
+                KI_LOG_TRACE( traceMultichannelTool,
                             wxT( "Skipping placement rule area generation for source group '%s': group has no board items." ),
                             ra.m_groupName );
                 continue;
@@ -4390,7 +4390,7 @@ int MULTICHANNEL_TOOL::AutogenerateRuleAreas( const TOOL_EVENT& aEvent )
             raOutline = buildRAOutline( outlineItems, 100000 );
         }
 
-        wxLogTrace( traceMultichannelTool, wxT( "Generated rule area '%s' (%d components)\n" ),
+        KI_LOG_TRACE( traceMultichannelTool, wxT( "Generated rule area '%s' (%d components)\n" ),
                     newZone->GetZoneName(),
                     (int) ra.m_components.size() );
 

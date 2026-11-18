@@ -195,7 +195,7 @@ void DS_DATA_MODEL_IO::Format( DS_DATA_MODEL* aModel, DS_DATA_ITEM* aItem ) cons
         break;
 
     default:
-        wxFAIL_MSG( wxT( "Cannot format item" ) );
+        KI_FAIL_MSG( wxT( "Cannot format item" ) );
     }
 }
 

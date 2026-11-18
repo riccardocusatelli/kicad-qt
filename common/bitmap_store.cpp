@@ -110,7 +110,7 @@ BITMAP_STORE::BITMAP_STORE() :
 {
     wxFileName path( PATHS::GetStockDataPath() + wxT( "/resources" ), IMAGE_ARCHIVE );
 
-    wxLogTrace( traceBitmaps, "Loading bitmaps from " + path.GetFullPath() );
+    KI_LOG_TRACE( traceBitmaps, "Loading bitmaps from " + path.GetFullPath() );
 
     m_archive = std::make_unique<ASSET_ARCHIVE>( path.GetFullPath() );
 
@@ -214,7 +214,7 @@ wxBitmapBundle BITMAP_STORE::GetBitmapBundleDef( BITMAPS aBitmapId, int aDefHeig
 
     if( bmps.empty() )
     {
-        wxFAIL_MSG( wxString::Format( "Missing bitmap for ID %d", static_cast<int>( aBitmapId ) ) );
+        KI_FAIL_MSG( wxString::Format( "Missing bitmap for ID %d", static_cast<int>( aBitmapId ) ) );
         wxMemoryInputStream is( s_imageNotFound, sizeof( s_imageNotFound ) );
         largestImage = resampleImage( wxImage( is, wxBITMAP_TYPE_PNG ), aDefHeight, aDefHeight );
         bmps.push_back( wxBitmap( largestImage ) );
@@ -332,7 +332,7 @@ wxBitmapBundle BITMAP_STORE::GetDisabledBitmapBundleDef( BITMAPS aBitmapId, int 
 
     if( bmps.empty() )
     {
-        wxFAIL_MSG( wxString::Format( "Missing bitmap for ID %d", static_cast<int>( aBitmapId ) ) );
+        KI_FAIL_MSG( wxString::Format( "Missing bitmap for ID %d", static_cast<int>( aBitmapId ) ) );
         wxMemoryInputStream is( s_imageNotFound, sizeof( s_imageNotFound ) );
         largestImage = resampleImage( wxImage( is, wxBITMAP_TYPE_PNG ), aDefHeight, aDefHeight );
         bmps.push_back( wxBitmap( largestImage ) );
@@ -382,7 +382,7 @@ wxImage BITMAP_STORE::getImage( BITMAPS aBitmapId, int aHeight )
 
         if( count < 0 )
         {
-            wxLogTrace( traceBitmaps,
+            KI_LOG_TRACE( traceBitmaps,
                         "Bitmap for %d, %d, %d has an info tag with file %s,"
                         "but that file could not be found in the archive!",
                         static_cast<int>( aBitmapId ), aHeight, static_cast<int>( m_theme ), name );
@@ -436,7 +436,7 @@ wxString BITMAP_STORE::computeBitmapName( BITMAPS aBitmapId, int aHeight )
 {
     if( !m_bitmapInfoCache.count( aBitmapId ) || m_bitmapInfoCache.at( aBitmapId ).empty() )
     {
-        wxLogTrace( traceBitmaps, "No bitmap info available for %d", aBitmapId );
+        KI_LOG_TRACE( traceBitmaps, "No bitmap info available for %d", aBitmapId );
         return wxEmptyString;
     }
 
@@ -456,7 +456,7 @@ wxString BITMAP_STORE::computeBitmapName( BITMAPS aBitmapId, int aHeight )
 
     if( fn.IsEmpty() )
     {
-        wxLogTrace( traceBitmaps, "No bitmap found matching ID %d, height %d, theme %s", static_cast<int>( aBitmapId ),
+        KI_LOG_TRACE( traceBitmaps, "No bitmap found matching ID %d, height %d, theme %s", static_cast<int>( aBitmapId ),
                     aHeight, m_theme );
         return m_bitmapInfoCache.at( aBitmapId ).begin()->filename;
     }

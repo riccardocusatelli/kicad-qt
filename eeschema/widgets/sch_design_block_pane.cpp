@@ -166,7 +166,7 @@ FILEDLG_IMPORT_SHEET_CONTENTS::FILEDLG_IMPORT_SHEET_CONTENTS( EESCHEMA_SETTINGS*
         m_cbRepeatedPlacement( nullptr ), m_cbPlaceAsGroup( nullptr ), m_cbPlaceAsSheet( nullptr ),
         m_cbKeepAnnotations( nullptr )
 {
-    wxASSERT( aSettings );
+    KI_ASSERT( aSettings );
     m_settings = aSettings;
 };
 

@@ -227,7 +227,7 @@ int CLI::SCH_EXPORT_PLOT_COMMAND::doPerform( KIWAY& aKiway )
         pngJob->m_antialias = !m_argParser.get<bool>( ARG_NO_ANTIALIAS );
     }
 
-    int exitCode = aKiway.ProcessJob( KIWAY::FACE_SCH, plotJob.get() );
+    int exitCode = aKiway.ProcessJob( KIWAY_FACES::FACE_SCH, plotJob.get() );
 
     return exitCode;
 }

@@ -112,7 +112,7 @@ void SCH_IO_DATABASE::EnumerateSymbolLib( std::vector<LIB_SYMBOL*>& aSymbolList,
                                           const wxString&           aLibraryPath,
                                           const std::map<std::string, UTF8>*         aProperties )
 {
-    wxCHECK_RET( m_adapter, "Database plugin missing library manager adapter handle!" );
+    KI_CHECK_RET( m_adapter, "Database plugin missing library manager adapter handle!" );
     ensureSettings( aLibraryPath );
     cacheLib( ensureConnection() );
 
@@ -142,7 +142,7 @@ LIB_SYMBOL* SCH_IO_DATABASE::LoadSymbol( const wxString&   aLibraryPath,
                                          const wxString&   aAliasName,
                                          const std::map<std::string, UTF8>* aProperties )
 {
-    wxCHECK_MSG( m_adapter, nullptr, "Database plugin missing library manager adapter handle!" );
+    KI_CHECK_MSG( m_adapter, nullptr, "Database plugin missing library manager adapter handle!" );
     ensureSettings( aLibraryPath );
     std::shared_ptr<DATABASE_CONNECTION> conn = ensureConnection();
 
@@ -195,7 +195,7 @@ LIB_SYMBOL* SCH_IO_DATABASE::LoadSymbol( const wxString&   aLibraryPath,
 
     if( tablesToTry.empty() )
     {
-        wxLogTrace( traceDatabase, wxT( "LoadSymbol: table '%s' not found in config" ), tableName );
+        KI_LOG_TRACE( traceDatabase, wxT( "LoadSymbol: table '%s' not found in config" ), tableName );
         return nullptr;
     }
 
@@ -207,12 +207,12 @@ LIB_SYMBOL* SCH_IO_DATABASE::LoadSymbol( const wxString&   aLibraryPath,
         if( conn->SelectOne( table->table, std::make_pair( table->key_col, symbolName ), result ) )
         {
             foundTable = table;
-            wxLogTrace( traceDatabase, wxT( "LoadSymbol: SelectOne (%s, %s) found in %s" ),
+            KI_LOG_TRACE( traceDatabase, wxT( "LoadSymbol: SelectOne (%s, %s) found in %s" ),
                         table->key_col, symbolName, table->table );
         }
         else
         {
-            wxLogTrace( traceDatabase, wxT( "LoadSymbol: SelectOne (%s, %s) failed for table %s" ),
+            KI_LOG_TRACE( traceDatabase, wxT( "LoadSymbol: SelectOne (%s, %s) failed for table %s" ),
                         table->key_col, symbolName, table->table );
         }
     }
@@ -595,7 +595,7 @@ void SCH_IO_DATABASE::startBackgroundRefresh()
 
     m_refreshRunning = true;
 
-    wxLogTrace( traceDatabase, wxT( "Starting background refresh thread" ) );
+    KI_LOG_TRACE( traceDatabase, wxT( "Starting background refresh thread" ) );
     m_refreshThread = std::thread( &SCH_IO_DATABASE::backgroundRefreshWorker, this );
 }
 
@@ -678,7 +678,7 @@ void SCH_IO_DATABASE::backgroundRefreshWorker()
         // The pass owns its connection, so a reconnect cannot free it and no lock is held across the reads
         if( conn && conn->IsConnected() && m_cachePopulated.load() )
         {
-            wxLogTrace( traceDatabase, wxT( "Initiating background refresh" ) );
+            KI_LOG_TRACE( traceDatabase, wxT( "Initiating background refresh" ) );
 
             try
             {
@@ -708,7 +708,7 @@ void SCH_IO_DATABASE::backgroundRefreshWorker()
 
                         if( !conn->SelectAll( table.table, table.key_col, results, &status ) )
                         {
-                            wxLogTrace( traceDatabase, wxT( "Background refresh: SelectAll failed for table %s" ),
+                            KI_LOG_TRACE( traceDatabase, wxT( "Background refresh: SelectAll failed for table %s" ),
                                         table.table );
                             querySuccess = false;
 
@@ -747,7 +747,7 @@ void SCH_IO_DATABASE::backgroundRefreshWorker()
 
                         materializeCache( tableResults, newSymbolCache, newSanitizedNameMap );
 
-                        wxLogTrace( traceDatabase, wxT( "Background refresh: new data" ) );
+                        KI_LOG_TRACE( traceDatabase, wxT( "Background refresh: new data" ) );
 
                         {
                             std::unique_lock lock( m_cacheMutex );
@@ -763,17 +763,17 @@ void SCH_IO_DATABASE::backgroundRefreshWorker()
                     }
                     else
                     {
-                        wxLogTrace( traceDatabase, wxT( "Background refresh: no new data" ) );
+                        KI_LOG_TRACE( traceDatabase, wxT( "Background refresh: no new data" ) );
                     }
                 }
             }
             catch( const IO_ERROR& e )
             {
-                wxLogTrace( traceDatabase, wxT( "Background refresh failed: %s; cache preserved" ), e.What() );
+                KI_LOG_TRACE( traceDatabase, wxT( "Background refresh failed: %s; cache preserved" ), e.What() );
             }
             catch( const std::exception& e )
             {
-                wxLogTrace( traceDatabase, wxT( "Background refresh failed: %s; cache preserved" ), e.what() );
+                KI_LOG_TRACE( traceDatabase, wxT( "Background refresh failed: %s; cache preserved" ), e.what() );
             }
         }
 
@@ -824,12 +824,12 @@ void SCH_IO_DATABASE::ensureSettings( const wxString& aSettingsPath )
     }
     else if( currentConnection() && m_settings && !aSettingsPath.IsEmpty() )
     {
-        wxASSERT_MSG( aSettingsPath == m_settings->GetFilename(),
+        KI_ASSERT_MSG( aSettingsPath == m_settings->GetFilename(),
                       "Path changed for database library without re-initializing plugin!" );
     }
     else if( !m_settings )
     {
-        wxLogTrace( traceDatabase, wxT( "ensureSettings: no settings but no valid path!" ) );
+        KI_LOG_TRACE( traceDatabase, wxT( "ensureSettings: no settings but no valid path!" ) );
     }
 }
 
@@ -984,7 +984,7 @@ std::shared_ptr<DATABASE_CONNECTION> SCH_IO_DATABASE::currentConnection()
 
 std::shared_ptr<DATABASE_CONNECTION> SCH_IO_DATABASE::ensureConnection()
 {
-    wxCHECK_MSG( m_settings, nullptr, "Call ensureSettings before ensureConnection!" );
+    KI_CHECK_MSG( m_settings, nullptr, "Call ensureSettings before ensureConnection!" );
 
     CONNECT_STATUS status = connect();
 
@@ -1015,7 +1015,7 @@ std::shared_ptr<DATABASE_CONNECTION> SCH_IO_DATABASE::ensureConnection()
 
 SCH_IO_DATABASE::CONNECT_STATUS SCH_IO_DATABASE::connect()
 {
-    wxCHECK_MSG( m_settings, CONNECT_STATUS(), "Call ensureSettings before connect()!" );
+    KI_CHECK_MSG( m_settings, CONNECT_STATUS(), "Call ensureSettings before connect()!" );
 
     // Every load and symbol lookup comes through here, so a live connection returns before any other work
     if( std::shared_ptr<DATABASE_CONNECTION> live = currentConnection(); live && live->IsConnected() )
@@ -1231,7 +1231,7 @@ std::unique_ptr<LIB_SYMBOL>  SCH_IO_DATABASE::loadSymbolFromRow( const wxString&
 
             if( !s_inProgressLoads.insert( symbolIdStr ).second )
             {
-                wxLogTrace( traceDatabase, wxT( "loadSymbolFromRow: cycle detected resolving '%s' "
+                KI_LOG_TRACE( traceDatabase, wxT( "loadSymbolFromRow: cycle detected resolving '%s' "
                                                 "(row '%s' in table '%s'); skipping recursive load" ),
                             symbolIdStr, aSymbolName, aTable.name );
                 continue;
@@ -1258,7 +1258,7 @@ std::unique_ptr<LIB_SYMBOL>  SCH_IO_DATABASE::loadSymbolFromRow( const wxString&
             }
             else
             {
-                wxLogTrace( traceDatabase, wxT( "loadSymbolFromRow: source symbol '%s' not found" ), symbolIdStr );
+                KI_LOG_TRACE( traceDatabase, wxT( "loadSymbolFromRow: source symbol '%s' not found" ), symbolIdStr );
             }
         }
 
@@ -1419,7 +1419,7 @@ std::unique_ptr<LIB_SYMBOL>  SCH_IO_DATABASE::loadSymbolFromRow( const wxString&
     }
     else
     {
-        wxLogTrace( traceDatabase, wxT( "loadSymboFromRow: footprint field %s not found." ), aTable.footprints_col );
+        KI_LOG_TRACE( traceDatabase, wxT( "loadSymboFromRow: footprint field %s not found." ), aTable.footprints_col );
     }
 
     // Pin-to-pad maps (issue #2282): attach non-destructively.  The pins column carries either the
@@ -1514,7 +1514,7 @@ std::unique_ptr<LIB_SYMBOL>  SCH_IO_DATABASE::loadSymbolFromRow( const wxString&
         }
         else
         {
-            wxLogTrace( traceDatabase, wxT( "loadSymbolFromRow: exclude_from_sim value for %s "
+            KI_LOG_TRACE( traceDatabase, wxT( "loadSymbolFromRow: exclude_from_sim value for %s "
                                             "could not be cast to a boolean" ), aSymbolName );
         }
     }
@@ -1530,7 +1530,7 @@ std::unique_ptr<LIB_SYMBOL>  SCH_IO_DATABASE::loadSymbolFromRow( const wxString&
         }
         else
         {
-            wxLogTrace( traceDatabase, wxT( "loadSymbolFromRow: exclude_from_board value for %s "
+            KI_LOG_TRACE( traceDatabase, wxT( "loadSymbolFromRow: exclude_from_board value for %s "
                                             "could not be cast to a boolean" ), aSymbolName );
         }
     }
@@ -1546,7 +1546,7 @@ std::unique_ptr<LIB_SYMBOL>  SCH_IO_DATABASE::loadSymbolFromRow( const wxString&
         }
         else
         {
-            wxLogTrace( traceDatabase, wxT( "loadSymbolFromRow: exclude_from_bom value for %s "
+            KI_LOG_TRACE( traceDatabase, wxT( "loadSymbolFromRow: exclude_from_bom value for %s "
                                             "could not be cast to a boolean" ), aSymbolName );
         }
     }
@@ -1573,7 +1573,7 @@ std::unique_ptr<LIB_SYMBOL>  SCH_IO_DATABASE::loadSymbolFromRow( const wxString&
     {
         if( !aRow.count( mapping.column ) )
         {
-            wxLogTrace( traceDatabase, wxT( "loadSymbolFromRow: field %s not found in result" ), mapping.column );
+            KI_LOG_TRACE( traceDatabase, wxT( "loadSymbolFromRow: field %s not found in result" ), mapping.column );
             continue;
         }
 

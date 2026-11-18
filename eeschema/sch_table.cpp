@@ -113,7 +113,7 @@ void SCH_TABLE::Serialize( google::protobuf::Any& aContainer ) const
     kiapi::common::PackCustomProperties( table.mutable_custom_properties(), *this );
 
     if( !aContainer.PackFrom( table ) )
-        wxFAIL_MSG( wxT( "Failed to pack SCH_TABLE" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack SCH_TABLE" ) );
 }
 
 
@@ -182,7 +182,7 @@ bool SCH_TABLE::Deserialize( const google::protobuf::Any& aContainer )
 
 void SCH_TABLE::swapData( SCH_ITEM* aItem )
 {
-    wxCHECK_RET( aItem != nullptr && aItem->Type() == SCH_TABLE_T, wxT( "Cannot swap data with invalid table." ) );
+    KI_CHECK_RET( aItem != nullptr && aItem->Type() == SCH_TABLE_T, wxT( "Cannot swap data with invalid table." ) );
 
     SCH_TABLE* table = static_cast<SCH_TABLE*>( aItem );
 

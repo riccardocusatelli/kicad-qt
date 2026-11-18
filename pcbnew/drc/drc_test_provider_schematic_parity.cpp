@@ -218,7 +218,7 @@ void DRC_TEST_PROVIDER_SCHEMATIC_PARITY::testNetlist( NETLIST& aNetlist )
 
                 for( PCB_FIELD* field : footprint->GetFields() )
                 {
-                    wxCHECK2( field, continue );
+                    KI_CHECK2( field, continue );
 
                     if( field->IsReference() || field->IsValue() || field->IsComponentClass() )
                         continue;

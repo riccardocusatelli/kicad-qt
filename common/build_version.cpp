@@ -411,7 +411,7 @@ wxString GetVersionInfoData( const wxString& aTitle, bool aHtml, bool aBrief )
         aMsg << indent4 << "Encoded " << testStr << ": " << sysHex << " (sys), " << utf8Hex
              << " (utf8)" << eol;
 
-        wxASSERT_MSG( utf8Hex == expectedUtf8Hex,
+        KI_ASSERT_MSG( utf8Hex == expectedUtf8Hex,
                       wxString::Format( "utf8_str string %s encoding bad result: %s, expected "
                                         "%s, system enc %s, lang %s",
                                         testStr, utf8Hex, expectedUtf8Hex,

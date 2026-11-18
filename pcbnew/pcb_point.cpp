@@ -241,7 +241,7 @@ EDA_ITEM* PCB_POINT::Clone() const
 
 void PCB_POINT::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther && aOther->Type() == PCB_POINT_T, /* void */ );
+    KI_CHECK( aOther && aOther->Type() == PCB_POINT_T, /* void */ );
     *this = *static_cast<const PCB_POINT*>( aOther );
 }
 
@@ -273,7 +273,7 @@ void PCB_POINT::Serialize( google::protobuf::Any& aContainer ) const
     kiapi::common::PackCustomProperties( point.mutable_custom_properties(), *this );
 
     if( !aContainer.PackFrom( point ) )
-        wxFAIL_MSG( wxT( "Failed to pack PCB_POINT" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack PCB_POINT" ) );
 }
 
 

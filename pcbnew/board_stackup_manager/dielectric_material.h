@@ -119,7 +119,7 @@ public:
      */
     void DeleteSubstrate( int aIdx )
     {
-        wxCHECK( aIdx > 0 && aIdx < (int) m_substrateList.size(), /* void */ );
+        KI_CHECK( aIdx > 0 && aIdx < (int) m_substrateList.size(), /* void */ );
 
         m_substrateList.erase( m_substrateList.begin() + aIdx );
     }

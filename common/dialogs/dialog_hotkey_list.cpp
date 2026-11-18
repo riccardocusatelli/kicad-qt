@@ -45,7 +45,7 @@ DIALOG_LIST_HOTKEYS::DIALOG_LIST_HOTKEYS( EDA_BASE_FRAME* aParent ):
             m_hk_list->ActionsList().push_back( action );
     }
 
-    for( KIWAY::FACE_T face : { KIWAY::FACE_SCH, KIWAY::FACE_PCB, KIWAY::FACE_GERBVIEW, KIWAY::FACE_PL_EDITOR } )
+    for( KIWAY_FACES::FACE_T face : { KIWAY_FACES::FACE_SCH, KIWAY_FACES::FACE_PCB, KIWAY_FACES::FACE_GERBVIEW, KIWAY_FACES::FACE_PL_EDITOR } )
     {
         if( KIFACE* kiface = Kiway().KiFACE( face ) )
             kiface->GetActions( m_hk_list->ActionsList() );

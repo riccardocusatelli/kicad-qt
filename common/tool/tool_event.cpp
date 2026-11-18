@@ -69,7 +69,7 @@ void TOOL_EVENT::init()
 
 VECTOR2D TOOL_EVENT::returnCheckedPosition( const VECTOR2D& aPos ) const
 {
-    wxCHECK_MSG( HasPosition(), VECTOR2D(), "Attempted to get position from non-position event" );
+    KI_CHECK_MSG( HasPosition(), VECTOR2D(), "Attempted to get position from non-position event" );
 
     return aPos;
 }

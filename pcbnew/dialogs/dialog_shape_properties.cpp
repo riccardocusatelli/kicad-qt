@@ -68,8 +68,8 @@ public:
 
     void BindCtrls( size_t aFrom, size_t aTo, std::function<void()> aCb )
     {
-        wxCHECK( aFrom < m_boundCtrls.size(), /* void */ );
-        wxCHECK( aTo < m_boundCtrls.size(), /* void */ );
+        KI_CHECK( aFrom < m_boundCtrls.size(), /* void */ );
+        KI_CHECK( aTo < m_boundCtrls.size(), /* void */ );
 
         for( size_t i = aFrom; i <= aTo; ++i )
         {
@@ -94,31 +94,31 @@ protected:
 
     wxTextCtrl* GetCtrl( size_t aIndex ) const
     {
-        wxCHECK( aIndex < m_boundCtrls.size(), nullptr );
+        KI_CHECK( aIndex < m_boundCtrls.size(), nullptr );
         return m_boundCtrls[aIndex].m_Ctrl;
     }
 
     int GetIntValue( size_t aIndex ) const
     {
-        wxCHECK( aIndex < m_boundCtrls.size(), 0.0 );
+        KI_CHECK( aIndex < m_boundCtrls.size(), 0.0 );
         return static_cast<int>( m_boundCtrls[aIndex].m_Binder->GetValue() );
     }
 
     EDA_ANGLE GetAngleValue( size_t aIndex ) const
     {
-        wxCHECK( aIndex < m_boundCtrls.size(), EDA_ANGLE() );
+        KI_CHECK( aIndex < m_boundCtrls.size(), EDA_ANGLE() );
         return m_boundCtrls[aIndex].m_Binder->GetAngleValue();
     }
 
     void ChangeValue( size_t aIndex, int aValue )
     {
-        wxCHECK( aIndex < m_boundCtrls.size(), /* void */ );
+        KI_CHECK( aIndex < m_boundCtrls.size(), /* void */ );
         m_boundCtrls[aIndex].m_Binder->ChangeValue( aValue );
     }
 
     void ChangeAngleValue( size_t aIndex, const EDA_ANGLE& aValue )
     {
-        wxCHECK( aIndex < m_boundCtrls.size(), /* void */ );
+        KI_CHECK( aIndex < m_boundCtrls.size(), /* void */ );
         m_boundCtrls[aIndex].m_Binder->ChangeAngleValue( aValue );
     }
 
@@ -159,8 +159,8 @@ public:
     RECTANGLE_GEOM_SYNCER( PCB_SHAPE& aShape, std::vector<BOUND_CONTROL>& aBoundCtrls ) :
             GEOM_SYNCER( aShape, aBoundCtrls )
     {
-        wxASSERT( aBoundCtrls.size() == NUM_CTRLS );
-        wxASSERT( GetShape().GetShape() == SHAPE_T::RECTANGLE );
+        KI_ASSERT( aBoundCtrls.size() == NUM_CTRLS );
+        KI_ASSERT( GetShape().GetShape() == SHAPE_T::RECTANGLE );
 
         BindCtrls( START_X, END_Y,
                    [this]()
@@ -301,8 +301,8 @@ public:
     LINE_GEOM_SYNCER( PCB_SHAPE& aShape, std::vector<BOUND_CONTROL>& aBoundCtrls ) :
             GEOM_SYNCER( aShape, aBoundCtrls )
     {
-        wxASSERT( aBoundCtrls.size() == NUM_CTRLS );
-        wxASSERT( GetShape().GetShape() == SHAPE_T::SEGMENT );
+        KI_ASSERT( aBoundCtrls.size() == NUM_CTRLS );
+        KI_ASSERT( GetShape().GetShape() == SHAPE_T::SEGMENT );
 
         BindCtrls( START_X, END_Y,
                    [this]()
@@ -437,8 +437,8 @@ public:
     ARC_GEOM_SYNCER( PCB_SHAPE& aShape, std::vector<BOUND_CONTROL>& aBoundCtrls ) :
             GEOM_SYNCER( aShape, aBoundCtrls )
     {
-        wxASSERT( aBoundCtrls.size() == NUM_CTRLS );
-        wxASSERT( GetShape().GetShape() == SHAPE_T::ARC );
+        KI_ASSERT( aBoundCtrls.size() == NUM_CTRLS );
+        KI_ASSERT( GetShape().GetShape() == SHAPE_T::ARC );
 
         BindCtrls( CSA_CENTER_X, CSA_ANGLE,
                    [this]()
@@ -629,8 +629,8 @@ public:
     CIRCLE_GEOM_SYNCER( PCB_SHAPE& aShape, std::vector<BOUND_CONTROL>& aBoundCtrls ) :
             GEOM_SYNCER( aShape, aBoundCtrls )
     {
-        wxASSERT( aBoundCtrls.size() == NUM_CTRLS );
-        wxASSERT( GetShape().GetShape() == SHAPE_T::CIRCLE );
+        KI_ASSERT( aBoundCtrls.size() == NUM_CTRLS );
+        KI_ASSERT( GetShape().GetShape() == SHAPE_T::CIRCLE );
 
         BindCtrls( CENTER_X, RADIUS,
                    [this]()
@@ -726,8 +726,8 @@ public:
     ELLIPSE_GEOM_SYNCER( PCB_SHAPE& aShape, std::vector<BOUND_CONTROL>& aBoundCtrls ) :
             GEOM_SYNCER( aShape, aBoundCtrls )
     {
-        wxASSERT( aBoundCtrls.size() == NUM_CTRLS );
-        wxASSERT( GetShape().GetShape() == SHAPE_T::ELLIPSE );
+        KI_ASSERT( aBoundCtrls.size() == NUM_CTRLS );
+        KI_ASSERT( GetShape().GetShape() == SHAPE_T::ELLIPSE );
 
         BindCtrls( CENTER_X, ROTATION,
                    [this]()
@@ -804,8 +804,8 @@ public:
     ELLIPSE_ARC_GEOM_SYNCER( PCB_SHAPE& aShape, std::vector<BOUND_CONTROL>& aBoundCtrls ) :
             GEOM_SYNCER( aShape, aBoundCtrls )
     {
-        wxASSERT( aBoundCtrls.size() == NUM_CTRLS );
-        wxASSERT( GetShape().GetShape() == SHAPE_T::ELLIPSE_ARC );
+        KI_ASSERT( aBoundCtrls.size() == NUM_CTRLS );
+        KI_ASSERT( GetShape().GetShape() == SHAPE_T::ELLIPSE_ARC );
 
         BindCtrls( CENTER_X, END_ANGLE,
                    [this]()
@@ -888,8 +888,8 @@ public:
     BEZIER_GEOM_SYNCER( PCB_SHAPE& aShape, std::vector<BOUND_CONTROL>& aBoundCtrls ) :
             GEOM_SYNCER( aShape, aBoundCtrls )
     {
-        wxASSERT( aBoundCtrls.size() == NUM_CTRLS );
-        wxASSERT( GetShape().GetShape() == SHAPE_T::BEZIER );
+        KI_ASSERT( aBoundCtrls.size() == NUM_CTRLS );
+        KI_ASSERT( GetShape().GetShape() == SHAPE_T::BEZIER );
 
         BindCtrls( START_X, CTRL2_Y,
                    [this]()
@@ -1026,7 +1026,7 @@ static std::map<SHAPE_T, int> s_lastTabForShape;
 
 void DIALOG_SHAPE_PROPERTIES::createLineEndingControls( PCB_BASE_EDIT_FRAME* aParent )
 {
-    wxCHECK_RET( m_upperSizer, wxT( "Shape properties dialog has no upper sizer" ) );
+    KI_CHECK_RET( m_upperSizer, wxT( "Shape properties dialog has no upper sizer" ) );
 
     m_endingsSizer = new wxBoxSizer( wxVERTICAL );
 
@@ -1152,7 +1152,7 @@ DIALOG_SHAPE_PROPERTIES::DIALOG_SHAPE_PROPERTIES( PCB_BASE_EDIT_FRAME* aParent, 
             {
                 // Get the parent of the sizer, which is the panel
                 wxWindow* page = aMainSizer.GetContainingWindow();
-                wxCHECK( page, /* void */ );
+                KI_CHECK( page, /* void */ );
                 page->Layout();
 
                 const int pageIdx = m_notebookShapeDefs->FindPage( page );
@@ -1288,7 +1288,7 @@ DIALOG_SHAPE_PROPERTIES::DIALOG_SHAPE_PROPERTIES( PCB_BASE_EDIT_FRAME* aParent, 
         break;
 
     case SHAPE_T::UNDEFINED:
-        wxFAIL_MSG( "Undefined shape" );
+        KI_FAIL_MSG( "Undefined shape" );
         break;
     }
 
@@ -1376,7 +1376,7 @@ DIALOG_SHAPE_PROPERTIES::DIALOG_SHAPE_PROPERTIES( PCB_BASE_EDIT_FRAME* aParent, 
 
 void PCB_BASE_EDIT_FRAME::ShowGraphicItemPropertiesDialog( PCB_SHAPE* aShape )
 {
-    wxCHECK_RET( aShape, wxT( "ShowGraphicItemPropertiesDialog() error: NULL item" ) );
+    KI_CHECK_RET( aShape, wxT( "ShowGraphicItemPropertiesDialog() error: NULL item" ) );
 
     DIALOG_SHAPE_PROPERTIES dlg( this, aShape );
 

@@ -136,7 +136,7 @@ bool DXF_IMPORT_PLUGIN::Load( const wxString& aFileName )
 
 bool DXF_IMPORT_PLUGIN::Import()
 {
-    wxCHECK( m_importer, false );
+    KI_CHECK( m_importer, false );
     m_internalImporter.ImportTo( *m_importer );
 
     return true;

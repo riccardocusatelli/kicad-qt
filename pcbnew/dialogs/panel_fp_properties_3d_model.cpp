@@ -703,7 +703,7 @@ bool PANEL_FP_PROPERTIES_3D_MODEL::pick3DModel( const wxString& aCurrentValue, F
 
 void PANEL_FP_PROPERTIES_3D_MODEL::set3DModelRow( int aRow, const FP_3DMODEL& aModel )
 {
-    wxCHECK_RET( aRow >= 0 && aRow < static_cast<int>( m_shapes3D_list.size() ),
+    KI_CHECK_RET( aRow >= 0 && aRow < static_cast<int>( m_shapes3D_list.size() ),
                  wxS( "invalid 3D model row" ) );
 
     m_shapes3D_list[aRow] = aModel;

@@ -44,7 +44,7 @@ public:
         {
             if( !dynamic_cast<WX_AUI_TAB_ART*>( notebook->GetArtProvider() ) )
             {
-                wxFAIL_MSG( "Set wxAuiNotebook WX_AUI_TAB_ART before adding pages" );
+                KI_FAIL_MSG( "Set wxAuiNotebook WX_AUI_TAB_ART before adding pages" );
             }
         }
 

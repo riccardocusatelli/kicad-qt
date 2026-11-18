@@ -44,7 +44,7 @@ DRC_RE_CONDITION_ROW_PANEL::DRC_RE_CONDITION_ROW_PANEL( wxWindow* aParent, BOARD
         wxPanel( aParent ),
         m_showObjectSelector( aShowObjectSelector )
 {
-    wxLogTrace( TRACE_COND, wxS( "[DRC_RE_CONDITION_ROW_PANEL] ctor START" ) );
+    KI_LOG_TRACE( TRACE_COND, wxS( "[DRC_RE_CONDITION_ROW_PANEL] ctor START" ) );
 
     // Outer horizontal sizer: content on left, delete button on right
     m_mainSizer = new wxBoxSizer( wxHORIZONTAL );
@@ -147,7 +147,7 @@ DRC_RE_CONDITION_ROW_PANEL::DRC_RE_CONDITION_ROW_PANEL( wxWindow* aParent, BOARD
     m_deleteBtn->SetToolTip( _( "Remove this condition" ) );
     m_mainSizer->Add( m_deleteBtn, 0, wxALL | wxALIGN_TOP, 2 );
 
-    wxLogTrace( TRACE_COND, wxS( "[DRC_RE_CONDITION_ROW_PANEL] setting sizer" ) );
+    KI_LOG_TRACE( TRACE_COND, wxS( "[DRC_RE_CONDITION_ROW_PANEL] setting sizer" ) );
     SetSizer( m_mainSizer );
 
     // Bind events
@@ -159,7 +159,7 @@ DRC_RE_CONDITION_ROW_PANEL::DRC_RE_CONDITION_ROW_PANEL( wxWindow* aParent, BOARD
     m_areaSelector->Bind( FILTERED_ITEM_SELECTED, &DRC_RE_CONDITION_ROW_PANEL::onValueChanged, this );
     m_customQueryCtrl->Bind( wxEVT_STC_CHANGE, &DRC_RE_CONDITION_ROW_PANEL::onCustomQueryChanged, this );
 
-    wxLogTrace( TRACE_COND, wxS( "[DRC_RE_CONDITION_ROW_PANEL] ctor END" ) );
+    KI_LOG_TRACE( TRACE_COND, wxS( "[DRC_RE_CONDITION_ROW_PANEL] ctor END" ) );
 }
 
 
@@ -238,11 +238,11 @@ wxString DRC_RE_CONDITION_ROW_PANEL::GetValue() const
 
 bool DRC_RE_CONDITION_ROW_PANEL::ParseExpression( const wxString& aExpr )
 {
-    wxLogTrace( TRACE_COND, wxS( "[ParseExpression] expr='%s'" ), aExpr );
+    KI_LOG_TRACE( TRACE_COND, wxS( "[ParseExpression] expr='%s'" ), aExpr );
 
     if( aExpr.IsEmpty() )
     {
-        wxLogTrace( TRACE_COND, wxS( "[ParseExpression] empty -> ANY" ) );
+        KI_LOG_TRACE( TRACE_COND, wxS( "[ParseExpression] empty -> ANY" ) );
         SetConditionType( CONDITION_TYPE::ANY );
         return true;
     }
@@ -288,7 +288,7 @@ bool DRC_RE_CONDITION_ROW_PANEL::ParseExpression( const wxString& aExpr )
     }
 
     // Fallback to custom query
-    wxLogTrace( TRACE_COND, wxS( "[ParseExpression] no match -> CUSTOM" ) );
+    KI_LOG_TRACE( TRACE_COND, wxS( "[ParseExpression] no match -> CUSTOM" ) );
     SetConditionType( CONDITION_TYPE::CUSTOM );
     m_customQueryCtrl->SetValue( aExpr );
 

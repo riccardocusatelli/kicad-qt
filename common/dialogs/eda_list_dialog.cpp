@@ -85,7 +85,7 @@ EDA_LIST_DIALOG::EDA_LIST_DIALOG( wxWindow* aParent, const wxString& aTitle, boo
 
 void EDA_LIST_DIALOG::AddExtraCheckbox( const wxString& aLabel, bool* aValuePtr )
 {
-    wxCHECK2_MSG( aValuePtr, return, wxT( "Null pointer for checkbox value." ) );
+    KI_CHECK2_MSG( aValuePtr, return, wxT( "Null pointer for checkbox value." ) );
 
     int flags = wxBOTTOM;
 
@@ -209,7 +209,7 @@ long EDA_LIST_DIALOG::GetSelection()
 
 wxString EDA_LIST_DIALOG::GetTextSelection( int aColumn )
 {
-    wxCHECK_MSG( unsigned( aColumn ) < unsigned( m_listBox->GetColumnCount() ), wxEmptyString,
+    KI_CHECK_MSG( unsigned( aColumn ) < unsigned( m_listBox->GetColumnCount() ), wxEmptyString,
                  wxT( "Invalid list control column." ) );
 
     long     item = m_listBox->GetNextItem( -1, wxLIST_NEXT_ALL, wxLIST_STATE_SELECTED );
@@ -257,7 +257,7 @@ void EDA_LIST_DIALOG::InsertItems( const std::vector< wxArrayString >& itemList,
 {
     for( unsigned row = 0; row < itemList.size(); row++ )
     {
-        wxASSERT( (int) itemList[row].GetCount() == m_listBox->GetColumnCount() );
+        KI_ASSERT( (int) itemList[row].GetCount() == m_listBox->GetColumnCount() );
 
         for( unsigned col = 0; col < itemList[row].GetCount(); col++ )
         {

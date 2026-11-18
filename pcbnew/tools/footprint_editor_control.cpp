@@ -364,7 +364,7 @@ int FOOTPRINT_EDITOR_CONTROL::SaveAs( const TOOL_EVENT& aEvent )
         // Save Library As
         const wxString& src_libNickname = m_frame->GetTargetFPID().GetLibNickname();
         std::optional<wxString> optUri = manager.GetFullURI( LIBRARY_TABLE_TYPE::FOOTPRINT, src_libNickname, true );
-        wxCHECK( optUri, 0 );
+        KI_CHECK( optUri, 0 );
 
         if( m_frame->SaveLibraryAs( *optUri ) )
             m_frame->SyncLibraryTree( true );
@@ -719,7 +719,7 @@ int FOOTPRINT_EDITOR_CONTROL::ExportFootprintAsSVG( const TOOL_EVENT& aEvent )
 
 int FOOTPRINT_EDITOR_CONTROL::CompareLibraryWithFile( const TOOL_EVENT& aEvent )
 {
-    wxCHECK( m_frame, 0 );
+    KI_CHECK( m_frame, 0 );
 
     const wxString libNickname = m_frame->GetTargetFPID().GetUniStringLibNickname();
 
@@ -731,7 +731,7 @@ int FOOTPRINT_EDITOR_CONTROL::CompareLibraryWithFile( const TOOL_EVENT& aEvent )
 
     FOOTPRINT_LIBRARY_ADAPTER* adapter = PROJECT_PCB::FootprintLibAdapter( &m_frame->Prj() );
 
-    wxCHECK( adapter, 0 );
+    KI_CHECK( adapter, 0 );
 
     std::optional<LIBRARY_TABLE_ROW*> row = adapter->GetRow( libNickname );
 

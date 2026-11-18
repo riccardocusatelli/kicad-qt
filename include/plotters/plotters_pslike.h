@@ -640,8 +640,8 @@ protected:
          */
         void SetOffset( int aHandle, long aOffset )
         {
-            wxASSERT_MSG( IsValid( aHandle ), "PDF object handle is not valid" );
-            wxASSERT_MSG( aOffset >= 0, "PDF object offset must be non-negative" );
+            KI_ASSERT_MSG( IsValid( aHandle ), "PDF object handle is not valid" );
+            KI_ASSERT_MSG( aOffset >= 0, "PDF object offset must be non-negative" );
 
             if( IsValid( aHandle ) )
                 m_offsets[aHandle] = aOffset;

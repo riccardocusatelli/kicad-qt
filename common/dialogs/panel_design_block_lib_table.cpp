@@ -146,7 +146,7 @@ public:
 
     void SetValue( int aRow, int aCol, const wxString& aValue ) override
     {
-        wxCHECK( aRow < (int) size(), /* void */ );
+        KI_CHECK( aRow < (int) size(), /* void */ );
 
         LIB_TABLE_GRID_DATA_MODEL::SetValue( aRow, aCol, aValue );
 
@@ -923,7 +923,7 @@ bool PANEL_DESIGN_BLOCK_LIB_TABLE::TransferDataFromWindow()
 void PANEL_DESIGN_BLOCK_LIB_TABLE::populateEnvironReadOnlyTable()
 {
     wxRegEx re( ".*?(\\$\\{(.+?)\\})|(\\$\\((.+?)\\)).*?", wxRE_ADVANCED );
-    wxASSERT( re.IsValid() ); // wxRE_ADVANCED is required.
+    KI_ASSERT( re.IsValid() ); // wxRE_ADVANCED is required.
 
     std::set<wxString> unique;
 

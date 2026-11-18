@@ -52,7 +52,7 @@ TRIANGLE_2D::TRIANGLE_2D( const SFVEC2F& aV1, const SFVEC2F& aV2, const SFVEC2F&
     m_bbox.ScaleNextUp();
     m_centroid = m_bbox.GetCenter();
 
-    wxASSERT( m_bbox.IsInitialized() );
+    KI_ASSERT( m_bbox.IsInitialized() );
 }
 
 

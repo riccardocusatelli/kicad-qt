@@ -133,7 +133,7 @@ const ITEM_SET ROUTER::QueryHoverItems( const VECTOR2I& aP, int aSlopRadius )
     NODE*         node = m_placer ? m_placer->CurrentNode() : m_world.get();
     PNS::ITEM_SET ret;
 
-    wxCHECK( node, ret );
+    KI_CHECK( node, ret );
 
     if( m_mode == PNS_MODE_ROUTE_DIFF_PAIR && m_state == ROUTE_TRACK )
     {

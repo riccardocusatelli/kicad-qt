@@ -98,7 +98,7 @@ static std::vector<std::string> expandShortcutPattern( const std::string& aPatte
 
     if( std::abs( end - start ) > MAX_EXPANSION )
     {
-        wxLogTrace( tracePadsIo, wxT( "PADS Import: shortcut range {%d-%d} exceeds limit, skipped" ),
+        KI_LOG_TRACE( tracePadsIo, wxT( "PADS Import: shortcut range {%d-%d} exceeds limit, skipped" ),
                       start, end );
         result.push_back( aPattern );
         return result;

@@ -732,7 +732,7 @@ bool PROJECT_FILE::MigrateFromLegacy( wxConfigBase* aCfg )
                 wxString       entry;
                 nlohmann::json arr   = nlohmann::json::array();
 
-                wxLogTrace( traceSettings, wxT( "Migrating sheet names" ) );
+                KI_LOG_TRACE( traceSettings, wxT( "Migrating sheet names" ) );
 
                 aCfg->SetPath( wxT( "/sheetnames" ) );
 
@@ -742,7 +742,7 @@ bool PROJECT_FILE::MigrateFromLegacy( wxConfigBase* aCfg )
 
                     if( tokens.size() == 2 )
                     {
-                        wxLogTrace( traceSettings, wxT( "%d: %s = %s" ), sheet, tokens[0], tokens[1] );
+                        KI_LOG_TRACE( traceSettings, wxT( "%d: %s = %s" ), sheet, tokens[0], tokens[1] );
                         arr.push_back( nlohmann::json::array( { tokens[0], tokens[1] } ) );
                     }
                 }
@@ -761,7 +761,7 @@ bool PROJECT_FILE::MigrateFromLegacy( wxConfigBase* aCfg )
     auto loadLegacyPairs =
             [&]( const std::string& aGroup ) -> bool
             {
-                wxLogTrace( traceSettings, wxT( "Migrating group %s" ), aGroup );
+                KI_LOG_TRACE( traceSettings, wxT( "Migrating group %s" ), aGroup );
                 bool     success = true;
                 wxString keyStr;
                 wxString val;
@@ -775,7 +775,7 @@ bool PROJECT_FILE::MigrateFromLegacy( wxConfigBase* aCfg )
 
                     std::string key( keyStr.ToUTF8() );
 
-                    wxLogTrace( traceSettings, wxT( "    %s = %s" ), key, val );
+                    KI_LOG_TRACE( traceSettings, wxT( "    %s = %s" ), key, val );
 
                     try
                     {
@@ -849,7 +849,7 @@ bool PROJECT_FILE::LoadFromFile( const wxString& aDirectory )
             Set( "schematic.top_level_sheets", nlohmann::json( m_topLevelSheets ) );
             m_wasMigrated = true;
 
-            wxLogTrace( traceSettings, wxT( "PROJECT_FILE: Migrated old single-root format to top_level_sheets" ) );
+            KI_LOG_TRACE( traceSettings, wxT( "PROJECT_FILE: Migrated old single-root format to top_level_sheets" ) );
         }
 
         // When a project is created from a template, the top_level_sheets entries may
@@ -876,7 +876,7 @@ bool PROJECT_FILE::LoadFromFile( const wxString& aDirectory )
 
                 if( candidateFile.FileExists() )
                 {
-                    wxLogTrace( traceSettings,
+                    KI_LOG_TRACE( traceSettings,
                                 wxT( "PROJECT_FILE: Fixing stale top_level_sheets reference '%s' -> '%s'" ),
                                 sheetInfo.filename, expectedFile );
 
@@ -907,7 +907,7 @@ bool PROJECT_FILE::Store()
 
 bool PROJECT_FILE::SaveToFile( const wxString& aDirectory, bool aForce )
 {
-    wxASSERT( m_project );
+    KI_ASSERT( m_project );
 
     Set( "meta.filename", m_project->GetProjectName() + "." + FILEEXT::ProjectFileExtension );
 
@@ -927,7 +927,7 @@ bool PROJECT_FILE::SaveToFile( const wxString& aDirectory, bool aForce )
 
 std::string PROJECT_FILE::SerializeToString()
 {
-    wxASSERT( m_project );
+    KI_ASSERT( m_project );
 
     Set( "meta.filename", m_project->GetProjectName() + "." + FILEEXT::ProjectFileExtension );
 
@@ -939,7 +939,7 @@ std::string PROJECT_FILE::SerializeToString()
     }
     catch( ... )
     {
-        wxLogTrace( traceSettings, wxT( "Error: could not serialize %s" ), GetFullFilename() );
+        KI_LOG_TRACE( traceSettings, wxT( "Error: could not serialize %s" ), GetFullFilename() );
         return std::string();
     }
 }
@@ -1023,7 +1023,7 @@ void to_json( nlohmann::json& aJson, const FILE_INFO_PAIR& aPair )
 
 void from_json( const nlohmann::json& aJson, FILE_INFO_PAIR& aPair )
 {
-    wxCHECK( aJson.is_array() && aJson.size() == 2, /* void */ );
+    KI_CHECK( aJson.is_array() && aJson.size() == 2, /* void */ );
     aPair.first  = KIID( wxString( aJson[0].get<std::string>().c_str(), wxConvUTF8 ) );
     aPair.second = wxString( aJson[1].get<std::string>().c_str(), wxConvUTF8 );
 }
@@ -1040,7 +1040,7 @@ void to_json( nlohmann::json& aJson, const TOP_LEVEL_SHEET_INFO& aInfo )
 
 void from_json( const nlohmann::json& aJson, TOP_LEVEL_SHEET_INFO& aInfo )
 {
-    wxCHECK( aJson.is_object(), /* void */ );
+    KI_CHECK( aJson.is_object(), /* void */ );
 
     if( aJson.contains( "uuid" ) )
         aInfo.uuid = KIID( wxString( aJson["uuid"].get<std::string>().c_str(), wxConvUTF8 ) );

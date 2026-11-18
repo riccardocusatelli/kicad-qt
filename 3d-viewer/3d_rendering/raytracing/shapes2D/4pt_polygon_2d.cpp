@@ -58,7 +58,7 @@ POLYGON_4PT_2D::POLYGON_4PT_2D( const SFVEC2F& v1, const SFVEC2F& v2, const SFVE
     m_bbox.ScaleNextUp();
     m_centroid = m_bbox.GetCenter();
 
-    wxASSERT( m_bbox.IsInitialized() );
+    KI_ASSERT( m_bbox.IsInitialized() );
 }
 
 
@@ -98,7 +98,7 @@ bool POLYGON_4PT_2D::Intersect( const RAYSEG2D& aSegRay, float* aOutT, SFVEC2F* 
 
     if( hited )
     {
-        wxASSERT( ( bestHitT >= 0.0f ) && ( bestHitT <= 1.0f ) );
+        KI_ASSERT( ( bestHitT >= 0.0f ) && ( bestHitT <= 1.0f ) );
 
         if( aOutT )
             *aOutT = bestHitT;

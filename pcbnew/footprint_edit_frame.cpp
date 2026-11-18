@@ -677,7 +677,7 @@ void FOOTPRINT_EDIT_FRAME::restoreLastFootprint()
 
                     // LoadFootprint swallows the IO_ERROR when the library no longer resolves, so
                     // log the dropped tab to keep a failed restore diagnosable.
-                    wxLogTrace( wxT( "KICAD_FP_TABS" ),
+                    KI_LOG_TRACE( wxT( "KICAD_FP_TABS" ),
                                 wxT( "Dropping persisted footprint tab '%s:%s' (failed to load)" ),
                                 aTab.m_lib, aTab.m_fpName );
 
@@ -1686,7 +1686,7 @@ void FOOTPRINT_EDIT_FRAME::refreshFootprintTabState()
 
 void FOOTPRINT_EDIT_FRAME::detachTabsForFullClear( BOARD* aReplacement )
 {
-    wxCHECK( aReplacement, /* void */ );
+    KI_CHECK( aReplacement, /* void */ );
 
     // Install the fresh frame-owned board and reset the tools against it before any tab board is
     // freed, so no ResetTools or repaint sees a freed or null m_pcb.
@@ -1707,7 +1707,7 @@ void FOOTPRINT_EDIT_FRAME::detachTabsForFullClear( BOARD* aReplacement )
 
     m_tabsPanel->onCloseTabRequested = std::move( savedCb );
 
-    wxASSERT_MSG( m_pcb == aReplacement,
+    KI_ASSERT_MSG( m_pcb == aReplacement,
                   wxT( "m_pcb must alias the frame-owned replacement before contexts are freed" ) );
 
     for( const std::unique_ptr<FOOTPRINT_EDITOR_TAB_CONTEXT>& ctx : m_tabContexts )
@@ -1743,7 +1743,7 @@ BOARD_DESIGN_SETTINGS& FOOTPRINT_EDIT_FRAME::GetDesignSettings() const
 
 const PCB_PLOT_PARAMS& FOOTPRINT_EDIT_FRAME::GetPlotSettings() const
 {
-    wxFAIL_MSG( wxT( "Plotting not supported in Footprint Editor" ) );
+    KI_FAIL_MSG( wxT( "Plotting not supported in Footprint Editor" ) );
 
     return PCB_BASE_FRAME::GetPlotSettings();
 }
@@ -1751,7 +1751,7 @@ const PCB_PLOT_PARAMS& FOOTPRINT_EDIT_FRAME::GetPlotSettings() const
 
 void FOOTPRINT_EDIT_FRAME::SetPlotSettings( const PCB_PLOT_PARAMS& aSettings )
 {
-    wxFAIL_MSG( wxT( "Plotting not supported in Footprint Editor" ) );
+    KI_FAIL_MSG( wxT( "Plotting not supported in Footprint Editor" ) );
 }
 
 
@@ -2088,7 +2088,7 @@ void FOOTPRINT_EDIT_FRAME::initLibraryTree()
 
 void FOOTPRINT_EDIT_FRAME::SyncLibraryTree( [[maybe_unused]] bool aProgress )
 {
-    wxLogTrace( wxT( "KICAD_TABS_DBG" ), wxT( "FOOTPRINT_EDIT_FRAME::SyncLibraryTree enter" ) );
+    KI_LOG_TRACE( wxT( "KICAD_TABS_DBG" ), wxT( "FOOTPRINT_EDIT_FRAME::SyncLibraryTree enter" ) );
 
     FOOTPRINT_LIBRARY_ADAPTER*     footprints = PROJECT_PCB::FootprintLibAdapter( &Prj() );
     FP_TREE_SYNCHRONIZING_ADAPTER* adapter = static_cast<FP_TREE_SYNCHRONIZING_ADAPTER*>( m_adapter.get() );
@@ -2104,7 +2104,7 @@ void FOOTPRINT_EDIT_FRAME::SyncLibraryTree( [[maybe_unused]] bool aProgress )
     // Sync the LIB_TREE to the FOOTPRINT_INFO list
     adapter->Sync( footprints );
 
-    wxLogTrace( wxT( "KICAD_TABS_DBG" ), wxT( "FOOTPRINT_EDIT_FRAME::SyncLibraryTree Regenerate" ) );
+    KI_LOG_TRACE( wxT( "KICAD_TABS_DBG" ), wxT( "FOOTPRINT_EDIT_FRAME::SyncLibraryTree Regenerate" ) );
     GetLibTree()->Regenerate( true );
 
     // Sync() collapsed the tree, so re-expand the libraries that were open before it.
@@ -2132,7 +2132,7 @@ void FOOTPRINT_EDIT_FRAME::SyncLibraryTree( [[maybe_unused]] bool aProgress )
         }
     }
 
-    wxLogTrace( wxT( "KICAD_TABS_DBG" ), wxT( "FOOTPRINT_EDIT_FRAME::SyncLibraryTree exit" ) );
+    KI_LOG_TRACE( wxT( "KICAD_TABS_DBG" ), wxT( "FOOTPRINT_EDIT_FRAME::SyncLibraryTree exit" ) );
 }
 
 
@@ -2220,7 +2220,7 @@ void FOOTPRINT_EDIT_FRAME::setupUIConditions()
     ACTION_MANAGER*       mgr = m_toolManager->GetActionManager();
     PCB_EDITOR_CONDITIONS cond( this );
 
-    wxASSERT( mgr );
+    KI_ASSERT( mgr );
 
 #define ENABLE( x ) ACTION_CONDITIONS().Enable( x )
 #define CHECK( x )  ACTION_CONDITIONS().Check( x )

@@ -200,13 +200,13 @@ public:
 
     virtual PROJECT_FILE& GetProjectFile() const
     {
-        wxASSERT( m_projectFile );
+        KI_ASSERT( m_projectFile );
         return *m_projectFile;
     }
 
     virtual PROJECT_LOCAL_SETTINGS& GetLocalSettings() const
     {
-        wxASSERT( m_localSettings );
+        KI_ASSERT( m_localSettings );
         return *m_localSettings;
     }
 

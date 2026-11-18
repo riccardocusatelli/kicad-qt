@@ -466,7 +466,7 @@ void FONTCONFIG::ListFonts( std::vector<std::string>& aFonts, const std::string&
                     }
                     else
                     {
-                        wxLogTrace( traceFonts, wxS( "Font '%s' language '%s' not supported by OS." ),
+                        KI_LOG_TRACE( traceFonts, wxS( "Font '%s' language '%s' not supported by OS." ),
                                     theFamily, langWxStr );
                     }
 

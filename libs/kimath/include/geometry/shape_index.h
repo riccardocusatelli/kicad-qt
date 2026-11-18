@@ -43,7 +43,7 @@
 template <class T>
 static const SHAPE* shapeFunctor( T aItem, int aLayer )
 {
-    wxCHECK( aItem, nullptr );
+    KI_CHECK( aItem, nullptr );
     return aItem->Shape( aLayer );
 }
 
@@ -63,7 +63,7 @@ BOX2I boundingBox( T aObject, int aLayer )
     const SHAPE* shape = shapeFunctor( aObject, aLayer );
 
     BOX2I bBox;
-    wxCHECK( shape, bBox );
+    KI_CHECK( shape, bBox );
 
     bBox = shape->BBox();
     return bBox;
@@ -101,7 +101,7 @@ bool collide( T aObject, U aAnotherObject, int aLayer, int aMinDistance )
 {
     const SHAPE* shape = shapeFunctor( aObject, aLayer );
 
-    wxCHECK( shape, false );
+    KI_CHECK( shape, false );
 
     return shape->Collide( aAnotherObject, aMinDistance );
 }

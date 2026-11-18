@@ -205,5 +205,5 @@ int CLI::PCB_EXPORT_SVG_COMMAND::doPerform( KIWAY& aKiway )
                    _( "The new behavior will match --mode-multi" ) );
     }
 
-    return aKiway.ProcessJob( KIWAY::FACE_PCB, svgJob.get() );
+    return aKiway.ProcessJob( KIWAY_FACES::FACE_PCB, svgJob.get() );
 }

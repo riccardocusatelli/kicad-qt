@@ -53,7 +53,7 @@ RAYPACKET::RAYPACKET( const CAMERA& aCamera, const SFVEC2I& aWindowsPosition )
         }
     }
 
-    wxASSERT( i == RAYPACKET_RAYS_PER_PACKET );
+    KI_ASSERT( i == RAYPACKET_RAYS_PER_PACKET );
 
     RAYPACKET_GenerateFrustum( &m_Frustum, m_ray );
 }
@@ -102,7 +102,7 @@ RAYPACKET::RAYPACKET( const CAMERA& aCamera, const SFVEC2I& aWindowsPosition,
         }
     }
 
-    wxASSERT( i == RAYPACKET_RAYS_PER_PACKET );
+    KI_ASSERT( i == RAYPACKET_RAYS_PER_PACKET );
 
     RAYPACKET_GenerateFrustum( &m_Frustum, m_ray );
 }
@@ -130,7 +130,7 @@ RAYPACKET::RAYPACKET( const CAMERA& aCamera, const SFVEC2I& aWindowsPosition,
         }
     }
 
-    wxASSERT( i == RAYPACKET_RAYS_PER_PACKET );
+    KI_ASSERT( i == RAYPACKET_RAYS_PER_PACKET );
 
     RAYPACKET_GenerateFrustum( &m_Frustum, m_ray );
 }

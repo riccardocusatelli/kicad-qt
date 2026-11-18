@@ -49,7 +49,7 @@ WRL2INLINE::WRL2INLINE( WRL2NODE* aParent ) : WRL2NODE()
 
 WRL2INLINE::~WRL2INLINE()
 {
-    wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] Destroying Inline node." ) );
+    KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] Destroying Inline node." ) );
 }
 
 
@@ -70,7 +70,7 @@ bool WRL2INLINE::Read( WRLPROC& proc, WRL2BASE* aTopNode )
 
     if( proc.eof() )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                           " * [INFO] bad file format; unexpected eof %s." ),
                     __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition() );
 
@@ -79,7 +79,7 @@ bool WRL2INLINE::Read( WRLPROC& proc, WRL2BASE* aTopNode )
 
     if( '{' != tok )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( "%s:%s:%d\n"
                          " * [INFO] bad file format; expecting '{' but got '%s' %s." ),
                     __FILE__, __FUNCTION__, __LINE__, tok, proc.GetFilePosition() );
@@ -101,7 +101,7 @@ bool WRL2INLINE::Read( WRLPROC& proc, WRL2BASE* aTopNode )
 
         if( !proc.ReadName( glob ) )
         {
-            wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+            KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                               "%s" ),
                         __FILE__, __FUNCTION__, __LINE__ , proc.GetError() );
 
@@ -113,7 +113,7 @@ bool WRL2INLINE::Read( WRLPROC& proc, WRL2BASE* aTopNode )
         {
             if( !proc.ReadMFString( url ) )
             {
-                wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+                KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                                   " * [INFO] invalid url %s\n"
                                                   " * [INFO] file: '%s'\n"
                                                   "%s" ),
@@ -127,7 +127,7 @@ bool WRL2INLINE::Read( WRLPROC& proc, WRL2BASE* aTopNode )
         {
             if( !proc.ReadSFVec3f( bboxCenter ) )
             {
-                wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+                KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                                   " * [INFO] invalid bboxCenter %s\n"
                                                   " * [INFO] file: '%s'\n"
                                                   "%s" ),
@@ -141,7 +141,7 @@ bool WRL2INLINE::Read( WRLPROC& proc, WRL2BASE* aTopNode )
         {
             if( !proc.ReadSFVec3f( bboxSize ) )
             {
-                wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+                KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                                   " * [INFO] invalid bboxSize %s\n"
                                                   " * [INFO] file: '%s'\n"
                                                   "%s" ),
@@ -153,7 +153,7 @@ bool WRL2INLINE::Read( WRLPROC& proc, WRL2BASE* aTopNode )
         }
         else
         {
-            wxLogTrace( traceVrmlPlugin,
+            KI_LOG_TRACE( traceVrmlPlugin,
                         wxT( "%s:%s:%d\n"
                              " * [INFO] invalid Inline %s\n"
                              " * [INFO] file: '%s'\n" ),
@@ -164,7 +164,7 @@ bool WRL2INLINE::Read( WRLPROC& proc, WRL2BASE* aTopNode )
         }
     }
 
-    wxLogTrace( traceVrmlPlugin,
+    KI_LOG_TRACE( traceVrmlPlugin,
                 wxT( "%s:%s:%d\n"
                      " * [INFO] invalid Inline %s (no closing brace)\n"
                      " * [INFO] file: '%s'\n" ),
@@ -178,14 +178,14 @@ bool WRL2INLINE::Read( WRLPROC& proc, WRL2BASE* aTopNode )
 bool WRL2INLINE::AddRefNode( WRL2NODE* aNode )
 {
     // this node may not own or reference any other node
-    wxCHECK_MSG( false, false, wxT( "AddRefNode is not applicable." ) );
+    KI_CHECK_MSG( false, false, wxT( "AddRefNode is not applicable." ) );
 }
 
 
 bool WRL2INLINE::AddChildNode( WRL2NODE* aNode )
 {
     // this node may not own or reference any other node
-    wxCHECK_MSG( false, false, wxT( "AddChildNode is not applicable." ) );
+    KI_CHECK_MSG( false, false, wxT( "AddChildNode is not applicable." ) );
 
     return false;
 }
@@ -201,7 +201,7 @@ SGNODE* WRL2INLINE::TranslateToSG( SGNODE* aParent )
 
     S3D::SGTYPES ptype = S3D::GetSGNodeType( aParent );
 
-    wxCHECK_MSG( aParent && ( ptype == S3D::SGTYPE_TRANSFORM ), nullptr,
+    KI_CHECK_MSG( aParent && ( ptype == S3D::SGTYPE_TRANSFORM ), nullptr,
                  wxString::Format( wxT( " * [BUG] Appearance does not have a Transform parent "
                                         "(parent ID: %d)." ), ptype ) );
 

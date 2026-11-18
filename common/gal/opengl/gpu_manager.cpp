@@ -98,7 +98,7 @@ GPU_CACHED_MANAGER::~GPU_CACHED_MANAGER()
 
 void GPU_CACHED_MANAGER::BeginDrawing()
 {
-    wxASSERT( !m_isDrawing );
+    KI_ASSERT( !m_isDrawing );
 
     m_curVrangeSize = 0;
     m_indexBufMaxSize = 0;
@@ -138,7 +138,7 @@ void GPU_CACHED_MANAGER::DrawIndices( const VERTEX_ITEM* aItem )
 
 void GPU_CACHED_MANAGER::EndDrawing()
 {
-    wxASSERT( m_isDrawing );
+    KI_ASSERT( m_isDrawing );
 
     CACHED_CONTAINER* cached = static_cast<CACHED_CONTAINER*>( m_container );
 
@@ -221,10 +221,10 @@ void GPU_CACHED_MANAGER::EndDrawing()
     cntDraw.Stop();
 
 #ifdef KICAD_GAL_PROFILE
-    wxLogTrace( traceGalProfile,
+    KI_LOG_TRACE( traceGalProfile,
               "Cached manager size: VBO size %u iranges %zu max elt size %u drawcalls %u",
               cached->AllItemsSize(), m_vranges.size(), m_indexBufMaxSize, drawCalls );
-    wxLogTrace( traceGalProfile, "Timing: %s", cntDraw.to_string() );
+    KI_LOG_TRACE( traceGalProfile, "Timing: %s", cntDraw.to_string() );
 #endif
 
     glBindBuffer( GL_ARRAY_BUFFER, 0 );
@@ -269,7 +269,7 @@ void GPU_NONCACHED_MANAGER::BeginDrawing()
 
 void GPU_NONCACHED_MANAGER::DrawIndices( const VERTEX_ITEM* aItem )
 {
-    wxASSERT_MSG( false, wxT( "Not implemented yet" ) );
+    KI_ASSERT_MSG( false, wxT( "Not implemented yet" ) );
 }
 
 
@@ -311,7 +311,7 @@ void GPU_NONCACHED_MANAGER::EndDrawing()
     glDrawArrays( GL_TRIANGLES, 0, m_container->GetSize() );
 
 #ifdef KICAD_GAL_PROFILE
-    wxLogTrace( traceGalProfile, wxT( "Noncached manager size: %d" ), m_container->GetSize() );
+    KI_LOG_TRACE( traceGalProfile, wxT( "Noncached manager size: %d" ), m_container->GetSize() );
 #endif /* KICAD_GAL_PROFILE */
 
     // Deactivate vertex array
@@ -328,7 +328,7 @@ void GPU_NONCACHED_MANAGER::EndDrawing()
 
 #ifdef KICAD_GAL_PROFILE
     totalRealTime.Stop();
-    wxLogTrace( traceGalProfile, wxT( "GPU_NONCACHED_MANAGER::EndDrawing(): %.1f ms" ),
+    KI_LOG_TRACE( traceGalProfile, wxT( "GPU_NONCACHED_MANAGER::EndDrawing(): %.1f ms" ),
                 totalRealTime.msecs() );
 #endif /* KICAD_GAL_PROFILE */
 }

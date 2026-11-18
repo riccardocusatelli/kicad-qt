@@ -341,7 +341,7 @@ int GENERATOR_TOOL::GenEditAction( const TOOL_EVENT& aEvent )
 {
     BOARD_COMMIT* commit = dynamic_cast<BOARD_COMMIT*>( aEvent.Commit() );
 
-    wxCHECK( commit, 0 );
+    KI_CHECK( commit, 0 );
 
     PCB_GENERATOR* gen = aEvent.Parameter<PCB_GENERATOR*>();
 

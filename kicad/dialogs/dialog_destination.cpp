@@ -55,7 +55,7 @@ DIALOG_DESTINATION::DIALOG_DESTINATION( wxWindow* aParent, JOBSET* aJobsFile,
         m_destination( aDestination )
 {
     // prevent someone from failing to add the type info in the future
-    wxASSERT( JobsetDestinationTypeInfos.contains( m_destination->m_type ) );
+    KI_ASSERT( JobsetDestinationTypeInfos.contains( m_destination->m_type ) );
 
     SetTitle( wxString::Format( _( "%s Destination" ),
                                 m_destination->m_outputHandler->GetDefaultDescription() ) );

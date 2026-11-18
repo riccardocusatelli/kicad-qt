@@ -93,7 +93,7 @@ REPORTER& WX_TEXT_CTRL_REPORTER::Report( const wxString& aText, SEVERITY aSeveri
 {
     REPORTER::Report( aText, aSeverity );
 
-    wxCHECK_MSG( m_textCtrl != nullptr, *this,
+    KI_CHECK_MSG( m_textCtrl != nullptr, *this,
                  wxT( "No wxTextCtrl object defined in WX_TEXT_CTRL_REPORTER." ) );
 
     m_textCtrl->AppendText( aText + wxS( "\n" ) );
@@ -312,7 +312,7 @@ REPORTER& WXLOG_REPORTER::Report( const wxString& aMsg, SEVERITY aSeverity )
     case RPT_SEVERITY_UNDEFINED: wxLogMessage( wxS( "%s" ), aMsg );             break;
     case RPT_SEVERITY_INFO:      wxLogInfo( wxS( "%s" ), aMsg );                 break;
     case RPT_SEVERITY_ACTION:    wxLogInfo( wxS( "%s" ), aMsg );                 break;
-    case RPT_SEVERITY_DEBUG:     wxLogTrace( traceReporter, wxS( "%s" ), aMsg ); break;
+    case RPT_SEVERITY_DEBUG:     KI_LOG_TRACE( traceReporter, wxS( "%s" ), aMsg ); break;
     case RPT_SEVERITY_EXCLUSION:                                                 break;
     case RPT_SEVERITY_IGNORE:                                                    break;
     }

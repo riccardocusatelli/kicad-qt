@@ -461,7 +461,7 @@ int LABEL_SEARCH_HANDLER::Search( const wxString& aQuery )
                 {
                     SCH_LABEL_BASE* lbl = dynamic_cast<SCH_LABEL_BASE*>( item );
 
-                    wxCHECK( lbl, false );
+                    KI_CHECK( lbl, false );
 
                     if( frp.findString.IsEmpty() || lbl->Matches( frp, sheet ) )
                         return true;

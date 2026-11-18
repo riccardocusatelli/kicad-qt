@@ -91,7 +91,7 @@ void SCH_TEXT::Serialize( google::protobuf::Any& aContainer ) const
     PackCustomProperties( text.mutable_custom_properties(), *this );
 
     if( !aContainer.PackFrom( text ) )
-        wxFAIL_MSG( wxT( "Failed to pack SCH_TEXT" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack SCH_TEXT" ) );
 }
 
 
@@ -759,7 +759,7 @@ double SCH_TEXT::Similarity( const SCH_ITEM& aOther ) const
 
 int SCH_TEXT::compare( const SCH_ITEM& aOther, int aCompareFlags ) const
 {
-    wxASSERT( aOther.Type() == SCH_TEXT_T );
+    KI_ASSERT( aOther.Type() == SCH_TEXT_T );
 
     int retv = SCH_ITEM::compare( aOther, aCompareFlags );
 

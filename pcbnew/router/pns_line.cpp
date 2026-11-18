@@ -719,7 +719,7 @@ SHAPE_LINE_CHAIN dragCornerInternal( const SHAPE_LINE_CHAIN& aOrigin, const VECT
     int i;
     int d = 2;
 
-    wxASSERT( aOrigin.PointCount() > 0 );
+    KI_ASSERT( aOrigin.PointCount() > 0 );
 
     if( aOrigin.PointCount() == 1 )
     {
@@ -867,7 +867,7 @@ void LINE::dragCornerFree( const VECTOR2I& aP, int aIndex )
         }
         else
         {
-            wxASSERT_MSG( false, wxT( "Attempt to dragCornerFree in the middle of an arc!" ) );
+            KI_ASSERT_MSG( false, wxT( "Attempt to dragCornerFree in the middle of an arc!" ) );
         }
     }
 
@@ -877,7 +877,7 @@ void LINE::dragCornerFree( const VECTOR2I& aP, int aIndex )
 
 void LINE::DragCorner( const VECTOR2I& aP, int aIndex, bool aFreeAngle, DIRECTION_45 aPreferredEndingDirection )
 {
-    wxCHECK_RET( aIndex >= 0, wxT( "Negative index passed to LINE::DragCorner" ) );
+    KI_CHECK_RET( aIndex >= 0, wxT( "Negative index passed to LINE::DragCorner" ) );
 
     if( aFreeAngle )
     {
@@ -1226,7 +1226,7 @@ void LINE::dragSegment45( const VECTOR2I& aP, int aIndex )
     SHAPE_LINE_CHAIN path( m_line );
     VECTOR2I         target( aP );
 
-    wxASSERT( aIndex < m_line.PointCount() );
+    KI_ASSERT( aIndex < m_line.PointCount() );
 
     SEG guideA[2], guideB[2];
     int index = aIndex;
@@ -1491,15 +1491,15 @@ void LINE::ClipVertexRange( int aStart, int aEnd )
         linkIdx++;
     }
 
-    wxASSERT( lastLink >= firstLink );
+    KI_ASSERT( lastLink >= firstLink );
 
     m_line = m_line.Slice( aStart, aEnd );
 
     if( IsLinked() )
     {
         auto oldLinks( m_links );
-        wxASSERT( m_links.size() < INT_MAX );
-        wxASSERT( static_cast<int>( m_links.size() ) >= ( lastLink - firstLink ) );
+        KI_ASSERT( m_links.size() < INT_MAX );
+        KI_ASSERT( static_cast<int>( m_links.size() ) >= ( lastLink - firstLink ) );
 
 
         m_links.clear();

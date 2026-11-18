@@ -92,7 +92,7 @@ void SCH_RULE_AREA::Serialize( google::protobuf::Any& aContainer ) const
     kiapi::common::PackCustomProperties( ruleArea.mutable_custom_properties(), *this );
 
     if( !aContainer.PackFrom( ruleArea ) )
-        wxFAIL_MSG( wxT( "Failed to pack SCH_RULE_AREA" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack SCH_RULE_AREA" ) );
 }
 
 
@@ -315,7 +315,7 @@ void SCH_RULE_AREA::RefreshContainedItemsAndDirectives( SCH_SCREEN* screen )
         else if( areaItem->IsType( { SCH_PIN_T, SCH_LABEL_T, SCH_GLOBAL_LABEL_T, SCH_HIER_LABEL_T } ) )
         {
             std::vector<VECTOR2I> connectionPoints = areaItem->GetConnectionPoints();
-            wxASSERT( connectionPoints.size() == 1 );
+            KI_ASSERT( connectionPoints.size() == 1 );
 
             if( GetPolyShape().Collide( connectionPoints[0] ) )
                 addContainedItem( areaItem );

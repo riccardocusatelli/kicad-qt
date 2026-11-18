@@ -1650,21 +1650,21 @@ void SIM_VIEW::OnXViewChanged()
 
 void SIM_VIEW::SetY1Scale( bool aLock, double aMin, double aMax )
 {
-    wxCHECK( m_axis_y1, /* void */ );
+    KI_CHECK( m_axis_y1, /* void */ );
     m_axis_y1->SetAxisMinMax( aLock, aMin, aMax );
 }
 
 
 void SIM_VIEW::SetY2Scale( bool aLock, double aMin, double aMax )
 {
-    wxCHECK( m_axis_y2, /* void */ );
+    KI_CHECK( m_axis_y2, /* void */ );
     m_axis_y2->SetAxisMinMax( aLock, aMin, aMax );
 }
 
 
 void SIM_VIEW::SetY3Scale( bool aLock, double aMin, double aMax )
 {
-    wxCHECK( m_axis_y3, /* void */ );
+    KI_CHECK( m_axis_y3, /* void */ );
     m_axis_y3->SetAxisMinMax( aLock, aMin, aMax );
 }
 
@@ -2241,7 +2241,7 @@ void SIM_VIEW::ResetScales( bool aIncludeX )
             wxStringTokenizer tokenizer( m_plotTab->GetSimCommand(), " \t\r\n", wxTOKEN_STRTOK );
             wxString          cmd = tokenizer.GetNextToken().Lower();
 
-            wxASSERT( cmd == wxS( ".tran" ) );
+            KI_ASSERT( cmd == wxS( ".tran" ) );
 
             SPICE_VALUE step;
             SPICE_VALUE end( 1.0 );
@@ -3234,7 +3234,7 @@ void SIM_PLOT_TAB::SetTraceData( TRACE* trace, std::vector<double>& aX, std::vec
 {
     SIM_VIEW* view = trace->GetView();
 
-    wxCHECK( view, /* void */ );
+    KI_CHECK( view, /* void */ );
 
     // smith traces carry Re/Im of the reflection coefficient, not frequency
     bool smithTrace = ( trace->GetType() & SPT_SP_SMITH ) > 0;
@@ -3344,7 +3344,7 @@ void SIM_PLOT_TAB::EnableCursor( TRACE* aTrace, int aCursorId, const wxString& a
 {
     SIM_VIEW* view = aTrace->GetView();
 
-    wxCHECK( view, /* void */ );
+    KI_CHECK( view, /* void */ );
 
     CURSOR* cursor;
 

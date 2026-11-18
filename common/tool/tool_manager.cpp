@@ -77,7 +77,7 @@ struct TOOL_MANAGER::TOOL_STATE
 
     ~TOOL_STATE()
     {
-        wxASSERT_MSG( stateStack.empty(), wxT( "StateStack not empty!" ) );
+        KI_ASSERT_MSG( stateStack.empty(), wxT( "StateStack not empty!" ) );
     }
 
     /// The tool itself
@@ -242,14 +242,14 @@ TOOL_MANAGER::~TOOL_MANAGER()
 
 void TOOL_MANAGER::RegisterTool( TOOL_BASE* aTool )
 {
-    wxASSERT_MSG( m_toolNameIndex.find( aTool->GetName() ) == m_toolNameIndex.end(),
+    KI_ASSERT_MSG( m_toolNameIndex.find( aTool->GetName() ) == m_toolNameIndex.end(),
                   wxT( "Adding two tools with the same name may result in unexpected behavior.") );
-    wxASSERT_MSG( m_toolIdIndex.find( aTool->GetId() ) == m_toolIdIndex.end(),
+    KI_ASSERT_MSG( m_toolIdIndex.find( aTool->GetId() ) == m_toolIdIndex.end(),
                   wxT( "Adding two tools with the same ID may result in unexpected behavior.") );
-    wxASSERT_MSG( m_toolTypes.find( typeid( *aTool ).name() ) == m_toolTypes.end(),
+    KI_ASSERT_MSG( m_toolTypes.find( typeid( *aTool ).name() ) == m_toolTypes.end(),
                   wxT( "Adding two tools of the same type may result in unexpected behavior.") );
 
-    wxLogTrace( kicadTraceToolStack,
+    KI_LOG_TRACE( kicadTraceToolStack,
                 wxS( "TOOL_MANAGER::RegisterTool: Registering tool %s with ID %d" ),
                 aTool->GetName(), aTool->GetId() );
 
@@ -273,7 +273,7 @@ bool TOOL_MANAGER::InvokeTool( TOOL_ID aToolId )
     if( tool && tool->GetType() == INTERACTIVE )
         return invokeTool( tool );
 
-    wxLogTrace( kicadTraceToolStack, wxS( "TOOL_MANAGER::InvokeTool - no tool with ID %d" ),
+    KI_LOG_TRACE( kicadTraceToolStack, wxS( "TOOL_MANAGER::InvokeTool - no tool with ID %d" ),
                                      aToolId );
 
     return false;       // there is no tool with the given id
@@ -287,7 +287,7 @@ bool TOOL_MANAGER::InvokeTool( const std::string& aToolName )
     if( tool && tool->GetType() == INTERACTIVE )
         return invokeTool( tool );
 
-    wxLogTrace( kicadTraceToolStack, wxS( "TOOL_MANAGER::InvokeTool - no tool with name %s" ),
+    KI_LOG_TRACE( kicadTraceToolStack, wxS( "TOOL_MANAGER::InvokeTool - no tool with name %s" ),
                 aToolName );
 
     return false;       // there is no tool with the given name
@@ -303,7 +303,7 @@ bool TOOL_MANAGER::doRunAction( const std::string& aActionName, bool aNow, const
     {
         // Names reaching this overload come from outside KiCad (the IPC API, plugins), so an
         // unknown one is caller error to report, not an internal fault to assert on
-        wxLogTrace( kicadTraceToolStack, wxS( "TOOL_MANAGER::doRunAction - no action named %s" ),
+        KI_LOG_TRACE( kicadTraceToolStack, wxS( "TOOL_MANAGER::doRunAction - no action named %s" ),
                     aActionName );
 
         return false;
@@ -392,7 +392,7 @@ bool TOOL_MANAGER::doRunAction( const TOOL_ACTION& aAction, bool aNow, const ki:
         // other commits.  However, we don't currently have a better solution for the API.
         if( aCommit )
         {
-            wxASSERT_MSG( aFromAPI, wxT( "Deferred actions have no way of guaranteeing the "
+            KI_ASSERT_MSG( aFromAPI, wxT( "Deferred actions have no way of guaranteeing the "
                                          "lifetime of the COMMIT object" ) );
             event.SetCommit( aCommit );
         }
@@ -451,7 +451,7 @@ int TOOL_MANAGER::GetHotKey( const TOOL_ACTION& aAction ) const
 
 bool TOOL_MANAGER::invokeTool( TOOL_BASE* aTool )
 {
-    wxASSERT( aTool != nullptr );
+    KI_ASSERT( aTool != nullptr );
 
     TOOL_EVENT evt( TC_COMMAND, TA_ACTIVATE, aTool->GetName() );
 
@@ -470,20 +470,20 @@ bool TOOL_MANAGER::invokeTool( TOOL_BASE* aTool )
 
 bool TOOL_MANAGER::runTool( TOOL_BASE* aTool )
 {
-    wxASSERT( aTool != nullptr );
+    KI_ASSERT( aTool != nullptr );
 
     wxString msg = wxString::Format( wxS( "TOOL_MANAGER::runTool - running tool %s" ), aTool->GetName() );
     APP_MONITOR::AddTransactionBreadcrumb( msg, "tool.run" );
 
     if( !isRegistered( aTool ) )
     {
-        wxASSERT_MSG( false, wxT( "You cannot run unregistered tools" ) );
+        KI_ASSERT_MSG( false, wxT( "You cannot run unregistered tools" ) );
         return false;
     }
 
     TOOL_ID id = aTool->GetId();
 
-    wxLogTrace( kicadTraceToolStack, msg,
+    KI_LOG_TRACE( kicadTraceToolStack, msg,
                 aTool->GetName() );
 
     if( aTool->GetType() == INTERACTIVE )
@@ -541,7 +541,7 @@ void TOOL_MANAGER::ShutdownTool( TOOL_ID aToolId )
     if( tool && tool->GetType() == INTERACTIVE )
         ShutdownTool( tool );
 
-    wxLogTrace( kicadTraceToolStack, wxS( "TOOL_MANAGER::ShutdownTool - no tool with ID %d" ),
+    KI_LOG_TRACE( kicadTraceToolStack, wxS( "TOOL_MANAGER::ShutdownTool - no tool with ID %d" ),
                 aToolId );
 }
 
@@ -553,14 +553,14 @@ void TOOL_MANAGER::ShutdownTool( const std::string& aToolName )
     if( tool && tool->GetType() == INTERACTIVE )
         ShutdownTool( tool );
 
-    wxLogTrace( kicadTraceToolStack, wxS( "TOOL_MANAGER::ShutdownTool - no tool with name %s" ),
+    KI_LOG_TRACE( kicadTraceToolStack, wxS( "TOOL_MANAGER::ShutdownTool - no tool with name %s" ),
                 aToolName );
 }
 
 
 void TOOL_MANAGER::ShutdownTool( TOOL_BASE* aTool )
 {
-    wxASSERT( aTool != nullptr );
+    KI_ASSERT( aTool != nullptr );
 
     while( isActive( aTool ) )
     {
@@ -579,14 +579,14 @@ void TOOL_MANAGER::ShutdownTool( TOOL_BASE* aTool )
             st->pendingWait = false;
             st->waitEvents.clear();
 
-            wxLogTrace( kicadTraceToolStack, wxS( "TOOL_MANAGER::ShutdownTool - Shutting down tool %s" ),
+            KI_LOG_TRACE( kicadTraceToolStack, wxS( "TOOL_MANAGER::ShutdownTool - Shutting down tool %s" ),
                         st->theTool->GetName() );
 
             setActiveState( st );
 
             if( st->cofunc->Resume() )
             {
-                wxFAIL_MSG( wxS( "Tool suspended again during shutdown" ) );
+                KI_FAIL_MSG( wxS( "Tool suspended again during shutdown" ) );
                 break;
             }
         }
@@ -637,7 +637,7 @@ void TOOL_MANAGER::ResetTools( TOOL_BASE::RESET_REASON aReason )
     {
         TOOL_BASE* tool = state.first;
 
-        wxLogTrace( kicadTraceToolStack, wxS( "TOOL_MANAGER::ResetTools: Resetting tool '%s'" ),
+        KI_LOG_TRACE( kicadTraceToolStack, wxS( "TOOL_MANAGER::ResetTools: Resetting tool '%s'" ),
                                              tool->GetName() );
 
         setActiveState( state.second );
@@ -655,13 +655,13 @@ void TOOL_MANAGER::InitTools()
     {
         TOOL_BASE* tool = *it;
 
-        wxASSERT( m_toolState.count( tool ) );
+        KI_ASSERT( m_toolState.count( tool ) );
         TOOL_STATE* state = m_toolState[tool];
         setActiveState( state );
 
         if( !tool->Init() )
         {
-            wxLogTrace( kicadTraceToolStack, wxS( "TOOL_MANAGER initialization of tool '%s' failed" ),
+            KI_LOG_TRACE( kicadTraceToolStack, wxS( "TOOL_MANAGER initialization of tool '%s' failed" ),
                         tool->GetName() );
 
             // Unregister the tool
@@ -725,7 +725,7 @@ void TOOL_MANAGER::RunMainStack( TOOL_BASE* aTool, std::function<void()> aFunc )
 {
     TOOL_STATE* st = m_toolState[aTool];
     setActiveState( st );
-    wxCHECK( st->cofunc, /* void */ );
+    KI_CHECK( st->cofunc, /* void */ );
     st->cofunc->RunMainStack( std::move( aFunc ) );
 }
 
@@ -738,14 +738,14 @@ TOOL_EVENT* TOOL_MANAGER::ScheduleWait( TOOL_BASE* aTool, const TOOL_EVENT_LIST&
     if( st->shutdown )
         return nullptr;
 
-    wxCHECK( !st->pendingWait, nullptr ); // everything collapses on two KiYield() in a row
+    KI_CHECK( !st->pendingWait, nullptr ); // everything collapses on two KiYield() in a row
 
     // indicate to the manager that we are going to sleep and we shall be
     // woken up when an event matching aConditions arrive
     st->pendingWait = true;
     st->waitEvents = aConditions;
 
-    wxCHECK( st->cofunc, nullptr );
+    KI_CHECK( st->cofunc, nullptr );
 
     // switch context back to event dispatcher loop
     st->cofunc->KiYield();
@@ -764,7 +764,7 @@ bool TOOL_MANAGER::dispatchInternal( TOOL_EVENT& aEvent )
 
     std::vector<COROUTINE<int, const TOOL_EVENT&>*> reactivated;
 
-    wxLogTrace( kicadTraceToolStack, wxS( "TOOL_MANAGER::dispatchInternal - received event: %s" ),
+    KI_LOG_TRACE( kicadTraceToolStack, wxS( "TOOL_MANAGER::dispatchInternal - received event: %s" ),
                 aEvent.Format() );
 
     auto it = m_activeTools.begin();
@@ -786,7 +786,7 @@ bool TOOL_MANAGER::dispatchInternal( TOOL_EVENT& aEvent )
         }
 
         // If we're pendingWait then we had better have a cofunc to process the wait.
-        wxASSERT( !st || !st->pendingWait || st->cofunc );
+        KI_ASSERT( !st || !st->pendingWait || st->cofunc );
 
         // the tool state handler is waiting for events (i.e. called Wait() method)
         if( st && st->cofunc && st->pendingWait && st->waitEvents.Matches( aEvent ) )
@@ -799,7 +799,7 @@ bool TOOL_MANAGER::dispatchInternal( TOOL_EVENT& aEvent )
             st->pendingWait = false;
             st->waitEvents.clear();
 
-            wxLogTrace( kicadTraceToolStack, wxS( "TOOL_MANAGER::dispatchInternal - Waking tool %s for event: %s" ),
+            KI_LOG_TRACE( kicadTraceToolStack, wxS( "TOOL_MANAGER::dispatchInternal - Waking tool %s for event: %s" ),
                         st->theTool->GetName(), aEvent.Format() );
 
             bool ownActivation = aEvent.IsActivate() && st->initialEvent.IsActivate()
@@ -822,7 +822,7 @@ bool TOOL_MANAGER::dispatchInternal( TOOL_EVENT& aEvent )
             // If the tool did not request the event be passed to other tools, we're done
             if( !st->wakeupEvent.PassEvent() )
             {
-                wxLogTrace( kicadTraceToolStack,
+                KI_LOG_TRACE( kicadTraceToolStack,
                             wxS( "TOOL_MANAGER::dispatchInternal - tool %s stopped passing event: %s" ),
                             st->theTool->GetName(), aEvent.Format() );
 
@@ -871,7 +871,7 @@ bool TOOL_MANAGER::dispatchInternal( TOOL_EVENT& aEvent )
 
                     st->cofunc = new COROUTINE<int, const TOOL_EVENT&>( std::move( func_copy ) );
 
-                    wxLogTrace( kicadTraceToolStack,
+                    KI_LOG_TRACE( kicadTraceToolStack,
                                 wxS( "TOOL_MANAGER::dispatchInternal - Running tool %s for event: %s" ),
                                 st->theTool->GetName(), aEvent.Format() );
 
@@ -898,7 +898,7 @@ bool TOOL_MANAGER::dispatchInternal( TOOL_EVENT& aEvent )
             break;      // only the first tool gets the event
     }
 
-    wxLogTrace( kicadTraceToolStack, wxS( "TOOL_MANAGER::dispatchInternal - %s handle event: %s" ),
+    KI_LOG_TRACE( kicadTraceToolStack, wxS( "TOOL_MANAGER::dispatchInternal - %s handle event: %s" ),
                 ( handled ? wxS( "Did" ) : wxS( "Did not" ) ), aEvent.Format() );
 
     return handled;
@@ -916,7 +916,7 @@ bool TOOL_MANAGER::DispatchHotKey( const TOOL_EVENT& aEvent )
 
 bool TOOL_MANAGER::dispatchActivation( const TOOL_EVENT& aEvent )
 {
-    wxLogTrace( kicadTraceToolStack, wxS( "TOOL_MANAGER::dispatchActivation - Received event: %s" ),
+    KI_LOG_TRACE( kicadTraceToolStack, wxS( "TOOL_MANAGER::dispatchActivation - Received event: %s" ),
                 aEvent.Format() );
 
     if( aEvent.IsActivate() )
@@ -925,7 +925,7 @@ bool TOOL_MANAGER::dispatchActivation( const TOOL_EVENT& aEvent )
 
         if( tool != m_toolNameIndex.end() )
         {
-            wxLogTrace( kicadTraceToolStack,
+            KI_LOG_TRACE( kicadTraceToolStack,
                         wxS( "TOOL_MANAGER::dispatchActivation - Running tool %s for event: %s" ),
                         tool->second->theTool->GetName(), aEvent.Format() );
 
@@ -1040,7 +1040,7 @@ void TOOL_MANAGER::DispatchContextMenu( const TOOL_EVENT& aEvent )
              std::optional<VECTOR2D>>& cursorSetting : m_cursorSettings )
         {
             auto it = m_toolIdIndex.find( cursorSetting.first );
-            wxASSERT( it != m_toolIdIndex.end() );
+            KI_ASSERT( it != m_toolIdIndex.end() );
 
             if( it == m_toolIdIndex.end() )
                 continue;
@@ -1210,7 +1210,7 @@ void TOOL_MANAGER::applyViewControls( const TOOL_STATE* aState )
 
 bool TOOL_MANAGER::processEvent( const TOOL_EVENT& aEvent )
 {
-    wxLogTrace( kicadTraceToolStack, wxS( "TOOL_MANAGER::processEvent - %s" ), aEvent.Format() );
+    KI_LOG_TRACE( kicadTraceToolStack, wxS( "TOOL_MANAGER::processEvent - %s" ), aEvent.Format() );
 
     // Capture the cursor position from the keyboard event so that hotkey-triggered actions use
     // the position at keypress time rather than polling a potentially stale position later in the
@@ -1268,7 +1268,7 @@ bool TOOL_MANAGER::processEvent( const TOOL_EVENT& aEvent )
         }
     }
 
-    wxLogTrace( kicadTraceToolStack, wxS( "TOOL_MANAGER::processEvent - %s handle event: %s" ),
+    KI_LOG_TRACE( kicadTraceToolStack, wxS( "TOOL_MANAGER::processEvent - %s handle event: %s" ),
                                      ( handled ? "Did" : "Did not" ), aEvent.Format() );
 
     return handled;

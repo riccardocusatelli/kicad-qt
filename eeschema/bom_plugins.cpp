@@ -104,7 +104,7 @@ BOM_GENERATOR_HANDLER::BOM_GENERATOR_HANDLER( const wxString& aFile )
         m_cmd = m_file.GetFullPath();
     }
 
-    wxLogTrace( BOM_TRACE, wxS( "%s: extracted command line %s" ), m_name, m_cmd );
+    KI_LOG_TRACE( BOM_TRACE, wxS( "%s: extracted command line %s" ), m_name, m_cmd );
 }
 
 
@@ -181,7 +181,7 @@ wxFileName BOM_GENERATOR_HANDLER::FindFilePath() const
 {
     if( m_file.IsAbsolute() && m_file.Exists( wxFILE_EXISTS_REGULAR ) )
     {
-        wxLogTrace( BOM_TRACE, wxS( "%s found directly" ), m_file.GetFullPath() );
+        KI_LOG_TRACE( BOM_TRACE, wxS( "%s found directly" ), m_file.GetFullPath() );
         return m_file;
     }
 
@@ -189,7 +189,7 @@ wxFileName BOM_GENERATOR_HANDLER::FindFilePath() const
 
     if( test.Exists( wxFILE_EXISTS_REGULAR ) )
     {
-        wxLogTrace( BOM_TRACE, wxS( "%s found in user plugins path %s" ), m_file.GetFullName(),
+        KI_LOG_TRACE( BOM_TRACE, wxS( "%s found in user plugins path %s" ), m_file.GetFullName(),
                     PATHS::GetUserPluginsPath() );
         return test;
     }
@@ -198,12 +198,12 @@ wxFileName BOM_GENERATOR_HANDLER::FindFilePath() const
 
     if( test.Exists( wxFILE_EXISTS_REGULAR ) )
     {
-        wxLogTrace( BOM_TRACE, wxS( "%s found in stock plugins path %s" ), m_file.GetFullName(),
+        KI_LOG_TRACE( BOM_TRACE, wxS( "%s found in stock plugins path %s" ), m_file.GetFullName(),
                     PATHS::GetStockPluginsPath() );
         return test;
     }
 
-    wxLogTrace( BOM_TRACE, wxS( "Could not find %s (checked %s, %s)" ), m_file.GetFullName(),
+    KI_LOG_TRACE( BOM_TRACE, wxS( "Could not find %s (checked %s, %s)" ), m_file.GetFullName(),
                 PATHS::GetUserPluginsPath(), PATHS::GetStockPluginsPath() );
 
     return m_file;

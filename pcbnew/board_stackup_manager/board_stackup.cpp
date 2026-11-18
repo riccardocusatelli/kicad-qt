@@ -180,14 +180,14 @@ int BOARD_STACKUP_ITEM::GetMaskDefaultThickness()
 // Getters:
 wxString BOARD_STACKUP_ITEM::GetColor( int aDielectricSubLayer ) const
 {
-    wxASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
+    KI_ASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
 
     return m_DielectricPrmsList[aDielectricSubLayer].m_Color;
 }
 
 int BOARD_STACKUP_ITEM::GetThickness( int aDielectricSubLayer ) const
 {
-    wxASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
+    KI_ASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
 
     return m_DielectricPrmsList[aDielectricSubLayer].m_Thickness;
 }
@@ -195,7 +195,7 @@ int BOARD_STACKUP_ITEM::GetThickness( int aDielectricSubLayer ) const
 
 double BOARD_STACKUP_ITEM::GetLossTangent( int aDielectricSubLayer ) const
 {
-    wxASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
+    KI_ASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
 
     return m_DielectricPrmsList[aDielectricSubLayer].m_LossTangent;
 }
@@ -203,7 +203,7 @@ double BOARD_STACKUP_ITEM::GetLossTangent( int aDielectricSubLayer ) const
 
 double BOARD_STACKUP_ITEM::GetSpecFreq( int aDielectricSubLayer ) const
 {
-    wxASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
+    KI_ASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
 
     return m_DielectricPrmsList[aDielectricSubLayer].m_SpecFreq;
 }
@@ -211,7 +211,7 @@ double BOARD_STACKUP_ITEM::GetSpecFreq( int aDielectricSubLayer ) const
 
 DIELECTRIC_MODEL BOARD_STACKUP_ITEM::GetDielectricModel( int aDielectricSubLayer ) const
 {
-    wxASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
+    KI_ASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
 
     return m_DielectricPrmsList[aDielectricSubLayer].m_DielectricModel;
 }
@@ -219,7 +219,7 @@ DIELECTRIC_MODEL BOARD_STACKUP_ITEM::GetDielectricModel( int aDielectricSubLayer
 
 double BOARD_STACKUP_ITEM::GetEpsilonR( int aDielectricSubLayer ) const
 {
-    wxASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
+    KI_ASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
 
     return m_DielectricPrmsList[aDielectricSubLayer].m_EpsilonR;
 }
@@ -227,7 +227,7 @@ double BOARD_STACKUP_ITEM::GetEpsilonR( int aDielectricSubLayer ) const
 
 bool BOARD_STACKUP_ITEM::IsThicknessLocked( int aDielectricSubLayer ) const
 {
-    wxASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
+    KI_ASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
 
     return m_DielectricPrmsList[aDielectricSubLayer].m_ThicknessLocked;
 }
@@ -235,7 +235,7 @@ bool BOARD_STACKUP_ITEM::IsThicknessLocked( int aDielectricSubLayer ) const
 
 wxString BOARD_STACKUP_ITEM::GetMaterial( int aDielectricSubLayer ) const
 {
-    wxASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
+    KI_ASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
 
     return m_DielectricPrmsList[aDielectricSubLayer].m_Material;
 }
@@ -244,7 +244,7 @@ wxString BOARD_STACKUP_ITEM::GetMaterial( int aDielectricSubLayer ) const
 // Setters:
 void BOARD_STACKUP_ITEM::SetColor(  const wxString& aColorName , int aDielectricSubLayer )
 {
-    wxASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
+    KI_ASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
 
     if( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() )
         m_DielectricPrmsList[aDielectricSubLayer].m_Color = aColorName;
@@ -253,7 +253,7 @@ void BOARD_STACKUP_ITEM::SetColor(  const wxString& aColorName , int aDielectric
 
 void BOARD_STACKUP_ITEM::SetThickness( int aThickness, int aDielectricSubLayer )
 {
-    wxASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
+    KI_ASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
 
     if( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() )
         m_DielectricPrmsList[aDielectricSubLayer].m_Thickness = aThickness;
@@ -262,7 +262,7 @@ void BOARD_STACKUP_ITEM::SetThickness( int aThickness, int aDielectricSubLayer )
 
 void BOARD_STACKUP_ITEM::SetLossTangent( double aTg, int aDielectricSubLayer )
 {
-    wxASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
+    KI_ASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
 
     if( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() )
         m_DielectricPrmsList[aDielectricSubLayer].m_LossTangent = aTg;
@@ -271,7 +271,7 @@ void BOARD_STACKUP_ITEM::SetLossTangent( double aTg, int aDielectricSubLayer )
 
 void BOARD_STACKUP_ITEM::SetSpecFreq( const double aSpecFreq, const int aDielectricSubLayer )
 {
-    wxASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
+    KI_ASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
 
     if( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() )
         m_DielectricPrmsList[aDielectricSubLayer].m_SpecFreq = aSpecFreq;
@@ -280,7 +280,7 @@ void BOARD_STACKUP_ITEM::SetSpecFreq( const double aSpecFreq, const int aDielect
 
 void BOARD_STACKUP_ITEM::SetDielectricModel( DIELECTRIC_MODEL aModel, int aDielectricSubLayer )
 {
-    wxASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
+    KI_ASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
 
     if( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() )
         m_DielectricPrmsList[aDielectricSubLayer].m_DielectricModel = aModel;
@@ -289,7 +289,7 @@ void BOARD_STACKUP_ITEM::SetDielectricModel( DIELECTRIC_MODEL aModel, int aDiele
 
 void BOARD_STACKUP_ITEM::SetEpsilonR( double aEpsilon, int aDielectricSubLayer )
 {
-    wxASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
+    KI_ASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
 
     if( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() )
         m_DielectricPrmsList[aDielectricSubLayer].m_EpsilonR = aEpsilon;
@@ -298,7 +298,7 @@ void BOARD_STACKUP_ITEM::SetEpsilonR( double aEpsilon, int aDielectricSubLayer )
 
 void BOARD_STACKUP_ITEM::SetThicknessLocked( bool aLocked, int aDielectricSubLayer )
 {
-    wxASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
+    KI_ASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
 
     if( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() )
         m_DielectricPrmsList[aDielectricSubLayer].m_ThicknessLocked = aLocked;
@@ -307,7 +307,7 @@ void BOARD_STACKUP_ITEM::SetThicknessLocked( bool aLocked, int aDielectricSubLay
 
 void BOARD_STACKUP_ITEM::SetMaterial( const wxString& aName, int aDielectricSubLayer )
 {
-    wxASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
+    KI_ASSERT( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() );
 
     if( aDielectricSubLayer >= 0 && aDielectricSubLayer < GetSublayersCount() )
         m_DielectricPrmsList[aDielectricSubLayer].m_Material = aName;
@@ -573,7 +573,7 @@ void BOARD_STACKUP::Serialize( google::protobuf::Any& aContainer ) const
     Serialize( stackup );
 
     if( !aContainer.PackFrom( stackup ) )
-        wxFAIL_MSG( wxT( "Failed to pack BOARD_STACKUP" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack BOARD_STACKUP" ) );
 }
 
 
@@ -917,7 +917,7 @@ void BOARD_STACKUP::FormatBoardStackup( OUTPUTFORMATTER* aFormatter, const BOARD
 
 int BOARD_STACKUP::GetLayerDistance( PCB_LAYER_ID aFirstLayer, PCB_LAYER_ID aSecondLayer ) const
 {
-    wxASSERT( IsCopperLayer( aFirstLayer ) && IsCopperLayer( aSecondLayer ) );
+    KI_ASSERT( IsCopperLayer( aFirstLayer ) && IsCopperLayer( aSecondLayer ) );
 
     if( aFirstLayer == aSecondLayer )
         return 0;

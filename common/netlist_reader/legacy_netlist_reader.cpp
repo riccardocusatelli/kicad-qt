@@ -77,7 +77,7 @@ void LEGACY_NETLIST_READER::LoadNetlist()
 
         if( state >= 3 ) // Pad descriptions are read here.
         {
-            wxASSERT( component != nullptr );
+            KI_ASSERT( component != nullptr );
 
             loadNet( line, component );
             state--;
@@ -216,7 +216,7 @@ void LEGACY_NETLIST_READER::loadFootprintFilters()
     {
         if( strncasecmp( line, "$endlist", 8 ) == 0 )   // end of list for the current component
         {
-            wxASSERT( component != nullptr );
+            KI_ASSERT( component != nullptr );
             component->SetFootprintFilters( filters );
             component = nullptr;
             filters.Clear();

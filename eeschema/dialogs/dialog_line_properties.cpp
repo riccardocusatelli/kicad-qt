@@ -35,7 +35,7 @@
 void DIALOG_LINE_PROPERTIES::createLineEndingControls( SCH_EDIT_FRAME* aParent )
 {
     wxSizer* mainSizer = GetSizer();
-    wxCHECK_RET( mainSizer, wxT( "Line properties dialog has no main sizer" ) );
+    KI_CHECK_RET( mainSizer, wxT( "Line properties dialog has no main sizer" ) );
 
     wxGridBagSizer* gbSizerEndings = new wxGridBagSizer( 3, 0 );
     gbSizerEndings->SetFlexibleDirection( wxBOTH );

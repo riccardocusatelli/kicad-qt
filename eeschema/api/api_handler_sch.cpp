@@ -215,7 +215,7 @@ std::unique_ptr<COMMIT> API_HANDLER_SCH::createCommit()
 
 SCHEMATIC* API_HANDLER_SCH::schematic() const
 {
-    wxCHECK( m_context, nullptr );
+    KI_CHECK( m_context, nullptr );
     return m_context->GetSchematic();
 }
 
@@ -250,7 +250,7 @@ bool API_HANDLER_SCH::packSchItem( google::protobuf::Any& aOut, SCH_ITEM* aItem,
 
         if( !aOut.PackFrom( symbol ) )
         {
-            wxFAIL_MSG( wxT( "Failed to pack SCH_SYMBOL" ) );
+            KI_FAIL_MSG( wxT( "Failed to pack SCH_SYMBOL" ) );
             return false;
         }
     }
@@ -263,7 +263,7 @@ bool API_HANDLER_SCH::packSchItem( google::protobuf::Any& aOut, SCH_ITEM* aItem,
 
         if( !aOut.PackFrom( sheet ) )
         {
-            wxFAIL_MSG( wxT( "Failed to pack SCH_SHEET" ) );
+            KI_FAIL_MSG( wxT( "Failed to pack SCH_SHEET" ) );
             return false;
         }
     }
@@ -2185,7 +2185,7 @@ API_HANDLER_SCH::handleGetSchematicNetlist( const HANDLER_CONTEXT<kiapi::schemat
                 frame()->RefreshConnectivity( true );
             }
 
-            wxLogTrace( traceApi, wxS( "GetSchematicNetlist rebuild failed: %s" ),
+            KI_LOG_TRACE( traceApi, wxS( "GetSchematicNetlist rebuild failed: %s" ),
                         wxString::FromUTF8( error.what() ) );
 
             ApiResponseStatus status;
@@ -2276,7 +2276,7 @@ API_HANDLER_SCH::handleGetSchematicNetlist( const HANDLER_CONTEXT<kiapi::schemat
 HANDLER_RESULT<CrossProbeAnnounceResponse> API_HANDLER_SCH::handleCrossProbeAnnounce(
         const HANDLER_CONTEXT<CrossProbeAnnounce>& aCtx )
 {
-    wxLogTrace( traceApi, "Received announce from frame %d at %s",
+    KI_LOG_TRACE( traceApi, "Received announce from frame %d at %s",
                 aCtx.Request.frame_type(), aCtx.Request.socket_path() );
 
     CROSS_PROBE_CLIENT::RegisterPeer( static_cast<FRAME_T>( aCtx.Request.frame_type() ),
@@ -2710,12 +2710,12 @@ HANDLER_RESULT<SyncSelectionResponse> API_HANDLER_SCH::handleSyncSelection(
 
         if( frame()->eeconfig()->m_CrossProbing.flash_selection )
         {
-            wxLogTrace( traceCrossProbeFlash, "MAIL_SELECTION(_FORCE): flash enabled, items=%zu",
+            KI_LOG_TRACE( traceCrossProbeFlash, "MAIL_SELECTION(_FORCE): flash enabled, items=%zu",
                         items.size() );
 
             if( items.empty() )
             {
-                wxLogTrace( traceCrossProbeFlash, "MAIL_SELECTION(_FORCE): nothing to flash" );
+                KI_LOG_TRACE( traceCrossProbeFlash, "MAIL_SELECTION(_FORCE): nothing to flash" );
             }
             else
             {
@@ -2727,7 +2727,7 @@ HANDLER_RESULT<SyncSelectionResponse> API_HANDLER_SCH::handleSyncSelection(
         }
         else
         {
-            wxLogTrace( traceCrossProbeFlash, "MAIL_SELECTION(_FORCE): flash disabled" );
+            KI_LOG_TRACE( traceCrossProbeFlash, "MAIL_SELECTION(_FORCE): flash disabled" );
         }
     }
 

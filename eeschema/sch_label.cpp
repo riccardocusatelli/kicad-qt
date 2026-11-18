@@ -276,7 +276,7 @@ bool SCH_LABEL_BASE::IsType( const std::vector<KICAD_T>& aScanTypes ) const
 
     SCHEMATIC* schematic = Schematic();
 
-    wxCHECK_MSG( schematic, false, wxT( "No parent SCHEMATIC set for SCH_LABEL!" ) );
+    KI_CHECK_MSG( schematic, false, wxT( "No parent SCHEMATIC set for SCH_LABEL!" ) );
 
     std::vector<SCH_ITEM*>        publishedItems;
     const std::vector<SCH_ITEM*>* connectedItems = &publishedItems;
@@ -441,7 +441,7 @@ void SCH_LABEL_BASE::SetSpinStyle( SPIN_STYLE aSpinStyle )
     // Thus we want to left justify text up against the anchor if we are on the right
     switch( aSpinStyle )
     {
-    default: wxFAIL_MSG( "Bad spin style" ); KI_FALLTHROUGH;
+    default: KI_FAIL_MSG( "Bad spin style" ); KI_FALLTHROUGH;
 
     case SPIN_STYLE::RIGHT: // Horiz Normal Orientation
         SetTextAngle( ANGLE_HORIZONTAL );
@@ -776,7 +776,7 @@ void SCH_LABEL_BASE::AutoplaceFields( SCH_SCREEN* aScreen, AUTOPLACE_ALGO aAlgo 
 
 void SCH_LABEL_BASE::GetIntersheetRefs( const SCH_SHEET_PATH* aPath, std::vector<std::pair<wxString, wxString>>* pages )
 {
-    wxCHECK( pages, /* void */ );
+    KI_CHECK( pages, /* void */ );
 
     if( Schematic() )
     {
@@ -838,7 +838,7 @@ bool SCH_LABEL_BASE::ResolveTextVar( const SCH_SHEET_PATH* aPath, wxString* toke
                                               "(.([0-9])?([a-zA-Z]*))?"
                                               "$" ) );
 
-    wxCHECK( aPath, false );
+    KI_CHECK( aPath, false );
 
     SCHEMATIC* schematic = Schematic();
 
@@ -1395,7 +1395,7 @@ bool SCH_LABEL_BASE::HasConnectivityChanges( const SCH_ITEM* aItem, const SCH_SH
     const SCH_LABEL_BASE* label = dynamic_cast<const SCH_LABEL_BASE*>( aItem );
 
     // Don't compare against a different SCH_ITEM.
-    wxCHECK( label, false );
+    KI_CHECK( label, false );
 
     if( GetPosition() != label->GetPosition() )
         return true;
@@ -1735,7 +1735,7 @@ void SCH_LABEL::Serialize( google::protobuf::Any& aContainer ) const
     kiapi::common::PackCustomProperties( label.mutable_custom_properties(), *this );
 
     if( !aContainer.PackFrom( label ) )
-        wxFAIL_MSG( wxT( "Failed to pack SCH_LABEL" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack SCH_LABEL" ) );
 }
 
 
@@ -1843,7 +1843,7 @@ void SCH_DIRECTIVE_LABEL::Serialize( google::protobuf::Any& aContainer ) const
     kiapi::common::PackCustomProperties( label.mutable_custom_properties(), *this );
 
     if( !aContainer.PackFrom( label ) )
-        wxFAIL_MSG( wxT( "Failed to pack SCH_DIRECTIVE_LABEL" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack SCH_DIRECTIVE_LABEL" ) );
 }
 
 
@@ -2222,7 +2222,7 @@ void SCH_GLOBALLABEL::Serialize( google::protobuf::Any& aContainer ) const
     kiapi::common::PackCustomProperties( label.mutable_custom_properties(), *this );
 
     if( !aContainer.PackFrom( label ) )
-        wxFAIL_MSG( wxT( "Failed to pack SCH_GLOBALLABEL" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack SCH_GLOBALLABEL" ) );
 }
 
 
@@ -2304,7 +2304,7 @@ void SCH_GLOBALLABEL::SetSpinStyle( SPIN_STYLE aSpinStyle )
 
 bool SCH_GLOBALLABEL::ResolveTextVar( const SCH_SHEET_PATH* aPath, wxString* token, int aDepth ) const
 {
-    wxCHECK( aPath, false );
+    KI_CHECK( aPath, false );
 
     SCHEMATIC* schematic = Schematic();
 
@@ -2469,7 +2469,7 @@ void SCH_HIERLABEL::Serialize( google::protobuf::Any& aContainer ) const
     kiapi::common::PackCustomProperties( label.mutable_custom_properties(), *this );
 
     if( !aContainer.PackFrom( label ) )
-        wxFAIL_MSG( wxT( "Failed to pack SCH_HIERLABEL" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack SCH_HIERLABEL" ) );
 }
 
 

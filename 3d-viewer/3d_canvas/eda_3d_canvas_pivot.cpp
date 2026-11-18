@@ -31,7 +31,7 @@
 
 static void pivot_render_triangles( float t )
 {
-    wxASSERT( t >= 0.0f );
+    KI_ASSERT( t >= 0.0f );
 
     SFVEC3F vertexPointer[12];
 
@@ -72,8 +72,8 @@ static void pivot_render_triangles( float t )
 
 void EDA_3D_CANVAS::render_pivot( float t, float aScale )
 {
-    wxASSERT( aScale >= 0.0f );
-    wxASSERT( t >= 0.0f );
+    KI_ASSERT( aScale >= 0.0f );
+    KI_ASSERT( t >= 0.0f );
 
     if( t > 1.0f )
         t = 1.0f;
@@ -119,7 +119,7 @@ void EDA_3D_CANVAS::render_pivot( float t, float aScale )
 
 void EDA_3D_CANVAS::render3dmousePivot( float aScale )
 {
-    wxASSERT( aScale >= 0.0f );
+    KI_ASSERT( aScale >= 0.0f );
 
     glDisable( GL_LIGHTING );
     glDisable( GL_DEPTH_TEST );

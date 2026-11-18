@@ -100,5 +100,5 @@ int CLI::FP_EXPORT_SVG_COMMAND::doPerform( KIWAY& aKiway )
 
     svgJob->m_argLayers = From_UTF8( m_argParser.get<std::string>( ARG_LAYERS ).c_str() );
 
-    return aKiway.ProcessJob( KIWAY::FACE_PCB, svgJob.get() );
+    return aKiway.ProcessJob( KIWAY_FACES::FACE_PCB, svgJob.get() );
 }

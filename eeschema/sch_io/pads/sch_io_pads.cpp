@@ -363,7 +363,7 @@ static void appendGraphicPrimitive( SCH_SCREEN* aScreen, const PADS_SCH::SYMBOL_
 SCH_SHEET* SCH_IO_PADS::LoadSchematicFile( const wxString& aFileName, SCHEMATIC* aSchematic, SCH_SHEET* aAppendToMe,
                                            const std::map<std::string, UTF8>* aProperties )
 {
-    wxCHECK( !aFileName.IsEmpty() && aSchematic, nullptr );
+    KI_CHECK( !aFileName.IsEmpty() && aSchematic, nullptr );
 
     LOCALE_IO setlocale;
 
@@ -386,7 +386,7 @@ SCH_SHEET* SCH_IO_PADS::LoadSchematicFile( const wxString& aFileName, SCHEMATIC*
 
     if( aAppendToMe )
     {
-        wxCHECK_MSG( aSchematic->IsValid(), nullptr, "Can't append to a schematic with no root!" );
+        KI_CHECK_MSG( aSchematic->IsValid(), nullptr, "Can't append to a schematic with no root!" );
         rootSheet = aAppendToMe;
     }
     else
@@ -409,7 +409,7 @@ SCH_SHEET* SCH_IO_PADS::LoadSchematicFile( const wxString& aFileName, SCHEMATIC*
     rootPath.push_back( rootSheet );
 
     SCH_SCREEN* rootScreen = rootSheet->GetScreen();
-    wxCHECK( rootScreen, nullptr );
+    KI_CHECK( rootScreen, nullptr );
 
     SCH_SHEET_INSTANCE sheetInstance;
     sheetInstance.m_Path = rootPath.Path();
@@ -1339,7 +1339,7 @@ SCH_SHEET* SCH_IO_PADS::loadBinarySchematicFile( const wxString& aFileName, SCHE
             m_reporter->Report( PADS_SCH_BINARY::FormatParserError( first->source, report ), severity );
         }
 
-        wxLogTrace( tracePadsIo,
+        KI_LOG_TRACE( tracePadsIo,
                     wxS( "Imported PADS Logic binary schematic '%s': %zu sheets, %zu symbols, %zu wires, %zu buses, "
                          "%zu bus entries, %zu junctions, %zu labels, %zu texts, %zu graphics, %zu images." ),
                     aFileName, result.counts.sheets, result.counts.symbols, result.counts.wires, result.counts.buses,

@@ -120,7 +120,7 @@ public:
 
     int GetRowCount() const
     {
-        wxCHECK_MSG( m_colCount, 0, wxT( "Degenerate table with no columns!" ) );
+        KI_CHECK_MSG( m_colCount, 0, wxT( "Degenerate table with no columns!" ) );
 
         return (int) m_cells.size() / m_colCount;
     }

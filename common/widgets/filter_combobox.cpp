@@ -574,7 +574,7 @@ FILTER_COMBOBOX::FILTER_COMBOBOX( wxWindow* parent, wxWindowID id, const wxStrin
         FILTER_COMBOBOX( parent, id, pos, size, style )
 {
     // These arguments are just to match wxFormBuilder's expected API; they are not supported
-    wxASSERT( value.IsEmpty() && count == 0 && strings == nullptr );
+    KI_ASSERT( value.IsEmpty() && count == 0 && strings == nullptr );
 
     m_filterPopup = new FILTER_COMBOPOPUP();
     setFilterPopup( m_filterPopup );

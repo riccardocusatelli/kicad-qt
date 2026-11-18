@@ -313,8 +313,8 @@ bool DRC_TEST_PROVIDER_CONNECTIVITY::Run()
                 if( !reportProgress( ii++, count, progressDelta ) )
                     return false;   // DRC cancelled
 
-                wxCHECK( edge.GetSourceNode() && !edge.GetSourceNode()->Dirty(), true );
-                wxCHECK( edge.GetTargetNode() && !edge.GetTargetNode()->Dirty(), true );
+                KI_CHECK( edge.GetSourceNode() && !edge.GetSourceNode()->Dirty(), true );
+                KI_CHECK( edge.GetTargetNode() && !edge.GetTargetNode()->Dirty(), true );
 
                 std::shared_ptr<DRC_ITEM> drcItem = DRC_ITEM::Create( DRCE_UNCONNECTED_ITEMS );
                 drcItem->SetItems( edge.GetSourceNode()->Parent(), edge.GetTargetNode()->Parent() );

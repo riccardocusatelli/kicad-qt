@@ -729,7 +729,7 @@ int BOARD_EDITOR_CONTROL::ExportSpecctraDSN( const TOOL_EVENT& aEvent )
 
 int BOARD_EDITOR_CONTROL::ExportNetlist( const TOOL_EVENT& aEvent )
 {
-    wxCHECK( m_frame, 0 );
+    KI_CHECK( m_frame, 0 );
 
     wxFileName fn = m_frame->Prj().GetProjectFullName();
 
@@ -759,7 +759,7 @@ int BOARD_EDITOR_CONTROL::ExportNetlist( const TOOL_EVENT& aEvent )
 
     const LEGACYFILEDLG_NETLIST_OPTIONS* noh =
             dynamic_cast<const LEGACYFILEDLG_NETLIST_OPTIONS*>( dlg.GetExtraControl() );
-    wxCHECK( noh, 0 );
+    KI_CHECK( noh, 0 );
 
     NETLIST netlist;
 
@@ -781,7 +781,7 @@ int BOARD_EDITOR_CONTROL::ExportNetlist( const TOOL_EVENT& aEvent )
 
         for( PCB_FIELD* field : footprint->GetFields() )
         {
-            wxCHECK2( field, continue );
+            KI_CHECK2( field, continue );
 
             fields[field->GetUntranslatedName()] = field->GetText();
         }

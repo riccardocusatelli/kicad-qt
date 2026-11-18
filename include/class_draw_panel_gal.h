@@ -290,7 +290,7 @@ public:
 
     virtual void GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
     {
-        wxASSERT( false );
+        KI_ASSERT( false );
     }
 
     /**

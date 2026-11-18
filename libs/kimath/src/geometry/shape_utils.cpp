@@ -153,7 +153,7 @@ std::vector<SEG> KIGEOM::GetSegsInDirection( const BOX2I& aBox, DIRECTION_45::Di
     }
     // clang-format on
 
-    wxASSERT( false );
+    KI_ASSERT( false );
     return {};
 };
 
@@ -271,7 +271,7 @@ SHAPE_ARC KIGEOM::MakeArcCw90( const VECTOR2I& aCenter, int aRadius, DIRECTION_4
             aCenter + VECTOR2I( aRadius, 0 ),
             ANGLE_90,
         };
-    default: wxFAIL_MSG( "Invalid direction" ); return SHAPE_ARC();
+    default: KI_FAIL_MSG( "Invalid direction" ); return SHAPE_ARC();
     }
 }
 
@@ -305,7 +305,7 @@ SHAPE_ARC KIGEOM::MakeArcCw180( const VECTOR2I& aCenter, int aRadius,
             aCenter + VECTOR2I( 0, aRadius ),
             ANGLE_180,
         };
-    default: wxFAIL_MSG( "Invalid direction" );
+    default: KI_FAIL_MSG( "Invalid direction" );
     }
 
     return SHAPE_ARC();
@@ -335,7 +335,7 @@ VECTOR2I KIGEOM::GetPoint( const SHAPE_RECT& aRect, DIRECTION_45::Directions aDi
     case DIRECTION_45::SE:
         return nw + VECTOR2I( aRect.GetWidth() + aOutset, aRect.GetHeight() + aOutset );
     default:
-        wxFAIL_MSG( "Invalid direction" );
+        KI_FAIL_MSG( "Invalid direction" );
         // clang-format on
     }
     return VECTOR2I();

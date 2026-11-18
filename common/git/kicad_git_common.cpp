@@ -149,7 +149,7 @@ wxString KIGIT_COMMON::GetCurrentBranchName() const
 
     if( git_reference_resolve( &branch, head ) )
     {
-        wxLogTrace( traceGit, "Failed to resolve branch" );
+        KI_LOG_TRACE( traceGit, "Failed to resolve branch" );
         return wxEmptyString;
     }
 
@@ -158,7 +158,7 @@ wxString KIGIT_COMMON::GetCurrentBranchName() const
 
     if( git_branch_name( &branchName, branch ) )
     {
-        wxLogTrace( traceGit, "Failed to get branch name" );
+        KI_LOG_TRACE( traceGit, "Failed to get branch name" );
         return wxEmptyString;
     }
 
@@ -581,7 +581,7 @@ std::vector<KIGIT_BRANCH_INFO> KIGIT_COMMON::GetBranches() const
 
     if( git_branch_iterator_new( &branchIterator, m_repo, GIT_BRANCH_ALL ) )
     {
-        wxLogTrace( traceGit, "Failed to get branch iterator" );
+        KI_LOG_TRACE( traceGit, "Failed to get branch iterator" );
         return {};
     }
 
@@ -601,7 +601,7 @@ std::vector<KIGIT_BRANCH_INFO> KIGIT_COMMON::GetBranches() const
 
         if( rc != GIT_OK )
         {
-            wxLogTrace( traceGit, "Failed to iterate branches: %s", KIGIT_COMMON::GetLastGitError() );
+            KI_LOG_TRACE( traceGit, "Failed to iterate branches: %s", KIGIT_COMMON::GetLastGitError() );
             break;
         }
 
@@ -614,7 +614,7 @@ std::vector<KIGIT_BRANCH_INFO> KIGIT_COMMON::GetBranches() const
 
         if( git_branch_name( &branchName, branchReference ) )
         {
-            wxLogTrace( traceGit, "Failed to get branch name in iter loop" );
+            KI_LOG_TRACE( traceGit, "Failed to get branch name in iter loop" );
             continue;
         }
 
@@ -623,7 +623,7 @@ std::vector<KIGIT_BRANCH_INFO> KIGIT_COMMON::GetBranches() const
 
         if( !commitId || git_commit_lookup( &commit, m_repo, commitId ) != GIT_OK )
         {
-            wxLogTrace( traceGit, "Failed to get commit in iter loop" );
+            KI_LOG_TRACE( traceGit, "Failed to get commit in iter loop" );
             continue;
         }
 
@@ -714,13 +714,13 @@ std::vector<wxString> KIGIT_COMMON::GetProjectDirs()
 
     if( git_reference_name_to_id( &oid, m_repo, "HEAD" ) != GIT_OK )
     {
-        wxLogTrace( traceGit, "An error occurred: %s", KIGIT_COMMON::GetLastGitError() );
+        KI_LOG_TRACE( traceGit, "An error occurred: %s", KIGIT_COMMON::GetLastGitError() );
         return projDirs;
     }
 
     if( git_commit_lookup( &commit, m_repo, &oid ) != GIT_OK )
     {
-        wxLogTrace( traceGit, "An error occurred: %s", KIGIT_COMMON::GetLastGitError() );
+        KI_LOG_TRACE( traceGit, "An error occurred: %s", KIGIT_COMMON::GetLastGitError() );
         return projDirs;
     }
 
@@ -728,7 +728,7 @@ std::vector<wxString> KIGIT_COMMON::GetProjectDirs()
 
     if( git_commit_tree( &tree, commit ) != GIT_OK )
     {
-        wxLogTrace( traceGit, "An error occurred: %s", KIGIT_COMMON::GetLastGitError() );
+        KI_LOG_TRACE( traceGit, "An error occurred: %s", KIGIT_COMMON::GetLastGitError() );
         return projDirs;
     }
 
@@ -782,7 +782,7 @@ std::pair<std::set<wxString>, std::set<wxString>> KIGIT_COMMON::GetDifferentFile
 
     if( git_repository_head( &head, m_repo ) != GIT_OK )
     {
-        wxLogTrace( traceGit, "Failed to get modified HEAD" );
+        KI_LOG_TRACE( traceGit, "Failed to get modified HEAD" );
         return modified_files;
     }
 
@@ -793,7 +793,7 @@ std::pair<std::set<wxString>, std::set<wxString>> KIGIT_COMMON::GetDifferentFile
         // Branch has no upstream tracking ref configured.  Without an upstream there is
         // nothing to compare against, so leave both sets empty.  Walking commits unbounded
         // would otherwise dump the entire history's root tree into the result.
-        wxLogTrace( traceGit, "Failed to get modified remote HEAD" );
+        KI_LOG_TRACE( traceGit, "Failed to get modified remote HEAD" );
         return modified_files;
     }
 
@@ -811,7 +811,7 @@ std::pair<std::set<wxString>, std::set<wxString>> KIGIT_COMMON::GetDifferentFile
 
         if( git_commit_lookup( &commit, m_repo, aOid ) != GIT_OK )
         {
-            wxLogTrace( traceGit, "Failed to lookup commit for diff: %s", KIGIT_COMMON::GetLastGitError() );
+            KI_LOG_TRACE( traceGit, "Failed to lookup commit for diff: %s", KIGIT_COMMON::GetLastGitError() );
             return nullptr;
         }
 
@@ -820,7 +820,7 @@ std::pair<std::set<wxString>, std::set<wxString>> KIGIT_COMMON::GetDifferentFile
 
         if( git_commit_tree( &tree, commit ) != GIT_OK )
         {
-            wxLogTrace( traceGit, "Failed to get commit tree for diff: %s", KIGIT_COMMON::GetLastGitError() );
+            KI_LOG_TRACE( traceGit, "Failed to get commit tree for diff: %s", KIGIT_COMMON::GetLastGitError() );
             return nullptr;
         }
 
@@ -845,7 +845,7 @@ std::pair<std::set<wxString>, std::set<wxString>> KIGIT_COMMON::GetDifferentFile
 
     if( git_merge_base( &base_oid, m_repo, head_oid, remote_oid ) != GIT_OK )
     {
-        wxLogTrace( traceGit, "No merge base between local and remote: %s", KIGIT_COMMON::GetLastGitError() );
+        KI_LOG_TRACE( traceGit, "No merge base between local and remote: %s", KIGIT_COMMON::GetLastGitError() );
         return modified_files;
     }
 
@@ -867,7 +867,7 @@ std::pair<std::set<wxString>, std::set<wxString>> KIGIT_COMMON::GetDifferentFile
 
         if( git_diff_tree_to_tree( &diff, m_repo, aOldTree, aNewTree, &localOpts ) != GIT_OK )
         {
-            wxLogTrace( traceGit, "Failed to diff trees: %s", KIGIT_COMMON::GetLastGitError() );
+            KI_LOG_TRACE( traceGit, "Failed to diff trees: %s", KIGIT_COMMON::GetLastGitError() );
             return;
         }
 
@@ -1794,7 +1794,7 @@ bool KIGIT_COMMON::HasPushAndPullRemote() const
 
     if( git_remote_list( &remotes, m_repo ) != GIT_OK )
     {
-        wxLogTrace( traceGit, "Failed to enumerate remotes for haspushpull" );
+        KI_LOG_TRACE( traceGit, "Failed to enumerate remotes for haspushpull" );
         return false;
     }
 
@@ -1865,7 +1865,7 @@ wxString KIGIT_COMMON::remoteNameWithoutUpstream() const
     }
     else
     {
-        wxLogTrace( traceGit, "Failed to list remotes: %s", KIGIT_COMMON::GetLastGitError() );
+        KI_LOG_TRACE( traceGit, "Failed to list remotes: %s", KIGIT_COMMON::GetLastGitError() );
 
         // If we can't get the remote name from the upstream branch or the list of remotes,
         // just return the default remote name
@@ -1879,7 +1879,7 @@ wxString KIGIT_COMMON::remoteNameWithoutUpstream() const
         }
         else
         {
-            wxLogTrace( traceGit, "Failed to get remote name from default remote: %s",
+            KI_LOG_TRACE( traceGit, "Failed to get remote name from default remote: %s",
                         KIGIT_COMMON::GetLastGitError() );
         }
     }
@@ -1901,7 +1901,7 @@ wxString KIGIT_COMMON::GetRemotename() const
     // An unborn HEAD has no branch to track, but the remote still exists
     if( git_repository_head( &head, m_repo ) != GIT_OK )
     {
-        wxLogTrace( traceGit, "Failed to get remote name: %s", KIGIT_COMMON::GetLastGitError() );
+        KI_LOG_TRACE( traceGit, "Failed to get remote name: %s", KIGIT_COMMON::GetLastGitError() );
         return remoteNameWithoutUpstream();
     }
 
@@ -1909,7 +1909,7 @@ wxString KIGIT_COMMON::GetRemotename() const
 
     if( git_branch_upstream( &upstream, head ) != GIT_OK )
     {
-        wxLogTrace( traceGit, "Failed to get upstream branch: %s", KIGIT_COMMON::GetLastGitError() );
+        KI_LOG_TRACE( traceGit, "Failed to get upstream branch: %s", KIGIT_COMMON::GetLastGitError() );
         return remoteNameWithoutUpstream();
     }
 
@@ -1923,7 +1923,7 @@ wxString KIGIT_COMMON::GetRemotename() const
     }
     else
     {
-        wxLogTrace( traceGit,
+        KI_LOG_TRACE( traceGit,
                     "Failed to get remote name from upstream branch: %s",
                     KIGIT_COMMON::GetLastGitError() );
     }
@@ -2053,7 +2053,7 @@ void KIGIT_COMMON::rebuildPublicKeysUnlocked()
     if( KIGIT::IsOfferableSSHKey( m_projectSSHKey ) )
         m_publicKeys.push_back( m_projectSSHKey );
     else if( !m_projectSSHKey.IsEmpty() )
-        wxLogTrace( traceGit, "Not offering project SSH key %s, it or its .pub is missing", m_projectSSHKey );
+        KI_LOG_TRACE( traceGit, "Not offering project SSH key %s, it or its .pub is missing", m_projectSSHKey );
 
     // A refused key still counts toward the server's limit on attempts, and the right one can come too late.
     // Only a key still found for the host moves up, so one dropped from the ssh config stays dropped
@@ -2757,7 +2757,7 @@ git_tree* ResolveRefToTree( git_repository* aRepo, const wxString& aRef )
 
     if( git_revparse_single( &obj, aRepo, refStr.c_str() ) != 0 )
     {
-        wxLogTrace( traceGit, "git_revparse_single failed for ref '%s': %s",
+        KI_LOG_TRACE( traceGit, "git_revparse_single failed for ref '%s': %s",
                     aRef, KIGIT_COMMON::GetLastGitError() );
         return nullptr;
     }
@@ -2767,7 +2767,7 @@ git_tree* ResolveRefToTree( git_repository* aRepo, const wxString& aRef )
 
     if( git_object_peel( reinterpret_cast<git_object**>( &tree ), obj, GIT_OBJECT_TREE ) != 0 )
     {
-        wxLogTrace( traceGit, "git_object_peel to tree failed for '%s': %s",
+        KI_LOG_TRACE( traceGit, "git_object_peel to tree failed for '%s': %s",
                     aRef, KIGIT_COMMON::GetLastGitError() );
         return nullptr;
     }

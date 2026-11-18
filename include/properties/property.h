@@ -91,7 +91,7 @@ public:
     GETTER( FuncType aFunc )
         : m_func( aFunc )
     {
-        wxCHECK( m_func, /*void*/ );
+        KI_CHECK( m_func, /*void*/ );
     }
 
     T operator()( const Owner* aOwner ) const override
@@ -119,7 +119,7 @@ public:
     SETTER( FuncType aFunc )
         : m_func( aFunc )
     {
-        wxCHECK( m_func, /*void*/ );
+        KI_CHECK( m_func, /*void*/ );
     }
 
     void operator()( Owner* aOwner, T aValue ) override
@@ -249,7 +249,7 @@ public:
      */
     virtual void SetChoices( const wxPGChoices& aChoices )
     {
-        wxFAIL; // only possible for PROPERTY_ENUM
+        KI_FAIL(); // only possible for PROPERTY_ENUM
     }
 
     /**
@@ -591,7 +591,7 @@ protected:
 
     virtual void setter( void* obj, wxAny& v ) override
     {
-        wxCHECK( m_setter, /*void*/ );
+        KI_CHECK( m_setter, /*void*/ );
 
         BASE_TYPE value;
 
@@ -674,7 +674,7 @@ public:
         {
             m_choices = ENUM_MAP<T>::Instance().Choices();
             m_choicesFromENUM_MAP = true;
-            wxASSERT_MSG( m_choices.GetCount() > 0, wxT( "No enum choices defined" ) );
+            KI_ASSERT_MSG( m_choices.GetCount() > 0, wxT( "No enum choices defined" ) );
         }
     }
 
@@ -694,13 +694,13 @@ public:
         {
             m_choices = ENUM_MAP<T>::Instance().Choices();
             m_choicesFromENUM_MAP = true;
-            wxASSERT_MSG( m_choices.GetCount() > 0, wxT( "No enum choices defined" ) );
+            KI_ASSERT_MSG( m_choices.GetCount() > 0, wxT( "No enum choices defined" ) );
         }
     }
 
     void setter( void* obj, wxAny& v ) override
     {
-        wxCHECK( ( PROPERTY<Owner, T, Base>::m_setter ), /*void*/ );
+        KI_CHECK( ( PROPERTY<Owner, T, Base>::m_setter ), /*void*/ );
         Owner* o = reinterpret_cast<Owner*>( obj );
 
         if( v.CheckType<T>() )

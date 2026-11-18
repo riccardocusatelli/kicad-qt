@@ -610,7 +610,7 @@ bool test::DRC_TEST_PROVIDER_DIFF_PAIR_COUPLING::Run()
         for( DIFF_PAIR_COUPLED_SEGMENTS& dp : itemSet.coupled )
         {
             int length = dp.isArc ? dp.coupledArcN.GetLength() : dp.coupledN.Length();
-            wxCHECK2( dp.parentN && dp.parentP, continue );
+            KI_CHECK2( dp.parentN && dp.parentP, continue );
 
             std::shared_ptr<KIGFX::VIEW_OVERLAY> overlay = m_drcEngine->GetDebugOverlay();
 
@@ -708,7 +708,7 @@ bool test::DRC_TEST_PROVIDER_DIFF_PAIR_COUPLING::Run()
         {
             for( DIFF_PAIR_COUPLED_SEGMENTS& dp : itemSet.coupled )
             {
-                wxCHECK2( dp.parentP && dp.parentN, continue );
+                KI_CHECK2( dp.parentP && dp.parentN, continue );
 
                 if( ( dp.couplingFailMin || dp.couplingFailMax ) )
                 {

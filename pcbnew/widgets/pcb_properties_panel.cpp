@@ -200,7 +200,7 @@ public:
     wxPGWindowList CreateControls( wxPropertyGrid* aGrid, wxPGProperty* aProperty, const wxPoint& aPos,
                                    const wxSize& aSize ) const override
     {
-        wxASSERT( m_unitBinder );
+        KI_ASSERT( m_unitBinder );
 
         wxComboBox* editor = new wxComboBox( aGrid->GetPanel(), wxID_ANY, wxEmptyString, aPos, aSize, 0, nullptr,
                                              wxCB_DROPDOWN | wxTE_PROCESS_ENTER );
@@ -291,7 +291,7 @@ public:
             return;
 
         wxComboBox* editor = dynamic_cast<wxComboBox*>( aCtrl );
-        wxCHECK( editor, /* void */ );
+        KI_CHECK( editor, /* void */ );
 
         if( aProperty->IsValueUnspecified() )
             editor->ChangeValue( INDETERMINATE_STATE );
@@ -305,7 +305,7 @@ public:
             return false;
 
         wxComboBox* editor = dynamic_cast<wxComboBox*>( aCtrl );
-        wxCHECK_MSG( editor, false, "PG_TRACK_WIDTH_EDITOR requires a combo box!" );
+        KI_CHECK_MSG( editor, false, "PG_TRACK_WIDTH_EDITOR requires a combo box!" );
 
         if( editor->GetValue() == INDETERMINATE_STATE )
         {
@@ -373,7 +373,7 @@ PCB_PROPERTIES_PANEL::PCB_PROPERTIES_PANEL( wxWindow* aParent, PCB_BASE_EDIT_FRA
     m_propMgr.Rebuild();
     bool found = false;
 
-    wxASSERT( wxPGGlobalVars );
+    KI_ASSERT( wxPGGlobalVars );
 
     wxString editorKey = PG_UNIT_EDITOR::BuildEditorName( m_frame );
 
@@ -898,7 +898,7 @@ wxPGProperty* PCB_PROPERTIES_PANEL::createPGProperty( const PROPERTY_BASE* aProp
 {
     if( aProperty->TypeHash() == TYPE_HASH( PCB_LAYER_ID ) )
     {
-        wxASSERT( aProperty->HasChoices() );
+        KI_ASSERT( aProperty->HasChoices() );
 
         const wxPGChoices& canonicalLayers = aProperty->Choices();
         wxArrayString      boardLayerNames;
@@ -952,10 +952,10 @@ PROPERTY_BASE* PCB_PROPERTIES_PANEL::getPropertyFromEvent( const wxPropertyGridE
 
     BOARD_ITEM* firstItem = static_cast<BOARD_ITEM*>( item );
 
-    wxCHECK_MSG( firstItem, nullptr, wxT( "getPropertyFromEvent for a property with nothing selected!") );
+    KI_CHECK_MSG( firstItem, nullptr, wxT( "getPropertyFromEvent for a property with nothing selected!") );
 
     PROPERTY_BASE* property = m_propMgr.GetProperty( firstItem, aEvent.GetPropertyName() );
-    wxCHECK_MSG( property, nullptr, wxT( "getPropertyFromEvent for a property not found on the selected item!" ) );
+    KI_CHECK_MSG( property, nullptr, wxT( "getPropertyFromEvent for a property not found on the selected item!" ) );
 
     return property;
 }
@@ -969,8 +969,8 @@ void PCB_PROPERTIES_PANEL::valueChanging( wxPropertyGridEvent& aEvent )
     EDA_ITEM* item = getFrontItem();
 
     PROPERTY_BASE* property = getPropertyFromEvent( aEvent );
-    wxCHECK( property, /* void */ );
-    wxCHECK( item, /* void */ );
+    KI_CHECK( property, /* void */ );
+    KI_CHECK( item, /* void */ );
 
     wxVariant newValue = aEvent.GetPropertyValue();
 
@@ -1087,7 +1087,7 @@ void PCB_PROPERTIES_PANEL::valueChanged( wxPropertyGridEvent& aEvent )
 
     const SELECTION& selection = filtered;
 
-    wxCHECK( getPropertyFromEvent( aEvent ), /* void */ );
+    KI_CHECK( getPropertyFromEvent( aEvent ), /* void */ );
 
     wxVariant newValue = aEvent.GetPropertyValue();
     BOARD_COMMIT changes( m_frame );
@@ -1130,7 +1130,7 @@ void PCB_PROPERTIES_PANEL::valueChanged( wxPropertyGridEvent& aEvent )
 
         BOARD_ITEM* item = static_cast<BOARD_ITEM*>( edaItem );
         PROPERTY_BASE* property = m_propMgr.GetProperty( item, aEvent.GetPropertyName() );
-        wxCHECK( property, /* void */ );
+        KI_CHECK( property, /* void */ );
 
         if( item->Type() == PCB_TABLECELL_T )
             changes.Modify( item->GetParent(), nullptr, RECURSE_MODE::NO_RECURSE );

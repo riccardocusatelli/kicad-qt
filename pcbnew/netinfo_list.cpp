@@ -110,7 +110,7 @@ void NETINFO_LIST::RemoveNet( NETINFO_ITEM* aNet )
     {
         if ( i->second == aNet )
         {
-            wxASSERT_MSG( removed, wxT( "NETINFO_LIST::RemoveNet: target net found in m_netNames "
+            KI_ASSERT_MSG( removed, wxT( "NETINFO_LIST::RemoveNet: target net found in m_netNames "
                                         "but not m_netCodes!" ) );
             m_netNames.erase(i);
             break;
@@ -296,7 +296,7 @@ void NETINFO_LIST::Show() const
 
     for( it = m_netNames.begin(), itEnd = m_netNames.end(); it != itEnd; ++it )
     {
-        wxLogDebug( wxT( "[%d]: netcode:%d  netname:<%s>\n" ),
+        KI_LOG_DEBUG( wxT( "[%d]: netcode:%d  netname:<%s>\n" ),
                     i++,
                     it->second->GetNetCode(),
                     TO_UTF8( it->second->GetNetname() ) );
@@ -336,7 +336,7 @@ bool NETINFO_LIST::RenameNets( const std::map<wxString, wxString>& aNewNames, RE
             // A caller may legitimately offer names for nets this board does not have, but a run
             // where most names miss usually means the two sides qualify hierarchical names
             // differently.
-            wxLogTrace( traceImportNetNames, wxS( "no net named '%s' to rename to '%s'" ), source,
+            KI_LOG_TRACE( traceImportNetNames, wxS( "no net named '%s' to rename to '%s'" ), source,
                         target );
             ++missing;
             continue;
@@ -357,7 +357,7 @@ bool NETINFO_LIST::RenameNets( const std::map<wxString, wxString>& aNewNames, RE
         finalNames.erase( source );
     }
 
-    wxLogTrace( traceImportNetNames, wxS( "renaming %zu of %zu nets, %zu not on this board" ),
+    KI_LOG_TRACE( traceImportNetNames, wxS( "renaming %zu of %zu nets, %zu not on this board" ),
                 renames.size(), aNewNames.size(), missing );
 
     if( renames.empty() )

@@ -1515,7 +1515,7 @@ void DIALOG_SIM_MODEL<T>::onModelNameChoice( wxCommandEvent& aEvent )
         wxArrayString    pinLabels;
         SIM_MODEL_IBIS* modelkibis = dynamic_cast<SIM_MODEL_IBIS*>( &curModel() );
 
-        wxCHECK2( modelkibis, return );
+        KI_CHECK2( modelkibis, return );
 
         for( std::pair<wxString, wxString> strs : modelkibis->GetIbisPins() )
             pinLabels.Add( strs.first + wxT( " - " ) + strs.second );

@@ -73,7 +73,7 @@ void LIBGIT_BACKEND::Init()
     if( git_libgit2_opts( GIT_OPT_SET_SERVER_CONNECT_TIMEOUT, connectTimeoutMs ) != GIT_OK
             || git_libgit2_opts( GIT_OPT_SET_SERVER_TIMEOUT, transferTimeoutMs ) != GIT_OK )
     {
-        wxLogTrace( traceGit, "LIBGIT_BACKEND::Init(): could not set server timeouts: %s",
+        KI_LOG_TRACE( traceGit, "LIBGIT_BACKEND::Init(): could not set server timeouts: %s",
                     KIGIT_COMMON::GetLastGitError() );
     }
 #endif
@@ -94,7 +94,7 @@ void LIBGIT_BACKEND::Shutdown()
 
     if( stuck > 0 )
     {
-        wxLogTrace( traceGit, "LIBGIT_BACKEND::Shutdown(): %zu orphan git thread(s) did not finish within %lld ms; "
+        KI_LOG_TRACE( traceGit, "LIBGIT_BACKEND::Shutdown(): %zu orphan git thread(s) did not finish within %lld ms; "
                               "skipping libgit2 shutdown",
                     stuck, static_cast<long long>( kOrphanJoinTimeout.count() ) );
 
@@ -178,7 +178,7 @@ bool LIBGIT_BACKEND::Clone( GIT_CLONE_HANDLER* aHandler )
 
     if( !lock.owns_lock() )
     {
-        wxLogTrace( traceGit, "GIT_CLONE_HANDLER::PerformClone() could not lock" );
+        KI_LOG_TRACE( traceGit, "GIT_CLONE_HANDLER::PerformClone() could not lock" );
         return false;
     }
 
@@ -1072,7 +1072,7 @@ PushResult LIBGIT_BACKEND::Push( GIT_PUSH_HANDLER* aHandler, bool aForce )
 
     if( !lock.owns_lock() )
     {
-        wxLogTrace( traceGit, "GIT_PUSH_HANDLER::PerformPush: Could not lock mutex" );
+        KI_LOG_TRACE( traceGit, "GIT_PUSH_HANDLER::PerformPush: Could not lock mutex" );
         return PushResult::Busy;
     }
 
@@ -1255,7 +1255,7 @@ std::map<wxString, FileStatus> LIBGIT_BACKEND::GetFileStatus( GIT_STATUS_HANDLER
 
     if( git_status_list_new( &status_list, repo, &status_options ) != GIT_OK )
     {
-        wxLogTrace( traceGit, "Failed to get git status list: %s", KIGIT_COMMON::GetLastGitError() );
+        KI_LOG_TRACE( traceGit, "Failed to get git status list: %s", KIGIT_COMMON::GetLastGitError() );
         return fileStatusMap;
     }
 
@@ -1306,7 +1306,7 @@ wxString LIBGIT_BACKEND::GetCurrentBranchName( GIT_STATUS_HANDLER* aHandler )
     }
     else
     {
-        wxLogTrace( traceGit, "Failed to lookup current branch: %s", KIGIT_COMMON::GetLastGitError() );
+        KI_LOG_TRACE( traceGit, "Failed to lookup current branch: %s", KIGIT_COMMON::GetLastGitError() );
         return wxEmptyString;
     }
 }
@@ -1444,7 +1444,7 @@ InitResult LIBGIT_BACKEND::InitializeRepository( GIT_INIT_HANDLER* aHandler, con
         return InitResult::Error;
     }
 
-    wxLogTrace( traceGit, "Successfully initialized Git repository at %s", aPath );
+    KI_LOG_TRACE( traceGit, "Successfully initialized Git repository at %s", aPath );
     return InitResult::Success;
 }
 
@@ -1499,7 +1499,7 @@ bool LIBGIT_BACKEND::SetupRemote( GIT_INIT_HANDLER* aHandler, const RemoteConfig
     common->SetPassword( aConfig.password.IsEmpty() ? parsed.password : aConfig.password );
     common->SetSSHKey( aConfig.sshKey );
 
-    wxLogTrace( traceGit, "Successfully set up remote origin" );
+    KI_LOG_TRACE( traceGit, "Successfully set up remote origin" );
     return true;
 }
 
@@ -1629,7 +1629,7 @@ BranchResult LIBGIT_BACKEND::SwitchToBranch( GIT_BRANCH_HANDLER* aHandler, const
         return BranchResult::Error;
     }
 
-    wxLogTrace( traceGit, "Successfully switched to branch '%s'", aBranchName );
+    KI_LOG_TRACE( traceGit, "Successfully switched to branch '%s'", aBranchName );
     return BranchResult::Success;
 }
 
@@ -1720,13 +1720,13 @@ static bool adoptRemoteBranch( git_repository* aRepo, const wxString& aRemoteNam
         || git_transaction_commit( transaction ) != GIT_OK
         || git_repository_set_head( aRepo, ( wxS( "refs/heads/" ) + branch ).utf8_str() ) != GIT_OK )
     {
-        wxLogTrace( traceGit, "adoptRemoteBranch: could not move %s to %s: %s", localName, branch,
+        KI_LOG_TRACE( traceGit, "adoptRemoteBranch: could not move %s to %s: %s", localName, branch,
                     KIGIT_COMMON::GetLastGitError() );
         return false;
     }
 
     git_config_delete_entry( local, ADOPT_REMOTE_BRANCH_KEY );
-    wxLogTrace( traceGit, "adoptRemoteBranch: first commit goes to %s instead of %s", branch, localName );
+    KI_LOG_TRACE( traceGit, "adoptRemoteBranch: first commit goes to %s instead of %s", branch, localName );
     return true;
 }
 
@@ -1743,7 +1743,7 @@ static bool fetchRemote( GIT_PULL_HANDLER* aHandler, bool aSkipLock, bool* aRemo
 
         if( !lock.owns_lock() )
         {
-            wxLogTrace( traceGit, "GIT_PULL_HANDLER::PerformFetch() - Could not lock mutex" );
+            KI_LOG_TRACE( traceGit, "GIT_PULL_HANDLER::PerformFetch() - Could not lock mutex" );
             aHandler->AddErrorString( KIGIT::BusyMessage() );
             return false;
         }
@@ -1765,7 +1765,7 @@ static bool fetchRemote( GIT_PULL_HANDLER* aHandler, bool aSkipLock, bool* aRemo
 
     if( int rc = git_remote_lookup( &remote, aHandler->GetRepo(), remoteNameUtf8.c_str() ); rc != GIT_OK )
     {
-        wxLogTrace( traceGit, "GIT_PULL_HANDLER::PerformFetch() - Failed to lookup remote '%s'", remoteName );
+        KI_LOG_TRACE( traceGit, "GIT_PULL_HANDLER::PerformFetch() - Failed to lookup remote '%s'", remoteName );
         reportRemoteLookupFailure( aHandler, rc, remoteName );
         return false;
     }
@@ -1803,7 +1803,7 @@ static bool fetchRemote( GIT_PULL_HANDLER* aHandler, bool aSkipLock, bool* aRemo
         return false;
     }
 
-    wxLogTrace( traceGit, "GIT_PULL_HANDLER::PerformFetch() - Fetch completed successfully" );
+    KI_LOG_TRACE( traceGit, "GIT_PULL_HANDLER::PerformFetch() - Fetch completed successfully" );
     return true;
 }
 
@@ -2180,7 +2180,7 @@ PullResult LIBGIT_BACKEND::PerformPull( GIT_PULL_HANDLER* aHandler )
 
     if( !lock.owns_lock() )
     {
-        wxLogTrace( traceGit, "GIT_PULL_HANDLER::PerformPull() - Could not lock mutex" );
+        KI_LOG_TRACE( traceGit, "GIT_PULL_HANDLER::PerformPull() - Could not lock mutex" );
         aHandler->AddErrorString( KIGIT::BusyMessage() );
         return PullResult::Error;
     }
@@ -2308,26 +2308,26 @@ PullResult LIBGIT_BACKEND::PerformPull( GIT_PULL_HANDLER* aHandler )
 
     if( merge_analysis & GIT_MERGE_ANALYSIS_UP_TO_DATE )
     {
-        wxLogTrace( traceGit, "GIT_PULL_HANDLER::PerformPull() - Repository is up to date" );
+        KI_LOG_TRACE( traceGit, "GIT_PULL_HANDLER::PerformPull() - Repository is up to date" );
         git_repository_state_cleanup( aHandler->GetRepo() );
         return PullResult::UpToDate;
     }
 
     if( merge_analysis & GIT_MERGE_ANALYSIS_FASTFORWARD )
     {
-        wxLogTrace( traceGit, "GIT_PULL_HANDLER::PerformPull() - Fast-forward merge" );
+        KI_LOG_TRACE( traceGit, "GIT_PULL_HANDLER::PerformPull() - Fast-forward merge" );
         return handleFastForward( aHandler );
     }
 
     if( merge_analysis & GIT_MERGE_ANALYSIS_NORMAL )
     {
-        wxLogTrace( traceGit, "GIT_PULL_HANDLER::PerformPull() - Normal merge" );
+        KI_LOG_TRACE( traceGit, "GIT_PULL_HANDLER::PerformPull() - Normal merge" );
 
         git_config* config = nullptr;
 
         if( git_repository_config( &config, aHandler->GetRepo() ) != GIT_OK )
         {
-            wxLogTrace( traceGit, "GIT_PULL_HANDLER::PerformPull() - Failed to get repository config" );
+            KI_LOG_TRACE( traceGit, "GIT_PULL_HANDLER::PerformPull() - Failed to get repository config" );
             aHandler->AddGitError( _( "Could not read the repository settings." ) );
             return PullResult::Error;
         }
@@ -2339,15 +2339,15 @@ PullResult LIBGIT_BACKEND::PerformPull( GIT_PULL_HANDLER* aHandler )
 
         if( ret == GIT_OK && rebase_value )
         {
-            wxLogTrace( traceGit, "GIT_PULL_HANDLER::PerformPull() - Using rebase based on config" );
+            KI_LOG_TRACE( traceGit, "GIT_PULL_HANDLER::PerformPull() - Using rebase based on config" );
             return handleRebase( aHandler, merge_commits, 1 );
         }
 
-        wxLogTrace( traceGit, "GIT_PULL_HANDLER::PerformPull() - Using merge based on config" );
+        KI_LOG_TRACE( traceGit, "GIT_PULL_HANDLER::PerformPull() - Using merge based on config" );
         return handleMerge( aHandler, merge_commits, 1 );
     }
 
-    wxLogTrace( traceGit, "GIT_PULL_HANDLER::PerformPull() - Merge needs resolution" );
+    KI_LOG_TRACE( traceGit, "GIT_PULL_HANDLER::PerformPull() - Merge needs resolution" );
     return result;
 }
 
@@ -2450,19 +2450,19 @@ PullResult LIBGIT_BACKEND::handleFastForward( GIT_PULL_HANDLER* aHandler )
                 switch( why )
                 {
                 case GIT_CHECKOUT_NOTIFY_CONFLICT:
-                    wxLogTrace( traceGit, "Checkout conflict: %s", path ? path : "unknown" );
+                    KI_LOG_TRACE( traceGit, "Checkout conflict: %s", path ? path : "unknown" );
                     break;
                 case GIT_CHECKOUT_NOTIFY_DIRTY:
-                    wxLogTrace( traceGit, "Checkout dirty: %s", path ? path : "unknown" );
+                    KI_LOG_TRACE( traceGit, "Checkout dirty: %s", path ? path : "unknown" );
                     break;
                 case GIT_CHECKOUT_NOTIFY_UPDATED:
-                    wxLogTrace( traceGit, "Checkout updated: %s", path ? path : "unknown" );
+                    KI_LOG_TRACE( traceGit, "Checkout updated: %s", path ? path : "unknown" );
                     break;
                 case GIT_CHECKOUT_NOTIFY_UNTRACKED:
-                    wxLogTrace( traceGit, "Checkout untracked: %s", path ? path : "unknown" );
+                    KI_LOG_TRACE( traceGit, "Checkout untracked: %s", path ? path : "unknown" );
                     break;
                 case GIT_CHECKOUT_NOTIFY_IGNORED:
-                    wxLogTrace( traceGit, "Checkout ignored: %s", path ? path : "unknown" );
+                    KI_LOG_TRACE( traceGit, "Checkout ignored: %s", path ? path : "unknown" );
                     break;
                 default:
                     break;
@@ -2522,7 +2522,7 @@ PullResult LIBGIT_BACKEND::handleFastForward( GIT_PULL_HANDLER* aHandler )
     if( git_repository_state_cleanup( aHandler->GetRepo() ) != GIT_OK )
     {
         // Branch and files already match, so this is leftover merge state, not a failed pull.
-        wxLogTrace( traceGit, "handleFastForward: state cleanup failed after a completed fast-forward: %s",
+        KI_LOG_TRACE( traceGit, "handleFastForward: state cleanup failed after a completed fast-forward: %s",
                     KIGIT_COMMON::GetLastGitError() );
     }
 
@@ -2810,7 +2810,7 @@ git_repository* LIBGIT_BACKEND::GetRepositoryForFile( const char* aFilename, wxS
     // finds keeps a linked .git from moving the working folder to the link's target
     if( int rc = git_repository_open_ext( &repo, aFilename, 0, nullptr ); rc != GIT_OK )
     {
-        wxLogTrace( traceGit, "Can't open repo for %s: %s", aFilename, KIGIT_COMMON::GetLastGitError() );
+        KI_LOG_TRACE( traceGit, "Can't open repo for %s: %s", aFilename, KIGIT_COMMON::GetLastGitError() );
 
 #if KIGIT_HAS_EOWNER
         // Left unexplained, a repository git refuses to open looks like no repository at all.
@@ -2851,7 +2851,7 @@ int LIBGIT_BACKEND::CreateBranch( git_repository* aRepo, const wxString& aBranch
 
     if( int error = git_revparse_single( &startObj, aRepo, start.c_str() ); error != GIT_OK )
     {
-        wxLogTrace( traceGit, "Failed to resolve branch start point '%s': %s", start, KIGIT_COMMON::GetLastGitError() );
+        KI_LOG_TRACE( traceGit, "Failed to resolve branch start point '%s': %s", start, KIGIT_COMMON::GetLastGitError() );
         return error;
     }
 
@@ -2860,7 +2860,7 @@ int LIBGIT_BACKEND::CreateBranch( git_repository* aRepo, const wxString& aBranch
 
     if( int error = git_object_peel( &peeled, startObj, GIT_OBJECT_COMMIT ); error != GIT_OK )
     {
-        wxLogTrace( traceGit, "Failed to lookup commit: %s", KIGIT_COMMON::GetLastGitError() );
+        KI_LOG_TRACE( traceGit, "Failed to lookup commit: %s", KIGIT_COMMON::GetLastGitError() );
         return error;
     }
 
@@ -2872,7 +2872,7 @@ int LIBGIT_BACKEND::CreateBranch( git_repository* aRepo, const wxString& aBranch
 
     if( int error = git_branch_create( &branchRef, aRepo, name.c_str(), commit, 0 ); error != GIT_OK )
     {
-        wxLogTrace( traceGit, "Failed to create branch: %s", KIGIT_COMMON::GetLastGitError() );
+        KI_LOG_TRACE( traceGit, "Failed to create branch: %s", KIGIT_COMMON::GetLastGitError() );
         return error;
     }
 
@@ -4270,12 +4270,12 @@ bool LIBGIT_BACKEND::RemoveVCS( git_repository*& aRepo, const wxString& aProject
                 if( aErrors )
                     *aErrors = errors;
 
-                wxLogTrace( traceGit, "Failed to remove .git directory: %s", errors );
+                KI_LOG_TRACE( traceGit, "Failed to remove .git directory: %s", errors );
                 return false;
             }
         }
     }
 
-    wxLogTrace( traceGit, "Successfully removed VCS from project" );
+    KI_LOG_TRACE( traceGit, "Successfully removed VCS from project" );
     return true;
 }

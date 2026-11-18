@@ -158,7 +158,7 @@ SCENEGRAPH* LoadVRML( const wxString& aFileName, const S3D::MODEL_IMPORT_OPTIONS
                 if( aStatus )
                     aStatus->Set( S3D::MODEL_IMPORT_ERROR::INVALID, "Compressed VRML archive is corrupt" );
 
-                wxLogTrace( traceVrmlPlugin, wxS( " * [INFO] wrz load failed" ) );
+                KI_LOG_TRACE( traceVrmlPlugin, wxS( " * [INFO] wrz load failed" ) );
 
                 return nullptr;
             }
@@ -180,7 +180,7 @@ SCENEGRAPH* LoadVRML( const wxString& aFileName, const S3D::MODEL_IMPORT_OPTIONS
     }
     catch( const std::exception& e )
     {
-        wxLogTrace( traceVrmlPlugin, wxS( " * [INFO] load failed: %s" ), wxString::FromUTF8Unchecked( e.what() ) );
+        KI_LOG_TRACE( traceVrmlPlugin, wxS( " * [INFO] load failed: %s" ), wxString::FromUTF8Unchecked( e.what() ) );
 
         return nullptr;
     }
@@ -191,24 +191,24 @@ SCENEGRAPH* LoadVRML( const wxString& aFileName, const S3D::MODEL_IMPORT_OPTIONS
 
     if( proc.GetVRMLType() == WRLVERSION::VRML_V1 )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] Processing VRML 1.0 file" ) );
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] Processing VRML 1.0 file" ) );
 
         auto bp = std::make_unique<WRL1BASE>();
 
         if( !bp->Read( proc ) )
         {
-            wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] load failed" ) );
+            KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] load failed" ) );
         }
         else
         {
-            wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] load completed" ) );
+            KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] load completed" ) );
 
             scene = (SCENEGRAPH*)bp->TranslateToSG( nullptr, nullptr );
         }
     }
     else if( proc.GetVRMLType() == WRLVERSION::VRML_V2 )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] Processing VRML 2.0 file" ) );
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] Processing VRML 2.0 file" ) );
 
         auto bp = std::make_unique<WRL2BASE>();
 
@@ -222,11 +222,11 @@ SCENEGRAPH* LoadVRML( const wxString& aFileName, const S3D::MODEL_IMPORT_OPTIONS
 
         if( !bp->Read( proc ) )
         {
-            wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] load failed" ) );
+            KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] load failed" ) );
         }
         else
         {
-            wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] load completed" ) );
+            KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] load completed" ) );
 
             // for now we recalculate all normals per-vertex per-face
             scene = (SCENEGRAPH*)bp->TranslateToSG( nullptr );
@@ -343,6 +343,6 @@ SCENEGRAPH* LoadVRMLModel( const char* aFileName, const S3D::MODEL_IMPORT_OPTION
         return nullptr;
     }
 
-    wxLogTrace( traceVrmlPlugin, wxT( "Model import failed: %s" ), status.diagnostic.c_str() );
+    KI_LOG_TRACE( traceVrmlPlugin, wxT( "Model import failed: %s" ), status.diagnostic.c_str() );
     return nullptr;
 }

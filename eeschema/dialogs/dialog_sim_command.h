@@ -166,7 +166,7 @@ private:
         case DECADE: return wxString( "dec" );
         case OCTAVE: return wxString( "oct" );
         case LINEAR: return wxString( "lin" );
-        default:     wxFAIL_MSG( "Unhandled scale type" ); return wxEmptyString;
+        default:     KI_FAIL_MSG( "Unhandled scale type" ); return wxEmptyString;
         }
     }
 

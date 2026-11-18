@@ -675,7 +675,7 @@ int SCH_EDITOR_CONTROL::ExportSymbolsToLibrary( const TOOL_EVENT& aEvent )
 
         if( libSymbols.count( id ) )
         {
-            wxASSERT_MSG( libSymbols[id]->Compare( *libSymbol, ~SCH_ITEM::COMPARE_FLAGS::UUID ) == 0,
+            KI_ASSERT_MSG( libSymbols[id]->Compare( *libSymbol, ~SCH_ITEM::COMPARE_FLAGS::UUID ) == 0,
                           "Two symbols have the same LIB_ID but are different!" );
         }
         else
@@ -691,7 +691,7 @@ int SCH_EDITOR_CONTROL::ExportSymbolsToLibrary( const TOOL_EVENT& aEvent )
     SYMBOL_LIBRARY_ADAPTER* adapter = PROJECT_SCH::SymbolLibAdapter( &m_frame->Prj() );
 
     auto optRow = adapter->GetRow( targetLib );
-    wxCHECK( optRow, 0 );
+    KI_CHECK( optRow, 0 );
     const LIBRARY_TABLE_ROW* row = *optRow;
 
     SCH_IO_MGR::SCH_FILE_T type = SCH_IO_MGR::EnumFromStr( row->Type() );
@@ -727,7 +727,7 @@ int SCH_EDITOR_CONTROL::ExportSymbolsToLibrary( const TOOL_EVENT& aEvent )
             {
                 SCH_SCREEN* parentScreen = static_cast<SCH_SCREEN*>( symbol->GetParent() );
 
-                wxCHECK2( parentScreen, continue );
+                KI_CHECK2( parentScreen, continue );
 
                 commit.Modify( symbol, parentScreen, RECURSE_MODE::NO_RECURSE );
                 symbol->SetLibId( id );
@@ -1078,7 +1078,7 @@ static bool setNetHighlight( SCH_ITEM* aItem, bool aHighlight )
 
 static bool highlightNet( TOOL_MANAGER* aToolMgr, const SCH_SHEET_PATH& aSheetPath, const VECTOR2D& aPosition )
 {
-    wxLogTrace( "KICAD_SCH_HIGHLIGHT", "highlightNet: pos=(%f,%f) clear=%d", aPosition.x, aPosition.y,
+    KI_LOG_TRACE( "KICAD_SCH_HIGHLIGHT", "highlightNet: pos=(%f,%f) clear=%d", aPosition.x, aPosition.y,
                 ( aPosition == CLEAR ) );
     SCH_EDIT_FRAME*         editFrame     = static_cast<SCH_EDIT_FRAME*>( aToolMgr->GetToolHolder() );
     SCH_SELECTION_TOOL*     selTool       = aToolMgr->GetTool<SCH_SELECTION_TOOL>();
@@ -1099,7 +1099,7 @@ static bool highlightNet( TOOL_MANAGER* aToolMgr, const SCH_SHEET_PATH& aSheetPa
         else
         {
             item = static_cast<SCH_ITEM*>( selTool->GetNode( aPosition ) );
-            wxLogTrace( "KICAD_SCH_HIGHLIGHT", "highlightNet: item=%p type=%d", (void*) item, item ? (int) item->Type()
+            KI_LOG_TRACE( "KICAD_SCH_HIGHLIGHT", "highlightNet: item=%p type=%d", (void*) item, item ? (int) item->Type()
                                                                                                    : -1 );
             SCH_SYMBOL* symbol = dynamic_cast<SCH_SYMBOL*>( item );
 
@@ -1127,7 +1127,7 @@ static bool highlightNet( TOOL_MANAGER* aToolMgr, const SCH_SHEET_PATH& aSheetPa
 
     if( !connName || connName->IsEmpty() )
     {
-        wxLogTrace( "KICAD_SCH_HIGHLIGHT", "highlightNet: no connection under cursor" );
+        KI_LOG_TRACE( "KICAD_SCH_HIGHLIGHT", "highlightNet: no connection under cursor" );
         editFrame->SetStatusText( wxT( "" ) );
         editFrame->SendCrossProbeClearHighlight();
         editFrame->SetHighlightedConnection( wxEmptyString );
@@ -1141,7 +1141,7 @@ static bool highlightNet( TOOL_MANAGER* aToolMgr, const SCH_SHEET_PATH& aSheetPa
 
         if( *connName != editFrame->GetHighlightedConnection() )
         {
-            wxLogTrace( "KICAD_SCH_HIGHLIGHT", "highlightNet: setting highlighted connection to %s", *connName );
+            KI_LOG_TRACE( "KICAD_SCH_HIGHLIGHT", "highlightNet: setting highlighted connection to %s", *connName );
             editorControl->SetHighlightBusMembers( false );
             // Clear any previous chain highlight when switching to net highlight
             editFrame->SetHighlightedNetChain( wxEmptyString );
@@ -1172,7 +1172,7 @@ static bool highlightNet( TOOL_MANAGER* aToolMgr, const SCH_SHEET_PATH& aSheetPa
 
     TOOL_EVENT dummy;
     editorControl->UpdateNetHighlighting( dummy );
-    wxLogTrace( "KICAD_SCH_HIGHLIGHT", "highlightNet: done" );
+    KI_LOG_TRACE( "KICAD_SCH_HIGHLIGHT", "highlightNet: done" );
 
     return retVal;
 }
@@ -1500,11 +1500,11 @@ int SCH_EDITOR_CONTROL::FindNetInInspector( const TOOL_EVENT& aEvent )
 
 int SCH_EDITOR_CONTROL::UpdateNetHighlighting( const TOOL_EVENT& aEvent )
 {
-    wxCHECK( m_frame, 0 );
+    KI_CHECK( m_frame, 0 );
 
     const SCH_SHEET_PATH& sheetPath = m_frame->GetCurrentSheet();
     SCH_SCREEN*           screen = sheetPath.LastScreen();
-    wxCHECK( screen, 0 );
+    KI_CHECK( screen, 0 );
 
     const wxString selectedName = m_frame->GetHighlightedConnection();
     const wxString chainName = m_frame->GetHighlightedNetChain();
@@ -1838,7 +1838,7 @@ int SCH_EDITOR_CONTROL::ShowCreateNetChain( const TOOL_EVENT& aEvent )
 
 int SCH_EDITOR_CONTROL::Undo( const TOOL_EVENT& aEvent )
 {
-    wxCHECK( m_frame, 0 );
+    KI_CHECK( m_frame, 0 );
 
     if( m_frame->GetUndoCommandCount() <= 0 )
         return 0;
@@ -1849,7 +1849,7 @@ int SCH_EDITOR_CONTROL::Undo( const TOOL_EVENT& aEvent )
     // Get the old list
     PICKED_ITEMS_LIST* undo_list = m_frame->PopCommandFromUndoList();
 
-    wxCHECK( undo_list, 0 );
+    KI_CHECK( undo_list, 0 );
 
     m_frame->PutDataInPreviousState( undo_list );
 
@@ -1868,7 +1868,7 @@ int SCH_EDITOR_CONTROL::Undo( const TOOL_EVENT& aEvent )
 
 int SCH_EDITOR_CONTROL::Redo( const TOOL_EVENT& aEvent )
 {
-    wxCHECK( m_frame, 0 );
+    KI_CHECK( m_frame, 0 );
 
     if( m_frame->GetRedoCommandCount() == 0 )
         return 0;
@@ -1879,7 +1879,7 @@ int SCH_EDITOR_CONTROL::Redo( const TOOL_EVENT& aEvent )
     /* Get the old list */
     PICKED_ITEMS_LIST* list = m_frame->PopCommandFromRedoList();
 
-    wxCHECK( list, 0 );
+    KI_CHECK( list, 0 );
 
     /* Redo the command: */
     m_frame->PutDataInPreviousState( list );
@@ -2097,7 +2097,7 @@ int SCH_EDITOR_CONTROL::CopyAsText( const TOOL_EVENT& aEvent )
 void SCH_EDITOR_CONTROL::updatePastedSymbol( SCH_SYMBOL* aSymbol, const SCH_SHEET_PATH& aPastePath,
                                              const KIID_PATH& aClipPath, bool aForceKeepAnnotations )
 {
-    wxCHECK( m_frame && aSymbol, /* void */ );
+    KI_CHECK( m_frame && aSymbol, /* void */ );
 
     SCH_SYMBOL_INSTANCE newInstance;
     bool                instanceFound = false;
@@ -2112,7 +2112,7 @@ void SCH_EDITOR_CONTROL::updatePastedSymbol( SCH_SYMBOL* aSymbol, const SCH_SHEE
             newInstance = tmp;
             instanceFound = true;
 
-            wxLogTrace( traceSchPaste, wxS( "Pasting found symbol instance with reference %s, unit %d:\n"
+            KI_LOG_TRACE( traceSchPaste, wxS( "Pasting found symbol instance with reference %s, unit %d:\n"
                                             "\tClipboard path: %s\n"
                                             "\tSymbol UUID: %s." ),
                         tmp.m_Reference,
@@ -2129,7 +2129,7 @@ void SCH_EDITOR_CONTROL::updatePastedSymbol( SCH_SYMBOL* aSymbol, const SCH_SHEE
 
     if( !instanceFound )
     {
-        wxLogTrace( traceSchPaste, wxS( "Clipboard symbol instance **not** found:\n\tClipboard path: %s\n"
+        KI_LOG_TRACE( traceSchPaste, wxS( "Clipboard symbol instance **not** found:\n\tClipboard path: %s\n"
                                         "\tSymbol UUID: %s." ),
                     aClipPath.AsString(),
                     aSymbol->m_Uuid.AsString() );
@@ -2163,7 +2163,7 @@ SCH_SHEET_PATH SCH_EDITOR_CONTROL::updatePastedSheet( SCH_SHEET* aSheet, const S
                                                       SCH_SHEET_LIST* aPastedSheets, std::map<SCH_SHEET_PATH,
                                                       SCH_REFERENCE_LIST>& aPastedSymbols )
 {
-    wxCHECK( aSheet && aPastedSheets, aPastePath );
+    KI_CHECK( aSheet && aPastedSheets, aPastePath );
 
     SCH_SHEET_PATH sheetPath = aPastePath;
     sheetPath.push_back( aSheet );
@@ -2184,7 +2184,7 @@ SCH_SHEET_PATH SCH_EDITOR_CONTROL::updatePastedSheet( SCH_SHEET* aSheet, const S
         {
             SCH_SYMBOL* symbol = static_cast<SCH_SYMBOL*>( item );
 
-            wxCHECK2( symbol, continue );
+            KI_CHECK2( symbol, continue );
 
             // Only do this once if the symbol is shared across multiple sheets.
             if( !m_pastedSymbols.count( symbol ) )
@@ -2208,7 +2208,7 @@ SCH_SHEET_PATH SCH_EDITOR_CONTROL::updatePastedSheet( SCH_SHEET* aSheet, const S
         {
             SCH_SHEET* subsheet = static_cast<SCH_SHEET*>( item );
 
-            wxCHECK2( subsheet, continue );
+            KI_CHECK2( subsheet, continue );
 
             // Make sure pins get a new UUID and set the dirty connectivity flag.
             if( !aPastedSheets->ContainsSheet( subsheet ) )
@@ -2240,11 +2240,11 @@ SCH_SHEET_PATH SCH_EDITOR_CONTROL::updatePastedSheet( SCH_SHEET* aSheet, const S
 
 void SCH_EDITOR_CONTROL::prunePastedSymbolInstances()
 {
-    wxCHECK( m_frame, /* void */ );
+    KI_CHECK( m_frame, /* void */ );
 
     for( SCH_SYMBOL* symbol : m_pastedSymbols )
     {
-        wxCHECK2( symbol, continue );
+        KI_CHECK2( symbol, continue );
 
         PrunePastedSymbolInstances( symbol, m_frame->Schematic() );
     }
@@ -2550,7 +2550,7 @@ int SCH_EDITOR_CONTROL::Paste( const TOOL_EVENT& aEvent )
 
         SCH_ITEM* schItem = static_cast<SCH_ITEM*>( item );
 
-        wxCHECK2( schItem, continue );
+        KI_CHECK2( schItem, continue );
 
         if( schItem->IsConnectable() )
             schItem->SetConnectivityDirty();
@@ -2564,7 +2564,7 @@ int SCH_EDITOR_CONTROL::Paste( const TOOL_EVENT& aEvent )
 
             SCH_SCREEN* currentScreen = m_frame->GetScreen();
 
-            wxCHECK2( currentScreen, continue );
+            KI_CHECK2( currentScreen, continue );
 
             const LIB_SYMBOL* source = ChoosePasteLibSymbol( tempScreen, currentScreen,
                                                              symbol->GetSchSymbolLibraryName() );
@@ -2855,7 +2855,7 @@ int SCH_EDITOR_CONTROL::Paste( const TOOL_EVENT& aEvent )
 
                 SCH_SHEET* sheet = pastedSheet.Last();
 
-                wxCHECK2( sheet, continue );
+                KI_CHECK2( sheet, continue );
 
                 sheet->AddInstance( sheetInstance );
                 hierarchy.push_back( pastedSheet );

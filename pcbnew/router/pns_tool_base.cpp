@@ -250,7 +250,7 @@ ITEM* TOOL_BASE::pickSingleItem( const VECTOR2I& aWhere, NET_HANDLE aNet, int aL
 
     if( rv )
     {
-        wxLogTrace( wxT( "PNS" ), wxT( "%s, layer : %d, tl: %d" ),
+        KI_LOG_TRACE( wxT( "PNS" ), wxT( "%s, layer : %d, tl: %d" ),
                     rv->KindStr().c_str(),
                     rv->Layers().Start(),
                     tl );
@@ -438,7 +438,7 @@ void TOOL_BASE::updateEndItem( const TOOL_EVENT& aEvent )
 
     if( m_endItem )
     {
-        wxLogTrace( wxT( "PNS" ), wxT( "%s, layer : %d" ),
+        KI_LOG_TRACE( wxT( "PNS" ), wxT( "%s, layer : %d" ),
                     m_endItem->KindStr().c_str(),
                     m_endItem->Layers().Start() );
     }

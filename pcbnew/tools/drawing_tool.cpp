@@ -2021,7 +2021,7 @@ int DRAWING_TOOL::DrawDimension( const TOOL_EVENT& aEvent )
                 }
                 else
                 {
-                    wxFAIL_MSG( wxT( "Unhandled action in DRAWING_TOOL::DrawDimension" ) );
+                    KI_FAIL_MSG( wxT( "Unhandled action in DRAWING_TOOL::DrawDimension" ) );
                 }
 
                 t = dimension->Type();
@@ -2919,7 +2919,7 @@ bool DRAWING_TOOL::drawShape( const TOOL_EVENT& aTool, PCB_SHAPE** aGraphic, std
 {
     SHAPE_T shape = ( *aGraphic )->GetShape();
 
-    wxASSERT( shape == SHAPE_T::SEGMENT || shape == SHAPE_T::CIRCLE || shape == SHAPE_T::RECTANGLE
+    KI_ASSERT( shape == SHAPE_T::SEGMENT || shape == SHAPE_T::CIRCLE || shape == SHAPE_T::RECTANGLE
               || shape == SHAPE_T::ELLIPSE || shape == SHAPE_T::ELLIPSE_ARC );
 
     const BOARD_DESIGN_SETTINGS& bds = m_frame->GetDesignSettings();
@@ -4324,7 +4324,7 @@ PCB_TRACK* FindSnapTrack( PCB_BASE_EDIT_FRAME* aFrame, const PCB_VIA* aVia, cons
     KIGFX::PCB_VIEW*                          view = aFrame->GetCanvas()->GetView();
     std::vector<PCB_TRACK*>                   possible_tracks;
 
-    wxCHECK( view, nullptr );
+    KI_CHECK( view, nullptr );
 
     view->Query( bbox, items );
 

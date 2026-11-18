@@ -365,7 +365,7 @@ PAD& PAD::operator=( const PAD &aOther )
 
 void PAD::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther && aOther->Type() == PCB_PAD_T, /* void */ );
+    KI_CHECK( aOther && aOther->Type() == PCB_PAD_T, /* void */ );
     *this = *static_cast<const PAD*>( aOther );
 }
 
@@ -443,7 +443,7 @@ void PAD::Serialize( google::protobuf::Any &aContainer ) const
     kiapi::common::PackCustomProperties( pad.mutable_custom_properties(), *this );
 
     if( !aContainer.PackFrom( pad ) )
-        wxFAIL_MSG( wxT( "Failed to pack PAD" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack PAD" ) );
 }
 
 
@@ -468,7 +468,7 @@ bool PAD::Deserialize( const google::protobuf::Any &aContainer )
     google::protobuf::Any padStackWrapper;
 
     if( !padStackWrapper.PackFrom( pad.pad_stack() ) )
-        wxFAIL_MSG( wxT( "Failed to pack PADSTACK" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack PADSTACK" ) );
 
     m_padStack.Deserialize( padStackWrapper );
     SetOrientation( m_padStack.GetOrientation() );
@@ -1072,7 +1072,7 @@ void PAD::SetRoundRectRadiusRatio( PCB_LAYER_ID aLayer, double aRadiusScale )
 
 void PAD::SetFrontRoundRectRadiusRatio( double aRadiusScale )
 {
-    wxASSERT_MSG( m_padStack.Mode() == PADSTACK::MODE::NORMAL,
+    KI_ASSERT_MSG( m_padStack.Mode() == PADSTACK::MODE::NORMAL,
                   "Set front radius only meaningful for normal padstacks" );
 
     m_padStack.SetRoundRectRadiusRatio( std::clamp( aRadiusScale, 0.0, 0.5 ), F_Cu );
@@ -1175,10 +1175,10 @@ std::shared_ptr<SHAPE> PAD::GetEffectiveShape( PCB_LAYER_ID aLayer, FLASHING aFl
 
     const PAD_DRAW_CACHE_DATA& drawCache = getDrawCache();
 
-    wxCHECK_MSG( drawCache.m_effectiveShapes.contains( effectiveLayer ), nullptr,
+    KI_CHECK_MSG( drawCache.m_effectiveShapes.contains( effectiveLayer ), nullptr,
                  wxString::Format( wxT( "Missing shape in PAD::GetEffectiveShape for layer %s." ),
                                    magic_enum::enum_name( effectiveLayer ) ) );
-    wxCHECK_MSG( drawCache.m_effectiveShapes.at( effectiveLayer ), nullptr,
+    KI_CHECK_MSG( drawCache.m_effectiveShapes.at( effectiveLayer ), nullptr,
                  wxString::Format( wxT( "Null shape in PAD::GetEffectiveShape for layer %s." ),
                                    magic_enum::enum_name( effectiveLayer ) ) );
 
@@ -1461,7 +1461,7 @@ const SHAPE_COMPOUND& PAD::buildEffectiveShape( PCB_LAYER_ID aLayer ) const
         break;
 
     default:
-        wxFAIL_MSG( wxT( "PAD::buildEffectiveShapes: Unsupported pad shape: PAD_SHAPE::" )
+        KI_FAIL_MSG( wxT( "PAD::buildEffectiveShapes: Unsupported pad shape: PAD_SHAPE::" )
                     + wxString( std::string( magic_enum::enum_name( effectiveShape ) ) ) );
         break;
     }
@@ -1838,7 +1838,7 @@ VECTOR2I PAD::ShapePos( PCB_LAYER_ID aLayer ) const
 
 void PAD::SwapShapePositions( PAD* aLhs, PAD* aRhs, PCB_LAYER_ID aActiveLayer )
 {
-    wxCHECK( aLhs && aRhs, /* void */ );
+    KI_CHECK( aLhs && aRhs, /* void */ );
 
     // This routine favours the center of the visual copper over the center of the hole.
     // The downside is that said center is ill-defined when there is more than one shape
@@ -3036,7 +3036,7 @@ double PAD::GetCoverageArea( int aTextMargin ) const
 void PAD::TransformShapeToPolygon( SHAPE_POLY_SET& aBuffer, PCB_LAYER_ID aLayer, int aClearance,
                                    int aMaxError, ERROR_LOC aErrorLoc, bool ignoreLineWidth ) const
 {
-    wxASSERT_MSG( aLayer != UNDEFINED_LAYER,
+    KI_ASSERT_MSG( aLayer != UNDEFINED_LAYER,
                   wxT( "UNDEFINED_LAYER is no longer allowed for PAD::TransformShapeToPolygon" ) );
 
     // minimal segment count to approximate a circle to create the polygonal pad shape
@@ -3132,7 +3132,7 @@ void PAD::TransformShapeToPolygon( SHAPE_POLY_SET& aBuffer, PCB_LAYER_ID aLayer,
     }
 
     default:
-        wxFAIL_MSG( wxT( "PAD::TransformShapeToPolygon no implementation for " )
+        KI_FAIL_MSG( wxT( "PAD::TransformShapeToPolygon no implementation for " )
                     + wxString( std::string( magic_enum::enum_name( shape ) ) ) );
         break;
     }

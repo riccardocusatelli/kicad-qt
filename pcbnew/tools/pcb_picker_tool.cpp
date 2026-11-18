@@ -87,7 +87,7 @@ int PCB_PICKER_TOOL::Main( const TOOL_EVENT& aEvent )
 
     if( aEvent.IsAction( &ACTIONS::pickerTool ) )
     {
-        wxCHECK_MSG( aEvent.Parameter<const TOOL_EVENT*>(), -1,
+        KI_CHECK_MSG( aEvent.Parameter<const TOOL_EVENT*>(), -1,
                      wxT( "PCB_PICKER_TOOL::Main() called without a source event" ) );
 
         sourceEvent = *aEvent.Parameter<const TOOL_EVENT*>();
@@ -293,7 +293,7 @@ int PCB_PICKER_TOOL::SelectPointInteractively( const TOOL_EVENT& aEvent )
     STATUS_TEXT_POPUP  statusPopup( frame() );
     bool               done = false;
 
-    wxCHECK( params.m_Receiver, -1 );
+    KI_CHECK( params.m_Receiver, -1 );
 
     PCB_GRID_HELPER grid_helper( m_toolMgr, frame()->GetMagneticItemsSettings() );
 

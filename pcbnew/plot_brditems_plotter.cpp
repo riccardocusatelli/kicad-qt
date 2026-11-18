@@ -437,7 +437,7 @@ void BRDITEMS_PLOTTER::PlotFootprintTextItems( const FOOTPRINT* aFootprint ) con
     // Skip the reference and value texts that are handled specially
     for( PCB_FIELD* field : aFootprint->GetFields() )
     {
-        wxCHECK2( field, continue );
+        KI_CHECK2( field, continue );
 
         if( field->IsReference() || field->IsValue() )
             continue;

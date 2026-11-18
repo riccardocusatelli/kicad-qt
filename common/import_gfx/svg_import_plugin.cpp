@@ -51,7 +51,7 @@ static float distanceFromPointToLine( const VECTOR2D& aPoint, const VECTOR2D& aL
 
 bool SVG_IMPORT_PLUGIN::Load( const wxString& aFileName )
 {
-    wxCHECK( m_importer, false );
+    KI_CHECK( m_importer, false );
 
     LOCALE_IO toggle; // switch on/off the locale "C" notation
 
@@ -67,7 +67,7 @@ bool SVG_IMPORT_PLUGIN::Load( const wxString& aFileName )
     // nsvgParseFromFile will close the file after reading
     m_parsedImage = nsvgParseFromFile( fp, "mm", SVG_DPI );
 
-    wxCHECK( m_parsedImage, false );
+    KI_CHECK( m_parsedImage, false );
 
     return true;
 }
@@ -75,17 +75,17 @@ bool SVG_IMPORT_PLUGIN::Load( const wxString& aFileName )
 
 bool SVG_IMPORT_PLUGIN::LoadFromMemory( const wxMemoryBuffer& aMemBuffer )
 {
-    wxCHECK( m_importer, false );
+    KI_CHECK( m_importer, false );
 
     LOCALE_IO toggle; // switch on/off the locale "C" notation
 
     std::string str( reinterpret_cast<char*>( aMemBuffer.GetData() ), aMemBuffer.GetDataLen() );
-    wxCHECK( str.data()[aMemBuffer.GetDataLen()] == '\0', false );
+    KI_CHECK( str.data()[aMemBuffer.GetDataLen()] == '\0', false );
 
     // nsvgParse will modify the string data
     m_parsedImage = nsvgParse( str.data(), "mm", SVG_DPI );
 
-    wxCHECK( m_parsedImage, false );
+    KI_CHECK( m_parsedImage, false );
 
     return true;
 }
@@ -213,7 +213,7 @@ bool SVG_IMPORT_PLUGIN::Import()
     }
 
     m_internalImporter.PostprocessNestedPolygons();
-    wxCHECK( m_importer, false );
+    KI_CHECK( m_importer, false );
     m_internalImporter.ImportTo( *m_importer );
 
     return true;
@@ -224,7 +224,7 @@ double SVG_IMPORT_PLUGIN::GetImageHeight() const
 {
     if( !m_parsedImage )
     {
-        wxASSERT_MSG( false, wxT( "Image must have been loaded before checking height" ) );
+        KI_ASSERT_MSG( false, wxT( "Image must have been loaded before checking height" ) );
         return 0.0;
     }
 
@@ -236,7 +236,7 @@ double SVG_IMPORT_PLUGIN::GetImageWidth() const
 {
     if( !m_parsedImage )
     {
-        wxASSERT_MSG( false, wxT( "Image must have been loaded before checking width" ) );
+        KI_ASSERT_MSG( false, wxT( "Image must have been loaded before checking width" ) );
         return 0.0;
     }
 
@@ -250,7 +250,7 @@ BOX2D SVG_IMPORT_PLUGIN::GetImageBBox() const
 
     if( !m_parsedImage || !m_parsedImage->shapes )
     {
-        wxASSERT_MSG( false, wxT( "Image must have been loaded before getting bbox" ) );
+        KI_ASSERT_MSG( false, wxT( "Image must have been loaded before getting bbox" ) );
         return bbox;
     }
 

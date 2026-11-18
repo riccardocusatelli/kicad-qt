@@ -247,7 +247,7 @@ bool PROJECT_ARCHIVER::Archive( const wxString& aSrcDir, const wxString& aDestFi
 
     // Gerber files (g?, g??, .gm12 (from protel export)).
     wxRegEx gerberFiles( FILEEXT::GerberFileExtensionsRegex );
-    wxASSERT( gerberFiles.IsValid() );
+    KI_ASSERT( gerberFiles.IsValid() );
 
     bool     success = true;
     wxString msg;

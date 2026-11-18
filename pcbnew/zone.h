@@ -701,7 +701,7 @@ public:
     std::shared_ptr<SHAPE_POLY_SET> GetFilledPolysList( PCB_LAYER_ID aLayer ) const
     {
         std::lock_guard<std::mutex> lock( m_filledPolysListMutex );
-        wxASSERT( m_FilledPolysList.count( aLayer ) );
+        KI_ASSERT( m_FilledPolysList.count( aLayer ) );
         return m_FilledPolysList.at( aLayer );
     }
 

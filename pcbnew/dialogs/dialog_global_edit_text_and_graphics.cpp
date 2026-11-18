@@ -530,7 +530,7 @@ bool DIALOG_GLOBAL_EDIT_TEXT_AND_GRAPHICS::TransferDataFromWindow()
 
         for( PCB_FIELD* field : fp->GetFields() )
         {
-            wxCHECK2( field, continue );
+            KI_CHECK2( field, continue );
 
             if( field->IsReference() )
                 continue;

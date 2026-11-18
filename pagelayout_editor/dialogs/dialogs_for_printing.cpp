@@ -50,7 +50,7 @@ public:
     PLEDITOR_PRINTOUT( PL_EDITOR_FRAME* aParent, const wxString& aTitle ) :
         wxPrintout( aTitle )
     {
-        wxASSERT( aParent != nullptr );
+        KI_ASSERT( aParent != nullptr );
         m_parent = aParent;
     }
 

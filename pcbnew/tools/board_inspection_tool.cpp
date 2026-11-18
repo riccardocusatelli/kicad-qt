@@ -547,7 +547,7 @@ void BOARD_INSPECTION_TOOL::InspectDRCError( const std::shared_ptr<RC_ITEM>& aDR
 {
     DRC_TOOL* drcTool = m_toolMgr->GetTool<DRC_TOOL>();
 
-    wxCHECK( drcTool && m_frame, /* void */ );
+    KI_CHECK( drcTool && m_frame, /* void */ );
 
     BOARD_ITEM*                 a = m_frame->GetBoard()->ResolveItem( aDRCItem->GetMainItemID() );
     BOARD_ITEM*                 b = m_frame->GetBoard()->ResolveItem( aDRCItem->GetAuxItemID() );
@@ -564,7 +564,7 @@ void BOARD_INSPECTION_TOOL::InspectDRCError( const std::shared_ptr<RC_ITEM>& aDR
     }
 
     DIALOG_BOOK_REPORTER* dialog = m_frame->GetInspectDrcErrorDialog();
-    wxCHECK( dialog, /* void */ );
+    KI_CHECK( dialog, /* void */ );
 
     dialog->DeleteAllPages();
 
@@ -911,11 +911,11 @@ void BOARD_INSPECTION_TOOL::InspectDRCError( const std::shared_ptr<RC_ITEM>& aDR
 
 int BOARD_INSPECTION_TOOL::InspectClearance( const TOOL_EVENT& aEvent )
 {
-    wxCHECK( m_frame, 0 );
+    KI_CHECK( m_frame, 0 );
 
     PCB_SELECTION_TOOL* selTool = m_toolMgr->GetTool<PCB_SELECTION_TOOL>();
 
-    wxCHECK( selTool, 0 );
+    KI_CHECK( selTool, 0 );
 
     const PCB_SELECTION& selection = selTool->GetSelection();
     BOARD_ITEM*          firstItem = nullptr;
@@ -987,7 +987,7 @@ int BOARD_INSPECTION_TOOL::InspectClearance( const TOOL_EVENT& aEvent )
 
 void BOARD_INSPECTION_TOOL::reportClearance( const BOARD_ITEM* aItemA, const BOARD_ITEM* aItemB )
 {
-    wxCHECK( m_frame && aItemA && aItemB, /* void */ );
+    KI_CHECK( m_frame && aItemA && aItemB, /* void */ );
 
     const BOARD_ITEM* a = aItemA;
     const BOARD_ITEM* b = aItemB;
@@ -1051,7 +1051,7 @@ void BOARD_INSPECTION_TOOL::reportClearance( const BOARD_ITEM* aItemA, const BOA
 
     DIALOG_BOOK_REPORTER* dialog = m_frame->GetInspectClearanceDialog();
 
-    wxCHECK( dialog, /* void */ );
+    KI_CHECK( dialog, /* void */ );
 
     dialog->DeleteAllPages();
 
@@ -1661,11 +1661,11 @@ int BOARD_INSPECTION_TOOL::InspectConstraints( const TOOL_EVENT& aEvent )
 {
 #define EVAL_RULES( constraint, a, b, layer, r ) drcEngine->EvalRules( constraint, a, b, layer, r )
 
-    wxCHECK( m_frame, 0 );
+    KI_CHECK( m_frame, 0 );
 
     PCB_SELECTION_TOOL* selTool = m_toolMgr->GetTool<PCB_SELECTION_TOOL>();
 
-    wxCHECK( selTool, 0 );
+    KI_CHECK( selTool, 0 );
 
     const PCB_SELECTION& selection = selTool->GetSelection();
     BOARD_ITEM*          item = nullptr;
@@ -1706,7 +1706,7 @@ int BOARD_INSPECTION_TOOL::InspectConstraints( const TOOL_EVENT& aEvent )
 
     DIALOG_BOOK_REPORTER* dialog = m_frame->GetInspectConstraintsDialog();
 
-    wxCHECK( dialog, 0 );
+    KI_CHECK( dialog, 0 );
 
     dialog->DeleteAllPages();
     DRC_CONSTRAINT constraint;
@@ -1927,11 +1927,11 @@ int BOARD_INSPECTION_TOOL::InspectConstraints( const TOOL_EVENT& aEvent )
 
 int BOARD_INSPECTION_TOOL::DiffFootprint( const TOOL_EVENT& aEvent )
 {
-    wxCHECK( m_frame, 0 );
+    KI_CHECK( m_frame, 0 );
 
     PCB_SELECTION_TOOL*  selTool = m_toolMgr->GetTool<PCB_SELECTION_TOOL>();
 
-    wxCHECK( selTool, 0 );
+    KI_CHECK( selTool, 0 );
 
     const PCB_SELECTION& selection = selTool->RequestSelection(
             []( const VECTOR2I& aPt, GENERAL_COLLECTOR& aCollector, PCB_SELECTION_TOOL* sTool )
@@ -1957,7 +1957,7 @@ int BOARD_INSPECTION_TOOL::DiffFootprint( const TOOL_EVENT& aEvent )
 
 int BOARD_INSPECTION_TOOL::CompareBoardWithFile( const TOOL_EVENT& aEvent )
 {
-    wxCHECK( m_frame, 0 );
+    KI_CHECK( m_frame, 0 );
 
     wxFileDialog dlg( m_frame, _( "Choose Board to Compare With" ), wxEmptyString,
                       wxEmptyString, FILEEXT::PcbFileWildcard(),
@@ -2218,7 +2218,7 @@ int BOARD_INSPECTION_TOOL::showBoardComparison( const wxString& aOtherPath, cons
 
 int BOARD_INSPECTION_TOOL::CompareBoardWithHistory( const TOOL_EVENT& aEvent )
 {
-    wxCHECK( m_frame, 0 );
+    KI_CHECK( m_frame, 0 );
 
     BOARD* liveBoard = m_frame->GetBoard();
 
@@ -2457,11 +2457,11 @@ int BOARD_INSPECTION_TOOL::CompareBoardWithHistory( const TOOL_EVENT& aEvent )
 
 int BOARD_INSPECTION_TOOL::ShowFootprintLinks( const TOOL_EVENT& aEvent )
 {
-    wxCHECK( m_frame, 0 );
+    KI_CHECK( m_frame, 0 );
 
     PCB_SELECTION_TOOL*  selTool = m_toolMgr->GetTool<PCB_SELECTION_TOOL>();
 
-    wxCHECK( selTool, 0 );
+    KI_CHECK( selTool, 0 );
 
     const PCB_SELECTION& selection = selTool->GetSelection();
 
@@ -2483,7 +2483,7 @@ void BOARD_INSPECTION_TOOL::DiffFootprint( FOOTPRINT* aFootprint, wxTopLevelWind
 {
     DIALOG_BOOK_REPORTER* dialog = m_frame->GetFootprintDiffDialog();
 
-    wxCHECK( dialog, /* void */ );
+    KI_CHECK( dialog, /* void */ );
 
     dialog->DeleteAllPages();
     dialog->SetUserItemID( aFootprint->m_Uuid );
@@ -3191,7 +3191,7 @@ void BOARD_INSPECTION_TOOL::calculateSelectionRatsnest( const VECTOR2I& aDelta )
 
         BOARD_ITEM* item = static_cast<BOARD_ITEM*>( queued_items[i] );
 
-        wxCHECK2( item, continue );
+        KI_CHECK2( item, continue );
 
         if( item->Type() == PCB_FOOTPRINT_T )
         {

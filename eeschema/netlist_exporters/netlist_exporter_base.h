@@ -103,7 +103,7 @@ public:
             m_schematic( aSchematic ),
             m_kiway( aKiway )
     {
-        wxASSERT( aSchematic );
+        KI_ASSERT( aSchematic );
 
         m_exportVariant = aSchematic->GetCurrentVariant();
     }

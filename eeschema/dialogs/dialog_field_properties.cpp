@@ -57,7 +57,7 @@ DIALOG_FIELD_PROPERTIES::DIALOG_FIELD_PROPERTIES( SCH_BASE_FRAME* aParent, const
     COLOR_SETTINGS* colorSettings = aParent->GetColorSettings();
     COLOR4D         schematicBackground = colorSettings->GetColor( LAYER_SCHEMATIC_BACKGROUND );
 
-    wxASSERT( m_field );
+    KI_ASSERT( m_field );
 
     m_note->SetFont( KIUI::GetInfoFont( this ).Italic() );
     m_note->Show( false );
@@ -196,7 +196,7 @@ DIALOG_FIELD_PROPERTIES::DIALOG_FIELD_PROPERTIES( SCH_BASE_FRAME* aParent, const
         if( !pins.IsEmpty() )
         {
             wxString dbg = wxJoin( pins, '\t' );
-            wxLogTrace( "FOOTPRINT_CHOOSER", wxS( "Chooser payload pins (LIB_SYMBOL): %s" ), dbg );
+            KI_LOG_TRACE( "FOOTPRINT_CHOOSER", wxS( "Chooser payload pins (LIB_SYMBOL): %s" ), dbg );
             netlist << EscapeString( dbg, CTX_LINE );
         }
 
@@ -251,7 +251,7 @@ DIALOG_FIELD_PROPERTIES::DIALOG_FIELD_PROPERTIES( SCH_BASE_FRAME* aParent, const
         if( !pins.IsEmpty() )
         {
             wxString dbg = wxJoin( pins, '\t' );
-            wxLogTrace( "FOOTPRINT_CHOOSER", wxS( "Chooser payload pins (SCH_SYMBOL): %s" ), dbg );
+            KI_LOG_TRACE( "FOOTPRINT_CHOOSER", wxS( "Chooser payload pins (SCH_SYMBOL): %s" ), dbg );
             netlist << EscapeString( dbg, CTX_LINE );
         }
 
@@ -477,7 +477,7 @@ bool DIALOG_FIELD_PROPERTIES::TransferDataToWindow()
         const SYMBOL* parent = m_field->GetParentSymbol();
 
         // Control shouldn't be shown for non-schematic symbols
-        wxCHECK( parent->Type() == SCH_SYMBOL_T, true );
+        KI_CHECK( parent->Type() == SCH_SYMBOL_T, true );
 
         const SCH_SYMBOL* symbol = static_cast<const SCH_SYMBOL*>( parent );
 

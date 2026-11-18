@@ -158,7 +158,7 @@ void SEARCH_PANE::OnLanguageChange( wxCommandEvent& aEvent )
         wxWindow* page = m_notebook->GetPage( i );
         SEARCH_PANE_TAB* tab = dynamic_cast<SEARCH_PANE_TAB*>( page );
 
-        wxCHECK( tab, /* void */ );
+        KI_CHECK( tab, /* void */ );
 
         tab->RefreshColumnNames();
         m_notebook->SetPageText( i, wxGetTranslation( tab->GetSearchHandler()->GetName() ) );

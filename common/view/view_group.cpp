@@ -131,7 +131,7 @@ void VIEW_GROUP::ViewDraw( int aLayer, VIEW* aView ) const
 
         for( auto layer : layers )
         {
-            wxCHECK2_MSG( layer <= LAYER_ID_COUNT, continue, wxT( "Invalid item layer" ) );
+            KI_CHECK2_MSG( layer <= LAYER_ID_COUNT, continue, wxT( "Invalid item layer" ) );
             layer_item_map[ layer ].push_back( item );
         }
     }

@@ -396,7 +396,7 @@ bool DRC_TEST_PROVIDER_EDGE_CLEARANCE::Run()
                             }
                             else
                             {
-                                wxFAIL_MSG(
+                                KI_FAIL_MSG(
                                         wxString::Format( "Unexpected effective shape type %d for rounded rectangle",
                                                           (int) subshape->Type() ) );
                                 continue;

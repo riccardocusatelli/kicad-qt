@@ -231,7 +231,7 @@ void PANEL_PCBNEW_ACTION_PLUGINS::OnReloadButtonClick( wxCommandEvent& event )
 bool PANEL_PCBNEW_ACTION_PLUGINS::TransferDataFromWindow()
 {
     PCBNEW_SETTINGS* settings = dynamic_cast<PCBNEW_SETTINGS*>( Kiface().KifaceSettings() );
-    wxASSERT( settings );
+    KI_ASSERT( settings );
 
     API_PLUGIN_MANAGER& mgr = Pgm().GetPluginManager();
 

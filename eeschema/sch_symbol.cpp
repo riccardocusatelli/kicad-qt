@@ -876,7 +876,7 @@ void SCH_SYMBOL::Serialize( google::protobuf::Any& aContainer ) const
     Serialize( symbol );
 
     if( !aContainer.PackFrom( symbol ) )
-        wxFAIL_MSG( wxT( "Failed to pack SCH_SYMBOL" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack SCH_SYMBOL" ) );
 }
 
 
@@ -1128,7 +1128,7 @@ wxString SCH_SYMBOL::GetSchSymbolLibraryName() const
 
 void SCH_SYMBOL::SetLibSymbol( LIB_SYMBOL* aLibSymbol )
 {
-    wxCHECK2( !aLibSymbol || aLibSymbol->IsRoot(), aLibSymbol = nullptr );
+    KI_CHECK2( !aLibSymbol || aLibSymbol->IsRoot(), aLibSymbol = nullptr );
 
     m_part.reset( aLibSymbol );
 
@@ -1471,12 +1471,12 @@ void SCH_SYMBOL::RemoveInstance( const KIID_PATH& aInstancePath )
     if( indexIt != m_instancePathIndex.end() )
     {
         size_t ii = indexIt->second;
-        wxASSERT( ii < m_instances.size() );
-        wxASSERT( m_instances[ii].m_Path == aInstancePath );
+        KI_ASSERT( ii < m_instances.size() );
+        KI_ASSERT( m_instances[ii].m_Path == aInstancePath );
 
         if( wxLog::IsAllowedTraceMask( traceSchSheetPaths ) )
         {
-            wxLogTrace( traceSchSheetPaths,
+            KI_LOG_TRACE( traceSchSheetPaths,
                         wxS( "Removing symbol instance:\n"
                              "    sheet path %s\n"
                              "    reference %s, unit %d from symbol %s." ),
@@ -1498,7 +1498,7 @@ void SCH_SYMBOL::rebuildInstancePathIndex()
 
     for( size_t i = 0; i < m_instances.size(); ++i )
     {
-        wxASSERT( m_instancePathIndex.find( m_instances[i].m_Path ) == m_instancePathIndex.end() );
+        KI_ASSERT( m_instancePathIndex.find( m_instances[i].m_Path ) == m_instancePathIndex.end() );
         m_instancePathIndex[m_instances[i].m_Path] = i;
     }
 }
@@ -1523,7 +1523,7 @@ void SCH_SYMBOL::AddHierarchicalReference( const SCH_SYMBOL_INSTANCE& aInstance 
     // The flag judged the copied reference against its source path's suffix
     instance.m_RefLacksSuffix = false;
 
-    wxLogTrace( traceSchSheetPaths,
+    KI_LOG_TRACE( traceSchSheetPaths,
                 wxS( "Adding symbol '%s' instance:\n"
                      "    sheet path '%s'\n"
                      "    reference '%s'\n"
@@ -1598,9 +1598,9 @@ wxString SCH_SYMBOL::refFor( const SCH_SHEET_PATH* sheet, bool aIncludeUnit, boo
 
     if( traceEnabled )
     {
-        wxLogTrace( traceSchSymbolRef, "GetRef for symbol %s on path %s (sheet path has %zu sheets)",
+        KI_LOG_TRACE( traceSchSymbolRef, "GetRef for symbol %s on path %s (sheet path has %zu sheets)",
                     m_Uuid.AsString(), path.AsString(), sheet->size() );
-        wxLogTrace( traceSchSymbolRef, "  Symbol has %zu instance references", m_instances.size() );
+        KI_LOG_TRACE( traceSchSymbolRef, "  Symbol has %zu instance references", m_instances.size() );
     }
 
     if( auto it = m_instancePathIndex.find( path ); it != m_instancePathIndex.end() )
@@ -1612,7 +1612,7 @@ wxString SCH_SYMBOL::refFor( const SCH_SHEET_PATH* sheet, bool aIncludeUnit, boo
         onPath = true;
 
         if( traceEnabled )
-            wxLogTrace( traceSchSymbolRef, "  MATCH FOUND: ref=%s", ref );
+            KI_LOG_TRACE( traceSchSymbolRef, "  MATCH FOUND: ref=%s", ref );
     }
 
     // If it was not found in m_Paths array, then see if it is in m_Field[REFERENCE] -- if so,
@@ -1624,7 +1624,7 @@ wxString SCH_SYMBOL::refFor( const SCH_SHEET_PATH* sheet, bool aIncludeUnit, boo
         ref = GetField( FIELD_T::REFERENCE )->GetText();
 
         if( traceEnabled )
-            wxLogTrace( traceSchSymbolRef, "  Using fallback from REFERENCE field: %s", ref );
+            KI_LOG_TRACE( traceSchSymbolRef, "  Using fallback from REFERENCE field: %s", ref );
     }
 
     if( ref.IsEmpty() )
@@ -1632,7 +1632,7 @@ wxString SCH_SYMBOL::refFor( const SCH_SHEET_PATH* sheet, bool aIncludeUnit, boo
         ref = UTIL::GetRefDesUnannotated( m_prefix );
 
         if( traceEnabled )
-            wxLogTrace( traceSchSymbolRef, "  Using unannotated reference: %s", ref );
+            KI_LOG_TRACE( traceSchSymbolRef, "  Using unannotated reference: %s", ref );
     }
 
     // Unannotated references stay recognisable, and a symbol not on this path has no suffix there
@@ -1659,7 +1659,7 @@ wxString SCH_SYMBOL::refFor( const SCH_SHEET_PATH* sheet, bool aIncludeUnit, boo
     }
 
     if( traceEnabled )
-        wxLogTrace( traceSchSymbolRef, "  Final reference: %s", ref );
+        KI_LOG_TRACE( traceSchSymbolRef, "  Final reference: %s", ref );
 
     return ref;
 }
@@ -1832,7 +1832,7 @@ void SCH_SYMBOL::SetFieldText( SCH_FIELD* aField, const wxString& aFieldName, co
     switch( aField->GetId() )
     {
     case FIELD_T::REFERENCE:
-        wxCHECK( aPath, /* void */ );
+        KI_CHECK( aPath, /* void */ );
         SetRef( aPath, aFieldText );
         break;
 
@@ -1849,7 +1849,7 @@ void SCH_SYMBOL::SetFieldText( SCH_FIELD* aField, const wxString& aFieldName, co
         {
             SCH_SYMBOL_INSTANCE* instance = getInstance( *aPath );
 
-            wxCHECK( instance, /* void */ );
+            KI_CHECK( instance, /* void */ );
 
             // Diff against the value the variant resolves to without an explicit override so
             // alternate symbol fields read back through the UI are not re-stored as overrides.
@@ -1900,11 +1900,11 @@ void SCH_SYMBOL::SetFieldText( SCH_FIELD* aField, const wxString& aFieldName, co
 void SCH_SYMBOL::SetFieldText( const wxString& aFieldName, const wxString& aFieldText, const SCH_SHEET_PATH* aPath,
                                const wxString& aVariantName )
 {
-    wxCHECK_MSG( !aFieldName.IsEmpty(), /* void */, wxT( "Can't set text on a field with no name!" ) );
+    KI_CHECK_MSG( !aFieldName.IsEmpty(), /* void */, wxT( "Can't set text on a field with no name!" ) );
 
     SCH_FIELD* field = GetField( aFieldName );
 
-    wxCHECK_MSG( field, /* void */, wxT( "Can't set text on a field not yet added to the symbol!" ) );
+    KI_CHECK_MSG( field, /* void */, wxT( "Can't set text on a field not yet added to the symbol!" ) );
 
     SetFieldText( field, aFieldName, aFieldText, aPath, aVariantName );
 }
@@ -1916,7 +1916,7 @@ wxString SCH_SYMBOL::GetFieldText( const SCH_FIELD* aField, const wxString& aFie
     switch( aField->GetId() )
     {
     case FIELD_T::REFERENCE:
-        wxCHECK( aPath, aField->GetText() );
+        KI_CHECK( aPath, aField->GetText() );
         return GetBaseRef( aPath );
         break;
 
@@ -1982,11 +1982,11 @@ wxString SCH_SYMBOL::GetFieldText( const SCH_FIELD* aField, const wxString& aFie
 wxString SCH_SYMBOL::GetFieldText( const wxString& aFieldName, const SCH_SHEET_PATH* aPath,
                                    const wxString& aVariantName ) const
 {
-    wxCHECK_MSG( !aFieldName.IsEmpty(), wxEmptyString, wxT( "Can't get text from a field with no name!" ) );
+    KI_CHECK_MSG( !aFieldName.IsEmpty(), wxEmptyString, wxT( "Can't get text from a field with no name!" ) );
 
     const SCH_FIELD* field = GetField( aFieldName );
 
-    wxCHECK_MSG( field, wxEmptyString, wxT( "Can't get text from a field not yet added to the symbol!" ) );
+    KI_CHECK_MSG( field, wxEmptyString, wxT( "Can't get text from a field not yet added to the symbol!" ) );
 
     return GetFieldText( field, aFieldName, aPath, aVariantName );
 }
@@ -2104,7 +2104,7 @@ void SCH_SYMBOL::setVariantAttribute( bool aEnable, const SCH_SHEET_PATH* aInsta
     {
         SCH_SYMBOL_INSTANCE* instance = getInstance( *aInstance );
 
-        wxCHECK_MSG( instance, /* void */,
+        KI_CHECK_MSG( instance, /* void */,
                      wxString::Format( wxS( "Cannot set attribute for invalid sheet path '%s'." ),
                                        aInstance->PathHumanReadable() ) );
 
@@ -2167,7 +2167,7 @@ void SCH_SYMBOL::SetPinMapOverride( const PIN_MAP_INSTANCE_OVERRIDE& aOverride, 
 
     SCH_SYMBOL_INSTANCE* instance = getInstance( *aInstance );
 
-    wxCHECK_MSG( instance, /* void */,
+    KI_CHECK_MSG( instance, /* void */,
                  wxString::Format( wxS( "Cannot set pin map override for invalid sheet path '%s'." ),
                                    aInstance->PathHumanReadable() ) );
 
@@ -2424,7 +2424,7 @@ void SCH_SYMBOL::SetValueFieldText( const wxString& aValue, const SCH_SHEET_PATH
 
     SCH_SYMBOL_INSTANCE* instance = getInstance( *aInstance );
 
-    wxCHECK( instance, /* void */ );
+    KI_CHECK( instance, /* void */ );
 
     wxString fieldName = GetField( FIELD_T::VALUE )->GetName();
 
@@ -2978,7 +2978,7 @@ std::vector<SCH_PIN*> SCH_SYMBOL::GetGraphicalPins( int aUnit, int aBodyStyle ) 
 
 void SCH_SYMBOL::swapData( SCH_ITEM* aItem )
 {
-    wxCHECK_RET( aItem != nullptr && aItem->Type() == SCH_SYMBOL_T, wxT( "Cannot swap data with invalid symbol." ) );
+    KI_CHECK_RET( aItem != nullptr && aItem->Type() == SCH_SYMBOL_T, wxT( "Cannot swap data with invalid symbol." ) );
 
     SCH_SYMBOL* symbol = static_cast<SCH_SYMBOL*>( aItem );
 
@@ -3696,7 +3696,7 @@ void SCH_SYMBOL::ClearAnnotation( const SCH_SHEET_PATH* aSheetPath, bool aResetP
 bool SCH_SYMBOL::AddSheetPathReferenceEntryIfMissing( const KIID_PATH& aSheetPath )
 {
     // An empty sheet path is illegal, at a minimum the root sheet UUID must be present.
-    wxCHECK( aSheetPath.size() > 0, false );
+    KI_CHECK( aSheetPath.size() > 0, false );
 
     for( const SCH_SYMBOL_INSTANCE& instance : m_instances )
     {
@@ -3849,7 +3849,7 @@ void SCH_SYMBOL::SetOrientation( int aOrientation )
 
     default:
         transform = false;
-        wxFAIL_MSG( "Invalid schematic symbol orientation type." );
+        KI_FAIL_MSG( "Invalid schematic symbol orientation type." );
         break;
     }
 
@@ -3915,7 +3915,7 @@ int SCH_SYMBOL::GetOrientation() const
     }
 
     // Error: orientation not found in list (should not happen)
-    wxFAIL_MSG( "Schematic symbol orientation matrix internal error." );
+    KI_FAIL_MSG( "Schematic symbol orientation matrix internal error." );
 
     return SYM_NORMAL;
 }
@@ -3986,7 +3986,7 @@ BOX2I SCH_SYMBOL::GetBodyBoundingBox() const
     }
     catch( const boost::bad_pointer& e )
     {
-        wxFAIL_MSG( wxString::Format( wxT( "Boost pointer exception occurred: %s" ), e.what() ) );
+        KI_FAIL_MSG( wxString::Format( wxT( "Boost pointer exception occurred: %s" ), e.what() ) );
         return BOX2I();
     }
 }
@@ -4307,7 +4307,7 @@ bool SCH_SYMBOL::HasConnectivityChanges( const SCH_ITEM* aItem, const SCH_SHEET_
     const SCH_SYMBOL* symbol = dynamic_cast<const SCH_SYMBOL*>( aItem );
 
     // Don't compare against a different SCH_ITEM.
-    wxCHECK( symbol, false );
+    KI_CHECK( symbol, false );
 
     // The move algorithm marks any pins that are being moved without something attached
     // (during the move) as dangling. We always need to recheck connectivity in this case
@@ -4579,7 +4579,7 @@ bool SCH_SYMBOL::operator!=( const SCH_SYMBOL& aSymbol ) const
 
 SCH_SYMBOL& SCH_SYMBOL::operator=( const SCH_SYMBOL& aSymbol )
 {
-    wxCHECK_MSG( Type() == aSymbol.Type(), *this,
+    KI_CHECK_MSG( Type() == aSymbol.Type(), *this,
                  wxT( "Cannot assign object type " ) + aSymbol.GetClass() + wxT( " to type " ) + GetClass() );
 
     if( &aSymbol != this )
@@ -5077,7 +5077,7 @@ bool SCH_SYMBOL::IsPower() const
 
 bool SCH_SYMBOL::IsNormal() const
 {
-    wxCHECK( m_part, false );
+    KI_CHECK( m_part, false );
 
     return m_part->IsNormal();
 }

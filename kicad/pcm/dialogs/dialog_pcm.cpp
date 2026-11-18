@@ -393,7 +393,7 @@ void DIALOG_PCM::OnRepositoryChoice( wxCommandEvent& event )
 
 void DIALOG_PCM::setRepositoryData( const wxString& aRepositoryId )
 {
-    wxCHECK2_MSG( aRepositoryId != ALL_REPOSITORIES, return, wxT( "should have been handled higher up" ) );
+    KI_CHECK2_MSG( aRepositoryId != ALL_REPOSITORIES, return, wxT( "should have been handled higher up" ) );
 
     m_dialogNotebook->Freeze();
 

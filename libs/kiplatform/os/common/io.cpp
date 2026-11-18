@@ -195,7 +195,7 @@ bool KIPLATFORM::IO::CommitTempFile( const wxString& aTempPath, const wxString& 
         // and the temp then keeps the permissions it was created with
         if( !DuplicatePermissions( aTargetPath, aTempPath ) )
         {
-            wxLogTrace( wxT( "KICAD_ATOMIC_SAVE" ), wxT( "Cannot copy permissions from '%s' to '%s'" ),
+            KI_LOG_TRACE( wxT( "KICAD_ATOMIC_SAVE" ), wxT( "Cannot copy permissions from '%s' to '%s'" ),
                         aTargetPath, aTempPath );
         }
 

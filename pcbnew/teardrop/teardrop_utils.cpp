@@ -466,7 +466,7 @@ int TEARDROP_MANAGER::computeChordThroughShape( PCB_TRACK* aTrack, BOARD_ITEM* a
     }
     else
     {
-        wxCHECK_MSG( aOther->Type() == PCB_PAD_T, 0, wxT( "Expected non-round item to be PAD" ) );
+        KI_CHECK_MSG( aOther->Type() == PCB_PAD_T, 0, wxT( "Expected non-round item to be PAD" ) );
         static_cast<PAD*>( aOther )->TransformShapeToPolygon( shapebuffer, aLayer, 0, maxError, ERROR_INSIDE );
     }
 
@@ -616,7 +616,7 @@ void TEARDROP_MANAGER::computeCurvedForRoundShape( const TEARDROP_PARAMETERS& aP
     int radius = GetWidth( aOther, aLayer ) / 2;
 
     // Don't divide by zero.  No good can come of that.
-    wxCHECK2( radius != 0, radius = 1 );
+    KI_CHECK2( radius != 0, radius = 1 );
 
     double minVpercent = double( aTrackHalfWidth ) / radius;
     double weaken = (Vpercent - minVpercent) / ( 1 - minVpercent ) / radius;
@@ -978,7 +978,7 @@ bool TEARDROP_MANAGER::computeAnchorPoints( const TEARDROP_PARAMETERS& aParams, 
     }
     else    // Only PADS can have a not round shape
     {
-        wxCHECK_MSG( aItem->Type() == PCB_PAD_T, false, wxT( "Expected non-round item to be PAD" ) );
+        KI_CHECK_MSG( aItem->Type() == PCB_PAD_T, false, wxT( "Expected non-round item to be PAD" ) );
         PAD* pad = static_cast<PAD*>( aItem );
 
         force_clip = true;
@@ -1171,7 +1171,7 @@ bool TEARDROP_MANAGER::findAnchorPointsOnTrack( const TEARDROP_PARAMETERS& aPara
     }
     else
     {
-        wxCHECK_MSG( aOther->Type() == PCB_PAD_T, false, wxT( "Expected non-round item to be PAD" ) );
+        KI_CHECK_MSG( aOther->Type() == PCB_PAD_T, false, wxT( "Expected non-round item to be PAD" ) );
         static_cast<PAD*>( aOther )->TransformShapeToPolygon( shapebuffer, aTrack->GetLayer(), 0,
                                                               maxError, ERROR_INSIDE );
     }

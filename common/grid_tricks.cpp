@@ -520,7 +520,7 @@ void GRID_TRICKS::onEditorDropdownOpened( wxCommandEvent& aEvent )
     if( m_columnBulkEditEnabled )
     {
         wxWindow* control = dynamic_cast<wxWindow*>( aEvent.GetEventObject() );
-        wxCHECK_RET( control, wxT( "Missing grid dropdown control" ) );
+        KI_CHECK_RET( control, wxT( "Missing grid dropdown control" ) );
 
         if( !KIPLATFORM::UI::PrepareChoicePopup( control ) )
         {

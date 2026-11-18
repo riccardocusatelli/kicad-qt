@@ -125,7 +125,7 @@ bool FILENAME_RESOLVER::SetProject( const PROJECT* aProject, bool* flgChanged )
         ostr << __FILE__ << ": " << __FUNCTION__ << ": " << __LINE__ << "\n";
         ostr << " * [INFO] changed project dir to ";
         ostr << m_paths.front().m_Pathexp.ToUTF8();
-        wxLogTrace( MASK_3D_RESOLVER, "%s\n", ostr.str().c_str() );
+        KI_LOG_TRACE( MASK_3D_RESOLVER, "%s\n", ostr.str().c_str() );
     }
 #endif
 
@@ -210,12 +210,12 @@ bool FILENAME_RESOLVER::createPathList()
         return false;
 
 #ifdef DEBUG
-    wxLogTrace( MASK_3D_RESOLVER, wxS( " * [3D model] search paths:\n" ) );
+    KI_LOG_TRACE( MASK_3D_RESOLVER, wxS( " * [3D model] search paths:\n" ) );
     std::list< SEARCH_PATH >::const_iterator sPL = m_paths.begin();
 
     while( sPL != m_paths.end() )
     {
-        wxLogTrace( MASK_3D_RESOLVER, wxS( "   + %s : '%s'\n" ), (*sPL).m_Alias.GetData(),
+        KI_LOG_TRACE( MASK_3D_RESOLVER, wxS( "   + %s : '%s'\n" ), (*sPL).m_Alias.GetData(),
                     (*sPL).m_Pathexp.GetData() );
         ++sPL;
     }
@@ -269,7 +269,7 @@ wxString FILENAME_RESOLVER::ResolvePath( const wxString& aFileName, const wxStri
     {
         if( aEmbeddedFilesStack.empty() )
         {
-            wxLogTrace( wxT( "KICAD_EMBED" ),
+            KI_LOG_TRACE( wxT( "KICAD_EMBED" ),
                         wxT( "No EMBEDDED_FILES object provided for kicad_embed URI" ) );
             return wxEmptyString;
         }
@@ -285,11 +285,11 @@ wxString FILENAME_RESOLVER::ResolvePath( const wxString& aFileName, const wxStri
 
         if( !temp_file.IsOk() )
         {
-            wxLogTrace( wxT( "KICAD_EMBED" ), wxT( "Failed to get temp file '%s' for kicad_embed URI" ), path );
+            KI_LOG_TRACE( wxT( "KICAD_EMBED" ), wxT( "Failed to get temp file '%s' for kicad_embed URI" ), path );
             return wxEmptyString;
         }
 
-        wxLogTrace( wxT( "KICAD_EMBED" ), wxT( "Opening embedded file '%s' as '%s'" ), tname, temp_file.GetFullPath() );
+        KI_LOG_TRACE( wxT( "KICAD_EMBED" ), wxT( "Opening embedded file '%s' as '%s'" ), tname, temp_file.GetFullPath() );
 
         return temp_file.GetFullPath();
     }
@@ -376,7 +376,7 @@ wxString FILENAME_RESOLVER::ResolvePath( const wxString& aFileName, const wxStri
             errmsg.append( "\n" );
             errmsg.append( tname );
             errmsg.append( "\n" );
-            wxLogTrace( tracePathsAndFiles, errmsg );
+            KI_LOG_TRACE( tracePathsAndFiles, errmsg );
         }
 
         return wxEmptyString;
@@ -457,7 +457,7 @@ wxString FILENAME_RESOLVER::ResolvePath( const wxString& aFileName, const wxStri
             errmsg.append( wxS( "\n" ) );
             errmsg.append( tname );
             errmsg.append( wxS( "\n" ) );
-            wxLogTrace( tracePathsAndFiles, errmsg );
+            KI_LOG_TRACE( tracePathsAndFiles, errmsg );
         }
 
         return wxEmptyString;
@@ -497,7 +497,7 @@ wxString FILENAME_RESOLVER::ResolvePath( const wxString& aFileName, const wxStri
         errmsg.append( "\n" );
         errmsg.append( tname.substr( 1 ) );
         errmsg.append( "\n" );
-        wxLogTrace( tracePathsAndFiles, errmsg );
+        KI_LOG_TRACE( tracePathsAndFiles, errmsg );
     }
 
     return wxEmptyString;

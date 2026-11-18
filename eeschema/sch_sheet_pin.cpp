@@ -44,7 +44,7 @@ SCH_SHEET_PIN::SCH_SHEET_PIN( SCH_SHEET* parent, const VECTOR2I& pos, const wxSt
     m_edge( SHEET_SIDE::UNDEFINED )
 {
     SetParent( parent );
-    wxASSERT( parent );
+    KI_ASSERT( parent );
     m_layer = LAYER_SHEETLABEL;
 
     SetTextPos( pos );
@@ -85,7 +85,7 @@ void SCH_SHEET_PIN::Serialize( google::protobuf::Any& aContainer ) const
     Serialize( pin );
 
     if( !aContainer.PackFrom( pin ) )
-        wxFAIL_MSG( wxT( "Failed to pack SCH_SHEET_PIN" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack SCH_SHEET_PIN" ) );
 }
 
 
@@ -128,7 +128,7 @@ void SCH_SHEET_PIN::swapData( SCH_ITEM* aItem )
 {
     SCH_HIERLABEL::swapData( aItem );
 
-    wxCHECK_RET( aItem->Type() == SCH_SHEET_PIN_T,
+    KI_CHECK_RET( aItem->Type() == SCH_SHEET_PIN_T,
                  wxString::Format( "SCH_SHEET_PIN object cannot swap data with %s object.", aItem->GetClass() ) );
 
     SCH_SHEET_PIN* pin = static_cast<SCH_SHEET_PIN*>( aItem );
@@ -149,7 +149,7 @@ int SCH_SHEET_PIN::GetPenWidth() const
 
 void SCH_SHEET_PIN::SetNumber( int aNumber )
 {
-    wxASSERT( aNumber >= 2 );
+    KI_ASSERT( aNumber >= 2 );
 
     m_number = aNumber;
 }
@@ -227,7 +227,7 @@ void SCH_SHEET_PIN::ConstrainOnEdge( const VECTOR2I& aPos, bool aAllowEdgeSwitch
         case 1:  SetSide( SHEET_SIDE::RIGHT );  break;
         case 2:  SetSide( SHEET_SIDE::BOTTOM ); break;
         case 3:  SetSide( SHEET_SIDE::LEFT );   break;
-        default: wxASSERT( "Invalid segment number" );
+        default: KI_ASSERT( "Invalid segment number" );
         }
     }
     else
@@ -262,7 +262,7 @@ void SCH_SHEET_PIN::ConstrainOnEdge( const VECTOR2I& aPos, bool aAllowEdgeSwitch
         break;
 
     case SHEET_SIDE::UNDEFINED:
-        wxASSERT( "Undefined sheet side" );
+        KI_ASSERT( "Undefined sheet side" );
     }
 }
 
@@ -448,7 +448,7 @@ bool SCH_SHEET_PIN::HasConnectivityChanges( const SCH_ITEM* aItem, const SCH_SHE
     const SCH_SHEET_PIN* pin = dynamic_cast<const SCH_SHEET_PIN*>( aItem );
 
     // Don't compare against a different SCH_ITEM.
-    wxCHECK( pin, false );
+    KI_CHECK( pin, false );
 
     if( GetPosition() != pin->GetPosition() )
         return true;

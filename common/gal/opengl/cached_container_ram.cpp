@@ -88,7 +88,7 @@ void CACHED_CONTAINER_RAM::Unmap()
 
 bool CACHED_CONTAINER_RAM::defragmentResize( unsigned int aNewSize )
 {
-    wxLogTrace( traceGalCachedContainer,
+    KI_LOG_TRACE( traceGalCachedContainer,
                 wxT( "Resizing & defragmenting container (memcpy) from %d to %d" ), m_currentSize,
                 aNewSize );
 
@@ -114,7 +114,7 @@ bool CACHED_CONTAINER_RAM::defragmentResize( unsigned int aNewSize )
 #ifdef KICAD_GAL_PROFILE
     totalTime.Stop();
 
-    wxLogTrace( traceGalCachedContainer, "Defragmented container storing %d vertices / %.1f ms",
+    KI_LOG_TRACE( traceGalCachedContainer, "Defragmented container storing %d vertices / %.1f ms",
                 m_currentSize - m_freeSpace, totalTime.msecs() );
 #endif /* KICAD_GAL_PROFILE */
 

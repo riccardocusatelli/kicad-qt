@@ -90,7 +90,7 @@ GAL_LAYER_ID RenderLayerFromVisibilityLayer( VISIBILITY_LAYER aLayer )
     case VISIBILITY_LAYER::SUBGRIDS:                return LAYER_SUBGRIDS;
     }
 
-    wxCHECK_MSG( false, GAL_LAYER_ID_END, "Unhandled layer in RenderLayerFromVisibilityLayer" );
+    KI_CHECK_MSG( false, GAL_LAYER_ID_END, "Unhandled layer in RenderLayerFromVisibilityLayer" );
 }
 
 

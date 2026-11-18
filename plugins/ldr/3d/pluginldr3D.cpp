@@ -70,7 +70,7 @@ bool KICAD_PLUGIN_LDR_3D::Open( const wxString& aFullFileName )
             m_error = ostr.str();
         }
 
-        wxLogTrace( tracePluginLoader, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( tracePluginLoader, wxT( "%s:%s:%d\n"
                                             " * [INFO] failed on file '%s'\n"
                                             " * [INFO] error: " ),
                     __FILE__, __FUNCTION__, __LINE__, aFullFileName.ToUTF8(), m_error );
@@ -93,7 +93,7 @@ bool KICAD_PLUGIN_LDR_3D::Open( const wxString& aFullFileName )
 
     if( !m_getNExtensions )
     {
-        wxLogTrace( tracePluginLoader,
+        KI_LOG_TRACE( tracePluginLoader,
                     wxT( "%s:%s:%d\n"
                          "incompatible plugin (missing function 'GetNExtensions')" ),
                     __FILE__, __FUNCTION__, __LINE__ );
@@ -105,7 +105,7 @@ bool KICAD_PLUGIN_LDR_3D::Open( const wxString& aFullFileName )
     {
         if( !fail )
         {
-            wxLogTrace( tracePluginLoader,
+            KI_LOG_TRACE( tracePluginLoader,
                         wxT( "%s:%s:%d\n"
                              "incompatible plugin (missing function 'GetModelExtension')" ),
                         __FILE__, __FUNCTION__, __LINE__ );
@@ -114,7 +114,7 @@ bool KICAD_PLUGIN_LDR_3D::Open( const wxString& aFullFileName )
         }
         else
         {
-            wxLogTrace( tracePluginLoader, wxT( "missing function 'GetModelExtension'" ) );
+            KI_LOG_TRACE( tracePluginLoader, wxT( "missing function 'GetModelExtension'" ) );
         }
     }
 
@@ -122,7 +122,7 @@ bool KICAD_PLUGIN_LDR_3D::Open( const wxString& aFullFileName )
     {
         if( !fail )
         {
-            wxLogTrace( tracePluginLoader,
+            KI_LOG_TRACE( tracePluginLoader,
                         wxT( "%s:%s:%d\n"
                              "incompatible plugin (missing function 'GetNFilters')" ),
                         __FILE__, __FUNCTION__, __LINE__ );
@@ -131,7 +131,7 @@ bool KICAD_PLUGIN_LDR_3D::Open( const wxString& aFullFileName )
         }
         else
         {
-            wxLogTrace( tracePluginLoader, wxT( "missing function 'GetNFilters'" ) );
+            KI_LOG_TRACE( tracePluginLoader, wxT( "missing function 'GetNFilters'" ) );
         }
     }
 
@@ -139,7 +139,7 @@ bool KICAD_PLUGIN_LDR_3D::Open( const wxString& aFullFileName )
     {
         if( !fail )
         {
-            wxLogTrace( tracePluginLoader,
+            KI_LOG_TRACE( tracePluginLoader,
                         wxT( "%s:%s:%d\n"
                              "incompatible plugin (missing function 'GetFileFilter')" ),
                         __FILE__, __FUNCTION__, __LINE__ );
@@ -148,7 +148,7 @@ bool KICAD_PLUGIN_LDR_3D::Open( const wxString& aFullFileName )
         }
         else
         {
-            wxLogTrace( tracePluginLoader, wxT( "missing function 'GetFileFilter'" ) );
+            KI_LOG_TRACE( tracePluginLoader, wxT( "missing function 'GetFileFilter'" ) );
         }
     }
 
@@ -156,7 +156,7 @@ bool KICAD_PLUGIN_LDR_3D::Open( const wxString& aFullFileName )
     {
         if( !fail )
         {
-            wxLogTrace( tracePluginLoader,
+            KI_LOG_TRACE( tracePluginLoader,
                         wxT( "%s:%s:%d\n"
                              "incompatible plugin (missing function 'CanRender')" ),
                         __FILE__, __FUNCTION__, __LINE__ );
@@ -165,7 +165,7 @@ bool KICAD_PLUGIN_LDR_3D::Open( const wxString& aFullFileName )
         }
         else
         {
-            wxLogTrace( tracePluginLoader, wxT( "missing function 'CanRender'" ) );
+            KI_LOG_TRACE( tracePluginLoader, wxT( "missing function 'CanRender'" ) );
         }
     }
 
@@ -173,14 +173,14 @@ bool KICAD_PLUGIN_LDR_3D::Open( const wxString& aFullFileName )
     {
         if( !fail )
         {
-            wxLogTrace( tracePluginLoader,
+            KI_LOG_TRACE( tracePluginLoader,
                         wxT( "%s:%s:%d\n"
                              "incompatible plugin (missing function 'Load')" ),
                         __FILE__, __FUNCTION__, __LINE__ );
         }
         else
         {
-            wxLogTrace( tracePluginLoader, wxT( "missing function 'Load'" ) );
+            KI_LOG_TRACE( tracePluginLoader, wxT( "missing function 'Load'" ) );
         }
     }
 
@@ -208,7 +208,7 @@ void KICAD_PLUGIN_LDR_3D::Close( void )
 #ifdef DEBUG
     if( ok )
     {
-        wxLogTrace( tracePluginLoader, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( tracePluginLoader, wxT( "%s:%s:%d\n"
                                             " * [INFO] closing plugin" ),
                     __FILE__, __FUNCTION__, __LINE__ );
     }
@@ -262,7 +262,7 @@ int KICAD_PLUGIN_LDR_3D::GetNExtensions( void )
     {
         m_error = "[BUG] GetNExtensions is not linked";
 
-        wxLogTrace( tracePluginLoader, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( tracePluginLoader, wxT( "%s:%s:%d\n"
                                             "%s" ),
                     __FILE__, __FUNCTION__, __LINE__, m_error );;
 
@@ -289,7 +289,7 @@ char const* KICAD_PLUGIN_LDR_3D::GetModelExtension( int aIndex )
     {
         m_error = "[BUG] GetModelExtension is not linked";
 
-        wxLogTrace( tracePluginLoader, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( tracePluginLoader, wxT( "%s:%s:%d\n"
                                             "%s" ),
                     __FILE__, __FUNCTION__, __LINE__, m_error );;
 
@@ -316,7 +316,7 @@ int KICAD_PLUGIN_LDR_3D::GetNFilters( void )
     {
         m_error = "[BUG] GetNFilters is not linked";
 
-        wxLogTrace( tracePluginLoader, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( tracePluginLoader, wxT( "%s:%s:%d\n"
                                             "%s" ),
                     __FILE__, __FUNCTION__, __LINE__, m_error );;
 
@@ -343,7 +343,7 @@ char const* KICAD_PLUGIN_LDR_3D::GetFileFilter( int aIndex )
     {
         m_error = "[BUG] GetFileFilter is not linked";
 
-        wxLogTrace( tracePluginLoader, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( tracePluginLoader, wxT( "%s:%s:%d\n"
                                             "%s" ),
                     __FILE__, __FUNCTION__, __LINE__, m_error );;
 
@@ -370,7 +370,7 @@ bool KICAD_PLUGIN_LDR_3D::CanRender( void )
     {
         m_error = "[BUG] CanRender is not linked";
 
-        wxLogTrace( tracePluginLoader, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( tracePluginLoader, wxT( "%s:%s:%d\n"
                                             "%s" ),
                     __FILE__, __FUNCTION__, __LINE__, m_error );;
 
@@ -397,7 +397,7 @@ SCENEGRAPH* KICAD_PLUGIN_LDR_3D::Load( char const* aFileName )
     {
         m_error = "[BUG] Load is not linked";
 
-        wxLogTrace( tracePluginLoader, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( tracePluginLoader, wxT( "%s:%s:%d\n"
                                             "%s" ),
                     __FILE__, __FUNCTION__, __LINE__, m_error );;
 

@@ -65,7 +65,7 @@
     case SIM_VALUE::TYPE_INT_VECTOR:                                     \
     case SIM_VALUE::TYPE_FLOAT_VECTOR:                                   \
     case SIM_VALUE::TYPE_COMPLEX_VECTOR:                                 \
-        wxFAIL_MSG( "Unhandled SIM_VALUE type" );                        \
+        KI_FAIL_MSG( "Unhandled SIM_VALUE type" );                        \
         break;                                                           \
     }
 
@@ -187,7 +187,7 @@ static inline void handleNodeForParse( tao::pegtl::parse_tree::node& aNode,
         aParseResult.isEmpty = false;
     }
     else
-        wxFAIL_MSG( "Unhandled parse tree node" );
+        KI_FAIL_MSG( "Unhandled parse tree node" );
 }
 
 
@@ -211,7 +211,7 @@ SIM_VALUE_PARSER::PARSE_RESULT SIM_VALUE_PARSER::Parse( const std::string& aStri
         return result;
     }
 
-    wxASSERT( root );
+    KI_ASSERT( root );
 
     try
     {
@@ -222,7 +222,7 @@ SIM_VALUE_PARSER::PARSE_RESULT SIM_VALUE_PARSER::Parse( const std::string& aStri
     }
     catch( const std::invalid_argument& e )
     {
-        wxFAIL_MSG( fmt::format( "Parsing simulator value failed: {:s}", e.what() ) );
+        KI_FAIL_MSG( fmt::format( "Parsing simulator value failed: {:s}", e.what() ) );
         result.isOk = false;
     }
 
@@ -285,7 +285,7 @@ int SIM_VALUE_PARSER::UnitPrefixToExponent( std::string aPrefix, NOTATION aNotat
         break;
     }
 
-    wxFAIL_MSG( fmt::format( "Unknown simulator value suffix: '{:s}'", aPrefix ) );
+    KI_FAIL_MSG( fmt::format( "Unknown simulator value suffix: '{:s}'", aPrefix ) );
     return 0;
 }
 

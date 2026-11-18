@@ -235,7 +235,7 @@ void NETCLASS::Serialize( google::protobuf::Any &aContainer ) const
     Serialize( nc );
 
     if( !aContainer.PackFrom( nc ) )
-        wxFAIL_MSG( wxT( "Failed to pack NETCLASS" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack NETCLASS" ) );
 }
 
 
@@ -350,7 +350,7 @@ const wxString NETCLASS::GetHumanReadableName() const
     if( m_constituents.size() == 1 )
         return m_Name;
 
-    wxASSERT( m_constituents.size() >= 2 );
+    KI_ASSERT( m_constituents.size() >= 2 );
 
     wxString name;
 
@@ -384,7 +384,7 @@ const wxString NETCLASS::GetName() const
     if( m_constituents.size() == 1 )
         return m_Name;
 
-    wxASSERT( m_constituents.size() >= 2 );
+    KI_ASSERT( m_constituents.size() >= 2 );
 
     size_t strLen = m_constituents.size() - 1; // Count commas
 

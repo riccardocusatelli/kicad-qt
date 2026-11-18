@@ -55,13 +55,13 @@ MATERIAL::MATERIAL()
 MATERIAL::MATERIAL( const SFVEC3F& aAmbient, const SFVEC3F& aEmissive, const SFVEC3F& aSpecular,
                     float aShinness, float aTransparency, float aReflection )
 {
-    wxASSERT( aReflection >= 0.0f );
-    wxASSERT( aReflection <= 1.0f );
+    KI_ASSERT( aReflection >= 0.0f );
+    KI_ASSERT( aReflection <= 1.0f );
 
-    wxASSERT( aTransparency >= 0.0f );
-    wxASSERT( aTransparency <= 1.0f );
+    KI_ASSERT( aTransparency >= 0.0f );
+    KI_ASSERT( aTransparency <= 1.0f );
 
-    wxASSERT( aShinness >= 0.0f );
+    KI_ASSERT( aShinness >= 0.0f );
     // No upper bound assertion on shininess since higher values are valid for Blinn-Phong
     // and needed for realistic dark solder mask rendering
 
@@ -99,7 +99,7 @@ SFVEC3F BLINN_PHONG_MATERIAL::Shade( const RAY& aRay, const HITINFO& aHitInfo, f
                                      const SFVEC3F& aLightColor,
                                      float aShadowAttenuationFactor ) const
 {
-    wxASSERT( NdotL >= FLT_EPSILON );
+    KI_ASSERT( NdotL >= FLT_EPSILON );
 
     // This is a hack to get some kind of fake ambient illumination
     // There is no logic behind this, just pure artistic experimentation

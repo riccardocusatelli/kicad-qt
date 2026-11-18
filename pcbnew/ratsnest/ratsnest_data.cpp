@@ -66,7 +66,7 @@ void RN_NET::kruskalMST( std::vector<CN_EDGE>& aEdges )
         const std::shared_ptr<const CN_ANCHOR>& source = aEdges[ii].GetSourceNode();
         const std::shared_ptr<const CN_ANCHOR>& target = aEdges[ii].GetTargetNode();
 
-        wxCHECK2( source && !source->Dirty() && target && !target->Dirty(), continue );
+        KI_CHECK2( source && !source->Dirty() && target && !target->Dirty(), continue );
 
         if( aEdges[ii].GetWeight() > 0 )
         {
@@ -492,7 +492,7 @@ void RN_NET::OptimizeRNEdges()
         const std::shared_ptr<const CN_ANCHOR>& source = edge.GetSourceNode();
         const std::shared_ptr<const CN_ANCHOR>& target = edge.GetTargetNode();
 
-        wxCHECK2( source && !source->Dirty() && target && !target->Dirty(), continue );
+        KI_CHECK2( source && !source->Dirty() && target && !target->Dirty(), continue );
 
         if( source->ConnectedItemsCount() == 0 )
         {

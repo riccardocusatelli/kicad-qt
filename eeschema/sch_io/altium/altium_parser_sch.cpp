@@ -155,7 +155,7 @@ ASCH_ADDITIONAL_FILE::ASCH_ADDITIONAL_FILE( ALTIUM_BINARY_PARSER& aReader )
 
 ASCH_SYMBOL::ASCH_SYMBOL( const std::map<wxString, wxString>& aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::COMPONENT );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::COMPONENT );
 
     uniqueid = ALTIUM_PROPS_UTILS::ReadString( aProps, "UNIQUEID", "" );
     currentpartid = ALTIUM_PROPS_UTILS::ReadInt( aProps, "CURRENTPARTID", ALTIUM_COMPONENT_NONE );
@@ -186,7 +186,7 @@ ASCH_SYMBOL::ASCH_SYMBOL( const std::map<wxString, wxString>& aProps )
 ASCH_TEMPLATE::ASCH_TEMPLATE( const std::map<wxString, wxString>& aProps ) :
         ASCH_OWNER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::TEMPLATE );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::TEMPLATE );
 
     filename = ALTIUM_PROPS_UTILS::ReadString( aProps, "FILENAME", "" );
 }
@@ -195,7 +195,7 @@ ASCH_TEMPLATE::ASCH_TEMPLATE( const std::map<wxString, wxString>& aProps ) :
 ASCH_PIN::ASCH_PIN( const std::map<wxString, wxString>& aProps ) :
         ASCH_OWNER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::PIN );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::PIN );
 
     ownerpartdisplaymode = ALTIUM_PROPS_UTILS::ReadInt( aProps, "OWNERPARTDISPLAYMODE", 0 );
 
@@ -270,7 +270,7 @@ ASCH_PIN::ASCH_PIN( const std::map<wxString, wxString>& aProps ) :
         break;
 
     default:
-        wxLogTrace( traceAltiumIo, "Pin has unexpected orientation" );
+        KI_LOG_TRACE( traceAltiumIo, "Pin has unexpected orientation" );
         break;
     }
 
@@ -313,7 +313,7 @@ ASCH_BORDER_INTERFACE::ASCH_BORDER_INTERFACE( const std::map<wxString, wxString>
 ASCH_LABEL::ASCH_LABEL( const std::map<wxString, wxString>& aProps ) :
         ASCH_OWNER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::LABEL );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::LABEL );
 
     location = VECTOR2I( ReadKiCadUnitFrac( aProps, "LOCATION.X" ),
                          -ReadKiCadUnitFrac( aProps, "LOCATION.Y" ) );
@@ -335,7 +335,7 @@ ASCH_LABEL::ASCH_LABEL( const std::map<wxString, wxString>& aProps ) :
 ASCH_TEXT_FRAME::ASCH_TEXT_FRAME( const std::map<wxString, wxString>& aProps ) :
         ASCH_OWNER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::NOTE
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::NOTE
               || ReadRecord( aProps ) == ALTIUM_SCH_RECORD::TEXT_FRAME );
 
     BottomLeft = VECTOR2I( ReadKiCadUnitFrac( aProps, "LOCATION.X" ),
@@ -371,7 +371,7 @@ ASCH_TEXT_FRAME::ASCH_TEXT_FRAME( const std::map<wxString, wxString>& aProps ) :
 ASCH_NOTE::ASCH_NOTE( const std::map<wxString, wxString>& aProperties ) :
         ASCH_TEXT_FRAME( aProperties )
 {
-    wxASSERT( ReadRecord( aProperties ) == ALTIUM_SCH_RECORD::NOTE );
+    KI_ASSERT( ReadRecord( aProperties ) == ALTIUM_SCH_RECORD::NOTE );
 
     author = ALTIUM_PROPS_UTILS::ReadString( aProperties, "AUTHOR", "" );
 }
@@ -381,7 +381,7 @@ ASCH_BEZIER::ASCH_BEZIER( const std::map<wxString, wxString>& aProps ) :
         ASCH_OWNER_INTERFACE( aProps ),
         ASCH_BORDER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::BEZIER );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::BEZIER );
 
     int locationCount = ALTIUM_PROPS_UTILS::ReadInt( aProps, "LOCATIONCOUNT", 0 );
 
@@ -398,7 +398,7 @@ ASCH_POLYLINE::ASCH_POLYLINE( const std::map<wxString, wxString>& aProps ) :
         ASCH_OWNER_INTERFACE( aProps ),
         ASCH_BORDER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::POLYLINE );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::POLYLINE );
 
     int locationCount = ALTIUM_PROPS_UTILS::ReadInt( aProps, "LOCATIONCOUNT", 0 );
 
@@ -419,7 +419,7 @@ ASCH_POLYGON::ASCH_POLYGON( const std::map<wxString, wxString>& aProps ) :
         ASCH_FILL_INTERFACE( aProps ),
         ASCH_BORDER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::POLYGON );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::POLYGON );
 
     int locationCount = ALTIUM_PROPS_UTILS::ReadInt( aProps, "LOCATIONCOUNT", 0 );
 
@@ -437,7 +437,7 @@ ASCH_ROUND_RECTANGLE::ASCH_ROUND_RECTANGLE( const std::map<wxString, wxString>& 
         ASCH_FILL_INTERFACE( aProps ),
         ASCH_BORDER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::ROUND_RECTANGLE );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::ROUND_RECTANGLE );
 
     BottomLeft = VECTOR2I( ReadKiCadUnitFrac( aProps, "LOCATION.X" ),
                            -ReadKiCadUnitFrac( aProps, "LOCATION.Y" ) );
@@ -455,7 +455,7 @@ ASCH_ARC::ASCH_ARC( const std::map<wxString, wxString>& aProps ) :
         ASCH_FILL_INTERFACE( aProps )
 {
     m_IsElliptical = ReadRecord( aProps ) == ALTIUM_SCH_RECORD::ELLIPTICAL_ARC;
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::ARC || ReadRecord( aProps ) == ALTIUM_SCH_RECORD::PIECHART
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::ARC || ReadRecord( aProps ) == ALTIUM_SCH_RECORD::PIECHART
               || m_IsElliptical );
 
     m_Center = VECTOR2I( ReadKiCadUnitFrac( aProps, "LOCATION.X" ),
@@ -483,7 +483,7 @@ ASCH_ELLIPSE::ASCH_ELLIPSE( const std::map<wxString, wxString>& aProps ) :
 {
     ALTIUM_SCH_RECORD record = ReadRecord( aProps );
 
-    wxASSERT( record == ALTIUM_SCH_RECORD::ELLIPSE || record == ALTIUM_SCH_RECORD::ELLIPTICAL_ARC );
+    KI_ASSERT( record == ALTIUM_SCH_RECORD::ELLIPSE || record == ALTIUM_SCH_RECORD::ELLIPTICAL_ARC );
 
     Center = VECTOR2I( ReadKiCadUnitFrac( aProps, "LOCATION.X" ),
                        -ReadKiCadUnitFrac( aProps, "LOCATION.Y" ) );
@@ -497,7 +497,7 @@ ASCH_LINE::ASCH_LINE( const std::map<wxString, wxString>& aProps ) :
         ASCH_OWNER_INTERFACE( aProps ),
         ASCH_BORDER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::LINE );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::LINE );
 
     point1 = VECTOR2I( ReadKiCadUnitFrac( aProps, "LOCATION.X" ),
                        -ReadKiCadUnitFrac( aProps, "LOCATION.Y" ) );
@@ -512,7 +512,7 @@ ASCH_LINE::ASCH_LINE( const std::map<wxString, wxString>& aProps ) :
 ASCH_SIGNAL_HARNESS::ASCH_SIGNAL_HARNESS( const std::map<wxString, wxString>& aProps ) :
         ASCH_OWNER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::SIGNAL_HARNESS );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::SIGNAL_HARNESS );
 
 
     int locationCount = ALTIUM_PROPS_UTILS::ReadInt( aProps, "LOCATIONCOUNT", 0 );
@@ -532,7 +532,7 @@ ASCH_SIGNAL_HARNESS::ASCH_SIGNAL_HARNESS( const std::map<wxString, wxString>& aP
 ASCH_HARNESS_CONNECTOR::ASCH_HARNESS_CONNECTOR( const std::map<wxString, wxString>& aProps ) :
         ASCH_OWNER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::HARNESS_CONNECTOR );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::HARNESS_CONNECTOR );
 
 
     m_location = VECTOR2I( ReadKiCadUnitFrac( aProps, "LOCATION.X" ),
@@ -553,7 +553,7 @@ ASCH_HARNESS_CONNECTOR::ASCH_HARNESS_CONNECTOR( const std::map<wxString, wxStrin
 ASCH_HARNESS_ENTRY::ASCH_HARNESS_ENTRY( const std::map<wxString, wxString>& aProps ) :
         ASCH_OWNER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::HARNESS_ENTRY );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::HARNESS_ENTRY );
 
     // use SCH_IO_ALTIUM::m_harnessEntryParent instead, because this property sometimes
     // does not exist in altium file!
@@ -579,7 +579,7 @@ ASCH_HARNESS_ENTRY::ASCH_HARNESS_ENTRY( const std::map<wxString, wxString>& aPro
 ASCH_HARNESS_TYPE::ASCH_HARNESS_TYPE( const std::map<wxString, wxString>& aProps ) :
         ASCH_OWNER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::HARNESS_TYPE );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::HARNESS_TYPE );
 
     //ownerindex = ReadOwnerIndex( aProps ); // use SCH_IO_ALTIUM::m_harnessEntryParent instead!
 
@@ -601,7 +601,7 @@ ASCH_RECTANGLE::ASCH_RECTANGLE( const std::map<wxString, wxString>& aProps ) :
         ASCH_FILL_INTERFACE( aProps ),
         ASCH_BORDER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::RECTANGLE );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::RECTANGLE );
 
     BottomLeft = VECTOR2I( ReadKiCadUnitFrac( aProps, "LOCATION.X" ),
                            -ReadKiCadUnitFrac( aProps, "LOCATION.Y" ) );
@@ -614,7 +614,7 @@ ASCH_RECTANGLE::ASCH_RECTANGLE( const std::map<wxString, wxString>& aProps ) :
 ASCH_SHEET_SYMBOL::ASCH_SHEET_SYMBOL( const std::map<wxString, wxString>& aProps ) :
         ASCH_OWNER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::SHEET_SYMBOL );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::SHEET_SYMBOL );
 
     location = VECTOR2I( ReadKiCadUnitFrac( aProps, "LOCATION.X" ),
                          -ReadKiCadUnitFrac( aProps, "LOCATION.Y" ) );
@@ -631,7 +631,7 @@ ASCH_SHEET_SYMBOL::ASCH_SHEET_SYMBOL( const std::map<wxString, wxString>& aProps
 ASCH_SHEET_ENTRY::ASCH_SHEET_ENTRY( const std::map<wxString, wxString>& aProps ) :
         ASCH_OWNER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::SHEET_ENTRY );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::SHEET_ENTRY );
 
     // some magic, because it stores those infos in a different unit??
     distanceFromTop = ReadKiCadUnitFrac1( aProps, "DISTANCEFROMTOP" );
@@ -649,7 +649,7 @@ ASCH_SHEET_ENTRY::ASCH_SHEET_ENTRY( const std::map<wxString, wxString>& aProps )
 ASCH_POWER_PORT::ASCH_POWER_PORT( const std::map<wxString, wxString>& aProps ) :
         ASCH_OWNER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::POWER_PORT );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::POWER_PORT );
 
 
     location = VECTOR2I( ReadKiCadUnitFrac( aProps, "LOCATION.X" ),
@@ -669,7 +669,7 @@ ASCH_POWER_PORT::ASCH_POWER_PORT( const std::map<wxString, wxString>& aProps ) :
 ASCH_PORT::ASCH_PORT( const std::map<wxString, wxString>& aProps ) :
         ASCH_OWNER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::PORT );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::PORT );
 
 
     Location = VECTOR2I( ReadKiCadUnitFrac( aProps, "LOCATION.X" ),
@@ -695,7 +695,7 @@ ASCH_PORT::ASCH_PORT( const std::map<wxString, wxString>& aProps ) :
 
 ASCH_NO_ERC::ASCH_NO_ERC( const std::map<wxString, wxString>& aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::NO_ERC );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::NO_ERC );
 
     location = VECTOR2I( ReadKiCadUnitFrac( aProps, "LOCATION.X" ),
                          -ReadKiCadUnitFrac( aProps, "LOCATION.Y" ) );
@@ -708,7 +708,7 @@ ASCH_NO_ERC::ASCH_NO_ERC( const std::map<wxString, wxString>& aProps )
 ASCH_NET_LABEL::ASCH_NET_LABEL( const std::map<wxString, wxString>& aProps ) :
         ASCH_OWNER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::NET_LABEL );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::NET_LABEL );
 
     text = ALTIUM_PROPS_UTILS::ReadString( aProps, "TEXT", "" );
 
@@ -726,7 +726,7 @@ ASCH_NET_LABEL::ASCH_NET_LABEL( const std::map<wxString, wxString>& aProps ) :
 ASCH_BUS::ASCH_BUS( const std::map<wxString, wxString>& aProps ) :
         ASCH_OWNER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::BUS );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::BUS );
 
     int locationcount = ALTIUM_PROPS_UTILS::ReadInt( aProps, "LOCATIONCOUNT", 0 );
 
@@ -744,7 +744,7 @@ ASCH_BUS::ASCH_BUS( const std::map<wxString, wxString>& aProps ) :
 ASCH_WIRE::ASCH_WIRE( const std::map<wxString, wxString>& aProps ) :
         ASCH_OWNER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::WIRE );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::WIRE );
 
     int locationcount = ALTIUM_PROPS_UTILS::ReadInt( aProps, "LOCATIONCOUNT", 0 );
 
@@ -762,7 +762,7 @@ ASCH_WIRE::ASCH_WIRE( const std::map<wxString, wxString>& aProps ) :
 ASCH_JUNCTION::ASCH_JUNCTION( const std::map<wxString, wxString>& aProps ) :
         ASCH_OWNER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::JUNCTION );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::JUNCTION );
 
 
     location = VECTOR2I( ReadKiCadUnitFrac( aProps, "LOCATION.X" ),
@@ -774,7 +774,7 @@ ASCH_IMAGE::ASCH_IMAGE( const std::map<wxString, wxString>& aProps ) :
         ASCH_OWNER_INTERFACE( aProps ),
         ASCH_BORDER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::IMAGE );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::IMAGE );
 
     filename = ALTIUM_PROPS_UTILS::ReadString( aProps, "FILENAME", "" );
 
@@ -791,7 +791,7 @@ ASCH_IMAGE::ASCH_IMAGE( const std::map<wxString, wxString>& aProps ) :
 ASCH_SHEET_FONT::ASCH_SHEET_FONT( const std::map<wxString, wxString>& aProps, int aId ) :
         ASCH_OWNER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::SHEET );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::SHEET );
 
     const wxString sid = std::to_string( aId );
 
@@ -839,7 +839,7 @@ VECTOR2I ASchSheetGetSize( ASCH_SHEET_SIZE aSheetSize )
 ASCH_SHEET::ASCH_SHEET( const std::map<wxString, wxString>& aProps ) :
         ASCH_OWNER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::SHEET );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::SHEET );
 
     int fontidcount = ALTIUM_PROPS_UTILS::ReadInt( aProps, "FONTIDCOUNT", 0 );
 
@@ -860,7 +860,7 @@ ASCH_SHEET::ASCH_SHEET( const std::map<wxString, wxString>& aProps ) :
 ASCH_SHEET_NAME::ASCH_SHEET_NAME( const std::map<wxString, wxString>& aProps ) :
         ASCH_OWNER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::SHEET_NAME );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::SHEET_NAME );
 
     text = ALTIUM_PROPS_UTILS::ReadString( aProps, "TEXT", "" );
 
@@ -877,7 +877,7 @@ ASCH_SHEET_NAME::ASCH_SHEET_NAME( const std::map<wxString, wxString>& aProps ) :
 ASCH_FILE_NAME::ASCH_FILE_NAME( const std::map<wxString, wxString>& aProps ) :
         ASCH_OWNER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::FILE_NAME );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::FILE_NAME );
 
     text = ALTIUM_PROPS_UTILS::ReadString( aProps, "TEXT", "" );
 
@@ -894,7 +894,7 @@ ASCH_FILE_NAME::ASCH_FILE_NAME( const std::map<wxString, wxString>& aProps ) :
 ASCH_DESIGNATOR::ASCH_DESIGNATOR( const std::map<wxString, wxString>& aProps ) :
         ASCH_OWNER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::DESIGNATOR );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::DESIGNATOR );
 
     name = ALTIUM_PROPS_UTILS::ReadString( aProps, "NAME", "" );
     text = ALTIUM_PROPS_UTILS::ReadString( aProps, "TEXT", "" );
@@ -914,7 +914,7 @@ ASCH_DESIGNATOR::ASCH_DESIGNATOR( const std::map<wxString, wxString>& aProps ) :
 ASCH_IMPLEMENTATION::ASCH_IMPLEMENTATION( const std::map<wxString, wxString>& aProps ) :
         ASCH_OWNER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::IMPLEMENTATION );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::IMPLEMENTATION );
 
     ownerindex = ALTIUM_PROPS_UTILS::ReadInt( aProps, "OWNERINDEX", ALTIUM_COMPONENT_NONE );
     name = ALTIUM_PROPS_UTILS::ReadString( aProps, "MODELNAME", "" );
@@ -928,14 +928,14 @@ ASCH_IMPLEMENTATION::ASCH_IMPLEMENTATION( const std::map<wxString, wxString>& aP
 ASCH_IMPLEMENTATION_LIST::ASCH_IMPLEMENTATION_LIST( const std::map<wxString, wxString>& aProps ) :
         ASCH_OWNER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::IMPLEMENTATION_LIST );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::IMPLEMENTATION_LIST );
 }
 
 
 ASCH_BUS_ENTRY::ASCH_BUS_ENTRY( const std::map<wxString, wxString>& aProps ) :
         ASCH_OWNER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::BUS_ENTRY );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::BUS_ENTRY );
 
     location = VECTOR2I( ReadKiCadUnitFrac( aProps, "LOCATION.X" ),
                          -ReadKiCadUnitFrac( aProps, "LOCATION.Y" ) );
@@ -947,7 +947,7 @@ ASCH_BUS_ENTRY::ASCH_BUS_ENTRY( const std::map<wxString, wxString>& aProps ) :
 ASCH_PARAMETER::ASCH_PARAMETER( const std::map<wxString, wxString>& aProps ) :
         ASCH_OWNER_INTERFACE( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::PARAMETER );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::PARAMETER );
 
     location = VECTOR2I( ReadKiCadUnitFrac( aProps, "LOCATION.X" ),
                          -ReadKiCadUnitFrac( aProps, "LOCATION.Y" ) );
@@ -972,7 +972,7 @@ ASCH_PARAMETER::ASCH_PARAMETER( const std::map<wxString, wxString>& aProps ) :
 ASCH_HYPERLINK::ASCH_HYPERLINK( const std::map<wxString, wxString>& aProps ) :
         ASCH_LABEL( aProps )
 {
-    wxASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::HYPERLINK );
+    KI_ASSERT( ReadRecord( aProps ) == ALTIUM_SCH_RECORD::HYPERLINK );
 
     url = ALTIUM_PROPS_UTILS::ReadString( aProps, "URL", "" );
 }

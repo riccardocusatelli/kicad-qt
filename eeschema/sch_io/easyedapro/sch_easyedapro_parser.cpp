@@ -1114,7 +1114,7 @@ void SCH_EASYEDAPRO_PARSER::ParseSchematic( SCHEMATIC* aSchematic, SCH_SHEET* aR
             auto it = aSymbolMap.find( symbolId );
             if( it == aSymbolMap.end() )
             {
-                wxLogTrace( traceEasyEdaIo, "Symbol of '%s' with uuid '%s' not found.", component->name, symbolId );
+                KI_LOG_TRACE( traceEasyEdaIo, "Symbol of '%s' with uuid '%s' not found.", component->name, symbolId );
                 continue;
             }
 

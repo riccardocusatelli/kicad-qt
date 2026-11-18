@@ -82,7 +82,7 @@ DIALOG_COLOR_PICKER::DIALOG_COLOR_PICKER( wxWindow* aParent, const COLOR4D& aCur
         m_val = 1.0;
 
     APP_SETTINGS_BASE* cfg = Kiface().KifaceSettings();
-    wxASSERT( cfg );
+    KI_ASSERT( cfg );
 
     m_notebook->SetSelection( cfg->m_ColorPicker.default_tab );
 
@@ -106,7 +106,7 @@ DIALOG_COLOR_PICKER::DIALOG_COLOR_PICKER( wxWindow* aParent, const COLOR4D& aCur
 DIALOG_COLOR_PICKER::~DIALOG_COLOR_PICKER()
 {
     APP_SETTINGS_BASE* cfg = Kiface().KifaceSettings();
-    wxASSERT( cfg );
+    KI_ASSERT( cfg );
 
     if( cfg )
         cfg->m_ColorPicker.default_tab = m_notebook->GetSelection();

@@ -556,7 +556,7 @@ void PAGED_DIALOG::onPageChanging( wxBookCtrlEvent& aEvent )
 
     wxWindow* page = m_treebook->GetPage( currentPage );
 
-    wxCHECK( page, /* void */ );
+    KI_CHECK( page, /* void */ );
 
     // If there is a validation error on the current page, don't allow the page change.
     if( !page->Validate() || !page->TransferDataFromWindow() )

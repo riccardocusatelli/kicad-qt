@@ -208,7 +208,7 @@ bool PANEL_EMBEDDED_FILES::TransferDataFromWindow()
                     }
                 }
 
-                wxFAIL_MSG( wxT( "Unexpected embedded files owner" ) );
+                KI_FAIL_MSG( wxT( "Unexpected embedded files owner" ) );
                 return false;
             };
 
@@ -280,7 +280,7 @@ void PANEL_EMBEDDED_FILES::onFontEmbedClick( wxCommandEvent& event )
 
             if( !result )
             {
-                wxLogTrace( wxT( "KICAD_EMBED" ), wxString::Format( "Could not embed font %s",
+                KI_LOG_TRACE( wxT( "KICAD_EMBED" ), wxString::Format( "Could not embed font %s",
                                                                     font->GetFileName() ) );
                 continue;
             }

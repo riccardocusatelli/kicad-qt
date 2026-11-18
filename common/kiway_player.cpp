@@ -96,7 +96,7 @@ void KIWAY_PLAYER::KiwayMailIn( KIWAY_MAIL_EVENT& aEvent )
 
 bool KIWAY_PLAYER::ShowModal( wxString* aResult, wxWindow* aResultantFocusWindow )
 {
-    wxASSERT_MSG( IsModal(), wxT( "ShowModal() shouldn't be called on non-modal frame" ) );
+    KI_ASSERT_MSG( IsModal(), wxT( "ShowModal() shouldn't be called on non-modal frame" ) );
 
     /*
         This function has a nice interface but a necessarily unsightly implementation.

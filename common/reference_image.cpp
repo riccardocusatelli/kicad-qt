@@ -102,7 +102,7 @@ void REFERENCE_IMAGE::updatePixelSizeInIU()
 
 REFERENCE_IMAGE& REFERENCE_IMAGE::operator=( const REFERENCE_IMAGE& aOther )
 {
-    wxASSERT( m_iuScale.IU_PER_MILS == aOther.m_iuScale.IU_PER_MILS );
+    KI_ASSERT( m_iuScale.IU_PER_MILS == aOther.m_iuScale.IU_PER_MILS );
 
     if( &aOther != this )
     {
@@ -511,7 +511,7 @@ void REFERENCE_IMAGE::PlotImage( PLOTTER* aPlotter, const VECTOR2I& aPos, const 
         turned = turned.Rotate( angle.AsRadians(), centerPoint, true );
     }
 
-    wxCHECK_MSG( turned.IsOk(), /* void */, wxT( "Failed to rotate image" ) );
+    KI_CHECK_MSG( turned.IsOk(), /* void */, wxT( "Failed to rotate image" ) );
 
     aPlotter->PlotImage( turned, aPos, scaleFactor, m_opacity );
 }

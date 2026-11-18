@@ -75,7 +75,7 @@ int PICKER_TOOL::Main( const TOOL_EVENT& aEvent )
     KIGFX::VIEW_CONTROLS* controls = getViewControls();
     int finalize_state = WAIT_CANCEL;
 
-    wxCHECK_MSG( aEvent.Parameter<const TOOL_EVENT*>(), -1,
+    KI_CHECK_MSG( aEvent.Parameter<const TOOL_EVENT*>(), -1,
                  wxT( "PICKER_TOOL::Main() called without a source event" ) );
 
     const TOOL_EVENT sourceEvent = *aEvent.Parameter<const TOOL_EVENT*>();

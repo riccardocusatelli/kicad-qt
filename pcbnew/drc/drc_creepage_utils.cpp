@@ -2426,7 +2426,7 @@ double CREEPAGE_GRAPH::Solve( std::shared_ptr<GRAPH_NODE>& aFrom, std::shared_pt
             // Ignore connections with negative weights as Dijkstra doesn't support them.
             if( connection->m_path.weight < 0.0 )
             {
-                wxLogTrace( "CREEPAGE", "Negative weight connection found. Ignoring connection." );
+                KI_LOG_TRACE( "CREEPAGE", "Negative weight connection found. Ignoring connection." );
                 continue;
             }
 
@@ -3082,7 +3082,7 @@ std::shared_ptr<GRAPH_CONNECTION> CREEPAGE_GRAPH::AddConnection( std::shared_ptr
     if( !aN1 || !aN2 )
         return nullptr;
 
-    wxASSERT_MSG( ( aN1 != aN2 ), "Creepage: a connection connects a node to itself" );
+    KI_ASSERT_MSG( ( aN1 != aN2 ), "Creepage: a connection connects a node to itself" );
 
     std::shared_ptr<GRAPH_CONNECTION> gc = std::make_shared<GRAPH_CONNECTION>( aN1, aN2, aPc );
     m_connections.push_back( gc );

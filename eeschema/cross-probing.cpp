@@ -586,10 +586,10 @@ void SCH_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
         char              delim = '\n';
 
         std::string formatStr;
-        wxCHECK( std::getline( ss, formatStr, delim ), /* void */ );
+        KI_CHECK( std::getline( ss, formatStr, delim ), /* void */ );
 
         std::string fnameStr;
-        wxCHECK( std::getline( ss, fnameStr, delim ), /* void */ );
+        KI_CHECK( std::getline( ss, fnameStr, delim ), /* void */ );
 
         int importFormat;
 
@@ -599,7 +599,7 @@ void SCH_EDIT_FRAME::KiwayMailIn( KIWAY_MAIL_EVENT& mail )
         }
         catch( std::invalid_argument& )
         {
-            wxFAIL;
+            KI_FAIL();
             importFormat = -1;
         }
 

@@ -320,7 +320,7 @@ void SCH_EDIT_FRAME::onVariantSelected( wxCommandEvent& aEvent )
     if( aEvent.GetId() != ID_TOOLBAR_SCH_SELECT_VARAIANT )
         return;
 
-    wxCHECK( m_currentVariantCtrl, /* void */ );
+    KI_CHECK( m_currentVariantCtrl, /* void */ );
 
     int selection = m_currentVariantCtrl->GetSelection();
     int count = m_currentVariantCtrl->GetCount();

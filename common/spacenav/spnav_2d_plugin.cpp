@@ -85,7 +85,7 @@ void SPNAV_2D_PLUGIN::OnPan( double x, double y, double z )
     const COMMON_SETTINGS* cfg = Pgm().GetCommonSettings();
     double panFactor = cfg->m_SpaceMouse.pan_speed / 5.0;
 
-    wxLogTrace( "spacenav", "OnPan: x=%f, y=%f, z=%f", x, y, z );
+    KI_LOG_TRACE( "spacenav", "OnPan: x=%f, y=%f, z=%f", x, y, z );
 
     if( !m_view )
         return;

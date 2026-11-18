@@ -132,7 +132,7 @@ bool DIALOG_GENCAD_EXPORT_OPTIONS::GetOption( GENCAD_EXPORT_OPT aOption ) const
 
     if( it == m_options.end() )
     {
-        wxASSERT_MSG( false, wxT( "Missing checkbox for an option" ) );
+        KI_ASSERT_MSG( false, wxT( "Missing checkbox for an option" ) );
         return false;
     }
 

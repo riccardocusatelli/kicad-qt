@@ -209,5 +209,5 @@ int CLI::PCB_EXPORT_PDF_COMMAND::doPerform( KIWAY& aKiway )
     else if( argModeSingle )
         pdfJob->m_pdfGenMode = JOB_EXPORT_PCB_PDF::GEN_MODE::ALL_LAYERS_ONE_FILE;
 
-    return aKiway.ProcessJob( KIWAY::FACE_PCB, pdfJob.get() );
+    return aKiway.ProcessJob( KIWAY_FACES::FACE_PCB, pdfJob.get() );
 }

@@ -320,7 +320,7 @@ bool PROJECT_GIT_UTILS::PathUsesGitLfs( git_repository* aRepo, const wxString& a
 
     if( git_attr_get( &value, aRepo, GIT_ATTR_CHECK_INDEX_THEN_FILE, aPath.utf8_string().c_str(), "filter" ) != GIT_OK )
     {
-        wxLogTrace( traceGit, "Could not read Git attributes: %s", KIGIT_COMMON::GetLastGitError() );
+        KI_LOG_TRACE( traceGit, "Could not read Git attributes: %s", KIGIT_COMMON::GetLastGitError() );
         return true;
     }
 #endif

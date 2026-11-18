@@ -48,7 +48,7 @@ WRL2MATERIAL::WRL2MATERIAL( WRL2NODE* aParent ) : WRL2NODE()
 
 WRL2MATERIAL::~WRL2MATERIAL()
 {
-    wxLogTrace( traceVrmlPlugin, wxT( " * [INFO] Destroying Material node." ) );
+    KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO] Destroying Material node." ) );
 }
 
 
@@ -85,26 +85,26 @@ bool WRL2MATERIAL::isDangling( void )
 bool WRL2MATERIAL::AddRefNode( WRL2NODE* aNode )
 {
     // this node may not own or reference any other node
-    wxCHECK_MSG( false, false, wxT( "AddRefNode is not applicable." ) );
+    KI_CHECK_MSG( false, false, wxT( "AddRefNode is not applicable." ) );
 }
 
 
 bool WRL2MATERIAL::AddChildNode( WRL2NODE* aNode )
 {
     // this node may not own or reference any other node
-    wxCHECK_MSG( false, false, wxT( "AddChildNode is not applicable." ) );
+    KI_CHECK_MSG( false, false, wxT( "AddChildNode is not applicable." ) );
 }
 
 
 bool WRL2MATERIAL::Read( WRLPROC& proc, WRL2BASE* aTopNode )
 {
-    wxCHECK_MSG( aTopNode, false, wxT( "Invalid top node." ) );
+    KI_CHECK_MSG( aTopNode, false, wxT( "Invalid top node." ) );
 
     char tok = proc.Peek();
 
     if( proc.eof() )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                           " * [INFO] bad file format; unexpected eof %s." ),
                     __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition() );
 
@@ -113,7 +113,7 @@ bool WRL2MATERIAL::Read( WRLPROC& proc, WRL2BASE* aTopNode )
 
     if( '{' != tok )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( "%s:%s:%d\n"
                          " * [INFO] bad file format; expecting '{' but got '%s' %s." ),
                     __FILE__, __FUNCTION__, __LINE__, tok, proc.GetFilePosition() );
@@ -134,7 +134,7 @@ bool WRL2MATERIAL::Read( WRLPROC& proc, WRL2BASE* aTopNode )
 
         if( !proc.ReadName( glob ) )
         {
-            wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+            KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                               "%s" ),
                         __FILE__, __FUNCTION__, __LINE__ , proc.GetError() );
 
@@ -153,7 +153,7 @@ bool WRL2MATERIAL::Read( WRLPROC& proc, WRL2BASE* aTopNode )
         {
             if( !proc.ReadSFVec3f( specularColor ) )
             {
-                wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+                KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                                   " * [INFO] invalid specularColor set %s\n"
                                                   " * [INFO] file: '%s'\n"
                                                   "%s" ),
@@ -167,7 +167,7 @@ bool WRL2MATERIAL::Read( WRLPROC& proc, WRL2BASE* aTopNode )
         {
             if( !proc.ReadSFVec3f( diffuseColor ) )
             {
-                wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+                KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                                   " * [INFO] invalid diffuseColor set %s\n"
                                                   " * [INFO] file: '%s'\n"
                                                   "%s" ),
@@ -181,7 +181,7 @@ bool WRL2MATERIAL::Read( WRLPROC& proc, WRL2BASE* aTopNode )
         {
             if( !proc.ReadSFVec3f( emissiveColor ) )
             {
-                wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+                KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                                   " * [INFO] invalid emissiveColor set %s\n"
                                                   " * [INFO] file: '%s'\n"
                                                   "%s" ),
@@ -195,7 +195,7 @@ bool WRL2MATERIAL::Read( WRLPROC& proc, WRL2BASE* aTopNode )
         {
             if( !proc.ReadSFFloat( shininess ) )
             {
-                wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+                KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                                   " * [INFO] invalid shininess set %s\n"
                                                   " * [INFO] file: '%s'\n"
                                                   "%s" ),
@@ -209,7 +209,7 @@ bool WRL2MATERIAL::Read( WRLPROC& proc, WRL2BASE* aTopNode )
         {
             if( !proc.ReadSFFloat( transparency ) )
             {
-                wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+                KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                                   " * [INFO] invalid transparency set %s\n"
                                                   " * [INFO] file: '%s'\n"
                                                   "%s" ),
@@ -223,7 +223,7 @@ bool WRL2MATERIAL::Read( WRLPROC& proc, WRL2BASE* aTopNode )
         {
             if( !proc.ReadSFFloat( ambientIntensity ) )
             {
-                wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+                KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                                   " * [INFO] invalid ambientIntensity set %s\n"
                                                   " * [INFO] file: '%s'\n"
                                                   "%s" ),
@@ -235,7 +235,7 @@ bool WRL2MATERIAL::Read( WRLPROC& proc, WRL2BASE* aTopNode )
         }
         else
         {
-            wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+            KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                               " * [INFO] invalid Material %s.\n"
                                               " * [INFO] file: '%s'\n" ),
                         __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition(),
@@ -253,11 +253,11 @@ SGNODE* WRL2MATERIAL::TranslateToSG( SGNODE* aParent )
 {
     S3D::SGTYPES ptype = S3D::GetSGNodeType( aParent );
 
-    wxCHECK_MSG( aParent && ( ptype == S3D::SGTYPE_SHAPE ), nullptr,
+    KI_CHECK_MSG( aParent && ( ptype == S3D::SGTYPE_SHAPE ), nullptr,
                  wxString::Format( wxT( "IndexedFaceSet does not have a Shape parent (parent "
                                         "ID: %d)." ), ptype ) );
 
-    wxLogTrace( traceVrmlPlugin,
+    KI_LOG_TRACE( traceVrmlPlugin,
                 wxT( " * [INFO] Translating IndexedFaceSet with %zu children, %zu references, and"
                      "%zu back pointers." ),
                 m_Children.size(), m_Refs.size(), m_BackPointers.size() );

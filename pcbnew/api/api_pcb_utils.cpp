@@ -168,7 +168,7 @@ LSET UnpackLayerSet( const google::protobuf::RepeatedField<int>& aProtoLayerSet 
 
     for( int layer : aProtoLayerSet )
     {
-        wxCHECK2( layer >= F_Cu && layer < PCB_LAYER_ID_COUNT, continue );
+        KI_CHECK2( layer >= F_Cu && layer < PCB_LAYER_ID_COUNT, continue );
         PCB_LAYER_ID boardLayer =
                 FromProtoEnum<PCB_LAYER_ID>( static_cast<types::BoardLayer>( layer ) );
 
@@ -326,7 +326,7 @@ std::vector<BOARD_ITEM*> FindItemsFromSyncSelection(
     using kiapi::common::commands::SelectionSpec;
 
     std::vector<std::pair<int, BOARD_ITEM*>> orderPairs;
-    wxCHECK( aBoard, {} );
+    KI_CHECK( aBoard, {} );
 
     // Unpacking rebuilds a KIID per path element, so do it once rather than per footprint
     std::vector<KIID_PATH> sheetPaths( aItems.size() );

@@ -141,7 +141,7 @@ long LAYERS_GRID_TABLE::GetValueAsLong( int aRow, int aCol )
 
 void LAYERS_GRID_TABLE::SetValue( int aRow, int aCol, const wxString& aValue )
 {
-    wxFAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a string value" ), aCol ) );
+    KI_FAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a string value" ), aCol ) );
 }
 
 
@@ -350,7 +350,7 @@ bool DIALOG_FOOTPRINT_PROPERTIES_FP_EDITOR::TransferDataToWindow()
     // Footprint Fields
     for( PCB_FIELD* field : m_footprint->GetFields() )
     {
-        wxCHECK2( field, continue );
+        KI_CHECK2( field, continue );
 
         m_fields->push_back( *field );
     }
@@ -745,7 +745,7 @@ bool DIALOG_FOOTPRINT_PROPERTIES_FP_EDITOR::TransferDataFromWindow()
     // Find any files referenced in the old fields that are not in the new fields
     for( PCB_FIELD* field : m_footprint->GetFields() )
     {
-        wxCHECK2( field, continue );
+        KI_CHECK2( field, continue );
 
         if( field->GetText().StartsWith( FILEEXT::KiCadUriPrefix ) )
         {

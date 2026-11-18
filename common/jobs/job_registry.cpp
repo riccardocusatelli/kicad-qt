@@ -34,7 +34,7 @@ bool JOB_REGISTRY::Add( const wxString& aName, JOB_REGISTRY_ENTRY entry, bool aD
 }
 
 
-KIWAY::FACE_T JOB_REGISTRY::GetKifaceType( const wxString& aName )
+KIWAY_FACES::FACE_T JOB_REGISTRY::GetKifaceType( const wxString& aName )
 {
     REGISTRY_MAP_T& registry = getRegistry();
     if( registry.find( aName ) == registry.end() )

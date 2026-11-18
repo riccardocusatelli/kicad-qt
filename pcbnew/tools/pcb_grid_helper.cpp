@@ -481,7 +481,7 @@ VECTOR2I PCB_GRID_HELPER::AlignToArc( const VECTOR2I& aPoint, const SHAPE_ARC& a
 
 VECTOR2I PCB_GRID_HELPER::SnapToPad( const VECTOR2I& aMousePos, std::deque<PAD*>& aPads )
 {
-    wxLogTrace( traceSnap, "SnapToPad: mouse pos (%d, %d), pads count: %zu", aMousePos.x, aMousePos.y, aPads.size() );
+    KI_LOG_TRACE( traceSnap, "SnapToPad: mouse pos (%d, %d), pads count: %zu", aMousePos.x, aMousePos.y, aPads.size() );
     clearAnchors();
 
     for( BOARD_ITEM* item : aPads )
@@ -605,7 +605,7 @@ VECTOR2I PCB_GRID_HELPER::BestDragOrigin( const VECTOR2I& aMousePos, std::vector
                                           GRID_HELPER_GRIDS                   aGrid,
                                           const PCB_SELECTION_FILTER_OPTIONS* aSelectionFilter )
 {
-    wxLogTrace( traceSnap, "BestDragOrigin: mouse pos (%d, %d), items count: %zu", aMousePos.x, aMousePos.y,
+    KI_LOG_TRACE( traceSnap, "BestDragOrigin: mouse pos (%d, %d), items count: %zu", aMousePos.x, aMousePos.y,
                 aItems.size() );
     clearAnchors();
 
@@ -624,7 +624,7 @@ VECTOR2I PCB_GRID_HELPER::BestDragOrigin( const VECTOR2I& aMousePos, std::vector
         minDist = nearestOrigin->Distance( aMousePos );
         best = nearestOrigin;
 
-        wxLogTrace( traceSnap, "  nearest origin winning at (%d, %d), distance=%f", nearestOrigin->pos.x,
+        KI_LOG_TRACE( traceSnap, "  nearest origin winning at (%d, %d), distance=%f", nearestOrigin->pos.x,
                     nearestOrigin->pos.y, minDist );
     }
 
@@ -637,7 +637,7 @@ VECTOR2I PCB_GRID_HELPER::BestDragOrigin( const VECTOR2I& aMousePos, std::vector
             minDist = dist;
             best = nearestCorner;
 
-            wxLogTrace( traceSnap, "  nearest corner winning at (%d, %d), distance=%f", nearestCorner->pos.x,
+            KI_LOG_TRACE( traceSnap, "  nearest corner winning at (%d, %d), distance=%f", nearestCorner->pos.x,
                         nearestCorner->pos.y, dist );
         }
     }
@@ -650,7 +650,7 @@ VECTOR2I PCB_GRID_HELPER::BestDragOrigin( const VECTOR2I& aMousePos, std::vector
         {
             best = nearestOutline;
 
-            wxLogTrace( traceSnap, "  nearest outline winning at (%d, %d), distance=%f", nearestOutline->pos.x,
+            KI_LOG_TRACE( traceSnap, "  nearest outline winning at (%d, %d), distance=%f", nearestOutline->pos.x,
                         nearestOutline->pos.y, dist );
         }
     }
@@ -686,7 +686,7 @@ VECTOR2I PCB_GRID_HELPER::BestDragOrigin( const VECTOR2I& aMousePos, std::vector
         setLayoutReference( ret, std::nullopt, false );
     }
 
-    wxLogTrace( traceSnap, "  have best: %s, returning (%d, %d)", best ? "yes" : "no", ret.x, ret.y );
+    KI_LOG_TRACE( traceSnap, "  have best: %s, returning (%d, %d)", best ? "yes" : "no", ret.x, ret.y );
     return ret;
 }
 
@@ -719,7 +719,7 @@ SNAP_RESULT PCB_GRID_HELPER::ResolveSnap( const VECTOR2I& aOrigin, const LSET& a
                                           const std::vector<BOARD_ITEM*>& aSkip,
                                           std::optional<VECTOR2I>         aMovingReferencePoint )
 {
-    wxLogTrace( traceSnap, "ResolveSnap: origin (%d, %d), enableSnap=%d, enableGrid=%d, enableSnapLine=%d", aOrigin.x,
+    KI_LOG_TRACE( traceSnap, "ResolveSnap: origin (%d, %d), enableSnap=%d, enableGrid=%d, enableSnapLine=%d", aOrigin.x,
                 aOrigin.y, m_enableSnap, m_enableGrid, m_enableSnapLine );
 
     const SNAP_RANGES ranges = computeSnapRanges( m_enableGrid );
@@ -950,7 +950,7 @@ SNAP_RESULT PCB_GRID_HELPER::ResolveSnap( const VECTOR2I& aOrigin, const LSET& a
                 }
             }
 
-            wxLogTrace( wxT( "KICAD_SNAP_RESOLVER" ), "layout targets=%zu pad-centers=%zu", layoutItems.size(),
+            KI_LOG_TRACE( wxT( "KICAD_SNAP_RESOLVER" ), "layout targets=%zu pad-centers=%zu", layoutItems.size(),
                         padCenters );
         }
     }
@@ -994,7 +994,7 @@ SNAP_RESULT PCB_GRID_HELPER::ResolveSnap( const VECTOR2I& aOrigin, const LSET& a
         std::vector<SNAP_CANDIDATE> alignment = inferenceProvider.CollectAlignment( context, snapRange );
         std::vector<SNAP_CANDIDATE> spacing = inferenceProvider.CollectEqualSpacing( context, snapRange );
 
-        wxLogTrace( wxT( "KICAD_SNAP_RESOLVER" ), "layout candidates alignment=%zu spacing=%zu", alignment.size(),
+        KI_LOG_TRACE( wxT( "KICAD_SNAP_RESOLVER" ), "layout candidates alignment=%zu spacing=%zu", alignment.size(),
                     spacing.size() );
 
         for( SNAP_CANDIDATE& candidate : alignment )
@@ -1009,12 +1009,12 @@ SNAP_RESULT PCB_GRID_HELPER::ResolveSnap( const VECTOR2I& aOrigin, const LSET& a
     const int snapIn = ranges.in;
     const int snapOut = ranges.out;
 
-    wxLogTrace( traceSnap, "  snapRange=%d, snapIn=%d, snapOut=%d", snapRange, snapIn, snapOut );
-    wxLogTrace( traceSnap, "  visibleItems count=%zu, anchors count=%zu", visibleItems.size(), m_anchors.size() );
-    wxLogTrace( traceSnap, "  nearest anchor: %s at (%d, %d), distance=%f", nearest ? "found" : "none",
+    KI_LOG_TRACE( traceSnap, "  snapRange=%d, snapIn=%d, snapOut=%d", snapRange, snapIn, snapOut );
+    KI_LOG_TRACE( traceSnap, "  visibleItems count=%zu, anchors count=%zu", visibleItems.size(), m_anchors.size() );
+    KI_LOG_TRACE( traceSnap, "  nearest anchor: %s at (%d, %d), distance=%f", nearest ? "found" : "none",
                 nearest ? nearest->pos.x : 0, nearest ? nearest->pos.y : 0,
                 nearest ? nearest->Distance( aOrigin ) : -1.0 );
-    wxLogTrace( traceSnap, "  nearestGrid: (%d, %d)", nearestGrid.x, nearestGrid.y );
+    KI_LOG_TRACE( traceSnap, "  nearestGrid: (%d, %d)", nearestGrid.x, nearestGrid.y );
 
     if( KIGFX::ANCHOR_DEBUG* ad = enableAndGetAnchorDebug(); ad )
     {
@@ -1040,8 +1040,8 @@ SNAP_RESULT PCB_GRID_HELPER::ResolveSnap( const VECTOR2I& aOrigin, const LSET& a
             snapDist = existingDist;
     }
 
-    wxLogTrace( traceSnap, "  snapDist: %s (value=%d)", snapDist ? "set" : "none", snapDist ? *snapDist : -1 );
-    wxLogTrace( traceSnap, "  m_snapItem: %s", m_snapItem ? "exists" : "none" );
+    KI_LOG_TRACE( traceSnap, "  snapDist: %s (value=%d)", snapDist ? "set" : "none", snapDist ? *snapDist : -1 );
+    KI_LOG_TRACE( traceSnap, "  m_snapItem: %s", m_snapItem ? "exists" : "none" );
 
     showConstructionGeometry( constructionEnabled );
 
@@ -1136,12 +1136,12 @@ SNAP_RESULT PCB_GRID_HELPER::ResolveSnap( const VECTOR2I& aOrigin, const LSET& a
 
     if( m_enableSnap )
     {
-        wxLogTrace( traceSnap, "  Snap enabled, checking snap options..." );
+        KI_LOG_TRACE( traceSnap, "  Snap enabled, checking snap options..." );
         allowHoverActivation = !nearestCaptured;
 
         if( m_enableSnapLine )
         {
-            wxLogTrace( traceSnap, "    Checking snap lines..." );
+            KI_LOG_TRACE( traceSnap, "    Checking snap lines..." );
 
             OPT_VECTOR2I snapLineSnap = snapLineManager.GetNearestSnapLinePoint( aOrigin, nearestGrid, snapDist,
                                                                                  snapRange, gridSize, GetOrigin() );
@@ -1157,7 +1157,7 @@ SNAP_RESULT PCB_GRID_HELPER::ResolveSnap( const VECTOR2I& aOrigin, const LSET& a
 
             if( snapLineSnap && m_skipPoint != *snapLineSnap )
             {
-                wxLogTrace( traceSnap, "    Snap line found at (%d, %d)", snapLineSnap->x, snapLineSnap->y );
+                KI_LOG_TRACE( traceSnap, "    Snap line found at (%d, %d)", snapLineSnap->x, snapLineSnap->y );
 
                 if( !nearestCaptured )
                 {
@@ -1171,7 +1171,7 @@ SNAP_RESULT PCB_GRID_HELPER::ResolveSnap( const VECTOR2I& aOrigin, const LSET& a
                     }
                     else
                     {
-                        wxLogTrace( traceSnap, "    Snap line point is reference-only, continuing..." );
+                        KI_LOG_TRACE( traceSnap, "    Snap line point is reference-only, continuing..." );
                         keepConstructionProposal = true;
                     }
                 }
@@ -1182,7 +1182,7 @@ SNAP_RESULT PCB_GRID_HELPER::ResolveSnap( const VECTOR2I& aOrigin, const LSET& a
         {
             int dist = m_snapItem->Distance( aOrigin );
 
-            wxLogTrace( traceSnap, "    Checking existing m_snapItem, dist=%d (snapOut=%d)", dist, snapOut );
+            KI_LOG_TRACE( traceSnap, "    Checking existing m_snapItem, dist=%d (snapOut=%d)", dist, snapOut );
 
             if( dist <= snapOut && !ptIsReferenceOnly( m_snapItem->pos ) )
             {
@@ -1195,11 +1195,11 @@ SNAP_RESULT PCB_GRID_HELPER::ResolveSnap( const VECTOR2I& aOrigin, const LSET& a
 
         if( nearestCaptured )
         {
-            wxLogTrace( traceSnap, "    Nearest anchor within snapIn range" );
+            KI_LOG_TRACE( traceSnap, "    Nearest anchor within snapIn range" );
 
             if( ptIsReferenceOnly( nearest->pos ) )
             {
-                wxLogTrace( traceSnap, "    Nearest anchor is reference-only, setting snap line origin" );
+                KI_LOG_TRACE( traceSnap, "    Nearest anchor is reference-only, setting snap line origin" );
                 snapLineManager.SetSnapLineOrigin( nearest->pos );
                 keepConstructionProposal = true;
             }
@@ -1211,7 +1211,7 @@ SNAP_RESULT PCB_GRID_HELPER::ResolveSnap( const VECTOR2I& aOrigin, const LSET& a
 
         if( !m_enableGrid )
         {
-            wxLogTrace( traceSnap, "    Grid disabled, checking point-on-element snap..." );
+            KI_LOG_TRACE( traceSnap, "    Grid disabled, checking point-on-element snap..." );
 
             OPT_VECTOR2I nearestPointOnAnElement = GetNearestPoint( m_pointOnLineCandidates, aOrigin );
 
@@ -1695,7 +1695,7 @@ static bool PadstackUniqueLayerAppliesToLayer( const PADSTACK& aPadStack, PCB_LA
             // But the inner layers apply to any inner layer
             return IsInnerCopperLayer( aRealLayer );
         default:
-            wxFAIL_MSG( wxString::Format( "Unexpected padstack unique layer %d in FRONT_INNER_BACK mode",
+            KI_FAIL_MSG( wxString::Format( "Unexpected padstack unique layer %d in FRONT_INNER_BACK mode",
                                           aPadstackUniqueLayer ) );
             break;
         }

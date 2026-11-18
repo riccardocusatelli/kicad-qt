@@ -278,7 +278,7 @@ bool GERBVIEW_FRAME::LoadListOfGerberAndDrillFiles( const wxString&      aPath,
                                                     const wxArrayString& aFilenameList,
                                                     std::vector<int>*    aFileType )
 {
-    wxCHECK_MSG( aFilenameList.Count() == aFileType->size(), false,
+    KI_CHECK_MSG( aFilenameList.Count() == aFileType->size(), false,
                  "Mismatch in file names and file types count" );
 
     wxFileName filename;

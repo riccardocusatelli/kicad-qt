@@ -36,7 +36,7 @@ SGCOORDS::SGCOORDS( SGNODE* aParent ) : SGNODE( aParent )
     {
         m_Parent = nullptr;
 
-        wxLogTrace( MASK_3D_SG,
+        KI_LOG_TRACE( MASK_3D_SG,
                     wxT( "%s:%s:%d * [BUG] inappropriate parent to SGCOORDS (type %s)" ),
                     __FILE__, __FUNCTION__, __LINE__, aParent->GetNodeType() );
     }
@@ -97,19 +97,19 @@ SGNODE* SGCOORDS::FindNode(const char *aNodeName, const SGNODE *aCaller) noexcep
 
 void SGCOORDS::unlinkChildNode( const SGNODE* aCaller ) noexcept
 {
-    wxCHECK( aCaller, /* void */ );
+    KI_CHECK( aCaller, /* void */ );
 }
 
 
 void SGCOORDS::unlinkRefNode( const SGNODE* aCaller ) noexcept
 {
-    wxCHECK( aCaller, /* void */ );
+    KI_CHECK( aCaller, /* void */ );
 }
 
 
 bool SGCOORDS::AddRefNode( SGNODE* aNode ) noexcept
 {
-    wxCHECK( aNode, false );
+    KI_CHECK( aNode, false );
 
     return false;
 }
@@ -117,7 +117,7 @@ bool SGCOORDS::AddRefNode( SGNODE* aNode ) noexcept
 
 bool SGCOORDS::AddChildNode( SGNODE* aNode ) noexcept
 {
-    wxCHECK( aNode, false );
+    KI_CHECK( aNode, false );
 
     return false;
 }
@@ -238,7 +238,7 @@ bool SGCOORDS::WriteCache( std::ostream& aFile, SGNODE* parentNode )
 {
     if( nullptr == parentNode )
     {
-        wxCHECK( m_Parent, false );
+        KI_CHECK( m_Parent, false );
 
         SGNODE* np = m_Parent;
 
@@ -254,11 +254,11 @@ bool SGCOORDS::WriteCache( std::ostream& aFile, SGNODE* parentNode )
         return false;
     }
 
-    wxCHECK( parentNode == m_Parent, false );
+    KI_CHECK( parentNode == m_Parent, false );
 
     if( !aFile.good() )
     {
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] bad stream" ),
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [INFO] bad stream" ),
                     __FILE__, __FUNCTION__, __LINE__ );
 
         return false;
@@ -281,7 +281,7 @@ bool SGCOORDS::WriteCache( std::ostream& aFile, SGNODE* parentNode )
 
 bool SGCOORDS::ReadCache( std::istream& aFile, SGNODE* parentNode )
 {
-    wxCHECK( coords.empty(), false );
+    KI_CHECK( coords.empty(), false );
 
     size_t npts;
     aFile.read( (char*) &npts, sizeof( size_t ) );

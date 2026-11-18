@@ -101,5 +101,5 @@ int CLI::PCB_EXPORT_STATS_COMMAND::doPerform( KIWAY& aKiway )
 
     statsJob->SetConfiguredOutputPath( m_argOutput );
 
-    return aKiway.ProcessJob( KIWAY::FACE_PCB, statsJob.get() );
+    return aKiway.ProcessJob( KIWAY_FACES::FACE_PCB, statsJob.get() );
 }

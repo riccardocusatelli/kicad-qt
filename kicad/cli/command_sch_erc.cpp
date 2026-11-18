@@ -149,7 +149,7 @@ int CLI::SCH_ERC_COMMAND::doPerform( KIWAY& aKiway )
         return EXIT_CODES::ERR_ARGS;
     }
 
-    int exitCode = aKiway.ProcessJob( KIWAY::FACE_SCH, ercJob.get() );
+    int exitCode = aKiway.ProcessJob( KIWAY_FACES::FACE_SCH, ercJob.get() );
 
     return exitCode;
 }

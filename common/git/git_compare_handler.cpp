@@ -106,7 +106,7 @@ std::vector<CHANGED_FILE> CompareRefs( git_repository* aRepo,
 
     if( git_diff_tree_to_tree( &diff, aRepo, baseTree.get(), headTree.get(), &opts ) != 0 )
     {
-        wxLogTrace( traceGit, "git_diff_tree_to_tree failed: %s",
+        KI_LOG_TRACE( traceGit, "git_diff_tree_to_tree failed: %s",
                     KIGIT_COMMON::GetLastGitError() );
         return result;
     }

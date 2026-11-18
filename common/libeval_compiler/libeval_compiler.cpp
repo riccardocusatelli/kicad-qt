@@ -56,7 +56,7 @@ namespace LIBEVAL
 
 
 #define libeval_dbg(level, fmt, ...) \
-    wxLogTrace( "libeval_compiler", fmt, __VA_ARGS__ );
+    KI_LOG_TRACE( "libeval_compiler", fmt, __VA_ARGS__ );
 
 
 TREE_NODE* newNode( LIBEVAL::COMPILER* compiler, int op, const T_TOKEN_VALUE& value )
@@ -1361,7 +1361,7 @@ int UOP::Exec( CONTEXT* ctx )
         auto getOpResultUnits =
                 []( const VALUE* aVal1, const VALUE* aVal2 )
                 {
-                    wxCHECK( aVal1 && aVal2, EDA_UNITS::UNSCALED );
+                    KI_CHECK( aVal1 && aVal2, EDA_UNITS::UNSCALED );
 
                     // This condition can occur in, e.g., a unary negation operation
                     if( aVal1->GetUnits() == EDA_UNITS::UNSCALED && aVal2->GetUnits() != EDA_UNITS::UNSCALED )
@@ -1489,7 +1489,7 @@ VALUE* UCODE::Run( CONTEXT* ctx )
 
                 // Backpatched jump targets are always forward, past the combine op; a non-forward
                 // or stale target would spin or read out of range, so reject it.
-                wxASSERT( next < 0 || static_cast<std::size_t>( next ) > ip );
+                KI_ASSERT( next < 0 || static_cast<std::size_t>( next ) > ip );
 
                 ip = ( next < 0 ) ? ip + 1 : static_cast<std::size_t>( next );
             }

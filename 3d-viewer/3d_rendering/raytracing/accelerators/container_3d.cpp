@@ -62,7 +62,7 @@ void CONTAINER_3D_BASE::ConvertTo( std::vector<const OBJECT_3D*> &aOutVector ) c
 
         for( const OBJECT_3D* object : m_objects )
         {
-            wxASSERT( object );
+            KI_ASSERT( object );
             aOutVector[i++] = object;
         }
     }

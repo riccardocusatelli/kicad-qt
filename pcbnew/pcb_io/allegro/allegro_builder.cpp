@@ -449,7 +449,7 @@ LAYER_INFO expectLayerFromBlock( const BLOCK_BASE& aBlock )
     std::optional<LAYER_INFO> layerInfo = tryLayerFromBlock( aBlock );
 
     // Programming error - should only call this function if we're sure the block has layer info
-    wxCHECK( layerInfo.has_value(), LAYER_INFO() );
+    KI_CHECK( layerInfo.has_value(), LAYER_INFO() );
 
     return layerInfo.value();
 }
@@ -532,7 +532,7 @@ public:
                 THROW_IO_ERROR( "No ETCH layer list found." );
             }
 
-            wxLogTrace( traceAllegroBuilder, "Added %zu layers for class %#04x, from 0x2A key %#010x",
+            KI_LOG_TRACE( traceAllegroBuilder, "Added %zu layers for class %#04x, from 0x2A key %#010x",
                         classLayers.size(), aClass, aList.m_Key );
         }
 
@@ -551,7 +551,7 @@ public:
 
         if( customLayerIt == m_ClassCustomLayerLists.end() || !customLayerIt->second )
         {
-            wxLogTrace( traceAllegroBuilder, "No ETCH layer class found; cannot finalize layers" );
+            KI_LOG_TRACE( traceAllegroBuilder, "No ETCH layer class found; cannot finalize layers" );
             return;
         }
 
@@ -681,13 +681,13 @@ public:
             if( IsUserLayer( layerId ) )
                 userLayers++;
 
-            wxLogTrace( traceAllegroBuilder, "Mapping Allegro layer '%s' to KiCad layer '%s' (%d)", name,
+            KI_LOG_TRACE( traceAllegroBuilder, "Mapping Allegro layer '%s' to KiCad layer '%s' (%d)", name,
                         m_board.GetLayerName( layerId ), layerId );
 
             m_board.SetLayerName( layerId, name );
         }
         m_board.SetEnabledLayers( enabledLayersMask );
-        wxLogTrace( traceAllegroBuilder, "After mapping, there are %d user layers", userLayers );
+        KI_LOG_TRACE( traceAllegroBuilder, "After mapping, there are %d user layers", userLayers );
         m_board.GetDesignSettings().SetUserDefinedLayerCount( userLayers );
     }
 
@@ -749,7 +749,7 @@ public:
         // Keep a record of what we failed to map
         if( m_unknownLayers.count( aLayerInfo ) == 0 )
         {
-            wxLogTrace( traceAllegroBuilder, "Failed to map class:subclass to layer: %#04x:%#04x", aLayerInfo.m_Class,
+            KI_LOG_TRACE( traceAllegroBuilder, "Failed to map class:subclass to layer: %#04x:%#04x", aLayerInfo.m_Class,
                         aLayerInfo.m_Subclass );
             m_unknownLayers[aLayerInfo] = 1;
         }
@@ -842,7 +842,7 @@ public:
         m_customLayerToKiMap[aLayerInfo] = lId;
         m_MappedOptionalLayers[aLayerName] = lId;
 
-        wxLogTrace( traceAllegroBuilder, "Adding mapping for %#04x:%#04x to %s", aLayerInfo.m_Class,
+        KI_LOG_TRACE( traceAllegroBuilder, "Adding mapping for %#04x:%#04x to %s", aLayerInfo.m_Class,
                     aLayerInfo.m_Subclass, aLayerName );
         return lId;
     }
@@ -886,7 +886,7 @@ public:
             break;
         }
         default:
-            wxLogTrace( traceAllegroBuilder, "  Unhandled non-copper zone layer class %#02x, using default layers",
+            KI_LOG_TRACE( traceAllegroBuilder, "  Unhandled non-copper zone layer class %#02x, using default layers",
                         aLayerInfo.m_Class );
             layerSet = LSET{ GetLayer( aLayerInfo ) };
             break;
@@ -931,7 +931,7 @@ private:
         const PCB_LAYER_ID lId = getNthUserLayer( m_numUserLayersUsed++ );
         m_board.GetDesignSettings().SetUserDefinedLayerCount( m_board.GetDesignSettings().GetUserDefinedLayerCount() + 1 );
         m_board.SetLayerName( lId, aName );
-        wxLogTrace( traceAllegroBuilder, "Adding user layer %s: %s", LayerName( lId ), aName );
+        KI_LOG_TRACE( traceAllegroBuilder, "Adding user layer %s: %s", LayerName( lId ), aName );
         return lId;
     }
 
@@ -1090,7 +1090,7 @@ public:
         COMPLEX_FIRST_FILL_TASK fillTask( aSimplify );
         fillTask.Execute( m_FillInfos );
 
-        wxLogTrace( traceAllegroPerf, wxT( "   Intersected and fractured zone fills in %.3f ms" ), // format:allow
+        KI_LOG_TRACE( traceAllegroPerf, wxT( "   Intersected and fractured zone fills in %.3f ms" ), // format:allow
                     timer.msecs() );
     }
 
@@ -1240,7 +1240,7 @@ void BOARD_BUILDER::cacheFontDefs()
 
 void BOARD_BUILDER::createNets()
 {
-    wxLogTrace( traceAllegroBuilder, "Creating nets from Allegro data" );
+    KI_LOG_TRACE( traceAllegroBuilder, "Creating nets from Allegro data" );
 
     // Incrementing netcode. We could also choose to, say, use the 0x1B key if we wanted
     int netCode = 1;
@@ -1275,7 +1275,7 @@ void BOARD_BUILDER::createNets()
 
     m_board.FinalizeBulkAdd( bulkAdded );
 
-    wxLogTrace( traceAllegroBuilder, "Added %zu nets", m_netCache.size() );
+    KI_LOG_TRACE( traceAllegroBuilder, "Added %zu nets", m_netCache.size() );
 }
 
 
@@ -1310,7 +1310,7 @@ wxString BOARD_BUILDER::resolveConstraintSetNameFromField( uint32_t aFieldKey ) 
 
 void BOARD_BUILDER::applyConstraintSets()
 {
-    wxLogTrace( traceAllegroBuilder, "Importing physical constraint sets from 0x1D blocks" );
+    KI_LOG_TRACE( traceAllegroBuilder, "Importing physical constraint sets from 0x1D blocks" );
 
     BOARD_DESIGN_SETTINGS& bds = m_board.GetDesignSettings();
     std::shared_ptr<NET_SETTINGS> netSettings = bds.m_NetSettings;
@@ -1378,7 +1378,7 @@ void BOARD_BUILDER::applyConstraintSets()
 
         if( csBlock.m_DataB.empty() )
         {
-            wxLogTrace( traceAllegroBuilder, "Constraint set '%s' has no DataB records, skipping", setName );
+            KI_LOG_TRACE( traceAllegroBuilder, "Constraint set '%s' has no DataB records, skipping", setName );
             continue;
         }
 
@@ -1409,14 +1409,14 @@ void BOARD_BUILDER::applyConstraintSets()
         constraintSets[setName] = def;
         keyToSetName[csBlock.m_NameStrKey] = setName;
 
-        wxLogTrace( traceAllegroBuilder,
+        KI_LOG_TRACE( traceAllegroBuilder,
                     "Constraint set '%s': line_width=%d nm, clearance=%d nm, dp_gap=%d nm",
                     setName, def.lineWidth, def.clearance, def.diffPairGap );
     }
 
     if( constraintSets.empty() )
     {
-        wxLogTrace( traceAllegroBuilder, "No physical constraint sets found" );
+        KI_LOG_TRACE( traceAllegroBuilder, "No physical constraint sets found" );
         return;
     }
 
@@ -1450,7 +1450,7 @@ void BOARD_BUILDER::applyConstraintSets()
 
         netSettings->SetNetclass( ncName, nc );
 
-        wxLogTrace( traceAllegroBuilder, "Created netclass '%s' from constraint set '%s'", ncName, name );
+        KI_LOG_TRACE( traceAllegroBuilder, "Created netclass '%s' from constraint set '%s'", ncName, name );
     }
 
     // Walk all NETs and assign them to constraint set netclasses via field 0x1a0
@@ -1526,13 +1526,13 @@ void BOARD_BUILDER::applyConstraintSets()
         kiNet->SetNetClass( netSettings->GetNetClassByName( ncName ) );
     }
 
-    wxLogTrace( traceAllegroBuilder, "Applied %zu physical constraint sets", constraintSets.size() );
+    KI_LOG_TRACE( traceAllegroBuilder, "Applied %zu physical constraint sets", constraintSets.size() );
 }
 
 
 void BOARD_BUILDER::applyNetConstraints()
 {
-    wxLogTrace( traceAllegroBuilder, "Applying per-net trace width constraints" );
+    KI_LOG_TRACE( traceAllegroBuilder, "Applying per-net trace width constraints" );
 
     BOARD_DESIGN_SETTINGS& bds = m_board.GetDesignSettings();
     std::shared_ptr<NET_SETTINGS> netSettings = bds.m_NetSettings;
@@ -1557,7 +1557,7 @@ void BOARD_BUILDER::applyNetConstraints()
 
     if( widthToNetKeys.empty() )
     {
-        wxLogTrace( traceAllegroBuilder, "No per-net trace width constraints found" );
+        KI_LOG_TRACE( traceAllegroBuilder, "No per-net trace width constraints found" );
         return;
     }
 
@@ -1585,11 +1585,11 @@ void BOARD_BUILDER::applyNetConstraints()
             kiNet->SetNetClass( nc );
         }
 
-        wxLogTrace( traceAllegroBuilder, "Created netclass '%s' (track width %d nm) with %zu nets",
+        KI_LOG_TRACE( traceAllegroBuilder, "Created netclass '%s' (track width %d nm) with %zu nets",
                     ncName, widthNm, netKeys.size() );
     }
 
-    wxLogTrace( traceAllegroBuilder, "Applied trace width constraints from %zu unique width groups",
+    KI_LOG_TRACE( traceAllegroBuilder, "Applied trace width constraints from %zu unique width groups",
                 widthToNetKeys.size() );
 }
 
@@ -1657,7 +1657,7 @@ wxString BOARD_BUILDER::resolveMatchGroupName( const BLK_0x1B_NET& aNet ) const
 
     const wxString& name = m_brdDb.GetString( tbl->m_StringPtr );
 
-    wxLogTrace( traceAllegroBuilder, "Resolving match group name for NET '%s': found table at key %#010x, subtype %#x, name '%s'",
+    KI_LOG_TRACE( traceAllegroBuilder, "Resolving match group name for NET '%s': found table at key %#010x, subtype %#x, name '%s'",
                 m_brdDb.GetString( aNet.m_NetName ), tbl->m_Key, tbl->m_SubType, name );
 
     // A group made from a schematic path keeps Cadence's \name\ wrapper, which is not part of the name
@@ -1667,7 +1667,7 @@ wxString BOARD_BUILDER::resolveMatchGroupName( const BLK_0x1B_NET& aNet ) const
 
 void BOARD_BUILDER::applyMatchGroups()
 {
-    wxLogTrace( traceAllegroBuilder, "Applying match group / differential pair assignments" );
+    KI_LOG_TRACE( traceAllegroBuilder, "Applying match group / differential pair assignments" );
 
     BOARD_DESIGN_SETTINGS& bds = m_board.GetDesignSettings();
     std::shared_ptr<NET_SETTINGS> netSettings = bds.m_NetSettings;
@@ -1689,7 +1689,7 @@ void BOARD_BUILDER::applyMatchGroups()
 
     if( groupToNetKeys.empty() )
     {
-        wxLogTrace( traceAllegroBuilder, "No match groups found" );
+        KI_LOG_TRACE( traceAllegroBuilder, "No match groups found" );
         return;
     }
 
@@ -1757,12 +1757,12 @@ void BOARD_BUILDER::applyMatchGroups()
         else
             mgCount++;
 
-        wxLogTrace( traceAllegroBuilder, "%s group '%s' -> netclass '%s' with %zu nets",
+        KI_LOG_TRACE( traceAllegroBuilder, "%s group '%s' -> netclass '%s' with %zu nets",
                     isDiffPair ? wxS( "Diff pair" ) : wxS( "Match" ),
                     groupName, ncName, netKeys.size() );
     }
 
-    wxLogTrace( traceAllegroBuilder,
+    KI_LOG_TRACE( traceAllegroBuilder,
                 "Applied match groups: %d diff pairs, %d match groups (%zu total groups)",
                 dpCount, mgCount, groupToNetKeys.size() );
 }
@@ -1814,7 +1814,7 @@ static std::unordered_set<LAYER_INFO> ScanForLayers( const BRD_DB& aDb )
 
 void BOARD_BUILDER::setupLayers()
 {
-    wxLogTrace( traceAllegroBuilder, "Setting up layer mapping from Allegro to KiCad" );
+    KI_LOG_TRACE( traceAllegroBuilder, "Setting up layer mapping from Allegro to KiCad" );
 
     const std::array<FILE_HEADER::LAYER_MAP_ENTRY, 25>& layerMap = m_brdDb.m_Header->m_LayerMap;
 
@@ -1838,11 +1838,11 @@ void BOARD_BUILDER::setupLayers()
 
     std::unordered_set<LAYER_INFO> layersFound = ScanForLayers( m_brdDb );
 
-    wxLogTrace( traceAllegroBuilder, "Scanned %zu layers", layersFound.size() );
+    KI_LOG_TRACE( traceAllegroBuilder, "Scanned %zu layers", layersFound.size() );
 
     for( const LAYER_INFO& info : layersFound )
     {
-        wxLogTrace( traceAllegroBuilder, " - %#02x:%#02x (%s)", info.m_Class, info.m_Subclass,
+        KI_LOG_TRACE( traceAllegroBuilder, " - %#02x:%#02x (%s)", info.m_Class, info.m_Subclass,
                     layerInfoDisplayName( info ) );
     }
 
@@ -1855,7 +1855,7 @@ void BOARD_BUILDER::setupLayers()
     if( layersFound.count( outlineInfo ) && layersFound.count( designOutlineInfo ) )
     {
         // Both layers found, remap DESIGN_OUTLINE to a user layer
-        wxLogTrace( traceAllegroBuilder,
+        KI_LOG_TRACE( traceAllegroBuilder,
                     "Both OUTLINE and DESIGN_OUTLINE layers found, remapping DESIGN_OUTLINE to a user layer" );
         m_layerMapper->MapCustomLayer( designOutlineInfo, layerInfoDisplayName( designOutlineInfo ) );
     }
@@ -1892,7 +1892,7 @@ std::unique_ptr<PCB_SHAPE> BOARD_BUILDER::buildLineSegment( const BLK_0x15_16_17
 
     if( !m_layerMapper->IsLayerMapped( aLayer ) )
     {
-        wxLogTrace( traceAllegroBuilder, "Unmapped Seg: %#04x %#04x %s, %s", aLayerInfo.m_Class, aLayerInfo.m_Subclass,
+        KI_LOG_TRACE( traceAllegroBuilder, "Unmapped Seg: %#04x %#04x %s, %s", aLayerInfo.m_Class, aLayerInfo.m_Subclass,
                     start.Format(), end.Format() );
     }
 
@@ -1926,7 +1926,7 @@ std::unique_ptr<PCB_SHAPE> BOARD_BUILDER::buildArc( const BLK_0x01_ARC& aArc, co
 
     if( !m_layerMapper->IsLayerMapped( aLayer ) )
     {
-        wxLogTrace( traceAllegroBuilder, "Unmapped Arc: %#04x %#04x %s, %s", aLayerInfo.m_Class, aLayerInfo.m_Subclass,
+        KI_LOG_TRACE( traceAllegroBuilder, "Unmapped Arc: %#04x %#04x %s, %s", aLayerInfo.m_Class, aLayerInfo.m_Subclass,
                     start.Format(), end.Format() );
     }
 
@@ -2194,7 +2194,7 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildDrillMarker( const 
         break;
     }
     default:
-        wxLogTrace( traceAllegroBuilder, "Unsupported drill marker shape type %#04x for pin definition with key %#010x",
+        KI_LOG_TRACE( traceAllegroBuilder, "Unsupported drill marker shape type %#04x for pin definition with key %#010x",
                     markerShape, aPinDef.m_Key );
         break;
     }
@@ -2279,7 +2279,7 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildGraphicItems( const
         break;
     }
     default:
-        wxLogTrace( traceAllegroBuilder, "    Unhandled block type for buildItems: %#04x", aBlock.GetBlockType() );
+        KI_LOG_TRACE( traceAllegroBuilder, "    Unhandled block type for buildItems: %#04x", aBlock.GetBlockType() );
         break;
     }
 
@@ -2419,7 +2419,7 @@ std::vector<std::unique_ptr<PCB_SHAPE>> BOARD_BUILDER::buildShapes( const BLK_0x
             break;
         }
         default:
-            wxLogTrace( traceAllegroBuilder, "    Unhandled block type in BLK_0x14_GRAPHIC: %#04x",
+            KI_LOG_TRACE( traceAllegroBuilder, "    Unhandled block type in BLK_0x14_GRAPHIC: %#04x",
                         segBlock->GetBlockType() );
             break;
         }
@@ -2504,7 +2504,7 @@ std::unique_ptr<PCB_SHAPE> BOARD_BUILDER::buildPolygon( const BLK_0x28_SHAPE& aP
 
     if( chain.PointCount() < 3 )
     {
-        wxLogTrace( traceAllegroBuilder, "Polygon (0x28) with key %#010x has fewer than 3 points, skipping",
+        KI_LOG_TRACE( traceAllegroBuilder, "Polygon (0x28) with key %#010x has fewer than 3 points, skipping",
                     aPolygon.m_Key );
         return nullptr;
     }
@@ -2594,7 +2594,7 @@ std::vector<std::unique_ptr<PCB_SHAPE>> BOARD_BUILDER::buildPolygonShapes( const
             break;
         }
         default:
-            wxLogTrace( traceAllegroBuilder, "  Unhandled segment type in outline: %#04x", segBlock->GetBlockType() );
+            KI_LOG_TRACE( traceAllegroBuilder, "  Unhandled segment type in outline: %#04x", segBlock->GetBlockType() );
             continue;
         }
 
@@ -2641,7 +2641,7 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
 
     const wxString& padStackName = m_brdDb.GetString( aPadstack.m_PadStr );
 
-    wxLogTrace( traceAllegroBuilder, "Building pad '%s' with %u layers", padStackName, aPadstack.GetLayerCount() );
+    KI_LOG_TRACE( traceAllegroBuilder, "Building pad '%s' with %u layers", padStackName, aPadstack.GetLayerCount() );
 
     // First, gather all the copper layers into a set of shape props, which we can then use to decide on the padstack mode
     for( size_t i = 0; i < aPadstack.GetLayerCount(); ++i )
@@ -2676,7 +2676,7 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
         }
 
         auto& layerCuProps = copperLayers[i];
-        wxLogTrace( traceAllegroBuilder, "  Adding copper layer %zu with pad type %d", i, (int) padComp.m_Type );
+        KI_LOG_TRACE( traceAllegroBuilder, "  Adding copper layer %zu with pad type %d", i, (int) padComp.m_Type );
         layerCuProps = std::make_unique<PADSTACK::COPPER_LAYER_PROPS>();
 
         switch( padComp.m_Type )
@@ -2752,7 +2752,7 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
 
             if( !shapeData )
             {
-                wxLogTrace( traceAllegroBuilder, "Padstack %s: SHAPE_SYMBOL on layer %zu has no 0x28 shape at %#010x",
+                KI_LOG_TRACE( traceAllegroBuilder, "Padstack %s: SHAPE_SYMBOL on layer %zu has no 0x28 shape at %#010x",
                             padStackName, i, padComp.m_ShapePtr );
                 break;
             }
@@ -2787,7 +2787,7 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
             }
             else
             {
-                wxLogTrace( traceAllegroBuilder, "Padstack %s: SHAPE_SYMBOL on layer %zu produced only %d points",
+                KI_LOG_TRACE( traceAllegroBuilder, "Padstack %s: SHAPE_SYMBOL on layer %zu produced only %d points",
                             padStackName, i, outline.PointCount() );
             }
 
@@ -2845,7 +2845,7 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
         {
             if( antiPadComp.m_Type != padComp.m_Type )
             {
-                wxLogTrace( traceAllegroBuilder,
+                KI_LOG_TRACE( traceAllegroBuilder,
                             "Padstack %s: copper layer %zu antipad shape %d differs from pad shape %d",
                             padStackName, i, antiPadComp.m_Type, padComp.m_Type );
             }
@@ -2855,13 +2855,13 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
 
             if( clearanceX && clearanceX != clearanceY )
             {
-                wxLogTrace( traceAllegroBuilder, "Padstack %s: copper layer %zu unequal antipad clearance X=%d Y=%d",
+                KI_LOG_TRACE( traceAllegroBuilder, "Padstack %s: copper layer %zu unequal antipad clearance X=%d Y=%d",
                             padStackName, i, clearanceX, clearanceY );
             }
 
             if( antiPadComp.m_OffsetX != 0 || antiPadComp.m_OffsetY != 0 )
             {
-                wxLogTrace( traceAllegroBuilder, "Padstack %s: copper layer %zu antipad offset %d, %d", padStackName, i,
+                KI_LOG_TRACE( traceAllegroBuilder, "Padstack %s: copper layer %zu antipad offset %d, %d", padStackName, i,
                             antiPadComp.m_OffsetX, antiPadComp.m_OffsetY );
             }
 
@@ -2880,7 +2880,7 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
                     thermalGap = gap;
             }
 
-            wxLogTrace( traceAllegroBuilder, "Padstack %s: thermal relief type=%d, gap=%snm",
+            KI_LOG_TRACE( traceAllegroBuilder, "Padstack %s: thermal relief type=%d, gap=%snm",
                         padStackName,
                         thermalComp.m_Type,
                         thermalGap.has_value() ? wxString::Format( "%d", thermalGap.value() )
@@ -2917,20 +2917,20 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
                 };
 
         for(size_t i = 0; i < copperLayers.size(); ++i )
-            wxLogTrace( traceAllegroBuilder, "  Layer %zu: %s", i, copperLayers[i] ? "present" : "null" );
+            KI_LOG_TRACE( traceAllegroBuilder, "  Layer %zu: %s", i, copperLayers[i] ? "present" : "null" );
 
         padStack.SetLayerSet( PAD::PTHMask() );
 
         if( copperLayers.front() && copperLayers.back() && layersEqual( 0, copperLayers.size() ) )
         {
-            wxLogTrace( traceAllegroBuilder, "  Using NORMAL padstack mode (all layers identical)" );
+            KI_LOG_TRACE( traceAllegroBuilder, "  Using NORMAL padstack mode (all layers identical)" );
             padStack.SetMode( PADSTACK::MODE::NORMAL );
             PADSTACK::COPPER_LAYER_PROPS& layerProps = padStack.CopperLayer( F_Cu );
             layerProps = *copperLayers.front();
         }
         else if( copperLayers.front() && copperLayers.back() && layersEqual( 1, copperLayers.size() - 1 ) )
         {
-            wxLogTrace( traceAllegroBuilder, "  Using FRONT_INNER_BACK padstack mode (inner layers identical)" );
+            KI_LOG_TRACE( traceAllegroBuilder, "  Using FRONT_INNER_BACK padstack mode (inner layers identical)" );
             padStack.SetMode( PADSTACK::MODE::FRONT_INNER_BACK );
             padStack.CopperLayer( F_Cu ) = *copperLayers.front();
             padStack.CopperLayer( B_Cu ) = *copperLayers.back();
@@ -2941,7 +2941,7 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
         }
         else
         {
-            wxLogTrace( traceAllegroBuilder, "  Using CUSTOM padstack mode (layers differ)" );
+            KI_LOG_TRACE( traceAllegroBuilder, "  Using CUSTOM padstack mode (layers differ)" );
             padStack.SetMode( PADSTACK::MODE::CUSTOM );
 
             for( size_t i = 0; i < copperLayers.size(); ++i )
@@ -3058,7 +3058,7 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
     if( isSmd && std::none_of( copperLayers.begin(), copperLayers.end(),
                                []( const auto& aProps ) { return aProps != nullptr; } ) )
     {
-        wxLogTrace( traceAllegroBuilder, "Padstack %s has no copper and no drill, skipping pad '%s'", padStackName,
+        KI_LOG_TRACE( traceAllegroBuilder, "Padstack %s has no copper and no drill, skipping pad '%s'", padStackName,
                     aPadName );
         return padItems;
     }
@@ -3146,7 +3146,7 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildPadItems( const BLK
         // All fixed slots are technical layers (solder mask, paste mask, film mask,
         // assembly variant, etc). Custom mask expansion extraction is not yet implemented;
         // KiCad's default pad-matches-mask behavior applies.
-        wxLogTrace( traceAllegroBuilder, "Fixed padstack slot %zu: type=%d, W=%d, H=%d",
+        KI_LOG_TRACE( traceAllegroBuilder, "Fixed padstack slot %zu: type=%d, W=%d, H=%d",
                     i, static_cast<int>( psComp.m_Type ), psComp.m_W, psComp.m_H );
     }
 
@@ -3206,7 +3206,7 @@ static std::optional<FP_3DMODEL> build3DModel( const BRD_DB& aDb, const BLK_0x2B
 
     if( tokens.size() < 7 )
     {
-        wxLogTrace( traceAllegroBuilder, "  Ignoring malformed 3D placement '%s'", *placementValue );
+        KI_LOG_TRACE( traceAllegroBuilder, "  Ignoring malformed 3D placement '%s'", *placementValue );
         return model;
     }
 
@@ -3214,7 +3214,7 @@ static std::optional<FP_3DMODEL> build3DModel( const BRD_DB& aDb, const BLK_0x2B
 
     if( !toMm.has_value() )
     {
-        wxLogTrace( traceAllegroBuilder, "  Unknown 3D placement units '%s'", tokens[0] );
+        KI_LOG_TRACE( traceAllegroBuilder, "  Unknown 3D placement units '%s'", tokens[0] );
         return model;
     }
 
@@ -3224,7 +3224,7 @@ static std::optional<FP_3DMODEL> build3DModel( const BRD_DB& aDb, const BLK_0x2B
     {
         if( !tokens[i + 1].Trim( true ).Trim( false ).ToCDouble( &placement[i] ) )
         {
-            wxLogTrace( traceAllegroBuilder, "  Ignoring malformed 3D placement '%s'", *placementValue );
+            KI_LOG_TRACE( traceAllegroBuilder, "  Ignoring malformed 3D placement '%s'", *placementValue );
             return model;
         }
     }
@@ -3332,7 +3332,7 @@ std::unique_ptr<FOOTPRINT> BOARD_BUILDER::buildFootprint( const BLK_0x2D_FOOTPRI
 
     const bool backSide = ( aFpInstance.m_Layer != 0 );
 
-    wxLogTrace( traceAllegroBuilder, "Building footprint from 0x2D block key %#010x", aFpInstance.m_Key );
+    KI_LOG_TRACE( traceAllegroBuilder, "Building footprint from 0x2D block key %#010x", aFpInstance.m_Key );
 
     wxString refDesStr;
     if( fpInstData )
@@ -3356,7 +3356,7 @@ std::unique_ptr<FOOTPRINT> BOARD_BUILDER::buildFootprint( const BLK_0x2D_FOOTPRI
     if( refDesStr.IsEmpty() )
         fp->SetAttributes( FP_BOARD_ONLY | FP_EXCLUDE_FROM_BOM | FP_EXCLUDE_FROM_POS_FILES );
 
-    wxLogTrace( traceAllegroBuilder, "  Footprint reference: '%s'", refDesStr );
+    KI_LOG_TRACE( traceAllegroBuilder, "  Footprint reference: '%s'", refDesStr );
 
     const VECTOR2I fpPos = scale( VECTOR2I{ aFpInstance.m_CoordX, aFpInstance.m_CoordY } );
     fp->SetPosition( fpPos );
@@ -3607,7 +3607,7 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildTrack( const BLK_0x
     // These are handled by pad-level thermal relief properties instead.
     if( aTrackBlock.m_Layer.m_Class == LAYER_INFO::CLASS::ANTI_ETCH )
     {
-        wxLogTrace( traceAllegroBuilder, "Skipping ANTI_ETCH track (class=%#04x, subclass=%#04x)",
+        KI_LOG_TRACE( traceAllegroBuilder, "Skipping ANTI_ETCH track (class=%#04x, subclass=%#04x)",
                     aTrackBlock.m_Layer.m_Class, aTrackBlock.m_Layer.m_Subclass );
         return items;
     }
@@ -3685,7 +3685,7 @@ std::vector<std::unique_ptr<BOARD_ITEM>> BOARD_BUILDER::buildTrack( const BLK_0x
             break;
         }
         default:
-            wxLogTrace( traceAllegroBuilder, "Unhandled segment type in track: %#04x", segType );
+            KI_LOG_TRACE( traceAllegroBuilder, "Unhandled segment type in track: %#04x", segType );
             break;
         }
     }
@@ -3746,14 +3746,14 @@ std::unique_ptr<BOARD_ITEM> BOARD_BUILDER::buildVia( const BLK_0x33_VIA& aViaDat
     {
         viaDrill = viaWidth / 2;
         const wxString& padstackName = m_brdDb.GetString( viaPadstack->m_PadStr );
-        wxLogTrace( traceAllegroBuilder, "Via at (%d, %d): no drill in padstack '%s' key %#010x, using fallback %d",
+        KI_LOG_TRACE( traceAllegroBuilder, "Via at (%d, %d): no drill in padstack '%s' key %#010x, using fallback %d",
                     aViaData.m_CoordsX, aViaData.m_CoordsY, padstackName, viaPadstack->m_Key, viaDrill );
     }
 
     if( viaWidth <= 0 )
     {
         const wxString& padstackName = m_brdDb.GetString( viaPadstack->m_PadStr );
-        wxLogTrace( traceAllegroBuilder, "Via at (%d, %d) in padstack '%s' key %#010x has no valid pad component, "
+        KI_LOG_TRACE( traceAllegroBuilder, "Via at (%d, %d) in padstack '%s' key %#010x has no valid pad component, "
                                          "using drill-based fallback (%d * 2)",
                     aViaData.m_CoordsX, aViaData.m_CoordsY, padstackName, viaPadstack->m_Key, viaDrill );
         viaWidth = viaDrill * 2;
@@ -3768,7 +3768,7 @@ std::unique_ptr<BOARD_ITEM> BOARD_BUILDER::buildVia( const BLK_0x33_VIA& aViaDat
 
 void BOARD_BUILDER::createTracks()
 {
-    wxLogTrace( traceAllegroBuilder, "Creating tracks, vias, and other routed items" );
+    KI_LOG_TRACE( traceAllegroBuilder, "Creating tracks, vias, and other routed items" );
 
     std::vector<BOARD_ITEM*> newItems;
 
@@ -3850,7 +3850,7 @@ void BOARD_BUILDER::createTracks()
                 }
                 case 0x2E:
                 default:
-                    wxLogTrace( traceAllegroBuilder, "  Unhandled connected item code: %#04x", (int) connType );
+                    KI_LOG_TRACE( traceAllegroBuilder, "  Unhandled connected item code: %#04x", (int) connType );
                 }
 
                 uint32_t idSeq = 0;
@@ -3867,13 +3867,13 @@ void BOARD_BUILDER::createTracks()
 
     m_board.FinalizeBulkAdd( newItems );
 
-    wxLogTrace( traceAllegroBuilder, "Finished creating %zu track/via items", newItems.size() );
+    KI_LOG_TRACE( traceAllegroBuilder, "Finished creating %zu track/via items", newItems.size() );
 }
 
 
 void BOARD_BUILDER::createBoardShapes()
 {
-    wxLogTrace( traceAllegroBuilder, "Creating shapes" );
+    KI_LOG_TRACE( traceAllegroBuilder, "Creating shapes" );
 
     // Walk through LL_0x24_0x28 which contains rectangles (0x24) and shapes (0x28)
     const LL_WALKER shapeWalker( m_brdDb.m_Header->m_LL_0x24_0x28, m_brdDb );
@@ -3920,12 +3920,12 @@ void BOARD_BUILDER::createBoardShapes()
             break;
         }
         default:
-            wxLogTrace( traceAllegroBuilder, "  Unhandled block type in outline walker: %#04x", block->GetBlockType() );
+            KI_LOG_TRACE( traceAllegroBuilder, "  Unhandled block type in outline walker: %#04x", block->GetBlockType() );
             break;
         }
     }
 
-    wxLogTrace( traceAllegroBuilder, "  Found %d shape blocks", blockCount, newItems.size() );
+    KI_LOG_TRACE( traceAllegroBuilder, "  Found %d shape blocks", blockCount, newItems.size() );
     blockCount = 0;
 
     LL_WALKER outline2Walker( m_brdDb.m_Header->m_LL_Shapes, m_brdDb );
@@ -3978,12 +3978,12 @@ void BOARD_BUILDER::createBoardShapes()
             break;
         }
         default:
-            wxLogTrace( traceAllegroBuilder, "  Unhandled block type in outline walker: %#04x", block->GetBlockType() );
+            KI_LOG_TRACE( traceAllegroBuilder, "  Unhandled block type in outline walker: %#04x", block->GetBlockType() );
             break;
         }
     }
 
-    wxLogTrace( traceAllegroBuilder, "  Found %d outline items in m_LL_Shapes", blockCount );
+    KI_LOG_TRACE( traceAllegroBuilder, "  Found %d outline items in m_LL_Shapes", blockCount );
     blockCount = 0;
 
     TYPED_LL_WALKER<BLK_0x14_GRAPHIC> graphicContainerWalker( m_brdDb.m_Header->m_LL_0x14, m_brdDb,
@@ -4006,7 +4006,7 @@ void BOARD_BUILDER::createBoardShapes()
         }
     }
 
-    wxLogTrace( traceAllegroBuilder, "  Found %d graphic container items", blockCount );
+    KI_LOG_TRACE( traceAllegroBuilder, "  Found %d graphic container items", blockCount );
 
     std::vector<BOARD_ITEM*> addedItems;
     int                      dropped = 0;
@@ -4026,9 +4026,9 @@ void BOARD_BUILDER::createBoardShapes()
     m_board.FinalizeBulkAdd( addedItems );
 
     if( dropped > 0 )
-        wxLogTrace( traceAllegroBuilder, "Dropped %d coincident board graphics", dropped );
+        KI_LOG_TRACE( traceAllegroBuilder, "Dropped %d coincident board graphics", dropped );
 
-    wxLogTrace( traceAllegroBuilder, "Created %zu board shapes", addedItems.size() );
+    KI_LOG_TRACE( traceAllegroBuilder, "Created %zu board shapes", addedItems.size() );
 }
 
 
@@ -4195,7 +4195,7 @@ SHAPE_POLY_SET BOARD_BUILDER::shapeToPolySet( const BLK_0x28_SHAPE& aShape, cons
 
     if( outline.PointCount() < 3 )
     {
-        wxLogTrace( traceAllegroBuilder, "  Not enough points for polygon (%d)", outline.PointCount() );
+        KI_LOG_TRACE( traceAllegroBuilder, "  Not enough points for polygon (%d)", outline.PointCount() );
         return polySet;
     }
 
@@ -4273,7 +4273,7 @@ SHAPE_POLY_SET ALLEGRO::BOARD_BUILDER::tryBuildZoneShape( const BLOCK_BASE& aBlo
         break;
     }
     default:
-        wxLogTrace( traceAllegroBuilder, "  Unhandled block type in tryBuildZoneShape: %#04x", aBlock.GetBlockType() );
+        KI_LOG_TRACE( traceAllegroBuilder, "  Unhandled block type in tryBuildZoneShape: %#04x", aBlock.GetBlockType() );
     }
 
     return polySet;
@@ -4314,7 +4314,7 @@ std::unique_ptr<ZONE> BOARD_BUILDER::buildZone( const BLOCK_BASE&               
 
     if( isCopperZone && layer == UNDEFINED_LAYER )
     {
-        wxLogTrace( traceAllegroBuilder, "  Skipping shape on layer %#02x:%#02x - unmapped copper layer",
+        KI_LOG_TRACE( traceAllegroBuilder, "  Skipping shape on layer %#02x:%#02x - unmapped copper layer",
                     layerInfo.m_Class, layerInfo.m_Subclass );
         return nullptr;
     }
@@ -4330,7 +4330,7 @@ std::unique_ptr<ZONE> BOARD_BUILDER::buildZone( const BLOCK_BASE&               
 
     if( zoneShape.OutlineCount() != 1 )
     {
-        wxLogTrace( traceAllegroBuilder, "  Skipping zone with type %#04x, key %#010x - failed to build outline",
+        KI_LOG_TRACE( traceAllegroBuilder, "  Skipping zone with type %#04x, key %#010x - failed to build outline",
                     aBoundaryBlock.GetBlockType(), aBoundaryBlock.GetKey() );
         return nullptr;
     }
@@ -4390,7 +4390,7 @@ std::unique_ptr<ZONE> BOARD_BUILDER::buildZone( const BLOCK_BASE&               
 
             if( it != m_netCache.end() )
             {
-                wxLogTrace( traceAllegroBuilder, "  Resolved BOUNDARY %#010x -> net '%s' (code %d)",
+                KI_LOG_TRACE( traceAllegroBuilder, "  Resolved BOUNDARY %#010x -> net '%s' (code %d)",
                             aBoundaryBlock.GetKey(), it->second->GetNetname(), it->second->GetNetCode() );
 
                 netCode = it->second->GetNetCode();
@@ -4515,7 +4515,7 @@ void BOARD_BUILDER::createBoardText()
             continue;
         }
 
-        wxLogTrace( traceAllegroBuilder, "  Board text '%s' on layer %s at (%d, %d)", text->GetText(),
+        KI_LOG_TRACE( traceAllegroBuilder, "  Board text '%s' on layer %s at (%d, %d)", text->GetText(),
                     m_board.GetLayerName( text->GetLayer() ), text->GetPosition().x, text->GetPosition().y );
 
         if( !m_boardGraphics.IsFirst( text.get() ) )
@@ -4526,7 +4526,7 @@ void BOARD_BUILDER::createBoardText()
         textCount++;
     }
 
-    wxLogTrace( traceAllegroBuilder, "Created %d board-level text objects", textCount );
+    KI_LOG_TRACE( traceAllegroBuilder, "Created %d board-level text objects", textCount );
 }
 
 
@@ -4548,7 +4548,7 @@ void BulkAddToBoard( BOARD& aBoard, std::vector<std::unique_ptr<T>>&& aItems )
 
 void BOARD_BUILDER::createZones()
 {
-    wxLogTrace( traceAllegroBuilder, "Creating zones from m_LL_Shapes and m_LL_0x24_0x28" );
+    KI_LOG_TRACE( traceAllegroBuilder, "Creating zones from m_LL_Shapes and m_LL_0x24_0x28" );
 
     std::vector<std::unique_ptr<ZONE>> newZones;
     std::vector<std::unique_ptr<ZONE>> keepoutZones;
@@ -4605,7 +4605,7 @@ void BOARD_BUILDER::createZones()
         }
         default:
         {
-            wxLogTrace( traceAllegroBuilder, "Unhandled block type in zone shape walker: %#04x, key: %#010x",
+            KI_LOG_TRACE( traceAllegroBuilder, "Unhandled block type in zone shape walker: %#04x, key: %#010x",
                         block->GetBlockType(), block->GetKey() );
             break;
         }
@@ -4613,7 +4613,7 @@ void BOARD_BUILDER::createZones()
 
         if( zone )
         {
-            wxLogTrace( traceAllegroBuilder, "  Zone %#010x net=%d layer=%s class=%#04x:%#04x", block->GetKey(),
+            KI_LOG_TRACE( traceAllegroBuilder, "  Zone %#010x net=%d layer=%s class=%#04x:%#04x", block->GetKey(),
                         zone->GetNetCode(), m_board.GetLayerName( zone->GetFirstLayer() ), layerInfo.m_Class,
                         layerInfo.m_Subclass );
 
@@ -4648,7 +4648,7 @@ void BOARD_BUILDER::createZones()
             if( !layerIsZone( rectData.m_Layer ) )
                 continue;
 
-            wxLogTrace( traceAllegroBuilder, "  Processing %s rect %#010x", layerInfoDisplayName( rectData.m_Layer ),
+            KI_LOG_TRACE( traceAllegroBuilder, "  Processing %s rect %#010x", layerInfoDisplayName( rectData.m_Layer ),
                         rectData.m_Key );
 
             zone = buildZone( *block, {}, zoneFillHandler, m_board );
@@ -4661,7 +4661,7 @@ void BOARD_BUILDER::createZones()
             if( !layerIsZone( shapeData.m_Layer ) )
                 continue;
 
-            wxLogTrace( traceAllegroBuilder, "  Processing %s shape %#010x", layerInfoDisplayName( shapeData.m_Layer ),
+            KI_LOG_TRACE( traceAllegroBuilder, "  Processing %s shape %#010x", layerInfoDisplayName( shapeData.m_Layer ),
                         shapeData.m_Key );
 
             zone = buildZone( *block, {}, zoneFillHandler, m_board );
@@ -4737,7 +4737,7 @@ void BOARD_BUILDER::createZones()
 
     BulkAddToBoard( m_board, std::move( mergedZones ) );
 
-    wxLogTrace( traceAllegroBuilder, "Created %d zone outlines and %d keepout areas (%d merged away), ", boundaryCount,
+    KI_LOG_TRACE( traceAllegroBuilder, "Created %d zone outlines and %d keepout areas (%d merged away), ", boundaryCount,
                 keepoutCount, originalCount - mergedCount );
 }
 
@@ -4777,7 +4777,7 @@ void BOARD_BUILDER::createPlaneVoidAreas()
 
 void BOARD_BUILDER::createTables()
 {
-    wxLogTrace( traceAllegroBuilder, "Creating tables from m_LL_0x2C" );
+    KI_LOG_TRACE( traceAllegroBuilder, "Creating tables from m_LL_0x2C" );
 
     TYPED_LL_WALKER<BLK_0x2C_TABLE> tableWalker( m_brdDb.m_Header->m_LL_0x2C, m_brdDb );
     for( const BLK_0x2C_TABLE& tableData : tableWalker )
@@ -4796,12 +4796,12 @@ void BOARD_BUILDER::createTables()
 
         for( const BLOCK_BASE* keyTable : keyTableWalker )
         {
-            wxLogTrace( traceAllegroBuilder, "  Table '%s' (key %#010x, table block key %#010x)", tableName,
+            KI_LOG_TRACE( traceAllegroBuilder, "  Table '%s' (key %#010x, table block key %#010x)", tableName,
                         tableData.m_Key, tableData.m_Ptr1 );
 
             if( !keyTable )
             {
-                wxLogTrace( traceAllegroBuilder, "    Key table pointer %#010x is invalid", tableData.m_Ptr1 );
+                KI_LOG_TRACE( traceAllegroBuilder, "    Key table pointer %#010x is invalid", tableData.m_Ptr1 );
                 continue;
             }
 
@@ -4813,7 +4813,7 @@ void BOARD_BUILDER::createTables()
 
                 uint32_t count = std::min( ptrArray.m_Count, static_cast<uint32_t>( ptrArray.m_Ptrs.size() ) );
 
-                wxLogTrace( traceAllegroBuilder, "    Pointer array with %zu entries", static_cast<size_t>( count ) );
+                KI_LOG_TRACE( traceAllegroBuilder, "    Pointer array with %zu entries", static_cast<size_t>( count ) );
 
                 for( uint32_t ptrIndex = 0; ptrIndex < count; ptrIndex++ )
                 {
@@ -4826,7 +4826,7 @@ void BOARD_BUILDER::createTables()
 
                     if( !entryBlock )
                     {
-                        wxLogTrace( traceAllegroBuilder, "      Entry pointer %#010x is invalid", ptrKey );
+                        KI_LOG_TRACE( traceAllegroBuilder, "      Entry pointer %#010x is invalid", ptrKey );
                         continue;
                     }
 
@@ -4843,13 +4843,13 @@ void BOARD_BUILDER::createTables()
             {
                 const BLK_0x3C_KEY_LIST& keyList = BlockDataAs<BLK_0x3C_KEY_LIST>( *keyTable );
 
-                wxLogTrace( traceAllegroBuilder, "    Key list with %zu entries",
+                KI_LOG_TRACE( traceAllegroBuilder, "    Key list with %zu entries",
                             static_cast<size_t>( keyList.m_NumEntries ) );
                 break;
             }
             default:
             {
-                wxLogTrace( traceAllegroBuilder, "    Table has unhandled key table type %#04x",
+                KI_LOG_TRACE( traceAllegroBuilder, "    Table has unhandled key table type %#04x",
                             keyTable->GetBlockType() );
                 break;
             }
@@ -4858,7 +4858,7 @@ void BOARD_BUILDER::createTables()
 
         if( newItems.size() > 0 )
         {
-            wxLogTrace( traceAllegroBuilder, "  Creating group '%s' with %zu items", tableName, newItems.size() );
+            KI_LOG_TRACE( traceAllegroBuilder, "  Creating group '%s' with %zu items", tableName, newItems.size() );
 
             std::unique_ptr<PCB_GROUP> group = std::make_unique<PCB_GROUP>( &m_board );
             group->SetName( tableName );
@@ -4887,7 +4887,7 @@ void BOARD_BUILDER::applyZoneFills()
 
     PROF_TIMER fillTimer;
 
-    wxLogTrace( traceAllegroBuilder, "Applying zone fill polygons from %zu collected fills",
+    KI_LOG_TRACE( traceAllegroBuilder, "Applying zone fill polygons from %zu collected fills",
                 m_zoneFillShapes.size() );
 
 
@@ -4978,7 +4978,7 @@ void BOARD_BUILDER::applyZoneFills()
         }
     }
 
-    wxLogTrace( traceAllegroPerf, wxT( "    applyZoneFills unmatched loop: %.3f ms (%d shapes, %d teardrops)" ), //format:allow
+    KI_LOG_TRACE( traceAllegroPerf, wxT( "    applyZoneFills unmatched loop: %.3f ms (%d shapes, %d teardrops)" ), //format:allow
                 fillTimer.msecs( true ), copperShapeCount, teardropCount );
 }
 
@@ -5048,16 +5048,16 @@ void BOARD_BUILDER::enablePadTeardrops()
         }
     }
 
-    wxLogTrace( traceAllegroBuilder, "Enabled teardrops on %d pads and %d vias", padCount, viaCount );
+    KI_LOG_TRACE( traceAllegroBuilder, "Enabled teardrops on %d pads and %d vias", padCount, viaCount );
 }
 
 
 bool BOARD_BUILDER::BuildBoard()
 {
-    wxLogTrace( traceAllegroBuilder, "Starting BuildBoard() - Phase 2 of Allegro import" );
-    wxLogTrace( traceAllegroBuilder, "  Format version: %d (V172+ = %s)", static_cast<int>( m_brdDb.m_FmtVer ),
+    KI_LOG_TRACE( traceAllegroBuilder, "Starting BuildBoard() - Phase 2 of Allegro import" );
+    KI_LOG_TRACE( traceAllegroBuilder, "  Format version: %d (V172+ = %s)", static_cast<int>( m_brdDb.m_FmtVer ),
                 ( m_brdDb.m_FmtVer >= FMT_VER::V_172 ) ? "yes" : "no" );
-    wxLogTrace( traceAllegroBuilder, "  Allegro version string: %.60s", m_brdDb.m_Header->m_AllegroVersion.data() );
+    KI_LOG_TRACE( traceAllegroBuilder, "  Allegro version string: %.60s", m_brdDb.m_Header->m_AllegroVersion.data() );
 
     if( m_progressReporter )
     {
@@ -5068,12 +5068,12 @@ bool BOARD_BUILDER::BuildBoard()
 
     PROF_TIMER buildTimer;
 
-    wxLogTrace( traceAllegroBuilder, "Caching font definitions and setting up layers" );
+    KI_LOG_TRACE( traceAllegroBuilder, "Caching font definitions and setting up layers" );
     cacheFontDefs();
-    wxLogTrace( traceAllegroPerf, wxT( "  cacheFontDefs: %.3f ms" ), buildTimer.msecs( true ) ); //format:allow
+    KI_LOG_TRACE( traceAllegroPerf, wxT( "  cacheFontDefs: %.3f ms" ), buildTimer.msecs( true ) ); //format:allow
 
     setupLayers();
-    wxLogTrace( traceAllegroPerf, wxT( "  setupLayers: %.3f ms" ), buildTimer.msecs( true ) ); //format:allow
+    KI_LOG_TRACE( traceAllegroPerf, wxT( "  setupLayers: %.3f ms" ), buildTimer.msecs( true ) ); //format:allow
 
     if( m_progressReporter )
     {
@@ -5082,7 +5082,7 @@ bool BOARD_BUILDER::BuildBoard()
     }
 
     createNets();
-    wxLogTrace( traceAllegroPerf, wxT( "  createNets: %.3f ms" ), buildTimer.msecs( true ) ); //format:allow
+    KI_LOG_TRACE( traceAllegroPerf, wxT( "  createNets: %.3f ms" ), buildTimer.msecs( true ) ); //format:allow
 
     if( m_progressReporter )
     {
@@ -5091,37 +5091,37 @@ bool BOARD_BUILDER::BuildBoard()
     }
 
     createTracks();
-    wxLogTrace( traceAllegroPerf, wxT( "  createTracks: %.3f ms" ), buildTimer.msecs( true ) ); //format:allow
+    KI_LOG_TRACE( traceAllegroPerf, wxT( "  createTracks: %.3f ms" ), buildTimer.msecs( true ) ); //format:allow
 
     if( m_progressReporter )
         m_progressReporter->KeepRefreshing();
 
     createBoardShapes();
-    wxLogTrace( traceAllegroPerf, wxT( "  createBoardShapes: %.3f ms" ), buildTimer.msecs( true ) ); //format:allow
+    KI_LOG_TRACE( traceAllegroPerf, wxT( "  createBoardShapes: %.3f ms" ), buildTimer.msecs( true ) ); //format:allow
 
     createBoardText();
-    wxLogTrace( traceAllegroPerf, wxT( "  createBoardText: %.3f ms" ), buildTimer.msecs( true ) ); //format:allow
+    KI_LOG_TRACE( traceAllegroPerf, wxT( "  createBoardText: %.3f ms" ), buildTimer.msecs( true ) ); //format:allow
 
     createZones();
-    wxLogTrace( traceAllegroPerf, wxT( "  createZones: %.3f ms" ), buildTimer.msecs( true ) ); //format:allow
+    KI_LOG_TRACE( traceAllegroPerf, wxT( "  createZones: %.3f ms" ), buildTimer.msecs( true ) ); //format:allow
 
     createTables();
-    wxLogTrace( traceAllegroPerf, wxT( "  createTables: %.3f ms" ), buildTimer.msecs( true ) ); //format:allow
+    KI_LOG_TRACE( traceAllegroPerf, wxT( "  createTables: %.3f ms" ), buildTimer.msecs( true ) ); //format:allow
 
     if( m_progressReporter )
         m_progressReporter->KeepRefreshing();
 
     applyZoneFills();
-    wxLogTrace( traceAllegroPerf, wxT( "  applyZoneFills: %.3f ms" ), buildTimer.msecs( true ) ); //format:allow
+    KI_LOG_TRACE( traceAllegroPerf, wxT( "  applyZoneFills: %.3f ms" ), buildTimer.msecs( true ) ); //format:allow
 
     applyConstraintSets();
-    wxLogTrace( traceAllegroPerf, wxT( "  applyConstraintSets: %.3f ms" ), buildTimer.msecs( true ) ); //format:allow
+    KI_LOG_TRACE( traceAllegroPerf, wxT( "  applyConstraintSets: %.3f ms" ), buildTimer.msecs( true ) ); //format:allow
 
     applyNetConstraints();
-    wxLogTrace( traceAllegroPerf, wxT( "  applyNetConstraints: %.3f ms" ), buildTimer.msecs( true ) ); //format:allow
+    KI_LOG_TRACE( traceAllegroPerf, wxT( "  applyNetConstraints: %.3f ms" ), buildTimer.msecs( true ) ); //format:allow
 
     applyMatchGroups();
-    wxLogTrace( traceAllegroPerf, wxT( "  applyMatchGroups: %.3f ms" ), buildTimer.msecs( true ) ); //format:allow
+    KI_LOG_TRACE( traceAllegroPerf, wxT( "  applyMatchGroups: %.3f ms" ), buildTimer.msecs( true ) ); //format:allow
 
     if( m_progressReporter )
     {
@@ -5178,22 +5178,22 @@ bool BOARD_BUILDER::BuildBoard()
         }
     }
 
-    wxLogTrace( traceAllegroPerf, wxT( "  convertFootprints (%zu footprints): %.3f ms" ), //format:allow
+    KI_LOG_TRACE( traceAllegroPerf, wxT( "  convertFootprints (%zu footprints): %.3f ms" ), //format:allow
                 bulkAddedItems.size(), buildTimer.msecs( true ) );
 
     if( !bulkAddedItems.empty() )
         m_board.FinalizeBulkAdd( bulkAddedItems );
 
-    wxLogTrace( traceAllegroPerf, wxT( "  FinalizeBulkAdd: %.3f ms" ), buildTimer.msecs( true ) ); //format:allow
-    wxLogTrace( traceAllegroBuilder, "Converted %zu footprints", bulkAddedItems.size() );
+    KI_LOG_TRACE( traceAllegroPerf, wxT( "  FinalizeBulkAdd: %.3f ms" ), buildTimer.msecs( true ) ); //format:allow
+    KI_LOG_TRACE( traceAllegroBuilder, "Converted %zu footprints", bulkAddedItems.size() );
 
     // the footprints have added their voids by now
     createPlaneVoidAreas();
 
     enablePadTeardrops();
-    wxLogTrace( traceAllegroPerf, wxT( "  enablePadTeardrops: %.3f ms" ), buildTimer.msecs( true ) ); //format:allow
-    wxLogTrace( traceAllegroPerf, wxT( "  Phase 2 total: %.3f ms" ), buildTimer.msecs() ); //format:allow
+    KI_LOG_TRACE( traceAllegroPerf, wxT( "  enablePadTeardrops: %.3f ms" ), buildTimer.msecs( true ) ); //format:allow
+    KI_LOG_TRACE( traceAllegroPerf, wxT( "  Phase 2 total: %.3f ms" ), buildTimer.msecs() ); //format:allow
 
-    wxLogTrace( traceAllegroBuilder, "Board construction completed successfully" );
+    KI_LOG_TRACE( traceAllegroBuilder, "Board construction completed successfully" );
     return true;
 }

@@ -328,7 +328,7 @@ PCB_LAYER_ID PCB_IO_KICAD_LEGACY::leg_layer2new( int cu_count, int aLayerNum )
         else
         {
             newid = BoardLayerFromLegacyId( cu_count - 1 - old );
-            wxASSERT( newid >= 0 );
+            KI_ASSERT( newid >= 0 );
 
             // This is of course incorrect, but at least it avoid crashing pcbnew:
             if( newid < 0 )
@@ -1501,7 +1501,7 @@ void PCB_IO_KICAD_LEGACY::loadPAD( FOOTPRINT* aFootprint )
 
             if( m_board )
             {
-                wxASSERT( m_board->FindNet( getNetCode( netcode ) )->GetNetname()
+                KI_ASSERT( m_board->FindNet( getNetCode( netcode ) )->GetNetname()
                           == ConvertToNewOverbarNotation( From_UTF8( StrPurge( buf ) ) ) );
             }
         }
@@ -2131,7 +2131,7 @@ void PCB_IO_KICAD_LEGACY::loadPCB_TEXT()
             else
             {
                 // boom, somebody changed a constructor, I was relying on this:
-                wxASSERT( pcbtxt->GetHorizJustify() == GR_TEXT_H_ALIGN_CENTER );
+                KI_ASSERT( pcbtxt->GetHorizJustify() == GR_TEXT_H_ALIGN_CENTER );
             }
 
             if( vJustify )
@@ -2235,7 +2235,7 @@ void PCB_IO_KICAD_LEGACY::loadTrackList( int aStructType )
         }
         else
         {
-            wxFAIL_MSG( wxT( "Segment type unknown" ) );
+            KI_FAIL_MSG( wxT( "Segment type unknown" ) );
             continue;
         }
 
@@ -3180,7 +3180,7 @@ void LP_CACHE::LoadModules( LINE_READER* aReader )
             {
                 if( !m_footprints.insert( footprintName, fp ).second )
                 {
-                    wxFAIL_MSG( wxT( "error doing cache insert using guaranteed unique name" ) );
+                    KI_FAIL_MSG( wxT( "error doing cache insert using guaranteed unique name" ) );
                 }
             }
             else
@@ -3209,7 +3209,7 @@ void LP_CACHE::LoadModules( LINE_READER* aReader )
 
                         if( !m_footprints.insert( newName, fp ).second )
                         {
-                            wxFAIL_MSG( wxT( "error doing cache insert using guaranteed unique "
+                            KI_FAIL_MSG( wxT( "error doing cache insert using guaranteed unique "
                                              "name" ) );
                         }
                     }

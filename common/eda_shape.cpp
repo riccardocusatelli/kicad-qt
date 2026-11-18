@@ -338,7 +338,7 @@ void EDA_SHAPE::Serialize( kiapi::common::types::GraphicShape& shape, const EDA_
     }
 
     default:
-        wxASSERT_MSG( false, "Unhandled shape in EDA_SHAPE::Serialize" );
+        KI_ASSERT_MSG( false, "Unhandled shape in EDA_SHAPE::Serialize" );
     }
 
     if( m_startEnding.GetStyle() != LINE_ENDING_STYLE::NONE )
@@ -358,7 +358,7 @@ void EDA_SHAPE::Serialize( google::protobuf::Any &aContainer, const EDA_IU_SCALE
     Serialize( shape, aScale );
 
     if( !aContainer.PackFrom( shape ) )
-        wxFAIL_MSG( wxT( "Failed to pack EDA_SHAPE" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack EDA_SHAPE" ) );
 }
 
 
@@ -4810,7 +4810,7 @@ static struct EDA_SHAPE_DESC
                 .SetAvailableFunc( isRectangle )
                 .SetValidator( []( const wxAny&& aValue, EDA_ITEM* aItem ) -> VALIDATOR_RESULT
                                {
-                                   wxASSERT_MSG( aValue.CheckType<int>(),
+                                   KI_ASSERT_MSG( aValue.CheckType<int>(),
                                                  "Expecting int-containing value" );
 
                                    int radius = aValue.As<int>();

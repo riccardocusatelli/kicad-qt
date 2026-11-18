@@ -178,7 +178,7 @@ void EDA_DRAW_PANEL_GAL::presentFrame()
         // GTK drawing suppression needs the realized widget at its final layout size
         if( m_needsExternalRenderingSetup )
         {
-            wxLogTrace( traceRhi, wxS( "DrawPanel: deferred PrepareForExternalRendering "
+            KI_LOG_TRACE( traceRhi, wxS( "DrawPanel: deferred PrepareForExternalRendering "
                                         "windowId=%u" ), m_windowId );
             KIPLATFORM::UI::PrepareForExternalRendering( this );
             m_needsExternalRenderingSetup = false;
@@ -319,7 +319,7 @@ EDA_DRAW_PANEL_GAL::EDA_DRAW_PANEL_GAL( wxWindow* aParentWindow, wxWindowID aWin
 
 EDA_DRAW_PANEL_GAL::~EDA_DRAW_PANEL_GAL()
 {
-    wxLogTrace( traceRhi, wxS( "DrawPanel: destructor windowId=%u backend=%d" ),
+    KI_LOG_TRACE( traceRhi, wxS( "DrawPanel: destructor windowId=%u backend=%d" ),
                 m_windowId, static_cast<int>( m_backend ) );
 
     EDA_CURSOR_BROADCASTER::Instance().Unregister( this );
@@ -329,7 +329,7 @@ EDA_DRAW_PANEL_GAL::~EDA_DRAW_PANEL_GAL()
     Disconnect( wxEVT_SHOW, wxShowEventHandler( EDA_DRAW_PANEL_GAL::onShowEvent ) );
     StopDrawing();
 
-    wxASSERT( !m_drawing );
+    KI_ASSERT( !m_drawing );
 
     // Deleting the view can retire GAL groups, which needs the device proxy
     delete m_viewControls;
@@ -404,7 +404,7 @@ bool EDA_DRAW_PANEL_GAL::abandonRhiCanvas( const wxString& aDetail )
 #endif
     }
 
-    wxLogTrace( traceRhi, wxS( "DrawPanel: leaving the RHI canvas for backend %d" ), static_cast<int>( GAL_FALLBACK ) );
+    KI_LOG_TRACE( traceRhi, wxS( "DrawPanel: leaving the RHI canvas for backend %d" ), static_cast<int>( GAL_FALLBACK ) );
 
     return SwitchBackend( GAL_FALLBACK );
 }
@@ -545,7 +545,7 @@ bool EDA_DRAW_PANEL_GAL::handleContextLoss()
         return true;
     }
 
-    wxLogTrace( traceGalContext, wxS( "Rebuilding canvas %p after GPU reset, repeated %d" ), this,
+    KI_LOG_TRACE( traceGalContext, wxS( "Rebuilding canvas %p after GPU reset, repeated %d" ), this,
                 loss == KIGFX::GAL_CONTEXT_LOSS::REPEATED ? 1 : 0 );
 
     bool rebuilt = false;
@@ -565,7 +565,7 @@ bool EDA_DRAW_PANEL_GAL::handleContextLoss()
     {
         static bool s_notified = false;
 
-        wxLogTrace( traceGalContext, wxS( "Canvas %p falling back to software rendering" ), this );
+        KI_LOG_TRACE( traceGalContext, wxS( "Canvas %p falling back to software rendering" ), this );
         EDA_DRAW_FRAME::SetCanvasFailed( GAL_TYPE_OPENGL );
         SwitchBackend( GAL_FALLBACK );
 
@@ -630,7 +630,7 @@ bool EDA_DRAW_PANEL_GAL::DoRePaint( bool aAllowSkip )
 {
     if( !m_refreshMutex.try_lock() )
     {
-        wxLogTrace( traceRhi, wxS( "DrawPanel: DoRePaint SKIP (mutex locked)" ) );
+        KI_LOG_TRACE( traceRhi, wxS( "DrawPanel: DoRePaint SKIP (mutex locked)" ) );
         return false;
     }
 
@@ -642,7 +642,7 @@ bool EDA_DRAW_PANEL_GAL::DoRePaint( bool aAllowSkip )
     // No surface may be created on an unmapped window. The other backends check visibility below.
     if( m_backend == GAL_TYPE_MODERN && !IsShown() )
     {
-        wxLogTrace( traceRhi, wxS( "DrawPanel: DoRePaint SKIP (hidden) windowId=%u" ), m_windowId );
+        KI_LOG_TRACE( traceRhi, wxS( "DrawPanel: DoRePaint SKIP (hidden) windowId=%u" ), m_windowId );
         return false;
     }
 
@@ -670,14 +670,14 @@ bool EDA_DRAW_PANEL_GAL::DoRePaint( bool aAllowSkip )
 
     if( !m_gal->IsInitialized() || !m_gal->IsVisible() || m_gal->IsContextLocked() )
     {
-        wxLogTrace( traceRhi, wxS( "DrawPanel: DoRePaint SKIP (init=%d vis=%d locked=%d)" ),
+        KI_LOG_TRACE( traceRhi, wxS( "DrawPanel: DoRePaint SKIP (init=%d vis=%d locked=%d)" ),
                     m_gal->IsInitialized(), m_gal->IsVisible(), m_gal->IsContextLocked() );
         return false;
     }
 
     if( m_drawing )
     {
-        wxLogTrace( traceRhi, wxS( "DrawPanel: DoRePaint SKIP (already drawing)" ) );
+        KI_LOG_TRACE( traceRhi, wxS( "DrawPanel: DoRePaint SKIP (already drawing)" ) );
         return false;
     }
 
@@ -703,7 +703,7 @@ bool EDA_DRAW_PANEL_GAL::DoRePaint( bool aAllowSkip )
 
     ( *m_PaintEventCounter )++;
 
-    wxASSERT( m_painter );
+    KI_ASSERT( m_painter );
 
     KIGFX::RENDER_SETTINGS* settings =
             static_cast<KIGFX::RENDER_SETTINGS*>( m_painter->GetSettings() );
@@ -754,14 +754,14 @@ bool EDA_DRAW_PANEL_GAL::DoRePaint( bool aAllowSkip )
             {
                 // Don't do anything here but don't fail
                 // This can happen when we don't catch `at()` calls
-                wxLogTrace( traceDrawPanel, wxS( "Out of Range error: %s" ), err.what() );
+                KI_LOG_TRACE( traceDrawPanel, wxS( "Out of Range error: %s" ), err.what() );
             }
             catch( std::runtime_error& err )
             {
                 // Handle GL errors (e.g. glMapBuffer failure) that surface during UpdateItems().
                 // These can occur on macOS under memory pressure when embedding large 3D models.
                 // Log and continue so the outer handler can decide whether to switch backends.
-                wxLogTrace( traceDrawPanel, wxS( "Runtime error during UpdateItems: %s" ),
+                KI_LOG_TRACE( traceDrawPanel, wxS( "Runtime error during UpdateItems: %s" ),
                             err.what() );
                 throw;
             }
@@ -1014,7 +1014,7 @@ bool EDA_DRAW_PANEL_GAL::DoRePaint( bool aAllowSkip )
     }
     catch( std::exception& err )
     {
-        wxLogTrace( traceDrawPanel, wxS( "DoRePaint exception: %s" ), err.what() );
+        KI_LOG_TRACE( traceDrawPanel, wxS( "DoRePaint exception: %s" ), err.what() );
 
         if( recoverFromGalError( err ) )
             return true;
@@ -1030,7 +1030,7 @@ bool EDA_DRAW_PANEL_GAL::DoRePaint( bool aAllowSkip )
     if( isDirty )
     {
 #ifdef KICAD_GAL_PROFILE
-        wxLogTrace( traceGalProfile, "View timing: %s %s %s %s %s",
+        KI_LOG_TRACE( traceGalProfile, "View timing: %s %s %s %s %s",
             cntTotal.to_string(),
             cntUpd.to_string(),
             cntRedraw.to_string(),
@@ -1043,7 +1043,7 @@ bool EDA_DRAW_PANEL_GAL::DoRePaint( bool aAllowSkip )
     m_lastRepaintEnd = std::chrono::steady_clock::now();
 
 #ifdef KICAD_GAL_PROFILE
-    wxLogTrace( traceGalProfile, "%s", latencyProbeZoomToRender.to_string() );
+    KI_LOG_TRACE( traceGalProfile, "%s", latencyProbeZoomToRender.to_string() );
     latencyProbeRepaintToMotion.Reset();
     latencyProbeRepaintToMotion.Checkpoint("repaint-done");
 #endif    
@@ -1295,7 +1295,7 @@ void EDA_DRAW_PANEL_GAL::Refresh( bool aEraseBackground, const wxRect* aRect )
 
 void EDA_DRAW_PANEL_GAL::ForceRefresh()
 {
-    wxLogTrace( traceRhi, wxS( "DrawPanel: ForceRefresh windowId=%u drawEnabled=%d "
+    KI_LOG_TRACE( traceRhi, wxS( "DrawPanel: ForceRefresh windowId=%u drawEnabled=%d "
                                 "IsShown=%d IsShownOnScreen=%d galInit=%d" ),
                 m_windowId, m_drawingEnabled, IsShown(), IsShownOnScreen(),
                 m_gal ? m_gal->IsInitialized() : -1 );
@@ -1394,7 +1394,7 @@ void EDA_DRAW_PANEL_GAL::SetEventDispatcher( TOOL_DISPATCHER* aEventDispatcher )
 
 void EDA_DRAW_PANEL_GAL::StartDrawing()
 {
-    wxLogTrace( traceRhi, wxS( "DrawPanel: StartDrawing windowId=%u" ), m_windowId );
+    KI_LOG_TRACE( traceRhi, wxS( "DrawPanel: StartDrawing windowId=%u" ), m_windowId );
 
     // Start querying GAL if it is ready
     m_refreshTimer.StartOnce( 100 );
@@ -1520,7 +1520,7 @@ bool EDA_DRAW_PANEL_GAL::SwitchBackend( GAL_TYPE aGalType )
 
             if( m_renderThread )
             {
-                wxLogTrace( traceRhi, wxS( "DrawPanel: render thread acquired" ) );
+                KI_LOG_TRACE( traceRhi, wxS( "DrawPanel: render thread acquired" ) );
 
                 // A repaint sees the loss and rebuilds the canvas. The listener is removed before the panel
                 // is destroyed, and wx drops anything still queued for it.
@@ -1551,7 +1551,7 @@ bool EDA_DRAW_PANEL_GAL::SwitchBackend( GAL_TYPE aGalType )
                 m_swapchainCtrl = std::make_unique<KIGFX::SWAPCHAIN_CONTROLLER>( *m_renderThread, m_windowId );
                 m_swapchainCtrl->SetFrameMailbox( m_frameMailbox.get() );
 
-                wxLogTrace( traceRhi, wxS( "DrawPanel: windowId=%u swapchainCtrl created" ), m_windowId );
+                KI_LOG_TRACE( traceRhi, wxS( "DrawPanel: windowId=%u swapchainCtrl created" ), m_windowId );
 
                 // The GDK background is set on the first paint, once the widget is laid out
                 KIPLATFORM::UI::PrepareForExternalRendering( this );
@@ -1569,7 +1569,7 @@ bool EDA_DRAW_PANEL_GAL::SwitchBackend( GAL_TYPE aGalType )
         }
 
         default:
-            wxASSERT( false );
+            KI_ASSERT( false );
             KI_FALLTHROUGH;
 
         case GAL_TYPE_NONE:
@@ -1692,7 +1692,7 @@ bool EDA_DRAW_PANEL_GAL::SwitchBackend( GAL_TYPE aGalType )
 
     if( m_view )
     {
-        wxLogTrace( traceRhi, wxS( "DrawPanel: backend %d view centre (%.17g, %.17g) scale %.17g screen %dx%d" ),
+        KI_LOG_TRACE( traceRhi, wxS( "DrawPanel: backend %d view centre (%.17g, %.17g) scale %.17g screen %dx%d" ),
                     static_cast<int>( m_backend ), m_view->GetCenter().x, m_view->GetCenter().y, m_view->GetScale(),
                     m_gal->GetScreenPixelSize().x, m_gal->GetScreenPixelSize().y );
     }
@@ -1815,7 +1815,7 @@ void EDA_DRAW_PANEL_GAL::onIdle( wxIdleEvent& aEvent )
 {
     if( m_needIdleRefresh )
     {
-        wxLogTrace( traceRhi, wxS( "DrawPanel: onIdle refresh windowId=%u IsShown=%d "
+        KI_LOG_TRACE( traceRhi, wxS( "DrawPanel: onIdle refresh windowId=%u IsShown=%d "
                                     "IsShownOnScreen=%d" ),
                     m_windowId, IsShown(), IsShownOnScreen() );
 
@@ -1848,7 +1848,7 @@ void EDA_DRAW_PANEL_GAL::onRefreshTimer( wxTimerEvent& aEvent )
 
 void EDA_DRAW_PANEL_GAL::onShowEvent( wxShowEvent& aEvent )
 {
-    wxLogTrace( traceRhi, wxS( "DrawPanel: onShowEvent windowId=%u show=%d IsShown=%d "
+    KI_LOG_TRACE( traceRhi, wxS( "DrawPanel: onShowEvent windowId=%u show=%d IsShown=%d "
                                 "IsShownOnScreen=%d galInit=%d" ),
                 m_windowId, aEvent.IsShown(), IsShown(), IsShownOnScreen(),
                 m_gal ? m_gal->IsInitialized() : -1 );

@@ -144,7 +144,7 @@ int CLI::PCB_IMPORT_COMMAND::doPerform( KIWAY& aKiway )
         }
     }
 
-    int exitCode = aKiway.ProcessJob( KIWAY::FACE_PCB, importJob.get() );
+    int exitCode = aKiway.ProcessJob( KIWAY_FACES::FACE_PCB, importJob.get() );
 
     // The sentinel is internal to the top-level `import` classifier; standalone, it is invalid input.
     if( exitCode == EXIT_CODES::ERR_UNKNOWN_FILE_FORMAT )

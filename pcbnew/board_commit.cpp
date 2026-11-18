@@ -180,7 +180,7 @@ bool BOARD_COMMIT::RemoveOrDiscard( BOARD_ITEM* aItem )
 void BOARD_COMMIT::propagateDamage( BOARD_ITEM* aChangedItem, std::vector<ZONE*>* aStaleZones,
                                     std::vector<BOX2I>& aStaleRuleAreas )
 {
-    wxCHECK( aChangedItem, /* void */ );
+    KI_CHECK( aChangedItem, /* void */ );
 
     if( aStaleZones && aChangedItem->Type() == PCB_ZONE_T )
         aStaleZones->push_back( static_cast<ZONE*>( aChangedItem ) );
@@ -603,7 +603,7 @@ void BOARD_COMMIT::Push( const wxString& aMessage, int aCommitFlags )
                 break;
 
             default:                // other types do not need to (or should not) be handled
-                wxASSERT( false );
+                KI_ASSERT( false );
                 break;
             }
 
@@ -764,7 +764,7 @@ void BOARD_COMMIT::Push( const wxString& aMessage, int aCommitFlags )
             if( entry.m_copy && entry.m_copy->IsBOARD_ITEM() )
                 boardItemCopy = static_cast<BOARD_ITEM*>( entry.m_copy );
 
-            wxCHECK2( boardItem, continue );
+            KI_CHECK2( boardItem, continue );
 
             if( !( aCommitFlags & SKIP_UNDO ) )
             {
@@ -1018,7 +1018,7 @@ void BOARD_COMMIT::RevertToCheckpoint( int aCheckpoint )
 
             connectivity->Remove( boardItem );
 
-            wxASSERT( entry.m_copy && entry.m_copy->IsBOARD_ITEM() );
+            KI_ASSERT( entry.m_copy && entry.m_copy->IsBOARD_ITEM() );
             BOARD_ITEM* boardItemCopy = static_cast<BOARD_ITEM*>( entry.m_copy );
             boardItem->SwapItemData( boardItemCopy );
 

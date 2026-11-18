@@ -58,7 +58,7 @@ wxString COMPONENT_CLASS::GetHumanReadableName() const
     if( m_constituentClasses.size() == 1 )
         return m_name;
 
-    wxASSERT( m_constituentClasses.size() >= 2 );
+    KI_ASSERT( m_constituentClasses.size() >= 2 );
 
     wxString name;
 

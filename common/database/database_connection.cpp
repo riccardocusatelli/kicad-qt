@@ -32,7 +32,7 @@ DATABASE_CONNECTION::DATABASE_CONNECTION( std::unique_ptr<DATABASE_BACKEND> aBac
         m_backend( std::move( aBackend ) ),
         m_cache( std::make_unique<DB_CACHE_TYPE>( 10, 1 ) )
 {
-    wxASSERT_MSG( m_backend, "DATABASE_CONNECTION needs a backend" );
+    KI_ASSERT_MSG( m_backend, "DATABASE_CONNECTION needs a backend" );
 
     if( aConnectNow )
         Connect();
@@ -124,7 +124,7 @@ bool DATABASE_CONNECTION::CacheTableInfo( const std::string& aTable, const std::
 
     if( !info )
     {
-        wxLogTrace( traceDatabase, wxT( "CacheTableInfo: table '%s' not found in catalog" ), aTable );
+        KI_LOG_TRACE( traceDatabase, wxT( "CacheTableInfo: table '%s' not found in catalog" ), aTable );
 
         // The next table's catalog read can clear the backend's error, so keep this table's own
         TABLE_FAILURE& failed = m_tableFailures[aTable];
@@ -155,7 +155,7 @@ bool DATABASE_CONNECTION::CacheTableInfo( const std::string& aTable, const std::
     // The table is still usable with SELECT * when the catalog cannot list its columns
     if( info->columnsUnavailable )
     {
-        wxLogTrace( traceDatabase, wxT( "CacheTableInfo: columns of table '%s' unavailable" ), info->name );
+        KI_LOG_TRACE( traceDatabase, wxT( "CacheTableInfo: columns of table '%s' unavailable" ), info->name );
         return false;
     }
 
@@ -172,7 +172,7 @@ bool DATABASE_CONNECTION::CacheTableInfo( const std::string& aTable, const std::
 
         if( !column.supported )
         {
-            wxLogTrace( traceDatabase, wxT( "CacheTableInfo: column '%s' of table '%s' cannot be read; dropped" ),
+            KI_LOG_TRACE( traceDatabase, wxT( "CacheTableInfo: column '%s' of table '%s' cannot be read; dropped" ),
                         column.name, info->name );
             continue;
         }
@@ -188,7 +188,7 @@ bool DATABASE_CONNECTION::CacheTableInfo( const std::string& aTable, const std::
 
         if( !columnsReported.count( requestedLower ) && !requestedCol.empty() )
         {
-            wxLogTrace( traceDatabase,
+            KI_LOG_TRACE( traceDatabase,
                         wxT( "CacheTableInfo: column '%s' not found in catalog for table '%s', adding anyway" ),
                         requestedCol, info->name );
 
@@ -220,7 +220,7 @@ std::vector<std::string> DATABASE_CONNECTION::columnNames( const TABLE_STATE& aT
         names.push_back( spelling );
 
     if( names.empty() )
-        wxLogTrace( traceDatabase, wxT( "columnNames: table %s has no columns mapped!" ), aTable.info.name );
+        KI_LOG_TRACE( traceDatabase, wxT( "columnNames: table %s has no columns mapped!" ), aTable.info.name );
 
     return names;
 }
@@ -284,7 +284,7 @@ bool DATABASE_CONNECTION::readAndCache( const std::string& aTable, const std::st
 
                     if( !keyIndex )
                     {
-                        wxLogTrace( traceDatabase, wxT( "readAndCache: warning: key %s not found in result set" ),
+                        KI_LOG_TRACE( traceDatabase, wxT( "readAndCache: warning: key %s not found in result set" ),
                                     aKey );
                     }
                 }
@@ -310,7 +310,7 @@ bool DATABASE_CONNECTION::readAndCache( const std::string& aTable, const std::st
 
     timer.Stop();
 
-    wxLogTrace( traceDatabase, wxT( "readAndCache from %s completed in %0.1f ms" ), aTable, timer.msecs() );
+    KI_LOG_TRACE( traceDatabase, wxT( "readAndCache from %s completed in %0.1f ms" ), aTable, timer.msecs() );
 
     // The cache is best effort; with no room for the table the rows are still returned
     m_cache->Put( aTable, built );
@@ -327,7 +327,7 @@ bool DATABASE_CONNECTION::SelectOne( const std::string& aTable, const std::pair<
 
     if( !m_backend->IsConnected() )
     {
-        wxLogTrace( traceDatabase, wxT( "Called SelectOne without valid connection!" ) );
+        KI_LOG_TRACE( traceDatabase, wxT( "Called SelectOne without valid connection!" ) );
         return false;
     }
 
@@ -335,7 +335,7 @@ bool DATABASE_CONNECTION::SelectOne( const std::string& aTable, const std::pair<
 
     if( tableIter == m_tables.end() )
     {
-        wxLogTrace( traceDatabase, wxT( "SelectOne: requested table %s not found in cache" ), aTable );
+        KI_LOG_TRACE( traceDatabase, wxT( "SelectOne: requested table %s not found in cache" ), aTable );
         return false;
     }
 
@@ -346,13 +346,13 @@ bool DATABASE_CONNECTION::SelectOne( const std::string& aTable, const std::pair<
     bool cached = m_cache->Get( tableName, cacheEntry );
 
     if( !cached )
-        wxLogTrace( traceDatabase, wxT( "SelectOne: table `%s` not in row cache; will SelectAll" ), tableName );
+        KI_LOG_TRACE( traceDatabase, wxT( "SelectOne: table `%s` not in row cache; will SelectAll" ), tableName );
 
     if( cached || readAndCache( tableName, aWhere.first, cacheEntry ) )
     {
         if( auto hit = cacheEntry.find( aWhere.second ); hit != cacheEntry.end() )
         {
-            wxLogTrace( traceDatabase, wxT( "SelectOne: `%s` with parameter `%s` - cache hit" ), tableName,
+            KI_LOG_TRACE( traceDatabase, wxT( "SelectOne: `%s` with parameter `%s` - cache hit" ), tableName,
                         aWhere.second );
             aResult = hit->second;
             return true;
@@ -372,7 +372,7 @@ bool DATABASE_CONNECTION::SelectOne( const std::string& aTable, const std::pair<
 
     if( keyColumn == table.columns.end() )
     {
-        wxLogTrace( traceDatabase, wxT( "SelectOne: requested column %s not found in cache for %s" ), aWhere.first,
+        KI_LOG_TRACE( traceDatabase, wxT( "SelectOne: requested column %s not found in cache for %s" ), aWhere.first,
                     tableName );
         return false;
     }
@@ -429,14 +429,14 @@ bool DATABASE_CONNECTION::SelectAll( const std::string& aTable, const std::strin
 
     if( !m_backend->IsConnected() )
     {
-        wxLogTrace( traceDatabase, wxT( "Called SelectAll without valid connection!" ) );
+        KI_LOG_TRACE( traceDatabase, wxT( "Called SelectAll without valid connection!" ) );
         return fail();
     }
 
     // A table another library entry described is in m_tables too, so its failure must win
     if( auto failed = m_tableFailures.find( aTable ); failed != m_tableFailures.end() )
     {
-        wxLogTrace( traceDatabase, wxT( "SelectAll: table %s could not be described" ), aTable );
+        KI_LOG_TRACE( traceDatabase, wxT( "SelectAll: table %s could not be described" ), aTable );
 
         if( aStatus )
             *aStatus = QUERY_STATUS{ m_backend->IsConnected(), failed->second.failure, failed->second.error };
@@ -446,7 +446,7 @@ bool DATABASE_CONNECTION::SelectAll( const std::string& aTable, const std::strin
 
     if( !m_tables.count( aTable ) )
     {
-        wxLogTrace( traceDatabase, wxT( "SelectAll: requested table %s not found in cache" ), aTable );
+        KI_LOG_TRACE( traceDatabase, wxT( "SelectAll: requested table %s not found in cache" ), aTable );
 
         if( aStatus )
             *aStatus = QUERY_STATUS{ m_backend->IsConnected(), DB_FAILURE::UNKNOWN, std::string() };
@@ -460,13 +460,13 @@ bool DATABASE_CONNECTION::SelectAll( const std::string& aTable, const std::strin
     {
         if( !readAndCache( aTable, aKey, cacheEntry ) )
         {
-            wxLogTrace( traceDatabase, wxT( "SelectAll: `%s` cache fill failed" ), aTable );
+            KI_LOG_TRACE( traceDatabase, wxT( "SelectAll: `%s` cache fill failed" ), aTable );
             return fail();
         }
     }
     else
     {
-        wxLogTrace( traceDatabase, wxT( "SelectAll: `%s` - returning cached results" ), aTable );
+        KI_LOG_TRACE( traceDatabase, wxT( "SelectAll: `%s` - returning cached results" ), aTable );
     }
 
     aResults.reserve( cacheEntry.size() );

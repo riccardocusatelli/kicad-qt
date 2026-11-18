@@ -116,7 +116,7 @@ public:
      */
     void GenerateHtml()
     {
-        wxCHECK_RET( m_adapter, wxT( "Footprint library table pointer is not valid" ) );
+        KI_CHECK_RET( m_adapter, wxT( "Footprint library table pointer is not valid" ) );
 
         if( !m_lib_id.IsValid() )
             return;
@@ -128,7 +128,7 @@ public:
         catch( const IO_ERROR& ioe )
         {
             // Log to trace instead of error to avoid popup dialogs
-            wxLogTrace( traceLibraries, "Error loading footprint %s from library '%s': %s",
+            KI_LOG_TRACE( traceLibraries, "Error loading footprint %s from library '%s': %s",
                         m_lib_id.GetLibItemName().wx_str(),
                         m_lib_id.GetLibNickname().wx_str(),
                         ioe.What() );

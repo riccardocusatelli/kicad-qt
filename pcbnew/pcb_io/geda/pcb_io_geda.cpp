@@ -404,7 +404,7 @@ FOOTPRINT* GPCB_FPL_CACHE::parseFOOTPRINT( LINE_READER* aLineReader )
                 conv_unit = NEW_GPCB_UNIT_CONV;
         }
 
-        wxLogTrace( traceGedaPcbPlugin, wxT( "%s parameter count = %d." ),
+        KI_LOG_TRACE( traceGedaPcbPlugin, wxT( "%s parameter count = %d." ),
                     parameters[0], paramCnt );
 
         // Parse a line with format: ElementLine [X1 Y1 X2 Y2 Thickness]
@@ -714,7 +714,7 @@ void GPCB_FPL_CACHE::parseParameters( wxArrayString& aParameterList, LINE_READER
             // of a keyword definition.
             if( aParameterList.GetCount() == 1 )
             {
-                wxLogTrace( traceGedaPcbPlugin, dump( aParameterList ) );
+                KI_LOG_TRACE( traceGedaPcbPlugin, dump( aParameterList ) );
                 return;
             }
 
@@ -730,7 +730,7 @@ void GPCB_FPL_CACHE::parseParameters( wxArrayString& aParameterList, LINE_READER
 
             tmp.Append( key );
             aParameterList.Add( tmp );
-            wxLogTrace( traceGedaPcbPlugin, dump( aParameterList ) );
+            KI_LOG_TRACE( traceGedaPcbPlugin, dump( aParameterList ) );
             return;
 
         case '\n':
@@ -1012,7 +1012,7 @@ bool PCB_IO_GEDA::DeleteLibrary( const wxString& aLibraryPath, const std::map<st
             wxRemoveFile( files[i] );
     }
 
-    wxLogTrace( traceGedaPcbPlugin, wxT( "Removing footprint library '%s'" ), aLibraryPath.GetData() );
+    KI_LOG_TRACE( traceGedaPcbPlugin, wxT( "Removing footprint library '%s'" ), aLibraryPath.GetData() );
 
     // Some of the more elaborate wxRemoveFile() crap puts up its own wxLog dialog
     // we don't want that.  we want bare metal portability with no UI here.
@@ -1084,7 +1084,7 @@ void PCB_IO_GEDA::parseParameters( wxArrayString& aParameterList, LINE_READER* a
 
             if( aParameterList.GetCount() == 1 )
             {
-                wxLogTrace( traceGedaPcbPlugin, dump( aParameterList ) );
+                KI_LOG_TRACE( traceGedaPcbPlugin, dump( aParameterList ) );
                 return;
             }
 
@@ -1100,7 +1100,7 @@ void PCB_IO_GEDA::parseParameters( wxArrayString& aParameterList, LINE_READER* a
 
             tmp.Append( key );
             aParameterList.Add( tmp );
-            wxLogTrace( traceGedaPcbPlugin, dump( aParameterList ) );
+            KI_LOG_TRACE( traceGedaPcbPlugin, dump( aParameterList ) );
             return;
 
         case '\n':

@@ -98,7 +98,7 @@ bool BOARD_CONNECTED_ITEM::SetNetCode( int aNetCode, bool aNoAssert )
         m_netinfo = NETINFO_LIST::OrphanedItem();
 
     if( !aNoAssert )
-        wxASSERT( m_netinfo );
+        KI_ASSERT( m_netinfo );
 
     if( board && !( GetFlags() & ROUTER_TRANSIENT ) )
         board->InvalidateClearanceCache( m_Uuid );

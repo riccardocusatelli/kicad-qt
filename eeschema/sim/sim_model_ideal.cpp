@@ -63,7 +63,7 @@ SIM_MODEL_IDEAL::SIM_MODEL_IDEAL( TYPE aType ) :
     case TYPE::C: AddParam( capacitor ); break;
     case TYPE::L: AddParam( inductor  ); break;
     default:
-        wxFAIL_MSG( "Unhandled SIM_MODEL type in SIM_MODEL_IDEAL" );
+        KI_FAIL_MSG( "Unhandled SIM_MODEL type in SIM_MODEL_IDEAL" );
     }
 }
 

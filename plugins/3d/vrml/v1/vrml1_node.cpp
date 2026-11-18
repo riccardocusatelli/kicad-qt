@@ -134,7 +134,7 @@ WRL1NODE::WRL1NODE( NAMEREGISTER* aDictionary )
 
 WRL1NODE::~WRL1NODE()
 {
-    wxLogTrace( traceVrmlPlugin,
+    KI_LOG_TRACE( traceVrmlPlugin,
                 wxT( " * [INFO] ^^ Destroying Type %d with %lu children, %lu references, and %lu "
                      "back pointers." ),
                 m_Type, m_Children.size(), m_Refs.size(), m_BackPointers.size() );
@@ -152,13 +152,13 @@ WRL1NODE::~WRL1NODE()
 
     while( sBP != eBP )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( " * [INFO]%sType %d is unlinking ref #%d" ),
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO]%sType %d is unlinking ref #%d" ),
                     wxString( ' ', (size_t) std::distance( sBP, m_BackPointers.begin() ) * 2 ),
                     m_Type, std::distance( sBP, m_BackPointers.begin() ) );
 
         (*sBP)->unlinkRefNode( this );
 
-        wxLogTrace( traceVrmlPlugin, wxT( " * [INFO]%sType %d has unlinked ref #%d" ),
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO]%sType %d has unlinked ref #%d" ),
                     wxString( ' ', (size_t) std::distance( sBP, m_BackPointers.begin() ) * 2 ),
                     m_Type, std::distance( sBP, m_BackPointers.begin() ) );
 
@@ -174,13 +174,13 @@ WRL1NODE::~WRL1NODE()
     {
         (*sC)->SetParent( nullptr, false );
 
-        wxLogTrace( traceVrmlPlugin, wxT( " * [INFO]%sType %d has unlinked child  #%d" ),
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO]%sType %d has unlinked child  #%d" ),
                     wxString( ' ', (size_t) std::distance( sC, m_Children.begin() ) * 2 ),
                     m_Type, std::distance( sC, m_Children.begin() ) );
 
         delete *sC;
 
-        wxLogTrace( traceVrmlPlugin, wxT( " * [INFO]%sType %d has deleted child  #%d" ),
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( " * [INFO]%sType %d has deleted child  #%d" ),
                     wxString( ' ', (size_t) std::distance( sC, m_Children.begin() ) * 2 ),
                     m_Type, std::distance( sC, m_Children.begin() ) );
 
@@ -241,7 +241,7 @@ void WRL1NODE::delNodeRef( WRL1NODE* aNode )
         return;
     }
 
-    wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+    KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                       " * [BUG] delNodeRef() did not find its target." ),
                 __FILE__, __FUNCTION__, __LINE__ );
 }
@@ -272,7 +272,7 @@ bool WRL1NODE::SetName( const std::string& aName )
 
     if( isdigit( aName[0] ) )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                           " * [INFO] invalid node name '%s' (begins with digit)" ),
                     __FILE__, __FUNCTION__, __LINE__, aName );
 
@@ -288,7 +288,7 @@ bool WRL1NODE::SetName( const std::string& aName )
     if( std::string::npos != aName.find_first_of( BAD_CHARS1 )
         || std::string::npos != aName.find_first_of( BAD_CHARS2 ) )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( "%s:%s:%d\n"
                          " * [INFO] invalid node name '%s' (contains invalid character)" ),
                     __FILE__, __FUNCTION__, __LINE__, aName );
@@ -371,8 +371,8 @@ bool WRL1NODE::SetParent( WRL1NODE* aParent, bool doUnlink )
 
 bool WRL1NODE::AddChildNode( WRL1NODE* aNode )
 {
-    wxCHECK_MSG( aNode, false, wxT( "Invalid node pointer." )  );
-    wxCHECK_MSG( aNode->GetNodeType() != WRL1NODES::WRL1_BASE, false,
+    KI_CHECK_MSG( aNode, false, wxT( "Invalid node pointer." )  );
+    KI_CHECK_MSG( aNode->GetNodeType() != WRL1NODES::WRL1_BASE, false,
                  wxT( "Attempting to add a base node to another node." ) );
 
     std::list< WRL1NODE* >::iterator sC = m_Children.begin();
@@ -398,8 +398,8 @@ bool WRL1NODE::AddChildNode( WRL1NODE* aNode )
 
 bool WRL1NODE::AddRefNode( WRL1NODE* aNode )
 {
-    wxCHECK_MSG( aNode, false, wxT( "Invalid node pointer." )  );
-    wxCHECK_MSG( aNode->GetNodeType() != WRL1NODES::WRL1_BASE, false,
+    KI_CHECK_MSG( aNode, false, wxT( "Invalid node pointer." )  );
+    KI_CHECK_MSG( aNode->GetNodeType() != WRL1NODES::WRL1_BASE, false,
                  wxT( "Attempt to add a base node reference to another base node" ) );
 
     // note: the VRML1 spec does not prevent the reuse of a node at

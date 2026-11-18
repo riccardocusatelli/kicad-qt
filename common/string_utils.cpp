@@ -1709,7 +1709,7 @@ wxString NormalizeFileUri( const wxString& aFileUri )
 {
     wxString uriPathAndFileName;
 
-    wxCHECK( aFileUri.StartsWith( wxS( "file://" ), &uriPathAndFileName ), aFileUri );
+    KI_CHECK( aFileUri.StartsWith( wxS( "file://" ), &uriPathAndFileName ), aFileUri );
 
     wxString tmp = uriPathAndFileName;
     wxString retv = wxS( "file://" );

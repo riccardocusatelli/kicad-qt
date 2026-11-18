@@ -247,7 +247,7 @@ bool SYMBOL_EDIT_FRAME::LoadOneLibrarySymbol( LIB_SYMBOL* aEntry, const wxString
         rebuildMenuAndToolbar = true;
 
     LIB_SYMBOL* lib_symbol = m_libMgr->GetBufferedSymbol( aEntry->GetName(), aLibrary );
-    wxCHECK( lib_symbol, false );
+    KI_CHECK( lib_symbol, false );
 
     // Activating the tab installs these, the outgoing tab must first save the frame's own
     const int unit = aUnit > 0 ? aUnit : 1;
@@ -258,7 +258,7 @@ bool SYMBOL_EDIT_FRAME::LoadOneLibrarySymbol( LIB_SYMBOL* aEntry, const wxString
     SYMBOL_EDITOR_TAB_CONTEXT* ctx = findOrCreateSymbolTab( aLibrary, lib_symbol->GetName(),
                                                             unit, bodyStyle, true,
                                                             &wasCreated );
-    wxCHECK( ctx, false );
+    KI_CHECK( ctx, false );
 
     if( rebuildMenuAndToolbar )
     {
@@ -647,7 +647,7 @@ public:
             // If we're not copying parent symbols, we need to flatten the symbol
             // and only save that.
             flattenedSymbol = symbol.Flatten();
-            wxCHECK( flattenedSymbol, false );
+            KI_CHECK( flattenedSymbol, false );
 
             parentChain.push_back( flattenedSymbol->SharedPtr() );
         }
@@ -700,7 +700,7 @@ public:
                 LIB_SYMBOL* newParent = m_libMgr.GetSymbol( newNames.back(), aNewLibName );
 
                 // We should have stored this already, why didn't we get it back?
-                wxASSERT( newParent );
+                KI_ASSERT( newParent );
                 new_symbol.SetParent( newParent );
 
                 // Keep the recorded parent name in sync with the (possibly renamed) buffered
@@ -745,7 +745,7 @@ private:
             // No default
         }
 
-        wxFAIL_MSG( "Invalid conflict strategy" );
+        KI_FAIL_MSG( "Invalid conflict strategy" );
         return "";
     }
 
@@ -1227,7 +1227,7 @@ void SYMBOL_EDIT_FRAME::ExportSymbol()
 
 void SYMBOL_EDIT_FRAME::UpdateAfterSymbolProperties( wxString* aOldName )
 {
-    wxCHECK( m_symbol, /* void */ );
+    KI_CHECK( m_symbol, /* void */ );
 
     wxString lib;
 
@@ -1493,7 +1493,7 @@ void SYMBOL_EDIT_FRAME::Revert( LIB_ID& aTarget, bool aConfirm )
 
 void SYMBOL_EDIT_FRAME::RevertAll()
 {
-    wxCHECK_RET( m_libMgr, "Library manager object not created." );
+    KI_CHECK_RET( m_libMgr, "Library manager object not created." );
 
     // Every library buffer is restored in place, so no library tab may keep its working copy
     int          unit = m_unit;
@@ -1595,7 +1595,7 @@ bool SYMBOL_EDIT_FRAME::saveLibrary( const wxString& aLibrary, SAVE_LIBRARY_AS a
 
     m_toolManager->RunAction( ACTIONS::cancelInteractive );
 
-    wxCHECK( adapter, false );
+    KI_CHECK( adapter, false );
 
     if( ( aSaveType == SAVE_LIBRARY_AS::ORIGINAL ) && ( aLibrary.empty() || !adapter->HasLibrary( aLibrary ) ) )
     {
@@ -1679,7 +1679,7 @@ bool SYMBOL_EDIT_FRAME::saveLibrary( const wxString& aLibrary, SAVE_LIBRARY_AS a
     else
     {
         std::optional<LIBRARY_TABLE_ROW*> optRow = adapter->GetRow( aLibrary );
-        wxCHECK( optRow, false );
+        KI_CHECK( optRow, false );
 
         wxString libFileName = LIBRARY_MANAGER::GetFullURI( *optRow, true );
 

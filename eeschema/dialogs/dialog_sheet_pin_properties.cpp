@@ -111,7 +111,7 @@ bool DIALOG_SHEET_PIN_PROPERTIES::TransferDataToWindow()
     case LABEL_FLAG_SHAPE::L_BIDI:        m_bidirectional->SetValue( true ); break;
     case LABEL_FLAG_SHAPE::L_TRISTATE:    m_triState->SetValue( true );      break;
     case LABEL_FLAG_SHAPE::L_UNSPECIFIED: m_passive->SetValue( true );       break;
-    default: wxFAIL_MSG( wxT( "Unknown sheet pin shape" ) );                 break;
+    default: KI_FAIL_MSG( wxT( "Unknown sheet pin shape" ) );                 break;
     }
 
     return true;
@@ -195,7 +195,7 @@ void DIALOG_SHEET_PIN_PROPERTIES::onComboBox( wxCommandEvent& aEvent )
             case LABEL_FLAG_SHAPE::L_BIDI:        m_bidirectional->SetValue( true ); break;
             case LABEL_FLAG_SHAPE::L_TRISTATE:    m_triState->SetValue( true );      break;
             case LABEL_FLAG_SHAPE::L_UNSPECIFIED: m_passive->SetValue( true );       break;
-            default: wxFAIL_MSG( wxT( "Unknown sheet pin shape" ) );                 break;
+            default: KI_FAIL_MSG( wxT( "Unknown sheet pin shape" ) );                 break;
             }
 
             break;

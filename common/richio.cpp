@@ -140,7 +140,7 @@ void LINE_READER::expandCapacity( unsigned aNewsize )
         // to ensure capacity line length. Use capacity+5 to cover and corner case
         char* bigger = new char[m_capacity+5];
 
-        wxASSERT( m_capacity >= m_length+1 );
+        KI_ASSERT( m_capacity >= m_length+1 );
 
         memcpy( bigger, m_line, m_length );
         bigger[m_length] = 0;
@@ -274,7 +274,7 @@ char* STRING_LINE_READER::ReadLine()
         if( new_length+1 > m_capacity )   // +1 for terminating nul
             expandCapacity( new_length+1 );
 
-        wxASSERT( m_ndx + new_length <= m_lines.length() );
+        KI_ASSERT( m_ndx + new_length <= m_lines.length() );
 
         memcpy( m_line, &m_lines[m_ndx], new_length );
         m_ndx += new_length;
@@ -561,7 +561,7 @@ public:
         if( !m_fp )
             THROW_IO_ERROR( err );
 
-        wxASSERT( !m_tempPath.IsEmpty() );
+        KI_ASSERT( !m_tempPath.IsEmpty() );
     }
 
     /// Copy is meaningless: the temp file cannot be shared
@@ -632,7 +632,7 @@ public:
      */
     bool Commit()
     {
-        wxCHECK_MSG( m_fp, false, wxT( "Commit() called on an already-used temp file (committed or abandoned)" ) );
+        KI_CHECK_MSG( m_fp, false, wxT( "Commit() called on an already-used temp file (committed or abandoned)" ) );
 
         if( !KIPLATFORM::IO::FlushToDisk( m_fp ) )
         {

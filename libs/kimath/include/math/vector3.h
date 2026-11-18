@@ -161,7 +161,7 @@ VECTOR3<T> VECTOR3<T>::Normalize()
 {
     T norm = EuclideanNorm();
 
-    wxCHECK_MSG( norm > T( 0 ), *this, wxT( "Invalid element length 0" ) );
+    KI_CHECK_MSG( norm > T( 0 ), *this, wxT( "Invalid element length 0" ) );
 
     x /= norm;
     y /= norm;

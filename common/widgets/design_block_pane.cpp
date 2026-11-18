@@ -107,7 +107,7 @@ DESIGN_BLOCK* DESIGN_BLOCK_PANE::GetDesignBlock( const LIB_ID& aLibId, bool aUse
 {
     DESIGN_BLOCK_LIBRARY_ADAPTER* prjLibs = m_frame->Prj().DesignBlockLibs();
 
-    wxCHECK_MSG( prjLibs, nullptr, wxS( "Invalid design block library table." ) );
+    KI_CHECK_MSG( prjLibs, nullptr, wxS( "Invalid design block library table." ) );
 
     wxString      error;
     DESIGN_BLOCK* designBlock = prjLibs->DesignBlockLoadWithOptionalNickname( aLibId, true, &error );
@@ -251,7 +251,7 @@ bool DESIGN_BLOCK_PANE::AddDesignBlockLibrary( const wxString& aDialogTitle, con
     wxString normalizedPath = NormalizePath( libPath, &Pgm().GetLocalEnvVariables(), &m_frame->Prj() );
 
     std::optional<LIBRARY_TABLE*> optTable = manager.Table( LIBRARY_TABLE_TYPE::DESIGN_BLOCK, aScope );
-    wxCHECK( optTable.has_value(), false );
+    KI_CHECK( optTable.has_value(), false );
     LIBRARY_TABLE* table = optTable.value();
 
     bool               success = true;

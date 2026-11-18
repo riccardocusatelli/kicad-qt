@@ -99,7 +99,7 @@ CIRCLE& CIRCLE::ConstructFromTanTanPt( const SEG& aLineA, const SEG& aLineB, con
         Center = aP; // use this circle as a construction to find the actual centers
         std::vector<VECTOR2I> possibleCenters = IntersectLine( anglebisector );
 
-        wxCHECK_MSG( possibleCenters.size() > 0, *this, wxT( "No solutions exist!" ) );
+        KI_CHECK_MSG( possibleCenters.size() > 0, *this, wxT( "No solutions exist!" ) );
         intersectPoint = aLineA.A; // just for the purpose of deciding which solution to return
 
         // For the special case of the two segments being parallel, we will return the solution
@@ -112,7 +112,7 @@ CIRCLE& CIRCLE::ConstructFromTanTanPt( const SEG& aLineA, const SEG& aLineB, con
         // All circles inscribed in the same angle are homothetic with center at the intersection
         // In this code, the prefix "h" denotes "the homothetic image"
         OPT_VECTOR2I intersectCalc = aLineA.IntersectLines( aLineB );
-        wxCHECK_MSG( intersectCalc, *this, wxT( "Lines do not intersect but are not parallel?" ) );
+        KI_CHECK_MSG( intersectCalc, *this, wxT( "Lines do not intersect but are not parallel?" ) );
         intersectPoint = *intersectCalc;
 
         if( aP == intersectPoint )
@@ -139,7 +139,7 @@ CIRCLE& CIRCLE::ConstructFromTanTanPt( const SEG& aLineA, const SEG& aLineB, con
         // Find the homothetic image of aP in the construction circle (hSolution)
         SEG                   throughaP( intersectPoint, aP );
         std::vector<VECTOR2I> hProjections = hSolution.IntersectLine( throughaP );
-        wxCHECK_MSG( hProjections.size() > 0, *this, wxT( "No solutions exist!" ) );
+        KI_CHECK_MSG( hProjections.size() > 0, *this, wxT( "No solutions exist!" ) );
 
         // We want to create a fillet, so the projection of homothetic projection of aP
         // should be the one closest to the intersection
@@ -154,12 +154,12 @@ CIRCLE& CIRCLE::ConstructFromTanTanPt( const SEG& aLineA, const SEG& aLineB, con
             // Find the tangent at line A by homothetic inversion
             SEG          hT( hTanLineA, hSelected );
             OPT_VECTOR2I actTanA = hT.ParallelSeg( aP ).IntersectLines( aLineA );
-            wxCHECK_MSG( actTanA, *this, wxT( "No solutions exist!" ) );
+            KI_CHECK_MSG( actTanA, *this, wxT( "No solutions exist!" ) );
 
             // Find circle center by perpendicular intersection with the angle bisector
             SEG          perpendicularToTanA = aLineA.PerpendicularSeg( *actTanA );
             OPT_VECTOR2I actCenter = perpendicularToTanA.IntersectLines( anglebisector );
-            wxCHECK_MSG( actCenter, *this, wxT( "No solutions exist!" ) );
+            KI_CHECK_MSG( actCenter, *this, wxT( "No solutions exist!" ) );
 
             Center = *actCenter;
             Radius = aLineA.LineDistance( Center );
@@ -169,12 +169,12 @@ CIRCLE& CIRCLE::ConstructFromTanTanPt( const SEG& aLineA, const SEG& aLineB, con
             // Find the tangent at line B by inversion
             SEG          hT( hTanLineB, hSelected );
             OPT_VECTOR2I actTanB = hT.ParallelSeg( aP ).IntersectLines( aLineB );
-            wxCHECK_MSG( actTanB, *this, wxT( "No solutions exist!" ) );
+            KI_CHECK_MSG( actTanB, *this, wxT( "No solutions exist!" ) );
 
             // Find circle center by perpendicular intersection with the angle bisector
             SEG          perpendicularToTanB = aLineB.PerpendicularSeg( *actTanB );
             OPT_VECTOR2I actCenter = perpendicularToTanB.IntersectLines( anglebisector );
-            wxCHECK_MSG( actCenter, *this, wxT( "No solutions exist!" ) );
+            KI_CHECK_MSG( actCenter, *this, wxT( "No solutions exist!" ) );
 
             Center = *actCenter;
             Radius = aLineB.LineDistance( Center );

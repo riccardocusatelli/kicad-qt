@@ -312,13 +312,13 @@ PCB_VIA* SPECCTRA_DB::makeVIA( WIRE_VIA* aVia, PADSTACK* aPadstack, const POINT&
             via->SetViaType( VIATYPE::BLIND );
         }
 
-        wxCHECK2( topLayerNdx >= 0, topLayerNdx = 0 );
+        KI_CHECK2( topLayerNdx >= 0, topLayerNdx = 0 );
 
         via->SetWidth( ::PADSTACK::TEMP_ALL_LAYERS, viaDiam );
         via->SetLayerPair( m_pcbLayer2kicad[ topLayerNdx ], m_pcbLayer2kicad[ botLayerNdx ] );
     }
 
-    wxASSERT( via );
+    KI_ASSERT( via );
 
     via->SetNetCode( aNetCode );
 
@@ -391,7 +391,7 @@ void SPECCTRA_DB::FromSESSION( BOARD* aBoard, COMMIT& aCommit )
                     continue;
 
                 UNIT_RES* resolution = place.GetUnits();
-                wxASSERT( resolution );
+                KI_ASSERT( resolution );
 
                 aCommit.Modify( footprint );
 
@@ -426,7 +426,7 @@ void SPECCTRA_DB::FromSESSION( BOARD* aBoard, COMMIT& aCommit )
                 else
                 {
                     // as I write this, the PARSER *is* catching this, so we should never see below:
-                    wxFAIL_MSG( wxT("DSN::PARSER did not catch an illegal side := 'back|front'") );
+                    KI_FAIL_MSG( wxT("DSN::PARSER did not catch an illegal side := 'back|front'") );
                 }
             }
         }

@@ -76,7 +76,7 @@ types::PadType ToProtoEnum( PAD_ATTRIB aValue )
     case PAD_ATTRIB::NON_COMPONENT: return types::PadType::PT_NON_COMPONENT;
 
     default:
-        wxCHECK_MSG( false, types::PadType::PT_UNKNOWN,
+        KI_CHECK_MSG( false, types::PadType::PT_UNKNOWN,
                      "Unhandled case in ToProtoEnum<PAD_ATTRIB>");
     }
 }
@@ -95,7 +95,7 @@ PAD_ATTRIB FromProtoEnum( types::PadType aValue )
     case types::PadType::PT_NON_COMPONENT:  return PAD_ATTRIB::NON_COMPONENT;
 
     default:
-        wxCHECK_MSG( false,  PAD_ATTRIB::PTH,
+        KI_CHECK_MSG( false,  PAD_ATTRIB::PTH,
                      "Unhandled case in FromProtoEnum<types::PadType>" );
     }
 }
@@ -109,7 +109,7 @@ types::DrillShape ToProtoEnum( PAD_DRILL_SHAPE aValue )
     case PAD_DRILL_SHAPE::OBLONG:    return types::DrillShape::DS_OBLONG;
     case PAD_DRILL_SHAPE::UNDEFINED: return types::DrillShape::DS_UNDEFINED;
     default:
-        wxCHECK_MSG( false, types::DrillShape::DS_UNKNOWN,
+        KI_CHECK_MSG( false, types::DrillShape::DS_UNKNOWN,
                      "Unhandled case in ToProtoEnum<PAD_DRILL_SHAPE>");
     }
 }
@@ -124,7 +124,7 @@ PAD_DRILL_SHAPE FromProtoEnum( types::DrillShape aValue )
     case types::DrillShape::DS_UNKNOWN:
     case types::DrillShape::DS_UNDEFINED:   return PAD_DRILL_SHAPE::UNDEFINED;
     default:
-        wxCHECK_MSG( false, PAD_DRILL_SHAPE::UNDEFINED,
+        KI_CHECK_MSG( false, PAD_DRILL_SHAPE::UNDEFINED,
                      "Unhandled case in FromProtoEnum<types::DrillShape>" );
     }
 }
@@ -143,7 +143,7 @@ types::PadStackShape ToProtoEnum( PAD_SHAPE aValue )
     case PAD_SHAPE::CUSTOM:         return types::PadStackShape::PSS_CUSTOM;
 
     default:
-        wxCHECK_MSG( false, types::PadStackShape::PSS_UNKNOWN,
+        KI_CHECK_MSG( false, types::PadStackShape::PSS_UNKNOWN,
                      "Unhandled case in ToProtoEnum<PAD_SHAPE>");
     }
 }
@@ -164,7 +164,7 @@ PAD_SHAPE FromProtoEnum( types::PadStackShape aValue )
     case types::PadStackShape::PSS_CUSTOM:         return PAD_SHAPE::CUSTOM;
 
     default:
-        wxCHECK_MSG( false, PAD_SHAPE::CIRCLE,
+        KI_CHECK_MSG( false, PAD_SHAPE::CIRCLE,
                      "Unhandled case in FromProtoEnum<types::PadStackShape>" );
     }
 }
@@ -180,7 +180,7 @@ types::PadStackType ToProtoEnum( PADSTACK::MODE aValue )
     case PADSTACK::MODE::CUSTOM:           return types::PadStackType::PST_CUSTOM;
 
     default:
-        wxCHECK_MSG( false, types::PadStackType::PST_UNKNOWN,
+        KI_CHECK_MSG( false, types::PadStackType::PST_UNKNOWN,
                      "Unhandled case in ToProtoEnum<PADSTACK::MODE>");
     }
 }
@@ -197,7 +197,7 @@ PADSTACK::MODE FromProtoEnum( types::PadStackType aValue )
     case types::PadStackType::PST_CUSTOM:           return PADSTACK::MODE::CUSTOM;
 
     default:
-        wxCHECK_MSG( false, PADSTACK::MODE::NORMAL,
+        KI_CHECK_MSG( false, PADSTACK::MODE::NORMAL,
                      "Unhandled case in FromProtoEnum<types::PadStackType>" );
     }
 }
@@ -220,7 +220,7 @@ PAD_PROP FromProtoEnum( types::PadFabricationProperty aValue )
     case types::PadFabricationProperty::PFP_PRESSFIT:        return PAD_PROP::PRESSFIT;
 
     default:
-        wxCHECK_MSG( false, PAD_PROP::NONE,
+        KI_CHECK_MSG( false, PAD_PROP::NONE,
                      "Unhandled case in FromProtoEnum<types::PadFabricationProperty>" );
     }
 }
@@ -242,7 +242,7 @@ types::PadFabricationProperty ToProtoEnum( PAD_PROP aValue )
     case PAD_PROP::PRESSFIT:       return types::PadFabricationProperty::PFP_PRESSFIT;
 
     default:
-        wxCHECK_MSG( false, types::PadFabricationProperty::PFP_UNKNOWN,
+        KI_CHECK_MSG( false, types::PadFabricationProperty::PFP_UNKNOWN,
                      "Unhandled case in ToProtoEnum<PAD_PROP>" );
     }
 }
@@ -259,7 +259,7 @@ types::ViaType ToProtoEnum( VIATYPE aValue )
     case VIATYPE::MICROVIA:     return types::ViaType::VT_MICRO;
 
     default:
-        wxCHECK_MSG( false, types::ViaType::VT_UNKNOWN,
+        KI_CHECK_MSG( false, types::ViaType::VT_UNKNOWN,
                      "Unhandled case in ToProtoEnum<VIATYPE>");
     }
 }
@@ -278,7 +278,7 @@ VIATYPE FromProtoEnum( types::ViaType aValue )
     case types::ViaType::VT_MICRO:        return VIATYPE::MICROVIA;
 
     default:
-        wxCHECK_MSG( false, VIATYPE::THROUGH,
+        KI_CHECK_MSG( false, VIATYPE::THROUGH,
                      "Unhandled case in FromProtoEnum<types::ViaType>" );
     }
 }
@@ -296,7 +296,7 @@ types::ZoneConnectionStyle ToProtoEnum( ZONE_CONNECTION aValue )
     case ZONE_CONNECTION::THT_THERMAL:  return types::ZoneConnectionStyle::ZCS_PTH_THERMAL;
 
     default:
-        wxCHECK_MSG( false, types::ZoneConnectionStyle::ZCS_UNKNOWN,
+        KI_CHECK_MSG( false, types::ZoneConnectionStyle::ZCS_UNKNOWN,
                      "Unhandled case in ToProtoEnum<ZONE_CONNECTION>");
     }
 }
@@ -315,7 +315,7 @@ ZONE_CONNECTION FromProtoEnum( types::ZoneConnectionStyle aValue )
     case types::ZoneConnectionStyle::ZCS_PTH_THERMAL:  return ZONE_CONNECTION::THT_THERMAL;
 
     default:
-        wxCHECK_MSG( false, ZONE_CONNECTION::INHERITED,
+        KI_CHECK_MSG( false, ZONE_CONNECTION::INHERITED,
                      "Unhandled case in FromProtoEnum<types::ZoneConnectionStyle>" );
     }
 }
@@ -370,7 +370,7 @@ CustomRuleConstraintType ToProtoEnum( DRC_CONSTRAINT_T aValue )
     case NET_CHAIN_RETURN_PATH_CONSTRAINT:  return CustomRuleConstraintType::CRCT_NET_CHAIN_RETURN_PATH;
 
     default:
-        wxCHECK_MSG( false, CustomRuleConstraintType::CRCT_UNKNOWN,
+        KI_CHECK_MSG( false, CustomRuleConstraintType::CRCT_UNKNOWN,
                      "Unhandled case in ToProtoEnum<DRC_CONSTRAINT_T>" );
     }
 }
@@ -425,7 +425,7 @@ DRC_CONSTRAINT_T FromProtoEnum( CustomRuleConstraintType aValue )
     case CustomRuleConstraintType::CRCT_NET_CHAIN_RETURN_PATH:  return NET_CHAIN_RETURN_PATH_CONSTRAINT;
 
     default:
-        wxCHECK_MSG( false, NULL_CONSTRAINT,
+        KI_CHECK_MSG( false, NULL_CONSTRAINT,
                      "Unhandled case in FromProtoEnum<CustomRuleConstraintType>" );
     }
 }
@@ -441,7 +441,7 @@ CustomRuleConstraintOption ToProtoEnum( DRC_CONSTRAINT::OPTIONS aValue )
     case DRC_CONSTRAINT::OPTIONS::TIME_DOMAIN:            return CustomRuleConstraintOption::CRCO_TIME_DOMAIN;
 
     default:
-        wxCHECK_MSG( false, CustomRuleConstraintOption::CRCO_UNKNOWN,
+        KI_CHECK_MSG( false, CustomRuleConstraintOption::CRCO_UNKNOWN,
                      "Unhandled case in ToProtoEnum<DRC_CONSTRAINT::OPTIONS>" );
     }
 }
@@ -463,7 +463,7 @@ DRC_CONSTRAINT::OPTIONS FromProtoEnum( CustomRuleConstraintOption aValue )
 
     case CustomRuleConstraintOption::CRCO_UNKNOWN:
     default:
-        wxCHECK_MSG( false, DRC_CONSTRAINT::OPTIONS::SKEW_WITHIN_DIFF_PAIRS,
+        KI_CHECK_MSG( false, DRC_CONSTRAINT::OPTIONS::SKEW_WITHIN_DIFF_PAIRS,
                      "Unhandled case in FromProtoEnum<CustomRuleConstraintOption>" );
     }
 }
@@ -487,7 +487,7 @@ CustomRuleDisallowType ToProtoEnum( DRC_DISALLOW_T aValue )
     case DRC_DISALLOW_FOOTPRINTS:   return CustomRuleDisallowType::CRDT_FOOTPRINTS;
 
     default:
-        wxCHECK_MSG( false, CustomRuleDisallowType::CRDT_UNKNOWN,
+        KI_CHECK_MSG( false, CustomRuleDisallowType::CRDT_UNKNOWN,
                      "Unhandled case in ToProtoEnum<DRC_DISALLOW_T>" );
     }
 }
@@ -512,7 +512,7 @@ DRC_DISALLOW_T FromProtoEnum( CustomRuleDisallowType aValue )
 
     case CustomRuleDisallowType::CRDT_UNKNOWN:
     default:
-        wxCHECK_MSG( false, DRC_DISALLOW_THROUGH_VIAS,
+        KI_CHECK_MSG( false, DRC_DISALLOW_THROUGH_VIAS,
                      "Unhandled case in FromProtoEnum<CustomRuleDisallowType>" );
     }
 }
@@ -536,7 +536,7 @@ types::UnconnectedLayerRemoval ToProtoEnum( UNCONNECTED_LAYER_MODE aValue )
         return types::UnconnectedLayerRemoval::ULR_START_END_ONLY;
 
     default:
-        wxCHECK_MSG( false, types::UnconnectedLayerRemoval::ULR_UNKNOWN,
+        KI_CHECK_MSG( false, types::UnconnectedLayerRemoval::ULR_UNKNOWN,
                      "Unhandled case in ToProtoEnum<PADSTACK::UNCONNECTED_LAYER_MODE>");
     }
 }
@@ -561,7 +561,7 @@ UNCONNECTED_LAYER_MODE FromProtoEnum( types::UnconnectedLayerRemoval aValue )
         return UNCONNECTED_LAYER_MODE::START_END_ONLY;
 
     default:
-        wxCHECK_MSG( false, UNCONNECTED_LAYER_MODE::KEEP_ALL,
+        KI_CHECK_MSG( false, UNCONNECTED_LAYER_MODE::KEEP_ALL,
                      "Unhandled case in FromProtoEnum<types::UnconnectedLayerRemoval>");
     }
 }
@@ -577,7 +577,7 @@ types::IslandRemovalMode ToProtoEnum( ISLAND_REMOVAL_MODE aValue )
     case ISLAND_REMOVAL_MODE::AREA:     return types::IslandRemovalMode::IRM_AREA;
 
     default:
-        wxCHECK_MSG( false, types::IslandRemovalMode::IRM_UNKNOWN,
+        KI_CHECK_MSG( false, types::IslandRemovalMode::IRM_UNKNOWN,
                      "Unhandled case in ToProtoEnum<ISLAND_REMOVAL_MODE>");
     }
 }
@@ -594,7 +594,7 @@ ISLAND_REMOVAL_MODE FromProtoEnum( types::IslandRemovalMode aValue )
     case types::IslandRemovalMode::IRM_AREA:    return ISLAND_REMOVAL_MODE::AREA;
 
     default:
-        wxCHECK_MSG( false, ISLAND_REMOVAL_MODE::ALWAYS,
+        KI_CHECK_MSG( false, ISLAND_REMOVAL_MODE::ALWAYS,
                      "Unhandled case in FromProtoEnum<types::IslandRemovalMode>" );
     }
 }
@@ -610,7 +610,7 @@ types::ZoneFillMode ToProtoEnum( ZONE_FILL_MODE aValue )
     case ZONE_FILL_MODE::COPPER_THIEVING: return types::ZoneFillMode::ZFM_COPPER_THIEVING;
 
     default:
-        wxCHECK_MSG( false, types::ZoneFillMode::ZFM_UNKNOWN,
+        KI_CHECK_MSG( false, types::ZoneFillMode::ZFM_UNKNOWN,
                      "Unhandled case in ToProtoEnum<ZONE_FILL_MODE>");
     }
 }
@@ -627,7 +627,7 @@ ZONE_FILL_MODE FromProtoEnum( types::ZoneFillMode aValue )
     case types::ZoneFillMode::ZFM_COPPER_THIEVING: return ZONE_FILL_MODE::COPPER_THIEVING;
 
     default:
-        wxCHECK_MSG( false, ZONE_FILL_MODE::POLYGONS,
+        KI_CHECK_MSG( false, ZONE_FILL_MODE::POLYGONS,
                      "Unhandled case in FromProtoEnum<types::ZoneFillMode>" );
     }
 }
@@ -643,7 +643,7 @@ types::ZoneCornerSmoothingMode ToProtoEnum( ZONE_SETTINGS::CORNER_SMOOTHING aVal
     case ZONE_SETTINGS::CORNER_SMOOTHING::FILLET:       return types::ZoneCornerSmoothingMode::ZCSM_FILLET;
 
     default:
-        wxCHECK_MSG( false, types::ZoneCornerSmoothingMode::ZCSM_UNKNOWN,
+        KI_CHECK_MSG( false, types::ZoneCornerSmoothingMode::ZCSM_UNKNOWN,
                      "Unhandled case in ToProtoEnum<ZONE_SETTINGS::CORNER_SMOOTHING>" );
     }
 }
@@ -660,7 +660,7 @@ ZONE_SETTINGS::CORNER_SMOOTHING FromProtoEnum( types::ZoneCornerSmoothingMode aV
     case types::ZoneCornerSmoothingMode::ZCSM_FILLET:   return ZONE_SETTINGS::CORNER_SMOOTHING::FILLET;
 
     default:
-        wxCHECK_MSG( false, ZONE_SETTINGS::CORNER_SMOOTHING::NO_SMOOTHING,
+        KI_CHECK_MSG( false, ZONE_SETTINGS::CORNER_SMOOTHING::NO_SMOOTHING,
                      "Unhandled case in FromProtoEnum<ZoneCornerSmoothingMode>" );
     }
 }
@@ -676,7 +676,7 @@ types::ThievingPattern ToProtoEnum( THIEVING_PATTERN aValue )
     case THIEVING_PATTERN::HATCH:   return types::ThievingPattern::TP_CROSSHATCH;
 
     default:
-        wxCHECK_MSG( false, types::ThievingPattern::TP_UNKNOWN,
+        KI_CHECK_MSG( false, types::ThievingPattern::TP_UNKNOWN,
                      "Unhandled case in ToProtoEnum<THIEVING_PATTERN>" );
     }
 }
@@ -693,7 +693,7 @@ THIEVING_PATTERN FromProtoEnum( types::ThievingPattern aValue )
     case types::ThievingPattern::TP_CROSSHATCH: return THIEVING_PATTERN::HATCH;
 
     default:
-        wxCHECK_MSG( false, THIEVING_PATTERN::DOTS,
+        KI_CHECK_MSG( false, THIEVING_PATTERN::DOTS,
                      "Unhandled case in FromProtoEnum<types::ThievingPattern>" );
     }
 }
@@ -710,7 +710,7 @@ types::ZoneBorderStyle ToProtoEnum( ZONE_BORDER_DISPLAY_STYLE aValue )
     case ZONE_BORDER_DISPLAY_STYLE::INVISIBLE_BORDER: return types::ZoneBorderStyle::ZBS_INVISIBLE;
 
     default:
-        wxCHECK_MSG( false, types::ZoneBorderStyle::ZBS_UNKNOWN,
+        KI_CHECK_MSG( false, types::ZoneBorderStyle::ZBS_UNKNOWN,
                      "Unhandled case in ToProtoEnum<ZONE_BORDER_DISPLAY_STYLE>");
     }
 }
@@ -728,7 +728,7 @@ ZONE_BORDER_DISPLAY_STYLE FromProtoEnum( types::ZoneBorderStyle aValue )
     case types::ZoneBorderStyle::ZBS_INVISIBLE:     return ZONE_BORDER_DISPLAY_STYLE::INVISIBLE_BORDER;
 
     default:
-        wxCHECK_MSG( false, ZONE_BORDER_DISPLAY_STYLE::DIAGONAL_EDGE,
+        KI_CHECK_MSG( false, ZONE_BORDER_DISPLAY_STYLE::DIAGONAL_EDGE,
                      "Unhandled case in FromProtoEnum<types::ZoneHatchBorderMode>" );
     }
 }
@@ -752,7 +752,7 @@ types::PlacementRuleSourceType ToProtoEnum( PLACEMENT_SOURCE_T aValue )
         return types::PlacementRuleSourceType::PRST_DESIGN_BLOCK;
 
     default:
-        wxCHECK_MSG( false, types::PlacementRuleSourceType::PRST_UNKNOWN,
+        KI_CHECK_MSG( false, types::PlacementRuleSourceType::PRST_UNKNOWN,
                      "Unhandled case in ToProtoEnum<PLACEMENT_SOURCE_T>");
     }
 }
@@ -777,7 +777,7 @@ PLACEMENT_SOURCE_T FromProtoEnum( types::PlacementRuleSourceType aValue )
         return PLACEMENT_SOURCE_T::DESIGN_BLOCK;
 
     default:
-        wxCHECK_MSG( false, PLACEMENT_SOURCE_T::SHEETNAME,
+        KI_CHECK_MSG( false, PLACEMENT_SOURCE_T::SHEETNAME,
                      "Unhandled case in FromProtoEnum<types::PlacementRuleSourceType>" );
     }
 }
@@ -794,7 +794,7 @@ types::ZoneTeardropType ToProtoEnum( TEARDROP_TYPE aValue )
     case TEARDROP_TYPE::TD_TRACKEND:    return types::ZoneTeardropType::ZTDT_TRACK_END;
 
     default:
-        wxCHECK_MSG( false, types::ZoneTeardropType::ZTDT_UNKNOWN,
+        KI_CHECK_MSG( false, types::ZoneTeardropType::ZTDT_UNKNOWN,
                      "Unhandled case in ToProtoEnum<TEARDROP_TYPE>");
     }
 }
@@ -812,7 +812,7 @@ TEARDROP_TYPE FromProtoEnum( types::ZoneTeardropType aValue )
     case types::ZoneTeardropType::ZTDT_TRACK_END:    return TEARDROP_TYPE::TD_TRACKEND;
 
     default:
-        wxCHECK_MSG( false, TEARDROP_TYPE::TD_NONE,
+        KI_CHECK_MSG( false, TEARDROP_TYPE::TD_NONE,
                      "Unhandled case in FromProtoEnum<types::ZoneTeardropType>" );
     }
 }
@@ -828,7 +828,7 @@ kiapi::board::TeardropTarget ToProtoEnum( TARGET_TD aValue )
     case TARGET_TRACK: return kiapi::board::TeardropTarget::TDT_TRACK;
 
     default:
-        wxCHECK_MSG( false, kiapi::board::TeardropTarget::TDT_UNKNOWN,
+        KI_CHECK_MSG( false, kiapi::board::TeardropTarget::TDT_UNKNOWN,
                      "Unhandled case in ToProtoEnum<TARGET_TD>" );
     }
 }
@@ -861,7 +861,7 @@ types::DimensionTextBorderStyle ToProtoEnum( DIM_TEXT_BORDER aValue )
     case DIM_TEXT_BORDER::ROUNDRECT:    return types::DimensionTextBorderStyle::DTBS_ROUNDRECT;
 
     default:
-        wxCHECK_MSG( false, types::DimensionTextBorderStyle::DTBS_UNKNOWN,
+        KI_CHECK_MSG( false, types::DimensionTextBorderStyle::DTBS_UNKNOWN,
                      "Unhandled case in ToProtoEnum<DIM_TEXT_BORDER>");
     }
 }
@@ -879,7 +879,7 @@ DIM_TEXT_BORDER FromProtoEnum( types::DimensionTextBorderStyle aValue )
     case types::DimensionTextBorderStyle::DTBS_ROUNDRECT:   return DIM_TEXT_BORDER::ROUNDRECT;
 
     default:
-        wxCHECK_MSG( false,  DIM_TEXT_BORDER::NONE,
+        KI_CHECK_MSG( false,  DIM_TEXT_BORDER::NONE,
                      "Unhandled case in FromProtoEnum<types::DimensionTextBorderStyle>" );
     }
 }
@@ -895,7 +895,7 @@ types::DimensionUnitFormat ToProtoEnum( DIM_UNITS_FORMAT aValue )
     case DIM_UNITS_FORMAT::PAREN_SUFFIX:    return types::DimensionUnitFormat::DUF_PAREN_SUFFIX;
 
     default:
-        wxCHECK_MSG( false, types::DimensionUnitFormat::DUF_UNKNOWN,
+        KI_CHECK_MSG( false, types::DimensionUnitFormat::DUF_UNKNOWN,
                      "Unhandled case in ToProtoEnum<DIM_UNITS_FORMAT>");
     }
 }
@@ -912,7 +912,7 @@ DIM_UNITS_FORMAT FromProtoEnum( types::DimensionUnitFormat aValue )
     case types::DimensionUnitFormat::DUF_PAREN_SUFFIX:  return DIM_UNITS_FORMAT::PAREN_SUFFIX;
 
     default:
-        wxCHECK_MSG( false,  DIM_UNITS_FORMAT::NO_SUFFIX,
+        KI_CHECK_MSG( false,  DIM_UNITS_FORMAT::NO_SUFFIX,
                      "Unhandled case in FromProtoEnum<types::DimensionUnitFormat>" );
     }
 }
@@ -927,7 +927,7 @@ types::DimensionArrowDirection ToProtoEnum( DIM_ARROW_DIRECTION aValue )
     case DIM_ARROW_DIRECTION::OUTWARD:  return types::DimensionArrowDirection::DAD_OUTWARD;
 
     default:
-        wxCHECK_MSG( false, types::DimensionArrowDirection::DAD_UNKNOWN,
+        KI_CHECK_MSG( false, types::DimensionArrowDirection::DAD_UNKNOWN,
                      "Unhandled case in ToProtoEnum<DIM_ARROW_DIRECTION>");
     }
 }
@@ -943,7 +943,7 @@ DIM_ARROW_DIRECTION FromProtoEnum( types::DimensionArrowDirection aValue )
     case types::DimensionArrowDirection::DAD_OUTWARD:   return DIM_ARROW_DIRECTION::OUTWARD;
 
     default:
-        wxCHECK_MSG( false,  DIM_ARROW_DIRECTION::OUTWARD,
+        KI_CHECK_MSG( false,  DIM_ARROW_DIRECTION::OUTWARD,
                      "Unhandled case in FromProtoEnum<types::DimensionArrowDirection>" );
     }
 }
@@ -966,7 +966,7 @@ types::DimensionPrecision ToProtoEnum( DIM_PRECISION aValue )
     case DIM_PRECISION::V_VVVVV:    return types::DimensionPrecision::DP_SCALED_IN_5;
 
     default:
-        wxCHECK_MSG( false, types::DimensionPrecision::DP_UNKNOWN,
+        KI_CHECK_MSG( false, types::DimensionPrecision::DP_UNKNOWN,
                      "Unhandled case in ToProtoEnum<DIM_PRECISION>");
     }
 }
@@ -990,7 +990,7 @@ DIM_PRECISION FromProtoEnum( types::DimensionPrecision aValue )
     case types::DimensionPrecision::DP_SCALED_IN_5: return DIM_PRECISION::V_VVVVV;
 
     default:
-        wxCHECK_MSG( false,  DIM_PRECISION::V_VV,
+        KI_CHECK_MSG( false,  DIM_PRECISION::V_VV,
                      "Unhandled case in FromProtoEnum<types::DimensionPrecision>" );
     }
 }
@@ -1006,7 +1006,7 @@ types::DimensionTextPosition ToProtoEnum( DIM_TEXT_POSITION aValue )
     case DIM_TEXT_POSITION::MANUAL:     return types::DimensionTextPosition::DTP_MANUAL;
 
     default:
-        wxCHECK_MSG( false, types::DimensionTextPosition::DTP_UNKNOWN,
+        KI_CHECK_MSG( false, types::DimensionTextPosition::DTP_UNKNOWN,
                      "Unhandled case in ToProtoEnum<DIM_TEXT_POSITION>");
     }
 }
@@ -1023,7 +1023,7 @@ DIM_TEXT_POSITION FromProtoEnum( types::DimensionTextPosition aValue )
     case types::DimensionTextPosition::DTP_MANUAL:  return DIM_TEXT_POSITION::MANUAL;
 
     default:
-        wxCHECK_MSG( false,  DIM_TEXT_POSITION::OUTSIDE,
+        KI_CHECK_MSG( false,  DIM_TEXT_POSITION::OUTSIDE,
                      "Unhandled case in FromProtoEnum<types::DimensionTextPosition>" );
     }
 }
@@ -1040,7 +1040,7 @@ types::DimensionUnit ToProtoEnum( DIM_UNITS_MODE aValue )
     case DIM_UNITS_MODE::AUTOMATIC: return types::DimensionUnit::DU_AUTOMATIC;
 
     default:
-        wxCHECK_MSG( false, types::DimensionUnit::DU_UNKNOWN,
+        KI_CHECK_MSG( false, types::DimensionUnit::DU_UNKNOWN,
                      "Unhandled case in ToProtoEnum<DIM_UNITS_MODE>");
     }
 }
@@ -1058,7 +1058,7 @@ DIM_UNITS_MODE FromProtoEnum( types::DimensionUnit aValue )
     case types::DimensionUnit::DU_AUTOMATIC:    return DIM_UNITS_MODE::AUTOMATIC;
 
     default:
-        wxCHECK_MSG( false,  DIM_UNITS_MODE::AUTOMATIC,
+        KI_CHECK_MSG( false,  DIM_UNITS_MODE::AUTOMATIC,
                      "Unhandled case in FromProtoEnum<types::DimensionUnit>" );
     }
 }
@@ -1074,7 +1074,7 @@ commands::InactiveLayerDisplayMode ToProtoEnum( HIGH_CONTRAST_MODE aValue )
     case HIGH_CONTRAST_MODE::HIDDEN:    return commands::InactiveLayerDisplayMode::ILDM_HIDDEN;
 
     default:
-        wxCHECK_MSG( false, commands::InactiveLayerDisplayMode::ILDM_NORMAL,
+        KI_CHECK_MSG( false, commands::InactiveLayerDisplayMode::ILDM_NORMAL,
                      "Unhandled case in ToProtoEnum<HIGH_CONTRAST_MODE>");
     }
 }
@@ -1091,7 +1091,7 @@ HIGH_CONTRAST_MODE FromProtoEnum( commands::InactiveLayerDisplayMode aValue )
     case commands::InactiveLayerDisplayMode::ILDM_NORMAL:   return HIGH_CONTRAST_MODE::NORMAL;
 
     default:
-        wxCHECK_MSG( false, HIGH_CONTRAST_MODE::NORMAL,
+        KI_CHECK_MSG( false, HIGH_CONTRAST_MODE::NORMAL,
                      "Unhandled case in FromProtoEnum<commands::InactiveLayerDisplayMode>" );
     }
 }
@@ -1107,7 +1107,7 @@ commands::NetColorDisplayMode ToProtoEnum( NET_COLOR_MODE aValue )
     case NET_COLOR_MODE::OFF:       return commands::NetColorDisplayMode::NCDM_OFF;
 
     default:
-        wxCHECK_MSG( false, commands::NetColorDisplayMode::NCDM_UNKNOWN,
+        KI_CHECK_MSG( false, commands::NetColorDisplayMode::NCDM_UNKNOWN,
                      "Unhandled case in ToProtoEnum<NET_COLOR_MODE>");
     }
 }
@@ -1124,7 +1124,7 @@ NET_COLOR_MODE FromProtoEnum( commands::NetColorDisplayMode aValue )
     case commands::NetColorDisplayMode::NCDM_RATSNEST:  return NET_COLOR_MODE::RATSNEST;
 
     default:
-        wxCHECK_MSG( false, NET_COLOR_MODE::RATSNEST,
+        KI_CHECK_MSG( false, NET_COLOR_MODE::RATSNEST,
                      "Unhandled case in FromProtoEnum<commands::NetColorDisplayMode>" );
     }
 }
@@ -1139,7 +1139,7 @@ commands::RatsnestDisplayMode ToProtoEnum( RATSNEST_MODE aValue )
     case RATSNEST_MODE::VISIBLE:    return commands::RatsnestDisplayMode::RDM_VISIBLE_LAYERS;
 
     default:
-        wxCHECK_MSG( false, commands::RatsnestDisplayMode::RDM_UNKNOWN,
+        KI_CHECK_MSG( false, commands::RatsnestDisplayMode::RDM_UNKNOWN,
                      "Unhandled case in ToProtoEnum<RATSNEST_MODE>");
     }
 }
@@ -1155,7 +1155,7 @@ RATSNEST_MODE FromProtoEnum( commands::RatsnestDisplayMode aValue )
     case commands::RatsnestDisplayMode::RDM_ALL_LAYERS:     return RATSNEST_MODE::ALL;
 
     default:
-        wxCHECK_MSG( false, RATSNEST_MODE::ALL,
+        KI_CHECK_MSG( false, RATSNEST_MODE::ALL,
                      "Unhandled case in FromProtoEnum<commands::RatsnestDisplayMode>" );
     }
 }
@@ -1174,7 +1174,7 @@ BoardStackupLayerType ToProtoEnum( BOARD_STACKUP_ITEM_TYPE aValue )
     case BS_ITEM_TYPE_SILKSCREEN:   return BoardStackupLayerType::BSLT_SILKSCREEN;
 
     default:
-        wxCHECK_MSG( false, BoardStackupLayerType::BSLT_UNKNOWN,
+        KI_CHECK_MSG( false, BoardStackupLayerType::BSLT_UNKNOWN,
                      "Unhandled case in ToProtoEnum<BOARD_STACKUP_ITEM_TYPE>");
     }
 }
@@ -1193,7 +1193,7 @@ BOARD_STACKUP_ITEM_TYPE FromProtoEnum( BoardStackupLayerType aValue )
     case BoardStackupLayerType::BSLT_SILKSCREEN:   return BS_ITEM_TYPE_SILKSCREEN;
 
     default:
-        wxCHECK_MSG( false, BS_ITEM_TYPE_UNDEFINED,
+        KI_CHECK_MSG( false, BS_ITEM_TYPE_UNDEFINED,
                      "Unhandled case in FromProtoEnum<BoardStackupLayerType>" );
     }
 }
@@ -1208,7 +1208,7 @@ DielectricModel ToProtoEnum( DIELECTRIC_MODEL aValue )
     case DIELECTRIC_MODEL::DJORDJEVIC_SARKAR: return DielectricModel::DM_DJORDJEVIC_SARKAR;
 
     default:
-        wxCHECK_MSG( false, DielectricModel::DM_UNKNOWN,
+        KI_CHECK_MSG( false, DielectricModel::DM_UNKNOWN,
                      "Unhandled case in ToProtoEnum<DIELECTRIC_MODEL>" );
     }
 }
@@ -1223,7 +1223,7 @@ DIELECTRIC_MODEL FromProtoEnum( DielectricModel aValue )
     case DielectricModel::DM_DJORDJEVIC_SARKAR: return DIELECTRIC_MODEL::DJORDJEVIC_SARKAR;
 
     default:
-        wxCHECK_MSG( false, DIELECTRIC_MODEL::CONSTANT,
+        KI_CHECK_MSG( false, DIELECTRIC_MODEL::CONSTANT,
                      "Unhandled case in FromProtoEnum<DielectricModel>" );
     }
 }
@@ -1239,7 +1239,7 @@ BoardEdgeConnectorType ToProtoEnum( BS_EDGE_CONNECTOR_CONSTRAINTS aValue )
     case BS_EDGE_CONNECTOR_BEVELLED: return BoardEdgeConnectorType::BECT_BEVELED;
 
     default:
-        wxCHECK_MSG( false, BoardEdgeConnectorType::BECT_UNKNOWN,
+        KI_CHECK_MSG( false, BoardEdgeConnectorType::BECT_UNKNOWN,
                      "Unhandled case in ToProtoEnum<BS_EDGE_CONNECTOR_CONSTRAINTS>" );
     }
 }
@@ -1255,7 +1255,7 @@ BS_EDGE_CONNECTOR_CONSTRAINTS FromProtoEnum( BoardEdgeConnectorType aValue )
     case BoardEdgeConnectorType::BECT_BEVELED: return BS_EDGE_CONNECTOR_BEVELLED;
 
     default:
-        wxCHECK_MSG( false, BS_EDGE_CONNECTOR_NONE,
+        KI_CHECK_MSG( false, BS_EDGE_CONNECTOR_NONE,
                      "Unhandled case in FromProtoEnum<BoardEdgeConnectorType>" );
     }
 }
@@ -1275,7 +1275,7 @@ DrcSeverity ToProtoEnum( SEVERITY aValue )
     case RPT_SEVERITY_DEBUG:     return DrcSeverity::DRS_DEBUG;
     case RPT_SEVERITY_UNDEFINED: return DrcSeverity::DRS_UNDEFINED;
     default:
-        wxCHECK_MSG( false, DrcSeverity::DRS_UNDEFINED,
+        KI_CHECK_MSG( false, DrcSeverity::DRS_UNDEFINED,
                      "Unhandled case in ToProtoEnum<SEVERITY>");
     }
 }
@@ -1309,7 +1309,7 @@ PlotDrillMarks ToProtoEnum( DRILL_MARKS aValue )
     case DRILL_MARKS::SMALL_DRILL_SHAPE: return PlotDrillMarks::PDM_SMALL;
     case DRILL_MARKS::FULL_DRILL_SHAPE:  return PlotDrillMarks::PDM_FULL;
     default:
-        wxCHECK_MSG( false, PlotDrillMarks::PDM_UNKNOWN,
+        KI_CHECK_MSG( false, PlotDrillMarks::PDM_UNKNOWN,
                      "Unhandled case in ToProtoEnum<DRILL_MARKS>" );
     }
 }
@@ -1346,7 +1346,7 @@ Board3DFormat ToProtoEnum( JOB_EXPORT_PCB_3D::FORMAT aValue )
     case JOB_EXPORT_PCB_3D::FORMAT::U3D:     return Board3DFormat::B3D_U3D;
     case JOB_EXPORT_PCB_3D::FORMAT::PDF:     return Board3DFormat::B3D_PDF;
     default:
-        wxCHECK_MSG( false, Board3DFormat::B3D_UNKNOWN,
+        KI_CHECK_MSG( false, Board3DFormat::B3D_UNKNOWN,
                      "Unhandled case in ToProtoEnum<JOB_EXPORT_PCB_3D::FORMAT>" );
     }
 }
@@ -1384,7 +1384,7 @@ kiapi::common::types::Units ToProtoEnum( JOB_EXPORT_PCB_3D::VRML_UNITS aValue )
     case JOB_EXPORT_PCB_3D::VRML_UNITS::METERS: return kiapi::common::types::Units::U_METERS;
     case JOB_EXPORT_PCB_3D::VRML_UNITS::TENTHS: return kiapi::common::types::Units::U_TENTHS;
     default:
-        wxCHECK_MSG( false, kiapi::common::types::Units::U_UNKNOWN,
+        KI_CHECK_MSG( false, kiapi::common::types::Units::U_UNKNOWN,
                      "Unhandled case in ToProtoEnum<JOB_EXPORT_PCB_3D::VRML_UNITS>" );
     }
 }
@@ -1414,7 +1414,7 @@ RenderFormat ToProtoEnum( JOB_PCB_RENDER::FORMAT aValue )
     case JOB_PCB_RENDER::FORMAT::PNG:  return RenderFormat::RF_PNG;
     case JOB_PCB_RENDER::FORMAT::JPEG: return RenderFormat::RF_JPEG;
     default:
-        wxCHECK_MSG( false, RenderFormat::RF_UNKNOWN,
+        KI_CHECK_MSG( false, RenderFormat::RF_UNKNOWN,
                      "Unhandled case in ToProtoEnum<JOB_PCB_RENDER::FORMAT>" );
     }
 }
@@ -1444,7 +1444,7 @@ RenderQuality ToProtoEnum( JOB_PCB_RENDER::QUALITY aValue )
     case JOB_PCB_RENDER::QUALITY::USER:         return RenderQuality::RQ_USER;
     case JOB_PCB_RENDER::QUALITY::JOB_SETTINGS: return RenderQuality::RQ_JOB_SETTINGS;
     default:
-        wxCHECK_MSG( false, RenderQuality::RQ_UNKNOWN,
+        KI_CHECK_MSG( false, RenderQuality::RQ_UNKNOWN,
                      "Unhandled case in ToProtoEnum<JOB_PCB_RENDER::QUALITY>" );
     }
 }
@@ -1475,7 +1475,7 @@ RenderBackgroundStyle ToProtoEnum( JOB_PCB_RENDER::BG_STYLE aValue )
     case JOB_PCB_RENDER::BG_STYLE::TRANSPARENT: return RenderBackgroundStyle::RBS_TRANSPARENT;
     case JOB_PCB_RENDER::BG_STYLE::OPAQUE:      return RenderBackgroundStyle::RBS_OPAQUE;
     default:
-        wxCHECK_MSG( false, RenderBackgroundStyle::RBS_UNKNOWN,
+        KI_CHECK_MSG( false, RenderBackgroundStyle::RBS_UNKNOWN,
                      "Unhandled case in ToProtoEnum<JOB_PCB_RENDER::BG_STYLE>" );
     }
 }
@@ -1508,7 +1508,7 @@ RenderSide ToProtoEnum( JOB_PCB_RENDER::SIDE aValue )
     case JOB_PCB_RENDER::SIDE::FRONT:  return RenderSide::RS_FRONT;
     case JOB_PCB_RENDER::SIDE::BACK:   return RenderSide::RS_BACK;
     default:
-        wxCHECK_MSG( false, RenderSide::RS_UNKNOWN,
+        KI_CHECK_MSG( false, RenderSide::RS_UNKNOWN,
                      "Unhandled case in ToProtoEnum<JOB_PCB_RENDER::SIDE>" );
     }
 }
@@ -1540,7 +1540,7 @@ BoardJobPaginationMode ToProtoEnum( JOB_EXPORT_PCB_SVG::GEN_MODE aValue )
     case JOB_EXPORT_PCB_SVG::GEN_MODE::SINGLE: return BoardJobPaginationMode::BJPM_ALL_LAYERS_ONE_PAGE;
     case JOB_EXPORT_PCB_SVG::GEN_MODE::MULTI:  return BoardJobPaginationMode::BJPM_EACH_LAYER_OWN_FILE;
     default:
-        wxCHECK_MSG( false, BoardJobPaginationMode::BJPM_UNKNOWN,
+        KI_CHECK_MSG( false, BoardJobPaginationMode::BJPM_UNKNOWN,
                      "Unhandled case in ToProtoEnum<JOB_EXPORT_PCB_SVG::GEN_MODE>" );
     }
 }
@@ -1571,7 +1571,7 @@ BoardJobPaginationMode ToProtoEnum( JOB_EXPORT_PCB_DXF::GEN_MODE aValue )
     case JOB_EXPORT_PCB_DXF::GEN_MODE::SINGLE: return BoardJobPaginationMode::BJPM_ALL_LAYERS_ONE_PAGE;
     case JOB_EXPORT_PCB_DXF::GEN_MODE::MULTI:  return BoardJobPaginationMode::BJPM_EACH_LAYER_OWN_FILE;
     default:
-        wxCHECK_MSG( false, BoardJobPaginationMode::BJPM_UNKNOWN,
+        KI_CHECK_MSG( false, BoardJobPaginationMode::BJPM_UNKNOWN,
                      "Unhandled case in ToProtoEnum<JOB_EXPORT_PCB_DXF::GEN_MODE>" );
     }
 }
@@ -1606,7 +1606,7 @@ BoardJobPaginationMode ToProtoEnum( JOB_EXPORT_PCB_PDF::GEN_MODE aValue )
     case JOB_EXPORT_PCB_PDF::GEN_MODE::ALL_LAYERS_SEPARATE_FILE:
         return BoardJobPaginationMode::BJPM_EACH_LAYER_OWN_FILE;
     default:
-        wxCHECK_MSG( false, BoardJobPaginationMode::BJPM_UNKNOWN,
+        KI_CHECK_MSG( false, BoardJobPaginationMode::BJPM_UNKNOWN,
                      "Unhandled case in ToProtoEnum<JOB_EXPORT_PCB_PDF::GEN_MODE>" );
     }
 }
@@ -1638,7 +1638,7 @@ BoardJobPaginationMode ToProtoEnum( JOB_EXPORT_PCB_PS::GEN_MODE aValue )
     case JOB_EXPORT_PCB_PS::GEN_MODE::SINGLE: return BoardJobPaginationMode::BJPM_ALL_LAYERS_ONE_PAGE;
     case JOB_EXPORT_PCB_PS::GEN_MODE::MULTI:  return BoardJobPaginationMode::BJPM_EACH_LAYER_OWN_FILE;
     default:
-        wxCHECK_MSG( false, BoardJobPaginationMode::BJPM_UNKNOWN,
+        KI_CHECK_MSG( false, BoardJobPaginationMode::BJPM_UNKNOWN,
                      "Unhandled case in ToProtoEnum<JOB_EXPORT_PCB_PS::GEN_MODE>" );
     }
 }
@@ -1669,7 +1669,7 @@ BoardJobPaginationMode ToProtoEnum( JOB_EXPORT_PCB_PNG::GEN_MODE aValue )
     case JOB_EXPORT_PCB_PNG::GEN_MODE::SINGLE: return BoardJobPaginationMode::BJPM_ALL_LAYERS_ONE_PAGE;
     case JOB_EXPORT_PCB_PNG::GEN_MODE::MULTI:  return BoardJobPaginationMode::BJPM_EACH_LAYER_OWN_FILE;
     default:
-        wxCHECK_MSG( false, BoardJobPaginationMode::BJPM_UNKNOWN,
+        KI_CHECK_MSG( false, BoardJobPaginationMode::BJPM_UNKNOWN,
                      "Unhandled case in ToProtoEnum<JOB_EXPORT_PCB_PNG::GEN_MODE>" );
     }
 }
@@ -1700,7 +1700,7 @@ DrillFormat ToProtoEnum( JOB_EXPORT_PCB_DRILL::DRILL_FORMAT aValue )
     case JOB_EXPORT_PCB_DRILL::DRILL_FORMAT::EXCELLON: return DrillFormat::DF_EXCELLON;
     case JOB_EXPORT_PCB_DRILL::DRILL_FORMAT::GERBER:   return DrillFormat::DF_GERBER;
     default:
-        wxCHECK_MSG( false, DrillFormat::DF_UNKNOWN,
+        KI_CHECK_MSG( false, DrillFormat::DF_UNKNOWN,
                      "Unhandled case in ToProtoEnum<JOB_EXPORT_PCB_DRILL::DRILL_FORMAT>" );
     }
 }
@@ -1728,7 +1728,7 @@ DrillOrigin ToProtoEnum( JOB_EXPORT_PCB_DRILL::DRILL_ORIGIN aValue )
     case JOB_EXPORT_PCB_DRILL::DRILL_ORIGIN::ABS:  return DrillOrigin::DO_ABSOLUTE;
     case JOB_EXPORT_PCB_DRILL::DRILL_ORIGIN::PLOT: return DrillOrigin::DO_PLOT;
     default:
-        wxCHECK_MSG( false, DrillOrigin::DO_UNKNOWN,
+        KI_CHECK_MSG( false, DrillOrigin::DO_UNKNOWN,
                      "Unhandled case in ToProtoEnum<JOB_EXPORT_PCB_DRILL::DRILL_ORIGIN>" );
     }
 }
@@ -1762,7 +1762,7 @@ DrillZerosFormat ToProtoEnum( JOB_EXPORT_PCB_DRILL::ZEROS_FORMAT aValue )
     case JOB_EXPORT_PCB_DRILL::ZEROS_FORMAT::KEEP_ZEROS:
         return DrillZerosFormat::DZF_KEEP_ZEROS;
     default:
-        wxCHECK_MSG( false, DrillZerosFormat::DZF_UNKNOWN,
+        KI_CHECK_MSG( false, DrillZerosFormat::DZF_UNKNOWN,
                      "Unhandled case in ToProtoEnum<JOB_EXPORT_PCB_DRILL::ZEROS_FORMAT>" );
     }
 }
@@ -1804,7 +1804,7 @@ DrillMapFormat ToProtoEnum( JOB_EXPORT_PCB_DRILL::MAP_FORMAT aValue )
     case JOB_EXPORT_PCB_DRILL::MAP_FORMAT::PDF:
         return DrillMapFormat::DMF_PDF;
     default:
-        wxCHECK_MSG( false, DrillMapFormat::DMF_UNKNOWN,
+        KI_CHECK_MSG( false, DrillMapFormat::DMF_UNKNOWN,
                      "Unhandled case in ToProtoEnum<JOB_EXPORT_PCB_DRILL::MAP_FORMAT>" );
     }
 }
@@ -1841,7 +1841,7 @@ kiapi::common::types::Units ToProtoEnum( GENERATED_TABLE_UNITS aValue )
     case GENERATED_TABLE_UNITS::INCH: return kiapi::common::types::Units::U_INCH;
     case GENERATED_TABLE_UNITS::MILS: return kiapi::common::types::Units::U_MILS;
     default:
-        wxCHECK_MSG( false, kiapi::common::types::Units::U_UNKNOWN,
+        KI_CHECK_MSG( false, kiapi::common::types::Units::U_UNKNOWN,
                      "Unhandled case in ToProtoEnum<GENERATED_TABLE_UNITS>" );
     }
 }
@@ -1874,7 +1874,7 @@ kiapi::common::types::Units ToProtoEnum( JOB_EXPORT_PCB_DRILL::DRILL_UNITS aValu
     case JOB_EXPORT_PCB_DRILL::DRILL_UNITS::INCH: return kiapi::common::types::Units::U_INCH;
     case JOB_EXPORT_PCB_DRILL::DRILL_UNITS::MM:   return kiapi::common::types::Units::U_MM;
     default:
-        wxCHECK_MSG( false, kiapi::common::types::Units::U_UNKNOWN,
+        KI_CHECK_MSG( false, kiapi::common::types::Units::U_UNKNOWN,
                      "Unhandled case in ToProtoEnum<JOB_EXPORT_PCB_DRILL::DRILL_UNITS>" );
     }
 }
@@ -1905,7 +1905,7 @@ PositionSide ToProtoEnum( JOB_EXPORT_PCB_POS::SIDE aValue )
     case JOB_EXPORT_PCB_POS::SIDE::BACK:  return PositionSide::PS_BACK;
     case JOB_EXPORT_PCB_POS::SIDE::BOTH:  return PositionSide::PS_BOTH;
     default:
-        wxCHECK_MSG( false, PositionSide::PS_UNKNOWN,
+        KI_CHECK_MSG( false, PositionSide::PS_UNKNOWN,
                      "Unhandled case in ToProtoEnum<JOB_EXPORT_PCB_POS::SIDE>" );
     }
 }
@@ -1935,7 +1935,7 @@ PositionFormat ToProtoEnum( JOB_EXPORT_PCB_POS::FORMAT aValue )
     case JOB_EXPORT_PCB_POS::FORMAT::CSV:    return PositionFormat::PF_CSV;
     case JOB_EXPORT_PCB_POS::FORMAT::GERBER: return PositionFormat::PF_GERBER;
     default:
-        wxCHECK_MSG( false, PositionFormat::PF_UNKNOWN,
+        KI_CHECK_MSG( false, PositionFormat::PF_UNKNOWN,
                      "Unhandled case in ToProtoEnum<JOB_EXPORT_PCB_POS::FORMAT>" );
     }
 }
@@ -1964,7 +1964,7 @@ Ipc2581Version ToProtoEnum( JOB_EXPORT_PCB_IPC2581::IPC2581_VERSION aValue )
     case JOB_EXPORT_PCB_IPC2581::IPC2581_VERSION::B: return Ipc2581Version::IPC2581V_B;
     case JOB_EXPORT_PCB_IPC2581::IPC2581_VERSION::C: return Ipc2581Version::IPC2581V_C;
     default:
-        wxCHECK_MSG( false, Ipc2581Version::IPC2581V_UNKNOWN,
+        KI_CHECK_MSG( false, Ipc2581Version::IPC2581V_UNKNOWN,
                      "Unhandled case in ToProtoEnum<JOB_EXPORT_PCB_IPC2581::IPC2581_VERSION>" );
     }
 }
@@ -1993,7 +1993,7 @@ OdbCompression ToProtoEnum( JOB_EXPORT_PCB_ODB::ODB_COMPRESSION aValue )
     case JOB_EXPORT_PCB_ODB::ODB_COMPRESSION::ZIP:  return OdbCompression::ODBC_ZIP;
     case JOB_EXPORT_PCB_ODB::ODB_COMPRESSION::TGZ:  return OdbCompression::ODBC_TGZ;
     default:
-        wxCHECK_MSG( false, OdbCompression::ODBC_UNKNOWN,
+        KI_CHECK_MSG( false, OdbCompression::ODBC_UNKNOWN,
                      "Unhandled case in ToProtoEnum<JOB_EXPORT_PCB_ODB::ODB_COMPRESSION>" );
     }
 }
@@ -2022,7 +2022,7 @@ OdbVariantPackaging ToProtoEnum( JOB_EXPORT_PCB_ODB::VARIANT_PACKAGING aValue )
     case JOB_EXPORT_PCB_ODB::VARIANT_PACKAGING::SEPARATE: return OdbVariantPackaging::ODBVP_SEPARATE;
     case JOB_EXPORT_PCB_ODB::VARIANT_PACKAGING::COMBINED: return OdbVariantPackaging::ODBVP_COMBINED;
     default:
-        wxCHECK_MSG( false, OdbVariantPackaging::ODBVP_UNKNOWN,
+        KI_CHECK_MSG( false, OdbVariantPackaging::ODBVP_UNKNOWN,
                      "Unhandled case in ToProtoEnum<JOB_EXPORT_PCB_ODB::VARIANT_PACKAGING>" );
     }
 }
@@ -2036,7 +2036,7 @@ OdbOrigin ToProtoEnum( JOB_EXPORT_PCB_ODB::ORIGIN aValue )
     case JOB_EXPORT_PCB_ODB::ORIGIN::ABSOLUTE_COORDS: return OdbOrigin::ODBO_ABSOLUTE;
     case JOB_EXPORT_PCB_ODB::ORIGIN::AUX: return OdbOrigin::ODBO_AUX;
     case JOB_EXPORT_PCB_ODB::ORIGIN::GRID: return OdbOrigin::ODBO_GRID;
-    default: wxCHECK_MSG( false, OdbOrigin::ODBO_UNKNOWN, "Unhandled ODB++ origin" );
+    default: KI_CHECK_MSG( false, OdbOrigin::ODBO_UNKNOWN, "Unhandled ODB++ origin" );
     }
 }
 
@@ -2068,7 +2068,7 @@ FabDataSet ToProtoEnum( JOB_EXPORT_PCB_FAB::DATA_SET aValue )
     case JOB_EXPORT_PCB_FAB::DATA_SET::TEST: return FabDataSet::FDS_TEST;
     case JOB_EXPORT_PCB_FAB::DATA_SET::STENCIL: return FabDataSet::FDS_STENCIL;
     case JOB_EXPORT_PCB_FAB::DATA_SET::DFX: return FabDataSet::FDS_DFX;
-    default: wxCHECK_MSG( false, FabDataSet::FDS_UNKNOWN, "Unhandled fabrication data set" );
+    default: KI_CHECK_MSG( false, FabDataSet::FDS_UNKNOWN, "Unhandled fabrication data set" );
     }
 }
 
@@ -2101,7 +2101,7 @@ FabNetNamePolicy ToProtoEnum( JOB_EXPORT_PCB_FAB::NET_NAMES aValue )
     {
     case JOB_EXPORT_PCB_FAB::NET_NAMES::INCLUDE: return FabNetNamePolicy::FNNP_INCLUDE;
     case JOB_EXPORT_PCB_FAB::NET_NAMES::ANONYMIZE: return FabNetNamePolicy::FNNP_ANONYMIZE;
-    default: wxCHECK_MSG( false, FabNetNamePolicy::FNNP_UNKNOWN, "Unhandled net name policy" );
+    default: KI_CHECK_MSG( false, FabNetNamePolicy::FNNP_UNKNOWN, "Unhandled net name policy" );
     }
 }
 
@@ -2126,7 +2126,7 @@ Ipc2581RefDes ToProtoEnum( JOB_EXPORT_PCB_IPC2581::REF_DES aValue )
     {
     case JOB_EXPORT_PCB_IPC2581::REF_DES::INCLUDE: return Ipc2581RefDes::IPC2581RD_INCLUDE;
     case JOB_EXPORT_PCB_IPC2581::REF_DES::OMIT: return Ipc2581RefDes::IPC2581RD_OMIT;
-    default: wxCHECK_MSG( false, Ipc2581RefDes::IPC2581RD_UNKNOWN, "Unhandled reference designator policy" );
+    default: KI_CHECK_MSG( false, Ipc2581RefDes::IPC2581RD_UNKNOWN, "Unhandled reference designator policy" );
     }
 }
 
@@ -2166,7 +2166,7 @@ StatsOutputFormat ToProtoEnum( JOB_EXPORT_PCB_STATS::OUTPUT_FORMAT aValue )
     case JOB_EXPORT_PCB_STATS::OUTPUT_FORMAT::REPORT: return StatsOutputFormat::SOF_REPORT;
     case JOB_EXPORT_PCB_STATS::OUTPUT_FORMAT::JSON:   return StatsOutputFormat::SOF_JSON;
     default:
-        wxCHECK_MSG( false, StatsOutputFormat::SOF_UNKNOWN,
+        KI_CHECK_MSG( false, StatsOutputFormat::SOF_UNKNOWN,
                      "Unhandled case in ToProtoEnum<JOB_EXPORT_PCB_STATS::OUTPUT_FORMAT>" );
     }
 }
@@ -2194,7 +2194,7 @@ kiapi::common::types::Units ToProtoEnum( JOB_EXPORT_PCB_DXF::DXF_UNITS aValue )
     case JOB_EXPORT_PCB_DXF::DXF_UNITS::INCH: return kiapi::common::types::Units::U_INCH;
     case JOB_EXPORT_PCB_DXF::DXF_UNITS::MM:   return kiapi::common::types::Units::U_MM;
     default:
-        wxCHECK_MSG( false, kiapi::common::types::Units::U_UNKNOWN,
+        KI_CHECK_MSG( false, kiapi::common::types::Units::U_UNKNOWN,
                      "Unhandled case in ToProtoEnum<JOB_EXPORT_PCB_DXF::DXF_UNITS>" );
     }
 }
@@ -2224,7 +2224,7 @@ kiapi::common::types::Units ToProtoEnum( JOB_EXPORT_PCB_POS::UNITS aValue )
     case JOB_EXPORT_PCB_POS::UNITS::INCH: return kiapi::common::types::Units::U_INCH;
     case JOB_EXPORT_PCB_POS::UNITS::MM:   return kiapi::common::types::Units::U_MM;
     default:
-        wxCHECK_MSG( false, kiapi::common::types::Units::U_UNKNOWN,
+        KI_CHECK_MSG( false, kiapi::common::types::Units::U_UNKNOWN,
                      "Unhandled case in ToProtoEnum<JOB_EXPORT_PCB_POS::UNITS>" );
     }
 }
@@ -2254,7 +2254,7 @@ kiapi::common::types::Units ToProtoEnum( JOB_EXPORT_PCB_FAB::UNITS aValue )
     case JOB_EXPORT_PCB_FAB::UNITS::INCH: return kiapi::common::types::Units::U_INCH;
     case JOB_EXPORT_PCB_FAB::UNITS::MM:   return kiapi::common::types::Units::U_MM;
     default:
-        wxCHECK_MSG( false, kiapi::common::types::Units::U_UNKNOWN,
+        KI_CHECK_MSG( false, kiapi::common::types::Units::U_UNKNOWN,
                      "Unhandled case in ToProtoEnum<JOB_EXPORT_PCB_FAB::UNITS>" );
     }
 }
@@ -2284,7 +2284,7 @@ kiapi::common::types::Units ToProtoEnum( IDF_SETTINGS::UNITS aValue )
     case IDF_SETTINGS::UNITS::MILS: return kiapi::common::types::Units::U_MILS;
     case IDF_SETTINGS::UNITS::MM:   return kiapi::common::types::Units::U_MM;
     default:
-        wxCHECK_MSG( false, kiapi::common::types::Units::U_UNKNOWN,
+        KI_CHECK_MSG( false, kiapi::common::types::Units::U_UNKNOWN,
                      "Unhandled case in ToProtoEnum<IDF_SETTINGS::UNITS>" );
     }
 }
@@ -2317,7 +2317,7 @@ IdfOriginMode ToProtoEnum( IDF_SETTINGS::COORD_ORIGIN aValue )
     case IDF_SETTINGS::COORD_ORIGIN::DRILL:  return IdfOriginMode::IOM_DRILL_ORIGIN;
     case IDF_SETTINGS::COORD_ORIGIN::USER:   return IdfOriginMode::IOM_USER;
     default:
-        wxCHECK_MSG( false, IdfOriginMode::IOM_UNKNOWN,
+        KI_CHECK_MSG( false, IdfOriginMode::IOM_UNKNOWN,
                      "Unhandled case in ToProtoEnum<IDF_SETTINGS::COORD_ORIGIN>" );
     }
 }
@@ -2347,7 +2347,7 @@ kiapi::common::types::Units ToProtoEnum( JOB_EXPORT_PCB_STATS::UNITS aValue )
     case JOB_EXPORT_PCB_STATS::UNITS::INCH: return kiapi::common::types::Units::U_INCH;
     case JOB_EXPORT_PCB_STATS::UNITS::MM:   return kiapi::common::types::Units::U_MM;
     default:
-        wxCHECK_MSG( false, kiapi::common::types::Units::U_UNKNOWN,
+        KI_CHECK_MSG( false, kiapi::common::types::Units::U_UNKNOWN,
                      "Unhandled case in ToProtoEnum<JOB_EXPORT_PCB_STATS::UNITS>" );
     }
 }
@@ -2575,7 +2575,7 @@ types::ConstraintType ToProtoEnum( PCB_CONSTRAINT_TYPE aValue )
 
     case PCB_CONSTRAINT_TYPE::UNDEFINED:
     default:
-        wxCHECK_MSG( false, types::ConstraintType::CT_UNKNOWN,
+        KI_CHECK_MSG( false, types::ConstraintType::CT_UNKNOWN,
                      "Unhandled case in ToProtoEnum<PCB_CONSTRAINT_TYPE>" );
     }
 }
@@ -2607,7 +2607,7 @@ PCB_CONSTRAINT_TYPE FromProtoEnum( types::ConstraintType aValue )
     case types::ConstraintType::CT_ARC_ANGLE:         return PCB_CONSTRAINT_TYPE::ARC_ANGLE;
 
     default:
-        wxCHECK_MSG( false, PCB_CONSTRAINT_TYPE::UNDEFINED,
+        KI_CHECK_MSG( false, PCB_CONSTRAINT_TYPE::UNDEFINED,
                      "Unhandled case in FromProtoEnum<types::ConstraintType>" );
     }
 }
@@ -2627,7 +2627,7 @@ types::ConstraintAnchor ToProtoEnum( CONSTRAINT_ANCHOR aValue )
     case CONSTRAINT_ANCHOR::VERTEX: return types::ConstraintAnchor::CA_VERTEX;
 
     default:
-        wxCHECK_MSG( false, types::ConstraintAnchor::CA_UNKNOWN,
+        KI_CHECK_MSG( false, types::ConstraintAnchor::CA_UNKNOWN,
                      "Unhandled case in ToProtoEnum<CONSTRAINT_ANCHOR>" );
     }
 }
@@ -2648,7 +2648,7 @@ CONSTRAINT_ANCHOR FromProtoEnum( types::ConstraintAnchor aValue )
     case types::ConstraintAnchor::CA_VERTEX: return CONSTRAINT_ANCHOR::VERTEX;
 
     default:
-        wxCHECK_MSG( false, CONSTRAINT_ANCHOR::WHOLE,
+        KI_CHECK_MSG( false, CONSTRAINT_ANCHOR::WHOLE,
                      "Unhandled case in FromProtoEnum<types::ConstraintAnchor>" );
     }
 }
@@ -2664,7 +2664,7 @@ types::TuningPatternMode ToProtoEnum( LENGTH_TUNING_MODE aValue )
     case LENGTH_TUNING_MODE::DIFF_PAIR_SKEW: return types::TuningPatternMode::TPM_DIFF_PAIR_SKEW;
 
     default:
-        wxCHECK_MSG( false, types::TuningPatternMode::TPM_UNKNOWN,
+        KI_CHECK_MSG( false, types::TuningPatternMode::TPM_UNKNOWN,
                      "Unhandled case in ToProtoEnum<LENGTH_TUNING_MODE>" );
     }
 }
@@ -2696,7 +2696,7 @@ types::TuningPatternMeanderSide ToProtoEnum( PNS::MEANDER_SIDE aValue )
     case PNS::MEANDER_SIDE_RIGHT:   return types::TuningPatternMeanderSide::TPMS_RIGHT;
 
     default:
-        wxCHECK_MSG( false, types::TuningPatternMeanderSide::TPMS_UNKNOWN,
+        KI_CHECK_MSG( false, types::TuningPatternMeanderSide::TPMS_UNKNOWN,
                      "Unhandled case in ToProtoEnum<PNS::MEANDER_SIDE>" );
     }
 }
@@ -2725,7 +2725,7 @@ types::TuningPatternCornerStyle ToProtoEnum( PNS::MEANDER_STYLE aValue )
     case PNS::MEANDER_STYLE_ROUND:   return types::TuningPatternCornerStyle::TPCS_ROUNDED;
 
     default:
-        wxCHECK_MSG( false, types::TuningPatternCornerStyle::TPCS_UNKNOWN,
+        KI_CHECK_MSG( false, types::TuningPatternCornerStyle::TPCS_UNKNOWN,
                      "Unhandled case in ToProtoEnum<PNS::MEANDER_STYLE>" );
     }
 }
@@ -2754,7 +2754,7 @@ types::TuningPatternStatus ToProtoEnum( PNS::MEANDER_PLACER_BASE::TUNING_STATUS 
     case PNS::MEANDER_PLACER_BASE::TUNED:     return types::TuningPatternStatus::TPS_TUNED;
 
     default:
-        wxCHECK_MSG( false, types::TuningPatternStatus::TPS_UNKNOWN,
+        KI_CHECK_MSG( false, types::TuningPatternStatus::TPS_UNKNOWN,
                      "Unhandled case in ToProtoEnum<TUNING_STATUS>" );
     }
 }
@@ -2785,7 +2785,7 @@ types::ViaStitchLayout ToProtoEnum( PCB_VIA_STITCH_LAYOUT aValue )
     case PCB_VIA_STITCH_LAYOUT::POISSON:   return types::ViaStitchLayout::VSL_POISSON;
 
     default:
-        wxCHECK_MSG( false, types::ViaStitchLayout::VSL_UNKNOWN,
+        KI_CHECK_MSG( false, types::ViaStitchLayout::VSL_UNKNOWN,
                      "Unhandled case in ToProtoEnum<PCB_VIA_STITCH_LAYOUT>" );
     }
 }
@@ -2815,7 +2815,7 @@ types::ViaStitchMode ToProtoEnum( PCB_VIA_STITCH_MODE aValue )
     case PCB_VIA_STITCH_MODE::GUARD:  return types::ViaStitchMode::VSM_GUARD;
 
     default:
-        wxCHECK_MSG( false, types::ViaStitchMode::VSM_UNKNOWN,
+        KI_CHECK_MSG( false, types::ViaStitchMode::VSM_UNKNOWN,
                      "Unhandled case in ToProtoEnum<PCB_VIA_STITCH_MODE>" );
     }
 }
@@ -2844,7 +2844,7 @@ types::ViaStackStyle ToProtoEnum( VIA_STACK_STYLE aValue )
     case VIA_STACK_STYLE::STAGGERED: return types::ViaStackStyle::VSK_STAGGERED;
 
     default:
-        wxCHECK_MSG( false, types::ViaStackStyle::VSK_UNKNOWN,
+        KI_CHECK_MSG( false, types::ViaStackStyle::VSK_UNKNOWN,
                      "Unhandled case in ToProtoEnum<VIA_STACK_STYLE>" );
     }
 }

@@ -89,7 +89,7 @@ RENDER_3D_RAYTRACE_BASE::RENDER_3D_RAYTRACE_BASE( BOARD_ADAPTER& aAdapter, CAMER
         RENDER_3D_BASE( aAdapter, aCamera ),
         m_postShaderSsao( aCamera )
 {
-    wxLogTrace( m_logTrace, wxT( "RENDER_3D_RAYTRACE_BASE::RENDER_3D_RAYTRACE_BASE" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "RENDER_3D_RAYTRACE_BASE::RENDER_3D_RAYTRACE_BASE" ) );
 
     //m_pboId       = GL_NONE;
     //m_pboDataSize = 0;
@@ -116,7 +116,7 @@ RENDER_3D_RAYTRACE_BASE::RENDER_3D_RAYTRACE_BASE( BOARD_ADAPTER& aAdapter, CAMER
 
 RENDER_3D_RAYTRACE_BASE::~RENDER_3D_RAYTRACE_BASE()
 {
-    wxLogTrace( m_logTrace, wxT( "RENDER_3D_RAYTRACE_BASE::~RENDER_3D_RAYTRACE_BASE" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "RENDER_3D_RAYTRACE_BASE::~RENDER_3D_RAYTRACE_BASE" ) );
 
     delete m_outlineBoard2dObjects;
     m_outlineBoard2dObjects = nullptr;
@@ -224,7 +224,7 @@ void RENDER_3D_RAYTRACE_BASE::render( uint8_t* ptrPBO )
         break;
 
     default:
-        wxASSERT_MSG( false, wxT( "Invalid state on m_renderState" ) );
+        KI_ASSERT_MSG( false, wxT( "Invalid state on m_renderState" ) );
         restartRenderState();
         break;
     }
@@ -1401,7 +1401,7 @@ SFVEC4F RENDER_3D_RAYTRACE_BASE::shadeHit( const SFVEC4F& aBgColor, const RAY& a
                                            unsigned int aRecursiveLevel, bool is_testShadow ) const
 {
     const MATERIAL* objMaterial = aHitInfo.pHitObject->GetMaterial();
-    wxASSERT( objMaterial != nullptr );
+    KI_ASSERT( objMaterial != nullptr );
 
     SFVEC4F outColor =
             SFVEC4F( objMaterial->GetEmissiveColor() + objMaterial->GetAmbientColor(), 1.0f );

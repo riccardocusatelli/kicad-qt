@@ -53,7 +53,7 @@ ACTION_MANAGER::ACTION_MANAGER( TOOL_MANAGER* aToolManager ) :
             groupName = group.value().GetName();
         }
 
-        wxLogTrace( kicadTraceToolStack, "ACTION_MANAGER::ACTION_MANAGER: Registering action %s with ID %d, UI ID %d, "
+        KI_LOG_TRACE( kicadTraceToolStack, "ACTION_MANAGER::ACTION_MANAGER: Registering action %s with ID %d, UI ID %d, "
                                          "group %s(%d), toolbar state %s",
                     action->m_name, action->m_id, action->GetUIId(), groupName, groupID,
                     action->m_toolbarState.to_string() );
@@ -72,10 +72,10 @@ void ACTION_MANAGER::RegisterAction( TOOL_ACTION* aAction )
 {
     // TOOL_ACTIONs are supposed to be named [appName.]toolName.actionName (with dots between)
     // action name without specifying at least toolName is not valid
-    wxASSERT( aAction->GetName().find( '.', 0 ) != std::string::npos );
+    KI_ASSERT( aAction->GetName().find( '.', 0 ) != std::string::npos );
 
     // TOOL_ACTIONs must have unique names & ids
-    wxASSERT_MSG( m_actionNameIndex.find( aAction->m_name ) == m_actionNameIndex.end(),
+    KI_ASSERT_MSG( m_actionNameIndex.find( aAction->m_name ) == m_actionNameIndex.end(),
                   wxString::Format( "Action '%s' already registered", aAction->m_name ) );
 
     m_actionNameIndex[aAction->m_name] = aAction;
@@ -94,7 +94,7 @@ void ACTION_MANAGER::SetConditions( const TOOL_ACTION& aAction, const ACTION_CON
 
     m_uiConditions[aAction.GetId()] = aConditions;
 
-    wxLogTrace( kicadTraceToolStack, wxS( "ACTION_MANAGER::SetConditions: Registering conditions for ID %d - %s" ),
+    KI_LOG_TRACE( kicadTraceToolStack, wxS( "ACTION_MANAGER::SetConditions: Registering conditions for ID %d - %s" ),
                 aAction.GetId(), aAction.GetName() );
 
     // Register a new handler with the new conditions
@@ -142,7 +142,7 @@ bool ACTION_MANAGER::RunHotKey( int aHotKey ) const
     if( key >= 'a' && key <= 'z' )
         key = std::toupper( key );
 
-    wxLogTrace( kicadTraceToolStack, wxS( "ACTION_MANAGER::RunHotKey Key: %s" ), KeyNameFromKeyCode( aHotKey ) );
+    KI_LOG_TRACE( kicadTraceToolStack, wxS( "ACTION_MANAGER::RunHotKey Key: %s" ), KeyNameFromKeyCode( aHotKey ) );
 
     int  matchedHotKey = key | mod;
     auto it = m_actionHotKeys.find( matchedHotKey );
@@ -156,7 +156,7 @@ bool ACTION_MANAGER::RunHotKey( int aHotKey ) const
     {
         matchedHotKey = key | ( mod & ~MD_SHIFT );
 
-        wxLogTrace( kicadTraceToolStack, wxS( "ACTION_MANAGER::RunHotKey No actions found, searching with key: %s" ),
+        KI_LOG_TRACE( kicadTraceToolStack, wxS( "ACTION_MANAGER::RunHotKey No actions found, searching with key: %s" ),
                     KeyNameFromKeyCode( matchedHotKey ) );
 
         it = m_actionHotKeys.find( matchedHotKey );
@@ -216,7 +216,7 @@ bool ACTION_MANAGER::RunHotKey( int aHotKey ) const
         if( const ACTION_CONDITIONS* aCond = GetCondition( *context ) )
             runAction = aCond->GetHotkeyCondition()( sel );
 
-        wxLogTrace( kicadTraceToolStack, wxS( "ACTION_MANAGER::RunHotKey %s context action: %s for hotkey %s" ),
+        KI_LOG_TRACE( kicadTraceToolStack, wxS( "ACTION_MANAGER::RunHotKey %s context action: %s for hotkey %s" ),
                     runAction ? wxS( "Running" ) : wxS( "Not running" ),
                     context->GetName(), KeyNameFromKeyCode( aHotKey ) );
 
@@ -232,7 +232,7 @@ bool ACTION_MANAGER::RunHotKey( int aHotKey ) const
             if( const ACTION_CONDITIONS* aCond = GetCondition( *act ) )
                 runAction = aCond->GetHotkeyCondition()( sel );
 
-            wxLogTrace( kicadTraceToolStack, wxS( "ACTION_MANAGER::RunHotKey %s global action: %s for hotkey %s" ),
+            KI_LOG_TRACE( kicadTraceToolStack, wxS( "ACTION_MANAGER::RunHotKey %s global action: %s for hotkey %s" ),
                         runAction ? wxS( "Running" ) : wxS( "Not running" ),
                         act->GetName(), KeyNameFromKeyCode( aHotKey ) );
 
@@ -241,7 +241,7 @@ bool ACTION_MANAGER::RunHotKey( int aHotKey ) const
         }
     }
 
-    wxLogTrace( kicadTraceToolStack, wxS( "ACTION_MANAGER::RunHotKey No action found for key %s" ),
+    KI_LOG_TRACE( kicadTraceToolStack, wxS( "ACTION_MANAGER::RunHotKey No action found for key %s" ),
                 KeyNameFromKeyCode( aHotKey ) );
 
     return false;

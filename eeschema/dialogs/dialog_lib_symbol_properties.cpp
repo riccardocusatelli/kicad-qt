@@ -774,7 +774,7 @@ bool DIALOG_LIB_SYMBOL_PROPERTIES::TransferDataFromWindow()
         LIB_SYMBOL* newParent = m_Parent->GetLibManager().GetSymbol( parentName, libName );
 
         // Verify that the requested parent exists
-        wxCHECK( newParent, false );
+        KI_CHECK( newParent, false );
 
         m_libEntry->SetParent( newParent );
     }

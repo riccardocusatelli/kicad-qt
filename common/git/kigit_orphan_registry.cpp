@@ -82,7 +82,7 @@ size_t KIGIT_ORPHAN_REGISTRY::JoinAll( std::chrono::milliseconds aTimeout )
         }
         else
         {
-            wxLogTrace( traceGit,
+            KI_LOG_TRACE( traceGit,
                         "Orphan git thread [%s] did not finish in time; detaching",
                         entry.m_label.c_str() );
 

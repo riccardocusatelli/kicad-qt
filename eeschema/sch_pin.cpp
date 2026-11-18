@@ -191,7 +191,7 @@ SCH_PIN::SCH_PIN( SCH_SYMBOL* aParentSymbol, SCH_PIN* aLibPin ) :
         m_type( ELECTRICAL_PINTYPE::PT_INHERIT ),
         m_isDangling( true )
 {
-    wxASSERT( aParentSymbol );
+    KI_ASSERT( aParentSymbol );
 
     SetName( m_libPin->GetName() );
     SetNumber( m_libPin->GetNumber() );
@@ -213,7 +213,7 @@ SCH_PIN::SCH_PIN( SCH_SYMBOL* aParentSymbol, const wxString& aNumber, const wxSt
         m_alt( aAlt ),
         m_isDangling( true )
 {
-    wxASSERT( aParentSymbol );
+    KI_ASSERT( aParentSymbol );
 
     const_cast<KIID&>( m_Uuid ) = aUuid;
     m_layer = LAYER_PIN;
@@ -273,7 +273,7 @@ SCH_PIN& SCH_PIN::operator=( const SCH_PIN& aPin )
 
 void SCH_PIN::swapData( SCH_ITEM* aItem )
 {
-    wxCHECK( aItem && aItem->Type() == SCH_PIN_T, /* void */ );
+    KI_CHECK( aItem && aItem->Type() == SCH_PIN_T, /* void */ );
 
     SCH_PIN* pin = static_cast<SCH_PIN*>( aItem );
 
@@ -329,7 +329,7 @@ void SCH_PIN::Serialize( google::protobuf::Any& aContainer ) const
     kiapi::common::PackCustomProperties( pin.mutable_custom_properties(), *this );
 
     if( !aContainer.PackFrom( pin ) )
-        wxFAIL_MSG( wxT( "Failed to pack SCH_PIN" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack SCH_PIN" ) );
 }
 
 
@@ -573,14 +573,14 @@ void SCH_PIN::SetAlt( const wxString& aAlt )
 
     if( !m_libPin )
     {
-        wxFAIL_MSG( wxString::Format( wxS( "Pin '%s' has no corresponding lib_pin" ), m_number ) );
+        KI_FAIL_MSG( wxString::Format( wxS( "Pin '%s' has no corresponding lib_pin" ), m_number ) );
         m_alt = wxEmptyString;
         return;
     }
 
     if( !m_libPin->GetAlternates().contains( aAlt ) )
     {
-        wxFAIL_MSG( wxString::Format( wxS( "Pin '%s' has no alterate '%s'" ), m_number, aAlt ) );
+        KI_FAIL_MSG( wxString::Format( wxS( "Pin '%s' has no alterate '%s'" ), m_number, aAlt ) );
         m_alt = wxEmptyString;
         return;
     }
@@ -619,7 +619,7 @@ bool SCH_PIN::IsStacked( const SCH_PIN* aPin ) const
                              || isPassiveOrNic( GetType() )
                              || isPassiveOrNic( aPin->GetType() );
 
-    wxLogTrace( traceStackedPins,
+    KI_LOG_TRACE( traceStackedPins,
                 wxString::Format( "IsStacked: this='%s/%s' other='%s/%s' sameParent=%d samePos=%d sameName=%d typeCompat=%d",
                                   GetName(), GetNumber(), aPin->GetName(), aPin->GetNumber(), sameParent,
                                   samePos, sameName, typeCompat ) );
@@ -965,7 +965,7 @@ void SCH_PIN::PlotPinType( PLOTTER *aPlotter, const VECTOR2I &aPosition,
     case PIN_ORIENTATION::PIN_DOWN:   y1 = aPosition.y + pinLength;  MapY1 = -1;             break;
     case PIN_ORIENTATION::PIN_LEFT:   x1 = aPosition.x - pinLength;  MapX1 = 1;              break;
     case PIN_ORIENTATION::PIN_RIGHT:  x1 = aPosition.x + pinLength;  MapX1 = -1;             break;
-    case PIN_ORIENTATION::INHERIT:    wxFAIL_MSG( wxS( "aOrientation must be resolved!" ) ); break;
+    case PIN_ORIENTATION::INHERIT:    KI_FAIL_MSG( wxS( "aOrientation must be resolved!" ) ); break;
     }
 
     if( m_shape == GRAPHIC_PINSHAPE::INVERTED || m_shape == GRAPHIC_PINSHAPE::INVERTED_CLOCK )
@@ -1487,7 +1487,7 @@ EDA_ITEM* SCH_PIN::Clone() const
 {
     //return new SCH_PIN( *this );
     SCH_ITEM* newPin = new SCH_PIN( *this );
-    wxASSERT( newPin->GetUnit() == m_unit && newPin->GetBodyStyle() == m_bodyStyle );
+    KI_ASSERT( newPin->GetUnit() == m_unit && newPin->GetBodyStyle() == m_bodyStyle );
     return newPin;
 }
 
@@ -1738,7 +1738,7 @@ wxString SCH_PIN::GetDefaultNetName( const SCH_SHEET_PATH& aPath, bool aForceNoC
 
     if( fact.padNumber != fact.shownNumber )
     {
-        wxLogTrace( traceStackedPins,
+        KI_LOG_TRACE( traceStackedPins,
                     wxString::Format( "GetDefaultNetName: stacked pin shown='%s' -> using smallest logical='%s'",
                                       fact.shownNumber, fact.padNumber ) );
     }
@@ -1818,7 +1818,7 @@ bool SCH_PIN::HasConnectivityChanges( const SCH_ITEM* aItem,
     const SCH_PIN* pin = dynamic_cast<const SCH_PIN*>( aItem );
 
     // Don't compare against a different SCH_ITEM.
-    wxCHECK( pin, false );
+    KI_CHECK( pin, false );
 
     if( GetPosition() != pin->GetPosition() )
         return true;
@@ -2065,7 +2065,7 @@ int PIN_COMPARISON_DATA::Compare( const PIN_COMPARISON_DATA& aOther, int aCompar
 
 PIN_COMPARISON_DATA SCH_PIN::ComparisonData() const
 {
-    wxASSERT( dynamic_cast<const LIB_SYMBOL*>( GetParentSymbol() ) );
+    KI_ASSERT( dynamic_cast<const LIB_SYMBOL*>( GetParentSymbol() ) );
     return { GetUnit(), GetBodyStyle(), IsPrivate(), m_position, m_number, m_name, m_length,
              m_orientation, m_shape, m_type, m_hidden, m_numTextSize, m_nameTextSize, m_alternates };
 }
@@ -2082,7 +2082,7 @@ int SCH_PIN::compare( const SCH_ITEM& aOther, int aCompareFlags ) const
 
     const SCH_PIN* tmp = static_cast<const SCH_PIN*>( &aOther );
 
-    wxCHECK( tmp, -1 );
+    KI_CHECK( tmp, -1 );
 
     if( dynamic_cast<const LIB_SYMBOL*>( GetParentSymbol() ) )
     {

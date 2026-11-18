@@ -792,7 +792,7 @@ void DP_GATEWAYS::BuildFromPrimitivePair( const DP_PRIMITIVE_PAIR& aPair, bool a
     }
 
     default:
-        wxFAIL_MSG( wxString::Format( wxT( "Unsupported starting primitive: %d (%s)." ),
+        KI_FAIL_MSG( wxString::Format( wxT( "Unsupported starting primitive: %d (%s)." ),
                                       shP->Type(),
                                       SHAPE_TYPE_asString( shP->Type() ) ) );
         break;

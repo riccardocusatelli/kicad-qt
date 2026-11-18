@@ -91,5 +91,5 @@ wxString JOB_EXPORT_SCH_NETLIST::GetSettingsDialogTitle() const
 }
 
 
-REGISTER_JOB( sch_export_netlist, _HKI( "Schematic: Export Netlist" ), KIWAY::FACE_SCH,
+REGISTER_JOB( sch_export_netlist, _HKI( "Schematic: Export Netlist" ), KIWAY_FACES::FACE_SCH,
               JOB_EXPORT_SCH_NETLIST );

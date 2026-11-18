@@ -366,7 +366,7 @@ std::vector<nlohmann::json> EASYEDAPRO::ParseJsonLines( wxInputStream&  aInput, 
         }
         catch( nlohmann::json::exception& e )
         {
-            wxLogTrace( traceEasyEdaIo, wxT( "Cannot parse JSON line %d in '%s': %s" ),
+            KI_LOG_TRACE( traceEasyEdaIo, wxT( "Cannot parse JSON line %d in '%s': %s" ),
                                             currentLine, aSource, e.what() );
         }
 
@@ -406,7 +406,7 @@ EASYEDAPRO::ParseJsonLinesWithSeparation( wxInputStream& aInput, const wxString&
         }
         catch( nlohmann::json::exception& e )
         {
-            wxLogTrace( traceEasyEdaIo, wxT( "Cannot parse JSON line %d in '%s': %s" ),
+            KI_LOG_TRACE( traceEasyEdaIo, wxT( "Cannot parse JSON line %d in '%s': %s" ),
                                             currentLine, aSource, e.what() );
         }
 
@@ -645,7 +645,7 @@ std::map<wxString, EASYEDAPRO::BLOB> EASYEDAPRO::BuildV3BlobMap( const V3_DOC_PA
             }
             catch( nlohmann::json::exception& e )
             {
-                wxLogTrace( traceEasyEdaIo, wxT( "EasyEDA Pro v3 blob in '%s' was skipped due to parse error: %s" ),
+                KI_LOG_TRACE( traceEasyEdaIo, wxT( "EasyEDA Pro v3 blob in '%s' was skipped due to parse error: %s" ),
                                                 blobDocUuid, e.what() );
             }
         }
@@ -932,7 +932,7 @@ std::map<wxString, EASYEDAPRO::V3_SYMBOL_LIB_ITEM> EASYEDAPRO::BuildV3SymbolLibr
         }
         catch( nlohmann::json::exception& e )
         {
-            wxLogTrace( traceEasyEdaIo, wxT( "Failed to parse EasyEDA Pro v3 device metadata: %s" ), e.what() );
+            KI_LOG_TRACE( traceEasyEdaIo, wxT( "Failed to parse EasyEDA Pro v3 device metadata: %s" ), e.what() );
             return {};
         }
 

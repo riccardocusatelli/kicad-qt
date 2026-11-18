@@ -671,7 +671,7 @@ int PCB_SELECTION_TOOL::Main( const TOOL_EVENT& aEvent )
                 }
                 else
                 {
-                    wxASSERT_MSG( false, wxT( "Unknown selection mode" ) );
+                    KI_ASSERT_MSG( false, wxT( "Unknown selection mode" ) );
                     SelectRectArea( aEvent );
                 }
             }
@@ -809,7 +809,7 @@ int PCB_SELECTION_TOOL::Main( const TOOL_EVENT& aEvent )
                     }
                     catch( const std::runtime_error& e )
                     {
-                        wxCHECK_MSG( false, 0, e.what() );
+                        KI_CHECK_MSG( false, 0, e.what() );
                     }
                 }
             }
@@ -831,7 +831,7 @@ int PCB_SELECTION_TOOL::Main( const TOOL_EVENT& aEvent )
 
 void PCB_SELECTION_TOOL::EnterGroup()
 {
-    wxCHECK_RET( m_selection.GetSize() == 1 && m_selection[0]->Type() == PCB_GROUP_T,
+    KI_CHECK_RET( m_selection.GetSize() == 1 && m_selection[0]->Type() == PCB_GROUP_T,
                  wxT( "EnterGroup called when selection is not a single group" ) );
     PCB_GROUP* aGroup = static_cast<PCB_GROUP*>( m_selection[0] );
 
@@ -2933,8 +2933,8 @@ int PCB_SELECTION_TOOL::selectUnconnected( const TOOL_EVENT& aEvent )
     {
         for( const CN_EDGE& edge : conn->GetRatsnestForPad( pad ) )
         {
-            wxCHECK2( edge.GetSourceNode() && !edge.GetSourceNode()->Dirty(), continue );
-            wxCHECK2( edge.GetTargetNode() && !edge.GetTargetNode()->Dirty(), continue );
+            KI_CHECK2( edge.GetSourceNode() && !edge.GetSourceNode()->Dirty(), continue );
+            KI_CHECK2( edge.GetTargetNode() && !edge.GetTargetNode()->Dirty(), continue );
 
             BOARD_CONNECTED_ITEM* sourceParent = edge.GetSourceNode()->Parent();
             BOARD_CONNECTED_ITEM* targetParent = edge.GetTargetNode()->Parent();
@@ -3019,7 +3019,7 @@ int PCB_SELECTION_TOOL::grabUnconnected( const TOOL_EVENT& aEvent )
             const std::shared_ptr<const CN_ANCHOR>& source = edge.GetSourceNode();
             const std::shared_ptr<const CN_ANCHOR>& target = edge.GetTargetNode();
 
-            wxCHECK2( source && !source->Dirty() && target && !target->Dirty(), continue );
+            KI_CHECK2( source && !source->Dirty() && target && !target->Dirty(), continue );
 
             if( source->Parent()->GetParentFootprint() == target->Parent()->GetParentFootprint() )
             {
@@ -3546,7 +3546,7 @@ void PCB_SELECTION_TOOL::ZoomFitCrossProbeBBox( const BOX2I& aBBox )
         // Use standard KiCad zoom algorithm for parts too wide to fit screen/
         ratio = kicadRatio;
         compRatioBent = 1.0; // Reset so we don't modify the "KiCad" ratio
-        wxLogTrace( "CROSS_PROBE_SCALE", "Part TOO WIDE for screen.  Using normal KiCad zoom ratio: %1.5f", ratio );
+        KI_LOG_TRACE( "CROSS_PROBE_SCALE", "Part TOO WIDE for screen.  Using normal KiCad zoom ratio: %1.5f", ratio );
     }
 
     // Now that "compRatioBent" holds our final scaling factor we apply it to the original
@@ -4717,7 +4717,7 @@ int PCB_SELECTION_TOOL::hitTestDistance( const VECTOR2I& aWhere, BOARD_ITEM* aIt
         }
         catch( const std::exception& e )
         {
-            wxFAIL_MSG( wxString::Format( wxT( "Clipper exception occurred: %s" ), e.what() ) );
+            KI_FAIL_MSG( wxString::Format( wxT( "Clipper exception occurred: %s" ), e.what() ) );
         }
 
         // Consider footprints larger than the viewport only as a last resort
@@ -4787,21 +4787,21 @@ int PCB_SELECTION_TOOL::hitTestDistance( const VECTOR2I& aWhere, BOARD_ITEM* aIt
 
 void PCB_SELECTION_TOOL::pruneObscuredSelectionCandidates( GENERAL_COLLECTOR& aCollector ) const
 {
-    wxCHECK( m_frame, /* void */ );
+    KI_CHECK( m_frame, /* void */ );
 
     if( aCollector.GetCount() < 2 )
         return;
 
     const RENDER_SETTINGS* settings = getView()->GetPainter()->GetSettings();
 
-    wxCHECK( settings, /* void */ );
+    KI_CHECK( settings, /* void */ );
 
     PCB_LAYER_ID activeLayer = m_frame->GetActiveLayer();
     LSET visibleLayers = m_frame->GetBoard()->GetVisibleLayers();
     LSET enabledLayers = m_frame->GetBoard()->GetEnabledLayers();
     LSEQ enabledLayerStack = enabledLayers.SeqStackupTop2Bottom( activeLayer );
 
-    wxCHECK( !enabledLayerStack.empty(), /* void */ );
+    KI_CHECK( !enabledLayerStack.empty(), /* void */ );
 
     auto isZoneFillKeepout =
             []( const BOARD_ITEM* aItem ) -> bool
@@ -4879,7 +4879,7 @@ void PCB_SELECTION_TOOL::pruneObscuredSelectionCandidates( GENERAL_COLLECTOR& aC
                 {
                     const BOARD_ITEM* item = opacityItem.m_Item;
 
-                    wxCHECK( item, false );
+                    KI_CHECK( item, false );
 
                     // Check items that span multiple layers for visibility.
                     if( visibleItems.count( item ) )
@@ -4926,7 +4926,7 @@ void PCB_SELECTION_TOOL::pruneObscuredSelectionCandidates( GENERAL_COLLECTOR& aC
 
     for( const BOARD_ITEM* itemToRemove : itemsToRemove )
     {
-        wxCHECK( aCollector.GetCount() > 1, /* void */ );
+        KI_CHECK( aCollector.GetCount() > 1, /* void */ );
         aCollector.Remove( itemToRemove );
     }
 }
@@ -5093,7 +5093,7 @@ void PCB_SELECTION_TOOL::GuessSelectionCandidates( GENERAL_COLLECTOR& aCollector
             }
             catch( const std::exception& e )
             {
-                wxFAIL_MSG( wxString::Format( wxT( "Clipper exception occurred: %s" ), e.what() ) );
+                KI_FAIL_MSG( wxString::Format( wxT( "Clipper exception occurred: %s" ), e.what() ) );
             }
         }
 

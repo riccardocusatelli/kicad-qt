@@ -489,7 +489,7 @@ void WX_INFOBAR::AddButton( wxButton* aButton )
 {
     wxSizer* sizer = GetSizer();
 
-    wxASSERT( aButton );
+    KI_ASSERT( aButton );
 
 #ifdef __WXMAC__
     // Based on the code in the original class:
@@ -606,7 +606,7 @@ EDA_INFOBAR_PANEL::EDA_INFOBAR_PANEL( wxWindow* aParent, wxWindowID aId, const w
 
 void EDA_INFOBAR_PANEL::AddInfoBar( WX_INFOBAR* aInfoBar )
 {
-    wxASSERT( aInfoBar );
+    KI_ASSERT( aInfoBar );
 
     aInfoBar->Reparent( this );
     m_mainSizer->Add( aInfoBar, 1, wxEXPAND, 0 );
@@ -616,7 +616,7 @@ void EDA_INFOBAR_PANEL::AddInfoBar( WX_INFOBAR* aInfoBar )
 
 void EDA_INFOBAR_PANEL::AddOtherItem( wxWindow* aOtherItem )
 {
-    wxASSERT( aOtherItem );
+    KI_ASSERT( aOtherItem );
 
     aOtherItem->Reparent( this );
     m_mainSizer->Add( aOtherItem, 1, wxEXPAND, 0 );

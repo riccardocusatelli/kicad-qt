@@ -231,7 +231,7 @@ wxString NETLIST_EXPORTER_BASE::MakeCommandLine( const wxString& aFormatString, 
 SCH_SYMBOL* NETLIST_EXPORTER_BASE::findNextSymbol( EDA_ITEM* aItem, const SCH_SHEET_PATH& aSheetPath,
                                                    const EXPORT_EXCLUSION& aExcluded )
 {
-    wxCHECK( aItem, nullptr );
+    KI_CHECK( aItem, nullptr );
 
     wxString ref;
 
@@ -254,7 +254,7 @@ SCH_SYMBOL* NETLIST_EXPORTER_BASE::findNextSymbol( EDA_ITEM* aItem, const SCH_SH
 
     SCH_SCREEN* screen = aSheetPath.LastScreen();
 
-    wxCHECK( screen, nullptr );
+    KI_CHECK( screen, nullptr );
 
     auto it = screen->GetLibSymbols().find( symbol->GetSchSymbolLibraryName() );
 

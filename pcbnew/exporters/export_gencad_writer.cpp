@@ -80,7 +80,7 @@ static std::string genCADLayerName( int aCuCount, PCB_LAYER_ID aId )
         case B_Fab:     txt = "B_Fab";                  break;
 
         default:
-            wxASSERT_MSG( 0, wxT( "aId UNEXPECTED" ) );
+            KI_ASSERT_MSG( 0, wxT( "aId UNEXPECTED" ) );
                         txt = "BAD-INDEX!";             break;
         }
 
@@ -129,10 +129,10 @@ const wxString GENCAD_EXPORTER::getShapeName( FOOTPRINT* aFootprint )
         return aFootprint->GetReference();
 
     auto itShape = componentShapes.find( aFootprint );
-    wxCHECK( itShape != componentShapes.end(), invalid );
+    KI_CHECK( itShape != componentShapes.end(), invalid );
 
     auto itName = shapeNames.find( itShape->second );
-    wxCHECK( itName != shapeNames.end(), invalid );
+    KI_CHECK( itName != shapeNames.end(), invalid );
 
     return itName->second;
 }
@@ -1300,7 +1300,7 @@ void GENCAD_EXPORTER::footprintWriteShape( FOOTPRINT* aFootprint, const wxString
                 break;
 
             default:
-                wxFAIL_MSG( wxString::Format( wxT( "Shape type %d invalid." ), item->Type() ) );
+                KI_FAIL_MSG( wxString::Format( wxT( "Shape type %d invalid." ), item->Type() ) );
                 break;
             }
         }

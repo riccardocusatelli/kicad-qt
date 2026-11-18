@@ -920,7 +920,7 @@ void DRC_ENGINE::InitEngine( const wxFileName& aRulePath )
         }
         catch( PARSE_ERROR& )
         {
-            wxFAIL_MSG( wxT( "Compiling implicit rules failed." ) );
+            KI_FAIL_MSG( wxT( "Compiling implicit rules failed." ) );
         }
 
         throw original_parse_error;
@@ -982,15 +982,15 @@ void DRC_ENGINE::RunTests( EDA_UNITS aUnits, bool aReportAllTrackErrors, bool aT
             break;
 
         providerTimer.Stop();
-        wxLogTrace( traceDrcProfile, "DRC provider '%s' took %0.3f ms", provider->GetName(), providerTimer.msecs() );
+        KI_LOG_TRACE( traceDrcProfile, "DRC provider '%s' took %0.3f ms", provider->GetName(), providerTimer.msecs() );
     }
 
     timer.Stop();
-    wxLogTrace( traceDrcProfile, "DRC took %0.3f ms", timer.msecs() );
+    KI_LOG_TRACE( traceDrcProfile, "DRC took %0.3f ms", timer.msecs() );
 
     // DRC tests are multi-threaded; anything that causes us to attempt to re-generate the
     // caches while DRC is running is problematic.
-    wxASSERT( timestamp == m_board->GetTimeStamp() );
+    KI_ASSERT( timestamp == m_board->GetTimeStamp() );
 }
 
 
@@ -3029,7 +3029,7 @@ std::vector<BOARD_ITEM*> DRC_ENGINE::GetItemsMatchingCondition( const wxString& 
                                                                 DRC_CONSTRAINT_T aConstraint,
                                                                 REPORTER* aReporter )
 {
-    wxLogTrace( wxS( "KI_TRACE_DRC_RULE_EDITOR" ), wxS( "[ShowMatches] engine enter: expr='%s', constraint=%d" ),
+    KI_LOG_TRACE( wxS( "KI_TRACE_DRC_RULE_EDITOR" ), wxS( "[ShowMatches] engine enter: expr='%s', constraint=%d" ),
                 aExpression, (int) aConstraint );
 
     std::vector<BOARD_ITEM*> matches;
@@ -3041,7 +3041,7 @@ std::vector<BOARD_ITEM*> DRC_ENGINE::GetItemsMatchingCondition( const wxString& 
 
     if( !condition.Compile( aReporter ? aReporter : m_logReporter ) )
     {
-        wxLogTrace( wxS( "KI_TRACE_DRC_RULE_EDITOR" ), wxS( "[ShowMatches] engine: compile failed" ) );
+        KI_LOG_TRACE( wxS( "KI_TRACE_DRC_RULE_EDITOR" ), wxS( "[ShowMatches] engine: compile failed" ) );
         return matches;
     }
 
@@ -3095,7 +3095,7 @@ std::vector<BOARD_ITEM*> DRC_ENGINE::GetItemsMatchingCondition( const wxString& 
                                                aReporter ? aReporter : m_logReporter ) )
                     {
                         matches.push_back( aItem );
-                        wxLogTrace( wxS( "KI_TRACE_DRC_RULE_EDITOR" ),
+                        KI_LOG_TRACE( wxS( "KI_TRACE_DRC_RULE_EDITOR" ),
                                     wxS( "[ShowMatches] engine: match type=%d kiid=%s layer=%d" ),
                                     (int) aItem->Type(), aItem->m_Uuid.AsString(), (int) layer );
                         matched = true;
@@ -3106,7 +3106,7 @@ std::vector<BOARD_ITEM*> DRC_ENGINE::GetItemsMatchingCondition( const wxString& 
                 // Log a few non-matching items to help debug condition issues
                 if( !matched && matches.size() == 0 && checkedItems <= 5 )
                 {
-                    wxLogTrace( wxS( "KI_TRACE_DRC_RULE_EDITOR" ),
+                    KI_LOG_TRACE( wxS( "KI_TRACE_DRC_RULE_EDITOR" ),
                                 wxS( "[ShowMatches] engine: no-match sample type=%d kiid=%s layers=%s" ),
                                 (int) aItem->Type(), aItem->m_Uuid.AsString(), itemLayers.FmtHex() );
                 }
@@ -3114,11 +3114,11 @@ std::vector<BOARD_ITEM*> DRC_ENGINE::GetItemsMatchingCondition( const wxString& 
 
     m_board->RunOnChildren( applyConditionToItemFunc, RECURSE_MODE::RECURSE );
 
-    wxLogTrace( wxS( "KI_TRACE_DRC_RULE_EDITOR" ),
+    KI_LOG_TRACE( wxS( "KI_TRACE_DRC_RULE_EDITOR" ),
                 wxS( "[ShowMatches] engine stats: total=%zu skipped=%zu noLayer=%zu checked=%zu" ),
                 totalItems, skippedItems, noLayerItems, checkedItems );
 
-    wxLogTrace( wxS( "KI_TRACE_DRC_RULE_EDITOR" ), wxS( "[ShowMatches] engine exit: total=%zu" ), matches.size() );
+    KI_LOG_TRACE( wxS( "KI_TRACE_DRC_RULE_EDITOR" ), wxS( "[ShowMatches] engine exit: total=%zu" ), matches.size() );
     return matches;
 }
 

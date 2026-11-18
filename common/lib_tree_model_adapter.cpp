@@ -674,12 +674,12 @@ void LIB_TREE_MODEL_ADAPTER::FinishTreeInitialization()
 
     for( ; idx < m_columns.size() - 1; idx++ )
     {
-        wxASSERT( m_colIdxMap.count( idx ) );
+        KI_ASSERT( m_colIdxMap.count( idx ) );
 
         col    = m_columns[idx];
         header = m_colIdxMap[idx];
 
-        wxASSERT( m_colWidths.count( header ) );
+        KI_ASSERT( m_colWidths.count( header ) );
 
         col->SetWidth( m_colWidths[header] );
         totalWidth += col->GetWidth();
@@ -699,7 +699,7 @@ void LIB_TREE_MODEL_ADAPTER::RefreshTree()
     // user's scroll position (which re-attaching or deleting/re-inserting columns does).
     static int walk = 1;
 
-    wxASSERT( !m_columns.empty() );
+    KI_ASSERT( !m_columns.empty() );
 
     // Only use the widths read back if they are non-zero.
     // GTK returns the displayed width of the column, which is not calculated immediately
@@ -729,7 +729,7 @@ void LIB_TREE_MODEL_ADAPTER::RefreshTree()
         if( colPtr == m_columns[0] || colPtr == nullptr )
             continue;
 
-        wxASSERT( m_colWidths.count( colName ) );
+        KI_ASSERT( m_colWidths.count( colName ) );
 
         if( colName == first->first )
             m_redrawNudge[colName] = walk;
@@ -793,7 +793,7 @@ void LIB_TREE_MODEL_ADAPTER::GetValue( wxVariant& aVariant, const wxDataViewItem
     }
 
     LIB_TREE_NODE* node = ToNode( aItem );
-    wxCHECK( node, /* void */ );
+    KI_CHECK( node, /* void */ );
     wxString valueStr;
 
     switch( aCol )
@@ -835,7 +835,7 @@ bool LIB_TREE_MODEL_ADAPTER::GetAttr( const wxDataViewItem& aItem, unsigned int 
         return false;
 
     LIB_TREE_NODE* node = ToNode( aItem );
-    wxCHECK( node, false );
+    KI_CHECK( node, false );
 
     if( node->m_Type == LIB_TREE_NODE::TYPE::ITEM )
     {

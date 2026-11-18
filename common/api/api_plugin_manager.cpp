@@ -222,7 +222,7 @@ void API_PLUGIN_MANAGER::ReloadPlugins( std::optional<wxString> aDirectoryToScan
     PLUGIN_TRAVERSER loader(
             [&]( const wxFileName& aFile )
             {
-                wxLogTrace( traceApi, wxString::Format( "Manager: loading plugin from %s",
+                KI_LOG_TRACE( traceApi, wxString::Format( "Manager: loading plugin from %s",
                                                         aFile.GetFullPath() ) );
 
                 auto plugin = std::make_unique<API_PLUGIN>( aFile, *m_schema_validator );
@@ -233,7 +233,7 @@ void API_PLUGIN_MANAGER::ReloadPlugins( std::optional<wxString> aDirectoryToScan
 
                     if( m_pluginsCache.contains( id ) )
                     {
-                        wxLogTrace( traceApi, wxString::Format( "Manager: identifier %s already present, reloading", id ) );
+                        KI_LOG_TRACE( traceApi, wxString::Format( "Manager: identifier %s already present, reloading", id ) );
 
                         for( const PLUGIN_ACTION& action : m_pluginsCache[id]->Actions() )
                             m_actionsCache[action.identifier] = &action;
@@ -251,7 +251,7 @@ void API_PLUGIN_MANAGER::ReloadPlugins( std::optional<wxString> aDirectoryToScan
                 }
                 else
                 {
-                    wxLogTrace( traceApi, "Manager: loading failed" );
+                    KI_LOG_TRACE( traceApi, "Manager: loading failed" );
 
                     reportPluginLoadMessage( m_reloadReporter.get(), aFile.GetName(),
                                              plugin->ErrorMessage() );
@@ -261,7 +261,7 @@ void API_PLUGIN_MANAGER::ReloadPlugins( std::optional<wxString> aDirectoryToScan
     if( aDirectoryToScan )
     {
         wxDir customDir( *aDirectoryToScan );
-        wxLogTrace( traceApi, wxString::Format( "Manager: scanning custom path (%s) for plugins...",
+        KI_LOG_TRACE( traceApi, wxString::Format( "Manager: scanning custom path (%s) for plugins...",
                                                 customDir.GetName() ) );
         customDir.Traverse( loader );
     }
@@ -271,7 +271,7 @@ void API_PLUGIN_MANAGER::ReloadPlugins( std::optional<wxString> aDirectoryToScan
 
         if( systemPluginsDir.IsOpened() )
         {
-            wxLogTrace( traceApi, wxString::Format( "Manager: scanning system path (%s) for plugins...",
+            KI_LOG_TRACE( traceApi, wxString::Format( "Manager: scanning system path (%s) for plugins...",
                                                     systemPluginsDir.GetName() ) );
             systemPluginsDir.Traverse( loader );
         }
@@ -288,7 +288,7 @@ void API_PLUGIN_MANAGER::ReloadPlugins( std::optional<wxString> aDirectoryToScan
 
         if( thirdParty.IsOpened() )
         {
-            wxLogTrace( traceApi, wxString::Format( "Manager: scanning PCM path (%s) for plugins...",
+            KI_LOG_TRACE( traceApi, wxString::Format( "Manager: scanning PCM path (%s) for plugins...",
                                                     thirdParty.GetName() ) );
             thirdParty.Traverse( loader );
         }
@@ -297,7 +297,7 @@ void API_PLUGIN_MANAGER::ReloadPlugins( std::optional<wxString> aDirectoryToScan
 
         if( userPluginsDir.IsOpened() )
         {
-            wxLogTrace( traceApi, wxString::Format( "Manager: scanning user path (%s) for plugins...",
+            KI_LOG_TRACE( traceApi, wxString::Format( "Manager: scanning user path (%s) for plugins...",
                                                     userPluginsDir.GetName() ) );
             userPluginsDir.Traverse( loader );
         }
@@ -331,20 +331,20 @@ bool API_PLUGIN_MANAGER::RecreatePluginEnvironment( const wxString& aIdentifier 
         return false;
 
     const API_PLUGIN* plugin = m_pluginsCache.at( aIdentifier );
-    wxCHECK( plugin, false );
+    KI_CHECK( plugin, false );
 
     if( plugin->Runtime().type != PLUGIN_RUNTIME_TYPE::PYTHON )
         return false;
 
     std::optional<wxString> env = PYTHON_MANAGER::GetPythonEnvironment( plugin->Identifier() );
-    wxCHECK( env.has_value(), false );
+    KI_CHECK( env.has_value(), false );
 
     wxFileName envConfigPath( *env, wxS( "pyvenv.cfg" ) );
     envConfigPath.MakeAbsolute();
 
     if( envConfigPath.DirExists() && envConfigPath.Rmdir( wxPATH_RMDIR_RECURSIVE ) )
     {
-        wxLogTrace( traceApi,
+        KI_LOG_TRACE( traceApi,
                     wxString::Format( "Manager: Removed existing Python environment at %s for %s",
                                       envConfigPath.GetPath(), plugin->Identifier() ) );
 
@@ -359,7 +359,7 @@ bool API_PLUGIN_MANAGER::RecreatePluginEnvironment( const wxString& aIdentifier 
         return true;
     }
 
-    wxLogTrace( traceApi,
+    KI_LOG_TRACE( traceApi,
                 wxString::Format( "Manager: could not remove Python environment at %s for %s",
                                   envConfigPath.GetPath(), plugin->Identifier() ) );
 
@@ -412,7 +412,7 @@ void API_PLUGIN_MANAGER::HandlePythonInterpreterChanged()
 
         if( m_busyPlugins.contains( plugin->Identifier() ) )
         {
-            wxLogTrace( traceApi, wxString::Format( "Manager: cancelling in-flight job for %s after interpreter change",
+            KI_LOG_TRACE( traceApi, wxString::Format( "Manager: cancelling in-flight job for %s after interpreter change",
                                                     plugin->Identifier() ) );
 
             if( !cancelPluginJobs( plugin->Identifier() ) )
@@ -424,7 +424,7 @@ void API_PLUGIN_MANAGER::HandlePythonInterpreterChanged()
         }
         else
         {
-            wxLogTrace( traceApi, wxString::Format( "Manager: recreating Python env for %s after interpreter change",
+            KI_LOG_TRACE( traceApi, wxString::Format( "Manager: recreating Python env for %s after interpreter change",
                                                     plugin->Identifier() ) );
 
             m_busyPlugins.insert( plugin->Identifier() );
@@ -460,7 +460,7 @@ int API_PLUGIN_MANAGER::doInvokeAction( const wxString& aIdentifier,
 
     if( !m_readyPlugins.count( plugin.Identifier() ) )
     {
-        wxLogTrace( traceApi, wxString::Format( "Manager: Plugin %s is not ready",
+        KI_LOG_TRACE( traceApi, wxString::Format( "Manager: Plugin %s is not ready",
                                                 plugin.Identifier() ) );
         return -1;
     }
@@ -482,7 +482,7 @@ int API_PLUGIN_MANAGER::doInvokeAction( const wxString& aIdentifier,
 
         if( !py )
         {
-            wxLogTrace( traceApi, wxString::Format( "Manager: Python interpreter for %s not found",
+            KI_LOG_TRACE( traceApi, wxString::Format( "Manager: Python interpreter for %s not found",
                                                     plugin.Identifier() ) );
             reportPluginActionMessage( aReporter.get(), action->name,
                                        _( "missing plugin environment" ) );
@@ -491,7 +491,7 @@ int API_PLUGIN_MANAGER::doInvokeAction( const wxString& aIdentifier,
 
         if( !pluginFile.IsFileReadable() )
         {
-            wxLogTrace( traceApi, wxString::Format( "Manager: Python entrypoint %s is not readable",
+            KI_LOG_TRACE( traceApi, wxString::Format( "Manager: Python entrypoint %s is not readable",
                                                     pluginFile.GetFullPath() ) );
             reportPluginActionMessage( aReporter.get(), action->name,
                                        wxString::Format( _( "entrypoint '%s' could not be read" ),
@@ -522,7 +522,7 @@ int API_PLUGIN_MANAGER::doInvokeAction( const wxString& aIdentifier,
         if( Pgm().GetCommonSettings()->m_Api.python_interpreter == FindKicadFile( "pythonw.exe" )
             || PATHS::RunningFromBuildDir() )
         {
-            wxLogTrace( traceApi, "Configured Python is the KiCad one; erasing path overrides..." );
+            KI_LOG_TRACE( traceApi, "Configured Python is the KiCad one; erasing path overrides..." );
             env.env.erase( "PYTHONHOME" );
             env.env.erase( "PYTHONPATH" );
         }
@@ -550,11 +550,11 @@ int API_PLUGIN_MANAGER::doInvokeAction( const wxString& aIdentifier,
                 [aReporter, actionName = action->name]( int aRetVal, const wxString& aOutput,
                                                         const wxString& aError )
                 {
-                    wxLogTrace( traceApi,
+                    KI_LOG_TRACE( traceApi,
                                 wxString::Format( "Manager: action exited with code %d", aRetVal ) );
 
                     if( !aError.IsEmpty() )
-                        wxLogTrace( traceApi, wxString::Format( "Manager: action stderr: %s", aError ) );
+                        KI_LOG_TRACE( traceApi, wxString::Format( "Manager: action stderr: %s", aError ) );
 
                     reportPluginActionResult( aReporter.get(), actionName, aRetVal, aError );
                 },
@@ -586,7 +586,7 @@ int API_PLUGIN_MANAGER::doInvokeAction( const wxString& aIdentifier,
                                   "end tell" ), m_lastPid );
 
                             wxString cmd = wxString::Format( "osascript -e '%s'", script );
-                            wxLogTrace( traceApi, wxString::Format( "Execute: %s", cmd ) );
+                            KI_LOG_TRACE( traceApi, wxString::Format( "Execute: %s", cmd ) );
                             wxExecute( cmd );
                         },
                         m_raiseTimer->GetId() );
@@ -604,7 +604,7 @@ int API_PLUGIN_MANAGER::doInvokeAction( const wxString& aIdentifier,
     {
         if( !pluginFile.IsFileExecutable() )
         {
-            wxLogTrace( traceApi, wxString::Format( "Manager: Exec entrypoint %s is not executable",
+            KI_LOG_TRACE( traceApi, wxString::Format( "Manager: Exec entrypoint %s is not executable",
                                                     pluginFile.GetFullPath() ) );
             reportPluginActionMessage( aReporter.get(), action->name,
                                        wxString::Format( _( "entrypoint '%s' is not executable" ),
@@ -662,11 +662,11 @@ int API_PLUGIN_MANAGER::doInvokeAction( const wxString& aIdentifier,
                     [aReporter, actionName = action->name]( int aRetVal, const wxString& aOutput,
                                                             const wxString& aError )
                     {
-                        wxLogTrace( traceApi,
+                        KI_LOG_TRACE( traceApi,
                                     wxString::Format( "Manager: action exited with code %d", aRetVal ) );
 
                         if( !aError.IsEmpty() )
-                            wxLogTrace( traceApi,
+                            KI_LOG_TRACE( traceApi,
                                         wxString::Format( "Manager: action stderr: %s", aError ) );
 
                         reportPluginActionResult( aReporter.get(), actionName, aRetVal, aError );
@@ -692,20 +692,20 @@ int API_PLUGIN_MANAGER::doInvokeAction( const wxString& aIdentifier,
 
         if( !pidOrRetCode )
         {
-            wxLogTrace( traceApi, wxString::Format( "Manager: launching action %s failed",
+            KI_LOG_TRACE( traceApi, wxString::Format( "Manager: launching action %s failed",
                                                     action->identifier ) );
             reportPluginActionMessage( aReporter.get(), action->name, _( "could not launch plugin" ) );
         }
         else
         {
-            wxLogTrace( traceApi, wxString::Format( "Manager: launching action %s -> pid %ld",
+            KI_LOG_TRACE( traceApi, wxString::Format( "Manager: launching action %s -> pid %ld",
                                                     action->identifier, pidOrRetCode ) );
         }
         break;
     }
 
     default:
-        wxLogTrace( traceApi, wxString::Format( "Manager: unhandled runtime for action %s",
+        KI_LOG_TRACE( traceApi, wxString::Format( "Manager: unhandled runtime for action %s",
                                                 action->identifier ) );
     }
 
@@ -784,13 +784,13 @@ void API_PLUGIN_MANAGER::processPluginDependencies()
         if( m_busyPlugins.contains( plugin->Identifier() ) )
             continue;
 
-        wxLogTrace( traceApi, wxString::Format( "Manager: processing dependencies for %s",
+        KI_LOG_TRACE( traceApi, wxString::Format( "Manager: processing dependencies for %s",
                                                 plugin->Identifier() ) );
         m_environmentCache[plugin->Identifier()] = wxEmptyString;
 
         if( plugin->Runtime().type != PLUGIN_RUNTIME_TYPE::PYTHON )
         {
-            wxLogTrace( traceApi, wxString::Format( "Manager: %s is not a Python plugin, all set",
+            KI_LOG_TRACE( traceApi, wxString::Format( "Manager: %s is not a Python plugin, all set",
                                                     plugin->Identifier() ) );
             m_readyPlugins.insert( plugin->Identifier() );
             continue;
@@ -800,7 +800,7 @@ void API_PLUGIN_MANAGER::processPluginDependencies()
 
         if( !env )
         {
-            wxLogTrace( traceApi, wxString::Format( "Manager: could not create env for %s",
+            KI_LOG_TRACE( traceApi, wxString::Format( "Manager: could not create env for %s",
                                                      plugin->Identifier() ) );
             continue;
         }
@@ -817,7 +817,7 @@ void API_PLUGIN_MANAGER::processPluginDependencies()
 
             if( broken || stale )
             {
-                wxLogTrace( traceApi, wxString::Format( "Manager: Python env for %s at %s needs recreation (%s)",
+                KI_LOG_TRACE( traceApi, wxString::Format( "Manager: Python env for %s at %s needs recreation (%s)",
                                                         plugin->Identifier(), envConfigPath.GetPath(),
                                                         broken ? "broken" : "interpreter changed" ) );
 
@@ -827,13 +827,13 @@ void API_PLUGIN_MANAGER::processPluginDependencies()
                     continue;
                 }
 
-                wxLogTrace( traceApi, wxString::Format( "Manager: could not remove env for %s; "
+                KI_LOG_TRACE( traceApi, wxString::Format( "Manager: could not remove env for %s; "
                                                         "scheduling creation anyway",
                                                         plugin->Identifier() ) );
             }
             else
             {
-                wxLogTrace( traceApi, wxString::Format( "Manager: Python env for %s exists at %s", plugin->Identifier(),
+                KI_LOG_TRACE( traceApi, wxString::Format( "Manager: Python env for %s exists at %s", plugin->Identifier(),
                                                         envConfigPath.GetPath() ) );
 
                 JOB job;
@@ -847,7 +847,7 @@ void API_PLUGIN_MANAGER::processPluginDependencies()
             }
         }
 
-        wxLogTrace( traceApi, wxString::Format( "Manager: will create Python env for %s at %s",
+        KI_LOG_TRACE( traceApi, wxString::Format( "Manager: will create Python env for %s at %s",
                                                 plugin->Identifier(), envConfigPath.GetPath() ) );
         JOB job;
         job.type = JOB_TYPE::CREATE_ENV;
@@ -870,20 +870,20 @@ void API_PLUGIN_MANAGER::processNextJob( wxCommandEvent& aEvent )
 {
     if( m_jobs.empty() )
     {
-        wxLogTrace( traceApi, "Manager: no more jobs to process" );
+        KI_LOG_TRACE( traceApi, "Manager: no more jobs to process" );
         return;
     }
 
-    wxLogTrace( traceApi, wxString::Format( "Manager: begin processing; %zu jobs left in queue",
+    KI_LOG_TRACE( traceApi, wxString::Format( "Manager: begin processing; %zu jobs left in queue",
                                             m_jobs.size() ) );
 
     JOB& job = m_jobs.front();
 
     if( job.type == JOB_TYPE::CREATE_ENV )
     {
-        wxLogTrace( traceApi, "Manager: Using Python interpreter at %s",
+        KI_LOG_TRACE( traceApi, "Manager: Using Python interpreter at %s",
                     Pgm().GetCommonSettings()->m_Api.python_interpreter );
-        wxLogTrace( traceApi, wxString::Format( "Manager: creating Python env at %s",
+        KI_LOG_TRACE( traceApi, wxString::Format( "Manager: creating Python env at %s",
                                                 job.env_path ) );
         PYTHON_MANAGER manager( Pgm().GetCommonSettings()->m_Api.python_interpreter );
         wxExecuteEnv   env;
@@ -896,7 +896,7 @@ void API_PLUGIN_MANAGER::processNextJob( wxCommandEvent& aEvent )
         if( Pgm().GetCommonSettings()->m_Api.python_interpreter == FindKicadFile( "pythonw.exe" )
             || PATHS::RunningFromBuildDir() )
         {
-            wxLogTrace( traceApi, "Configured Python is the KiCad one; erasing path overrides..." );
+            KI_LOG_TRACE( traceApi, "Configured Python is the KiCad one; erasing path overrides..." );
             env.env.erase( "PYTHONHOME" );
             env.env.erase( "PYTHONPATH" );
         }
@@ -913,11 +913,11 @@ void API_PLUGIN_MANAGER::processNextJob( wxCommandEvent& aEvent )
                 {
                     m_runningPids.erase( job.identifier );
 
-                    wxLogTrace( traceApi,
+                    KI_LOG_TRACE( traceApi,
                                 wxString::Format( "Manager: created venv (python returned %d)", aRetVal ) );
 
                     if( !aError.IsEmpty() )
-                        wxLogTrace( traceApi, wxString::Format( "Manager: venv err: %s", aError ) );
+                        KI_LOG_TRACE( traceApi, wxString::Format( "Manager: venv err: %s", aError ) );
 
                     if( m_cancelledPlugins.contains( job.identifier ) )
                     {
@@ -949,7 +949,7 @@ void API_PLUGIN_MANAGER::processNextJob( wxCommandEvent& aEvent )
     }
     else if( job.type == JOB_TYPE::SETUP_ENV )
     {
-        wxLogTrace( traceApi, wxString::Format( "Manager: setting up environment for %s",
+        KI_LOG_TRACE( traceApi, wxString::Format( "Manager: setting up environment for %s",
                                                 job.plugin_path ) );
 
         std::optional<wxString> pythonHome = PYTHON_MANAGER::GetPythonEnvironment( job.identifier );
@@ -962,7 +962,7 @@ void API_PLUGIN_MANAGER::processNextJob( wxCommandEvent& aEvent )
         else if( !python )
         {
             wxString debug = wxString::Format( wxS( "Python binary not found at %s" ), job.env_path );
-            wxLogTrace( traceApi, wxString::Format( "Manager: error: %s", debug ) );
+            KI_LOG_TRACE( traceApi, wxString::Format( "Manager: error: %s", debug ) );
 
             reportPluginLoadMessage( m_reloadReporter.get(), pluginName( job.identifier ),
                                      _( "Missing plugin environment" ), debug );
@@ -988,7 +988,7 @@ void API_PLUGIN_MANAGER::processNextJob( wxCommandEvent& aEvent )
                         == FindKicadFile( "pythonw.exe" )
                 || PATHS::RunningFromBuildDir() )
             {
-                wxLogTrace( traceApi,
+                KI_LOG_TRACE( traceApi,
                             "Configured Python is the KiCad one; erasing path overrides..." );
                 env.env.erase( "PYTHONHOME" );
                 env.env.erase( "PYTHONPATH" );
@@ -1008,12 +1008,12 @@ void API_PLUGIN_MANAGER::processNextJob( wxCommandEvent& aEvent )
                 {
                     m_runningPids.erase( job.identifier );
 
-                    wxLogTrace( traceApi, wxString::Format( "Manager: upgrade pip returned %d",
+                    KI_LOG_TRACE( traceApi, wxString::Format( "Manager: upgrade pip returned %d",
                                                             aRetVal ) );
 
                     if( !aError.IsEmpty() )
                     {
-                        wxLogTrace( traceApi,
+                        KI_LOG_TRACE( traceApi,
                                     wxString::Format( "Manager: upgrade pip stderr: %s", aError ) );
                     }
 
@@ -1049,7 +1049,7 @@ void API_PLUGIN_MANAGER::processNextJob( wxCommandEvent& aEvent )
     }
     else if( job.type == JOB_TYPE::INSTALL_REQUIREMENTS )
     {
-        wxLogTrace( traceApi, wxString::Format( "Manager: installing dependencies for %s",
+        KI_LOG_TRACE( traceApi, wxString::Format( "Manager: installing dependencies for %s",
                                                 job.plugin_path ) );
 
         std::optional<wxString> pythonHome = PYTHON_MANAGER::GetPythonEnvironment( job.identifier );
@@ -1063,7 +1063,7 @@ void API_PLUGIN_MANAGER::processNextJob( wxCommandEvent& aEvent )
         else if( !python )
         {
             wxString debug = wxString::Format( wxS( "Python binary not found at %s" ), job.env_path );
-            wxLogTrace( traceApi, wxString::Format( "Manager: error: %s", debug ) );
+            KI_LOG_TRACE( traceApi, wxString::Format( "Manager: error: %s", debug ) );
 
             reportPluginLoadMessage( m_reloadReporter.get(), pluginName( job.identifier ),
                                      _( "Missing plugin environment" ), debug );
@@ -1072,7 +1072,7 @@ void API_PLUGIN_MANAGER::processNextJob( wxCommandEvent& aEvent )
         }
         else if( !reqs.IsFileReadable() )
         {
-            wxLogTrace( traceApi,
+            KI_LOG_TRACE( traceApi,
                         wxString::Format( "Manager: error: requirements.txt not found at %s",
                                           job.plugin_path ) );
             wxString debug = wxString::Format( wxS( "Expected at %s" ), reqs.GetFullPath() );
@@ -1089,7 +1089,7 @@ void API_PLUGIN_MANAGER::processNextJob( wxCommandEvent& aEvent )
         }
         else
         {
-            wxLogTrace( traceApi, "Manager: Python exe '%s'", *python );
+            KI_LOG_TRACE( traceApi, "Manager: Python exe '%s'", *python );
 
             PYTHON_MANAGER manager( *python );
             wxExecuteEnv env;
@@ -1134,7 +1134,7 @@ void API_PLUGIN_MANAGER::processNextJob( wxCommandEvent& aEvent )
                     }
 
                     if( !aError.IsEmpty() )
-                        wxLogTrace( traceApi, wxString::Format( "Manager: pip stderr: %s", aError ) );
+                        KI_LOG_TRACE( traceApi, wxString::Format( "Manager: pip stderr: %s", aError ) );
 
                     if( aRetVal != 0 )
                     {
@@ -1150,7 +1150,7 @@ void API_PLUGIN_MANAGER::processNextJob( wxCommandEvent& aEvent )
 
                     if( aRetVal == 0 )
                     {
-                        wxLogTrace( traceApi, wxString::Format( "Manager: marking %s as ready",
+                        KI_LOG_TRACE( traceApi, wxString::Format( "Manager: marking %s as ready",
                                                                 job.identifier ) );
                         m_readyPlugins.insert( job.identifier );
 
@@ -1179,7 +1179,7 @@ void API_PLUGIN_MANAGER::processNextJob( wxCommandEvent& aEvent )
     if( !Busy() )
         m_reloadReporter.reset();
 
-    wxLogTrace( traceApi, wxString::Format( "Manager: finished job; %zu left in queue",
+    KI_LOG_TRACE( traceApi, wxString::Format( "Manager: finished job; %zu left in queue",
                                             m_jobs.size() ) );
 }
 

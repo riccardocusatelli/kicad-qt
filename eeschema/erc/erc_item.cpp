@@ -386,7 +386,7 @@ std::shared_ptr<ERC_ITEM> ERC_ITEM::Create( int aErrorCode )
     case ERCE_VARIANT_SYMBOL_INCOMPATIBLE: return std::make_shared<ERC_ITEM>( variantSymbolIncompatible );
     case ERCE_UNSPECIFIED:
     default:
-        wxFAIL_MSG( wxS( "Unknown ERC error code" ) );
+        KI_FAIL_MSG( wxS( "Unknown ERC error code" ) );
         break;
     }
 

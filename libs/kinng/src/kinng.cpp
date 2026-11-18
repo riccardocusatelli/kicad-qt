@@ -94,13 +94,13 @@ void KINNG_REQUEST_SERVER::listenThread()
     nng_listener listener;
     int          retCode = 0;
 
-    wxLogTrace( TraceNng, wxS( "KINNG_REQUEST_SERVER starting" ) );
+    KI_LOG_TRACE( TraceNng, wxS( "KINNG_REQUEST_SERVER starting" ) );
 
     retCode = nng_rep0_open( &socket );
 
     if( retCode != 0 )
     {
-        wxLogTrace( TraceNng,
+        KI_LOG_TRACE( TraceNng,
                     wxString::Format( wxS( "Got error code %d from nng_rep0_open!" ), retCode ) );
         return;
     }
@@ -109,7 +109,7 @@ void KINNG_REQUEST_SERVER::listenThread()
 
     if( retCode != 0 )
     {
-        wxLogTrace( TraceNng,
+        KI_LOG_TRACE( TraceNng,
                     wxString::Format( wxS( "Got error code %d from nng_listener_create!" ),
                                       retCode ) );
         nng_close( socket );
@@ -122,14 +122,14 @@ void KINNG_REQUEST_SERVER::listenThread()
 
     if( retCode != 0 )
     {
-        wxLogTrace( TraceNng,
+        KI_LOG_TRACE( TraceNng,
                     wxString::Format( wxS( "Got error code %d from nng_listener_start!" ),
                                       retCode ) );
         nng_close( socket );
         return;
     }
 
-    wxLogTrace( TraceNng, wxS( "KINNG_REQUEST_SERVER listener has started" ) );
+    KI_LOG_TRACE( TraceNng, wxS( "KINNG_REQUEST_SERVER listener has started" ) );
 
     while( !m_shutdown.load() )
     {
@@ -146,7 +146,7 @@ void KINNG_REQUEST_SERVER::listenThread()
             if( buf )
                 nng_free( buf, sz );
 
-            wxLogTrace( TraceNng,
+            KI_LOG_TRACE( TraceNng,
                         wxString::Format( wxS( "Got error code %d from nngc_recv!" ), retCode ) );
             break;
         }
@@ -169,7 +169,7 @@ void KINNG_REQUEST_SERVER::listenThread()
 
         if( retCode != 0 )
         {
-            wxLogTrace( TraceNng,
+            KI_LOG_TRACE( TraceNng,
                         wxString::Format( wxS( "Got error code %d from nng_send!" ), retCode ) );
         }
 
@@ -177,7 +177,7 @@ void KINNG_REQUEST_SERVER::listenThread()
         m_hasReply = false;
     }
 
-    wxLogTrace( TraceNng, wxS( "KINNG_REQUEST_SERVER shutting down" ) );
+    KI_LOG_TRACE( TraceNng, wxS( "KINNG_REQUEST_SERVER shutting down" ) );
 
     nng_close( socket );
 }

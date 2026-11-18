@@ -873,7 +873,7 @@ std::unique_ptr<PAD> PCB_IO_EASYEDAPRO_PARSER::createPAD( FOOTPRINT* aFootprint,
         nlohmann::json polyData = padShape.at( 1 );
 
         SHAPE_LINE_CHAIN contour = ParseContour( polyData, false );
-        wxASSERT( contour.PointCount() > 2 );
+        KI_ASSERT( contour.PointCount() > 2 );
 
         std::unique_ptr<PCB_SHAPE> shape = std::make_unique<PCB_SHAPE>( aFootprint, SHAPE_T::POLY );
 
@@ -1545,7 +1545,7 @@ void PCB_IO_EASYEDAPRO_PARSER::ParseBoard( BOARD* aBoard, const nlohmann::json& 
                     zone->Outline()->Append( contour );
                 }
 
-                wxASSERT( zone->Outline()->OutlineCount() == 1 );
+                KI_ASSERT( zone->Outline()->OutlineCount() == 1 );
 
                 poursToFill.emplace( uuid, zone.get() );
 
@@ -1933,7 +1933,7 @@ void PCB_IO_EASYEDAPRO_PARSER::ParseBoard( BOARD* aBoard, const nlohmann::json& 
         auto it = aFootprintMap.find( fpId );
         if( it == aFootprintMap.end() )
         {
-            wxLogTrace( traceEasyEdaIo, "Footprint of '%s' with uuid '%s' not found.", fpDesignator, fpId );
+            KI_LOG_TRACE( traceEasyEdaIo, "Footprint of '%s' with uuid '%s' not found.", fpDesignator, fpId );
             continue;
         }
 

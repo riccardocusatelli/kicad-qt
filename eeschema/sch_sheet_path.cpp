@@ -325,14 +325,14 @@ bool SCH_SHEET_PATH::IsContainedWithin( const SCH_SHEET_PATH& aSheetPathToTest )
     {
         if( at( i )->m_Uuid != aSheetPathToTest.at( i )->m_Uuid )
         {
-            wxLogTrace( traceSchSheetPaths, "Sheet path '%s' is not within path '%s'.",
+            KI_LOG_TRACE( traceSchSheetPaths, "Sheet path '%s' is not within path '%s'.",
                         aSheetPathToTest.Path().AsString(), Path().AsString() );
 
             return false;
         }
     }
 
-    wxLogTrace( traceSchSheetPaths, "Sheet path '%s' is within path '%s'.",
+    KI_LOG_TRACE( traceSchSheetPaths, "Sheet path '%s' is within path '%s'.",
                 aSheetPathToTest.Path().AsString(), Path().AsString() );
 
     return true;
@@ -745,7 +745,7 @@ bool SCH_SHEET_PATH::TestForRecursion( const wxString& aSrcFileName, const wxStr
 
     SCHEMATIC* sch = LastScreen()->Schematic();
 
-    wxCHECK_MSG( sch, false, "No SCHEMATIC found in SCH_SHEET_PATH::TestForRecursion!" );
+    KI_CHECK_MSG( sch, false, "No SCHEMATIC found in SCH_SHEET_PATH::TestForRecursion!" );
 
     wxFileName rootFn = sch->GetFileName();
     wxFileName srcFn = aSrcFileName;
@@ -820,7 +820,7 @@ wxString SCH_SHEET_PATH::GetPageNumber() const
 {
     SCH_SHEET* sheet = Last();
 
-    wxCHECK( sheet, wxEmptyString );
+    KI_CHECK( sheet, wxEmptyString );
 
     KIID_PATH tmpPath = Path();
 
@@ -848,7 +848,7 @@ void SCH_SHEET_PATH::SetPageNumber( const wxString& aPageNumber )
 {
     SCH_SHEET* sheet = Last();
 
-    wxCHECK( sheet, /* void */ );
+    KI_CHECK( sheet, /* void */ );
 
     KIID_PATH tmpPath = Path();
 
@@ -858,7 +858,7 @@ void SCH_SHEET_PATH::SetPageNumber( const wxString& aPageNumber )
     }
     else
     {
-        wxCHECK_MSG( false, /* void */, wxS( "Sheet paths must have a least one valid sheet." ) );
+        KI_CHECK_MSG( false, /* void */, wxS( "Sheet paths must have a least one valid sheet." ) );
     }
 
     sheet->addInstance( tmpPath );
@@ -869,7 +869,7 @@ void SCH_SHEET_PATH::SetPageNumber( const wxString& aPageNumber )
 void SCH_SHEET_PATH::AddNewSymbolInstances( const SCH_SHEET_PATH& aPrefixSheetPath, const wxString& aProjectName,
                                             const SCH_SHEET_LIST* aSourceSheets )
 {
-    wxCHECK( !aProjectName.IsEmpty(), /* void */ );
+    KI_CHECK( !aProjectName.IsEmpty(), /* void */ );
 
     SCH_SHEET_PATH newSheetPath( aPrefixSheetPath );
     SCH_SHEET_PATH currentSheetPath( *this );
@@ -887,7 +887,7 @@ void SCH_SHEET_PATH::AddNewSymbolInstances( const SCH_SHEET_PATH& aPrefixSheetPa
     {
         SCH_SYMBOL* symbol = static_cast<SCH_SYMBOL*>( item );
 
-        wxCHECK2( symbol, continue );
+        KI_CHECK2( symbol, continue );
 
         SCH_SYMBOL_INSTANCE newSymbolInstance;
 
@@ -939,7 +939,7 @@ void SCH_SHEET_PATH::RemoveSymbolInstances( const SCH_SHEET_PATH& aPrefixSheetPa
     {
         SCH_SYMBOL* symbol = static_cast<SCH_SYMBOL*>( item );
 
-        wxCHECK2( symbol, continue );
+        KI_CHECK2( symbol, continue );
 
         SCH_SHEET_PATH fullSheetPath( aPrefixSheetPath );
         SCH_SHEET_PATH currentSheetPath( *this );
@@ -957,22 +957,22 @@ void SCH_SHEET_PATH::CheckForMissingSymbolInstances( const wxString& aProjectNam
     if( aProjectName.IsEmpty() || !LastScreen() )
         return;
 
-    wxLogTrace( traceSchSheetPaths, "CheckForMissingSymbolInstances for path: %s (project: %s)",
+    KI_LOG_TRACE( traceSchSheetPaths, "CheckForMissingSymbolInstances for path: %s (project: %s)",
                 PathHumanReadable( false ), aProjectName );
-    wxLogTrace( traceSchSheetPaths, "  Sheet path size=%zu, Path().AsString()='%s'",
+    KI_LOG_TRACE( traceSchSheetPaths, "  Sheet path size=%zu, Path().AsString()='%s'",
                 size(), Path().AsString() );
 
     for( SCH_ITEM* item : LastScreen()->Items().OfType( SCH_SYMBOL_T ) )
     {
         SCH_SYMBOL* symbol = static_cast<SCH_SYMBOL*>( item );
 
-        wxCHECK2( symbol, continue );
+        KI_CHECK2( symbol, continue );
 
         SCH_SYMBOL_INSTANCE symbolInstance;
 
         if( !symbol->GetInstance( symbolInstance, Path() ) )
         {
-            wxLogTrace( traceSchSheetPaths, "Adding missing symbol \"%s\" instance data for "
+            KI_LOG_TRACE( traceSchSheetPaths, "Adding missing symbol \"%s\" instance data for "
                         "sheet path '%s'.",
                         symbol->m_Uuid.AsString(), PathHumanReadable( false ) );
 
@@ -984,7 +984,7 @@ void SCH_SHEET_PATH::CheckForMissingSymbolInstances( const wxString& aProjectNam
                 symbolInstance.m_Reference = refField->GetText();
                 symbolInstance.m_Unit = symbol->GetUnit();
 
-                wxLogTrace( traceSchSheetPaths, "  Legacy format: Using reference '%s' from field, unit %d",
+                KI_LOG_TRACE( traceSchSheetPaths, "  Legacy format: Using reference '%s' from field, unit %d",
                            symbolInstance.m_Reference, symbolInstance.m_Unit );
             }
             else if( !symbol->GetInstances().empty() )
@@ -1006,7 +1006,7 @@ void SCH_SHEET_PATH::CheckForMissingSymbolInstances( const wxString& aProjectNam
 
                 symbolInstance = *sourceIt;
 
-                wxLogTrace( traceSchSheetPaths,
+                KI_LOG_TRACE( traceSchSheetPaths,
                            "  Using available instance (project '%s'): ref=%s, unit=%d, variants=%zu",
                            sourceIt->m_ProjectName, symbolInstance.m_Reference,
                            symbolInstance.m_Unit, symbolInstance.m_Variants.size() );
@@ -1018,7 +1018,7 @@ void SCH_SHEET_PATH::CheckForMissingSymbolInstances( const wxString& aProjectNam
                 symbolInstance.m_Reference = refField->GetText();
                 symbolInstance.m_Unit = symbol->GetUnit();
 
-                wxLogTrace( traceSchSheetPaths,
+                KI_LOG_TRACE( traceSchSheetPaths,
                            "  No instance data: Using reference '%s' from field, unit %d",
                            symbolInstance.m_Reference, symbolInstance.m_Unit );
             }
@@ -1027,13 +1027,13 @@ void SCH_SHEET_PATH::CheckForMissingSymbolInstances( const wxString& aProjectNam
             symbolInstance.m_Path = Path();
             symbol->AddHierarchicalReference( symbolInstance );
 
-            wxLogTrace( traceSchSheetPaths,
+            KI_LOG_TRACE( traceSchSheetPaths,
                        "  Created instance: ref=%s, path=%s",
                        symbolInstance.m_Reference, symbolInstance.m_Path.AsString() );
         }
         else
         {
-            wxLogTrace( traceSchSheetPaths,
+            KI_LOG_TRACE( traceSchSheetPaths,
                        "  Symbol %s already has instance: ref=%s, path=%s",
                        symbol->m_Uuid.AsString(),
                        symbolInstance.m_Reference,
@@ -1045,7 +1045,7 @@ void SCH_SHEET_PATH::CheckForMissingSymbolInstances( const wxString& aProjectNam
 
 void SCH_SHEET_PATH::MakeFilePathRelativeToParentSheet()
 {
-    wxCHECK( m_sheets.size() > 1, /* void */  );
+    KI_CHECK( m_sheets.size() > 1, /* void */  );
 
     wxFileName sheetFileName = Last()->GetFileName();
 
@@ -1056,14 +1056,14 @@ void SCH_SHEET_PATH::MakeFilePathRelativeToParentSheet()
     SCH_SCREEN* screen = LastScreen();
     SCH_SCREEN* parentScreen = m_sheets[ m_sheets.size() - 2 ]->GetScreen();
 
-    wxCHECK( screen && parentScreen, /* void */ );
+    KI_CHECK( screen && parentScreen, /* void */ );
 
     wxFileName fileName = screen->GetFileName();
     wxFileName parentFileName = parentScreen->GetFileName();
 
     // SCH_SCREEN file names must be absolute.  If they are not, someone set them incorrectly
     // on load or on creation.
-    wxCHECK( fileName.IsAbsolute() && parentFileName.IsAbsolute(), /* void */ );
+    KI_CHECK( fileName.IsAbsolute() && parentFileName.IsAbsolute(), /* void */ );
 
     if( fileName.GetPath() == parentFileName.GetPath() )
     {
@@ -1078,7 +1078,7 @@ void SCH_SHEET_PATH::MakeFilePathRelativeToParentSheet()
         Last()->SetFileName( screen->GetFileName() );
     }
 
-    wxLogTrace( tracePathsAndFiles,
+    KI_LOG_TRACE( tracePathsAndFiles,
                 wxT( "\n    File name: '%s'"
                      "\n    parent file name '%s',"
                      "\n    sheet '%s' file name '%s'." ),
@@ -1093,7 +1093,7 @@ bool SCH_SHEET_PATH::IsSharedPath() const
 
     while( !tmp.empty() )
     {
-        wxCHECK2( tmp.LastScreen(), continue );
+        KI_CHECK2( tmp.LastScreen(), continue );
 
         if( tmp.LastScreen()->GetRefCount() > 1 )
             return true;
@@ -1117,7 +1117,7 @@ void SCH_SHEET_LIST::BuildSheetList( SCH_SHEET* aSheet, bool aCheckIntegrity )
     if( !aSheet )
         return;
 
-    wxLogTrace( traceSchSheetPaths,
+    KI_LOG_TRACE( traceSchSheetPaths,
                "BuildSheetList called with sheet '%s' (UUID=%s, isVirtualRoot=%d)",
                aSheet->GetName(),
                aSheet->m_Uuid.AsString(),
@@ -1126,7 +1126,7 @@ void SCH_SHEET_LIST::BuildSheetList( SCH_SHEET* aSheet, bool aCheckIntegrity )
     // Special handling for virtual root: process its children without adding the root itself
     if( aSheet->IsVirtualRootSheet() )
     {
-        wxLogTrace( traceSchSheetPaths, "  Skipping virtual root, processing children only" );
+        KI_LOG_TRACE( traceSchSheetPaths, "  Skipping virtual root, processing children only" );
 
         if( aSheet->GetScreen() )
         {
@@ -1170,7 +1170,7 @@ void SCH_SHEET_LIST::BuildSheetList( SCH_SHEET* aSheet, bool aCheckIntegrity )
             {
                 // If we are not performing a full recursion test, at least check if we are in
                 // a simple recursion scenario to prevent stack overflow crashes
-                wxCHECK2_MSG( sheet->GetFileName() != aSheet->GetFileName(), continue,
+                KI_CHECK2_MSG( sheet->GetFileName() != aSheet->GetFileName(), continue,
                               wxT( "Recursion prevented in SCH_SHEET_LIST::BuildSheetList" ) );
 
                 BuildSheetList( sheet, false );
@@ -1522,7 +1522,7 @@ bool SCH_SHEET_LIST::TestForRecursion( const SCH_SHEET_LIST& aSrcSheetHierarchy,
 
     SCHEMATIC* sch = at( 0 ).LastScreen()->Schematic();
 
-    wxCHECK_MSG( sch, false, "No SCHEMATIC found in SCH_SHEET_LIST::TestForRecursion!" );
+    KI_CHECK_MSG( sch, false, "No SCHEMATIC found in SCH_SHEET_LIST::TestForRecursion!" );
 
     wxFileName rootFn = sch->GetFileName();
     wxFileName destFn = aDestFileName;
@@ -1601,7 +1601,7 @@ void SCH_SHEET_LIST::UpdateSymbolInstanceData(
         {
             SCH_SYMBOL* symbol = static_cast<SCH_SYMBOL*>( item );
 
-            wxCHECK2( symbol, continue );
+            KI_CHECK2( symbol, continue );
 
             KIID_PATH sheetPathWithSymbolUuid = sheetPath.Path();
             sheetPathWithSymbolUuid.push_back( symbol->m_Uuid );
@@ -1614,7 +1614,7 @@ void SCH_SHEET_LIST::UpdateSymbolInstanceData(
 
             if( it == aSymbolInstances.end() )
             {
-                wxLogTrace( traceSchSheetPaths, "No symbol instance found for symbol '%s'",
+                KI_LOG_TRACE( traceSchSheetPaths, "No symbol instance found for symbol '%s'",
                             sheetPathWithSymbolUuid.AsString() );
                 continue;
             }
@@ -1643,7 +1643,7 @@ void SCH_SHEET_LIST::UpdateSheetInstanceData( const std::vector<SCH_SHEET_INSTAN
     {
         SCH_SHEET* sheet = path.Last();
 
-        wxCHECK2( sheet && path.Last(), continue );
+        KI_CHECK2( sheet && path.Last(), continue );
 
         auto it = std::find_if( aSheetInstances.begin(), aSheetInstances.end(),
                                 [&path]( const SCH_SHEET_INSTANCE& r ) -> bool
@@ -1653,12 +1653,12 @@ void SCH_SHEET_LIST::UpdateSheetInstanceData( const std::vector<SCH_SHEET_INSTAN
 
         if( it == aSheetInstances.end() )
         {
-            wxLogTrace( traceSchSheetPaths, "No sheet instance found for path '%s'",
+            KI_LOG_TRACE( traceSchSheetPaths, "No sheet instance found for path '%s'",
                         path.Path().AsString() );
             continue;
         }
 
-        wxLogTrace( traceSchSheetPaths, "Setting sheet '%s' instance '%s' page number '%s'",
+        KI_LOG_TRACE( traceSchSheetPaths, "Setting sheet '%s' instance '%s' page number '%s'",
                     ( sheet->GetName().IsEmpty() ) ? wxString( wxT( "root" ) ) : sheet->GetName(),
                     path.Path().AsString(), it->m_PageNumber );
         path.SetPageNumber( it->m_PageNumber );
@@ -1685,7 +1685,7 @@ std::vector<SCH_SHEET_INSTANCE> SCH_SHEET_LIST::GetSheetInstances() const
     {
         const SCH_SHEET* sheet = path.Last();
 
-        wxCHECK2( sheet, continue );
+        KI_CHECK2( sheet, continue );
 
         SCH_SHEET_INSTANCE instance;
         SCH_SHEET_PATH tmpPath = path;
@@ -1716,7 +1716,7 @@ bool SCH_SHEET_LIST::AllSheetPageNumbersEmpty() const
 void SCH_SHEET_LIST::SetInitialPageNumbers()
 {
     // Don't accidentally renumber existing sheets.
-    wxCHECK( AllSheetPageNumbersEmpty(), /* void */ );
+    KI_CHECK( AllSheetPageNumbersEmpty(), /* void */ );
 
     wxString tmp;
     int pageNumber = 1;
@@ -1838,7 +1838,7 @@ void SCH_SHEET_LIST::AddNewSheetInstances( const SCH_SHEET_PATH& aPrefixSheetPat
 
         SCH_SHEET* sheet = sheetPath.Last();
 
-        wxCHECK2( sheet, continue );
+        KI_CHECK2( sheet, continue );
 
         nextVirtualPageNumber += 1;
 
@@ -2091,13 +2091,13 @@ wxString SCH_SHEET_LIST::SourceRefSuffix( const SCH_SYMBOL& aSymbol, const KIID_
 
 void SCH_SHEET_LIST::CheckForMissingSymbolInstances( const wxString& aProjectName )
 {
-    wxLogTrace( traceSchSheetPaths,
+    KI_LOG_TRACE( traceSchSheetPaths,
                "SCH_SHEET_LIST::CheckForMissingSymbolInstances: Processing %zu sheet paths",
                size() );
 
     for( SCH_SHEET_PATH& sheetPath : *this )
     {
-        wxLogTrace( traceSchSheetPaths,
+        KI_LOG_TRACE( traceSchSheetPaths,
                    "  Processing sheet path: '%s' (size=%zu, KIID_PATH='%s')",
                    sheetPath.PathHumanReadable( false ),
                    sheetPath.size(),

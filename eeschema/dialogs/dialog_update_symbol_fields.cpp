@@ -31,8 +31,8 @@ DIALOG_UPDATE_SYMBOL_FIELDS::DIALOG_UPDATE_SYMBOL_FIELDS( SYMBOL_EDIT_FRAME* aPa
         m_editFrame( aParent ),
         m_symbol( aSymbol)
 {
-    wxASSERT( aParent );
-    wxASSERT( aSymbol );
+    KI_ASSERT( aParent );
+    KI_ASSERT( aSymbol );
 
     if( std::shared_ptr<LIB_SYMBOL> parent = m_symbol->GetParent().lock() )
         m_parentSymbolReadOnly->SetValue( UnescapeString( parent->GetName() ) );

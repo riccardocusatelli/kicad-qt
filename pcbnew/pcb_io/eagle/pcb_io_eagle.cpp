@@ -454,7 +454,7 @@ void PCB_IO_EAGLE::loadBoard( const wxString& aFileName, BOARD& aBoard, bool aIs
             m_importedDesignRules = m_customRules;
 
         // should be empty, else missing m_xpath->pop()
-        wxASSERT( m_xpath->Contents().size() == 0 );
+        KI_ASSERT( m_xpath->Contents().size() == 0 );
     }
     catch( const XML_PARSER_ERROR &exc )
     {
@@ -2624,7 +2624,7 @@ void PCB_IO_EAGLE::transferPad( const EPAD_COMMON& aEaglePad, PAD* aPad ) const
         aPad->SetLocalZoneConnection( ZONE_CONNECTION::FULL );
 
     FOOTPRINT* footprint = aPad->GetParentFootprint();
-    wxCHECK( footprint, /* void */ );
+    KI_CHECK( footprint, /* void */ );
     RotatePoint( padPos, footprint->GetOrientation() );
     aPad->SetPosition( padPos + footprint->GetPosition() );
 }

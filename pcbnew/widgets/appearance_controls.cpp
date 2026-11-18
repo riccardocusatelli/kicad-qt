@@ -95,7 +95,7 @@ wxGridCellAttr* NET_GRID_TABLE::GetAttr( int aRow, int aCol, wxGridCellAttr::wxA
     case COL_COLOR:      attr = m_defaultAttr; break;
     case COL_VISIBILITY: attr = m_defaultAttr; break;
     case COL_LABEL:      attr = m_labelAttr;   break;
-    default:             wxFAIL;
+    default:             KI_FAIL();
     }
 
     if( attr )
@@ -107,7 +107,7 @@ wxGridCellAttr* NET_GRID_TABLE::GetAttr( int aRow, int aCol, wxGridCellAttr::wxA
 
 wxString NET_GRID_TABLE::GetValue( int aRow, int aCol )
 {
-    wxASSERT( static_cast<size_t>( aRow ) < m_nets.size() );
+    KI_ASSERT( static_cast<size_t>( aRow ) < m_nets.size() );
 
     switch( aCol )
     {
@@ -121,7 +121,7 @@ wxString NET_GRID_TABLE::GetValue( int aRow, int aCol )
 
 void NET_GRID_TABLE::SetValue( int aRow, int aCol, const wxString& aValue )
 {
-    wxASSERT( static_cast<size_t>( aRow ) < m_nets.size() );
+    KI_ASSERT( static_cast<size_t>( aRow ) < m_nets.size() );
 
     NET_GRID_ENTRY& net = m_nets[aRow];
 
@@ -161,8 +161,8 @@ wxString NET_GRID_TABLE::GetTypeName( int aRow, int aCol )
 
 bool NET_GRID_TABLE::GetValueAsBool( int aRow, int aCol )
 {
-    wxASSERT( static_cast<size_t>( aRow ) < m_nets.size() );
-    wxASSERT( aCol == COL_VISIBILITY );
+    KI_ASSERT( static_cast<size_t>( aRow ) < m_nets.size() );
+    KI_ASSERT( aCol == COL_VISIBILITY );
 
     return m_nets[aRow].visible;
 }
@@ -170,8 +170,8 @@ bool NET_GRID_TABLE::GetValueAsBool( int aRow, int aCol )
 
 void NET_GRID_TABLE::SetValueAsBool( int aRow, int aCol, bool aValue )
 {
-    wxASSERT( static_cast<size_t>( aRow ) < m_nets.size() );
-    wxASSERT( aCol == COL_VISIBILITY );
+    KI_ASSERT( static_cast<size_t>( aRow ) < m_nets.size() );
+    KI_ASSERT( aCol == COL_VISIBILITY );
 
     SetVisibilityState( aRow, aValue );
     updateNetVisibility( m_nets[aRow] );
@@ -180,7 +180,7 @@ void NET_GRID_TABLE::SetValueAsBool( int aRow, int aCol, bool aValue )
 
 void NET_GRID_TABLE::SetVisibilityState( int aRow, bool aVisible )
 {
-    wxASSERT( static_cast<size_t>( aRow ) < m_nets.size() );
+    KI_ASSERT( static_cast<size_t>( aRow ) < m_nets.size() );
 
     m_nets[aRow].visible = aVisible;
 }
@@ -188,9 +188,9 @@ void NET_GRID_TABLE::SetVisibilityState( int aRow, bool aVisible )
 
 void* NET_GRID_TABLE::GetValueAsCustom( int aRow, int aCol, const wxString& aTypeName )
 {
-    wxASSERT( aCol == COL_COLOR );
-    wxASSERT( aTypeName == wxT( "COLOR4D" ) );
-    wxASSERT( static_cast<size_t>( aRow ) < m_nets.size() );
+    KI_ASSERT( aCol == COL_COLOR );
+    KI_ASSERT( aTypeName == wxT( "COLOR4D" ) );
+    KI_ASSERT( static_cast<size_t>( aRow ) < m_nets.size() );
 
     return ColorToVoid( m_nets[aRow].color );
 }
@@ -198,9 +198,9 @@ void* NET_GRID_TABLE::GetValueAsCustom( int aRow, int aCol, const wxString& aTyp
 
 void NET_GRID_TABLE::SetValueAsCustom( int aRow, int aCol, const wxString& aTypeName, void* aValue )
 {
-    wxASSERT( aCol == COL_COLOR );
-    wxASSERT( aTypeName == wxT( "COLOR4D" ) );
-    wxASSERT( static_cast<size_t>( aRow ) < m_nets.size() );
+    KI_ASSERT( aCol == COL_COLOR );
+    KI_ASSERT( aTypeName == wxT( "COLOR4D" ) );
+    KI_ASSERT( static_cast<size_t>( aRow ) < m_nets.size() );
 
     m_nets[aRow].color = VoidToColor( aValue );
     updateNetColor( m_nets[aRow] );
@@ -209,7 +209,7 @@ void NET_GRID_TABLE::SetValueAsCustom( int aRow, int aCol, const wxString& aType
 
 const NET_GRID_ENTRY& NET_GRID_TABLE::GetEntry( int aRow ) const
 {
-    wxASSERT( static_cast<size_t>( aRow ) < m_nets.size() );
+    KI_ASSERT( static_cast<size_t>( aRow ) < m_nets.size() );
     return m_nets[aRow];
 }
 
@@ -1304,7 +1304,7 @@ void APPEARANCE_CONTROLS::OnLayerChanged()
 
     if( !m_layerSettingsMap.count( current ) )
     {
-        wxASSERT( m_layerSettingsMap.count( F_Cu ) );
+        KI_ASSERT( m_layerSettingsMap.count( F_Cu ) );
         current = F_Cu;
     }
 
@@ -1538,7 +1538,7 @@ void APPEARANCE_CONTROLS::UpdateDisplayOptions()
             else
                 m_rbRatsnestVisLayers->SetValue( true );
 
-            wxASSERT( m_objectSettingsMap.count( LAYER_RATSNEST ) );
+            KI_ASSERT( m_objectSettingsMap.count( LAYER_RATSNEST ) );
             APPEARANCE_SETTING* ratsnest = m_objectSettingsMap.at( LAYER_RATSNEST );
             ratsnest->ctl_visibility->SetValue( cfg->m_Display.m_ShowGlobalRatsnest );
         }
@@ -2232,7 +2232,7 @@ void APPEARANCE_CONTROLS::onLayerLeftClick( wxMouseEvent& aEvent )
 
 void APPEARANCE_CONTROLS::rightClickHandler( wxMouseEvent& aEvent )
 {
-    wxASSERT( m_layerContextMenu );
+    KI_ASSERT( m_layerContextMenu );
     PopupMenu( m_layerContextMenu );
     passOnFocus();
 };
@@ -2529,7 +2529,7 @@ void APPEARANCE_CONTROLS::syncObjectSettings()
         }
     }
 
-    wxASSERT( m_objectSettingsMap.count( LAYER_TRACKS )
+    KI_ASSERT( m_objectSettingsMap.count( LAYER_TRACKS )
               && m_objectSettingsMap.count( LAYER_VIAS )
               && m_objectSettingsMap.count( LAYER_PADS )
               && m_objectSettingsMap.count( LAYER_ZONES )
@@ -2813,7 +2813,7 @@ void APPEARANCE_CONTROLS::rebuildLayerPresetsWidget( bool aReset )
     m_cbLayerPresets->Append( _( "Delete preset..." ) );
 
     // At least the built-in presets should always be present
-    wxASSERT( !m_layerPresets.empty() );
+    KI_ASSERT( !m_layerPresets.empty() );
 
     if( aReset )
     {
@@ -3149,7 +3149,7 @@ void APPEARANCE_CONTROLS::onViewportChanged( wxCommandEvent& aEvent )
     {
         VIEWPORT* viewport = static_cast<VIEWPORT*>( m_cbViewports->GetClientData( index ) );
 
-        wxCHECK( viewport, /* void */ );
+        KI_CHECK( viewport, /* void */ );
 
         doApplyViewport( *viewport );
 
@@ -3317,7 +3317,7 @@ void APPEARANCE_CONTROLS::onObjectOpacitySlider( int aLayer, float aOpacity )
 
 void APPEARANCE_CONTROLS::onNetContextMenu( wxCommandEvent& aEvent )
 {
-    wxASSERT( m_netsGrid->GetSelectedRows().size() == 1 );
+    KI_ASSERT( m_netsGrid->GetSelectedRows().size() == 1 );
 
     int row = m_netsGrid->GetSelectedRows()[0];
     const NET_GRID_ENTRY& net = m_netsTable->GetEntry( row );
@@ -3448,7 +3448,7 @@ wxString APPEARANCE_CONTROLS::netclassNameFromEvent( wxEvent& aEvent )
     COLOR_SWATCH* s = static_cast<COLOR_SWATCH*>( aEvent.GetEventObject() );
     int classId = s->GetId();
 
-    wxASSERT( m_netclassIdMap.count( classId ) );
+    KI_ASSERT( m_netclassIdMap.count( classId ) );
     return m_netclassIdMap.at( classId );
 }
 
@@ -3633,7 +3633,7 @@ void APPEARANCE_CONTROLS::onNetclassContextMenu( wxCommandEvent& aEvent )
         case ID_SHOW_ALL_NETS:
         {
             showNetclass( NETCLASS::Default );
-            wxASSERT( m_netclassSettingsMap.count( NETCLASS::Default ) );
+            KI_ASSERT( m_netclassSettingsMap.count( NETCLASS::Default ) );
             m_netclassSettingsMap.at( NETCLASS::Default )->ctl_visibility->SetValue( true );
 
             for( const auto& [name, netclass] : netSettings->GetNetclasses() )
@@ -3651,7 +3651,7 @@ void APPEARANCE_CONTROLS::onNetclassContextMenu( wxCommandEvent& aEvent )
         {
             bool showDefault = m_contextMenuNetclass == NETCLASS::Default;
             showNetclass( NETCLASS::Default, showDefault );
-            wxASSERT( m_netclassSettingsMap.count( NETCLASS::Default ) );
+            KI_ASSERT( m_netclassSettingsMap.count( NETCLASS::Default ) );
             m_netclassSettingsMap.at( NETCLASS::Default )->ctl_visibility->SetValue( showDefault );
 
             for( const auto& [name, netclass] : netSettings->GetNetclasses() )

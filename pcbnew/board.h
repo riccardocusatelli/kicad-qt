@@ -445,7 +445,7 @@ public:
 
     PCB_LAYER_ID GetLayer() const override
     {
-        wxFAIL_MSG( wxT( "BOARD::GetLayer() desn't have meaning.  Don't call it." ) );
+        KI_FAIL_MSG( wxT( "BOARD::GetLayer() desn't have meaning.  Don't call it." ) );
         return UNDEFINED_LAYER;
     }
 

@@ -59,7 +59,7 @@ SCH_BITMAP::SCH_BITMAP( const SCH_BITMAP& aSchBitmap ) :
 
 SCH_BITMAP& SCH_BITMAP::operator=( const SCH_ITEM& aItem )
 {
-    wxCHECK_MSG( Type() == aItem.Type(), *this,
+    KI_CHECK_MSG( Type() == aItem.Type(), *this,
                  wxT( "Cannot assign object type " ) + aItem.GetClass() + wxT( " to type " ) +
                  GetClass() );
 
@@ -83,7 +83,7 @@ EDA_ITEM* SCH_BITMAP::Clone() const
 
 void SCH_BITMAP::swapData( SCH_ITEM* aItem )
 {
-    wxCHECK_RET( aItem->Type() == SCH_BITMAP_T,
+    KI_CHECK_RET( aItem->Type() == SCH_BITMAP_T,
                  wxString::Format( wxT( "SCH_BITMAP object cannot swap data with %s object." ),
                                    aItem->GetClass() ) );
 
@@ -137,7 +137,7 @@ void SCH_BITMAP::Serialize( google::protobuf::Any& aContainer ) const
     image.set_opacity( m_referenceImage.GetOpacity() );
 
     if( !aContainer.PackFrom( image ) )
-        wxFAIL_MSG( wxT( "Failed to pack SCH_BITMAP" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack SCH_BITMAP" ) );
 }
 
 

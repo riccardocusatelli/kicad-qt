@@ -420,7 +420,7 @@ int CLI::PCB_RENDER_COMMAND::doPerform( KIWAY& aKiway )
         return EXIT_CODES::ERR_ARGS;
     }
 
-    int exitCode = aKiway.ProcessJob( KIWAY::FACE_PCB, renderJob.get() );
+    int exitCode = aKiway.ProcessJob( KIWAY_FACES::FACE_PCB, renderJob.get() );
 
     for( size_t ii = 1; ii < m_argVariantNames.size(); ++ii )
     {
@@ -428,7 +428,7 @@ int CLI::PCB_RENDER_COMMAND::doPerform( KIWAY& aKiway )
             return exitCode;
 
         renderJob->m_variant = m_argVariantNames[ii];
-        exitCode = aKiway.ProcessJob( KIWAY::FACE_PCB, renderJob.get() );
+        exitCode = aKiway.ProcessJob( KIWAY_FACES::FACE_PCB, renderJob.get() );
     }
 
     return exitCode;

@@ -371,7 +371,7 @@ const BOX2I GERBER_DRAW_ITEM::GetBoundingBox() const
         break;
 
     default:
-        wxASSERT_MSG( false, wxT( "GERBER_DRAW_ITEM shape is unknown!" ) );
+        KI_ASSERT_MSG( false, wxT( "GERBER_DRAW_ITEM shape is unknown!" ) );
         break;
     }
 

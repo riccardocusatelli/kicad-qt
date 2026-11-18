@@ -192,7 +192,7 @@ void SGNODE::delNodeRef( const SGNODE* aNode )
         return;
     }
 
-    wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] delNodeRef() did not find its target, this "
+    KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [BUG] delNodeRef() did not find its target, this "
                                  "node type %d, referenced node type %d" ),
                 __FILE__, __FUNCTION__, __LINE__,
                 m_SGtype,
@@ -202,7 +202,7 @@ void SGNODE::delNodeRef( const SGNODE* aNode )
 
 void SGNODE::AssociateWrapper( SGNODE** aWrapperRef ) noexcept
 {
-    wxCHECK( aWrapperRef && *aWrapperRef == this, /* void */ );
+    KI_CHECK( aWrapperRef && *aWrapperRef == this, /* void */ );
 
     // if there is an existing association then break it and emit a warning
     // just in case the behavior is undesired
@@ -210,7 +210,7 @@ void SGNODE::AssociateWrapper( SGNODE** aWrapperRef ) noexcept
     {
         *m_Association = nullptr;
 
-        wxLogTrace( MASK_3D_SG, wxT( "%s:%s:%d * [WARNING] association being broken with "
+        KI_LOG_TRACE( MASK_3D_SG, wxT( "%s:%s:%d * [WARNING] association being broken with "
                                      "previous wrapper" ),
                     __FILE__, __FUNCTION__, __LINE__ );
     }
@@ -223,9 +223,9 @@ void SGNODE::DisassociateWrapper( SGNODE** aWrapperRef ) noexcept
     if( !m_Association )
         return;
 
-    wxCHECK( aWrapperRef, /* void */ );
+    KI_CHECK( aWrapperRef, /* void */ );
 
-    wxCHECK( *aWrapperRef == *m_Association && aWrapperRef == m_Association, /* void */ );
+    KI_CHECK( *aWrapperRef == *m_Association && aWrapperRef == m_Association, /* void */ );
 
     m_Association = nullptr;
 }
@@ -242,7 +242,7 @@ bool S3D::GetMatIndex( MATLIST& aList, SGNODE* aNode, int& aIndex )
 {
     aIndex = 0;
 
-    wxCHECK( aNode && S3D::SGTYPE_APPEARANCE == aNode->GetNodeType(), false );
+    KI_CHECK( aNode && S3D::SGTYPE_APPEARANCE == aNode->GetNodeType(), false );
 
     SGAPPEARANCE* node = (SGAPPEARANCE*)aNode;
 

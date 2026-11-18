@@ -173,7 +173,7 @@ void DIALOG_POSITION_RELATIVE::OnClear( wxCommandEvent& event )
 {
     wxObject* obj = event.GetEventObject();
     POSITION_RELATIVE_TOOL* posrelTool = m_toolMgr->GetTool<POSITION_RELATIVE_TOOL>();
-    wxASSERT( posrelTool );
+    KI_ASSERT( posrelTool );
 
     VECTOR2I  offset = posrelTool->GetSelectionAnchorPosition() - getAnchorPos();
     double    r;
@@ -210,7 +210,7 @@ void DIALOG_POSITION_RELATIVE::OnSelectItemClick( wxCommandEvent& event )
     event.Skip();
 
     PCB_PICKER_TOOL* pickerTool = m_toolMgr->GetTool<PCB_PICKER_TOOL>();
-    wxCHECK( pickerTool, /* void */ );
+    KI_CHECK( pickerTool, /* void */ );
 
     Hide();
 
@@ -224,7 +224,7 @@ void DIALOG_POSITION_RELATIVE::OnSelectPointClick( wxCommandEvent& event )
     event.Skip();
 
     PCB_PICKER_TOOL* pickerTool = m_toolMgr->GetTool<PCB_PICKER_TOOL>();
-    wxCHECK( pickerTool, /* void */ );
+    KI_CHECK( pickerTool, /* void */ );
 
     // Hide, but do not close, the dialog
     Hide();

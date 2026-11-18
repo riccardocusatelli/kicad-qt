@@ -358,7 +358,7 @@ void FEATURES_MANAGER::AddShape( const PCB_SHAPE& aShape, PCB_LAYER_ID aLayer )
     }
 
     default:
-        wxLogTrace( traceOdbppIo, wxT( "Unknown shape when adding ODB++ layer feature" ) );
+        KI_LOG_TRACE( traceOdbppIo, wxT( "Unknown shape when adding ODB++ layer feature" ) );
         break;
     }
 
@@ -480,7 +480,7 @@ void FEATURES_MANAGER::AddPadShape( const PAD& aPad, PCB_LAYER_ID aLayer )
 
         break;
     }
-    default: wxLogTrace( traceOdbppIo, wxT( "Unknown pad type" ) ); break;
+    default: KI_LOG_TRACE( traceOdbppIo, wxT( "Unknown pad type" ) ); break;
     }
 }
 
@@ -550,7 +550,7 @@ void FEATURES_MANAGER::AddTrack( PCB_LAYER_ID aLayer, PCB_TRACK* track )
 
     if( iter == GetODBPlugin()->GetViaTraceSubnetMap().end() )
     {
-        wxLogTrace( traceOdbppIo, wxT( "Failed to get subnet track data" ) );
+        KI_LOG_TRACE( traceOdbppIo, wxT( "Failed to get subnet track data" ) );
         return;
     }
 
@@ -673,7 +673,7 @@ void FEATURES_MANAGER::AddZone( PCB_LAYER_ID aLayer, ZONE* zone )
 
         if( iter == GetODBPlugin()->GetPlaneSubnetMap().end() )
         {
-            wxLogTrace( traceOdbppIo, wxT( "Failed to get subnet plane data" ) );
+            KI_LOG_TRACE( traceOdbppIo, wxT( "Failed to get subnet plane data" ) );
             return;
         }
 
@@ -961,7 +961,7 @@ void FEATURES_MANAGER::AddPad( PCB_LAYER_ID aLayer, PAD* pad )
 
     if( iter == GetODBPlugin()->GetPadSubnetMap().end() )
     {
-        wxLogTrace( traceOdbppIo, wxT( "Failed to get subnet top data" ) );
+        KI_LOG_TRACE( traceOdbppIo, wxT( "Failed to get subnet top data" ) );
         return;
     }
 
@@ -1005,7 +1005,7 @@ void FEATURES_MANAGER::AddPad( PCB_LAYER_ID aLayer, PAD* pad )
         // drill layer round hole or slot hole
         if( m_role == ODB_LAYER_ROLE::DRILL || m_role == ODB_LAYER_ROLE::BACKDRILL )
         {
-            wxCHECK_RET( m_drillSpan.has_value(), "Drill layer has no span" );
+            KI_CHECK_RET( m_drillSpan.has_value(), "Drill layer has no span" );
 
             const DRILL_OPERATION* operation = m_plugin->GetFabDrillModel().Find( *m_drillSpan, pad );
 
@@ -1107,7 +1107,7 @@ void FEATURES_MANAGER::InitFeatureList( PCB_LAYER_ID aLayer, const std::vector<B
                 if( FeatureCount() == first + 1 )
                     GetODBPlugin()->RecordNetTieFeature( item, aLayer, m_layerName, first );
                 else
-                    wxLogTrace( traceOdbppIo, wxT( "Net tie shape did not produce one copper feature" ) );
+                    KI_LOG_TRACE( traceOdbppIo, wxT( "Net tie shape did not produce one copper feature" ) );
             }
 
             break;
@@ -1198,7 +1198,7 @@ bool FEATURES_MANAGER::AddViaDrillHole( const PCB_VIA* aVia, PCB_LAYER_ID aLayer
 {
     if( m_role == ODB_LAYER_ROLE::BACKDRILL )
     {
-        wxCHECK_MSG( m_drillSpan.has_value(), false, "Backdrill layer has no span" );
+        KI_CHECK_MSG( m_drillSpan.has_value(), false, "Backdrill layer has no span" );
 
         const DRILL_OPERATION* operation = m_plugin->GetFabDrillModel().Find( *m_drillSpan, aVia );
 

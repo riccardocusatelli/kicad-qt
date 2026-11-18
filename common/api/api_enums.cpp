@@ -115,7 +115,7 @@ KICAD_T FromProtoEnum( types::KiCadObjectType aValue )
 
     case types::KiCadObjectType::KOT_UNKNOWN:               return TYPE_NOT_INIT;
     default:
-        wxCHECK_MSG( false, TYPE_NOT_INIT,
+        KI_CHECK_MSG( false, TYPE_NOT_INIT,
                      "Unhandled case in FromProtoEnum<types::KiCadObjectType>" );
     }
 }
@@ -182,7 +182,7 @@ types::KiCadObjectType ToProtoEnum( KICAD_T aValue )
     case PCB_CONSTRAINT_T:       return types::KiCadObjectType::KOT_PCB_CONSTRAINT;
     case PCB_POINT_T:            return types::KiCadObjectType::KOT_PCB_POINT;
     default:
-        wxCHECK_MSG( false, types::KiCadObjectType::KOT_UNKNOWN,
+        KI_CHECK_MSG( false, types::KiCadObjectType::KOT_UNKNOWN,
                      "Unhandled case in ToProtoEnum<KICAD_T>");
     }
 }
@@ -294,7 +294,7 @@ PCB_LAYER_ID FromProtoEnum( board::types::BoardLayer aValue )
 
     case board::types::BoardLayer::BL_UNKNOWN:     return UNDEFINED_LAYER;
     default:
-        wxCHECK_MSG( false, UNDEFINED_LAYER,
+        KI_CHECK_MSG( false, UNDEFINED_LAYER,
                      "Unhandled case in FromProtoEnum<board::types::BoardLayer>" );
     }
 }
@@ -404,7 +404,7 @@ board::types::BoardLayer ToProtoEnum( PCB_LAYER_ID aValue )
     case User_44:           return board::types::BoardLayer::BL_User_44;
     case User_45:           return board::types::BoardLayer::BL_User_45;
     default:
-        wxCHECK_MSG( false, board::types::BoardLayer::BL_UNKNOWN,
+        KI_CHECK_MSG( false, board::types::BoardLayer::BL_UNKNOWN,
                      "Unhandled case in ToProtoEnum<PCB_LAYER_ID>");
     }
 }
@@ -420,7 +420,7 @@ JOB_PAGE_SIZE FromProtoEnum( schematic::jobs::SchematicJobPageSize aValue )
     case schematic::jobs::SchematicJobPageSize::SJPS_A:    return JOB_PAGE_SIZE::PAGE_SIZE_A;
     case schematic::jobs::SchematicJobPageSize::SJPS_UNKNOWN:
     default:
-        wxCHECK_MSG( false, JOB_PAGE_SIZE::PAGE_SIZE_AUTO,
+        KI_CHECK_MSG( false, JOB_PAGE_SIZE::PAGE_SIZE_AUTO,
                      "Unhandled case in FromProtoEnum<schematic::jobs::SchematicJobPageSize>" );
     }
 }
@@ -435,7 +435,7 @@ schematic::jobs::SchematicJobPageSize ToProtoEnum( JOB_PAGE_SIZE aValue )
     case JOB_PAGE_SIZE::PAGE_SIZE_A4:   return schematic::jobs::SchematicJobPageSize::SJPS_A4;
     case JOB_PAGE_SIZE::PAGE_SIZE_A:    return schematic::jobs::SchematicJobPageSize::SJPS_A;
     default:
-        wxCHECK_MSG( false, schematic::jobs::SchematicJobPageSize::SJPS_UNKNOWN,
+        KI_CHECK_MSG( false, schematic::jobs::SchematicJobPageSize::SJPS_UNKNOWN,
                      "Unhandled case in ToProtoEnum<JOB_PAGE_SIZE>" );
     }
 }
@@ -464,7 +464,7 @@ JOB_EXPORT_SCH_NETLIST::FORMAT FromProtoEnum( schematic::jobs::SchematicNetlistF
         return JOB_EXPORT_SCH_NETLIST::FORMAT::ALLEGRO;
     case schematic::jobs::SchematicNetlistFormat::SNF_UNKNOWN:
     default:
-        wxCHECK_MSG( false, JOB_EXPORT_SCH_NETLIST::FORMAT::KICADXML,
+        KI_CHECK_MSG( false, JOB_EXPORT_SCH_NETLIST::FORMAT::KICADXML,
                      "Unhandled case in FromProtoEnum<schematic::jobs::SchematicNetlistFormat>" );
     }
 }
@@ -492,7 +492,7 @@ schematic::jobs::SchematicNetlistFormat ToProtoEnum( JOB_EXPORT_SCH_NETLIST::FOR
     case JOB_EXPORT_SCH_NETLIST::FORMAT::ALLEGRO:
         return schematic::jobs::SchematicNetlistFormat::SNF_ALLEGRO;
     default:
-        wxCHECK_MSG( false, schematic::jobs::SchematicNetlistFormat::SNF_UNKNOWN,
+        KI_CHECK_MSG( false, schematic::jobs::SchematicNetlistFormat::SNF_UNKNOWN,
                      "Unhandled case in ToProtoEnum<JOB_EXPORT_SCH_NETLIST::FORMAT>" );
     }
 }
@@ -510,7 +510,7 @@ GR_TEXT_H_ALIGN_T FromProtoEnum( types::HorizontalAlignment aValue )
 
     case types::HorizontalAlignment::HA_UNKNOWN:       return GR_TEXT_H_ALIGN_CENTER;
     default:
-        wxCHECK_MSG( false, GR_TEXT_H_ALIGN_CENTER,
+        KI_CHECK_MSG( false, GR_TEXT_H_ALIGN_CENTER,
                      "Unhandled case in FromProtoEnum<types::HorizontalAlignment>" );
     }
 }
@@ -526,7 +526,7 @@ types::HorizontalAlignment ToProtoEnum( GR_TEXT_H_ALIGN_T aValue )
     case GR_TEXT_H_ALIGN_RIGHT:         return types::HorizontalAlignment::HA_RIGHT;
     case GR_TEXT_H_ALIGN_INDETERMINATE: return types::HorizontalAlignment::HA_INDETERMINATE;
     default:
-        wxCHECK_MSG( false, types::HorizontalAlignment::HA_UNKNOWN,
+        KI_CHECK_MSG( false, types::HorizontalAlignment::HA_UNKNOWN,
                      "Unhandled case in ToProtoEnum<GR_TEXT_H_ALIGN_T>");
     }
 }
@@ -544,7 +544,7 @@ GR_TEXT_V_ALIGN_T FromProtoEnum( types::VerticalAlignment aValue )
 
     case types::VerticalAlignment::VA_UNKNOWN:       return GR_TEXT_V_ALIGN_CENTER;
     default:
-        wxCHECK_MSG( false, GR_TEXT_V_ALIGN_CENTER,
+        KI_CHECK_MSG( false, GR_TEXT_V_ALIGN_CENTER,
                      "Unhandled case in FromProtoEnum<types::VerticalAlignment>" );
     }
 }
@@ -560,7 +560,7 @@ types::VerticalAlignment ToProtoEnum( GR_TEXT_V_ALIGN_T aValue )
     case GR_TEXT_V_ALIGN_BOTTOM:        return types::VerticalAlignment::VA_BOTTOM;
     case GR_TEXT_V_ALIGN_INDETERMINATE: return types::VerticalAlignment::VA_INDETERMINATE;
     default:
-        wxCHECK_MSG( false, types::VerticalAlignment::VA_UNKNOWN,
+        KI_CHECK_MSG( false, types::VerticalAlignment::VA_UNKNOWN,
                      "Unhandled case in ToProtoEnum<GR_TEXT_V_ALIGN_T>");
     }
 }
@@ -580,7 +580,7 @@ LINE_STYLE FromProtoEnum( types::StrokeLineStyle aValue )
     case types::StrokeLineStyle::SLS_DASHDOTDOT: return LINE_STYLE::DASHDOTDOT;
 
     default:
-        wxCHECK_MSG( false, LINE_STYLE::DEFAULT,
+        KI_CHECK_MSG( false, LINE_STYLE::DEFAULT,
                      "Unhandled case in FromProtoEnum<types::StrokeLineStyle>" );
     }
 }
@@ -598,7 +598,7 @@ types::StrokeLineStyle ToProtoEnum( LINE_STYLE aValue )
     case LINE_STYLE::DASHDOT:    return types::StrokeLineStyle::SLS_DASHDOT;
     case LINE_STYLE::DASHDOTDOT: return types::StrokeLineStyle::SLS_DASHDOTDOT;
     default:
-        wxCHECK_MSG( false, types::StrokeLineStyle::SLS_UNKNOWN,
+        KI_CHECK_MSG( false, types::StrokeLineStyle::SLS_UNKNOWN,
                      "Unhandled case in ToProtoEnum<LINE_STYLE>");
     }
 }
@@ -618,7 +618,7 @@ FILL_T FromProtoEnum( types::GraphicFillType aValue )
     case types::GraphicFillType::GFT_CROSS_HATCH:                       return FILL_T::CROSS_HATCH;
     case types::GraphicFillType::GFT_UNKNOWN:
     default:
-        wxCHECK_MSG( false, FILL_T::NO_FILL,
+        KI_CHECK_MSG( false, FILL_T::NO_FILL,
                      "Unhandled case in FromProtoEnum<types::GraphicFillType>" );
     }
 }
@@ -637,7 +637,7 @@ types::GraphicFillType ToProtoEnum( FILL_T aValue )
     case FILL_T::REVERSE_HATCH:             return types::GraphicFillType::GFT_REVERSE_HATCH;
     case FILL_T::CROSS_HATCH:               return types::GraphicFillType::GFT_CROSS_HATCH;
     default:
-        wxCHECK_MSG( false, types::GraphicFillType::GFT_UNKNOWN,
+        KI_CHECK_MSG( false, types::GraphicFillType::GFT_UNKNOWN,
                      "Unhandled case in ToProtoEnum<FILL_T>" );
     }
 }
@@ -654,7 +654,7 @@ types::LineEndingStyle ToProtoEnum( LINE_ENDING_STYLE aValue )
     case LINE_ENDING_STYLE::SQUARE:     return types::LineEndingStyle::LES_SQUARE;
     case LINE_ENDING_STYLE::ARROW_OPEN: return types::LineEndingStyle::LES_ARROW_OPEN;
     default:
-        wxCHECK_MSG( false, types::LineEndingStyle::LES_UNKNOWN,
+        KI_CHECK_MSG( false, types::LineEndingStyle::LES_UNKNOWN,
                      "Unhandled case in ToProtoEnum<LINE_ENDING_STYLE>" );
     }
 }
@@ -672,7 +672,7 @@ LINE_ENDING_STYLE FromProtoEnum( types::LineEndingStyle aValue )
     case types::LineEndingStyle::LES_ARROW_OPEN: return LINE_ENDING_STYLE::ARROW_OPEN;
     case types::LineEndingStyle::LES_UNKNOWN:
     default:
-        wxCHECK_MSG( false, LINE_ENDING_STYLE::NONE,
+        KI_CHECK_MSG( false, LINE_ENDING_STYLE::NONE,
                      "Unhandled case in FromProtoEnum<types::LineEndingStyle>" );
     }
 }
@@ -697,7 +697,7 @@ ELECTRICAL_PINTYPE FromProtoEnum( types::ElectricalPinType aValue )
     case types::ElectricalPinType::EPT_NO_CONNECT:      return ELECTRICAL_PINTYPE::PT_NC;
     case types::ElectricalPinType::EPT_UNKNOWN:
     default:
-        wxCHECK_MSG( false, ELECTRICAL_PINTYPE::PT_UNSPECIFIED,
+        KI_CHECK_MSG( false, ELECTRICAL_PINTYPE::PT_UNSPECIFIED,
                      "Unhandled case in FromProtoEnum<types::ElectricalPinType>" );
     }
 }
@@ -723,7 +723,7 @@ types::ElectricalPinType ToProtoEnum( ELECTRICAL_PINTYPE aValue )
     // Inherit shouldn't be serialized, it's an internal flag
     case ELECTRICAL_PINTYPE::PT_INHERIT:
     default:
-        wxCHECK_MSG( false, types::ElectricalPinType::EPT_UNKNOWN,
+        KI_CHECK_MSG( false, types::ElectricalPinType::EPT_UNKNOWN,
                      "Unhandled case in ToProtoEnum<ELECTRICAL_PINTYPE>");
     }
 }
@@ -739,7 +739,7 @@ PAD_SIM_ELECTRICAL_TYPE FromProtoEnum( board::types::PadSimElectricalType aValue
     case board::types::PadSimElectricalType::PSET_SINK:   return PAD_SIM_ELECTRICAL_TYPE::SINK;
 
     default:
-        wxCHECK_MSG( false, PAD_SIM_ELECTRICAL_TYPE::NONE,
+        KI_CHECK_MSG( false, PAD_SIM_ELECTRICAL_TYPE::NONE,
                      "Unhandled case in FromProtoEnum<types::PadSimElectricalType>" );
     }
 }
@@ -755,7 +755,7 @@ board::types::PadSimElectricalType ToProtoEnum( PAD_SIM_ELECTRICAL_TYPE aValue )
     case PAD_SIM_ELECTRICAL_TYPE::SINK:   return board::types::PadSimElectricalType::PSET_SINK;
 
     default:
-        wxCHECK_MSG( false, board::types::PadSimElectricalType::PSET_NONE,
+        KI_CHECK_MSG( false, board::types::PadSimElectricalType::PSET_NONE,
                      "Unhandled case in ToProtoEnum<PAD_SIM_ELECTRICAL_TYPE>" );
     }
 }
@@ -775,7 +775,7 @@ types::RuleSeverity ToProtoEnum( SEVERITY aValue )
     case RPT_SEVERITY_DEBUG:     return types::RuleSeverity::RS_DEBUG;
     case RPT_SEVERITY_UNDEFINED: return types::RuleSeverity::RS_UNDEFINED;
     default:
-        wxCHECK_MSG( false, types::RuleSeverity::RS_UNDEFINED,
+        KI_CHECK_MSG( false, types::RuleSeverity::RS_UNDEFINED,
                      "Unhandled case in ToProtoEnum<SEVERITY>");
     }
 }
@@ -824,7 +824,7 @@ PAGE_SIZE_TYPE FromProtoEnum( types::PageSize aValue )
 
     case types::PageSize::PS_UNKNOWN:
     default:
-        wxCHECK_MSG( false, PAGE_SIZE_TYPE::A3,
+        KI_CHECK_MSG( false, PAGE_SIZE_TYPE::A3,
                      "Unhandled case in FromProtoEnum<types::PageSize>" );
     }
 }
@@ -852,7 +852,7 @@ types::PageSize ToProtoEnum( PAGE_SIZE_TYPE aValue )
     case PAGE_SIZE_TYPE::USLedger:  return types::PageSize::PS_US_LEDGER;
     case PAGE_SIZE_TYPE::User:      return types::PageSize::PS_USER;
     default:
-        wxCHECK_MSG( false, types::PageSize::PS_UNKNOWN,
+        KI_CHECK_MSG( false, types::PageSize::PS_UNKNOWN,
                      "Unhandled case in ToProtoEnum<PAGE_SIZE_TYPE>" );
     }
 }
@@ -881,7 +881,7 @@ board::commands::BoardFlipDirection ToProtoEnum( FLIP_DIRECTION aValue )
     case FLIP_DIRECTION::TOP_BOTTOM: return board::commands::BoardFlipDirection::BFD_TOP_BOTTOM;
     }
 
-    wxCHECK_MSG( false, board::commands::BoardFlipDirection::BFD_UNKNOWN,
+    KI_CHECK_MSG( false, board::commands::BoardFlipDirection::BFD_UNKNOWN,
                  "Unhandled case in ToProtoEnum<FLIP_DIRECTION>" );
 }
 
@@ -914,7 +914,7 @@ common::types::EmbeddedFileType ToProtoEnum( EMBEDDED_FILES::EMBEDDED_FILE::FILE
     case EMBEDDED_FILES::EMBEDDED_FILE::FILE_TYPE::OTHER:     return common::types::EFT_OTHER;
     }
 
-    wxCHECK_MSG( false, common::types::EFT_UNKNOWN,
+    KI_CHECK_MSG( false, common::types::EFT_UNKNOWN,
                  "Unhandled case in ToProtoEnum<EMBEDDED_FILES::EMBEDDED_FILE::FILE_TYPE>" );
 }
 
@@ -969,7 +969,7 @@ types::LibraryTableScope ToProtoEnum( LIBRARY_TABLE_SCOPE aScope )
     case LIBRARY_TABLE_SCOPE::UNINITIALIZED: return types::LibraryTableScope::LTS_UNKNOWN;
 
     default:
-        wxCHECK_MSG( false, common::types::LibraryTableScope::LTS_UNKNOWN,
+        KI_CHECK_MSG( false, common::types::LibraryTableScope::LTS_UNKNOWN,
                      "Unhandled case in ToProtoEnum<LIBRARY_TABLE_SCOPE>" );
     }
 }
@@ -987,7 +987,7 @@ LOAD_STATUS FromProtoEnum( types::LibraryLoadStatus aStatus )
     case types::LibraryLoadStatus::LLS_ERROR:   return LOAD_STATUS::LOAD_ERROR;
 
     default:
-        wxCHECK_MSG( false, LOAD_STATUS::INVALID, "Unhandled case in FromProtoEnum<LibraryLoadStatus>" );
+        KI_CHECK_MSG( false, LOAD_STATUS::INVALID, "Unhandled case in FromProtoEnum<LibraryLoadStatus>" );
     }
 }
 
@@ -1003,7 +1003,7 @@ types::LibraryLoadStatus ToProtoEnum( LOAD_STATUS aStatus )
     case LOAD_STATUS::LOAD_ERROR:   return types::LibraryLoadStatus::LLS_ERROR;
 
     default:
-        wxCHECK_MSG( false, types::LibraryLoadStatus::LLS_UNKNOWN, "Unhandled case in ToProtoEnum<LOAD_STATUS>" );
+        KI_CHECK_MSG( false, types::LibraryLoadStatus::LLS_UNKNOWN, "Unhandled case in ToProtoEnum<LOAD_STATUS>" );
     }
 }
 
@@ -1039,7 +1039,7 @@ types::MarkerType ToProtoEnum( MARKER_BASE::MARKER_T aMarkerType )
     case MARKER_BASE::MARKER_SIMULATION:    return types::MarkerType::MT_SIMULATION;
 
     default:
-        wxCHECK_MSG( false, types::MarkerType::MT_UNKNOWN, "Unhandled case in ToProtoEnum<MARKER_T>" );
+        KI_CHECK_MSG( false, types::MarkerType::MT_UNKNOWN, "Unhandled case in ToProtoEnum<MARKER_T>" );
     }
 
 }

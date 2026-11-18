@@ -75,7 +75,7 @@ bool DeleteCookies( wxWebView* aWebView )
 
     if( !get_context || !get_data_manager || !clear_data )
     {
-        wxLogTrace( "webview", "Failed to load WebKit symbols" );
+        KI_LOG_TRACE( "webview", "Failed to load WebKit symbols" );
         return false;
     }
 

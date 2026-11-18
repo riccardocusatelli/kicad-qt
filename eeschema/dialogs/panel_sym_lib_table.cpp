@@ -99,7 +99,7 @@ public:
 
     void SetValue( int aRow, int aCol, const wxString &aValue ) override
     {
-        wxCHECK( aRow < (int) size(), /* void */ );
+        KI_CHECK( aRow < (int) size(), /* void */ );
 
         LIB_TABLE_GRID_DATA_MODEL::SetValue( aRow, aCol, aValue );
 
@@ -772,7 +772,7 @@ void PANEL_SYM_LIB_TABLE::onReset( wxCommandEvent& event )
     // Go ahead and reload here because this action takes place even if the dialog is canceled
     Pgm().GetLibraryManager().LoadGlobalTables( { LIBRARY_TABLE_TYPE::SYMBOL } );
 
-    if( KIFACE *schface = m_parent->Kiway().KiFACE( KIWAY::FACE_SCH ) )
+    if( KIFACE *schface = m_parent->Kiway().KiFACE( KIWAY_FACES::FACE_SCH ) )
         schface->PreloadLibraries( &m_parent->Kiway() );
 
     grid->Freeze();
@@ -782,7 +782,7 @@ void PANEL_SYM_LIB_TABLE::onReset( wxCommandEvent& event )
 
     std::optional<LIBRARY_TABLE*> newTable = Pgm().GetLibraryManager().Table( LIBRARY_TABLE_TYPE::SYMBOL,
                                                                               LIBRARY_TABLE_SCOPE::GLOBAL );
-    wxASSERT( newTable );
+    KI_ASSERT( newTable );
 
     SYMBOL_LIBRARY_ADAPTER* adapter = PROJECT_SCH::SymbolLibAdapter( &m_parent->Kiway().Prj() );
 
@@ -1022,7 +1022,7 @@ bool PANEL_SYM_LIB_TABLE::TransferDataFromWindow()
 void PANEL_SYM_LIB_TABLE::populateEnvironReadOnlyTable()
 {
     wxRegEx re( ".*?(\\$\\{(.+?)\\})|(\\$\\((.+?)\\)).*?", wxRE_ADVANCED );
-    wxASSERT( re.IsValid() );   // wxRE_ADVANCED is required.
+    KI_ASSERT( re.IsValid() );   // wxRE_ADVANCED is required.
 
     std::set< wxString > unique;
 
@@ -1154,7 +1154,7 @@ void InvokeSchEditSymbolLibTable( KIWAY* aKiway, wxWindow *aParent )
     }
 
     // Trigger a reload in case any libraries have been added or removed
-    if( KIFACE *schface = aKiway->KiFACE( KIWAY::FACE_SCH ) )
+    if( KIFACE *schface = aKiway->KiFACE( KIWAY_FACES::FACE_SCH ) )
         schface->PreloadLibraries( aKiway );
 
     if( symbolEditor )

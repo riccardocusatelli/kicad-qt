@@ -85,7 +85,7 @@ int COMMON_CONTROL::ConfigurePaths( const TOOL_EVENT& aEvent )
 {
     // If _pcbnew.kiface is running have it put up the dialog so the 3D paths can also
     // be edited
-    if( KIFACE* pcbnew = m_frame->Kiway().KiFACE( KIWAY::FACE_PCB, false ) )
+    if( KIFACE* pcbnew = m_frame->Kiway().KiFACE( KIWAY_FACES::FACE_PCB, false ) )
     {
         try
         {
@@ -115,7 +115,7 @@ int COMMON_CONTROL::ShowLibraryTable( const TOOL_EVENT& aEvent )
     {
         try     // Sch frame was not available, try to start it
         {
-            if( KIFACE* kiface = m_frame->Kiway().KiFACE( KIWAY::FACE_SCH ) )
+            if( KIFACE* kiface = m_frame->Kiway().KiFACE( KIWAY_FACES::FACE_SCH ) )
                 kiface->CreateKiWindow( m_frame, DIALOG_SCH_LIBRARY_TABLE, &m_frame->Kiway() );
         }
         catch( ... )
@@ -129,7 +129,7 @@ int COMMON_CONTROL::ShowLibraryTable( const TOOL_EVENT& aEvent )
     {
         try     // Pcb frame was not available, try to start it
         {
-            if( KIFACE* kiface = m_frame->Kiway().KiFACE( KIWAY::FACE_PCB ) )
+            if( KIFACE* kiface = m_frame->Kiway().KiFACE( KIWAY_FACES::FACE_PCB ) )
                 kiface->CreateKiWindow( m_frame, DIALOG_PCB_LIBRARY_TABLE, &m_frame->Kiway() );
         }
         catch( ... )
@@ -143,7 +143,7 @@ int COMMON_CONTROL::ShowLibraryTable( const TOOL_EVENT& aEvent )
     {
         try     // Kicad frame was not available, try to start it
         {
-            if( KIFACE* kiface = m_frame->Kiway().KiFACE( KIWAY::FACE_SCH ) )
+            if( KIFACE* kiface = m_frame->Kiway().KiFACE( KIWAY_FACES::FACE_SCH ) )
                 kiface->CreateKiWindow( m_frame, DIALOG_DESIGN_BLOCK_LIBRARY_TABLE, &m_frame->Kiway() );
         }
         catch( ... )
@@ -266,7 +266,7 @@ int COMMON_CONTROL::Execute( const TOOL_EVENT& aEvent )
     if( aEvent.IsAction( &ACTIONS::showCalculatorTools ) )
         execFile = PCB_CALCULATOR_EXE;
     else
-        wxFAIL_MSG( "Execute(): unexpected request" );
+        KI_FAIL_MSG( "Execute(): unexpected request" );
 
     if( execFile.IsEmpty() )
         return 0;

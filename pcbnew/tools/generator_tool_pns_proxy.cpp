@@ -114,7 +114,7 @@ public:
 
     void UpdateItem( PNS::ITEM* aItem ) override
     {
-        wxCHECK_RET( m_generatorCommit, wxS( "Cannot update a generator route without a commit" ) );
+        KI_CHECK_RET( m_generatorCommit, wxS( "Cannot update a generator route without a commit" ) );
         modifyBoardItem( aItem, *m_generatorCommit );
     }
 

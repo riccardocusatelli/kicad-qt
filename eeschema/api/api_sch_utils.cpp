@@ -151,7 +151,7 @@ bool PackSymbol( kiapi::schematic::types::SchematicSymbolInstance* aOutput, cons
 
     if( !aInput->GetInstance( instance, path ) )
     {
-        wxLogTrace( traceApi, "error: instance data for symbol %s on %s is missing",
+        KI_LOG_TRACE( traceApi, "error: instance data for symbol %s on %s is missing",
                      aInput->m_Uuid.AsString(), aPath.PathHumanReadable() );
         return false;
     }

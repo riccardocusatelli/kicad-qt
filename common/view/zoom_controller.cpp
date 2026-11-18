@@ -92,7 +92,7 @@ double ACCELERATING_ZOOM_CONTROLLER::GetScaleForRotation( int aRotation, int aWh
 
     m_prevTimestamp = timestamp;
 
-    wxLogTrace( traceZoomScroll,
+    KI_LOG_TRACE( traceZoomScroll,
             wxString::Format( "Rot %d, time diff: %ldms", aRotation, (long)timeDiff.count() ) );
 
     double zoomScale;
@@ -118,7 +118,7 @@ double ACCELERATING_ZOOM_CONTROLLER::GetScaleForRotation( int aRotation, int aWh
     if( notchCount( aRotation, aWheelDelta ) > 1.0 )
         zoomScale = std::pow( zoomScale, notchCount( aRotation, aWheelDelta ) );
 
-    wxLogTrace( traceZoomScroll, wxString::Format( "  Zoom factor: %f", zoomScale ) );
+    KI_LOG_TRACE( traceZoomScroll, wxString::Format( "  Zoom factor: %f", zoomScale ) );
 
     return zoomScale;
 }
@@ -139,7 +139,7 @@ CONSTANT_ZOOM_CONTROLLER::CONSTANT_ZOOM_CONTROLLER( double aScale ) : m_scale( a
 
 double CONSTANT_ZOOM_CONTROLLER::GetScaleForRotation( int aRotation, int aWheelDelta )
 {
-    wxLogTrace( traceZoomScroll, wxString::Format( "Rot %d", aRotation ) );
+    KI_LOG_TRACE( traceZoomScroll, wxString::Format( "Rot %d", aRotation ) );
 
     // One notch is worth at most 100 units, and each further notch of a merged event zooms by it again
     const double stepCap = aWheelDelta > 0 ? std::min( aWheelDelta, 100 ) : 100;
@@ -147,7 +147,7 @@ double CONSTANT_ZOOM_CONTROLLER::GetScaleForRotation( int aRotation, int aWheelD
     const double factor = std::pow( 1.0 + oneStep * m_scale, notchCount( aRotation, aWheelDelta ) );
     const double zoom_scale = aRotation > 0 ? factor : 1.0 / factor;
 
-    wxLogTrace( traceZoomScroll, wxString::Format( "  Zoom factor: %f", zoom_scale ) );
+    KI_LOG_TRACE( traceZoomScroll, wxString::Format( "  Zoom factor: %f", zoom_scale ) );
 
     return zoom_scale;
 }

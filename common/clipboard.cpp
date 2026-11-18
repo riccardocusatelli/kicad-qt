@@ -335,8 +335,8 @@ static wxImage FlattenAlphaOnWhite( const wxImage& aImage )
 bool AddPngToClipboardData( wxDataObjectComposite* aData, const wxMemoryBuffer& aPngData,
                             const wxImage* aFallbackImage )
 {
-    wxCHECK( wxTheClipboard->IsOpened(), false );
-    wxCHECK( aPngData.GetDataLen() > 0, false );
+    KI_CHECK( wxTheClipboard->IsOpened(), false );
+    KI_CHECK( aPngData.GetDataLen() > 0, false );
 
 #if defined( __WXMSW__ )
     // PNG goes first so image consumers that take the first image format get the alpha channel
@@ -352,7 +352,7 @@ bool AddPngToClipboardData( wxDataObjectComposite* aData, const wxMemoryBuffer& 
     pngObj->SetData( aPngData.GetDataLen(), aPngData.GetData() );
     aData->Add( pngObj );
 #else // __WXOSX__
-    wxCHECK( aFallbackImage && aFallbackImage->IsOk(), false );
+    KI_CHECK( aFallbackImage && aFallbackImage->IsOk(), false );
     aData->Add( new wxBitmapDataObject( wxBitmap( *aFallbackImage ) ) );
 #endif
 
@@ -362,8 +362,8 @@ bool AddPngToClipboardData( wxDataObjectComposite* aData, const wxMemoryBuffer& 
 
 bool AddTransparentImageToClipboardData( wxDataObjectComposite* aData, wxImage aImage )
 {
-    wxCHECK( wxTheClipboard->IsOpened(), false );
-    wxCHECK( aImage.IsOk(), false );
+    KI_CHECK( wxTheClipboard->IsOpened(), false );
+    KI_CHECK( aImage.IsOk(), false );
 
 #if defined( __WXGTK__ ) || defined( __WXMSW__ )
     wxMemoryBuffer pngData;

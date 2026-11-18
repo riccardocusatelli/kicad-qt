@@ -85,7 +85,7 @@ PANEL_TRANSLINE* getTranslinePanel()
     PCB_CALCULATOR_FRAME* frame     = (PCB_CALCULATOR_FRAME*) wxTheApp->GetTopWindow();
     PANEL_TRANSLINE*      transline = frame->GetCalculator<PANEL_TRANSLINE>();
 
-    wxASSERT( transline );
+    KI_ASSERT( transline );
     return transline;
 }
 
@@ -214,7 +214,7 @@ void PANEL_TRANSLINE::SetResult( int aLineNumber, const wxString& aText )
     wxStaticText* messages[MSG_CNT_MAX] = { m_Message1, m_Message2, m_Message3, m_Message4, m_Message5,
                                             m_Message6, m_Message7, m_Message8, m_Message9, m_Message10 };
 
-    wxASSERT( ( aLineNumber >= 0 ) && ( aLineNumber < MSG_CNT_MAX ) );
+    KI_ASSERT( ( aLineNumber >= 0 ) && ( aLineNumber < MSG_CNT_MAX ) );
 
     if( aLineNumber < 0 )
         aLineNumber = 0;

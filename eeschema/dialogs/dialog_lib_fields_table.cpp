@@ -222,7 +222,7 @@ protected:
                 return;
 
             EDA_DRAW_FRAME* frame = dynamic_cast<EDA_DRAW_FRAME*>( m_dlg->GetParent() );
-            wxCHECK( frame, /* void */ );
+            KI_CHECK( frame, /* void */ );
 
             const LIB_SYMBOL* parentSymbol = m_dataModel->GetSymbolForRow( row );
 
@@ -576,14 +576,14 @@ bool DIALOG_LIB_FIELDS_TABLE::TransferDataFromWindow()
             {
                 auto createdSymbols = m_dataModel->GetAndClearCreatedDerivedSymbols();
 
-                wxLogTrace( traceLibFieldTable, "Post-apply handler: found %zu created derived symbols",
+                KI_LOG_TRACE( traceLibFieldTable, "Post-apply handler: found %zu created derived symbols",
                             createdSymbols.size() );
 
                 for( const auto& [symbol, libraryName] : createdSymbols )
                 {
                     if( !libraryName.IsEmpty() )
                     {
-                        wxLogTrace( traceLibFieldTable, "Updating symbol '%s' (UUID: %s) in library '%s'",
+                        KI_LOG_TRACE( traceLibFieldTable, "Updating symbol '%s' (UUID: %s) in library '%s'",
                                     symbol->GetName(), symbol->m_Uuid.AsString(), libraryName );
                         m_parent->GetLibManager().UpdateSymbol( symbol, libraryName );
                     }
@@ -591,7 +591,7 @@ bool DIALOG_LIB_FIELDS_TABLE::TransferDataFromWindow()
 
                 if( !createdSymbols.empty() )
                 {
-                    wxLogTrace( traceLibFieldTable, "Syncing libraries due to %zu new symbols",
+                    KI_LOG_TRACE( traceLibFieldTable, "Syncing libraries due to %zu new symbols",
                                 createdSymbols.size() );
 
                     std::vector<LIB_SYMBOL*> symbolsToPreserve;
@@ -611,14 +611,14 @@ bool DIALOG_LIB_FIELDS_TABLE::TransferDataFromWindow()
 
                         if( !found )
                         {
-                            wxLogTrace( traceLibFieldTable, "Re-adding symbol '%s' to list after sync",
+                            KI_LOG_TRACE( traceLibFieldTable, "Re-adding symbol '%s' to list after sync",
                                         symbol->GetName() );
                             m_symbolsList.push_back( symbol );
                         }
                     }
                 }
 
-                wxLogTrace( traceLibFieldTable, "Dialog symbol list size after processing: %zu",
+                KI_LOG_TRACE( traceLibFieldTable, "Dialog symbol list size after processing: %zu",
                             m_symbolsList.size() );
             } );
 

@@ -50,7 +50,7 @@ public:
 
     void SetSelectedString( const wxString& aString ) override
     {
-        wxFAIL_MSG( "Unsupported; use SetSelectedNet() or SetSelectedNetcode()" );
+        KI_FAIL_MSG( "Unsupported; use SetSelectedNet() or SetSelectedNetcode()" );
     }
 
 protected:

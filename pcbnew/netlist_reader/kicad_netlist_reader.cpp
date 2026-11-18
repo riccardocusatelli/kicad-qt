@@ -102,7 +102,7 @@ void KICAD_NETLIST_PARSER::Parse()
             break;
 
         case T_components:  // The section comp starts here.
-            wxLogTrace( "CVPCB_PINCOUNT", wxT( "Parse: entering components section" ) );
+            KI_LOG_TRACE( "CVPCB_PINCOUNT", wxT( "Parse: entering components section" ) );
 
             while( ( token = NextTok() ) != T_EOF )
             {
@@ -146,7 +146,7 @@ void KICAD_NETLIST_PARSER::Parse()
             break;
 
         case T_nets:    // The section nets starts here.
-            wxLogTrace( "CVPCB_PINCOUNT", wxT( "Parse: entering nets section" ) );
+            KI_LOG_TRACE( "CVPCB_PINCOUNT", wxT( "Parse: entering nets section" ) );
 
             while( ( token = NextTok() ) != T_EOF )
             {
@@ -176,7 +176,7 @@ void KICAD_NETLIST_PARSER::Parse()
             break;
 
         case T_libparts:    // The section libparts starts here.
-            wxLogTrace( "CVPCB_PINCOUNT", wxT( "Parse: entering libparts section" ) );
+            KI_LOG_TRACE( "CVPCB_PINCOUNT", wxT( "Parse: entering libparts section" ) );
 
             while( ( token = NextTok() ) != T_EOF )
             {
@@ -217,7 +217,7 @@ void KICAD_NETLIST_PARSER::Parse()
 
     if( plevel != 0 )
     {
-        wxFAIL_MSG( wxString::Format( wxT( "KICAD_NETLIST_PARSER::Parse(): bad parenthesis "
+        KI_FAIL_MSG( wxString::Format( wxT( "KICAD_NETLIST_PARSER::Parse(): bad parenthesis "
                                            "count (count = %d" ),
                                       plevel ) );
     }
@@ -419,7 +419,7 @@ void KICAD_NETLIST_PARSER::parseComponent()
                     Expecting( "part, lib or description" );
                 }
             }
-            wxLogTrace( "CVPCB_PINCOUNT", wxT( "parseComponent: ref='%s' libsource='%s:%s'" ),
+            KI_LOG_TRACE( "CVPCB_PINCOUNT", wxT( "parseComponent: ref='%s' libsource='%s:%s'" ),
                         ref, library, name );
             break;
 
@@ -655,7 +655,7 @@ void KICAD_NETLIST_PARSER::parseComponent()
                     NeedSYMBOLorNUMBER();
                     wxString padName = From_UTF8( CurText() );
                     NeedRIGHT();
-                    wxCHECK2( inGroup, continue );
+                    KI_CHECK2( inGroup, continue );
                     currentNames.insert( padName );
                     break;
                 }
@@ -1168,7 +1168,7 @@ void KICAD_NETLIST_PARSER::parseLibPartList()
     int               pinCount = 0;
 
     // The last token read was libpart, so read the next token
-    wxLogTrace( "CVPCB_PINCOUNT", wxT( "parseLibPartList: begin libpart" ) );
+    KI_LOG_TRACE( "CVPCB_PINCOUNT", wxT( "parseLibPartList: begin libpart" ) );
     while( (token = NextTok() ) != T_RIGHT )
     {
         if( token == T_LEFT )
@@ -1228,7 +1228,7 @@ void KICAD_NETLIST_PARSER::parseLibPartList()
             break;
 
         case T_pins:
-            wxLogTrace( "CVPCB_PINCOUNT", wxT( "parseLibPartList: entering pins for '%s:%s'" ),
+            KI_LOG_TRACE( "CVPCB_PINCOUNT", wxT( "parseLibPartList: entering pins for '%s:%s'" ),
                         libName, libPartName );
             while( (token = NextTok() ) != T_RIGHT )
             {
@@ -1239,12 +1239,12 @@ void KICAD_NETLIST_PARSER::parseLibPartList()
                     Expecting( T_pin );
 
                 pinCount++;
-                wxLogTrace( "CVPCB_PINCOUNT", wxT( "parseLibPartList: pin #%d for '%s:%s'" ),
+                KI_LOG_TRACE( "CVPCB_PINCOUNT", wxT( "parseLibPartList: pin #%d for '%s:%s'" ),
                             pinCount, libName, libPartName );
 
                 skipCurrent();
             }
-            wxLogTrace( "CVPCB_PINCOUNT", wxT( "Parsed libpart '%s:%s' pins => pinCount=%d" ),
+            KI_LOG_TRACE( "CVPCB_PINCOUNT", wxT( "Parsed libpart '%s:%s' pins => pinCount=%d" ),
                         libName, libPartName, pinCount );
             break;
 
@@ -1256,7 +1256,7 @@ void KICAD_NETLIST_PARSER::parseLibPartList()
     }
 
     // Find all of the components that reference this component library part definition.
-    wxLogTrace( "CVPCB_PINCOUNT", wxT( "parseLibPartList: assigning pinCount=%d for libpart '%s:%s'" ),
+    KI_LOG_TRACE( "CVPCB_PINCOUNT", wxT( "parseLibPartList: assigning pinCount=%d for libpart '%s:%s'" ),
                 pinCount, libName, libPartName );
     for( unsigned i = 0;  i < m_netlist->GetCount();  i++ )
     {
@@ -1266,7 +1266,7 @@ void KICAD_NETLIST_PARSER::parseLibPartList()
         {
             component->SetFootprintFilters( footprintFilters );
             component->SetPinCount( pinCount );
-            wxLogTrace( "CVPCB_PINCOUNT", wxT( "Assign pinCount=%d to component ref='%s' part='%s:%s'" ),
+            KI_LOG_TRACE( "CVPCB_PINCOUNT", wxT( "Assign pinCount=%d to component ref='%s' part='%s:%s'" ),
                         pinCount, component->GetReference(), libName, libPartName );
         }
 
@@ -1276,7 +1276,7 @@ void KICAD_NETLIST_PARSER::parseLibPartList()
             {
                 component->SetFootprintFilters( footprintFilters );
                 component->SetPinCount( pinCount );
-                wxLogTrace( "CVPCB_PINCOUNT",
+                KI_LOG_TRACE( "CVPCB_PINCOUNT",
                             wxT( "Assign pinCount=%d to component ref='%s' via alias='%s:%s'" ),
                             pinCount, component->GetReference(), libName, aliases[jj] );
             }

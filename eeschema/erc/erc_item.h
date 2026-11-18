@@ -114,7 +114,7 @@ public:
      */
     const SCH_SHEET_PATH& GetSpecificSheetPath() const
     {
-        wxASSERT( m_sheetSpecificPath.has_value() );
+        KI_ASSERT( m_sheetSpecificPath.has_value() );
         return m_sheetSpecificPath.value();
     }
 
@@ -148,7 +148,7 @@ public:
      */
     SCH_SHEET_PATH& GetMainItemSheetPath()
     {
-        wxASSERT( MainItemHasSheetPath() );
+        KI_ASSERT( MainItemHasSheetPath() );
         return m_mainItemSheet.value();
     }
 
@@ -158,7 +158,7 @@ public:
      */
     SCH_SHEET_PATH& GetAuxItemSheetPath()
     {
-        wxASSERT( AuxItemHasSheetPath() );
+        KI_ASSERT( AuxItemHasSheetPath() );
         return m_auxItemSheet.value();
     }
 

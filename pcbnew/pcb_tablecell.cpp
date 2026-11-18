@@ -53,7 +53,7 @@ PCB_TABLECELL::PCB_TABLECELL( BOARD_ITEM* aParentTable ) :
 
 void PCB_TABLECELL::swapData( BOARD_ITEM* aImage )
 {
-    wxASSERT( aImage->Type() == PCB_TABLECELL_T );
+    KI_ASSERT( aImage->Type() == PCB_TABLECELL_T );
 
     std::swap( *( (PCB_TABLECELL*) this ), *( (PCB_TABLECELL*) aImage ) );
 }
@@ -78,7 +78,7 @@ void PCB_TABLECELL::Serialize( google::protobuf::Any& aContainer ) const
     Serialize( cell );
 
     if( !aContainer.PackFrom( cell ) )
-        wxFAIL_MSG( wxT( "Failed to pack PCB_TABLECELL" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack PCB_TABLECELL" ) );
 }
 
 
@@ -121,7 +121,7 @@ wxString PCB_TABLECELL::GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool
 
 void PCB_TABLECELL::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther && aOther->Type() == PCB_TABLECELL_T, /* void */ );
+    KI_CHECK( aOther && aOther->Type() == PCB_TABLECELL_T, /* void */ );
     *this = *static_cast<const PCB_TABLECELL*>( aOther );
 }
 

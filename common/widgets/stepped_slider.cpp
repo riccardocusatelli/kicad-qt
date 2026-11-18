@@ -44,7 +44,7 @@ STEPPED_SLIDER::~STEPPED_SLIDER()
 
 void STEPPED_SLIDER::SetStep( int aSize )
 {
-    wxASSERT( aSize > 0 );
+    KI_ASSERT( aSize > 0 );
     m_step = ( aSize > 0 ) ? aSize : 1;
 
     // configure pg up/down to increment by our steps

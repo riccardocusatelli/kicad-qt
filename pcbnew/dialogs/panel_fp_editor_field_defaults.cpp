@@ -88,7 +88,7 @@ public:
             case 0: return aTypeName == wxGRID_VALUE_STRING;
             case 1: return aTypeName == wxGRID_VALUE_BOOL;
             case 2: return aTypeName == wxGRID_VALUE_NUMBER;
-            default: wxFAIL; return false;
+            default: KI_FAIL(); return false;
             }
         }
         else
@@ -97,7 +97,7 @@ public:
             {
             case 0: return aTypeName == wxGRID_VALUE_STRING;
             case 1: return aTypeName == wxGRID_VALUE_NUMBER;
-            default: wxFAIL; return false;
+            default: KI_FAIL(); return false;
             }
         }
     }

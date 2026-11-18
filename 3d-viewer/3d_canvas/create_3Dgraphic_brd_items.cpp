@@ -209,7 +209,7 @@ void BOARD_ADAPTER::addFootprintShapes( const FOOTPRINT* aFootprint, CONTAINER_2
         if( !aFlags.test( LAYER_FP_TEXT ) )
             continue;
 
-        wxCHECK2( field, continue );
+        KI_CHECK2( field, continue );
 
         if( field->IsReference() && !aFlags.test( LAYER_FP_REFERENCES ) )
             continue;
@@ -524,7 +524,7 @@ void BOARD_ADAPTER::createPadHoleShape( const PAD* aPad, CONTAINER_2D_BASE* aDst
 {
     if( !aPad->HasHole() )
     {
-        wxLogTrace( m_logTrace, wxT( "BOARD_ADAPTER::createPadHole pad has no hole" ) );
+        KI_LOG_TRACE( m_logTrace, wxT( "BOARD_ADAPTER::createPadHole pad has no hole" ) );
         return;
     }
 
@@ -926,7 +926,7 @@ void BOARD_ADAPTER::addShape( const PCB_SHAPE* aShape, CONTAINER_2D_BASE* aConta
         }
 
         default:
-            wxFAIL_MSG( wxT( "BOARD_ADAPTER::addShape no implementation for " ) + aShape->SHAPE_T_asString() );
+            KI_FAIL_MSG( wxT( "BOARD_ADAPTER::addShape no implementation for " ) + aShape->SHAPE_T_asString() );
             break;
         }
     }

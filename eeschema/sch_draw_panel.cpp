@@ -64,7 +64,7 @@ SCH_DRAW_PANEL::SCH_DRAW_PANEL( wxWindow* aParentWindow, wxWindowID aWindowId,
     if( SCH_BASE_FRAME* frame = dynamic_cast<SCH_BASE_FRAME*>( GetParentEDAFrame() ) )
         cs = frame->GetColorSettings();
 
-    wxASSERT( cs );
+    KI_ASSERT( cs );
     m_painter->GetSettings()->LoadColors( cs );
 
     m_view->SetPainter( m_painter.get() );
@@ -122,7 +122,7 @@ void SCH_DRAW_PANEL::setDefaultLayerOrder()
     for( int i = 0; (unsigned) i < sizeof( SCH_LAYER_ORDER ) / sizeof( int ); ++i )
     {
         int layer = SCH_LAYER_ORDER[i];
-        wxASSERT( layer < KIGFX::VIEW::VIEW_MAX_LAYERS );
+        KI_ASSERT( layer < KIGFX::VIEW::VIEW_MAX_LAYERS );
 
         m_view->SetLayerOrder( layer, i );
     }

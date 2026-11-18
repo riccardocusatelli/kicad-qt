@@ -521,7 +521,7 @@ const std::vector<SIM_MODEL::PARAM::INFO>& SIM_MODEL_SOURCE::makeParamInfos( TYP
     case TYPE::V_RANDPOISSON:  return vrandompoisson;
     case TYPE::I_RANDPOISSON:  return irandompoisson;
     default:
-        wxFAIL_MSG( "Unhandled SIM_MODEL type in SIM_MODEL_SOURCE" );
+        KI_FAIL_MSG( "Unhandled SIM_MODEL type in SIM_MODEL_SOURCE" );
         static std::vector<SIM_MODEL::PARAM::INFO> empty;
         return empty;
     }

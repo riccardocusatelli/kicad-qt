@@ -210,4 +210,4 @@ void JOB_EXPORT_PCB_3D::SetStepFormat( EXPORTER_STEP_PARAMS::FORMAT aFormat )
     }
 }
 
-REGISTER_JOB( pcb_export_3d, _HKI( "PCB: Export 3D Model" ), KIWAY::FACE_PCB, JOB_EXPORT_PCB_3D );
+REGISTER_JOB( pcb_export_3d, _HKI( "PCB: Export 3D Model" ), KIWAY_FACES::FACE_PCB, JOB_EXPORT_PCB_3D );

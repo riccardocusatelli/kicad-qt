@@ -201,7 +201,7 @@ void transformFPTextToPolySet( const FOOTPRINT* aFootprint, PCB_LAYER_ID aLayer,
         if( !aFlags.test( LAYER_FP_TEXT ) )
             continue;
 
-        wxCHECK2( field, continue );
+        KI_CHECK2( field, continue );
 
         if( field->IsReference() && !aFlags.test( LAYER_FP_REFERENCES ) )
             continue;
@@ -384,7 +384,7 @@ void BOARD_ADAPTER::createLayers( std::shared_ptr<REPORTER> aStatusReporter, std
     // Create tracks as objects and add it to container
     for( PCB_LAYER_ID layer : layer_ids )
     {
-        wxASSERT( m_layerMap.contains( layer ) );
+        KI_ASSERT( m_layerMap.contains( layer ) );
 
         BVH_CONTAINER_2D *layerContainer = m_layerMap[layer];
 
@@ -599,8 +599,8 @@ void BOARD_ADAPTER::createLayers( std::shared_ptr<REPORTER> aStatusReporter, std
                 SHAPE_POLY_SET *layerInnerHolesPoly = nullptr;
 
                 // found
-                wxASSERT( m_layerHoleOdPolys.contains( layer ) );
-                wxASSERT( m_layerHoleIdPolys.contains( layer ) );
+                KI_ASSERT( m_layerHoleOdPolys.contains( layer ) );
+                KI_ASSERT( m_layerHoleIdPolys.contains( layer ) );
 
                 layerOuterHolesPoly = m_layerHoleOdPolys[layer];
                 layerInnerHolesPoly = m_layerHoleIdPolys[layer];
@@ -743,7 +743,7 @@ void BOARD_ADAPTER::createLayers( std::shared_ptr<REPORTER> aStatusReporter, std
     {
         for( PCB_LAYER_ID layer : layer_ids )
         {
-            wxASSERT( m_layers_poly.contains( layer ) );
+            KI_ASSERT( m_layers_poly.contains( layer ) );
 
             SHAPE_POLY_SET *layerPoly = m_layers_poly[layer];
 
@@ -1017,7 +1017,7 @@ void BOARD_ADAPTER::createLayers( std::shared_ptr<REPORTER> aStatusReporter, std
     // Add footprints copper items (pads, shapes and text) to containers
     for( PCB_LAYER_ID layer : layer_ids )
     {
-        wxASSERT( m_layerMap.contains( layer ) );
+        KI_ASSERT( m_layerMap.contains( layer ) );
 
         BVH_CONTAINER_2D *layerContainer = m_layerMap[layer];
 
@@ -1039,7 +1039,7 @@ void BOARD_ADAPTER::createLayers( std::shared_ptr<REPORTER> aStatusReporter, std
             // Add copper item to poly contours (vertical outlines) if required
             if( cfg.opengl_copper_thickness && cfg.engine == RENDER_ENGINE::OPENGL )
             {
-                wxASSERT( m_layers_poly.contains( layer ) );
+                KI_ASSERT( m_layers_poly.contains( layer ) );
 
                 SHAPE_POLY_SET* layerPoly = m_layers_poly[layer];
 
@@ -1056,7 +1056,7 @@ void BOARD_ADAPTER::createLayers( std::shared_ptr<REPORTER> aStatusReporter, std
     // Add graphic item on copper layers to object containers
     for( PCB_LAYER_ID layer : layer_ids )
     {
-        wxASSERT( m_layerMap.contains( layer ) );
+        KI_ASSERT( m_layerMap.contains( layer ) );
 
         BVH_CONTAINER_2D *layerContainer = m_layerMap[layer];
 
@@ -1100,7 +1100,7 @@ void BOARD_ADAPTER::createLayers( std::shared_ptr<REPORTER> aStatusReporter, std
                 break;
 
             default:
-                wxLogTrace( m_logTrace, wxT( "createLayers: item type: %d not implemented" ), item->Type() );
+                KI_LOG_TRACE( m_logTrace, wxT( "createLayers: item type: %d not implemented" ), item->Type() );
                 break;
             }
 
@@ -1134,7 +1134,7 @@ void BOARD_ADAPTER::createLayers( std::shared_ptr<REPORTER> aStatusReporter, std
             // Add copper item to poly contours (vertical outlines) if required
             if( cfg.opengl_copper_thickness && cfg.engine == RENDER_ENGINE::OPENGL )
             {
-                wxASSERT( m_layers_poly.contains( layer ) );
+                KI_ASSERT( m_layers_poly.contains( layer ) );
 
                 SHAPE_POLY_SET *layerPoly = m_layers_poly[layer];
 
@@ -1211,7 +1211,7 @@ void BOARD_ADAPTER::createLayers( std::shared_ptr<REPORTER> aStatusReporter, std
                     break;
 
                 default:
-                    wxLogTrace( m_logTrace, wxT( "createLayers: item type: %d not implemented" ), item->Type() );
+                    KI_LOG_TRACE( m_logTrace, wxT( "createLayers: item type: %d not implemented" ), item->Type() );
                     break;
                 }
             }
@@ -1823,7 +1823,7 @@ void BOARD_ADAPTER::createLayers( std::shared_ptr<REPORTER> aStatusReporter, std
             SHAPE_POLY_SET *polyLayer = m_layerHoleOdPolys[layer];
             polyLayer->Simplify();
 
-            wxASSERT( m_layerHoleIdPolys.contains( layer ) );
+            KI_ASSERT( m_layerHoleIdPolys.contains( layer ) );
 
             polyLayer = m_layerHoleIdPolys[layer];
             polyLayer->Simplify();

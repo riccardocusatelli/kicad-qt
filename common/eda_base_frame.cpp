@@ -395,7 +395,7 @@ bool EDA_BASE_FRAME::ProcessEvent( wxEvent& aEvent )
     {
         if( !m_autoSavePending )
         {
-            wxLogTrace( traceAutoSave, wxT( "Starting auto save timer." ) );
+            KI_LOG_TRACE( traceAutoSave, wxT( "Starting auto save timer." ) );
             m_autoSaveTimer->Start( GetAutoSaveInterval() * 1000, wxTIMER_ONE_SHOT );
             m_autoSavePending = true;
 
@@ -406,7 +406,7 @@ bool EDA_BASE_FRAME::ProcessEvent( wxEvent& aEvent )
         }
         else if( m_autoSaveTimer->IsRunning() )
         {
-            wxLogTrace( traceAutoSave, wxT( "Stopping auto save timer." ) );
+            KI_LOG_TRACE( traceAutoSave, wxT( "Stopping auto save timer." ) );
             m_autoSaveTimer->Stop();
             m_autoSavePending = false;
         }
@@ -547,11 +547,11 @@ bool EDA_BASE_FRAME::doAutoSave()
 
         if( now - m_autoSaveDeferredSince < maxDeferral )
         {
-            wxLogTrace( traceAutoSave, wxT( "Deferring auto save; an interactive operation is in progress." ) );
+            KI_LOG_TRACE( traceAutoSave, wxT( "Deferring auto save; an interactive operation is in progress." ) );
             return false;
         }
 
-        wxLogTrace( traceAutoSave, wxT( "Auto save deferral exceeded; saving despite interactive operation." ) );
+        KI_LOG_TRACE( traceAutoSave, wxT( "Auto save deferral exceeded; saving despite interactive operation." ) );
     }
 
     // The deferral is resolved (either the user went idle or the cap forced the snapshot), so the
@@ -581,7 +581,7 @@ bool EDA_BASE_FRAME::doAutoSave()
 
 void EDA_BASE_FRAME::OnCharHook( wxKeyEvent& aKeyEvent )
 {
-    wxLogTrace( kicadTraceKeyEvent, wxS( "EDA_BASE_FRAME::OnCharHook %s" ), dump( aKeyEvent ) );
+    KI_LOG_TRACE( kicadTraceKeyEvent, wxS( "EDA_BASE_FRAME::OnCharHook %s" ), dump( aKeyEvent ) );
 
     // Key events can be filtered here.
     // Currently no filtering is made.
@@ -763,7 +763,7 @@ void EDA_BASE_FRAME::RecreateToolbars()
 {
     wxWindowUpdateLocker dummy( this );
 
-    wxASSERT( m_toolbarSettings );
+    KI_ASSERT( m_toolbarSettings );
 
     if( m_tbRight )
         m_tbRight->ClearToolbar();
@@ -1041,7 +1041,7 @@ void EDA_BASE_FRAME::OnSize( wxSizeEvent& aEvent )
 
     if( m_displayIndex >= 0 && currentDisplay >= 0 && currentDisplay != m_displayIndex )
     {
-        wxLogTrace( traceDisplayLocation, wxS( "OnSize: current display changed %d to %d" ),
+        KI_LOG_TRACE( traceDisplayLocation, wxS( "OnSize: current display changed %d to %d" ),
                     m_displayIndex, currentDisplay );
         m_displayIndex = currentDisplay;
         ensureWindowIsOnScreen();
@@ -1071,7 +1071,7 @@ void EDA_BASE_FRAME::LoadWindowState( const WINDOW_STATE& aState )
     m_frameSize.x = aState.size_x;
     m_frameSize.y = aState.size_y;
 
-    wxLogTrace( traceDisplayLocation, wxS( "Config position (%d, %d) with size (%d, %d)" ),
+    KI_LOG_TRACE( traceDisplayLocation, wxS( "Config position (%d, %d) with size (%d, %d)" ),
                 m_framePos.x, m_framePos.y, m_frameSize.x, m_frameSize.y );
 
     // Ensure minimum size is set if the stored config was zero-initialized
@@ -1082,14 +1082,14 @@ void EDA_BASE_FRAME::LoadWindowState( const WINDOW_STATE& aState )
         m_frameSize = defaultSize( m_ident, this );
         wasDefault  = true;
 
-        wxLogTrace( traceDisplayLocation, wxS( "Using minimum size (%d, %d)" ), m_frameSize.x, m_frameSize.y );
+        KI_LOG_TRACE( traceDisplayLocation, wxS( "Using minimum size (%d, %d)" ), m_frameSize.x, m_frameSize.y );
     }
 
-    wxLogTrace( traceDisplayLocation, wxS( "Number of displays: %d" ), wxDisplay::GetCount() );
+    KI_LOG_TRACE( traceDisplayLocation, wxS( "Number of displays: %d" ), wxDisplay::GetCount() );
 
     if( aState.display >= wxDisplay::GetCount() )
     {
-        wxLogTrace( traceDisplayLocation, wxS( "Previous display not found" ) );
+        KI_LOG_TRACE( traceDisplayLocation, wxS( "Previous display not found" ) );
 
         // If it isn't attached, use the first display
         // Warning wxDisplay has 2 ctor variants. the parameter needs a type:
@@ -1125,27 +1125,27 @@ void EDA_BASE_FRAME::LoadWindowState( const WINDOW_STATE& aState )
             upperLeft.y > yLimBottom )
         {
             m_framePos = wxDefaultPosition;
-            wxLogTrace( traceDisplayLocation, wxS( "Resetting to default position" ) );
+            KI_LOG_TRACE( traceDisplayLocation, wxS( "Resetting to default position" ) );
         }
 
         // Clamp the saved size to the current display, in case the window was sized for a
         // larger external monitor that is no longer attached.
         if( m_frameSize.x > clientSize.width )
         {
-            wxLogTrace( traceDisplayLocation, wxS( "Clamping window width %d to display width %d" ),
+            KI_LOG_TRACE( traceDisplayLocation, wxS( "Clamping window width %d to display width %d" ),
                         m_frameSize.x, clientSize.width );
             m_frameSize.x = clientSize.width;
         }
 
         if( m_frameSize.y > clientSize.height )
         {
-            wxLogTrace( traceDisplayLocation, wxS( "Clamping window height %d to display height %d" ),
+            KI_LOG_TRACE( traceDisplayLocation, wxS( "Clamping window height %d to display height %d" ),
                         m_frameSize.y, clientSize.height );
             m_frameSize.y = clientSize.height;
         }
     }
 
-    wxLogTrace( traceDisplayLocation, wxS( "Final window position (%d, %d) with size (%d, %d)" ),
+    KI_LOG_TRACE( traceDisplayLocation, wxS( "Final window position (%d, %d) with size (%d, %d)" ),
                 m_framePos.x, m_framePos.y, m_frameSize.x, m_frameSize.y );
 
     SetSize( m_framePos.x, m_framePos.y, m_frameSize.x, m_frameSize.y );
@@ -1153,7 +1153,7 @@ void EDA_BASE_FRAME::LoadWindowState( const WINDOW_STATE& aState )
     // Center the window if we reset to default
     if( m_framePos.x == -1 )
     {
-        wxLogTrace( traceDisplayLocation, wxS( "Centering window" ) );
+        KI_LOG_TRACE( traceDisplayLocation, wxS( "Centering window" ) );
         Center();
         m_framePos = GetPosition();
     }
@@ -1165,7 +1165,7 @@ void EDA_BASE_FRAME::LoadWindowState( const WINDOW_STATE& aState )
     // Maximize if we were maximized before
     if( aState.maximized || ( wasDefault && m_maximizeByDefault ) )
     {
-        wxLogTrace( traceDisplayLocation, wxS( "Maximizing window" ) );
+        KI_LOG_TRACE( traceDisplayLocation, wxS( "Maximizing window" ) );
         Maximize();
     }
 
@@ -1180,20 +1180,20 @@ void EDA_BASE_FRAME::ensureWindowIsOnScreen()
     wxPoint   pos        = GetPosition();
     wxSize    size       = GetWindowSize();
 
-    wxLogTrace( traceDisplayLocation, wxS( "ensureWindowIsOnScreen: clientArea (%d, %d) w %d h %d" ),
+    KI_LOG_TRACE( traceDisplayLocation, wxS( "ensureWindowIsOnScreen: clientArea (%d, %d) w %d h %d" ),
                 clientSize.x, clientSize.y,
                 clientSize.width, clientSize.height );
 
     if( pos.y < clientSize.y )
     {
-        wxLogTrace( traceDisplayLocation, wxS( "ensureWindowIsOnScreen: y pos %d below minimum, setting to %d" ),
+        KI_LOG_TRACE( traceDisplayLocation, wxS( "ensureWindowIsOnScreen: y pos %d below minimum, setting to %d" ),
                     pos.y, clientSize.y );
         pos.y = clientSize.y;
     }
 
     if( pos.x < clientSize.x )
     {
-        wxLogTrace( traceDisplayLocation, wxS( "ensureWindowIsOnScreen: x pos %d below minimum, setting to %d" ),
+        KI_LOG_TRACE( traceDisplayLocation, wxS( "ensureWindowIsOnScreen: x pos %d below minimum, setting to %d" ),
                     pos.x, clientSize.x );
         pos.x = clientSize.x;
     }
@@ -1201,7 +1201,7 @@ void EDA_BASE_FRAME::ensureWindowIsOnScreen()
     if( pos.x + size.x - clientSize.x > clientSize.width )
     {
         int newWidth = clientSize.width - ( pos.x - clientSize.x );
-        wxLogTrace( traceDisplayLocation, wxS( "ensureWindowIsOnScreen: width %d above available %d, setting to %d" ),
+        KI_LOG_TRACE( traceDisplayLocation, wxS( "ensureWindowIsOnScreen: width %d above available %d, setting to %d" ),
                     pos.x + size.x, clientSize.width, newWidth );
         size.x = newWidth;
     }
@@ -1209,12 +1209,12 @@ void EDA_BASE_FRAME::ensureWindowIsOnScreen()
     if( pos.y + size.y - clientSize.y > clientSize.height )
     {
         int newHeight = clientSize.height - ( pos.y - clientSize.y );
-        wxLogTrace( traceDisplayLocation, wxS( "ensureWindowIsOnScreen: height %d above available %d, setting to %d" ),
+        KI_LOG_TRACE( traceDisplayLocation, wxS( "ensureWindowIsOnScreen: height %d above available %d, setting to %d" ),
                     pos.y + size.y, clientSize.height, newHeight );
         size.y = newHeight;
     }
 
-    wxLogTrace( traceDisplayLocation, wxS( "Updating window position (%d, %d) with size (%d, %d)" ),
+    KI_LOG_TRACE( traceDisplayLocation, wxS( "Updating window position (%d, %d) with size (%d, %d)" ),
                 pos.x, pos.y, size.x, size.y );
 
     SetSize( pos.x, pos.y, size.x, size.y );
@@ -1257,9 +1257,9 @@ void EDA_BASE_FRAME::SaveWindowSettings( WINDOW_SETTINGS* aCfg )
     aCfg->state.maximized = IsMaximized();
     aCfg->state.display   = wxDisplay::GetFromWindow( this );
 
-    wxLogTrace( traceDisplayLocation, wxS( "Saving window maximized: %s" ),
+    KI_LOG_TRACE( traceDisplayLocation, wxS( "Saving window maximized: %s" ),
                 IsMaximized() ? wxS( "true" ) : wxS( "false" ) );
-    wxLogTrace( traceDisplayLocation, wxS( "Saving config position (%d, %d) with size (%d, %d)" ),
+    KI_LOG_TRACE( traceDisplayLocation, wxS( "Saving config position (%d, %d) with size (%d, %d)" ),
                 m_framePos.x, m_framePos.y, m_frameSize.x, m_frameSize.y );
 
     // Once this is fully implemented, wxAuiManager will be used to maintain
@@ -1301,7 +1301,7 @@ void EDA_BASE_FRAME::LoadSettings( APP_SETTINGS_BASE* aCfg )
 
 void EDA_BASE_FRAME::SaveSettings( APP_SETTINGS_BASE* aCfg )
 {
-    wxCHECK( config(), /* void */ );
+    KI_CHECK( config(), /* void */ );
 
     SaveWindowSettings( GetWindowSettings( aCfg ) );
 
@@ -1363,7 +1363,7 @@ void EDA_BASE_FRAME::CreateInfoBar()
 {
     wxWindow* canvas = GetToolCanvas();
 
-    wxCHECK( canvas, /* void */ );
+    KI_CHECK( canvas, /* void */ );
 
     m_infoBar = new WX_INFOBAR( canvas, wxID_ANY, true );
 }
@@ -1418,7 +1418,7 @@ void EDA_BASE_FRAME::RestoreAuiLayout()
 void EDA_BASE_FRAME::ShowInfoBarError( const wxString& aErrorMsg, bool aShowCloseButton,
                                        INFOBAR_MESSAGE_TYPE aType )
 {
-    wxCHECK( m_infoBar, /* void */ );
+    KI_CHECK( m_infoBar, /* void */ );
 
     m_infoBar->RemoveAllButtons();
 
@@ -1432,7 +1432,7 @@ void EDA_BASE_FRAME::ShowInfoBarError( const wxString& aErrorMsg, bool aShowClos
 void EDA_BASE_FRAME::ShowInfoBarError( const wxString& aErrorMsg, bool aShowCloseButton,
                                        std::function<void(void)> aCallback )
 {
-    wxCHECK( m_infoBar, /* void */ );
+    KI_CHECK( m_infoBar, /* void */ );
 
     m_infoBar->RemoveAllButtons();
 
@@ -1448,7 +1448,7 @@ void EDA_BASE_FRAME::ShowInfoBarError( const wxString& aErrorMsg, bool aShowClos
 
 void EDA_BASE_FRAME::ShowInfoBarWarning( const wxString& aWarningMsg, bool aShowCloseButton )
 {
-    wxCHECK( m_infoBar, /* void */ );
+    KI_CHECK( m_infoBar, /* void */ );
 
     m_infoBar->RemoveAllButtons();
 
@@ -1461,7 +1461,7 @@ void EDA_BASE_FRAME::ShowInfoBarWarning( const wxString& aWarningMsg, bool aShow
 
 void EDA_BASE_FRAME::ShowInfoBarMsg( const wxString& aMsg, bool aShowCloseButton )
 {
-    wxCHECK( m_infoBar, /* void */ );
+    KI_CHECK( m_infoBar, /* void */ );
 
     m_infoBar->RemoveAllButtons();
 
@@ -1477,7 +1477,7 @@ void EDA_BASE_FRAME::UpdateFileHistory( const wxString& FullFileName, FILE_HISTO
     if( !aFileHistory )
         aFileHistory = m_fileHistory;
 
-    wxASSERT( aFileHistory );
+    KI_ASSERT( aFileHistory );
 
     aFileHistory->AddFileToHistory( FullFileName );
 
@@ -1495,11 +1495,11 @@ wxString EDA_BASE_FRAME::GetFileFromHistory( int cmdId, const wxString& type, FI
     if( !aFileHistory )
         aFileHistory = m_fileHistory;
 
-    wxASSERT( aFileHistory );
+    KI_ASSERT( aFileHistory );
 
     int baseId = aFileHistory->GetBaseId();
 
-    wxASSERT( cmdId >= baseId && cmdId < baseId + (int) aFileHistory->GetCount() );
+    KI_ASSERT( cmdId >= baseId && cmdId < baseId + (int) aFileHistory->GetCount() );
     int i = cmdId - baseId;
 
     wxString fn = aFileHistory->GetHistoryFile( i );
@@ -1532,7 +1532,7 @@ wxString EDA_BASE_FRAME::GetFileFromHistory( int cmdId, const wxString& type, FI
 
 void EDA_BASE_FRAME::ClearFileHistory()
 {
-    wxASSERT( m_fileHistory );
+    KI_ASSERT( m_fileHistory );
 
     m_fileHistory->ClearFileHistory();
 
@@ -1629,7 +1629,7 @@ void EDA_BASE_FRAME::ShowPreferences( const wxString& aStartPage, const wxString
 
         try
         {
-            if( KIFACE* kiface = Kiway().KiFACE( KIWAY::FACE_SCH ) )
+            if( KIFACE* kiface = Kiway().KiFACE( KIWAY_FACES::FACE_SCH ) )
             {
                 kiface->GetActions( hotkeysPanel->ActionsList() );
 
@@ -1665,7 +1665,7 @@ void EDA_BASE_FRAME::ShowPreferences( const wxString& aStartPage, const wxString
 
         try
         {
-            if( KIFACE* kiface = Kiway().KiFACE( KIWAY::FACE_PCB ) )
+            if( KIFACE* kiface = Kiway().KiFACE( KIWAY_FACES::FACE_PCB ) )
             {
                 kiface->GetActions( hotkeysPanel->ActionsList() );
 
@@ -1713,7 +1713,7 @@ void EDA_BASE_FRAME::ShowPreferences( const wxString& aStartPage, const wxString
 
         try
         {
-            if( KIFACE* kiface = Kiway().KiFACE( KIWAY::FACE_GERBVIEW ) )
+            if( KIFACE* kiface = Kiway().KiFACE( KIWAY_FACES::FACE_GERBVIEW ) )
             {
                 kiface->GetActions( hotkeysPanel->ActionsList() );
 
@@ -1735,7 +1735,7 @@ void EDA_BASE_FRAME::ShowPreferences( const wxString& aStartPage, const wxString
 
         try
         {
-            if( KIFACE* kiface = Kiway().KiFACE( KIWAY::FACE_PL_EDITOR ) )
+            if( KIFACE* kiface = Kiway().KiFACE( KIWAY_FACES::FACE_PL_EDITOR ) )
             {
                 kiface->GetActions( hotkeysPanel->ActionsList() );
 
@@ -1838,8 +1838,8 @@ bool EDA_BASE_FRAME::IsWritable( const wxFileName& aFileName, bool aVerbose )
     if( fn.GetPath().IsEmpty() && fn.HasName() )
         fn.MakeAbsolute();
 
-    wxCHECK_MSG( fn.IsOk(), false, wxT( "File name object is invalid.  Bad programmer!" ) );
-    wxCHECK_MSG( !fn.GetPath().IsEmpty(), false,
+    KI_CHECK_MSG( fn.IsOk(), false, wxT( "File name object is invalid.  Bad programmer!" ) );
+    KI_CHECK_MSG( !fn.GetPath().IsEmpty(), false,
                  wxT( "File name object path <" ) + fn.GetFullPath() + wxT( "> is not set.  Bad programmer!" ) );
 
     if( fn.IsDir() && !fn.IsDirWritable() )
@@ -1981,7 +1981,7 @@ void EDA_BASE_FRAME::OnMaximize( wxMaximizeEvent& aEvent )
     {
         m_normalFrameSize = GetWindowSize();
         m_normalFramePos  = GetPosition();
-        wxLogTrace( traceDisplayLocation, "Maximizing window - Saving position (%d, %d) with size (%d, %d)",
+        KI_LOG_TRACE( traceDisplayLocation, "Maximizing window - Saving position (%d, %d) with size (%d, %d)",
                     m_normalFramePos.x, m_normalFramePos.y,
                     m_normalFrameSize.x, m_normalFrameSize.y );
     }

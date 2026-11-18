@@ -155,13 +155,13 @@ CADSTAR_SCH_ARCHIVE_LOADER::loadLibPart( const CADSTAR_PART_ENTRY& aPart )
             return nullptr;
         }
 
-        wxASSERT( m_symDefTerminalsMap.count( symbolID ) ); //loadSymDef should have populated this
+        KI_ASSERT( m_symDefTerminalsMap.count( symbolID ) ); //loadSymDef should have populated this
 
 
         // Update the pin numbers to match those defined in the Cadstar part
         for( auto& [storedPinNum, termID] : m_symDefTerminalsMap[symbolID] )
         {
-            wxCHECK( termID > 0 && sym.m_Pins.size() >= size_t( termID ), nullptr );
+            KI_CHECK( termID > 0 && sym.m_Pins.size() >= size_t( termID ), nullptr );
             std::vector<SCH_PIN*> pins = kiSymDef->GetPinsByNumber( storedPinNum );
             size_t                termIdx = size_t( termID ) - 1;
 
@@ -191,7 +191,7 @@ CADSTAR_SCH_ARCHIVE_LOADER::loadLibPart( const CADSTAR_PART_ENTRY& aPart )
 
         if( unit == 1 )
         {
-            wxCHECK( kiSymDef->GetUnitCount() == 1, nullptr );
+            KI_CHECK( kiSymDef->GetUnitCount() == 1, nullptr );
             // The first unit can just be moved to the part symbol
             retSym = std::move( kiSymDef );
 
@@ -335,7 +335,7 @@ void CADSTAR_SCH_ARCHIVE_LOADER::copySymbolItems( LIB_SYMBOL* aSourceSym, LIB_SY
 
 void CADSTAR_SCH_ARCHIVE_LOADER::Load( SCHEMATIC* aSchematic, SCH_SHEET* aRootSheet )
 {
-    wxCHECK( aSchematic, /* void */ );
+    KI_CHECK( aSchematic, /* void */ );
 
     if( m_progressReporter )
         m_progressReporter->SetNumPhases( 3 ); // (0) Read file, (1) Parse file, (2) Load file
@@ -726,7 +726,7 @@ void CADSTAR_SCH_ARCHIVE_LOADER::loadPartsLibrary()
         m_ownedSymbols.push_back( std::move( kiSym ) );
 
         bool inserted = m_partMap.insert( { partID, symbol } ).second;
-        wxCHECK2( inserted, continue );
+        KI_CHECK2( inserted, continue );
 
         if( saveInLibrary )
             m_loadedSymbols.push_back( symbol );
@@ -803,7 +803,7 @@ void CADSTAR_SCH_ARCHIVE_LOADER::loadSchematicSymbolInstances()
                 if( !partField )
                     partField = symbol->AddField( SCH_FIELD( symbol, FIELD_T::USER, PartNameFieldName ) );
 
-                wxASSERT( partField->GetName() == PartNameFieldName );
+                KI_ASSERT( partField->GetName() == PartNameFieldName );
 
                 wxString partname = getPart( sym.PartRef.RefID ).Name;
                 partname.Replace( wxT( "\n" ), wxT( "\\n" ) );
@@ -828,7 +828,7 @@ void CADSTAR_SCH_ARCHIVE_LOADER::loadSchematicSymbolInstances()
                     if( !attrField )
                         attrField = symbol->AddField( SCH_FIELD( symbol, FIELD_T::USER, attrName ) );
 
-                    wxASSERT( attrField->GetName() == attrName );
+                    KI_ASSERT( attrField->GetName() == attrName );
 
                     attrVal.Value.Replace( wxT( "\n" ), wxT( "\\n" ) );
                     attrVal.Value.Replace( wxT( "\r" ), wxT( "\\r" ) );
@@ -893,7 +893,7 @@ void CADSTAR_SCH_ARCHIVE_LOADER::loadSchematicSymbolInstances()
                 if( m_powerSymLibMap.find( libPartName ) == m_powerSymLibMap.end() )
                 {
                     const LIB_SYMBOL* templatePart = loadSymdef( symID );
-                    wxCHECK( templatePart, /*void*/ );
+                    KI_CHECK( templatePart, /*void*/ );
 
                     auto ownedPart = std::make_unique<LIB_SYMBOL>( *templatePart );
                     kiPart = ownedPart.get();
@@ -906,7 +906,7 @@ void CADSTAR_SCH_ARCHIVE_LOADER::loadSchematicSymbolInstances()
                     kiPart->SetShowPinNumbers( false );
 
                     std::vector<SCH_PIN*> pins = kiPart->GetGraphicalPins( 0, 0 );
-                    wxCHECK( pins.size() == 1, /*void*/ );
+                    KI_CHECK( pins.size() == 1, /*void*/ );
 
                     pins.at( 0 )->SetType( ELECTRICAL_PINTYPE::PT_POWER_IN );
                     pins.at( 0 )->SetName( symbolInstanceNetName );
@@ -935,7 +935,7 @@ void CADSTAR_SCH_ARCHIVE_LOADER::loadSchematicSymbolInstances()
                 else
                 {
                     kiPart = m_powerSymLibMap.at( libPartName );
-                    wxASSERT( kiPart->GetValueField().GetText() == symbolInstanceNetName );
+                    KI_ASSERT( kiPart->GetValueField().GetText() == symbolInstanceNetName );
                 }
 
                 std::unique_ptr<LIB_SYMBOL> scaledPart( getScaledLibPart( kiPart, sym.ScaleRatioNumerator,
@@ -993,7 +993,7 @@ void CADSTAR_SCH_ARCHIVE_LOADER::loadSchematicSymbolInstances()
             }
             else
             {
-                wxASSERT_MSG( false, "Unknown Symbol Variant." );
+                KI_ASSERT_MSG( false, "Unknown Symbol Variant." );
             }
         }
         else
@@ -1414,7 +1414,7 @@ void CADSTAR_SCH_ARCHIVE_LOADER::loadNets()
                             // the first intersection point.
                             VECTOR2I intsctPt   = wireToSheetIntersects.at( 0 ).p;
                             int      intsctIndx = wireChain.FindSegment( intsctPt );
-                            wxASSERT_MSG( intsctIndx != -1, "Can't find intersecting segment" );
+                            KI_ASSERT_MSG( intsctIndx != -1, "Can't find intersecting segment" );
 
                             if( node == conn.StartNode )
                                 wireChain.Replace( 0, intsctIndx, intsctPt );
@@ -1738,7 +1738,7 @@ SCH_FIELD* CADSTAR_SCH_ARCHIVE_LOADER::addNewFieldToSymbol( const wxString& aFie
 
 const LIB_SYMBOL* CADSTAR_SCH_ARCHIVE_LOADER::loadSymdef( const SYMDEF_ID& aSymdefID )
 {
-    wxCHECK( Library.SymbolDefinitions.find( aSymdefID ) != Library.SymbolDefinitions.end(), nullptr );
+    KI_CHECK( Library.SymbolDefinitions.find( aSymdefID ) != Library.SymbolDefinitions.end(), nullptr );
 
     if( m_symDefMap.count( aSymdefID ) )
         return m_symDefMap.at( aSymdefID ).get(); // return a non-owning ptr
@@ -1895,8 +1895,8 @@ const LIB_SYMBOL* CADSTAR_SCH_ARCHIVE_LOADER::loadSymdef( const SYMDEF_ID& aSymd
 
     // Always add the part name field (even if it doesn't have a specific location defined)
     SCH_FIELD* partField = addNewFieldToSymbol( PartNameFieldName, kiSym.get() );
-    wxCHECK( partField, nullptr );
-    wxASSERT( partField->GetName() == PartNameFieldName );
+    KI_CHECK( partField, nullptr );
+    KI_ASSERT( partField->GetName() == PartNameFieldName );
 
     if( csSym.TextLocations.count( PART_NAME_ATTRID ) )
     {
@@ -1954,10 +1954,10 @@ void CADSTAR_SCH_ARCHIVE_LOADER::loadSymbolGateAndPartFields( const SYMDEF_ID& a
                                                               const GATE_ID& aGateID,
                                                               LIB_SYMBOL* aSymbol )
 {
-    wxCHECK( Library.SymbolDefinitions.find( aSymdefID ) != Library.SymbolDefinitions.end(), /*void*/ );
+    KI_CHECK( Library.SymbolDefinitions.find( aSymdefID ) != Library.SymbolDefinitions.end(), /*void*/ );
 
     std::unique_ptr<LIB_SYMBOL> kiSymDef( loadSymdef( aSymdefID )->Duplicate() );
-    wxCHECK( kiSymDef, /*void*/ );
+    KI_CHECK( kiSymDef, /*void*/ );
 
     // Update the pin numbers to match those defined in the Cadstar part
     TERMINAL_TO_PINNUM_MAP pinNumMap;
@@ -2048,7 +2048,7 @@ void CADSTAR_SCH_ARCHIVE_LOADER::loadSymbolGateAndPartFields( const SYMDEF_ID& a
         bool       attrIsNew = aSymbol->GetField( attrName ) == nullptr;
         SCH_FIELD* attrField = addNewFieldToSymbol( attrName, aSymbol );
 
-        wxASSERT( attrField->GetName() == attrName );
+        KI_ASSERT( attrField->GetName() == attrName );
         attrField->SetText( attributeValue );
         attrField->SetUnit( gateNumber );
 
@@ -2115,7 +2115,7 @@ void CADSTAR_SCH_ARCHIVE_LOADER::loadLibrarySymbolShapeVertices( const std::vect
     const VERTEX* prev = aCadstarVertices.empty() ? nullptr : &aCadstarVertices.at( 0 );
     const VERTEX* cur;
 
-    wxASSERT_MSG( prev && prev->Type == VERTEX_TYPE::VT_POINT, "First vertex should always be a point." );
+    KI_ASSERT_MSG( prev && prev->Type == VERTEX_TYPE::VT_POINT, "First vertex should always be a point." );
 
     for( size_t i = 1; i < aCadstarVertices.size(); i++ )
     {
@@ -2521,7 +2521,7 @@ void CADSTAR_SCH_ARCHIVE_LOADER::loadShapeVertices( const std::vector<VERTEX>& a
     const VERTEX* prev = aCadstarVertices.empty() ? nullptr : &aCadstarVertices.at( 0 );
     const VERTEX* cur;
 
-    wxASSERT_MSG( prev && prev->Type == VERTEX_TYPE::VT_POINT, "First vertex should always be a point vertex" );
+    KI_ASSERT_MSG( prev && prev->Type == VERTEX_TYPE::VT_POINT, "First vertex should always be a point vertex" );
 
     auto pointTransform =
             [&]( const VECTOR2I& aV )
@@ -2570,7 +2570,7 @@ void CADSTAR_SCH_ARCHIVE_LOADER::loadShapeVertices( const std::vector<VERTEX>& a
         }
 
         default:
-            wxFAIL_MSG( "Unknown CADSTAR Vertex type" );
+            KI_FAIL_MSG( "Unknown CADSTAR Vertex type" );
         }
 
         prev = cur;
@@ -2605,7 +2605,7 @@ void CADSTAR_SCH_ARCHIVE_LOADER::loadSheetAndChildSheets( const LAYER_ID&       
                                                           const VECTOR2I&       aSheetSize,
                                                           const SCH_SHEET_PATH& aParentSheet )
 {
-    wxCHECK_MSG( m_sheetMap.find( aCadstarSheetID ) == m_sheetMap.end(), ,
+    KI_CHECK_MSG( m_sheetMap.find( aCadstarSheetID ) == m_sheetMap.end(), ,
                  "Sheet already loaded!" );
 
     SCH_SHEET*     sheet = new SCH_SHEET(
@@ -2649,7 +2649,7 @@ void CADSTAR_SCH_ARCHIVE_LOADER::loadSheetAndChildSheets( const LAYER_ID&       
 void CADSTAR_SCH_ARCHIVE_LOADER::loadChildSheets( const LAYER_ID& aCadstarSheetID,
                                                   const SCH_SHEET_PATH& aSheet )
 {
-    wxCHECK_MSG( m_sheetMap.find( aCadstarSheetID ) != m_sheetMap.end(), ,
+    KI_CHECK_MSG( m_sheetMap.find( aCadstarSheetID ) != m_sheetMap.end(), ,
                  "FIXME! Parent sheet should be loaded before attempting to load subsheets" );
 
     for( std::pair<BLOCK_ID, BLOCK> blockPair : Schematic.Blocks )
@@ -2785,7 +2785,7 @@ int CADSTAR_SCH_ARCHIVE_LOADER::getSheetNumber( const LAYER_ID& aCadstarSheetID 
 void CADSTAR_SCH_ARCHIVE_LOADER::loadItemOntoKiCadSheet( const LAYER_ID& aCadstarSheetID,
                                                          SCH_ITEM* aItem )
 {
-    wxCHECK_MSG( aItem, /*void*/, wxT( "aItem is null" ) );
+    KI_CHECK_MSG( aItem, /*void*/, wxT( "aItem is null" ) );
 
     if( aCadstarSheetID == "ALL_SHEETS" )
     {
@@ -2799,7 +2799,7 @@ void CADSTAR_SCH_ARCHIVE_LOADER::loadItemOntoKiCadSheet( const LAYER_ID& aCadsta
     }
     else if( aCadstarSheetID == "NO_SHEET" )
     {
-        wxFAIL_MSG( wxT( "Trying to add an item to NO_SHEET? This might be a documentation symbol." ) );
+        KI_FAIL_MSG( wxT( "Trying to add an item to NO_SHEET? This might be a documentation symbol." ) );
     }
     else
     {
@@ -2810,7 +2810,7 @@ void CADSTAR_SCH_ARCHIVE_LOADER::loadItemOntoKiCadSheet( const LAYER_ID& aCadsta
         else
         {
             delete aItem;
-            wxFAIL_MSG( wxT( "Unknown Sheet ID." ) );
+            KI_FAIL_MSG( wxT( "Unknown Sheet ID." ) );
         }
     }
 }
@@ -2878,7 +2878,7 @@ bool CADSTAR_SCH_ARCHIVE_LOADER::isAttributeVisible( const ATTRIBUTE_ID& aCadsta
 
 int CADSTAR_SCH_ARCHIVE_LOADER::getLineThickness( const LINECODE_ID& aCadstarLineCodeID )
 {
-    wxCHECK( Assignments.Codedefs.LineCodes.find( aCadstarLineCodeID ) != Assignments.Codedefs.LineCodes.end(),
+    KI_CHECK( Assignments.Codedefs.LineCodes.find( aCadstarLineCodeID ) != Assignments.Codedefs.LineCodes.end(),
              schIUScale.MilsToIU( DEFAULT_WIRE_WIDTH_MILS ) );
 
     return getKiCadLength( Assignments.Codedefs.LineCodes.at( aCadstarLineCodeID ).Width, 6.0 );
@@ -2887,7 +2887,7 @@ int CADSTAR_SCH_ARCHIVE_LOADER::getLineThickness( const LINECODE_ID& aCadstarLin
 
 LINE_STYLE CADSTAR_SCH_ARCHIVE_LOADER::getLineStyle( const LINECODE_ID& aCadstarLineCodeID )
 {
-    wxCHECK( Assignments.Codedefs.LineCodes.find( aCadstarLineCodeID ) != Assignments.Codedefs.LineCodes.end(),
+    KI_CHECK( Assignments.Codedefs.LineCodes.find( aCadstarLineCodeID ) != Assignments.Codedefs.LineCodes.end(),
              LINE_STYLE::SOLID );
 
     switch( Assignments.Codedefs.LineCodes.at( aCadstarLineCodeID ).Style )
@@ -2905,7 +2905,7 @@ LINE_STYLE CADSTAR_SCH_ARCHIVE_LOADER::getLineStyle( const LINECODE_ID& aCadstar
 CADSTAR_SCH_ARCHIVE_LOADER::TEXTCODE
 CADSTAR_SCH_ARCHIVE_LOADER::getTextCode( const TEXTCODE_ID& aCadstarTextCodeID )
 {
-    wxCHECK( Assignments.Codedefs.TextCodes.find( aCadstarTextCodeID ) != Assignments.Codedefs.TextCodes.end(),
+    KI_CHECK( Assignments.Codedefs.TextCodes.find( aCadstarTextCodeID ) != Assignments.Codedefs.TextCodes.end(),
              TEXTCODE() );
 
     return Assignments.Codedefs.TextCodes.at( aCadstarTextCodeID );
@@ -2922,7 +2922,7 @@ int CADSTAR_SCH_ARCHIVE_LOADER::getTextHeightFromTextCode( const TEXTCODE_ID& aC
 
 wxString CADSTAR_SCH_ARCHIVE_LOADER::getAttributeName( const ATTRIBUTE_ID& aCadstarAttributeID )
 {
-    wxCHECK( Assignments.Codedefs.AttributeNames.find( aCadstarAttributeID )
+    KI_CHECK( Assignments.Codedefs.AttributeNames.find( aCadstarAttributeID )
                      != Assignments.Codedefs.AttributeNames.end(),
              aCadstarAttributeID );
 
@@ -2933,7 +2933,7 @@ wxString CADSTAR_SCH_ARCHIVE_LOADER::getAttributeName( const ATTRIBUTE_ID& aCads
 CADSTAR_SCH_ARCHIVE_LOADER::PART
 CADSTAR_SCH_ARCHIVE_LOADER::getPart( const PART_ID& aCadstarPartID )
 {
-    wxCHECK( Parts.PartDefinitions.find( aCadstarPartID ) != Parts.PartDefinitions.end(), PART() );
+    KI_CHECK( Parts.PartDefinitions.find( aCadstarPartID ) != Parts.PartDefinitions.end(), PART() );
 
     return Parts.PartDefinitions.at( aCadstarPartID );
 }
@@ -2942,7 +2942,7 @@ CADSTAR_SCH_ARCHIVE_LOADER::getPart( const PART_ID& aCadstarPartID )
 CADSTAR_SCH_ARCHIVE_LOADER::ROUTECODE
 CADSTAR_SCH_ARCHIVE_LOADER::getRouteCode( const ROUTECODE_ID& aCadstarRouteCodeID )
 {
-    wxCHECK( Assignments.Codedefs.RouteCodes.find( aCadstarRouteCodeID ) != Assignments.Codedefs.RouteCodes.end(),
+    KI_CHECK( Assignments.Codedefs.RouteCodes.find( aCadstarRouteCodeID ) != Assignments.Codedefs.RouteCodes.end(),
              ROUTECODE() );
 
     return Assignments.Codedefs.RouteCodes.at( aCadstarRouteCodeID );
@@ -3051,7 +3051,7 @@ CADSTAR_SCH_ARCHIVE_LOADER::mirrorX( const ALIGNMENT& aCadstarAlignment )
     case ALIGNMENT::TOPCENTER:     return aCadstarAlignment;
 
     // Shouldn't be here
-    default: wxFAIL_MSG( "Unknown Cadstar Alignment" ); return aCadstarAlignment;
+    default: KI_FAIL_MSG( "Unknown Cadstar Alignment" ); return aCadstarAlignment;
     }
 }
 
@@ -3073,7 +3073,7 @@ CADSTAR_SCH_ARCHIVE_LOADER::rotate180( const ALIGNMENT& aCadstarAlignment )
     case ALIGNMENT::CENTERRIGHT:   return ALIGNMENT::CENTERLEFT;
 
     // Shouldn't be here
-    default: wxFAIL_MSG( "Unknown Cadstar Alignment" ); return aCadstarAlignment;
+    default: KI_FAIL_MSG( "Unknown Cadstar Alignment" ); return aCadstarAlignment;
     }
 }
 
@@ -3190,7 +3190,7 @@ void CADSTAR_SCH_ARCHIVE_LOADER::applyTextSettings( EDA_TEXT*            aKiCadT
 
     SPIN_STYLE spin = getSpinStyle( aCadstarOrientAngle, aMirrored );
     EDA_ITEM*  textEdaItem = dynamic_cast<EDA_ITEM*>( aKiCadTextItem );
-    wxCHECK( textEdaItem, /* void */ ); // ensure this is a EDA_ITEM
+    KI_CHECK( textEdaItem, /* void */ ); // ensure this is a EDA_ITEM
 
     if( textEdaItem->Type() == SCH_FIELD_T )
     {
@@ -3219,7 +3219,7 @@ void CADSTAR_SCH_ARCHIVE_LOADER::applyTextSettings( EDA_TEXT*            aKiCadT
             textAlignment = rotate180( textAlignment );
             break;
         default:
-            wxFAIL_MSG( "Unknown Quadrant" );
+            KI_FAIL_MSG( "Unknown Quadrant" );
         }
 
         aKiCadTextItem->SetTextAngle( angle );
@@ -3243,7 +3243,7 @@ void CADSTAR_SCH_ARCHIVE_LOADER::applyTextSettings( EDA_TEXT*            aKiCadT
         case SPIN_STYLE::UP:     pos = { bb.GetRight() - off, bb.GetBottom()       }; break;
         case SPIN_STYLE::LEFT:   pos = { bb.GetRight()      , bb.GetBottom() + off }; break;
         case SPIN_STYLE::RIGHT:  pos = { bb.GetLeft()       , bb.GetBottom() + off }; break;
-        default:                 wxFAIL_MSG( "Unexpected Spin Style" );               break;
+        default:                 KI_FAIL_MSG( "Unexpected Spin Style" );               break;
         }
 
         aKiCadTextItem->SetTextPos( pos );
@@ -3271,7 +3271,7 @@ void CADSTAR_SCH_ARCHIVE_LOADER::applyTextSettings( EDA_TEXT*            aKiCadT
             break;
 
         default:
-            wxFAIL_MSG( "Unexpected Spin Style" );
+            KI_FAIL_MSG( "Unexpected Spin Style" );
             break;
         }
 
@@ -3284,7 +3284,7 @@ void CADSTAR_SCH_ARCHIVE_LOADER::applyTextSettings( EDA_TEXT*            aKiCadT
     }
     else
     {
-        wxFAIL_MSG( "Unexpected item type" );
+        KI_FAIL_MSG( "Unexpected item type" );
     }
 }
 

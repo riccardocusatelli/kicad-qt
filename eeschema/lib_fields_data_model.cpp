@@ -115,8 +115,8 @@ std::vector<LIB_SYMBOL*> LIB_FIELDS_EDITOR_GRID_DATA_MODEL::getAllItems() const
 
 void LIB_FIELDS_EDITOR_GRID_DATA_MODEL::SetValue( int aRow, int aCol, const wxString& aValue )
 {
-    wxCHECK_RET( aRow >= 0 && aRow < (int) m_rows.size(), wxS( "Invalid row number" ) );
-    wxCHECK_RET( aCol >= 0 && aCol < (int) m_cols.size(), wxS( "Invalid column number" ) );
+    KI_CHECK_RET( aRow >= 0 && aRow < (int) m_rows.size(), wxS( "Invalid row number" ) );
+    KI_CHECK_RET( aCol >= 0 && aCol < (int) m_cols.size(), wxS( "Invalid column number" ) );
 
     if( IsCellReadOnly( aRow, aCol ) )
         return;
@@ -196,8 +196,8 @@ void LIB_FIELDS_EDITOR_GRID_DATA_MODEL::SetValue( int aRow, int aCol, const wxSt
 
 bool LIB_FIELDS_EDITOR_GRID_DATA_MODEL::CanUseParentValue( int aRow, int aCol )
 {
-    wxCHECK( aRow >= 0 && aRow < static_cast<int>( m_rows.size() ), false );
-    wxCHECK( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), false );
+    KI_CHECK( aRow >= 0 && aRow < static_cast<int>( m_rows.size() ), false );
+    KI_CHECK( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), false );
 
     // Value must remain non-empty when applied to a library symbol.
     if( IsCellReadOnly( aRow, aCol ) || ColIsValue( aCol ) )
@@ -235,7 +235,7 @@ void LIB_FIELDS_EDITOR_GRID_DATA_MODEL::UseParentValue( int aRow, int aCol )
 
 bool LIB_FIELDS_EDITOR_GRID_DATA_MODEL::ColIsItemIdentifier( int aCol ) const
 {
-    wxCHECK( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), false );
+    KI_CHECK( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), false );
     return m_cols[aCol].m_fieldName == LIB_FIELDS_EDITOR_GRID_DATA_MODEL::SYMBOL_NAME;
 }
 
@@ -460,12 +460,12 @@ wxGridCellAttr* LIB_FIELDS_EDITOR_GRID_DATA_MODEL::GetAttr( int aRow, int aCol, 
 void LIB_FIELDS_EDITOR_GRID_DATA_MODEL::CreateDerivedSymbolImmediate( int aRow, int aCol,
                                                                       wxString& aNewSymbolName )
 {
-    wxCHECK_RET( aRow >= 0 && aRow < (int) m_rows.size(), "Invalid Row Number" );
-    wxCHECK_RET( aCol >= 0 && aCol < (int) m_cols.size(), "Invalid Column Number" );
+    KI_CHECK_RET( aRow >= 0 && aRow < (int) m_rows.size(), "Invalid Row Number" );
+    KI_CHECK_RET( aCol >= 0 && aCol < (int) m_cols.size(), "Invalid Column Number" );
 
     const LIB_SYMBOL* parentSymbol = m_rows[aRow].m_items[0];
 
-    wxLogTrace( traceLibFieldTable, "CreateDerivedSymbolImmediate: Creating '%s' from parent '%s' immediately",
+    KI_LOG_TRACE( traceLibFieldTable, "CreateDerivedSymbolImmediate: Creating '%s' from parent '%s' immediately",
                 aNewSymbolName, parentSymbol->GetName() );
 
     // Generate a fresh UUID for the new derived symbol
@@ -482,7 +482,7 @@ void LIB_FIELDS_EDITOR_GRID_DATA_MODEL::CreateDerivedSymbolImmediate( int aRow, 
 
 void LIB_FIELDS_EDITOR_GRID_DATA_MODEL::createActualDerivedSymbol( const LIB_SYMBOL* aParentSymbol, const wxString& aNewSymbolName, const KIID& aNewSymbolUuid )
 {
-    wxLogTrace( traceLibFieldTable, "createActualDerivedSymbol: Creating '%s' from parent '%s', symbol list size before: %zu",
+    KI_LOG_TRACE( traceLibFieldTable, "createActualDerivedSymbol: Creating '%s' from parent '%s', symbol list size before: %zu",
                 aNewSymbolName, aParentSymbol->GetName(), m_symbolsList.size() );
 
     LIB_SYMBOL* newSymbol = nullptr;
@@ -509,20 +509,20 @@ void LIB_FIELDS_EDITOR_GRID_DATA_MODEL::createActualDerivedSymbol( const LIB_SYM
         const_cast<KIID&>( newSymbol->m_Uuid ) = aNewSymbolUuid;
         m_symbolsList.push_back( newSymbol );
 
-        wxLogTrace( traceLibFieldTable, "createActualDerivedSymbol: Added new symbol to list, size now: %zu",
+        KI_LOG_TRACE( traceLibFieldTable, "createActualDerivedSymbol: Added new symbol to list, size now: %zu",
                     m_symbolsList.size() );
 
         // Initialize field data for the new symbol in the data store
         initializeDataStoreItem( newSymbol );
 
-        wxLogTrace( traceLibFieldTable, "createActualDerivedSymbol: Initialized field data for new symbol" );
+        KI_LOG_TRACE( traceLibFieldTable, "createActualDerivedSymbol: Initialized field data for new symbol" );
     }
 
     // Note: Not adding to symbolLibrary directly - this will be handled by the dialog's library manager integration
     wxString libraryName = aParentSymbol->GetLibId().GetLibNickname();
     m_createdDerivedSymbols.emplace_back( newSymbol, libraryName );
 
-    wxLogTrace( traceLibFieldTable, "Created derived symbol '%s' for library '%s', total tracked: %zu",
+    KI_LOG_TRACE( traceLibFieldTable, "Created derived symbol '%s' for library '%s', total tracked: %zu",
                 aNewSymbolName, libraryName, m_createdDerivedSymbols.size() );
 }
 
@@ -630,7 +630,7 @@ void LIB_FIELDS_EDITOR_GRID_DATA_MODEL::RebuildRows()
     if( !m_rebuildsEnabled )
         return;
 
-    wxLogTrace( traceLibFieldTable, "RebuildRows: Starting rebuild with %zu symbols in list", m_symbolsList.size() );
+    KI_LOG_TRACE( traceLibFieldTable, "RebuildRows: Starting rebuild with %zu symbols in list", m_symbolsList.size() );
 
     if( GetView() )
     {
@@ -644,7 +644,7 @@ void LIB_FIELDS_EDITOR_GRID_DATA_MODEL::RebuildRows()
 
     m_rows.clear();
 
-    wxLogTrace( traceLibFieldTable, "RebuildRows: About to process %zu symbols", m_symbolsList.size() );
+    KI_LOG_TRACE( traceLibFieldTable, "RebuildRows: About to process %zu symbols", m_symbolsList.size() );
 
     EDA_COMBINED_MATCHER matcher( m_filter.Lower(), CTX_SEARCH );
     int                  parentCol = GetFieldNameCol( SYMBOL_PARENT );
@@ -660,7 +660,7 @@ void LIB_FIELDS_EDITOR_GRID_DATA_MODEL::RebuildRows()
 
     for( LIB_SYMBOL* symbol : m_symbolsList )
     {
-        wxLogTrace( traceLibFieldTable, "RebuildRows: Processing symbol '%s' (UUID: %s)",
+        KI_LOG_TRACE( traceLibFieldTable, "RebuildRows: Processing symbol '%s' (UUID: %s)",
                     symbol->GetName(), symbol->m_Uuid.AsString() );
 
         if( m_scope == SCOPE::SCOPE_RELATED_SYMBOLS )
@@ -751,7 +751,7 @@ void LIB_FIELDS_EDITOR_GRID_DATA_MODEL::RebuildRows()
         GetView()->ProcessTableMessage( msg );
     }
 
-    wxLogTrace( traceLibFieldTable, "RebuildRows: Completed rebuild with %zu rows created", m_rows.size() );
+    KI_LOG_TRACE( traceLibFieldTable, "RebuildRows: Completed rebuild with %zu rows created", m_rows.size() );
     Sort();
 }
 

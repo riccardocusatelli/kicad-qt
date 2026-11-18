@@ -4044,7 +4044,7 @@ void PCB_PAINTER::draw( const PCB_GRID_ITEM* aGridItem, int aLayer )
     }
 
     default:
-        wxFAIL_MSG( wxT( "draw(PCB_GRID_ITEM*): unhandled PCB_GRID_TYPE" ) );
+        KI_FAIL_MSG( wxT( "draw(PCB_GRID_ITEM*): unhandled PCB_GRID_TYPE" ) );
         break;
     }
 

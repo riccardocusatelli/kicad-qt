@@ -356,7 +356,7 @@ LIBRARY_RESULT<void> LIBRARY_TABLE::Save( bool aOverwriteChanged )
                 Path() ) ) );
     }
 
-    wxLogTrace( traceLibraries, "Saving %s", Path() );
+    KI_LOG_TRACE( traceLibraries, "Saving %s", Path() );
     wxFileName fn( Path() );
     // This should already be normalized, but just in case...
     fn.Normalize( FN_NORMALIZE_FLAGS | wxPATH_NORM_ENV_VARS );
@@ -388,7 +388,7 @@ LIBRARY_RESULT<void> LIBRARY_TABLE::Save( bool aOverwriteChanged )
                 {
                     // Non-fatal: the original is still on disk and the atomic save below
                     // is safe.
-                    wxLogTrace( traceLibraries,
+                    KI_LOG_TRACE( traceLibraries,
                                 "Could not rotate library table backup to '%s': %s", bakPath,
                                 bakError );
                 }
@@ -404,7 +404,7 @@ LIBRARY_RESULT<void> LIBRARY_TABLE::Save( bool aOverwriteChanged )
     }
     catch( IO_ERROR& e )
     {
-        wxLogTrace( traceLibraries, "Exception while saving: %s", e.What() );
+        KI_LOG_TRACE( traceLibraries, "Exception while saving: %s", e.What() );
         return tl::unexpected( LIBRARY_ERROR( e.Problem(), e.Where() ) );
     }
 

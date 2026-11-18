@@ -69,7 +69,7 @@ class OUTPUTFORMATTER;
 
 GR_TEXT_H_ALIGN_T EDA_TEXT::MapHorizJustify( int aHorizJustify )
 {
-    wxASSERT( aHorizJustify >= GR_TEXT_H_ALIGN_LEFT && aHorizJustify <= GR_TEXT_H_ALIGN_RIGHT );
+    KI_ASSERT( aHorizJustify >= GR_TEXT_H_ALIGN_LEFT && aHorizJustify <= GR_TEXT_H_ALIGN_RIGHT );
 
     if( aHorizJustify > GR_TEXT_H_ALIGN_RIGHT )
         return GR_TEXT_H_ALIGN_RIGHT;
@@ -83,7 +83,7 @@ GR_TEXT_H_ALIGN_T EDA_TEXT::MapHorizJustify( int aHorizJustify )
 
 GR_TEXT_V_ALIGN_T EDA_TEXT::MapVertJustify( int aVertJustify )
 {
-    wxASSERT( aVertJustify >= GR_TEXT_V_ALIGN_TOP && aVertJustify <= GR_TEXT_V_ALIGN_BOTTOM );
+    KI_ASSERT( aVertJustify >= GR_TEXT_V_ALIGN_TOP && aVertJustify <= GR_TEXT_V_ALIGN_BOTTOM );
 
     if( aVertJustify > GR_TEXT_V_ALIGN_BOTTOM )
         return GR_TEXT_V_ALIGN_BOTTOM;
@@ -194,7 +194,7 @@ void EDA_TEXT::Serialize( google::protobuf::Any& aContainer, const EDA_IU_SCALE&
     Serialize( text, aScale );
 
     if( !aContainer.PackFrom( text ) )
-        wxFAIL_MSG( wxT( "Failed to pack EDA_TEXT" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack EDA_TEXT" ) );
 }
 
 
@@ -853,7 +853,7 @@ BOX2I EDA_TEXT::GetTextBox( const RENDER_SETTINGS* aSettings, int aLine ) const
         break;
 
     case GR_TEXT_H_ALIGN_INDETERMINATE:
-        wxFAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) );
+        KI_FAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) );
         break;
     }
 
@@ -873,7 +873,7 @@ BOX2I EDA_TEXT::GetTextBox( const RENDER_SETTINGS* aSettings, int aLine ) const
         break;
 
     case GR_TEXT_V_ALIGN_INDETERMINATE:
-        wxFAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) );
+        KI_FAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) );
         break;
     }
 
@@ -955,7 +955,7 @@ void EDA_TEXT::GetLinePositions( const RENDER_SETTINGS* aSettings, std::vector<V
             break;
 
         case GR_TEXT_V_ALIGN_INDETERMINATE:
-            wxFAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) );
+            KI_FAIL_MSG( wxT( "Indeterminate state legal only in dialogs." ) );
             break;
         }
     }
@@ -1222,7 +1222,7 @@ std::shared_ptr<SHAPE_COMPOUND> EDA_TEXT::GetEffectiveTextShape( bool aTriangula
 
 int EDA_TEXT::Compare( const EDA_TEXT* aOther ) const
 {
-    wxCHECK( aOther, 1 );
+    KI_CHECK( aOther, 1 );
 
     int val = m_attributes.Compare( aOther->m_attributes );
 

@@ -408,7 +408,7 @@ void DIALOG_EXPORT_NETLIST::InstallCustomPages()
 {
     EXPORT_NETLIST_PAGE* currPage;
     EESCHEMA_SETTINGS*   cfg = dynamic_cast<EESCHEMA_SETTINGS*>( Kiface().KifaceSettings() );
-    wxCHECK( cfg, /* void */ );
+    KI_CHECK( cfg, /* void */ );
 
     for( size_t i = 0; i < CUSTOMPANEL_COUNTMAX && i < cfg->m_NetlistPanel.plugins.size(); i++ )
     {
@@ -788,7 +788,7 @@ bool DIALOG_EXPORT_NETLIST::FilenamePrms( NETLIST_TYPE_ID aType, wxString* aExt,
 void DIALOG_EXPORT_NETLIST::WriteCurrentNetlistSetup()
 {
     EESCHEMA_SETTINGS* cfg = dynamic_cast<EESCHEMA_SETTINGS*>( Kiface().KifaceSettings() );
-    wxCHECK( cfg, /* void */ );
+    KI_CHECK( cfg, /* void */ );
 
     cfg->m_NetlistPanel.plugins.clear();
 

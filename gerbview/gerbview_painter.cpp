@@ -448,7 +448,7 @@ void GERBVIEW_PAINTER::draw( /*const*/ GERBER_DRAW_ITEM* aItem, int aLayer )
     }
 
     default:
-        wxASSERT_MSG( false, wxT( "GERBER_DRAW_ITEM shape is unknown!" ) );
+        KI_ASSERT_MSG( false, wxT( "GERBER_DRAW_ITEM shape is unknown!" ) );
         break;
     }
     m_gal->SetNegativeDrawMode( false );
@@ -469,7 +469,7 @@ void GERBVIEW_PAINTER::draw( /*const*/ GERBER_DRAW_ITEM* aItem, int aLayer )
 void GERBVIEW_PAINTER::drawPolygon( GERBER_DRAW_ITEM* aParent, const SHAPE_POLY_SET& aPolygon,
                                     bool aFilled, bool aShift )
 {
-    wxASSERT( aPolygon.OutlineCount() == 1 );
+    KI_ASSERT( aPolygon.OutlineCount() == 1 );
 
     if( aPolygon.OutlineCount() == 0 )
         return;
@@ -496,7 +496,7 @@ void GERBVIEW_PAINTER::drawFlashedShape( GERBER_DRAW_ITEM* aItem, bool aFilled )
 {
     D_CODE* code = aItem->GetDcodeDescr();
 
-    wxCHECK_MSG( code, /* void */, wxT( "drawFlashedShape: Item has no D_CODE" ) );
+    KI_CHECK_MSG( code, /* void */, wxT( "drawFlashedShape: Item has no D_CODE" ) );
 
     m_gal->SetIsFill( aFilled );
     m_gal->SetIsStroke( !aFilled );
@@ -599,7 +599,7 @@ void GERBVIEW_PAINTER::drawFlashedShape( GERBER_DRAW_ITEM* aItem, bool aFilled )
         break;
 
     default:
-        wxASSERT_MSG( false, wxT( "Unknown Gerber flashed shape!" ) );
+        KI_ASSERT_MSG( false, wxT( "Unknown Gerber flashed shape!" ) );
         break;
     }
 }

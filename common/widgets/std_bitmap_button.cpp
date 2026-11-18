@@ -152,7 +152,7 @@ void STD_BITMAP_BUTTON::OnLeftButtonUp( wxMouseEvent& aEvent )
     Refresh();
 
     wxEvtHandler* pEventHandler = GetEventHandler();
-    wxCHECK( pEventHandler, /* void */ );
+    KI_CHECK( pEventHandler, /* void */ );
 
     pEventHandler->CallAfter(
             [this]()

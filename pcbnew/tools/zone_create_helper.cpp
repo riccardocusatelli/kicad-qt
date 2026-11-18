@@ -146,7 +146,7 @@ std::unique_ptr<ZONE> ZONE_CREATE_HELPER::createNewZone( bool aKeepout )
         frame->GetCanvas()->SetFocus();
     }
 
-    wxASSERT( !m_tool.m_isFootprintEditor || ( parent->Type() == PCB_FOOTPRINT_T ) );
+    KI_ASSERT( !m_tool.m_isFootprintEditor || ( parent->Type() == PCB_FOOTPRINT_T ) );
 
     std::unique_ptr<ZONE> newZone = std::make_unique<ZONE>( parent );
 

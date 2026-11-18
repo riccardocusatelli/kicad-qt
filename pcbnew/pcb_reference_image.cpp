@@ -69,7 +69,7 @@ PCB_REFERENCE_IMAGE::~PCB_REFERENCE_IMAGE()
 
 PCB_REFERENCE_IMAGE& PCB_REFERENCE_IMAGE::operator=( const BOARD_ITEM& aItem )
 {
-    wxCHECK_MSG( Type() == aItem.Type(), *this,
+    KI_CHECK_MSG( Type() == aItem.Type(), *this,
                  wxT( "Cannot assign object type " ) + aItem.GetClass() + wxT( " to type " )
                          + GetClass() );
 
@@ -86,7 +86,7 @@ PCB_REFERENCE_IMAGE& PCB_REFERENCE_IMAGE::operator=( const BOARD_ITEM& aItem )
 
 void PCB_REFERENCE_IMAGE::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther && aOther->Type() == PCB_REFERENCE_IMAGE_T, /* void */ );
+    KI_CHECK( aOther && aOther->Type() == PCB_REFERENCE_IMAGE_T, /* void */ );
     *this = *static_cast<const PCB_REFERENCE_IMAGE*>( aOther );
 }
 
@@ -99,7 +99,7 @@ EDA_ITEM* PCB_REFERENCE_IMAGE::Clone() const
 
 void PCB_REFERENCE_IMAGE::swapData( BOARD_ITEM* aItem )
 {
-    wxCHECK_RET( aItem->Type() == PCB_REFERENCE_IMAGE_T,
+    KI_CHECK_RET( aItem->Type() == PCB_REFERENCE_IMAGE_T,
                  wxString::Format( wxT( "% object cannot swap data with %s object." ),
                                    GetClass(), aItem->GetClass() ) );
 
@@ -200,7 +200,7 @@ void PCB_REFERENCE_IMAGE::Serialize( google::protobuf::Any& aContainer ) const
     refImage.set_opacity( m_referenceImage.GetOpacity() );
 
     if( !aContainer.PackFrom( refImage ) )
-        wxFAIL_MSG( wxT( "Failed to pack PCB_REFERENCE_IMAGE" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack PCB_REFERENCE_IMAGE" ) );
 }
 
 

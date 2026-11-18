@@ -77,7 +77,7 @@ public:
             return;
         }
 
-        wxCHECK_RET( m_libs, "Symbol library manager adapter pointer is not valid" );
+        KI_CHECK_RET( m_libs, "Symbol library manager adapter pointer is not valid" );
 
         if( !m_lib_id.IsValid() )
         {

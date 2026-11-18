@@ -56,7 +56,7 @@ wxDirTraverseResult PROJECT_TREE_TRAVERSER::OnFile( const wxString& aSrcFilePath
     bool       atRoot = destFile.GetPath() == m_projectDirPath;
 
     auto saveAs =
-            [&]( KIWAY::FACE_T aFace )
+            [&]( KIWAY_FACES::FACE_T aFace )
             {
                 if( KIFACE* kiface = m_frame->Kiway().KiFACE( aFace ) )
                 {
@@ -120,7 +120,7 @@ wxDirTraverseResult PROJECT_TREE_TRAVERSER::OnFile( const wxString& aSrcFilePath
              || ext == FILEEXT::NetlistFileExtension
              || destFile.GetName() == FILEEXT::SymbolLibraryTableFileName ) )
     {
-        saveAs( KIWAY::FACE_SCH );
+        saveAs( KIWAY_FACES::FACE_SCH );
     }
     else if( m_frame && ( ext == FILEEXT::KiCadPcbFileExtension
              || ext == FILEEXT::KiCadPcbFileExtension + FILEEXT::BackupFileSuffix
@@ -130,17 +130,17 @@ wxDirTraverseResult PROJECT_TREE_TRAVERSER::OnFile( const wxString& aSrcFilePath
              || ext == FILEEXT::FootprintAssignmentFileExtension
              || destFile.GetName() == FILEEXT::FootprintLibraryTableFileName ) )
     {
-        saveAs( KIWAY::FACE_PCB );
+        saveAs( KIWAY_FACES::FACE_PCB );
     }
     else if( m_frame && ext == FILEEXT::DrawingSheetFileExtension )
     {
-        saveAs( KIWAY::FACE_PL_EDITOR );
+        saveAs( KIWAY_FACES::FACE_PL_EDITOR );
     }
     else if( m_frame && ( ext == FILEEXT::GerberJobFileExtension
            || ext == FILEEXT::DrillFileExtension
              || FILEEXT::IsGerberFileExtension( ext ) ) )
     {
-        saveAs( KIWAY::FACE_GERBVIEW );
+        saveAs( KIWAY_FACES::FACE_GERBVIEW );
     }
     else if( destFile.GetName().StartsWith( FILEEXT::LockFilePrefix )
              && ext == FILEEXT::LockFileExtension )

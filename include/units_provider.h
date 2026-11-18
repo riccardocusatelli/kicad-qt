@@ -249,7 +249,7 @@ public:
             return EDA_DATA_TYPE::LENGTH_DELAY;
         }
 
-        wxCHECK_MSG( false, EDA_DATA_TYPE::UNITLESS, wxString::Format( wxT( "Unhandled unit data type %d" ),
+        KI_CHECK_MSG( false, EDA_DATA_TYPE::UNITLESS, wxString::Format( wxT( "Unhandled unit data type %d" ),
                                                                        static_cast<int>( aUnits ) ) );
 
         return EDA_DATA_TYPE::UNITLESS; // Note that this is unreachable but g++-12 doesn't know that.

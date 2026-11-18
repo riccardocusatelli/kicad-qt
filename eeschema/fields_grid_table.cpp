@@ -88,7 +88,7 @@ wxString BuildFootprintChooserSymbolNetlist( const LIB_SYMBOL* aSymbol )
     if( !pins.IsEmpty() )
     {
         wxString pinList = wxJoin( pins, '\t' );
-        wxLogTrace( "FOOTPRINT_CHOOSER", wxS( "Chooser payload pins: %s" ), pinList );
+        KI_LOG_TRACE( "FOOTPRINT_CHOOSER", wxS( "Chooser payload pins: %s" ), pinList );
         netlist << EscapeString( pinList, CTX_LINE );
     }
 
@@ -480,7 +480,7 @@ bool FIELDS_GRID_TABLE::privateFieldsAreHidden() const
 
 int FIELDS_GRID_TABLE::getFieldIndex( int aRow ) const
 {
-    wxCHECK_MSG( aRow >= 0 && aRow < getVisibleRowCount(), -1, wxT( "Invalid field row" ) );
+    KI_CHECK_MSG( aRow >= 0 && aRow < getVisibleRowCount(), -1, wxT( "Invalid field row" ) );
 
     if( !privateFieldsAreHidden() )
         return aRow;
@@ -498,7 +498,7 @@ int FIELDS_GRID_TABLE::getFieldIndex( int aRow ) const
         ++visibleRow;
     }
 
-    wxFAIL_MSG( wxT( "Row index off end of visible row count" ) );
+    KI_FAIL_MSG( wxT( "Row index off end of visible row count" ) );
     return -1;
 }
 
@@ -548,7 +548,7 @@ wxString FIELDS_GRID_TABLE::GetColLabelValue( int aCol )
     case FDC_COLOR:           return _( "Color" );
     case FDC_ALLOW_AUTOPLACE: return _( "Allow Autoplacement" );
     case FDC_PRIVATE:         return _( "Private" );
-    default:      wxFAIL;     return wxEmptyString;
+    default:      KI_FAIL();     return wxEmptyString;
     }
 }
 
@@ -578,7 +578,7 @@ bool FIELDS_GRID_TABLE::CanGetValueAs( int aRow, int aCol, const wxString& aType
         return aTypeName == wxGRID_VALUE_BOOL;
 
     default:
-        wxFAIL;
+        KI_FAIL();
         return false;
     }
 }
@@ -592,7 +592,7 @@ bool FIELDS_GRID_TABLE::CanSetValueAs( int aRow, int aCol, const wxString& aType
 
 wxGridCellAttr* FIELDS_GRID_TABLE::GetAttr( int aRow, int aCol, wxGridCellAttr::wxAttrKind aKind  )
 {
-    wxCHECK( aRow < GetNumberRows(), nullptr );
+    KI_CHECK( aRow < GetNumberRows(), nullptr );
 
     const SCH_FIELD& field = getField( aRow );
     wxGridCellAttr*  attr = nullptr;
@@ -758,7 +758,7 @@ wxGridCellAttr* FIELDS_GRID_TABLE::GetAttr( int aRow, int aCol, wxGridCellAttr::
 
 wxString FIELDS_GRID_TABLE::GetValue( int aRow, int aCol )
 {
-    wxCHECK( aRow < GetNumberRows(), wxEmptyString );
+    KI_CHECK( aRow < GetNumberRows(), wxEmptyString );
 
     wxGrid*          grid = GetView();
     const SCH_FIELD& field = getField( aRow );
@@ -868,7 +868,7 @@ wxString FIELDS_GRID_TABLE::GetValue( int aRow, int aCol )
 
 bool FIELDS_GRID_TABLE::GetValueAsBool( int aRow, int aCol )
 {
-    wxCHECK( aRow < GetNumberRows(), false );
+    KI_CHECK( aRow < GetNumberRows(), false );
     const SCH_FIELD& field = getField( aRow );
 
     switch( aCol )
@@ -880,7 +880,7 @@ bool FIELDS_GRID_TABLE::GetValueAsBool( int aRow, int aCol )
     case FDC_ALLOW_AUTOPLACE: return field.CanAutoplace();
     case FDC_PRIVATE:         return field.IsPrivate();
     default:
-        wxFAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a bool value" ), aCol ) );
+        KI_FAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a bool value" ), aCol ) );
         return false;
     }
 }
@@ -888,7 +888,7 @@ bool FIELDS_GRID_TABLE::GetValueAsBool( int aRow, int aCol )
 
 void FIELDS_GRID_TABLE::SetValue( int aRow, int aCol, const wxString &aValue )
 {
-    wxCHECK( aRow < GetNumberRows(), /*void*/ );
+    KI_CHECK( aRow < GetNumberRows(), /*void*/ );
     SCH_FIELD& field = getField( aRow );
     VECTOR2I   pos;
     wxString   value = aValue;
@@ -1010,7 +1010,7 @@ void FIELDS_GRID_TABLE::SetValue( int aRow, int aCol, const wxString &aValue )
         else if( value == _( "Vertical" ) )
             field.SetTextAngle( ANGLE_VERTICAL );
         else
-            wxFAIL_MSG( wxT( "unknown orientation: " ) + value );
+            KI_FAIL_MSG( wxT( "unknown orientation: " ) + value );
 
         break;
 
@@ -1049,7 +1049,7 @@ void FIELDS_GRID_TABLE::SetValue( int aRow, int aCol, const wxString &aValue )
         break;
 
     default:
-        wxFAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a string value" ), aCol ) );
+        KI_FAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a string value" ), aCol ) );
         break;
     }
 
@@ -1061,7 +1061,7 @@ void FIELDS_GRID_TABLE::SetValue( int aRow, int aCol, const wxString &aValue )
 
 void FIELDS_GRID_TABLE::SetValueAsBool( int aRow, int aCol, bool aValue )
 {
-    wxCHECK( aRow < GetNumberRows(), /*void*/ );
+    KI_CHECK( aRow < GetNumberRows(), /*void*/ );
     SCH_FIELD& field = getField( aRow );
 
     switch( aCol )
@@ -1091,7 +1091,7 @@ void FIELDS_GRID_TABLE::SetValueAsBool( int aRow, int aCol, bool aValue )
         break;
 
     default:
-        wxFAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a bool value" ), aCol ) );
+        KI_FAIL_MSG( wxString::Format( wxT( "column %d doesn't hold a bool value" ), aCol ) );
         break;
     }
 
@@ -1120,7 +1120,7 @@ bool FIELDS_GRID_TABLE::BoolFromString( const wxString& aValue ) const
     }
     else
     {
-        wxFAIL_MSG( wxString::Format( "string '%s' can't be converted to boolean correctly and "
+        KI_FAIL_MSG( wxString::Format( "string '%s' can't be converted to boolean correctly and "
                                       "will be perceived as FALSE", aValue ) );
         return false;
     }
@@ -1193,7 +1193,7 @@ void FIELDS_GRID_TABLE::AddInheritedField( const SCH_FIELD& aParent, const wxStr
 
 void FIELDS_GRID_TABLE::SetFieldInherited( size_t aFieldIndex, const SCH_FIELD& aParent, const wxString& aSource )
 {
-    wxCHECK( aFieldIndex < size() && aFieldIndex < m_inheritance.size(), /*void*/ );
+    KI_CHECK( aFieldIndex < size() && aFieldIndex < m_inheritance.size(), /*void*/ );
 
     INHERITANCE& inheritance = m_inheritance[aFieldIndex];
     SCH_FIELD&   field = at( aFieldIndex );
@@ -1243,8 +1243,8 @@ void FIELDS_GRID_TABLE::SwapRows( size_t a, size_t b )
     int fieldIndexA = getFieldIndex( static_cast<int>( a ) );
     int fieldIndexB = getFieldIndex( static_cast<int>( b ) );
 
-    wxCHECK( fieldIndexA >= 0 && fieldIndexB >= 0, /*void*/ );
-    wxCHECK( fieldIndexA < static_cast<int>( m_inheritance.size() )
+    KI_CHECK( fieldIndexA >= 0 && fieldIndexB >= 0, /*void*/ );
+    KI_CHECK( fieldIndexA < static_cast<int>( m_inheritance.size() )
                      && fieldIndexB < static_cast<int>( m_inheritance.size() ),
              /*void*/ );
 

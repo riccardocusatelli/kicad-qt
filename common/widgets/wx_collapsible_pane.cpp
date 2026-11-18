@@ -177,7 +177,7 @@ bool WX_COLLAPSIBLE_PANE::Layout()
 int WX_COLLAPSIBLE_PANE::GetMargin() const
 {
 #if defined( __WXMSW__ )
-    wxASSERT( m_header );
+    KI_ASSERT( m_header );
     return m_header->ConvertDialogToPixels( wxSize( 2, 0 ) ).x;
 #else
     return 3;

@@ -371,12 +371,12 @@ void GERBVIEW_FRAME::updateDCodeSelectBox()
         break;
 
     default:
-        wxASSERT_MSG( false, wxT( "Invalid units" ) );
+        KI_ASSERT_MSG( false, wxT( "Invalid units" ) );
     }
 
     for( const auto& [_, dcode] : gerber->m_ApertureList )
     {
-        wxCHECK2( dcode,continue );
+        KI_CHECK2( dcode,continue );
 
         if( !dcode->m_InUse && !dcode->m_Defined )
             continue;

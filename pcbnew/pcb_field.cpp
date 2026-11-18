@@ -84,7 +84,7 @@ void PCB_FIELD::Serialize( google::protobuf::Any &aContainer ) const
     Serialize( field );
 
     if( !aContainer.PackFrom( field ) )
-        wxFAIL_MSG( wxT( "Failed to pack PCB_FIELD" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack PCB_FIELD" ) );
 }
 
 
@@ -304,7 +304,7 @@ EDA_ITEM* PCB_FIELD::Clone() const
 
 void PCB_FIELD::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther && aOther->Type() == PCB_FIELD_T, /* void */ );
+    KI_CHECK( aOther && aOther->Type() == PCB_FIELD_T, /* void */ );
     *this = *static_cast<const PCB_FIELD*>( aOther );
 }
 

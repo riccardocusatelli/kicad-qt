@@ -40,7 +40,7 @@ RENDER_3D_RAYTRACE_GL::RENDER_3D_RAYTRACE_GL( EDA_3D_CANVAS* aCanvas, BOARD_ADAP
                                               CAMERA& aCamera ) :
     RENDER_3D_RAYTRACE_BASE( aAdapter, aCamera )
 {
-    wxLogTrace( m_logTrace, wxT( "RENDER_3D_RAYTRACE_GL::RENDER_3D_RAYTRACE_GL" ) );
+    KI_LOG_TRACE( m_logTrace, wxT( "RENDER_3D_RAYTRACE_GL::RENDER_3D_RAYTRACE_GL" ) );
 
     m_openglSupportsVertexBufferObjects = false;
     m_pboId       = GL_NONE;
@@ -235,7 +235,7 @@ void RENDER_3D_RAYTRACE_GL::initPbo()
         glBufferData( GL_PIXEL_UNPACK_BUFFER, m_pboDataSize, 0, GL_STREAM_DRAW );
         glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0 );
 
-        wxLogTrace( m_logTrace,
+        KI_LOG_TRACE( m_logTrace,
                     wxT( "RENDER_3D_RAYTRACE_GL:: GL Version 1.5+ is supported" ) );
     }
 }

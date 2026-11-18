@@ -69,7 +69,7 @@ public:
 
     const LIB_SYMBOL* GetSymbolForRow( int aRow )
     {
-        wxCHECK( aRow >= 0 && aRow < (int) m_rows.size(), nullptr );
+        KI_CHECK( aRow >= 0 && aRow < (int) m_rows.size(), nullptr );
         return m_rows[aRow].m_items[0];
     }
 
@@ -111,7 +111,7 @@ public:
 
     bool IsRowSingleSymbol( int aRow )
     {
-        wxCHECK_MSG( aRow >= 0 && aRow < (int) m_rows.size(), false, "Invalid Row Number" );
+        KI_CHECK_MSG( aRow >= 0 && aRow < (int) m_rows.size(), false, "Invalid Row Number" );
         return m_rows[aRow].GetCellItems().size() == 1;
     }
 

@@ -182,7 +182,7 @@ private:
 
         for( int layer : aLayers )
         {
-            wxCHECK2_MSG( layer >= 0 && layer < VIEW::VIEW_MAX_LAYERS, continue,
+            KI_CHECK2_MSG( layer >= 0 && layer < VIEW::VIEW_MAX_LAYERS, continue,
                           wxString::Format( wxT( "Invalid layer number: %d" ), layer ) );
             m_layers.push_back( layer );
         }
@@ -572,8 +572,8 @@ void VIEW::unlinkItem( VIEW_ITEM* aItem )
 
 void VIEW::SetRequired( int aLayerId, int aRequiredId, bool aRequired )
 {
-    wxCHECK( (unsigned) aLayerId < m_layers.size(), /*void*/ );
-    wxCHECK( (unsigned) aRequiredId < m_layers.size(), /*void*/ );
+    KI_CHECK( (unsigned) aLayerId < m_layers.size(), /*void*/ );
+    KI_CHECK( (unsigned) aRequiredId < m_layers.size(), /*void*/ );
 
     std::set<int>& required = m_layers[aLayerId].requiredLayers;
     const bool     changed = aRequired ? required.insert( aRequiredId ).second : required.erase( aRequiredId ) > 0;
@@ -827,7 +827,7 @@ double VIEW::ToScreen( double aSize ) const
 
 void VIEW::CopySettings( const VIEW* aOtherView )
 {
-    wxASSERT_MSG( false, wxT( "This is not implemented" ) );
+    KI_ASSERT_MSG( false, wxT( "This is not implemented" ) );
 }
 
 
@@ -873,7 +873,7 @@ void VIEW::SetViewport( const BOX2D& aViewport )
 {
     VECTOR2D ssize = ToWorld( m_gal->GetScreenPixelSize(), false );
 
-    wxCHECK( fabs(ssize.x) > 0 && fabs(ssize.y) > 0, /*void*/ );
+    KI_CHECK( fabs(ssize.x) > 0 && fabs(ssize.y) > 0, /*void*/ );
 
     VECTOR2D centre = aViewport.Centre();
     VECTOR2D vsize  = aViewport.GetSize();
@@ -886,7 +886,7 @@ void VIEW::SetViewport( const BOX2D& aViewport )
 
 void VIEW::SetMirror( bool aMirrorX, bool aMirrorY )
 {
-    wxASSERT_MSG( !aMirrorY, _( "Mirroring for Y axis is not supported yet" ) );
+    KI_ASSERT_MSG( !aMirrorY, _( "Mirroring for Y axis is not supported yet" ) );
 
     m_mirrorX = aMirrorX;
     m_mirrorY = aMirrorY;
@@ -1362,7 +1362,7 @@ struct VIEW::DRAW_ITEM_VISITOR
 
     bool operator()( VIEW_ITEM* aItem )
     {
-        wxCHECK( aItem->viewPrivData(), false );
+        KI_CHECK( aItem->viewPrivData(), false );
 
         if( aItem->m_forcedTransparency > 0 && !drawForcedTransparent )
         {
@@ -1662,7 +1662,7 @@ void VIEW::draw( VIEW_ITEM* aItem, int aLayer, bool aImmediate )
         }
         else
         {
-            wxLogTrace( traceRhi, wxS( "ViewCache: miss layer=%d item=%p drawingMode=%d" ),
+            KI_LOG_TRACE( traceRhi, wxS( "ViewCache: miss layer=%d item=%p drawingMode=%d" ),
                         aLayer, static_cast<const void*>( aItem ), m_gal->IsDrawingMode() ? 1 : 0 );
 
             // Only a retained scene builds a missed group mid-frame. Other backends wait for the next
@@ -1686,7 +1686,7 @@ void VIEW::draw( VIEW_ITEM* aItem, int aLayer, bool aImmediate )
             }
 
             // Outside drawing mode there is no open group to draw into, so rebuild on the next pass
-            wxLogTrace( traceRhi, wxS( "ViewCache: defer-build layer=%d item=%p" ),
+            KI_LOG_TRACE( traceRhi, wxS( "ViewCache: defer-build layer=%d item=%p" ),
                         aLayer, static_cast<const void*>( aItem ) );
 
             Update( aItem, REPAINT );
@@ -1868,7 +1868,7 @@ void VIEW::Redraw()
 
 #ifdef KICAD_GAL_PROFILE
     totalRealTime.Stop();
-    wxLogTrace( traceGalProfile, wxS( "VIEW::Redraw(): %.1f ms" ), totalRealTime.msecs() );
+    KI_LOG_TRACE( traceGalProfile, wxS( "VIEW::Redraw(): %.1f ms" ), totalRealTime.msecs() );
     latencyProbeZoomToRender.AddTimer( totalRealTime );
     latencyProbeZoomToRender.Checkpoint("view-redraw-end");
 
@@ -2017,7 +2017,7 @@ void VIEW::markDimExemption( const VIEW_ITEM* aItem, int aGroup )
 void VIEW::updateItemColor( VIEW_ITEM* aItem, int aLayer )
 {
     VIEW_ITEM_DATA* viewData = aItem->viewPrivData();
-    wxCHECK( IsCached( aLayer ), /*void*/ ); // This will check if the layer exists
+    KI_CHECK( IsCached( aLayer ), /*void*/ ); // This will check if the layer exists
 
     if( !viewData )
         return;
@@ -2063,7 +2063,7 @@ void VIEW::updateItemGeometry( VIEW_ITEM* aItem, int aLayer, bool aPlace )
     group = m_gal->BeginGroup();
     viewData->setGroup( aLayer, group );
 
-    wxLogTrace( traceGalGroups, wxS( "updateItemGeometry() item=%p layer=%d newGroup=%d" ),
+    KI_LOG_TRACE( traceGalGroups, wxS( "updateItemGeometry() item=%p layer=%d newGroup=%d" ),
                 static_cast<void*>( aItem ), aLayer, group );
 
     if( !m_painter->Draw( aItem, aLayer ) )
@@ -2102,7 +2102,7 @@ void VIEW::updateBbox( VIEW_ITEM* aItem )
 {
     std::vector<int> layers = aItem->ViewGetLayers();
 
-    wxASSERT( aItem->m_viewPrivData ); //must have a viewPrivData
+    KI_ASSERT( aItem->m_viewPrivData ); //must have a viewPrivData
 
     const BOX2I  new_bbox = aItem->ViewBBox();
 
@@ -2239,7 +2239,7 @@ void VIEW::UpdateItems()
 {
     if( !m_gal->IsVisible() || !m_gal->IsInitialized() )
     {
-        wxLogTrace( traceGalGroups,
+        KI_LOG_TRACE( traceGalGroups,
                     wxS( "UpdateItems() SKIP: visible=%d initialized=%d" ),
                     m_gal->IsVisible(), m_gal->IsInitialized() );
         return;
@@ -2317,7 +2317,7 @@ void VIEW::UpdateItems()
             {
                 auto it = m_layers.find( layer );
 
-                wxCHECK2_MSG( it != m_layers.end(), continue, wxS( "Invalid layer" ) );
+                KI_CHECK2_MSG( it != m_layers.end(), continue, wxS( "Invalid layer" ) );
                 layerBulk[layer].emplace_back( item, bbox );
             }
 
@@ -2438,15 +2438,15 @@ void VIEW::UpdateItems()
             updatesProcessed = false;
         }
 
-        wxLogTrace( traceGalGroups, wxS( "UpdateItems() invalidated %u items" ), cntInvalidated );
+        KI_LOG_TRACE( traceGalGroups, wxS( "UpdateItems() invalidated %u items" ), cntInvalidated );
     }
 
-    wxLogTrace( traceGalGroups,
+    KI_LOG_TRACE( traceGalGroups,
                 wxS( "UpdateItems() total=%u geomUpdate=%u anyUpdated=%d bulkRebuild=%d" ),
                 cntTotal, cntGeomUpdate, anyUpdated, ratio > 0.05 );
 
 #ifdef KICAD_GAL_PROFILE
-    wxLogTrace( traceGalProfile, wxS( "View update: total items %u, geom %u anyUpdated %u" ),
+    KI_LOG_TRACE( traceGalProfile, wxS( "View update: total items %u, geom %u anyUpdated %u" ),
                 cntTotal, cntGeomUpdate, (unsigned) anyUpdated );
 #endif
 

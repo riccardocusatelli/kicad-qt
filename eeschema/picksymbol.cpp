@@ -151,7 +151,7 @@ void SCH_EDIT_FRAME::SelectUnit( SCH_SYMBOL* aSymbol, int aUnit, SCH_COMMIT* aCo
     if( swapWithOther )
     {
         // We were reliably informed this would exist.
-        wxASSERT( otherSymbolRef );
+        KI_ASSERT( otherSymbolRef );
 
         SCH_SYMBOL* otherSymbol = otherSymbolRef->GetSymbol();
 

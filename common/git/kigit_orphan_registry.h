@@ -116,7 +116,7 @@ public:
                         }
                         catch( ... )
                         {
-                            wxLogTrace( traceGit,
+                            KI_LOG_TRACE( traceGit,
                                         "Orphan git thread [%s] threw an exception",
                                         label.c_str() );
                         }
@@ -135,7 +135,7 @@ public:
             throw;
         }
 
-        wxLogTrace( traceGit, "Registered orphan git thread [%s]", aLabel.c_str() );
+        KI_LOG_TRACE( traceGit, "Registered orphan git thread [%s]", aLabel.c_str() );
         return true;
     }
 

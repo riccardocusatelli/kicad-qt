@@ -82,7 +82,7 @@ SCH_COMMIT::~SCH_COMMIT()
 
 COMMIT& SCH_COMMIT::Stage( EDA_ITEM *aItem, CHANGE_TYPE aChangeType, BASE_SCREEN *aScreen, RECURSE_MODE aRecurse )
 {
-    wxCHECK( aItem, *this );
+    KI_CHECK( aItem, *this );
 
     if( !m_isLibEditor )
     {
@@ -132,7 +132,7 @@ COMMIT& SCH_COMMIT::Stage( std::vector<EDA_ITEM*> &container, CHANGE_TYPE aChang
 
 void SCH_COMMIT::RemovedForCleanup( SCH_ITEM* aItem, SCH_SCREEN* aScreen )
 {
-    wxASSERT( !aScreen->CheckIfOnDrawList( aItem ) );
+    KI_ASSERT( !aScreen->CheckIfOnDrawList( aItem ) );
 
     if( COMMIT_LINE* entry = findEntry( aItem, aScreen ); entry && ( entry->m_type & CHT_TYPE ) == CHT_MODIFY )
     {
@@ -299,7 +299,7 @@ void SCH_COMMIT::pushSchEdit( const wxString& aMessage, int aCommitFlags )
                     SCH_ITEM* schItem = dynamic_cast<SCH_ITEM*>( entry.m_item );
                     int       changeType = entry.m_type & CHT_TYPE;
 
-                    wxCHECK2( schItem, continue );
+                    KI_CHECK2( schItem, continue );
 
                     if( changeType == CHT_REMOVE && schItem->GetParentGroup() )
                         removedItemGroups.emplace_back( schItem->GetParentGroup(), entry.m_screen );
@@ -342,8 +342,8 @@ void SCH_COMMIT::pushSchEdit( const wxString& aMessage, int aCommitFlags )
         SCH_ITEM*    schItem = dynamic_cast<SCH_ITEM*>( entry.m_item );
         SCH_SCREEN*  screen = dynamic_cast<SCH_SCREEN*>( entry.m_screen );
 
-        wxCHECK2( schItem, continue );
-        wxCHECK2( screen, continue );
+        KI_CHECK2( schItem, continue );
+        KI_CHECK2( screen, continue );
 
         touchedScreens.insert( screen );
 
@@ -543,7 +543,7 @@ void SCH_COMMIT::pushSchEdit( const wxString& aMessage, int aCommitFlags )
         }
 
         default:
-            wxASSERT( false );
+            KI_ASSERT( false );
             break;
         }
 
@@ -583,7 +583,7 @@ void SCH_COMMIT::pushSchEdit( const wxString& aMessage, int aCommitFlags )
 
     if( ( dirtyConnectivity || refreshConnectivity ) && !( aCommitFlags & SKIP_CONNECTIVITY ) )
     {
-        wxLogTrace( wxS( "CONN_PROFILE" ), wxS( "SCH_COMMIT::pushSchEdit() connectivity refresh, cleanup=%d." ),
+        KI_LOG_TRACE( wxS( "CONN_PROFILE" ), wxS( "SCH_COMMIT::pushSchEdit() connectivity refresh, cleanup=%d." ),
                     static_cast<int>( connectivityCleanUp ) );
 
         if( frame )
@@ -763,7 +763,7 @@ void SCH_COMMIT::RevertToCheckpoint( int aCheckpoint )
         SCH_ITEM*    copy = dynamic_cast<SCH_ITEM*>( entry.m_copy );
         SCH_SCREEN*  screen = dynamic_cast<SCH_SCREEN*>( entry.m_screen );
 
-        wxCHECK2( item && screen, continue );
+        KI_CHECK2( item && screen, continue );
 
         if( !schematic )
             schematic = item->Schematic();
@@ -798,7 +798,7 @@ void SCH_COMMIT::RevertToCheckpoint( int aCheckpoint )
 
         case CHT_MODIFY:
         {
-            wxCHECK2( copy, break );
+            KI_CHECK2( copy, break );
 
             if( view )
                 view->Remove( item );
@@ -873,7 +873,7 @@ void SCH_COMMIT::RevertToCheckpoint( int aCheckpoint )
         }
 
         default:
-            wxASSERT( false );
+            KI_ASSERT( false );
             break;
         }
 

@@ -162,7 +162,7 @@ HANDLER_RESULT<NetClassesResponse> API_HANDLER_COMMON::handleGetNetClasses( cons
     netSettings->GetDefaultNetclass()->Serialize( any );
 
     if( !any.UnpackTo( reply.add_net_classes() ) )
-        wxFAIL_MSG( wxT( "Failed to unpack Default netclasss from internal serialization" ) );
+        KI_FAIL_MSG( wxT( "Failed to unpack Default netclasss from internal serialization" ) );
 
     for( const std::shared_ptr<NETCLASS>& netClass : netSettings->GetNetclasses() | std::views::values )
     {
@@ -170,7 +170,7 @@ HANDLER_RESULT<NetClassesResponse> API_HANDLER_COMMON::handleGetNetClasses( cons
 
         if( !any.UnpackTo( reply.add_net_classes() ) )
         {
-            wxFAIL_MSG( wxString::Format( wxT( "Failed to unpack netclass %s from internal serialization" ),
+            KI_FAIL_MSG( wxString::Format( wxT( "Failed to unpack netclass %s from internal serialization" ),
                                           netClass->GetName() ) );
         }
     }
@@ -440,7 +440,7 @@ HANDLER_RESULT<GetTextAsShapesResponse> API_HANDLER_COMMON::handleGetTextAsShape
             GraphicShape* shapeMsg = entry->mutable_shapes()->add_shapes();
 
             if( !any.UnpackTo( shapeMsg ) )
-                wxFAIL_MSG( wxT( "Failed to unpack text-as-shapes component from internal serialization" ) );
+                KI_FAIL_MSG( wxT( "Failed to unpack text-as-shapes component from internal serialization" ) );
         }
 
         if( textMsg.has_textbox() && textMsg.textbox().border_enabled() )

@@ -1145,7 +1145,7 @@ void APPEARANCE_CONTROLS_3D::onViewportChanged( wxCommandEvent& aEvent )
     {
         VIEWPORT3D* viewport = static_cast<VIEWPORT3D*>( m_cbViewports->GetClientData( index ) );
 
-        wxCHECK( viewport, /* void */ );
+        KI_CHECK( viewport, /* void */ );
 
         doApplyViewport( *viewport );
 
@@ -1252,7 +1252,7 @@ void APPEARANCE_CONTROLS_3D::onUpdateViewportsCb( wxUpdateUIEvent& aEvent )
     {
         VIEWPORT3D* viewport = static_cast<VIEWPORT3D*>( m_cbViewports->GetClientData( index ) );
 
-        wxCHECK( viewport, /* void */ );
+        KI_CHECK( viewport, /* void */ );
 
         if( m_frame->GetCurrentCamera().GetViewMatrix() != viewport->matrix )
             m_cbViewports->SetSelection( -1 );

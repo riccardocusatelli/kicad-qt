@@ -60,7 +60,7 @@ void SCH_EDITOR_CONTROL::AssignFootprints( const std::string& aChangedSetOfRefer
 
         for( PTREE::const_iterator ref = back_anno.begin();  ref != back_anno.end();  ++ref )
         {
-            wxASSERT( ref->first == "ref" );
+            KI_ASSERT( ref->first == "ref" );
 
             wxString reference = UTF8( ref->second.front().first );
 

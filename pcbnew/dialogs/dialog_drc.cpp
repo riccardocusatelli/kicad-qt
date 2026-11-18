@@ -753,7 +753,7 @@ void DIALOG_DRC::OnDRCItemSelected( wxDataViewEvent& aEvent )
         {
             int net = track->GetNetCode();
 
-            wxASSERT( net > 0 );    // Without a net how can it be a diff-pair?
+            KI_ASSERT( net > 0 );    // Without a net how can it be a diff-pair?
 
             for( const KIID& id : rc_item->GetIDs() )
             {

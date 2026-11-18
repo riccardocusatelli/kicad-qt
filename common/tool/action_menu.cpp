@@ -127,13 +127,13 @@ void ACTION_MENU::DisplayTitle( bool aDisplay )
     {
         // Destroy the menu entry keeping the title..
         wxMenuItem* item = FindItemByPosition( 0 );
-        wxASSERT( item->GetItemLabelText() == GetTitle() );
+        KI_ASSERT( item->GetItemLabelText() == GetTitle() );
         item->SetBitmap( wxNullBitmap );
         Destroy( item );
 
         // ..and separator
         item = FindItemByPosition( 0 );
-        wxASSERT( item->IsSeparator() );
+        KI_ASSERT( item->IsSeparator() );
         Destroy( item );
         m_titleDisplayed = false;
     }
@@ -162,7 +162,7 @@ void ACTION_MENU::DisplayTitle( bool aDisplay )
 
 wxMenuItem* ACTION_MENU::Add( const wxString& aLabel, int aId, BITMAPS aIcon )
 {
-    wxASSERT_MSG( FindItem( aId ) == nullptr, wxS( "Duplicate menu IDs!" ) );
+    KI_ASSERT_MSG( FindItem( aId ) == nullptr, wxS( "Duplicate menu IDs!" ) );
 
     wxMenuItem* item = new wxMenuItem( this, aId, aLabel, wxEmptyString, wxITEM_NORMAL );
 
@@ -176,7 +176,7 @@ wxMenuItem* ACTION_MENU::Add( const wxString& aLabel, int aId, BITMAPS aIcon )
 wxMenuItem* ACTION_MENU::Add( const wxString& aLabel, const wxString& aTooltip, int aId,
                               BITMAPS aIcon, bool aIsCheckmarkEntry )
 {
-    wxASSERT_MSG( FindItem( aId ) == nullptr, wxS( "Duplicate menu IDs!" ) );
+    KI_ASSERT_MSG( FindItem( aId ) == nullptr, wxS( "Duplicate menu IDs!" ) );
 
     wxMenuItem* item = new wxMenuItem( this, aId, aLabel, aTooltip, aIsCheckmarkEntry ? wxITEM_CHECK
                                                                                       : wxITEM_NORMAL );
@@ -212,7 +212,7 @@ wxMenuItem* ACTION_MENU::Add( ACTION_MENU* aMenu )
 {
     m_submenus.push_back( aMenu );
 
-    wxASSERT_MSG( !aMenu->m_title.IsEmpty(), wxS( "Set a title for ACTION_MENU using SetTitle()" ) );
+    KI_ASSERT_MSG( !aMenu->m_title.IsEmpty(), wxS( "Set a title for ACTION_MENU using SetTitle()" ) );
 
     if( !!aMenu->m_icon )
     {
@@ -283,7 +283,7 @@ void ACTION_MENU::Clear()
     m_toolActions.clear();
     m_submenus.clear();
 
-    wxASSERT( GetMenuItemCount() == 0 );
+    KI_ASSERT( GetMenuItemCount() == 0 );
 }
 
 
@@ -350,7 +350,7 @@ ACTION_MENU* ACTION_MENU::create() const
 {
     ACTION_MENU* menu = new ACTION_MENU( false );
 
-    wxASSERT_MSG( typeid( *this ) == typeid( *menu ),
+    KI_ASSERT_MSG( typeid( *this ) == typeid( *menu ),
                   wxString::Format( "You need to override create() method for class %s", typeid( *this ).name() ) );
 
     return menu;
@@ -367,7 +367,7 @@ void ACTION_MENU::updateHotKeys()
 {
     TOOL_MANAGER* toolMgr = getToolManager();
 
-    wxASSERT( toolMgr );
+    KI_ASSERT( toolMgr );
 
     for( std::pair<const int, const TOOL_ACTION*>& ii : m_toolActions )
     {
@@ -594,7 +594,7 @@ void ACTION_MENU::OnMenuEvent( wxMenuEvent& aEvent )
     // clients that don't supply a tool will have to check GetSelected() themselves
     if( evt && toolMgr )
     {
-        wxLogTrace( kicadTraceToolStack, wxS( "ACTION_MENU::OnMenuEvent %s" ), evt->Format() );
+        KI_LOG_TRACE( kicadTraceToolStack, wxS( "ACTION_MENU::OnMenuEvent %s" ), evt->Format() );
 
         // WARNING: if you're squeamish, look away.
         // What follows is a series of egregious hacks necessitated by a lack of information from
@@ -725,7 +725,7 @@ wxMenuItem* ACTION_MENU::appendCopy( const wxMenuItem* aSource )
     if( aSource->IsSubMenu() )
     {
         ACTION_MENU* menu = dynamic_cast<ACTION_MENU*>( aSource->GetSubMenu() );
-        wxASSERT_MSG( menu, wxS( "Submenus are expected to be a ACTION_MENU" ) );
+        KI_ASSERT_MSG( menu, wxS( "Submenus are expected to be a ACTION_MENU" ) );
 
         if( menu )
         {

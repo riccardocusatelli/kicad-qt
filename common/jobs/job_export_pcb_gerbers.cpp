@@ -44,5 +44,5 @@ wxString JOB_EXPORT_PCB_GERBERS::GetSettingsDialogTitle() const
 }
 
 
-REGISTER_JOB( pcb_export_gerbers, _HKI( "PCB: Export Gerbers" ), KIWAY::FACE_PCB,
+REGISTER_JOB( pcb_export_gerbers, _HKI( "PCB: Export Gerbers" ), KIWAY_FACES::FACE_PCB,
               JOB_EXPORT_PCB_GERBERS );

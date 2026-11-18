@@ -219,7 +219,7 @@ void KIUI::ValidatorTransferToWindowWithoutEvents( wxValidator& aValidator )
 {
     wxWindow* ctrl = aValidator.GetWindow();
 
-    wxCHECK_RET( ctrl != nullptr, wxS( "Transferring validator data without a control" ) );
+    KI_CHECK_RET( ctrl != nullptr, wxS( "Transferring validator data without a control" ) );
 
     wxEventBlocker orient_update_blocker( ctrl, wxEVT_ANY );
     aValidator.TransferToWindow();

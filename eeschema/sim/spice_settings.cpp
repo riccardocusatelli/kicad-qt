@@ -64,7 +64,7 @@ bool NGSPICE_SETTINGS::operator==( const SPICE_SETTINGS& aRhs ) const
 {
     const NGSPICE_SETTINGS* settings = dynamic_cast<const NGSPICE_SETTINGS*>( &aRhs );
 
-    wxCHECK( settings, false );
+    KI_CHECK( settings, false );
 
     return SPICE_SETTINGS::operator==( aRhs ) && m_compatibilityMode == settings->m_compatibilityMode
            && m_options == settings->m_options;

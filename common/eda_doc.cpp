@@ -86,13 +86,13 @@ bool GetAssociatedDocument( wxWindow* aParent, const wxString& aDocName, PROJECT
             {
                 if( aFilesStack.empty() )
                 {
-                    wxLogTrace( wxT( "KICAD_EMBED" ), wxT( "No EMBEDDED_FILES object provided for kicad_embed URI" ) );
+                    KI_LOG_TRACE( wxT( "KICAD_EMBED" ), wxT( "No EMBEDDED_FILES object provided for kicad_embed URI" ) );
                     return false;
                 }
 
                 if( !docname.starts_with( FILEEXT::KiCadUriPrefix + "://" ) )
                 {
-                    wxLogTrace( wxT( "KICAD_EMBED" ), wxT( "Invalid kicad_embed URI '%s'" ), docname );
+                    KI_LOG_TRACE( wxT( "KICAD_EMBED" ), wxT( "Invalid kicad_embed URI '%s'" ), docname );
                     return false;
                 }
 
@@ -107,12 +107,12 @@ bool GetAssociatedDocument( wxWindow* aParent, const wxString& aDocName, PROJECT
 
                 if( !temp_file.IsOk() )
                 {
-                    wxLogTrace( wxT( "KICAD_EMBED" ), wxT( "Failed to get temp file '%s' for kicad_embed URI" ),
+                    KI_LOG_TRACE( wxT( "KICAD_EMBED" ), wxT( "Failed to get temp file '%s' for kicad_embed URI" ),
                                 docname );
                     return false;
                 }
 
-                wxLogTrace( wxT( "KICAD_EMBED" ), wxT( "Opening embedded file '%s' as '%s'" ), docname,
+                KI_LOG_TRACE( wxT( "KICAD_EMBED" ), wxT( "Opening embedded file '%s' as '%s'" ), docname,
                             temp_file.GetFullPath() );
                 docname = temp_file.GetFullPath();
             }

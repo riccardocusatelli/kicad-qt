@@ -192,7 +192,7 @@ WINDOW_SETTINGS* SYMBOL_CHOOSER_FRAME::GetWindowSettings( APP_SETTINGS_BASE* aCf
     if( EESCHEMA_SETTINGS* cfg = dynamic_cast<EESCHEMA_SETTINGS*>( aCfg ) )
         return &cfg->m_LibViewPanel.window;
 
-    wxFAIL_MSG( wxT( "SYMBOL_CHOOSER not running with EESCHEMA_SETTINGS" ) );
+    KI_FAIL_MSG( wxT( "SYMBOL_CHOOSER not running with EESCHEMA_SETTINGS" ) );
     return &aCfg->m_Window;     // non-null fail-safe
 }
 

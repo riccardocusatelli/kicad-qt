@@ -58,13 +58,13 @@ bool NESTED_SETTINGS::LoadFromFile( const wxString& aDirectory )
             {
                 m_internals->update( m_parent->m_internals->at( ptr ) );
 
-                wxLogTrace( traceSettings, wxT( "Loaded NESTED_SETTINGS %s" ), GetFilename() );
+                KI_LOG_TRACE( traceSettings, wxT( "Loaded NESTED_SETTINGS %s" ), GetFilename() );
 
                 success = true;
             }
             catch( ... )
             {
-                wxLogTrace( traceSettings, wxT( "NESTED_SETTINGS %s: Could not load from "
+                KI_LOG_TRACE( traceSettings, wxT( "NESTED_SETTINGS %s: Could not load from "
                                                 "%s at %s" ),
                             m_filename, m_parent->GetFilename(), m_path );
             }
@@ -81,14 +81,14 @@ bool NESTED_SETTINGS::LoadFromFile( const wxString& aDirectory )
         }
         catch( ... )
         {
-            wxLogTrace( traceSettings, wxT( "%s: nested settings version could not be read!" ),
+            KI_LOG_TRACE( traceSettings, wxT( "%s: nested settings version could not be read!" ),
                         m_filename );
             success = false;
         }
 
         if( filever >= 0 && filever < m_schemaVersion )
         {
-            wxLogTrace( traceSettings, wxT( "%s: attempting migration from version %d to %d" ),
+            KI_LOG_TRACE( traceSettings, wxT( "%s: attempting migration from version %d to %d" ),
                         m_filename, filever, m_schemaVersion );
 
             bool migrated = false;
@@ -104,20 +104,20 @@ bool NESTED_SETTINGS::LoadFromFile( const wxString& aDirectory )
 
             if( !migrated )
             {
-                wxLogTrace( traceSettings, wxT( "%s: migration failed!" ), GetFullFilename() );
+                KI_LOG_TRACE( traceSettings, wxT( "%s: migration failed!" ), GetFullFilename() );
                 success = false;
                 migrationFailed = true;
             }
         }
         else if( filever > m_schemaVersion )
         {
-            wxLogTrace( traceSettings,
+            KI_LOG_TRACE( traceSettings,
                         wxT( "%s: warning: nested settings version %d is newer than latest (%d)" ),
                         m_filename, filever, m_schemaVersion );
         }
         else if( filever >= 0 )
         {
-            wxLogTrace( traceSettings, wxT( "%s: schema version %d is current" ),
+            KI_LOG_TRACE( traceSettings, wxT( "%s: schema version %d is current" ),
                         m_filename, filever );
         }
     }
@@ -188,7 +188,7 @@ bool NESTED_SETTINGS::SaveToFile( const wxString& aDirectory, bool aForce )
         {
             ( *m_parent->m_internals )[m_path].update( *m_internals );
 
-            wxLogTrace( traceSettings, wxS( "Stored NESTED_SETTINGS %s with schema %d" ),
+            KI_LOG_TRACE( traceSettings, wxS( "Stored NESTED_SETTINGS %s with schema %d" ),
                         GetFilename(),
                         m_schemaVersion );
         }
@@ -197,7 +197,7 @@ bool NESTED_SETTINGS::SaveToFile( const wxString& aDirectory, bool aForce )
     }
     catch( ... )
     {
-        wxLogTrace( traceSettings, wxS( "NESTED_SETTINGS %s: Could not store to %s at %s" ),
+        KI_LOG_TRACE( traceSettings, wxS( "NESTED_SETTINGS %s: Could not store to %s at %s" ),
                     m_filename,
                     m_parent->GetFilename(),
                     m_path );

@@ -214,8 +214,8 @@ public:
 
     void SetViaDiameter( int aDiameter )
     {
-        wxCHECK( m_via, /* void */ );
-        wxCHECK2_MSG( m_via->StackMode() == VIA::STACK_MODE::NORMAL,
+        KI_CHECK( m_via, /* void */ );
+        KI_CHECK2_MSG( m_via->StackMode() == VIA::STACK_MODE::NORMAL,
                       m_via->SetStackMode( VIA::STACK_MODE::NORMAL ),
                       wxS( "Warning: converting a complex viastack to normal in PNS_LINE" ) );
 

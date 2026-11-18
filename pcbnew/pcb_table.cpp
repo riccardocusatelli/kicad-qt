@@ -95,7 +95,7 @@ PCB_TABLE::~PCB_TABLE()
 
 void PCB_TABLE::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther && aOther->Type() == PCB_TABLE_T, /* void */ );
+    KI_CHECK( aOther && aOther->Type() == PCB_TABLE_T, /* void */ );
 
     BOARD*           board = GetBoard();
     const PCB_TABLE* other = static_cast<const PCB_TABLE*>( aOther );
@@ -139,7 +139,7 @@ BOARD_ITEM* PCB_TABLE::Duplicate( bool addToParentGroup, BOARD_COMMIT* aCommit )
 
     if( addToParentGroup )
     {
-        wxCHECK_MSG( aCommit, dupe, "Must supply a commit to update parent group" );
+        KI_CHECK_MSG( aCommit, dupe, "Must supply a commit to update parent group" );
 
         if( EDA_GROUP* group = dupe->GetParentGroup() )
         {
@@ -189,7 +189,7 @@ void PCB_TABLE::Serialize( google::protobuf::Any& aContainer ) const
     kiapi::common::PackCustomProperties( table.mutable_custom_properties(), *this );
 
     if( !aContainer.PackFrom( table ) )
-        wxFAIL_MSG( wxT( "Failed to pack PCB_TABLE" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack PCB_TABLE" ) );
 }
 
 
@@ -258,7 +258,7 @@ bool PCB_TABLE::Deserialize( const google::protobuf::Any& aContainer )
 
 void PCB_TABLE::swapData( BOARD_ITEM* aImage )
 {
-    wxCHECK_RET( aImage != nullptr && aImage->Type() == Type(), wxT( "Cannot swap data with invalid table." ) );
+    KI_CHECK_RET( aImage != nullptr && aImage->Type() == Type(), wxT( "Cannot swap data with invalid table." ) );
 
     PCB_TABLE* table = static_cast<PCB_TABLE*>( aImage );
 

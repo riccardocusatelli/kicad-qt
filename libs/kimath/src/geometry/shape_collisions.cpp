@@ -71,7 +71,7 @@ static inline bool Collide( const SHAPE_RECT& aA, const SHAPE_CIRCLE& aB, int aC
 {
     if( aA.GetRadius() > 0 )
     {
-        wxASSERT_MSG( !aMTV, wxT( "MTV not implemented for SHAPE_RECT to SHAPE_CIRCLE collisions when rect "
+        KI_ASSERT_MSG( !aMTV, wxT( "MTV not implemented for SHAPE_RECT to SHAPE_CIRCLE collisions when rect "
                                   "has rounded corners" ) );
 
         const SHAPE_LINE_CHAIN& outline = aA.Outline();
@@ -353,7 +353,7 @@ static inline bool Collide( const SHAPE_CIRCLE& aA, const SHAPE_SEGMENT& aSeg, i
 static inline bool Collide( const SHAPE_LINE_CHAIN_BASE& aA, const SHAPE_LINE_CHAIN_BASE& aB,
                             int aClearance, int* aActual, VECTOR2I* aLocation, VECTOR2I* aMTV )
 {
-    wxASSERT_MSG( !aMTV, wxString::Format( wxT( "MTV not implemented for %s : %s collisions" ),
+    KI_ASSERT_MSG( !aMTV, wxString::Format( wxT( "MTV not implemented for %s : %s collisions" ),
                                            aA.TypeName(),
                                            aB.TypeName() ) );
 
@@ -676,7 +676,7 @@ static inline bool Collide( const SHAPE_RECT& aA, const SHAPE_LINE_CHAIN_BASE& a
     if( aA.GetRadius() > 0 )
         return Collide( aA.Outline(), aB, aClearance, aActual, aLocation, aMTV );
 
-    wxASSERT_MSG( !aMTV, wxString::Format( wxT( "MTV not implemented for %s : %s collisions" ),
+    KI_ASSERT_MSG( !aMTV, wxString::Format( wxT( "MTV not implemented for %s : %s collisions" ),
                                            aA.TypeName(),
                                            aB.TypeName() ) );
 
@@ -733,7 +733,7 @@ static inline bool Collide( const SHAPE_RECT& aA, const SHAPE_LINE_CHAIN_BASE& a
 static inline bool Collide( const SHAPE_SEGMENT& aA, const SHAPE_SEGMENT& aB, int aClearance,
                             int* aActual, VECTOR2I* aLocation, VECTOR2I* aMTV )
 {
-    wxASSERT_MSG( !aMTV, wxString::Format( wxT( "MTV not implemented for %s : %s collisions" ),
+    KI_ASSERT_MSG( !aMTV, wxString::Format( wxT( "MTV not implemented for %s : %s collisions" ),
                                            aA.TypeName(),
                                            aB.TypeName() ) );
 
@@ -749,7 +749,7 @@ static inline bool Collide( const SHAPE_SEGMENT& aA, const SHAPE_SEGMENT& aB, in
 static inline bool Collide( const SHAPE_LINE_CHAIN_BASE& aA, const SHAPE_SEGMENT& aB,
                             int aClearance, int* aActual, VECTOR2I* aLocation, VECTOR2I* aMTV )
 {
-    wxASSERT_MSG( !aMTV, wxString::Format( wxT( "MTV not implemented for %s : %s collisions" ),
+    KI_ASSERT_MSG( !aMTV, wxString::Format( wxT( "MTV not implemented for %s : %s collisions" ),
                                            aA.TypeName(),
                                            aB.TypeName() ) );
 
@@ -768,7 +768,7 @@ static inline bool Collide( const SHAPE_RECT& aA, const SHAPE_SEGMENT& aB, int a
     if( aA.GetRadius() > 0 )
         return Collide( aA.Outline(), aB, aClearance, aActual, aLocation, aMTV );
 
-    wxASSERT_MSG( !aMTV, wxString::Format( wxT( "MTV not implemented for %s : %s collisions" ),
+    KI_ASSERT_MSG( !aMTV, wxString::Format( wxT( "MTV not implemented for %s : %s collisions" ),
                                            aA.TypeName(),
                                            aB.TypeName() ) );
 
@@ -840,7 +840,7 @@ static inline bool Collide( const SHAPE_ARC& aA, const SHAPE_CIRCLE& aB, int aCl
 static inline bool Collide( const SHAPE_ARC& aA, const SHAPE_LINE_CHAIN& aB, int aClearance,
                             int* aActual, VECTOR2I* aLocation, VECTOR2I* aMTV )
 {
-    wxASSERT_MSG( !aMTV, wxString::Format( wxT( "MTV not implemented for %s : %s collisions" ),
+    KI_ASSERT_MSG( !aMTV, wxString::Format( wxT( "MTV not implemented for %s : %s collisions" ),
                                            aA.TypeName(),
                                            aB.TypeName() ) );
 
@@ -887,7 +887,7 @@ static inline bool Collide( const SHAPE_ARC& aA, const SHAPE_LINE_CHAIN& aB, int
             const SHAPE_ARC& arc = aB.Arc( i );
 
             // The arcs in the chain should have zero width
-            wxASSERT_MSG( arc.GetWidth() == 0, wxT( "Invalid arc width - should be zero" ) );
+            KI_ASSERT_MSG( arc.GetWidth() == 0, wxT( "Invalid arc width - should be zero" ) );
 
             if( aA.Collide( &arc, aClearance, aActual || aLocation ? &collision_dist : nullptr,
                             aLocation ? &pn : nullptr ) )
@@ -967,7 +967,7 @@ static inline bool Collide( const SHAPE_ARC& aA, const SHAPE_RECT& aB, int aClea
 static inline bool Collide( const SHAPE_ARC& aA, const SHAPE_SEGMENT& aB, int aClearance,
                             int* aActual, VECTOR2I* aLocation, VECTOR2I* aMTV )
 {
-    wxASSERT_MSG( !aMTV, wxString::Format( wxT( "MTV not implemented for %s : %s collisions" ),
+    KI_ASSERT_MSG( !aMTV, wxString::Format( wxT( "MTV not implemented for %s : %s collisions" ),
                                            aA.TypeName(),
                                            aB.TypeName() ) );
 
@@ -997,7 +997,7 @@ static inline bool Collide( const SHAPE_ARC& aA, const SHAPE_LINE_CHAIN_BASE& aB
         return Collide( aB, tmp, aClearance, aActual, aLocation, aMTV );
     }
 
-    wxASSERT_MSG( !aMTV, wxString::Format( wxT( "MTV not implemented for %s : %s collisions" ),
+    KI_ASSERT_MSG( !aMTV, wxString::Format( wxT( "MTV not implemented for %s : %s collisions" ),
                                            aA.TypeName(),
                                            aB.TypeName() ) );
 
@@ -1139,7 +1139,7 @@ inline bool CollCaseReversed ( const SHAPE* aA, const SHAPE* aB, int aClearance,
 static inline bool Collide( const SHAPE_ELLIPSE& aA, const SHAPE_SEGMENT& aSeg, int aClearance, int* aActual,
                             VECTOR2I* aLocation, VECTOR2I* aMTV )
 {
-    wxASSERT_MSG( !aMTV, wxT( "MTV not implemented for SHAPE_ELLIPSE collisions" ) );
+    KI_ASSERT_MSG( !aMTV, wxT( "MTV not implemented for SHAPE_ELLIPSE collisions" ) );
 
     const int halfWidth = aSeg.GetWidth() / 2;
     const int effClear = aClearance + halfWidth;
@@ -1163,7 +1163,7 @@ static inline bool Collide( const SHAPE_ELLIPSE& aA, const SHAPE_SEGMENT& aSeg, 
 static inline bool Collide( const SHAPE_ELLIPSE& aA, const SHAPE_CIRCLE& aB, int aClearance, int* aActual,
                             VECTOR2I* aLocation, VECTOR2I* aMTV )
 {
-    wxASSERT_MSG( !aMTV, wxT( "MTV not implemented for SHAPE_ELLIPSE collisions" ) );
+    KI_ASSERT_MSG( !aMTV, wxT( "MTV not implemented for SHAPE_ELLIPSE collisions" ) );
 
     const VECTOR2I    c = aB.GetCenter();
     const int         r = aB.GetRadius();
@@ -1190,7 +1190,7 @@ static inline bool Collide( const SHAPE_ELLIPSE& aA, const SHAPE_CIRCLE& aB, int
 static inline bool Collide( const SHAPE_ELLIPSE& aA, const SHAPE_RECT& aB, int aClearance, int* aActual,
                             VECTOR2I* aLocation, VECTOR2I* aMTV )
 {
-    wxASSERT_MSG( !aMTV, wxT( "MTV not implemented for SHAPE_ELLIPSE collisions" ) );
+    KI_ASSERT_MSG( !aMTV, wxT( "MTV not implemented for SHAPE_ELLIPSE collisions" ) );
     return collideEllipseVsSegments(
             aA, aB.Outline(), aClearance, /*halfWidth*/ 0,
             [&]
@@ -1204,7 +1204,7 @@ static inline bool Collide( const SHAPE_ELLIPSE& aA, const SHAPE_RECT& aB, int a
 static inline bool Collide( const SHAPE_ELLIPSE& aA, const SHAPE_LINE_CHAIN_BASE& aB, int aClearance, int* aActual,
                             VECTOR2I* aLocation, VECTOR2I* aMTV )
 {
-    wxASSERT_MSG( !aMTV, wxT( "MTV not implemented for SHAPE_ELLIPSE collisions" ) );
+    KI_ASSERT_MSG( !aMTV, wxT( "MTV not implemented for SHAPE_ELLIPSE collisions" ) );
     return collideEllipseVsSegments(
             aA, aB, aClearance, /*halfWidth*/ 0,
             [&]
@@ -1218,7 +1218,7 @@ static inline bool Collide( const SHAPE_ELLIPSE& aA, const SHAPE_LINE_CHAIN_BASE
 static inline bool Collide( const SHAPE_ELLIPSE& aA, const SHAPE_ARC& aB, int aClearance, int* aActual,
                             VECTOR2I* aLocation, VECTOR2I* aMTV )
 {
-    wxASSERT_MSG( !aMTV, wxT( "MTV not implemented for SHAPE_ELLIPSE collisions" ) );
+    KI_ASSERT_MSG( !aMTV, wxT( "MTV not implemented for SHAPE_ELLIPSE collisions" ) );
 
     const int              halfWidth = aB.GetWidth() / 2;
     const int              effClear = aClearance + halfWidth;
@@ -1238,7 +1238,7 @@ static inline bool Collide( const SHAPE_ELLIPSE& aA, const SHAPE_ARC& aB, int aC
 static inline bool Collide( const SHAPE_ELLIPSE& aA, const SHAPE_ELLIPSE& aB, int aClearance, int* aActual,
                             VECTOR2I* aLocation, VECTOR2I* aMTV )
 {
-    wxASSERT_MSG( !aMTV, wxT( "MTV not implemented for SHAPE_ELLIPSE collisions" ) );
+    KI_ASSERT_MSG( !aMTV, wxT( "MTV not implemented for SHAPE_ELLIPSE collisions" ) );
 
     if( !aA.IsArc() && aA.PointInside( aB.GetCenter() ) )
     {
@@ -1271,14 +1271,14 @@ static bool collideSingleShapes( const SHAPE* aA, const SHAPE* aB, int aClearanc
     {
         const SHAPE_POLY_SET* polySetA = static_cast<const SHAPE_POLY_SET*>( aA );
 
-        wxASSERT( !aMTV );
+        KI_ASSERT( !aMTV );
         return polySetA->Collide( aB, aClearance, aActual, aLocation );
     }
     else if( aB->Type() == SH_POLY_SET )
     {
         const SHAPE_POLY_SET* polySetB = static_cast<const SHAPE_POLY_SET*>( aB );
 
-        wxASSERT( !aMTV );
+        KI_ASSERT( !aMTV );
         return polySetB->Collide( aA, aClearance, aActual, aLocation );
     }
 
@@ -1517,7 +1517,7 @@ static bool collideSingleShapes( const SHAPE* aA, const SHAPE* aB, int aClearanc
         break;
     }
 
-    wxFAIL_MSG( wxString::Format( wxT( "Unsupported collision: %s with %s" ),
+    KI_FAIL_MSG( wxString::Format( wxT( "Unsupported collision: %s with %s" ),
                                   SHAPE_TYPE_asString( aA->Type() ),
                                   SHAPE_TYPE_asString( aB->Type() ) ) );
 

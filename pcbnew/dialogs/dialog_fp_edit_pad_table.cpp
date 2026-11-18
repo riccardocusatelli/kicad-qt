@@ -76,7 +76,7 @@ static wxString ShapeToString( PAD_SHAPE shape )
     case PAD_SHAPE::CHAMFERED_RECT:   return _( "Chamfered rectangle" );
     case PAD_SHAPE::CUSTOM:           return _( "Custom shape" );
     default:
-        wxFAIL_MSG( wxT( "Invalid pad shape" ) );
+        KI_FAIL_MSG( wxT( "Invalid pad shape" ) );
         return wxEmptyString;
     }
 }
@@ -229,7 +229,7 @@ static wxString GetPadTableColLabel( COLS aCol )
     case COLS::COL_P2D_LENGTH: return wxT( "Pad to die length" );
     case COLS::COL_P2D_DELAY:  return wxT( "Pad to die delay" );
     default:
-        wxFAIL_MSG( wxT( "Invalid column index" ) );
+        KI_FAIL_MSG( wxT( "Invalid column index" ) );
         return wxEmptyString;
     }
 }
@@ -265,7 +265,7 @@ public:
 
     wxString Format( const PAD& aPin, int aFieldId ) const
     {
-        wxCHECK_MSG( aFieldId >= 0 && aFieldId < static_cast<int>( COLS::COL_COUNT ), wxEmptyString,
+        KI_CHECK_MSG( aFieldId >= 0 && aFieldId < static_cast<int>( COLS::COL_COUNT ), wxEmptyString,
                      wxT( "Invalid column index" ) );
 
         const DIALOG_FP_EDIT_PAD_TABLE::COLS col = static_cast<DIALOG_FP_EDIT_PAD_TABLE::COLS>( aFieldId );
@@ -315,7 +315,7 @@ public:
             return wxEmptyString;
         }
 
-        wxFAIL_MSG( "Invalid column index" );
+        KI_FAIL_MSG( "Invalid column index" );
         return wxEmptyString;
     }
 
@@ -418,7 +418,7 @@ public:
             break;
 
         default:
-            wxFAIL_MSG( "Invalid column index" );
+            KI_FAIL_MSG( "Invalid column index" );
             break;
         }
     }
@@ -959,7 +959,7 @@ void DIALOG_FP_EDIT_PAD_TABLE::setPadFromGridCell( PAD& aPad, int aRowId, COLS a
     }
 
     default:
-        wxFAIL_MSG( wxT( "Invalid column index" ) );
+        KI_FAIL_MSG( wxT( "Invalid column index" ) );
         break;
     }
 }

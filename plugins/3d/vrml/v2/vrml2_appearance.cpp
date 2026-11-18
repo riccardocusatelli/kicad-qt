@@ -52,7 +52,7 @@ WRL2APPEARANCE::WRL2APPEARANCE( WRL2NODE* aParent ) : WRL2NODE()
 
 WRL2APPEARANCE::~WRL2APPEARANCE()
 {
-    wxLogTrace( traceVrmlPlugin,
+    KI_LOG_TRACE( traceVrmlPlugin,
                 wxT( " * [INFO] Destroying Appearance node with %zu children, %zu"
                      "references, and %zu back pointers." ),
                 m_Children.size(), m_Refs.size(), m_BackPointers.size() );
@@ -91,13 +91,13 @@ bool WRL2APPEARANCE::isDangling( void )
 
 bool WRL2APPEARANCE::AddRefNode( WRL2NODE* aNode )
 {
-    wxCHECK_MSG( aNode, false, wxT( "Invalid node." ) );
+    KI_CHECK_MSG( aNode, false, wxT( "Invalid node." ) );
 
     WRL2NODES type = aNode->GetNodeType();
 
     if( !checkNodeType( type ) )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( "%s:%s:%d\n"
                          " * [INFO] bad file format; unexpected child node '%s'." ),
                     __FILE__, __FUNCTION__, __LINE__, aNode->GetNodeTypeName( type ) );
@@ -109,7 +109,7 @@ bool WRL2APPEARANCE::AddRefNode( WRL2NODE* aNode )
     {
         if( nullptr != material )
         {
-            wxLogTrace( traceVrmlPlugin,
+            KI_LOG_TRACE( traceVrmlPlugin,
                         wxT( "%s:%s:%d\n"
                              " * [INFO] bad file format; multiple material nodes." ),
                         __FILE__, __FUNCTION__, __LINE__ );
@@ -125,7 +125,7 @@ bool WRL2APPEARANCE::AddRefNode( WRL2NODE* aNode )
     {
         if( nullptr != textureTransform )
         {
-            wxLogTrace( traceVrmlPlugin,
+            KI_LOG_TRACE( traceVrmlPlugin,
                         wxT( "%s:%s:%d\n"
                              " * [INFO] bad file format; multiple textureTransform nodes." ),
                              __FILE__, __FUNCTION__, __LINE__ );
@@ -139,7 +139,7 @@ bool WRL2APPEARANCE::AddRefNode( WRL2NODE* aNode )
 
     if( nullptr != texture )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( "%s:%s:%d\n"
                          " * [INFO] bad file format; multiple texture nodes." ),
                     __FILE__, __FUNCTION__, __LINE__ );
@@ -154,13 +154,13 @@ bool WRL2APPEARANCE::AddRefNode( WRL2NODE* aNode )
 
 bool WRL2APPEARANCE::AddChildNode( WRL2NODE* aNode )
 {
-    wxCHECK_MSG( aNode, false, wxT( "Invalid node." ) );
+    KI_CHECK_MSG( aNode, false, wxT( "Invalid node." ) );
 
     WRL2NODES type = aNode->GetNodeType();
 
     if( !checkNodeType( type ) )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( "%s:%s:%d\n"
                          " * [INFO] bad file format; unexpected child node '%s'." ),
                     __FILE__, __FUNCTION__, __LINE__, aNode->GetNodeTypeName( type ) );
@@ -172,7 +172,7 @@ bool WRL2APPEARANCE::AddChildNode( WRL2NODE* aNode )
     {
         if( nullptr != material )
         {
-            wxLogTrace( traceVrmlPlugin,
+            KI_LOG_TRACE( traceVrmlPlugin,
                         wxT( "%s:%s:%d\n"
                              " * [INFO] bad file format; multiple material nodes." ),
                         __FILE__, __FUNCTION__, __LINE__ );
@@ -188,7 +188,7 @@ bool WRL2APPEARANCE::AddChildNode( WRL2NODE* aNode )
     {
         if( nullptr != textureTransform )
         {
-            wxLogTrace( traceVrmlPlugin,
+            KI_LOG_TRACE( traceVrmlPlugin,
                         wxT( "%s:%s:%d\n"
                              " * [INFO] bad file format; multiple textureTransform nodes." ),
                         __FILE__, __FUNCTION__, __LINE__ );
@@ -202,7 +202,7 @@ bool WRL2APPEARANCE::AddChildNode( WRL2NODE* aNode )
 
     if( nullptr != texture )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( "%s:%s:%d\n"
                          " * [INFO] bad file format; multiple texture nodes." ),
                     __FILE__, __FUNCTION__, __LINE__ );
@@ -217,13 +217,13 @@ bool WRL2APPEARANCE::AddChildNode( WRL2NODE* aNode )
 
 bool WRL2APPEARANCE::Read( WRLPROC& proc, WRL2BASE* aTopNode )
 {
-    wxCHECK_MSG( aTopNode, false, wxT( "Invalid top node." ) );
+    KI_CHECK_MSG( aTopNode, false, wxT( "Invalid top node." ) );
 
     char tok = proc.Peek();
 
     if( proc.eof() )
     {
-        wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+        KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                           " * [INFO] bad file format; unexpected eof %s." ),
                     __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition() );
 
@@ -232,7 +232,7 @@ bool WRL2APPEARANCE::Read( WRLPROC& proc, WRL2BASE* aTopNode )
 
     if( '{' != tok )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( "%s:%s:%d\n"
                          " * [INFO] bad file format; expecting '{' but got '%s' %s." ),
                     __FILE__, __FUNCTION__, __LINE__, tok, proc.GetFilePosition() );
@@ -253,7 +253,7 @@ bool WRL2APPEARANCE::Read( WRLPROC& proc, WRL2BASE* aTopNode )
 
         if( !proc.ReadName( glob ) )
         {
-            wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+            KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                               "%s" ),
                         __FILE__, __FUNCTION__, __LINE__ , proc.GetError() );
 
@@ -269,7 +269,7 @@ bool WRL2APPEARANCE::Read( WRLPROC& proc, WRL2BASE* aTopNode )
         {
             if( !aTopNode->ReadNode( proc, this, nullptr ) )
             {
-                wxLogTrace( traceVrmlPlugin,
+                KI_LOG_TRACE( traceVrmlPlugin,
                             wxT( "%s:%s:%d\n"
                                  " * [INFO] could not read material information." ),
                             __FILE__, __FUNCTION__, __LINE__ );
@@ -281,7 +281,7 @@ bool WRL2APPEARANCE::Read( WRLPROC& proc, WRL2BASE* aTopNode )
         {
             if( !aTopNode->ReadNode( proc, this, nullptr ) )
             {
-                wxLogTrace( traceVrmlPlugin,
+                KI_LOG_TRACE( traceVrmlPlugin,
                             wxT( "%s:%s:%d\n"
                                  " * [INFO] could not read texture information." ),
                                  __FILE__, __FUNCTION__, __LINE__ );
@@ -293,7 +293,7 @@ bool WRL2APPEARANCE::Read( WRLPROC& proc, WRL2BASE* aTopNode )
         {
             if( !aTopNode->ReadNode( proc, this, nullptr ) )
             {
-                wxLogTrace( traceVrmlPlugin,
+                KI_LOG_TRACE( traceVrmlPlugin,
                             wxT( "%s:%s:%d\n"
                                  " * [INFO] could not read textureTransform information." ),
                             __FILE__, __FUNCTION__, __LINE__ );
@@ -303,7 +303,7 @@ bool WRL2APPEARANCE::Read( WRLPROC& proc, WRL2BASE* aTopNode )
         }
         else
         {
-            wxLogTrace( traceVrmlPlugin, wxT( "%s:%s:%d\n"
+            KI_LOG_TRACE( traceVrmlPlugin, wxT( "%s:%s:%d\n"
                                               " * [INFO] bad Appearance %s.\n"
                                               " * [INFO] file: '%s'" ),
                         __FILE__, __FUNCTION__, __LINE__, proc.GetFilePosition(),
@@ -324,11 +324,11 @@ SGNODE* WRL2APPEARANCE::TranslateToSG( SGNODE* aParent )
 
     S3D::SGTYPES ptype = S3D::GetSGNodeType( aParent );
 
-    wxCHECK_MSG( aParent && ( ptype == S3D::SGTYPE_SHAPE ), nullptr,
+    KI_CHECK_MSG( aParent && ( ptype == S3D::SGTYPE_SHAPE ), nullptr,
                  wxString::Format( wxT( " * [BUG] Appearance does not have a Shape parent "
                                         "(parent ID: %d)." ), ptype ) );
 
-    wxLogTrace( traceVrmlPlugin,
+    KI_LOG_TRACE( traceVrmlPlugin,
                 wxT( " * [INFO] Translating Appearance node with %zu children, %zu"
                      "references, and %zu back pointers." ),
                 m_Children.size(), m_Refs.size(), m_BackPointers.size() );

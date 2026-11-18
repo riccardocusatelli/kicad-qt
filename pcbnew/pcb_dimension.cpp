@@ -375,7 +375,7 @@ void PCB_DIMENSION_BASE::Serialize( google::protobuf::Any &aContainer ) const
     kiapi::common::PackCustomProperties( dimension.mutable_custom_properties(), *this );
 
     if( !aContainer.PackFrom( dimension ) )
-        wxFAIL_MSG( wxT( "Failed to pack PCB_DIMENSION" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack PCB_DIMENSION" ) );
 }
 
 
@@ -794,7 +794,7 @@ void PCB_DIMENSION_BASE::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame,
     // for now, display only the text within the DIMENSION using class PCB_TEXT.
     wxString    msg;
 
-    wxCHECK_RET( m_parent != nullptr, wxT( "PCB_TEXT::GetMsgPanelInfo() m_Parent is NULL." ) );
+    KI_CHECK_RET( m_parent != nullptr, wxT( "PCB_TEXT::GetMsgPanelInfo() m_Parent is NULL." ) );
 
     // Don't use GetShownText(); we want to see the variable references here
     aList.emplace_back( _( "Dimension" ), KIUI::EllipsizeStatusText( aFrame, GetText() ) );
@@ -1029,7 +1029,7 @@ void PCB_DIMENSION_BASE::TransformShapeToPolygon( SHAPE_POLY_SET& aBuffer, PCB_L
                                                   int aClearance, int aError, ERROR_LOC aErrorLoc,
                                                   bool aIgnoreLineWidth ) const
 {
-    wxASSERT_MSG( !aIgnoreLineWidth, wxT( "IgnoreLineWidth has no meaning for dimensions." ) );
+    KI_ASSERT_MSG( !aIgnoreLineWidth, wxT( "IgnoreLineWidth has no meaning for dimensions." ) );
 
     for( const std::shared_ptr<SHAPE>& shape : m_shapes )
     {
@@ -1049,7 +1049,7 @@ void PCB_DIMENSION_BASE::TransformShapeToPolygon( SHAPE_POLY_SET& aBuffer, PCB_L
         }
         else
         {
-            wxFAIL_MSG( wxT( "PCB_DIMENSION_BASE::TransformShapeToPolygon unknown shape type." ) );
+            KI_FAIL_MSG( wxT( "PCB_DIMENSION_BASE::TransformShapeToPolygon unknown shape type." ) );
         }
     }
 }
@@ -1072,7 +1072,7 @@ EDA_ITEM* PCB_DIM_ALIGNED::Clone() const
 
 void PCB_DIM_ALIGNED::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther && aOther->Type() == PCB_DIM_ALIGNED_T, /* void */ );
+    KI_CHECK( aOther && aOther->Type() == PCB_DIM_ALIGNED_T, /* void */ );
     *this = *static_cast<const PCB_DIM_ALIGNED*>( aOther );
 }
 
@@ -1084,7 +1084,7 @@ void PCB_DIM_ALIGNED::Serialize( google::protobuf::Any &aContainer ) const
     PCB_DIMENSION_BASE::Serialize( aContainer );
 
     if( !aContainer.UnpackTo( &dimension ) )
-        wxFAIL_MSG( wxT( "Failed to unpack dimension from internal serialization" ) );
+        KI_FAIL_MSG( wxT( "Failed to unpack dimension from internal serialization" ) );
 
     PackVector2( *dimension.mutable_aligned()->mutable_start(), GetStart() );
     PackVector2( *dimension.mutable_aligned()->mutable_end(), GetEnd() );
@@ -1092,7 +1092,7 @@ void PCB_DIM_ALIGNED::Serialize( google::protobuf::Any &aContainer ) const
     dimension.mutable_aligned()->mutable_extension_height()->set_value_nm( m_extensionHeight );
 
     if( !aContainer.PackFrom( dimension ) )
-        wxFAIL_MSG( wxT( "Failed to pack PCB_DIM_ALIGNED" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack PCB_DIM_ALIGNED" ) );
 }
 
 
@@ -1106,7 +1106,7 @@ bool PCB_DIM_ALIGNED::Deserialize( const google::protobuf::Any &aContainer )
     kiapi::board::types::Dimension dimension;
 
     if( !aContainer.UnpackTo( &dimension ) )
-        wxFAIL_MSG( wxT( "Failed to unpack dimension from internal serialization" ) );
+        KI_FAIL_MSG( wxT( "Failed to unpack dimension from internal serialization" ) );
 
     if( !dimension.has_aligned() )
         return false;
@@ -1124,7 +1124,7 @@ bool PCB_DIM_ALIGNED::Deserialize( const google::protobuf::Any &aContainer )
 
 void PCB_DIM_ALIGNED::swapData( BOARD_ITEM* aImage )
 {
-    wxASSERT( aImage->Type() == Type() );
+    KI_ASSERT( aImage->Type() == Type() );
 
     m_shapes.clear();
     static_cast<PCB_DIM_ALIGNED*>( aImage )->m_shapes.clear();
@@ -1312,7 +1312,7 @@ EDA_ITEM* PCB_DIM_ORTHOGONAL::Clone() const
 
 void PCB_DIM_ORTHOGONAL::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther && aOther->Type() == PCB_DIM_ORTHOGONAL_T, /* void */ );
+    KI_CHECK( aOther && aOther->Type() == PCB_DIM_ORTHOGONAL_T, /* void */ );
     *this = *static_cast<const PCB_DIM_ORTHOGONAL*>( aOther );
 }
 
@@ -1324,7 +1324,7 @@ void PCB_DIM_ORTHOGONAL::Serialize( google::protobuf::Any &aContainer ) const
     PCB_DIMENSION_BASE::Serialize( aContainer );
 
     if( !aContainer.UnpackTo( &dimension ) )
-        wxFAIL_MSG( wxT( "Failed to unpack dimension from internal serialization" ) );
+        KI_FAIL_MSG( wxT( "Failed to unpack dimension from internal serialization" ) );
 
     PackVector2( *dimension.mutable_orthogonal()->mutable_start(), GetStart() );
     PackVector2( *dimension.mutable_orthogonal()->mutable_end(), GetEnd() );
@@ -1335,7 +1335,7 @@ void PCB_DIM_ORTHOGONAL::Serialize( google::protobuf::Any &aContainer ) const
                                                            ? types::AxisAlignment::AA_Y_AXIS
                                                            : types::AxisAlignment::AA_X_AXIS );
     if( !aContainer.PackFrom( dimension ) )
-        wxFAIL_MSG( wxT( "Failed to pack PCB_DIM_ORTHOGONAL" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack PCB_DIM_ORTHOGONAL" ) );
 }
 
 
@@ -1369,7 +1369,7 @@ bool PCB_DIM_ORTHOGONAL::Deserialize( const google::protobuf::Any &aContainer )
 
 void PCB_DIM_ORTHOGONAL::swapData( BOARD_ITEM* aImage )
 {
-    wxASSERT( aImage->Type() == Type() );
+    KI_ASSERT( aImage->Type() == Type() );
 
     m_shapes.clear();
     static_cast<PCB_DIM_ORTHOGONAL*>( aImage )->m_shapes.clear();
@@ -1589,7 +1589,7 @@ PCB_DIM_LEADER::PCB_DIM_LEADER( BOARD_ITEM* aParent ) :
 
 void PCB_DIM_LEADER::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther && aOther->Type() == PCB_DIM_LEADER_T, /* void */ );
+    KI_CHECK( aOther && aOther->Type() == PCB_DIM_LEADER_T, /* void */ );
     *this = *static_cast<const PCB_DIM_LEADER*>( aOther );
 }
 
@@ -1601,7 +1601,7 @@ void PCB_DIM_LEADER::Serialize( google::protobuf::Any &aContainer ) const
     PCB_DIMENSION_BASE::Serialize( aContainer );
 
     if( !aContainer.UnpackTo( &dimension ) )
-        wxFAIL_MSG( wxT( "Failed to unpack dimension from internal serialization" ) );
+        KI_FAIL_MSG( wxT( "Failed to unpack dimension from internal serialization" ) );
 
     PackVector2( *dimension.mutable_leader()->mutable_start(), GetStart() );
     PackVector2( *dimension.mutable_leader()->mutable_end(), GetEnd() );
@@ -1610,7 +1610,7 @@ void PCB_DIM_LEADER::Serialize( google::protobuf::Any &aContainer ) const
                     m_textBorder ) );
 
     if( !aContainer.PackFrom( dimension ) )
-        wxFAIL_MSG( wxT( "Failed to pack PCB_DIM_LEADER" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack PCB_DIM_LEADER" ) );
 }
 
 
@@ -1647,7 +1647,7 @@ EDA_ITEM* PCB_DIM_LEADER::Clone() const
 
 void PCB_DIM_LEADER::swapData( BOARD_ITEM* aImage )
 {
-    wxASSERT( aImage->Type() == Type() );
+    KI_ASSERT( aImage->Type() == Type() );
 
     m_shapes.clear();
     static_cast<PCB_DIM_LEADER*>( aImage )->m_shapes.clear();
@@ -1791,7 +1791,7 @@ PCB_DIM_RADIAL::PCB_DIM_RADIAL( BOARD_ITEM* aParent ) :
 
 void PCB_DIM_RADIAL::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther && aOther->Type() == PCB_DIM_RADIAL_T, /* void */ );
+    KI_CHECK( aOther && aOther->Type() == PCB_DIM_RADIAL_T, /* void */ );
     *this = *static_cast<const PCB_DIM_RADIAL*>( aOther );
 }
 
@@ -1803,14 +1803,14 @@ void PCB_DIM_RADIAL::Serialize( google::protobuf::Any &aContainer ) const
     PCB_DIMENSION_BASE::Serialize( aContainer );
 
     if( !aContainer.UnpackTo( &dimension ) )
-        wxFAIL_MSG( wxT( "Failed to unpack dimension from internal serialization" ) );
+        KI_FAIL_MSG( wxT( "Failed to unpack dimension from internal serialization" ) );
 
     PackVector2( *dimension.mutable_radial()->mutable_center(), GetStart() );
     PackVector2( *dimension.mutable_radial()->mutable_radius_point(), GetEnd() );
     dimension.mutable_radial()->mutable_leader_length()->set_value_nm( m_leaderLength );
 
     if( !aContainer.PackFrom( dimension ) )
-        wxFAIL_MSG( wxT( "Failed to pack PCB_DIM_RADIAL" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack PCB_DIM_RADIAL" ) );
 }
 
 
@@ -1847,7 +1847,7 @@ EDA_ITEM* PCB_DIM_RADIAL::Clone() const
 
 void PCB_DIM_RADIAL::swapData( BOARD_ITEM* aImage )
 {
-    wxASSERT( aImage->Type() == Type() );
+    KI_ASSERT( aImage->Type() == Type() );
 
     m_shapes.clear();
     static_cast<PCB_DIM_RADIAL*>( aImage )->m_shapes.clear();
@@ -1958,7 +1958,7 @@ PCB_DIM_CENTER::PCB_DIM_CENTER( BOARD_ITEM* aParent ) :
 
 void PCB_DIM_CENTER::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther && aOther->Type() == PCB_DIM_CENTER_T, /* void */ );
+    KI_CHECK( aOther && aOther->Type() == PCB_DIM_CENTER_T, /* void */ );
     *this = *static_cast<const PCB_DIM_CENTER*>( aOther );
 }
 
@@ -1970,13 +1970,13 @@ void PCB_DIM_CENTER::Serialize( google::protobuf::Any &aContainer ) const
     PCB_DIMENSION_BASE::Serialize( aContainer );
 
     if( !aContainer.UnpackTo( &dimension ) )
-        wxFAIL_MSG( wxT( "Failed to unpack dimension from internal serialization" ) );
+        KI_FAIL_MSG( wxT( "Failed to unpack dimension from internal serialization" ) );
 
     PackVector2( *dimension.mutable_center()->mutable_center(), GetStart() );
     PackVector2( *dimension.mutable_center()->mutable_end(), GetEnd() );
 
     if( !aContainer.PackFrom( dimension ) )
-        wxFAIL_MSG( wxT( "Failed to pack PCB_DIM_CENTER" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack PCB_DIM_CENTER" ) );
 }
 
 
@@ -2012,7 +2012,7 @@ EDA_ITEM* PCB_DIM_CENTER::Clone() const
 
 void PCB_DIM_CENTER::swapData( BOARD_ITEM* aImage )
 {
-    wxASSERT( aImage->Type() == Type() );
+    KI_ASSERT( aImage->Type() == Type() );
 
     std::swap( *static_cast<PCB_DIM_CENTER*>( this ), *static_cast<PCB_DIM_CENTER*>( aImage ) );
 }

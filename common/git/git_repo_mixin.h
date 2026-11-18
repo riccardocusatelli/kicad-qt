@@ -28,7 +28,7 @@ public:
             m_cancelToken( KIGIT_COMMON::NewCancelToken() )
     {
         // Ensure m_common is initialized
-        wxASSERT( aCommon != nullptr );
+        KI_ASSERT( aCommon != nullptr );
     }
 
     virtual ~KIGIT_REPO_MIXIN()

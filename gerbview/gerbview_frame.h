@@ -387,7 +387,7 @@ public:
 
     GBR_LAYOUT* GetGerberLayout() const
     {
-        wxASSERT( m_gerberLayout );
+        KI_ASSERT( m_gerberLayout );
         return m_gerberLayout;
     }
 
@@ -443,7 +443,7 @@ public:
 
     const BOX2I GetDocumentExtents( bool aIncludeAllVisible = true ) const override
     {
-        wxASSERT( m_gerberLayout );
+        KI_ASSERT( m_gerberLayout );
         return m_gerberLayout->ViewBBox();
     }
 

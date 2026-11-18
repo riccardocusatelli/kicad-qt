@@ -104,8 +104,8 @@ public:
     void Insert( BOARD_ITEM* aItem, PCB_LAYER_ID aRefLayer, PCB_LAYER_ID aTargetLayer,
                  DRC_CONSTRAINT_T aConstraintType, int aWorstClearance, bool aAtomicTables = false )
     {
-        wxCHECK( aTargetLayer != UNDEFINED_LAYER, /* void */ );
-        wxCHECK_MSG( !m_tree.count( aTargetLayer ), /* void */, wxT( "Insert after Build() is silently wrong" ) );
+        KI_CHECK( aTargetLayer != UNDEFINED_LAYER, /* void */ );
+        KI_CHECK_MSG( !m_tree.count( aTargetLayer ), /* void */, wxT( "Insert after Build() is silently wrong" ) );
 
         if( aItem->Type() == PCB_FIELD_T && !static_cast<PCB_FIELD*>( aItem )->IsVisible() )
             return;
@@ -118,7 +118,7 @@ public:
         std::vector<const SHAPE*> subshapes;
         std::shared_ptr<SHAPE> shape = aItem->GetEffectiveShape( aRefLayer, FLASHING::DEFAULT, aConstraintType );
 
-        wxCHECK2_MSG( shape, return, wxT( "Item does not have a valid shape for this layer" ) );
+        KI_CHECK2_MSG( shape, return, wxT( "Item does not have a valid shape for this layer" ) );
 
         if( shape->HasIndexableSubshapes() )
             shape->GetIndexableSubshapes( subshapes );
@@ -279,7 +279,7 @@ public:
                     if( filtered )
                         return true;
 
-                    wxCHECK( aItem->shape, false );
+                    KI_CHECK( aItem->shape, false );
 
                     if( refShape->Collide( aItem->shape, aClearance ) )
                     {
@@ -316,7 +316,7 @@ public:
             int aClearance = 0, bool aUsePaddingCredit = false ) const
     {
         // PAD::GetEffectiveShape() returns null when a layer has no cached shape
-        wxCHECK( aRefShape, 0 );
+        KI_CHECK( aRefShape, 0 );
 
         std::unordered_set<BOARD_ITEM*>       collidingCompounds;
         std::unordered_map<BOARD_ITEM*, bool> filterResults;
@@ -331,7 +331,7 @@ public:
             // instead of getting a wrong answer in a release build
             bool contained = box.Contains( aRefShape->BBox() );
 
-            wxASSERT_MSG( contained, wxT( "Padding credit needs the item bbox to contain its own shape" ) );
+            KI_ASSERT_MSG( contained, wxT( "Padding credit needs the item bbox to contain its own shape" ) );
 
             auto paddingIt = m_minPadding.find( aTargetLayer );
 
@@ -362,7 +362,7 @@ public:
                     if( filterIt->second )
                         return true;
 
-                    wxCHECK( aItem->shape, false );
+                    KI_CHECK( aItem->shape, false );
 
                     if( aRefShape->Collide( aItem->shape, aClearance ) )
                     {

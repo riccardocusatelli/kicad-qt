@@ -257,7 +257,7 @@ std::vector<wxString> UniqueNames( const std::vector<wxString>& aBases, const st
 
     for( const wxString& base : aBases )
     {
-        wxCHECK_MSG( !base.IsEmpty(), aBases, wxS( "ODB++ name base must not be empty" ) );
+        KI_CHECK_MSG( !base.IsEmpty(), aBases, wxS( "ODB++ name base must not be empty" ) );
         bases.push_back( base.Left( aMaxLength ) );
     }
 

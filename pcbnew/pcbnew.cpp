@@ -320,7 +320,7 @@ static struct IFACE : public KIFACE_BASE, public UNITS_PROVIDER
 {
     // Of course all are virtual overloads, implementations of the KIFACE.
 
-    IFACE( const char* aName, KIWAY::FACE_T aType ) :
+    IFACE( const char* aName, KIWAY_FACES::FACE_T aType ) :
             KIFACE_BASE( aName, aType ),
             UNITS_PROVIDER( pcbIUScale, EDA_UNITS::MM )
     {}
@@ -710,7 +710,7 @@ private:
     std::unique_ptr<API_HANDLER_FOOTPRINT>      m_openFpHandler;
     std::unique_ptr<API_HANDLER_FP_LIBRARIES>   m_apiHandlerFpLibs;
 
-} kiface( "pcbnew", KIWAY::FACE_PCB );
+} kiface( "pcbnew", KIWAY_FACES::FACE_PCB );
 
 
 int pcbnewMergeExport( int aKind, const wxString& aAncestor, const wxString& aOurs,
@@ -951,7 +951,7 @@ void IFACE::SaveFileAs( const wxString& aProjectBasePath, const wxString& aSrcPr
     }
     else
     {
-        wxFAIL_MSG( wxT( "Unexpected filetype for Pcbnew::SaveFileAs()" ) );
+        KI_FAIL_MSG( wxT( "Unexpected filetype for Pcbnew::SaveFileAs()" ) );
     }
 }
 
@@ -1003,7 +1003,7 @@ void IFACE::closeFootprint( KICAD_API_SERVER* aServer )
 
 bool IFACE::HandleApiOpenDocument( const DOCUMENT_SPEC& aSpec, KICAD_API_SERVER* aServer, wxString* aError )
 {
-    wxCHECK( aServer, false );
+    KI_CHECK( aServer, false );
 
     if( aSpec.kind == DOCUMENT_SPEC::KIND::LIBID_KIND )
         return handleOpenFootprint( aSpec.path, aSpec.libId.GetUniStringLibId(), aServer, aError );
@@ -1043,7 +1043,7 @@ bool IFACE::handleOpenFootprint( const wxString& aProjectPath, const wxString& a
 
     if( !settingsManager.LoadProject( projectPath.GetFullPath(), true ) )
     {
-        wxLogTrace( traceApi, "Warning: no project file found for %s", aProjectPath );
+        KI_LOG_TRACE( traceApi, "Warning: no project file found for %s", aProjectPath );
     }
 
     PROJECT* project = settingsManager.GetProject( projectPath.GetFullPath() );
@@ -1124,7 +1124,7 @@ bool IFACE::handleOpenPcb( const wxString& aPath, KICAD_API_SERVER* aServer, wxS
     if( !project )
     {
         if( !settingsManager.LoadProject( projectPath.GetFullPath(), true ) )
-            wxLogTrace( traceApi, "Warning: no project file found for %s", aPath );
+            KI_LOG_TRACE( traceApi, "Warning: no project file found for %s", aPath );
 
         project = settingsManager.GetProject( projectPath.GetFullPath() );
     }
@@ -1286,7 +1286,7 @@ bool IFACE::handleCreatePcb( const wxString& aPath, KICAD_API_SERVER* aServer, w
 
 bool IFACE::HandleApiCloseDocument( const DOCUMENT_SPEC& aSpec, KICAD_API_SERVER* aServer, wxString* aError )
 {
-    wxCHECK( aServer, false );
+    KI_CHECK( aServer, false );
 
     if( aSpec.kind == DOCUMENT_SPEC::KIND::LIBID_KIND )
     {
@@ -1338,7 +1338,7 @@ bool IFACE::HandleApiCloseDocument( const DOCUMENT_SPEC& aSpec, KICAD_API_SERVER
 
 void IFACE::PreloadLibraries( KIWAY* aKiway )
 {
-    wxCHECK( aKiway, /* void */ );
+    KI_CHECK( aKiway, /* void */ );
 
     // Use compare_exchange to atomically check and set the flag to prevent race conditions
     // when PreloadLibraries is called multiple times concurrently (e.g., from project manager
@@ -1374,7 +1374,7 @@ void IFACE::PreloadLibraries( KIWAY* aKiway )
             }
             else
             {
-                wxLogTrace( traceLibraries, "pcbnew PreloadLibraries: aborted, skipping footprint processing" );
+                KI_LOG_TRACE( traceLibraries, "pcbnew PreloadLibraries: aborted, skipping footprint processing" );
             }
 
             Pgm().GetBackgroundJobMonitor().Remove( m_libraryPreloadBackgroundJob );
@@ -1425,7 +1425,7 @@ void IFACE::CancelPreload( bool aBlock )
 
 void IFACE::RegisterLibraryHandlers( KICAD_API_SERVER* aServer )
 {
-    wxCHECK_RET( aServer, "no API server provided" );
+    KI_CHECK_RET( aServer, "no API server provided" );
 
     if( !m_apiHandlerFpLibs )
     {

@@ -47,7 +47,7 @@ LSET LAYER_UTILS::GetAllFootprintLayers( const FOOTPRINT& aFootprint )
     aFootprint.RunOnChildren(
             [&]( BOARD_ITEM* aSubItem )
             {
-                wxCHECK2( aSubItem, /*void*/ );
+                KI_CHECK2( aSubItem, /*void*/ );
                 usedLayers |= aSubItem->GetLayerSet();
             },
             RECURSE_MODE::RECURSE );
@@ -63,7 +63,7 @@ LSET LAYER_UTILS::GetUsedFootprintLayers( const FOOTPRINT& aFootprint )
     aFootprint.RunOnChildren(
             [&]( BOARD_ITEM* aSubItem )
             {
-                wxCHECK2( aSubItem, /*void*/ );
+                KI_CHECK2( aSubItem, /*void*/ );
 
                 LSET itemLayers = aSubItem->GetLayerSet();
 

@@ -56,7 +56,7 @@ public:
         m_Type( aType ),
         m_Size( aSize )
     {
-        wxASSERT( aType == TOOLBAR_ITEM_TYPE::SPACER );
+        KI_ASSERT( aType == TOOLBAR_ITEM_TYPE::SPACER );
     }
 
     TOOLBAR_ITEM( TOOLBAR_ITEM_TYPE aType, std::string aName ) :

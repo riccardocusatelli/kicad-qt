@@ -76,7 +76,7 @@ static wxString GetPinTableColLabel( int aCol )
     case COL_VISIBLE:      return _HKI( "Visible" );
     case COL_UNIT:         return _HKI( "Unit" );
     case COL_BODY_STYLE:   return _HKI( "Body Style" );
-    default:               wxFAIL; return wxEmptyString;
+    default:               KI_FAIL(); return wxEmptyString;
     }
 }
 
@@ -173,7 +173,7 @@ public:
                 return aPin.GetBodyStyleDescription( aPin.GetBodyStyle(), true );
 
         default:
-            wxFAIL_MSG( wxString::Format( "Invalid field id %d", aFieldId ) );
+            KI_FAIL_MSG( wxString::Format( "Invalid field id %d", aFieldId ) );
             return wxEmptyString;
         }
     }
@@ -289,7 +289,7 @@ public:
             break;
 
         default:
-            wxFAIL_MSG( wxString::Format( "Invalid field id %d", aFieldId ) );
+            KI_FAIL_MSG( wxString::Format( "Invalid field id %d", aFieldId ) );
             break;
         }
     }

@@ -90,6 +90,6 @@
 #define TO_STR(x) TO_STR2(x)
 
 #define UNIMPLEMENTED_FOR( type ) \
-        wxFAIL_MSG( wxString::Format( wxT( "%s: unimplemented for %s" ), __FUNCTION__, type ) )
+        KI_FAIL_MSG( wxString::Format( wxT( "%s: unimplemented for %s" ), __FUNCTION__, type ) )
 
 #endif // MACROS_H

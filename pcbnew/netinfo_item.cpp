@@ -71,7 +71,7 @@ NETINFO_ITEM::~NETINFO_ITEM()
 
 void NETINFO_ITEM::Clear()
 {
-    wxCHECK( m_parent, /* void */ );
+    KI_CHECK( m_parent, /* void */ );
     m_netClass = m_parent->GetDesignSettings().m_NetSettings->GetDefaultNetclass();
     m_netChain.clear();
     m_terminalPads[0] = nullptr;
@@ -83,7 +83,7 @@ void NETINFO_ITEM::Clear()
 
 void NETINFO_ITEM::SetNetClass( const std::shared_ptr<NETCLASS>& aNetClass )
 {
-    wxCHECK( m_parent, /* void */ );
+    KI_CHECK( m_parent, /* void */ );
 
     if( aNetClass )
         m_netClass = aNetClass;

@@ -41,7 +41,7 @@ bool IsUTF8( const char* aString );
 
 
 #if defined(UTF8_VERIFY)
- #define MAYBE_VERIFY_UTF8(x)       wxASSERT( IsUTF8(x) )
+ #define MAYBE_VERIFY_UTF8(x)       KI_ASSERT( IsUTF8(x) )
 #else
  #define MAYBE_VERIFY_UTF8(x)       // nothing
 #endif

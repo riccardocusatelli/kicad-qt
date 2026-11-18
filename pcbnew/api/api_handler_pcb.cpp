@@ -2299,7 +2299,7 @@ HANDLER_RESULT<types::RunJobResponse> ExecuteBoardJob( PCB_CONTEXT* aContext, JO
     {
         response.set_status( types::JobStatus::JS_ERROR );
         response.set_message( "Internal error" );
-        wxCHECK_MSG( false, response, "context missing valid kiway in ExecuteBoardJob?" );
+        KI_CHECK_MSG( false, response, "context missing valid kiway in ExecuteBoardJob?" );
         return response;
     }
 
@@ -3007,7 +3007,7 @@ API_HANDLER_PCB::handleRunBoardJobExportIdf( const HANDLER_CONTEXT<RunBoardJobEx
 HANDLER_RESULT<CrossProbeAnnounceResponse> API_HANDLER_PCB::handleCrossProbeAnnounce(
         const HANDLER_CONTEXT<CrossProbeAnnounce>& aCtx )
 {
-    wxLogTrace( traceApi, "Received announce from frame %d at %s",
+    KI_LOG_TRACE( traceApi, "Received announce from frame %d at %s",
                 aCtx.Request.frame_type(), aCtx.Request.socket_path() );
 
     CROSS_PROBE_CLIENT::RegisterPeer( static_cast<FRAME_T>( aCtx.Request.frame_type() ),
@@ -3052,10 +3052,10 @@ HANDLER_RESULT<SyncSelectionResponse> API_HANDLER_PCB::handleSyncSelection( cons
 
     if( settings.flash_selection )
     {
-        wxLogTrace( traceCrossProbeFlash, "MAIL_SELECTION(_FORCE) PCB: flash enabled, items=%zu", items.size() );
+        KI_LOG_TRACE( traceCrossProbeFlash, "MAIL_SELECTION(_FORCE) PCB: flash enabled, items=%zu", items.size() );
         if( items.empty() )
         {
-            wxLogTrace( traceCrossProbeFlash, "MAIL_SELECTION(_FORCE) PCB: nothing to flash" );
+            KI_LOG_TRACE( traceCrossProbeFlash, "MAIL_SELECTION(_FORCE) PCB: nothing to flash" );
         }
         else
         {
@@ -3066,7 +3066,7 @@ HANDLER_RESULT<SyncSelectionResponse> API_HANDLER_PCB::handleSyncSelection( cons
     }
     else
     {
-        wxLogTrace( traceCrossProbeFlash, "MAIL_SELECTION(_FORCE) PCB: flash disabled" );
+        KI_LOG_TRACE( traceCrossProbeFlash, "MAIL_SELECTION(_FORCE) PCB: flash disabled" );
     }
 
     response.set_status( CPS_OK );

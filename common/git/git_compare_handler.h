@@ -62,7 +62,7 @@ struct KICOMMON_API CHANGED_FILE
  * list a user clicks through to open the file-compare dialog.
  *
  * `aRepo` must not be null. Returns an empty vector on error and logs via
- * wxLogTrace( traceGit ).
+ * KI_LOG_TRACE( traceGit ).
  */
 KICOMMON_API std::vector<CHANGED_FILE> CompareRefs( git_repository* aRepo,
                                                     const wxString& aBaseRef,

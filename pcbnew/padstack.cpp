@@ -742,7 +742,7 @@ void PADSTACK::Serialize( kiapi::board::types::PadStack& padstack ) const
                     shape->Serialize( a );
 
                     if( !a.UnpackTo( layer->add_custom_shapes() ) )
-                        wxFAIL_MSG( wxT( "Failed to unpack PADSTACK from internal serialization" ) );
+                        KI_FAIL_MSG( wxT( "Failed to unpack PADSTACK from internal serialization" ) );
                 }
             } );
 
@@ -866,7 +866,7 @@ void PADSTACK::Serialize( google::protobuf::Any& aContainer ) const
     Serialize( padstack );
 
     if( !aContainer.PackFrom( padstack ) )
-        wxFAIL_MSG( wxT( "Failed to pack PADSTACK" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack PADSTACK" ) );
 }
 
 
@@ -1272,7 +1272,7 @@ const PADSTACK::COPPER_LAYER_PROPS& PADSTACK::CopperLayer( PCB_LAYER_ID aLayer )
         if( m_copperProps.count( ALL_LAYERS ) )
             return m_copperProps.at( ALL_LAYERS );
 
-        wxASSERT( !m_copperProps.empty() );
+        KI_ASSERT( !m_copperProps.empty() );
         return m_copperProps.begin()->second;
     }
 
@@ -1344,7 +1344,7 @@ PCB_LAYER_ID PADSTACK::EffectiveLayerFor( PCB_LAYER_ID aLayer ) const
     if( m_copperProps.count( ALL_LAYERS ) )
         return ALL_LAYERS;
 
-    wxASSERT( !m_copperProps.empty() );
+    KI_ASSERT( !m_copperProps.empty() );
     return m_copperProps.begin()->first;
 }
 

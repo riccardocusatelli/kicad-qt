@@ -55,7 +55,7 @@ X3DTRANSFORM::X3DTRANSFORM( X3DNODE* aParent ) : X3DNODE()
 
 X3DTRANSFORM::~X3DTRANSFORM()
 {
-    wxLogTrace( traceVrmlPlugin,
+    KI_LOG_TRACE( traceVrmlPlugin,
                 wxT( " * [INFO] Destroying Transform with %zu children, %zu references, "
                      "and %zu back pointers." ),
                 m_Children.size(), m_Refs.size(), m_BackPointers.size() );
@@ -254,7 +254,7 @@ bool X3DTRANSFORM::AddRefNode( X3DNODE* aNode )
 
 SGNODE* X3DTRANSFORM::TranslateToSG( SGNODE* aParent )
 {
-    wxLogTrace( traceVrmlPlugin,
+    KI_LOG_TRACE( traceVrmlPlugin,
                 wxT( " * [INFO] Translating Transform with %zu children, %zu references, "
                      "and %zu back pointers." ),
                 m_Children.size(), m_Refs.size(), m_BackPointers.size() );
@@ -266,7 +266,7 @@ SGNODE* X3DTRANSFORM::TranslateToSG( SGNODE* aParent )
 
     if( nullptr != aParent && ptype != S3D::SGTYPE_TRANSFORM )
     {
-        wxLogTrace( traceVrmlPlugin,
+        KI_LOG_TRACE( traceVrmlPlugin,
                     wxT( " * [BUG] Transform does not have a Transform parent (parent ID: %d)" ),
                     ptype );
 

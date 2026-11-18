@@ -114,8 +114,8 @@ void ALTIUM_COMPOUND_FILE::InitFromBuffer( const void* aBuffer, size_t aLen )
 bool ALTIUM_COMPOUND_FILE::DecodeIntLibStream( const CFB::COMPOUND_FILE_ENTRY& cfe,
                                                ALTIUM_COMPOUND_FILE* aOutput )
 {
-    wxCHECK( aOutput, false );
-    wxCHECK( cfe.size >= 1, false );
+    KI_CHECK( aOutput, false );
+    KI_CHECK( cfe.size >= 1, false );
 
     size_t         streamSize = cfe.size;
     wxMemoryBuffer buffer( streamSize );
@@ -146,7 +146,7 @@ bool ALTIUM_COMPOUND_FILE::DecodeIntLibStream( const CFB::COMPOUND_FILE_ENTRY& c
     }
     else
     {
-        wxFAIL_MSG( wxString::Format( "Altium IntLib unknown header: %02x %02x %02x %02x %02x",
+        KI_FAIL_MSG( wxString::Format( "Altium IntLib unknown header: %02x %02x %02x %02x %02x",
                                       buffer[0], buffer[1], buffer[2], buffer[3], buffer[4] ) );
     }
 
@@ -370,7 +370,7 @@ std::map<wxString, wxString> ALTIUM_BINARY_PARSER::ReadProperties(
 
     if( !hasNullByte && !isBinary )
     {
-        wxLogTrace( "ALTIUM", wxT( "Missing null byte at end of property list. Imported data "
+        KI_LOG_TRACE( "ALTIUM", wxT( "Missing null byte at end of property list. Imported data "
                                    "might be  malformed or missing." ) );
     }
 

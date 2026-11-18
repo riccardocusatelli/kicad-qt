@@ -59,7 +59,7 @@ std::string SPICE_GENERATOR_BEHAVIORAL::ItemLine( const SPICE_ITEM& aItem ) cons
     }
 
     default:
-        wxFAIL_MSG( "Unhandled SIM_MODEL type in SIM_MODEL_BEHAVIORAL" );
+        KI_FAIL_MSG( "Unhandled SIM_MODEL type in SIM_MODEL_BEHAVIORAL" );
         return "";
     }
 }
@@ -81,7 +81,7 @@ SIM_MODEL_BEHAVIORAL::SIM_MODEL_BEHAVIORAL( TYPE aType ) :
     case TYPE::L_BEHAVIORAL: AddParam( inductor  ); break;
     case TYPE::V_BEHAVIORAL: AddParam( vsource   ); break;
     case TYPE::I_BEHAVIORAL: AddParam( isource   ); break;
-    default: wxFAIL_MSG( "Unhandled SIM_MODEL type in SIM_MODEL_IDEAL" );
+    default: KI_FAIL_MSG( "Unhandled SIM_MODEL type in SIM_MODEL_IDEAL" );
     }
 }
 

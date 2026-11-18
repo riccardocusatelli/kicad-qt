@@ -122,7 +122,7 @@ bool GROUP_TOOL::Init()
 
     // Find the selection tool, so they can cooperate
     m_selectionTool = static_cast<SELECTION_TOOL*>( m_toolMgr->FindTool( "common.InteractiveSelection" ) );
-    wxCHECK( m_selectionTool, false );
+    KI_CHECK( m_selectionTool, false );
 
     TOOL_MENU& selToolMenu = m_selectionTool->GetToolMenu();
 

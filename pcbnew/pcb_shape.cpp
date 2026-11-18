@@ -279,7 +279,7 @@ PCB_SHAPE::~PCB_SHAPE()
 
 void PCB_SHAPE::CopyFrom( const BOARD_ITEM* aOther )
 {
-    wxCHECK( aOther && aOther->Type() == PCB_SHAPE_T, /* void */ );
+    KI_CHECK( aOther && aOther->Type() == PCB_SHAPE_T, /* void */ );
     *this = *static_cast<const PCB_SHAPE*>( aOther );
 }
 
@@ -305,7 +305,7 @@ void PCB_SHAPE::Serialize( google::protobuf::Any &aContainer ) const
         {
         case SHAPE_T::RECTANGLE: options->set_is_number_box( true );                 break;
         case SHAPE_T::SEGMENT:   options->set_is_thermal_spoke_template( true );     break;
-        default:                 wxFAIL_MSG( wxT( "Unexpected proxy shape type" ) ); break;
+        default:                 KI_FAIL_MSG( wxT( "Unexpected proxy shape type" ) ); break;
         }
     }
 
@@ -326,7 +326,7 @@ void PCB_SHAPE::Serialize( google::protobuf::Any &aContainer ) const
     kiapi::common::PackCustomProperties( msg.mutable_custom_properties(), *this );
 
     if( !aContainer.PackFrom( msg ) )
-        wxFAIL_MSG( wxT( "Failed to pack PCB_SHAPE" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack PCB_SHAPE" ) );
 }
 
 
@@ -1846,7 +1846,7 @@ int PCB_SHAPE::getMaxError() const
 void PCB_SHAPE::swapData( BOARD_ITEM* aImage )
 {
     PCB_SHAPE* image = dynamic_cast<PCB_SHAPE*>( aImage );
-    wxCHECK( image, /* void */ );
+    KI_CHECK( image, /* void */ );
 
     SwapShape( image );
 

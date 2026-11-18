@@ -604,7 +604,7 @@ public:
 protected:
     void swapData( BOARD_ITEM* aImage ) override
     {
-        wxASSERT( aImage->Type() == PCB_GENERATOR_T );
+        KI_ASSERT( aImage->Type() == PCB_GENERATOR_T );
 
         std::swap( *this, *static_cast<PCB_TUNING_PATTERN*>( aImage ) );
     }

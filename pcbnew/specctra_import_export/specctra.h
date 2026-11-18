@@ -874,7 +874,7 @@ public:
 
         if( aShape )
         {
-            wxASSERT( aShape->Type()==T_rect
+            KI_ASSERT( aShape->Type()==T_rect
                         || aShape->Type()==T_circle
                         || aShape->Type()==T_qarc
                         || aShape->Type()==T_path
@@ -944,7 +944,7 @@ public:
 
         if( aShape )
         {
-            wxASSERT( aShape->Type()==T_rect
+            KI_ASSERT( aShape->Type()==T_rect
                             || aShape->Type()==T_circle
                             || aShape->Type()==T_qarc
                             || aShape->Type()==T_path
@@ -2877,7 +2877,7 @@ public:
 
         if( aShape )
         {
-            wxASSERT(aShape->Type()==T_rect || aShape->Type()==T_circle
+            KI_ASSERT(aShape->Type()==T_rect || aShape->Type()==T_circle
                      || aShape->Type()==T_qarc || aShape->Type()==T_path
                      || aShape->Type()==T_polygon);
 
@@ -3626,7 +3626,7 @@ public:
     {
         // The LINE_READER will be pushed from an automatic instantiation,
         // we don't own it:
-        wxASSERT( !iOwnReaders );
+        KI_ASSERT( !iOwnReaders );
 
         m_pcb   = nullptr;
         m_session = nullptr;

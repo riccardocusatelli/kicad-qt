@@ -66,7 +66,7 @@ SGNODE* IFSG_NODE::GetRawPtr( void ) noexcept
 
 S3D::SGTYPES IFSG_NODE::GetNodeType( void ) const
 {
-    wxCHECK( m_node, S3D::SGTYPE_END );
+    KI_CHECK( m_node, S3D::SGTYPE_END );
 
     return m_node->GetNodeType();
 }
@@ -74,7 +74,7 @@ S3D::SGTYPES IFSG_NODE::GetNodeType( void ) const
 
 SGNODE* IFSG_NODE::GetParent( void ) const
 {
-    wxCHECK( m_node, nullptr );
+    KI_CHECK( m_node, nullptr );
 
     return m_node->GetParent();
 }
@@ -82,7 +82,7 @@ SGNODE* IFSG_NODE::GetParent( void ) const
 
 bool IFSG_NODE::SetParent( SGNODE* aParent )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     return m_node->SetParent( aParent );
 }
@@ -90,7 +90,7 @@ bool IFSG_NODE::SetParent( SGNODE* aParent )
 
 const char* IFSG_NODE::GetName( void )
 {
-    wxCHECK( m_node, nullptr );
+    KI_CHECK( m_node, nullptr );
 
     return m_node->GetName();
 }
@@ -98,7 +98,7 @@ const char* IFSG_NODE::GetName( void )
 
 bool IFSG_NODE::SetName( const char* aName )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     m_node->SetName( aName );
     return true;
@@ -107,7 +107,7 @@ bool IFSG_NODE::SetName( const char* aName )
 
 const char* IFSG_NODE::GetNodeTypeName( S3D::SGTYPES aNodeType ) const
 {
-    wxCHECK( m_node, nullptr );
+    KI_CHECK( m_node, nullptr );
 
     return m_node->GetNodeTypeName( aNodeType );
 }
@@ -115,7 +115,7 @@ const char* IFSG_NODE::GetNodeTypeName( S3D::SGTYPES aNodeType ) const
 
 SGNODE* IFSG_NODE::FindNode( const char* aNodeName )
 {
-    wxCHECK( m_node, nullptr );
+    KI_CHECK( m_node, nullptr );
 
     return m_node->FindNode( aNodeName, nullptr );
 }
@@ -123,7 +123,7 @@ SGNODE* IFSG_NODE::FindNode( const char* aNodeName )
 
 bool IFSG_NODE::AddRefNode( SGNODE* aNode )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     return m_node->AddRefNode( aNode );
 }
@@ -131,11 +131,11 @@ bool IFSG_NODE::AddRefNode( SGNODE* aNode )
 
 bool IFSG_NODE::AddRefNode( IFSG_NODE& aNode )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     SGNODE* np = aNode.GetRawPtr();
 
-    wxCHECK( np, false );
+    KI_CHECK( np, false );
 
     return m_node->AddRefNode( np );
 }
@@ -143,7 +143,7 @@ bool IFSG_NODE::AddRefNode( IFSG_NODE& aNode )
 
 bool IFSG_NODE::AddChildNode( SGNODE* aNode )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     return m_node->AddChildNode( aNode );
 }
@@ -151,11 +151,11 @@ bool IFSG_NODE::AddChildNode( SGNODE* aNode )
 
 bool IFSG_NODE::AddChildNode( IFSG_NODE& aNode )
 {
-    wxCHECK( m_node, false );
+    KI_CHECK( m_node, false );
 
     SGNODE* np = aNode.GetRawPtr();
 
-    wxCHECK( np, false );
+    KI_CHECK( np, false );
 
     return m_node->AddChildNode( np );
 }

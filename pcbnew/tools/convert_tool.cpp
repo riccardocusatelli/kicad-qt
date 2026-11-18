@@ -743,7 +743,7 @@ SHAPE_POLY_SET CONVERT_TOOL::makePolysFromChainedSegs( const std::deque<EDA_ITEM
                     aItem->SetFlags( SKIP_STRUCT );
 
                     std::optional<SEG> anchors = getStartEndPoints( aItem );
-                    wxASSERT( anchors );
+                    KI_ASSERT( anchors );
 
                     insert( aItem, aAnchor == 0 ? anchors->A : anchors->B, aDirection );
 
@@ -759,7 +759,7 @@ SHAPE_POLY_SET CONVERT_TOOL::makePolysFromChainedSegs( const std::deque<EDA_ITEM
                 };
 
         std::optional<SEG> anchors = getStartEndPoints( candidate );
-        wxASSERT( anchors );
+        KI_ASSERT( anchors );
 
         // Start with the first object and walk "right"
         // Note if the first object is an arc, we don't need to insert its first point here, the
@@ -1239,7 +1239,7 @@ int CONVERT_TOOL::CreateLines( const TOOL_EVENT& aEvent )
             }
 
             default:
-                wxFAIL_MSG( wxT( "Unhandled graphic shape type in PolyToLines" ) );
+                KI_FAIL_MSG( wxT( "Unhandled graphic shape type in PolyToLines" ) );
                 break;
             }
         }
@@ -1250,7 +1250,7 @@ int CONVERT_TOOL::CreateLines( const TOOL_EVENT& aEvent )
         }
         else
         {
-            wxFAIL_MSG( wxT( "Unhandled type in PolyToLines" ) );
+            KI_FAIL_MSG( wxT( "Unhandled type in PolyToLines" ) );
         }
     }
 

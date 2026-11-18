@@ -77,7 +77,7 @@ void PCB_GROUP::Serialize( google::protobuf::Any &aContainer ) const
     kiapi::common::PackCustomProperties( group.mutable_custom_properties(), *this );
 
     if( !aContainer.PackFrom( group ) )
-        wxFAIL_MSG( wxT( "Failed to pack PCB_GROUP" ) );
+        KI_FAIL_MSG( wxT( "Failed to pack PCB_GROUP" ) );
 }
 
 
@@ -554,7 +554,7 @@ void PCB_GROUP::RunOnChildren( const std::function<void( BOARD_ITEM* )>& aFuncti
     }
     catch( std::bad_function_call& )
     {
-        wxFAIL_MSG( wxT( "Error calling function in PCB_GROUP::RunOnChildren" ) );
+        KI_FAIL_MSG( wxT( "Error calling function in PCB_GROUP::RunOnChildren" ) );
     }
 }
 

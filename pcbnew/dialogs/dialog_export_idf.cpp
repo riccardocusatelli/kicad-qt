@@ -233,7 +233,7 @@ bool DIALOG_EXPORT_IDF3::TransferDataToWindow()
     {
         for( PCB_FIELD* field : fp->GetFields() )
         {
-            wxCHECK2( field, continue );
+            KI_CHECK2( field, continue );
 
             if( field->IsReference() )
                 continue;

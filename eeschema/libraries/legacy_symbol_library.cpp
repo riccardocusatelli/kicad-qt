@@ -69,7 +69,7 @@ LEGACY_SYMBOL_LIB::~LEGACY_SYMBOL_LIB()
 
 void LEGACY_SYMBOL_LIB::Save( bool aSaveDocFile )
 {
-    wxCHECK_RET( m_plugin != nullptr,
+    KI_CHECK_RET( m_plugin != nullptr,
                  wxString::Format( wxT( "no plugin defined for library `%s`." ),
                                    fileName.GetFullPath() ) );
 
@@ -195,7 +195,7 @@ void LEGACY_SYMBOL_LIB::AddSymbol( LIB_SYMBOL* aSymbol )
 
 LIB_SYMBOL* LEGACY_SYMBOL_LIB::RemoveSymbol( LIB_SYMBOL* aEntry )
 {
-    wxCHECK_MSG( aEntry != nullptr, nullptr, "NULL pointer cannot be removed from library." );
+    KI_CHECK_MSG( aEntry != nullptr, nullptr, "NULL pointer cannot be removed from library." );
 
     m_plugin->DeleteSymbol( fileName.GetFullPath(), aEntry->GetName(), m_properties.get() );
 
@@ -434,7 +434,7 @@ void LEGACY_SYMBOL_LIBS::FindLibraryNearEntries( std::vector<LIB_SYMBOL*>& aCand
 
 void LEGACY_SYMBOL_LIBS::GetLibNamesAndPaths( PROJECT* aProject, wxString* aPaths, wxArrayString* aNames )
 {
-    wxCHECK_RET( aProject, "Null PROJECT in GetLibNamesAndPaths" );
+    KI_CHECK_RET( aProject, "Null PROJECT in GetLibNamesAndPaths" );
 
     PROJECT_FILE& project = aProject->GetProjectFile();
 
@@ -449,7 +449,7 @@ void LEGACY_SYMBOL_LIBS::GetLibNamesAndPaths( PROJECT* aProject, wxString* aPath
 void LEGACY_SYMBOL_LIBS::SetLibNamesAndPaths( PROJECT* aProject, const wxString& aPaths,
                                        const wxArrayString& aNames )
 {
-    wxCHECK_RET( aProject, "Null PROJECT in SetLibNamesAndPaths" );
+    KI_CHECK_RET( aProject, "Null PROJECT in SetLibNamesAndPaths" );
 
     PROJECT_FILE& project = aProject->GetProjectFile();
 

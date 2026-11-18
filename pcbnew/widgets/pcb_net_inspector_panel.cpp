@@ -410,7 +410,7 @@ void PCB_NET_INSPECTOR_PANEL::adjustListColumnSizes( PANEL_NET_INSPECTOR_SETTING
                     }
                 };
 
-        wxASSERT( m_columns.size() == cfg->col_order.size() );
+        KI_ASSERT( m_columns.size() == cfg->col_order.size() );
 
         for( size_t i = 0; i < m_columns.size(); ++i )
         {
@@ -423,8 +423,8 @@ void PCB_NET_INSPECTOR_PANEL::adjustListColumnSizes( PANEL_NET_INSPECTOR_SETTING
     }
     else
     {
-        wxASSERT( m_columns.size() == cfg->col_hidden.size() );
-        wxASSERT( m_columns.size() == cfg->col_widths.size() );
+        KI_ASSERT( m_columns.size() == cfg->col_hidden.size() );
+        KI_ASSERT( m_columns.size() == cfg->col_widths.size() );
 
         for( size_t ii = 0; ii < m_columns.size(); ++ii )
         {

@@ -185,7 +185,7 @@ int SCH_DRAWING_TOOLS::PlaceSymbol( const TOOL_EVENT& aEvent )
     }
     else
     {
-        wxFAIL_MSG( "PlaceSymbol(): unexpected request" );
+        KI_FAIL_MSG( "PlaceSymbol(): unexpected request" );
     }
 
     TOOL_EVENT         originalEvent = aEvent;          // This can change out from under us when the event loop runs
@@ -672,7 +672,7 @@ int SCH_DRAWING_TOOLS::PlaceNextSymbolUnit( const TOOL_EVENT& aEvent )
             return 0;
         }
 
-        wxCHECK( selection.Front()->Type() == SCH_SYMBOL_T, 0 );
+        KI_CHECK( selection.Front()->Type() == SCH_SYMBOL_T, 0 );
         symbol = static_cast<SCH_SYMBOL*>( selection.Front() );
     }
 
@@ -1443,7 +1443,7 @@ int SCH_DRAWING_TOOLS::SingleClickPlace( const TOOL_EVENT& aEvent )
         break;
 
     default:
-        wxASSERT_MSG( false, "Unknown item type in SCH_DRAWING_TOOLS::SingleClickPlace" );
+        KI_ASSERT_MSG( false, "Unknown item type in SCH_DRAWING_TOOLS::SingleClickPlace" );
         return 0;
     }
 
@@ -1694,7 +1694,7 @@ SCH_LINE* SCH_DRAWING_TOOLS::findWire( const VECTOR2I& aPosition )
 
 wxString SCH_DRAWING_TOOLS::findWireLabelDriverName( SCH_LINE* aWire )
 {
-    wxASSERT( aWire->IsWire() );
+    KI_ASSERT( aWire->IsWire() );
 
     SCH_SHEET_PATH sheetPath = m_frame->GetCurrentSheet();
 
@@ -1766,7 +1766,7 @@ bool SCH_DRAWING_TOOLS::createNewLabel( const VECTOR2I& aPosition, int aType,
         break;
 
     default:
-        wxFAIL_MSG( "SCH_DRAWING_TOOLS::createNewLabel() unknown label type" );
+        KI_FAIL_MSG( "SCH_DRAWING_TOOLS::createNewLabel() unknown label type" );
         return false;
     }
 
@@ -2803,7 +2803,7 @@ int SCH_DRAWING_TOOLS::DrawSheet( const TOOL_EVENT& aEvent )
     if( isDrawSheetCopy )
     {
         wxString* ptr = aEvent.Parameter<wxString*>();
-        wxCHECK( ptr, 0 );
+        KI_CHECK( ptr, 0 );
 
         // We own the string if we're importing a sheet
         filename = *ptr;
@@ -2812,7 +2812,7 @@ int SCH_DRAWING_TOOLS::DrawSheet( const TOOL_EVENT& aEvent )
     else if( isDrawSheetFromDesignBlock )
     {
         designBlock.reset( aEvent.Parameter<DESIGN_BLOCK*>() );
-        wxCHECK( designBlock, 0 );
+        KI_CHECK( designBlock, 0 );
         filename = designBlock->GetSchematicFile();
     }
 

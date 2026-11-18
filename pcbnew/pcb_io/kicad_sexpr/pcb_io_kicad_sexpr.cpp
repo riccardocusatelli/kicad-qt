@@ -118,7 +118,7 @@ void FP_CACHE::Save( FOOTPRINT* aFootprintFilter )
         // Allow file output stream to go out of scope to close the file stream before
         // renaming the file.
         {
-            wxLogTrace( traceKicadPcbPlugin, wxT( "Writing library file '%s'." ), fileName );
+            KI_LOG_TRACE( traceKicadPcbPlugin, wxT( "Writing library file '%s'." ), fileName );
 
             PRETTIFIED_FILE_OUTPUTFORMATTER formatter( fileName );
 
@@ -188,7 +188,7 @@ void FP_CACHE::Load()
                 // show a message to, so it is only traced
                 for( const wxString& warning : parser.GetParseWarnings() )
                 {
-                    wxLogTrace( traceKicadPcbPlugin, wxT( "Warning in file '%s': %s" ), fn.GetFullPath(), warning );
+                    KI_LOG_TRACE( traceKicadPcbPlugin, wxT( "Warning in file '%s': %s" ), fn.GetFullPath(), warning );
                 }
             }
             catch( const IO_ERROR& ioe )
@@ -468,7 +468,7 @@ void PCB_IO_KICAD_SEXPR::Format( const BOARD_ITEM* aItem ) const
         break;
 
     default:
-        wxFAIL_MSG( wxT( "Cannot format item " ) + aItem->GetClass() );
+        KI_FAIL_MSG( wxT( "Cannot format item " ) + aItem->GetClass() );
     }
 }
 
@@ -1087,7 +1087,7 @@ void PCB_IO_KICAD_SEXPR::format( const PCB_DIMENSION_BASE* aDimension ) const
     else if( radial )
         m_out->Print( "(type radial)" );
     else
-        wxFAIL_MSG( wxT( "Cannot format unknown dimension type!" ) );
+        KI_FAIL_MSG( wxT( "Cannot format unknown dimension type!" ) );
 
     if( aDimension->IsLocked() )
         KICAD_FORMAT::FormatBool( m_out, "locked", aDimension->IsLocked() );
@@ -1334,13 +1334,13 @@ void PCB_IO_KICAD_SEXPR::format( const PCB_SHAPE* aShape ) const
 
 void PCB_IO_KICAD_SEXPR::format( const PCB_REFERENCE_IMAGE* aBitmap ) const
 {
-    wxCHECK_RET( aBitmap != nullptr && m_out != nullptr, "" );
+    KI_CHECK_RET( aBitmap != nullptr && m_out != nullptr, "" );
 
     const REFERENCE_IMAGE& refImage = aBitmap->GetReferenceImage();
 
     const wxImage* image = refImage.GetImage().GetImageData();
 
-    wxCHECK_RET( image != nullptr, "wxImage* is NULL" );
+    KI_CHECK_RET( image != nullptr, "wxImage* is NULL" );
 
     m_out->Print( "(image (at %s %s)",
                   formatInternalUnits( aBitmap->GetPosition().x ).c_str(),
@@ -2552,7 +2552,7 @@ void PCB_IO_KICAD_SEXPR::format( const PAD* aPad ) const
 
 void PCB_IO_KICAD_SEXPR::format( const PCB_BARCODE* aBarcode ) const
 {
-    wxCHECK_RET( aBarcode != nullptr && m_out != nullptr, "" );
+    KI_CHECK_RET( aBarcode != nullptr && m_out != nullptr, "" );
 
     m_out->Print( "(barcode" );
 
@@ -2825,7 +2825,7 @@ void PCB_IO_KICAD_SEXPR::formatTableData( const PCB_TABLE* aTable ) const
 
 void PCB_IO_KICAD_SEXPR::format( const PCB_DRILL_MAP* aMap ) const
 {
-    wxCHECK_RET( aMap != nullptr && m_out != nullptr, "" );
+    KI_CHECK_RET( aMap != nullptr && m_out != nullptr, "" );
 
     m_out->Print( "(drill_map " );
 
@@ -2862,7 +2862,7 @@ void PCB_IO_KICAD_SEXPR::format( const PCB_DRILL_MAP* aMap ) const
 
 void PCB_IO_KICAD_SEXPR::format( const PCB_GENERATED_TABLE* aTable ) const
 {
-    wxCHECK_RET( aTable != nullptr && m_out != nullptr, "" );
+    KI_CHECK_RET( aTable != nullptr && m_out != nullptr, "" );
 
     switch( aTable->Type() )
     {
@@ -2870,7 +2870,7 @@ void PCB_IO_KICAD_SEXPR::format( const PCB_GENERATED_TABLE* aTable ) const
     case PCB_STACKUP_TABLE_T: m_out->Print( "(stackup_table " ); break;
 
     default:
-        wxFAIL_MSG( wxT( "Unhandled generated table type " ) + aTable->GetClass() );
+        KI_FAIL_MSG( wxT( "Unhandled generated table type " ) + aTable->GetClass() );
         return;
     }
 
@@ -2983,7 +2983,7 @@ void PCB_IO_KICAD_SEXPR::formatGeneratedTableExtras( const PCB_GENERATED_TABLE* 
 
 void PCB_IO_KICAD_SEXPR::format( const PCB_TABLE* aTable ) const
 {
-    wxCHECK_RET( aTable != nullptr && m_out != nullptr, "" );
+    KI_CHECK_RET( aTable != nullptr && m_out != nullptr, "" );
 
     m_out->Print( "(table " );
 
@@ -3248,7 +3248,7 @@ void PCB_IO_KICAD_SEXPR::format( const PCB_TRACK* aTrack ) const
         const PCB_VIA* via = static_cast<const PCB_VIA*>( aTrack );
         const BOARD*   board = via->GetBoard();
 
-        wxCHECK_RET( board != nullptr, wxT( "Via has no parent." ) );
+        KI_CHECK_RET( board != nullptr, wxT( "Via has no parent." ) );
 
         m_out->Print( "(via" );
 
@@ -4173,7 +4173,7 @@ void PCB_IO_KICAD_SEXPR::FootprintSave( const wxString& aLibraryPath, const FOOT
     if( it != m_cache->GetFootprints().end() )
     {
         // Save() below writes atomically via sibling temp + rename, so no pre-delete.
-        wxLogTrace( traceKicadPcbPlugin, wxT( "Replacing footprint file '%s'." ), fullPath );
+        KI_LOG_TRACE( traceKicadPcbPlugin, wxT( "Replacing footprint file '%s'." ), fullPath );
         m_cache->GetFootprints().erase( footprintName );
     }
 
@@ -4205,7 +4205,7 @@ void PCB_IO_KICAD_SEXPR::FootprintSave( const wxString& aLibraryPath, const FOOT
     // Force them all to the board-independent ORPHANED singleton before serialization.
     footprint->ClearAllNets();
 
-    wxLogTrace( traceKicadPcbPlugin, wxT( "Creating s-expr footprint file '%s'." ), fullPath );
+    KI_LOG_TRACE( traceKicadPcbPlugin, wxT( "Creating s-expr footprint file '%s'." ), fullPath );
     m_cache->GetFootprints().insert( footprintName,
                                      new FP_CACHE_ENTRY( footprint,
                                                          WX_FILENAME( fn.GetPath(), fullName ) ) );
@@ -4301,7 +4301,7 @@ bool PCB_IO_KICAD_SEXPR::DeleteLibrary( const wxString& aLibraryPath,
             wxRemoveFile( files[i] );
     }
 
-    wxLogTrace( traceKicadPcbPlugin, wxT( "Removing footprint library '%s'." ),
+    KI_LOG_TRACE( traceKicadPcbPlugin, wxT( "Removing footprint library '%s'." ),
                 aLibraryPath.GetData() );
 
     // Some of the more elaborate wxRemoveFile() crap puts up its own wxLog dialog
