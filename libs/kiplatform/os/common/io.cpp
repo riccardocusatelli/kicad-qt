@@ -18,6 +18,7 @@
 */
 
 #include <kiplatform/io.h>
+#include <core/ki_log.h>
 
 #include <wx/crt.h>
 #include <wx/filename.h>
@@ -39,7 +40,6 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <core/ki_log.h>
 #endif
 
 
