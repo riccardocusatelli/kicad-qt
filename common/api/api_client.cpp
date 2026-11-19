@@ -26,6 +26,16 @@
 #include <wx/translation.h>
 
 
+static const char* errorText( int aError )
+{
+#if NNG_MAJOR_VERSION < 2
+    return nng_strerror( aError );
+#else
+    return nng_strerror( static_cast<nng_err>( aError ) );
+#endif
+}
+
+
 static void closeSocket( nng_socket aSocket )
 {
 #if NNG_MAJOR_VERSION < 2
@@ -57,7 +67,7 @@ KICAD_API_CLIENT::KICAD_API_CLIENT( int aTimeoutMs, bool aBlock ) :
     }
     else
     {
-        m_lastError = wxString::Format( wxS( "nng_req0_open failed: %s" ), wxString::FromUTF8( nng_strerror( ret ) ) );
+        m_lastError = wxString::Format( wxS( "nng_req0_open failed: %s" ), wxString::FromUTF8( errorText( ret ) ) );
     }
 }
 
@@ -81,7 +91,7 @@ bool KICAD_API_CLIENT::Connect( const wxString& aSocketUrl )
 
     if( ret != 0 )
     {
-        m_lastError = wxString::Format( wxS( "nng_dial failed: %s" ), wxString::FromUTF8( nng_strerror( ret ) ) );
+        m_lastError = wxString::Format( wxS( "nng_dial failed: %s" ), wxString::FromUTF8( errorText( ret ) ) );
         return false;
     }
 
@@ -134,7 +144,7 @@ bool KICAD_API_CLIENT::Send( const google::protobuf::Message& aRequest, kiapi::c
 
     if( ret != 0 )
     {
-        m_lastError = wxString::Format( wxS( "nng_send failed: %s" ), wxString::FromUTF8( nng_strerror( ret ) ) );
+        m_lastError = wxString::Format( wxS( "nng_send failed: %s" ), wxString::FromUTF8( errorText( ret ) ) );
         return false;
     }
 
@@ -145,7 +155,7 @@ bool KICAD_API_CLIENT::Send( const google::protobuf::Message& aRequest, kiapi::c
 
     if( ret != 0 )
     {
-        m_lastError = wxString::Format( wxS( "nng_recv failed: %s" ), wxString::FromUTF8( nng_strerror( ret ) ) );
+        m_lastError = wxString::Format( wxS( "nng_recv failed: %s" ), wxString::FromUTF8( errorText( ret ) ) );
         return false;
     }
 
