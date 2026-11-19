@@ -41,6 +41,11 @@
 #include <wx/filename.h>
 #include <wx/log.h>
 
+// <windows.h> defines LoadLibrary as LoadLibraryW, which renames V3_DOC_PARSER::LoadLibrary
+#ifdef LoadLibrary
+#undef LoadLibrary
+#endif
+
 
 PCB_IO_EASYEDAPRO_V3::PCB_IO_EASYEDAPRO_V3() :
         PCB_IO( wxS( "EasyEDA (JLCEDA) Pro v3" ) )

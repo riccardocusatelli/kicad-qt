@@ -1097,6 +1097,10 @@ EDA_DRAW_PANEL_GAL::GAL_TYPE EDA_DRAW_FRAME::loadCanvasTypeSetting()
     if( cfg )
         canvasType = static_cast<EDA_DRAW_PANEL_GAL::GAL_TYPE>( cfg->m_Graphics.canvas_type );
 
+    // The RHI canvas stored by the wxWidgets build is the OpenGL canvas here
+    if( canvasType == EDA_DRAW_PANEL_GAL::GAL_TYPE_MODERN )
+        canvasType = EDA_DRAW_PANEL_GAL::GAL_TYPE_OPENGL;
+
     if( canvasType < EDA_DRAW_PANEL_GAL::GAL_TYPE_NONE
             || canvasType >= EDA_DRAW_PANEL_GAL::GAL_TYPE_LAST )
     {

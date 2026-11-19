@@ -57,6 +57,11 @@
 #include <wx/wfstream.h>
 #include <wx/zipstrm.h>
 
+// <windows.h> defines LoadLibrary as LoadLibraryW, which renames V3_DOC_PARSER::LoadLibrary
+#ifdef LoadLibrary
+#undef LoadLibrary
+#endif
+
 
 namespace
 {

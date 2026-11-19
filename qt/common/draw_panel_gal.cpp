@@ -662,6 +662,11 @@ void EDA_DRAW_PANEL_GAL::SetTopLayer( int aLayer )
 
 bool EDA_DRAW_PANEL_GAL::SwitchBackend( GAL_TYPE aGalType )
 {
+    // The RHI canvas of the wxWidgets build (asked by the editors of KiCad 11) is the OpenGL
+    // canvas here
+    if( aGalType == GAL_TYPE_MODERN )
+        aGalType = GAL_TYPE_OPENGL;
+
     // OpenGL needs its features (and a display that has OpenGL)
     if( aGalType == GAL_TYPE_OPENGL )
     {

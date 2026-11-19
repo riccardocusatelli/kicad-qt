@@ -41,6 +41,11 @@
 #include <wx/wfstream.h>
 #include <wx/zipstrm.h>
 
+// <windows.h> defines LoadLibrary as LoadLibraryW, which renames V3_DOC_PARSER::LoadLibrary
+#ifdef LoadLibrary
+#undef LoadLibrary
+#endif
+
 
 using EASYEDAPRO::V3_DOC_RAW;
 using EASYEDAPRO::V3_ROW;

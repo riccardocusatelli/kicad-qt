@@ -45,6 +45,11 @@
 
 #include <set>
 
+// <windows.h> defines LoadLibrary as LoadLibraryW, which renames V3_DOC_PARSER::LoadLibrary
+#ifdef LoadLibrary
+#undef LoadLibrary
+#endif
+
 
 static long long getFileTimestamp( const wxString& aFileName )
 {

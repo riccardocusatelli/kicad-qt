@@ -99,8 +99,10 @@ erc = json.load( open( f"{out}/erc.json" ) )
 n_drc = len( drc["violations"] )
 n_erc = sum( len( s["violations"] ) for s in erc["sheets"] )
 print( f"DRC: {n_drc} violations, {len( drc['unconnected_items'] )} unconnected; ERC: {n_erc}" )
-if n_drc == 0 or n_erc == 0:
-    sys.exit( "::error::empty DRC or ERC report" )
+# The video demo is clean in KiCad 11 (0 DRC violations): the DRC report must be complete,
+# the ERC of pic_programmer still finds its violations
+if "unconnected_items" not in drc or n_erc == 0:
+    sys.exit( "::error::incomplete DRC report or empty ERC report" )
 PY
 
 rm -rf "$HOME_DIR"
