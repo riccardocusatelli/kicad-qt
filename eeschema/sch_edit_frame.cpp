@@ -200,13 +200,11 @@ SCH_EDIT_FRAME::SCH_EDIT_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent ) :
     if( GetToolManager() )
         GetToolManager()->RunAction( SCH_ACTIONS::angleSnapModeChanged );
 
-#ifdef KICAD_IPC_API
     m_pluginAvailabilityListener = PgmGui().GetPluginManager().AddAvailabilityChangedListener(
             [this]()
             {
                 onPluginAvailabilityChanged();
             } );
-#endif
 
     m_hierarchy = new HIERARCHY_PANE( this );
 
@@ -2834,7 +2832,6 @@ void SCH_EDIT_FRAME::updateSelectionFilterVisbility()
 }
 
 
-#ifdef KICAD_IPC_API
 void SCH_EDIT_FRAME::onPluginAvailabilityChanged()
 {
     KI_LOG_TRACE( traceApi, "SCH frame: plugin availability changed" );

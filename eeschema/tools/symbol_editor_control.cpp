@@ -925,7 +925,7 @@ int SYMBOL_EDITOR_CONTROL::ExportForOlderVersion( const TOOL_EVENT& aEvent )
                                       job.m_outputLibraryPath = out.GetFullPath();
                                   }
 
-                                  return RunDowngradeJob( editFrame->Kiway(), KIWAY::FACE_SCH, job, aPass, aResult );
+                                  return RunDowngradeJob( editFrame->Kiway(), KIWAY_FACES::FACE_SCH, job, aPass, aResult );
                               } );
 
     return 0;

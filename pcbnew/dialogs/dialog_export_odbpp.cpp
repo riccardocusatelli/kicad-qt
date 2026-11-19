@@ -28,6 +28,7 @@
 
 #include <bitmaps.h>
 #include <confirm.h>
+#include <kidialog.h>
 #include <pcb_edit_frame.h>
 #include <pcbnew_settings.h>
 #include <pgm_base.h>
@@ -476,7 +477,14 @@ void DIALOG_EXPORT_ODBPP::onOKClick( wxCommandEvent& event )
         m_parent->GetToolManager()->GetTool<ZONE_FILLER_TOOL>()->CheckAllZones( this );
 
     WX_PROGRESS_REPORTER progress( this, _( "Generate ODB++ Files" ), 3, PR_CAN_ABORT );
-    ODB_EXPORT_RESULT    result = GenerateODBPPFiles( job, m_parent->GetBoard(), m_parent, &progress, &reporter );
+    ODB_EXPORT_RESULT    result = GenerateODBPPFiles( job, m_parent->GetBoard(),
+            [this]( const wxString& aMessage )
+            {
+                KIDIALOG confirm( m_parent, aMessage, _( "Confirmation" ), wxOK | wxCANCEL | wxICON_WARNING );
+                confirm.SetOKLabel( _( "Overwrite" ) );
+                return confirm.ShowModal() == wxID_OK;
+            },
+            &progress, &reporter );
 
     for( const wxString& output : result.m_outputs )
         reporter.Report( wxString::Format( _( "Generated %s" ), output ), RPT_SEVERITY_ACTION );

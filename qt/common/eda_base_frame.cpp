@@ -1872,9 +1872,7 @@ void EDA_BASE_FRAME::ShowPreferences( wxString aStartPage, wxString aStartParent
         {
         }
 
-#ifdef KICAD_IPC_API
         book->AddPage( new PANEL_PLUGIN_SETTINGS( book ), _( "Plugins" ) );
-#endif
 
         book->AddPage( new PANEL_MAINTENANCE( book, this ), _( "Maintenance" ) );
 

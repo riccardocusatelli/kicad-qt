@@ -430,7 +430,7 @@ const std::set<wxString>& NETLIST_EXPORTER_BASE::footprintPads( const wxString& 
 
     if( m_kiway && !aFootprintId.IsEmpty() )
     {
-        if( KIFACE* cvpcb = m_kiway->KiFACE( KIWAY::FACE_CVPCB ) )
+        if( KIFACE* cvpcb = m_kiway->KiFACE( KIWAY_FACES::FACE_CVPCB ) )
         {
             KIFACE_FOOTPRINT_PAD_NUMBERS_SERVICE::Type fetch =
                     GetKifaceService<KIFACE_FOOTPRINT_PAD_NUMBERS_SERVICE>( cvpcb );

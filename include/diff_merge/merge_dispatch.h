@@ -35,7 +35,7 @@
 class WIDGET_DIFF_CANVAS;
 
 
-class KIWAY;
+class KIWAY_SERVICES;
 class REPORTER;
 class wxWindow;
 
@@ -61,7 +61,7 @@ KICOMMON_API wxString OlderFormatNotice( int aAncestorVersion, int aOursVersion,
  * @return the kiface's CLI exit code, or ERR_UNKNOWN if the kiface or its
  *         export is unavailable.
  */
-KICOMMON_API int DispatchMerge( KIWAY& aKiway, DOC_KIND aKind, const wxString& aAncestor,
+KICOMMON_API int DispatchMerge( KIWAY_SERVICES& aKiway, DOC_KIND aKind, const wxString& aAncestor,
                                 const wxString& aOurs, const wxString& aTheirs,
                                 const wxString& aOutput, bool aInteractive, bool aSingleFile,
                                 REPORTER* aReporter );
@@ -74,7 +74,7 @@ KICOMMON_API int DispatchMerge( KIWAY& aKiway, DOC_KIND aKind, const wxString& a
  *
  * @return the kiface's exit code, or ERR_UNKNOWN if unavailable.
  */
-KICOMMON_API int DispatchOpenDiffDialog( KIWAY& aKiway, DOC_KIND aKind, const wxString& aFileA,
+KICOMMON_API int DispatchOpenDiffDialog( KIWAY_SERVICES& aKiway, DOC_KIND aKind, const wxString& aFileA,
                                          const wxString& aFileB, const wxString& aLabelA,
                                          const wxString& aLabelB, wxWindow* aParent,
                                          REPORTER* aReporter = nullptr );
@@ -100,7 +100,7 @@ public:
  *         could not be loaded, with the reason in aReporter.
  */
 KICOMMON_API std::unique_ptr<DIFF_CANVAS_CONTEXT>
-             DispatchAttachDiffCanvases( KIWAY& aKiway, DOC_KIND aKind, const wxString& aFileA, const wxString& aFileB,
+             DispatchAttachDiffCanvases( KIWAY_SERVICES& aKiway, DOC_KIND aKind, const wxString& aFileA, const wxString& aFileB,
                                          WIDGET_DIFF_CANVAS& aBefore, WIDGET_DIFF_CANVAS& aAfter, DOCUMENT_DIFF& aDiff,
                                          REPORTER* aReporter = nullptr );
 

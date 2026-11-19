@@ -174,6 +174,3 @@ private:
     /// Was the value defined using the Spice notation?
     bool        m_spiceStr;
 };
-
-
-#endif /* SPICE_VALUE_H */

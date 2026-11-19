@@ -82,9 +82,7 @@ struct PGM_SINGLE_TOP : public PGM_GUI
         GetSettingsManager().SetKiway( &s_kiway );
         GetSettingsManager().RegisterSettings( new KICAD_SETTINGS );
 
-#ifdef KICAD_IPC_API
         m_api_server = std::make_unique<KICAD_API_SERVER>();
-#endif
 
         return true;
     }
@@ -96,9 +94,7 @@ struct PGM_SINGLE_TOP : public PGM_GUI
         GetKiCadThreadPool().purge();
         GetKiCadThreadPool().wait();
 
-#ifdef KICAD_IPC_API
         m_api_server.reset();
-#endif
 
         s_kiway.OnKiwayEnd();
 
@@ -120,10 +116,8 @@ struct PGM_SINGLE_TOP : public PGM_GUI
     /// The server of the IPC API is ready, once the editor is open.
     void ApiServerReady()
     {
-#ifdef KICAD_IPC_API
         if( m_api_server )
             m_api_server->SetReadyToReply();
-#endif
     }
 };
 

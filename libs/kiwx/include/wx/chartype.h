@@ -31,6 +31,9 @@
 #define wxT( x ) wxCONCAT_HELPER( L, x )
 #define wxS( x ) wxCONCAT_HELPER( L, x )
 
+/// The character type of the literals of wxS() (wxStringCharType of wxWidgets).
+typedef wchar_t wxStringCharType;
+
 /// A string of ASCII characters (wxASCII_STR()).
 #define wxASCII_STR( s ) wxString( s )
 

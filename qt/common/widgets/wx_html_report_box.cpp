@@ -13,8 +13,8 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -49,7 +49,27 @@ WX_HTML_REPORT_BOX::~WX_HTML_REPORT_BOX()
 
 REPORTER& WX_HTML_REPORT_BOX::Report( const wxString& aText, SEVERITY aSeverity )
 {
-    m_messages.push_back( aText );
+    KI_ERROR msg;
+    msg.SetTitle( aText ).SetSeverity( aSeverity );
+    m_messages.push_back( std::move( msg ) );
+
+    if( m_immediateMode )
+    {
+        Flush();
+        int px, py, x, y;
+        GetScrollPixelsPerUnit( &px, &py );
+        GetVirtualSize( &x, &y );
+        Scroll( -1, y * py );
+    }
+
+    return *this;
+}
+
+
+REPORTER& WX_HTML_REPORT_BOX::Report( const KI_ERROR& aError )
+{
+    REPORTER::Report( aError );
+    m_messages.push_back( aError );
 
     if( m_immediateMode )
     {
@@ -65,8 +85,8 @@ void WX_HTML_REPORT_BOX::Flush()
 {
     wxString html;
 
-    for( const wxString& line : m_messages )
-        html += generateHtml( line );
+    for( const KI_ERROR& msg : m_messages )
+        html += generateHtml( msg );
 
     SetPage( html );
 }
@@ -81,6 +101,13 @@ wxString WX_HTML_REPORT_BOX::generateHtml( const wxString& aLine )
     // The spacer after the line, so that it does not shift the line itself
     return wxString::Format( wxT( "%s<img align=texttop height=%d width=0 src=#><br>" ), aLine,
                              additionalLineSpacing );
+}
+
+
+wxString WX_HTML_REPORT_BOX::generateHtml( const KI_ERROR& aError )
+{
+    // TODO make better
+    return generateHtml( aError.AsString() );
 }
 
 

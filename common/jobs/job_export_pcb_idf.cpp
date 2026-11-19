@@ -80,4 +80,4 @@ void JOB_EXPORT_PCB_IDF::SetDefaultOutputPath( const wxString& aReferenceName )
 }
 
 
-REGISTER_JOB( pcb_export_idf, _HKI( "PCB: Export IDFv3" ), KIWAY::FACE_PCB, JOB_EXPORT_PCB_IDF );
+REGISTER_JOB( pcb_export_idf, _HKI( "PCB: Export IDFv3" ), KIWAY_FACES::FACE_PCB, JOB_EXPORT_PCB_IDF );

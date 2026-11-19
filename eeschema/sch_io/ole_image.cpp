@@ -23,7 +23,7 @@
 
 #include <wx/buffer.h>
 #include <wx/filename.h>
-#include <wx/image.h>
+#include <raster_image.h>
 
 #include <math/vector2d.h>
 #include <wx/log.h>
@@ -579,7 +579,7 @@ VECTOR2I OleWmfRenderSize( int aNaturalWidth, int aNaturalHeight, int aMaxWidth,
                      std::max( 1, KiROUND( aNaturalHeight * scale ) ) );
 }
 
-bool OleRenderWmf( const std::vector<uint8_t>& aWmf, int aMaxWidth, int aMaxHeight, wxImage& aImage,
+bool OleRenderWmf( const std::vector<uint8_t>& aWmf, int aMaxWidth, int aMaxHeight, RASTER_IMAGE& aImage,
                      double aTargetAspect )
 {
     if( aWmf.empty() || aWmf.size() > MAX_STREAM_BYTES
@@ -654,7 +654,14 @@ bool OleRenderWmf( const std::vector<uint8_t>& aWmf, int aMaxWidth, int aMaxHeig
 
     int* pixels = wmf_gd_get_image_pixels( api );
 
-    if( !pixels || !aImage.Create( width, height, false ) )
+    if( !pixels )
+    {
+        return false;
+    }
+
+    aImage = RASTER_IMAGE( width, height );
+
+    if( !aImage.IsOk() )
     {
         return false;
     }
@@ -673,7 +680,7 @@ bool OleRenderWmf( const std::vector<uint8_t>& aWmf, int aMaxWidth, int aMaxHeig
 
 
 bool OleRenderMetafilePreview( const std::vector<uint8_t>& aWmf, int aMaxWidth, int aMaxHeight,
-                                 wxImage& aImage, double aTargetAspect, bool* aUsedEmbeddedEmf )
+                                 RASTER_IMAGE& aImage, double aTargetAspect, bool* aUsedEmbeddedEmf )
 {
     if( aUsedEmbeddedEmf )
         *aUsedEmbeddedEmf = false;

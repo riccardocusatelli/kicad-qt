@@ -241,7 +241,7 @@ constexpr wxEOL kiwxNativeEOL = wxEOL_UNIX;
 #define WXSIZEOF( array ) ( sizeof( array ) / sizeof( array[0] ) )
 
 /// The identifier of the main thread (wxThread::IsMain()).
-bool wxIsMainThread();
+WXDLLIMPEXP_BASE bool wxIsMainThread();
 
 
 /// Deletes and nulls a pointer.

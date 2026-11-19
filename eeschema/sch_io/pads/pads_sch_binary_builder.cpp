@@ -55,7 +55,7 @@
 #include <tuple>
 #include <utility>
 #include <wx/buffer.h>
-#include <wx/image.h>
+#include <raster_image.h>
 #include <wx/log.h>
 
 namespace PADS_SCH_BINARY
@@ -122,7 +122,7 @@ namespace
 
         case MODEL_EMBEDDED_IMAGE_TYPE::WMF:
         {
-            wxImage image;
+            RASTER_IMAGE image;
             int width = std::clamp<int64_t>( std::abs( static_cast<int64_t>( aSource.extent[2] ) - aSource.extent[0] ),
                                              1, 4096 );
             int height = std::clamp<int64_t>( std::abs( static_cast<int64_t>( aSource.extent[3] ) - aSource.extent[1] ),
@@ -134,7 +134,7 @@ namespace
                 double scaledHeight = static_cast<double>( width ) * aSource.size.y / aSource.size.x;
                 int    fittedHeight =
                         static_cast<int>( std::llround( std::clamp( scaledHeight, 1.0, 4096.0 ) ) );
-                image.Rescale( width, fittedHeight, wxIMAGE_QUALITY_HIGH );
+                image = image.Rescale( width, fittedHeight );
                 decoded = refImage.SetImage( image );
             }
 
@@ -157,7 +157,7 @@ namespace
         if( targetWidth <= 0 || targetHeight <= 0 )
             THROW_IO_ERROR( FormatParserError( aSource.source, wxS( "embedded image has invalid page size" ) ) );
 
-        const wxImage* decodedImage = refImage.GetImage().GetImageData();
+        const RASTER_IMAGE* decodedImage = refImage.GetImage().GetImageData();
 
         if( decodedImage && decodedImage->IsOk() )
         {
@@ -167,8 +167,7 @@ namespace
 
             if( fittedHeight != decodedImage->GetHeight() )
             {
-                wxImage fitted = decodedImage->Copy();
-                fitted.Rescale( fitted.GetWidth(), fittedHeight, wxIMAGE_QUALITY_HIGH );
+                RASTER_IMAGE fitted = decodedImage->Rescale( decodedImage->GetWidth(), fittedHeight );
                 refImage.SetImage( fitted );
             }
         }

@@ -42,6 +42,7 @@
 #include <wx/base64.h>
 #include <wx/log.h>
 #include <wx/mstream.h>
+#include <raster_image.h>
 #include <gfx_import_utils.h>
 #include <import_gfx/svg_import_plugin.h>
 #include <import_gfx/graphics_importer_lib_symbol.h>
@@ -540,13 +541,9 @@ SCH_EASYEDAPRO_V3_PARSER::ParseSymbol( const EASYEDAPRO::V3_DOC_RAW&       aDoc,
             }
             else
             {
-                wxMemoryInputStream memis( buf.GetData(), buf.GetDataLen() );
+                RASTER_IMAGE img;
 
-                wxImage::SetDefaultLoadFlags( wxImage::GetDefaultLoadFlags()
-                                              & ~wxImage::Load_Verbose );
-                wxImage img;
-
-                if( img.LoadFile( memis, mimeType ) )
+                if( img.Load( buf.GetData(), buf.GetDataLen() ) )
                 {
                     int    dimMul = img.GetWidth() * img.GetHeight();
                     double maxPixels = 30000;
@@ -554,7 +551,7 @@ SCH_EASYEDAPRO_V3_PARSER::ParseSymbol( const EASYEDAPRO::V3_DOC_RAW&       aDoc,
                     if( dimMul > maxPixels )
                     {
                         double scale = sqrt( maxPixels / dimMul );
-                        img.Rescale( img.GetWidth() * scale, img.GetHeight() * scale );
+                        img = img.Rescale( img.GetWidth() * scale, img.GetHeight() * scale );
                     }
 
                     VECTOR2D pixelScale(
@@ -1238,8 +1235,6 @@ void SCH_EASYEDAPRO_V3_PARSER::ParseSchematic(
                 std::unique_ptr<SCH_BITMAP> bitmap = std::make_unique<SCH_BITMAP>();
                 REFERENCE_IMAGE&            refImage = bitmap->GetReferenceImage();
 
-                wxImage::SetDefaultLoadFlags( wxImage::GetDefaultLoadFlags()
-                                              & ~wxImage::Load_Verbose );
 
                 if( refImage.ReadImageFile( buf ) )
                 {

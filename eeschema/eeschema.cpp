@@ -427,7 +427,7 @@ static struct IFACE : public KIFACE_GUI, public UNITS_PROVIDER
 {
     // Of course all are virtual overloads, implementations of the KIFACE.
 
-    IFACE( const char* aName, KIWAY::FACE_T aType ) :
+    IFACE( const char* aName, KIWAY_FACES::FACE_T aType ) :
             KIFACE_GUI( aName, aType ),
             UNITS_PROVIDER( schIUScale, EDA_UNITS::MM ),
             m_libraryPreloadInProgress( false )
@@ -747,7 +747,7 @@ private:
     std::unique_ptr<API_HANDLER_SCH>          m_openHandler;
     std::unique_ptr<API_HANDLER_SCH_LIBRARIES> m_apiHandlerSchLibs;
 
-} kiface( "eeschema", KIWAY::FACE_SCH );
+} kiface( "eeschema", KIWAY_FACES::FACE_SCH );
 
 
 int eeschemaMergeExport( int aKind, const wxString& aAncestor, const wxString& aOurs,

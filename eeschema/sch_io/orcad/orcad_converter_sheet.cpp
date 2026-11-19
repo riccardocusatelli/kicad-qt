@@ -45,7 +45,7 @@
 
 #include <wx/buffer.h>
 #include <wx/filename.h>
-#include <wx/image.h>
+#include <raster_image.h>
 #include <wx/log.h>
 #include <wx/tokenzr.h>
 #include <wx/translation.h>
@@ -7834,7 +7834,7 @@ void ORCAD_CONVERTER::placeBitmap( const ORCAD_PRIMITIVE& aPrim, SCH_SCREEN* aSc
         }
         else if( preview.type == OLE_IMAGE_TYPE::WMF )
         {
-            wxImage image;
+            RASTER_IMAGE image;
             int     maxWidth = static_cast<int>( std::clamp<int64_t>( static_cast<int64_t>( widthDbu ) * 4, 1, 4096 ) );
             int maxHeight = static_cast<int>( std::clamp<int64_t>( static_cast<int64_t>( heightDbu ) * 4, 1, 4096 ) );
 
@@ -7852,14 +7852,14 @@ void ORCAD_CONVERTER::placeBitmap( const ORCAD_PRIMITIVE& aPrim, SCH_SCREEN* aSc
         return;
     }
 
-    if( const wxImage* sourceImage = refImage.GetImage().GetImageData() )
+    if( const RASTER_IMAGE* sourceImage = refImage.GetImage().GetImageData() )
     {
         VECTOR2I stretchedSize = OrcadStretchedImageSize( sourceImage->GetWidth(), sourceImage->GetHeight(),
                                                          widthDbu, heightDbu );
 
         if( stretchedSize.x != sourceImage->GetWidth() || stretchedSize.y != sourceImage->GetHeight() )
         {
-            wxImage stretched = sourceImage->Scale( stretchedSize.x, stretchedSize.y, wxIMAGE_QUALITY_HIGH );
+            RASTER_IMAGE stretched = sourceImage->Rescale( stretchedSize.x, stretchedSize.y );
 
             if( stretched.IsOk() )
                 refImage.SetImage( stretched );

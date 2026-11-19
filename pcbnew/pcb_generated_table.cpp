@@ -894,7 +894,7 @@ INSPECT_RESULT PCB_GENERATED_TABLE::Visit( INSPECTOR aInspector, void* aTestData
 }
 
 
-void PCB_GENERATED_TABLE::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void PCB_GENERATED_TABLE::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     aList.emplace_back( GetFriendlyName(), wxEmptyString );
     aList.emplace_back( _( "Rows" ), wxString::Format( wxT( "%d" ), GetRowCount() ) );

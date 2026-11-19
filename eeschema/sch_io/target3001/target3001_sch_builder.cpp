@@ -24,7 +24,7 @@
 #include <set>
 
 #include <wx/filename.h>
-#include <wx/image.h>
+#include <raster_image.h>
 #include <wx/mstream.h>
 
 #include <base_units.h>
@@ -515,14 +515,12 @@ SCH_BITMAP* TARGET3001_SCH_BUILDER::makePicture( const ELEMENT& aElem ) const
     const TARGET3001::RECTANGLE& r = aElem.rectangle;
     std::vector<uint8_t>         data = aElem.base.Picture();
     VECTOR2I                     size( std::abs( toSch( r.width ) ), std::abs( toSch( r.height ) ) );
-    wxImage                      image;
+    RASTER_IMAGE                 image;
 
     if( data.empty() || size.x == 0 || size.y == 0 )
         return nullptr;
 
-    wxMemoryInputStream stream( data.data(), data.size() );
-
-    if( !image.LoadFile( stream, wxBITMAP_TYPE_ANY ) )
+    if( !image.Load( data.data(), data.size() ) )
         return nullptr;
 
     // The picture is stretched over its rectangle; KiCad only scales images uniformly
@@ -532,7 +530,7 @@ SCH_BITMAP* TARGET3001_SCH_BUILDER::makePicture( const ELEMENT& aElem ) const
     int stretchedH = std::max( h, KiROUND( double( w ) * size.y / size.x ) );
 
     if( stretchedW > w + 1 || stretchedH > h + 1 )
-        image.Rescale( stretchedW, stretchedH, wxIMAGE_QUALITY_HIGH );
+        image = image.Rescale( stretchedW, stretchedH );
 
     EDA_ANGLE rot( double( r.direction ), DEGREES_T );
     VECTOR2D  half( r.width / 2.0, r.height / 2.0 );

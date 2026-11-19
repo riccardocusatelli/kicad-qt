@@ -82,7 +82,7 @@ BOOST_AUTO_TEST_CASE( MissingKifaceIsReportedOnceNotThrown )
                 return text;
             };
 
-    BOOST_CHECK_NO_THROW( kiface = kiway.KiFACE( KIWAY::FACE_SCH ) );
+    BOOST_CHECK_NO_THROW( kiface = kiway.KiFACE( KIWAY_FACES::FACE_SCH ) );
     loadLog = takeLog();
 
     // Every explicit open answers, unlike the implicit lookup below
@@ -92,7 +92,7 @@ BOOST_AUTO_TEST_CASE( MissingKifaceIsReportedOnceNotThrown )
         openLog = takeLog();
     }
 
-    BOOST_CHECK_NO_THROW( exitCode = kiway.ProcessJob( KIWAY::FACE_SCH, nullptr, &reporter ) );
+    BOOST_CHECK_NO_THROW( exitCode = kiway.ProcessJob( KIWAY_FACES::FACE_SCH, nullptr, &reporter ) );
 
     wxLog::SetActiveTarget( prevLog );
 

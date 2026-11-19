@@ -52,7 +52,7 @@ struct DOWNGRADE_EXPORT_RESULT
 /// Fill in the parts of a downgrade job that every editor sets the same way, run it, and hand
 /// back its report. Consent for any loss was already taken through the report dialog.
 template <typename JOB_T>
-bool RunDowngradeJob( KIWAY& aKiway, KIWAY::FACE_T aFace, JOB_T& aJob, const DOWNGRADE_EXPORT_PASS& aPass,
+bool RunDowngradeJob( KIWAY& aKiway, KIWAY_FACES::FACE_T aFace, JOB_T& aJob, const DOWNGRADE_EXPORT_PASS& aPass,
                       DOWNGRADE_EXPORT_RESULT& aResult )
 {
     aJob.m_target = aPass.m_target;

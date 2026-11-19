@@ -115,7 +115,7 @@ FOOTPRINT_MATCH_RESULT QueryMatchingFootprints( KIWAY& aKiway, const FOOTPRINT_M
     // Callers cannot act on the difference, so every failure is reported as an empty result.
     try
     {
-        KIFACE* kiface = aKiway.KiFACE( KIWAY::FACE_PCB );
+        KIFACE* kiface = aKiway.KiFACE( KIWAY_FACES::FACE_PCB );
 
         if( !kiface )
             return returnFailure();
@@ -142,7 +142,7 @@ bool StartFootprintLibrariesLoad( KIWAY& aKiway )
 {
     try
     {
-        KIFACE* kiface = aKiway.KiFACE( KIWAY::FACE_PCB );
+        KIFACE* kiface = aKiway.KiFACE( KIWAY_FACES::FACE_PCB );
 
         if( !kiface )
             return false;
@@ -167,7 +167,7 @@ float GetFootprintLibrariesLoadProgress( KIWAY& aKiway )
 {
     try
     {
-        KIFACE* kiface = aKiway.KiFACE( KIWAY::FACE_PCB );
+        KIFACE* kiface = aKiway.KiFACE( KIWAY_FACES::FACE_PCB );
 
         if( !kiface )
             return 1.0f;

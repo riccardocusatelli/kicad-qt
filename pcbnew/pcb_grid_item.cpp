@@ -354,7 +354,7 @@ EDA_ITEM* PCB_GRID_ITEM::Clone() const
 }
 
 
-void PCB_GRID_ITEM::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void PCB_GRID_ITEM::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     aList.emplace_back( _( "Grid Item" ), wxEmptyString );
 

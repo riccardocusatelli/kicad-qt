@@ -663,7 +663,7 @@ const std::set<wxString>& PANEL_SYMBOL_PIN_MAP::padNumbersFor( const wxString& a
 
     if( KIWAY_HOLDER* holder = dynamic_cast<KIWAY_HOLDER*>( wxGetTopLevelParent( this ) ) )
     {
-        if( KIFACE* cvpcb = holder->Kiway().KiFACE( KIWAY::FACE_CVPCB ) )
+        if( KIFACE* cvpcb = holder->Kiway().KiFACE( KIWAY_FACES::FACE_CVPCB ) )
         {
             KIFACE_FOOTPRINT_PAD_NUMBERS_SERVICE::Type fetch =
                     GetKifaceService<KIFACE_FOOTPRINT_PAD_NUMBERS_SERVICE>( cvpcb );

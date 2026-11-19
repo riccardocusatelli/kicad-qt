@@ -354,7 +354,7 @@ bool ClassifyProjectForDowngrade( KIWAY& aKiway, const wxString& aProjectDir, co
         job.m_dryRun = true;
         job.m_dropInsteadOfApproximate = aDropInsteadOfApproximate;
 
-        if( aKiway.ProcessJob( KIWAY::FACE_PCB, &job, &reporter ) != 0 )
+        if( aKiway.ProcessJob( KIWAY_FACES::FACE_PCB, &job, &reporter ) != 0 )
         {
             aError = reporter.Explain( _( "Could not read the board to check compatibility." ) );
             return false;
@@ -373,7 +373,7 @@ bool ClassifyProjectForDowngrade( KIWAY& aKiway, const wxString& aProjectDir, co
         job.m_dryRun = true;
         job.m_dropInsteadOfApproximate = aDropInsteadOfApproximate;
 
-        if( aKiway.ProcessJob( KIWAY::FACE_SCH, &job, &reporter ) != 0 )
+        if( aKiway.ProcessJob( KIWAY_FACES::FACE_SCH, &job, &reporter ) != 0 )
         {
             aError = reporter.Explain( _( "Could not read the schematic to check compatibility." ) );
             return false;
@@ -548,7 +548,7 @@ bool ExportProjectForDowngrade( KIWAY& aKiway, const wxString& aProjectDir, cons
         job.m_force = true;
         job.m_dropInsteadOfApproximate = aDropInsteadOfApproximate;
 
-        if( aKiway.ProcessJob( KIWAY::FACE_PCB, &job, &reporter ) != 0 )
+        if( aKiway.ProcessJob( KIWAY_FACES::FACE_PCB, &job, &reporter ) != 0 )
         {
             return failClosed( reporter.Explain( _( "Export failed: the board could not be converted. Nothing "
                                                     "was written." ) ) );
@@ -568,7 +568,7 @@ bool ExportProjectForDowngrade( KIWAY& aKiway, const wxString& aProjectDir, cons
         job.m_force = true;
         job.m_dropInsteadOfApproximate = aDropInsteadOfApproximate;
 
-        if( aKiway.ProcessJob( KIWAY::FACE_SCH, &job, &reporter ) != 0 )
+        if( aKiway.ProcessJob( KIWAY_FACES::FACE_SCH, &job, &reporter ) != 0 )
         {
             return failClosed( reporter.Explain( _( "Export failed: the schematic could not be converted. Nothing "
                                                     "was written." ) ) );

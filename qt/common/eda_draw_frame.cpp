@@ -307,46 +307,6 @@ bool EDA_DRAW_FRAME::LockFile( const wxString& aFileName )
 }
 
 
-void EDA_DRAW_FRAME::ScriptingConsoleEnableDisable()
-{
-    KIWAY_PLAYER* frame = Kiway().Player( FRAME_PYTHON, false );
-
-    QRect   rect = frameGeometry();
-    QPoint  center = rect.center();
-
-    if( !frame )
-    {
-        frame = Kiway().Player( FRAME_PYTHON, true, Kiway().GetTop() );
-
-        // If we received an error in the CTOR due to Python-ness, don't crash
-        if( !frame )
-            return;
-
-        if( !frame->isVisible() )
-            frame->show();
-
-        // Raise() does not bring the window on screen, when iconized
-        if( frame->isMinimized() )
-            frame->showNormal();
-
-        frame->raise();
-        frame->move( center - QPoint( frame->width() / 2, frame->height() / 2 ) );
-
-        return;
-    }
-
-    frame->setVisible( !frame->isVisible() );
-    frame->move( center - QPoint( frame->width() / 2, frame->height() / 2 ) );
-}
-
-
-bool EDA_DRAW_FRAME::IsScriptingConsoleVisible()
-{
-    KIWAY_PLAYER* frame = Kiway().Player( FRAME_PYTHON, false );
-    return frame && frame->isVisible();
-}
-
-
 void EDA_DRAW_FRAME::unitsChangeRefresh()
 {
     // Notify all tools the units have changed
@@ -1466,7 +1426,6 @@ std::vector<const PLUGIN_ACTION*> EDA_DRAW_FRAME::GetOrderedPluginActions( PLUGI
     std::vector<const PLUGIN_ACTION*> actions;
     KI_CHECK( aCfg, actions );
 
-#ifdef KICAD_IPC_API
     API_PLUGIN_MANAGER& mgr = PgmGui().GetPluginManager();
     std::vector<const PLUGIN_ACTION*> unsorted = mgr.GetActionsForScope( aScope );
     std::map<wxString, const PLUGIN_ACTION*> actionMap;
@@ -1491,7 +1450,6 @@ std::vector<const PLUGIN_ACTION*> EDA_DRAW_FRAME::GetOrderedPluginActions( PLUGI
         if( !handled.contains( action ) )
             actions.emplace_back( action );
     }
-#endif
 
     return actions;
 }
@@ -1499,7 +1457,6 @@ std::vector<const PLUGIN_ACTION*> EDA_DRAW_FRAME::GetOrderedPluginActions( PLUGI
 
 void EDA_DRAW_FRAME::AddApiPluginTools( ACTION_TOOLBAR* aToolbar )
 {
-#ifdef KICAD_IPC_API
     std::vector<const PLUGIN_ACTION*> actions = GetOrderedPluginActions( PluginActionScope(),
                                                                          config() );
 
@@ -1530,5 +1487,4 @@ void EDA_DRAW_FRAME::AddApiPluginTools( ACTION_TOOLBAR* aToolbar )
                               PgmGui().GetPluginManager().InvokeAction( identifier, reporter );
                           } );
     }
-#endif
 }

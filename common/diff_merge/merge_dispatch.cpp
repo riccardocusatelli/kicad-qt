@@ -26,7 +26,7 @@
 #include <cli/exit_codes.h>
 #include <kiface_base.h>
 #include <kiface_services.h>
-#include <kiway.h>
+#include <kiway_services.h>
 
 #include <wx/translation.h>
 
@@ -38,15 +38,15 @@ namespace
 {
 /// PCB and footprint kinds live in the pcbnew kiface; schematic and symbol
 /// kinds in eeschema.
-KIWAY::FACE_T faceForKind( DOC_KIND aKind )
+KIWAY_FACES::FACE_T faceForKind( DOC_KIND aKind )
 {
     switch( aKind )
     {
     case DOC_KIND::SCH:
     case DOC_KIND::SYM_LIB:
-        return KIWAY::FACE_SCH;
+        return KIWAY_FACES::FACE_SCH;
     default:
-        return KIWAY::FACE_PCB;
+        return KIWAY_FACES::FACE_PCB;
     }
 }
 } // namespace
@@ -65,7 +65,7 @@ wxString OlderFormatNotice( int aAncestorVersion, int aOursVersion, int aTheirsV
 }
 
 
-int DispatchMerge( KIWAY& aKiway, DOC_KIND aKind, const wxString& aAncestor, const wxString& aOurs,
+int DispatchMerge( KIWAY_SERVICES& aKiway, DOC_KIND aKind, const wxString& aAncestor, const wxString& aOurs,
                    const wxString& aTheirs, const wxString& aOutput, bool aInteractive,
                    bool aSingleFile, REPORTER* aReporter )
 {
@@ -85,7 +85,7 @@ int DispatchMerge( KIWAY& aKiway, DOC_KIND aKind, const wxString& aAncestor, con
 }
 
 
-int DispatchOpenDiffDialog( KIWAY& aKiway, DOC_KIND aKind, const wxString& aFileA,
+int DispatchOpenDiffDialog( KIWAY_SERVICES& aKiway, DOC_KIND aKind, const wxString& aFileA,
                             const wxString& aFileB, const wxString& aLabelA, const wxString& aLabelB,
                             wxWindow* aParent, REPORTER* aReporter )
 {
@@ -104,7 +104,7 @@ int DispatchOpenDiffDialog( KIWAY& aKiway, DOC_KIND aKind, const wxString& aFile
 }
 
 
-std::unique_ptr<DIFF_CANVAS_CONTEXT> DispatchAttachDiffCanvases( KIWAY& aKiway, DOC_KIND aKind, const wxString& aFileA,
+std::unique_ptr<DIFF_CANVAS_CONTEXT> DispatchAttachDiffCanvases( KIWAY_SERVICES& aKiway, DOC_KIND aKind, const wxString& aFileA,
                                                                  const wxString& aFileB, WIDGET_DIFF_CANVAS& aBefore,
                                                                  WIDGET_DIFF_CANVAS& aAfter, DOCUMENT_DIFF& aDiff,
                                                                  REPORTER* aReporter )

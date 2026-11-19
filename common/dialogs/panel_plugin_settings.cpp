@@ -71,12 +71,8 @@ bool PANEL_PLUGIN_SETTINGS::TransferDataFromWindow()
 
         settings->m_Api.python_interpreter = interpreter;
 
-#ifdef KICAD_IPC_API
         if( interpreterChanged )
             PgmGui().GetPluginManager().HandlePythonInterpreterChanged();
-#else
-        wxUnusedVar( interpreterChanged );
-#endif
     }
 
     settings->m_Api.enable_server = m_cbEnableApi->GetValue();

@@ -89,4 +89,4 @@ void JOB_EXPORT_PCB_STACKUP::SetDefaultOutputPath( const wxString& aReferenceNam
 }
 
 
-REGISTER_JOB( pcb_export_stackup, _HKI( "PCB: Export Stackup Table" ), KIWAY::FACE_PCB, JOB_EXPORT_PCB_STACKUP );
+REGISTER_JOB( pcb_export_stackup, _HKI( "PCB: Export Stackup Table" ), KIWAY_FACES::FACE_PCB, JOB_EXPORT_PCB_STACKUP );

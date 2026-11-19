@@ -63,9 +63,7 @@
 #include <thread_pool.h>
 #include <wildcards_and_files_ext.h>
 
-#ifdef KICAD_IPC_API
 #include <api/api_handler_common.h>
-#endif
 
 #include "pgm_kicad.h"
 #include "kicad_manager_frame.h"
@@ -184,11 +182,9 @@ bool PGM_KICAD::OnPgmInit()
 
     GetLibraryManager().LoadGlobalTables();
 
-#ifdef KICAD_IPC_API
     m_api_server = std::make_unique<KICAD_API_SERVER>();
     m_api_common_handler = std::make_unique<API_HANDLER_COMMON>();
     m_api_server->RegisterHandler( m_api_common_handler.get() );
-#endif
 
     // The project of the command line, else the last one open
     KICAD_SETTINGS* settings = static_cast<KICAD_SETTINGS*>( PgmSettings() );
@@ -241,9 +237,7 @@ bool PGM_KICAD::OnPgmInit()
     s_managerFrame->Show( true );
     s_managerFrame->Raise();
 
-#ifdef KICAD_IPC_API
     m_api_server->SetReadyToReply();
-#endif
 
     return true;
 }
@@ -264,9 +258,7 @@ void PGM_KICAD::OnPgmExit()
 
     Kiway.OnKiwayEnd();
 
-#ifdef KICAD_IPC_API
     m_api_server.reset();
-#endif
 
     if( m_settings_manager && m_settings_manager->IsOK() )
     {

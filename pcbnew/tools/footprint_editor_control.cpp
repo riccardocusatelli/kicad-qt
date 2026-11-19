@@ -669,7 +669,7 @@ int FOOTPRINT_EDITOR_CONTROL::ExportForOlderVersion( const TOOL_EVENT& aEvent )
                                       job.m_outputLibraryPath = out.GetPath();
                                   }
 
-                                  return RunDowngradeJob( m_frame->Kiway(), KIWAY::FACE_PCB, job, aPass, aResult );
+                                  return RunDowngradeJob( m_frame->Kiway(), KIWAY_FACES::FACE_PCB, job, aPass, aResult );
                               } );
 
     return 0;

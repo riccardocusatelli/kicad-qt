@@ -179,7 +179,7 @@ public:
 
     double Similarity( const BOARD_ITEM& aOther ) const override;
 
-    void GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList ) override;
+    void GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList ) override;
 
     /**
      * PCB_TABLE::Flip reverses the columns in either direction, as it does for a plain table's

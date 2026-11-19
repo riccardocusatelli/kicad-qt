@@ -36,7 +36,6 @@
 #include <reporter.h>
 #include <wildcards_and_files_ext.h>
 #include <unordered_set>
-#include <wx/image.h>
 #include <wx/log.h>
 
 

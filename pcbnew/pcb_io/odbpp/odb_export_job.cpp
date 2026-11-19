@@ -34,10 +34,7 @@
 
 #include <board.h>
 #include <reporter.h>
-#include <confirm.h>
-#include <kidialog.h>
 #include <paths.h>
-#include <pcb_edit_frame.h>
 #include <progress_reporter.h>
 #include <project.h>
 #include <jobs/job_export_pcb_odb.h>
@@ -343,7 +340,7 @@ bool OdbVariantFileTokensCollide( const std::vector<wxString>&                  
 
 
 static ODB_EXPORT_RESULT generateOneODBPackage( const JOB_EXPORT_PCB_ODB& aJob, BOARD* aBoard,
-                                                PCB_EDIT_FRAME* aParentFrame,
+                                                const ODB_CONFIRM_OVERWRITE& aConfirmOverwrite,
                                                 PROGRESS_REPORTER* aProgressReporter, REPORTER* aReporter,
                                                 wxString outputPath, const wxString& aVariant,
                                                 const wxString& aProductName )
@@ -415,14 +412,11 @@ static ODB_EXPORT_RESULT generateOneODBPackage( const JOB_EXPORT_PCB_ODB& aJob, 
             return result;
         }
 
-        if( outputFn.Exists() && aParentFrame )
+        if( outputFn.Exists() && aConfirmOverwrite )
         {
             msg = wxString::Format( _( "Output file '%s' already exists. Do you want to overwrite it?" ),
                                     outputFn.GetFullPath() );
-            KIDIALOG confirm( aParentFrame, msg, _( "Confirmation" ), wxOK | wxCANCEL | wxICON_WARNING );
-            confirm.SetOKLabel( _( "Overwrite" ) );
-
-            if( confirm.ShowModal() != wxID_OK )
+            if( !aConfirmOverwrite( msg ) )
                 return result;
         }
     }
@@ -444,15 +438,12 @@ static ODB_EXPORT_RESULT generateOneODBPackage( const JOB_EXPORT_PCB_ODB& aJob, 
 
         wxDir existing( outputFn.GetFullPath() );
 
-        if( existing.IsOpened() && ( existing.HasFiles() || existing.HasSubDirs() ) && aParentFrame )
+        if( existing.IsOpened() && ( existing.HasFiles() || existing.HasSubDirs() ) && aConfirmOverwrite )
         {
             msg = wxString::Format( _( "Output directory '%s' already exists and is not empty. "
                                        "Do you want to overwrite it?" ),
                                     outputFn.GetFullPath() );
-            KIDIALOG confirm( aParentFrame, msg, _( "Confirmation" ), wxOK | wxCANCEL | wxICON_WARNING );
-            confirm.SetOKLabel( _( "Overwrite" ) );
-
-            if( confirm.ShowModal() != wxID_OK )
+            if( !aConfirmOverwrite( msg ) )
                 return result;
         }
     }
@@ -573,13 +564,13 @@ static ODB_EXPORT_RESULT generateOneODBPackage( const JOB_EXPORT_PCB_ODB& aJob, 
 }
 
 
-ODB_EXPORT_RESULT GenerateODBPPFiles( const JOB_EXPORT_PCB_ODB& aJob, BOARD* aBoard, PCB_EDIT_FRAME* aParentFrame,
+ODB_EXPORT_RESULT GenerateODBPPFiles( const JOB_EXPORT_PCB_ODB& aJob, BOARD* aBoard, const ODB_CONFIRM_OVERWRITE& aConfirmOverwrite,
                                       PROGRESS_REPORTER* aProgressReporter, REPORTER* aReporter )
 {
     ODB_EXPORT_RESULT result;
 
     if( !aBoard )
-        return generateOneODBPackage( aJob, aBoard, aParentFrame, aProgressReporter, aReporter,
+        return generateOneODBPackage( aJob, aBoard, aConfirmOverwrite, aProgressReporter, aReporter,
                                       wxString(), wxString(), wxString() );
 
     if( !aJob.SupportsDataSet( aJob.m_dataSet ) )
@@ -698,7 +689,7 @@ ODB_EXPORT_RESULT GenerateODBPPFiles( const JOB_EXPORT_PCB_ODB& aJob, BOARD* aBo
         wxString path = aJob.ResolveOutputPath( ExpandVariantOutputPath( rawPath,
                                                                         GetVariantFileToken( variants.front() ) ),
                                                aJob.GetOutputPathIsDirectory(), aBoard->GetProject() );
-        return generateOneODBPackage( aJob, aBoard, aParentFrame, aProgressReporter, aReporter,
+        return generateOneODBPackage( aJob, aBoard, aConfirmOverwrite, aProgressReporter, aReporter,
                                       path, variants.front(), wxString() );
     }
 
@@ -727,7 +718,7 @@ ODB_EXPORT_RESULT GenerateODBPPFiles( const JOB_EXPORT_PCB_ODB& aJob, BOARD* aBo
         }
 
         path = aJob.ResolveOutputPath( path, aJob.GetOutputPathIsDirectory(), aBoard->GetProject() );
-        ODB_EXPORT_RESULT one = generateOneODBPackage( aJob, aBoard, aParentFrame, aProgressReporter,
+        ODB_EXPORT_RESULT one = generateOneODBPackage( aJob, aBoard, aConfirmOverwrite, aProgressReporter,
                                                        aReporter, path, variant, separateProducts[index] );
         result.m_outputs.insert( result.m_outputs.end(), one.m_outputs.begin(), one.m_outputs.end() );
 

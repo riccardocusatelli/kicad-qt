@@ -191,7 +191,7 @@ DIFF_VALUE WxAnyToDiffValue( const wxAny& aValue, PROPERTY_BASE* aProperty )
 
         if( aValue.GetAs<int>( &enumInt ) )
         {
-            const wxPGChoices& choices = aProperty->Choices();
+            const PROPERTY_CHOICES& choices = aProperty->Choices();
             std::string        label;
 
             for( unsigned ii = 0; ii < choices.GetCount(); ++ii )

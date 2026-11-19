@@ -39,5 +39,5 @@ wxString JOB_EXPORT_PCB_SPECCTRA_DSN::GetSettingsDialogTitle() const
 }
 
 
-REGISTER_JOB( pcb_export_specctra_dsn, _HKI( "PCB: Export Specctra DSN" ), KIWAY::FACE_PCB,
+REGISTER_JOB( pcb_export_specctra_dsn, _HKI( "PCB: Export Specctra DSN" ), KIWAY_FACES::FACE_PCB,
               JOB_EXPORT_PCB_SPECCTRA_DSN );

@@ -24,7 +24,7 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/common/dialogs
     ./exporters
     ./importers
-    ${CMAKE_SOURCE_DIR}/utils/idftools
+    ${CMAKE_SOURCE_DIR}/common/io/idf
     ./specctra_import_export
     ${INC_AFTER}
     )
@@ -875,7 +875,7 @@ add_headless_kiface( pcbnew_cli_kiface
     SOURCES     pcbnew_cli.cpp generators/pcb_tuning_pattern_headless.cpp
     OBJECTS     pcbnew_kiface_objects
     USAGE       pcbnew_kiface_objects common pcbcommon core 3d-viewer
-    ARCHIVES    3d-viewer connectivity pcbcommon pnsrouter common idf3 ${PCBNEW_IO_LIBRARIES}
+    ARCHIVES    3d-viewer connectivity pcbcommon pnsrouter common ${PCBNEW_IO_LIBRARIES}
                 pads_common allegro_convert
     LIBRARIES   kicommon_model gal_model core kicad_3dsg zint delaunator ${OPENGL_glu_LIBRARY} ZLIB::ZLIB Boost::headers ${wxWidgets_BASE_LIBRARIES} ${OCC_LIBRARIES} ${PYTHON_LIBRARIES}
                 ${PCBNEW_EXTRA_LIBS}

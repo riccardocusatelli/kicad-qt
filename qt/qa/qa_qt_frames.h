@@ -79,9 +79,7 @@ public:
     /// The server of the IPC API, as the one of single_top (the frames register their handlers)
     void StartApiServer()
     {
-#ifdef KICAD_IPC_API
         m_api_server = std::make_unique<KICAD_API_SERVER>();
-#endif
     }
 };
 

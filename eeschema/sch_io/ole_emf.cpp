@@ -30,6 +30,7 @@
 #include <fontconfig/fontconfig.h>
 #include <nanosvg.h>
 #include <nanosvgrast.h>
+#include <raster_image.h>
 #include <wx/filename.h>
 #include <wx/image.h>
 #include <wx/log.h>
@@ -118,7 +119,7 @@ bool containsRaster( std::string_view aSvg )
 } // namespace
 
 
-bool OleRenderEmf( const std::vector<uint8_t>& aEmf, int aMaxWidth, int aMaxHeight, wxImage& aImage,
+bool OleRenderEmf( const std::vector<uint8_t>& aEmf, int aMaxWidth, int aMaxHeight, RASTER_IMAGE& aImage,
                    double aTargetAspect )
 {
     using boost::endian::load_little_u32;
@@ -212,7 +213,7 @@ bool OleRenderEmf( const std::vector<uint8_t>& aEmf, int aMaxWidth, int aMaxHeig
     std::vector<unsigned char> pixels( size_t( renderWidth ) * renderHeight * 4 );
     nsvgRasterize( rasterizer.get(), drawing.get(), 0, 0, 1, pixels.data(), renderWidth, renderHeight,
                    renderWidth * 4 );
-    wxImage image( renderWidth, renderHeight );
+    RASTER_IMAGE image( renderWidth, renderHeight );
 
     if( !image.IsOk() )
         return false;
@@ -228,7 +229,7 @@ bool OleRenderEmf( const std::vector<uint8_t>& aEmf, int aMaxWidth, int aMaxHeig
     }
 
     if( renderWidth != size.x || renderHeight != size.y )
-        image.Rescale( size.x, size.y, wxIMAGE_QUALITY_HIGH );
+        image = image.Rescale( size.x, size.y );
 
     aImage = std::move( image );
     return aImage.IsOk();

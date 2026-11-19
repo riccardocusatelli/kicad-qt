@@ -1590,8 +1590,8 @@ private:
 
     static void logAccepted( size_t aEdges, size_t aHoles, uint32_t aStripes, size_t aBytes )
     {
-        KI_LOG_TRACE( wxS( "KICAD_FRACTURE_INDEX" ),
-                    wxS( "Using fracture edge index: edges=%zu, holes=%zu, stripes=%u, allocated=%zu bytes" ),
+        KI_LOG_TRACE( "KICAD_FRACTURE_INDEX",
+                    "Using fracture edge index: edges=%zu, holes=%zu, stripes=%u, allocated=%zu bytes",
                     aEdges, aHoles, aStripes, aBytes );
     }
 

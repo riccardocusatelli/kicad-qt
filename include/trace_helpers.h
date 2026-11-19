@@ -483,37 +483,6 @@ extern KICOMMON_API wxString dump( const wxKeyEvent& aEvent );
 extern KICOMMON_API wxString dump( const wxArrayString& aArray );
 
 
-    static TRACE_MANAGER& Instance();
-
-    /// Prints the formatted message on stderr if the trace is enabled.
-    template <typename... ARGS>
-    void Trace( const wxString& aWhat, const wxString& aFmt, const ARGS&... aArgs )
-    {
-        if( IsTraceEnabled( aWhat ) )
-            printTrace( aWhat, wxString::Format( aFmt, aArgs... ) );
-    }
-
-    bool IsTraceEnabled( const wxString& aWhat );
-
-private:
-    void printTrace( const wxString& aWhat, const wxString& aMessage );
-    void init();
-
-    std::map<wxString, bool> m_enabledTraces;
-    bool                     m_globalTraceEnabled;
-    bool                     m_printAllTraces;
-};
-
-#define KI_TRACE( aWhat, ... )                                                                     \
-    if( TRACE_MANAGER::Instance().IsTraceEnabled( aWhat ) )                                        \
-    {                                                                                              \
-        TRACE_MANAGER::Instance().Trace( aWhat, __VA_ARGS__ );                                     \
-    }                                                                                              \
-    else                                                                                           \
-    {                                                                                              \
-    }
-
-
 #ifdef KICAD_GAL_PROFILE
 extern KICOMMON_API LATENCY_PROBE latencyProbeZoomToRender;
 extern KICOMMON_API LATENCY_PROBE latencyProbeRepaintToMotion;

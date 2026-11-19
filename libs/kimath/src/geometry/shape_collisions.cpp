@@ -1141,7 +1141,7 @@ inline bool CollCaseReversed ( const SHAPE* aA, const SHAPE* aB, int aClearance,
 static inline bool Collide( const SHAPE_ELLIPSE& aA, const SHAPE_SEGMENT& aSeg, int aClearance, int* aActual,
                             VECTOR2I* aLocation, VECTOR2I* aMTV )
 {
-    KI_ASSERT_MSG( !aMTV, wxT( "MTV not implemented for SHAPE_ELLIPSE collisions" ) );
+    KI_ASSERT_MSG( !aMTV, "MTV not implemented for SHAPE_ELLIPSE collisions" );
 
     const int halfWidth = aSeg.GetWidth() / 2;
     const int effClear = aClearance + halfWidth;
@@ -1165,7 +1165,7 @@ static inline bool Collide( const SHAPE_ELLIPSE& aA, const SHAPE_SEGMENT& aSeg, 
 static inline bool Collide( const SHAPE_ELLIPSE& aA, const SHAPE_CIRCLE& aB, int aClearance, int* aActual,
                             VECTOR2I* aLocation, VECTOR2I* aMTV )
 {
-    KI_ASSERT_MSG( !aMTV, wxT( "MTV not implemented for SHAPE_ELLIPSE collisions" ) );
+    KI_ASSERT_MSG( !aMTV, "MTV not implemented for SHAPE_ELLIPSE collisions" );
 
     const VECTOR2I    c = aB.GetCenter();
     const int         r = aB.GetRadius();
@@ -1192,7 +1192,7 @@ static inline bool Collide( const SHAPE_ELLIPSE& aA, const SHAPE_CIRCLE& aB, int
 static inline bool Collide( const SHAPE_ELLIPSE& aA, const SHAPE_RECT& aB, int aClearance, int* aActual,
                             VECTOR2I* aLocation, VECTOR2I* aMTV )
 {
-    KI_ASSERT_MSG( !aMTV, wxT( "MTV not implemented for SHAPE_ELLIPSE collisions" ) );
+    KI_ASSERT_MSG( !aMTV, "MTV not implemented for SHAPE_ELLIPSE collisions" );
     return collideEllipseVsSegments(
             aA, aB.Outline(), aClearance, /*halfWidth*/ 0,
             [&]
@@ -1206,7 +1206,7 @@ static inline bool Collide( const SHAPE_ELLIPSE& aA, const SHAPE_RECT& aB, int a
 static inline bool Collide( const SHAPE_ELLIPSE& aA, const SHAPE_LINE_CHAIN_BASE& aB, int aClearance, int* aActual,
                             VECTOR2I* aLocation, VECTOR2I* aMTV )
 {
-    KI_ASSERT_MSG( !aMTV, wxT( "MTV not implemented for SHAPE_ELLIPSE collisions" ) );
+    KI_ASSERT_MSG( !aMTV, "MTV not implemented for SHAPE_ELLIPSE collisions" );
     return collideEllipseVsSegments(
             aA, aB, aClearance, /*halfWidth*/ 0,
             [&]
@@ -1220,7 +1220,7 @@ static inline bool Collide( const SHAPE_ELLIPSE& aA, const SHAPE_LINE_CHAIN_BASE
 static inline bool Collide( const SHAPE_ELLIPSE& aA, const SHAPE_ARC& aB, int aClearance, int* aActual,
                             VECTOR2I* aLocation, VECTOR2I* aMTV )
 {
-    KI_ASSERT_MSG( !aMTV, wxT( "MTV not implemented for SHAPE_ELLIPSE collisions" ) );
+    KI_ASSERT_MSG( !aMTV, "MTV not implemented for SHAPE_ELLIPSE collisions" );
 
     const int              halfWidth = aB.GetWidth() / 2;
     const int              effClear = aClearance + halfWidth;
@@ -1240,7 +1240,7 @@ static inline bool Collide( const SHAPE_ELLIPSE& aA, const SHAPE_ARC& aB, int aC
 static inline bool Collide( const SHAPE_ELLIPSE& aA, const SHAPE_ELLIPSE& aB, int aClearance, int* aActual,
                             VECTOR2I* aLocation, VECTOR2I* aMTV )
 {
-    KI_ASSERT_MSG( !aMTV, wxT( "MTV not implemented for SHAPE_ELLIPSE collisions" ) );
+    KI_ASSERT_MSG( !aMTV, "MTV not implemented for SHAPE_ELLIPSE collisions" );
 
     if( !aA.IsArc() && aA.PointInside( aB.GetCenter() ) )
     {

@@ -29,7 +29,7 @@
 #include <math/vector2d.h>
 #include <wx/string.h>
 
-class wxImage;
+class RASTER_IMAGE;
 class wxMemoryBuffer;
 
 
@@ -79,15 +79,15 @@ wxString OleLibWmfFontDirectory();
 
 bool OleMakeBmpFromDib( const std::vector<uint8_t>& aDib, wxMemoryBuffer& aOut );
 
-bool OleRenderWmf( const std::vector<uint8_t>& aWmf, int aMaxWidth, int aMaxHeight, wxImage& aImage,
+bool OleRenderWmf( const std::vector<uint8_t>& aWmf, int aMaxWidth, int aMaxHeight, RASTER_IMAGE& aImage,
                    double aTargetAspect = 0.0 );
 
 /// Render a metafile preview, preferring an EMF the WMF carries over the WMF itself.
 bool OleRenderMetafilePreview( const std::vector<uint8_t>& aWmf, int aMaxWidth, int aMaxHeight,
-                               wxImage& aImage, double aTargetAspect = 0.0,
+                               RASTER_IMAGE& aImage, double aTargetAspect = 0.0,
                                bool* aUsedEmbeddedEmf = nullptr );
 
-bool OleRenderEmf( const std::vector<uint8_t>& aEmf, int aMaxWidth, int aMaxHeight, wxImage& aImage,
+bool OleRenderEmf( const std::vector<uint8_t>& aEmf, int aMaxWidth, int aMaxHeight, RASTER_IMAGE& aImage,
                    double aTargetAspect = 0.0 );
 
 VECTOR2I OleWmfRenderSize( int aNaturalWidth, int aNaturalHeight, int aMaxWidth, int aMaxHeight,

@@ -233,7 +233,9 @@ set( KIQT_COMMON_TOOL_SRCS
     common_tools.cpp
     conditional_menu.cpp
     construction_manager.cpp
-    edit_constraints.cpp
+    edit_relations.cpp
+    arc_mode_session.cpp
+    arc_tangent_seed.cpp
     edit_points.cpp
     editor_conditions.cpp
     grid_helper.cpp
@@ -268,6 +270,8 @@ kiqt_generate_fbp( KIQT_COMMON_FBP_SRCS
 kiqt_generate_fbp_compat( KIQT_COMMON_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/common/dialog_about/dialog_about_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_autosave_recovery_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_fields_table_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_import_gfx_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/eda_list_dialog_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_book_reporter_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_configure_paths_base.fbp
@@ -308,12 +312,29 @@ kiqt_generate_fbp_compat( KIQT_COMMON_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_gal_options_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_image_editor_base.fbp
     ${CMAKE_SOURCE_DIR}/common/widgets/wx_html_report_panel_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_downgrade_report_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_export_older_version_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/panel_snapping_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/git/dialog_git_advanced_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/git/dialog_git_identity_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/git/dialog_git_new_tag_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/git/dialog_git_remote_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/git/dialog_text_diff_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/git/git_commit_pane_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/git/panel_git_branches_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/git/panel_git_history_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/git/panel_git_remotes_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/git/panel_git_repository_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/git/panel_git_stashes_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/git/panel_git_tags_base.fbp
     )
 
 set( KIQT_COMMON_COMPAT_SRCS
     dialog_about/AboutDialog_main.cpp
     dialog_about/dialog_about.cpp
     dialogs/dialog_autosave_recovery.cpp
+    dialogs/dialog_fields_table.cpp
+    dialogs/dialog_import_gfx.cpp
     dialogs/dialog_configure_paths.cpp
     dialogs/dialog_edit_library_tables.cpp
     dialogs/dialog_grid_settings.cpp
@@ -326,7 +347,6 @@ set( KIQT_COMMON_COMPAT_SRCS
     dialogs/eda_list_dialog.cpp
     dialogs/dialog_restore_local_history.cpp
     local_history_ui.cpp
-    dialogs/git/dialog_git_commit.cpp
     dialogs/git/dialog_git_credentials.cpp
     dialogs/git/dialog_git_switch.cpp
     dialogs/git/dialog_git_repository.cpp
@@ -397,7 +417,6 @@ set( KIQT_COMMON_COMPAT_SRCS
     dialogs/panel_gal_options.cpp
     dialogs/panel_image_editor.cpp
     dialogs/panel_setup_netclasses.cpp
-    dialogs/rule_editor_dialog_base.cpp
     drawing_sheet/ds_data_model_io.cpp
     drawing_sheet/ds_proxy_undo_item.cpp
     import_gfx/dxf_import_plugin.cpp
@@ -413,6 +432,43 @@ set( KIQT_COMMON_COMPAT_SRCS
     widgets/rc_tree_model.cpp
     widgets/widget_save_restore.cpp
     widgets/wx_html_report_panel.cpp
+    bitmap_tracing.cpp
+    footprint_library_query.cpp
+    symbol_library_query.cpp
+    table_io.cpp
+    render_utils.cpp
+    import_gfx/bitmap_import_plugin.cpp
+    dialogs/dialog_convert_image_to_outlines.cpp
+    dialogs/dialog_downgrade_report.cpp
+    dialogs/dialog_export_older_version.cpp
+    dialogs/fields_table_data_model.cpp
+    dialogs/fields_view_controls_grid_data_model.cpp
+    dialogs/panel_snapping.cpp
+    dialogs/git/dialog_git_identity.cpp
+    dialogs/git/dialog_git_new_tag.cpp
+    dialogs/git/dialog_git_remote.cpp
+    dialogs/git/dialog_text_diff.cpp
+    dialogs/git/git_advanced_dialog.cpp
+    dialogs/git/git_commit_pane.cpp
+    dialogs/git/git_credentials_prompt.cpp
+    dialogs/git/git_file_diff_area.cpp
+    dialogs/git/git_status_entries.cpp
+    dialogs/git/git_transfer.cpp
+    dialogs/git/git_ui_utils.cpp
+    dialogs/git/panel_git_branches.cpp
+    dialogs/git/panel_git_history.cpp
+    dialogs/git/panel_git_remotes.cpp
+    dialogs/git/panel_git_repository.cpp
+    dialogs/git/panel_git_stashes.cpp
+    dialogs/git/panel_git_tags.cpp
+    widgets/field_warning_icon.cpp
+    widgets/file_checklist_ctrl.cpp
+    widgets/kistatusbar_popup.cpp
+    widgets/line_ending_bitmap.cpp
+    widgets/wx_data_view_hyperlink_renderer.cpp
+    widgets/wx_debounced_action.cpp
+    preview_items/ellipse_assistant.cpp
+    preview_items/ellipse_geom_manager.cpp
     )
 
 list( TRANSFORM KIQT_COMMON_COMPAT_SRCS PREPEND ${CMAKE_SOURCE_DIR}/common/ )
@@ -571,33 +627,28 @@ target_link_libraries( kiqt_common
         Qt6::Network
     )
 
-# Python scripting and the IPC API of KiCad: the interpreter, the server of the requests and the
-# plugins (in kicommon in the wxWidgets build), with the program services of PGM_GUI
-target_sources( kiqt_common PRIVATE
-    ${CMAKE_SOURCE_DIR}/scripting/python_scripting.cpp
-    )
-
-target_include_directories( kiqt_common PRIVATE ${CMAKE_SOURCE_DIR}/scripting )
-
 # The dialogs of common include their headers by name (as in pcbnew and eeschema)
 target_include_directories( kiqt_common PRIVATE ${CMAKE_SOURCE_DIR}/common/dialogs )
 
 # The actions of the project manager (as in common)
 target_sources( kiqt_common PRIVATE ${CMAKE_SOURCE_DIR}/common/tool/common_control.cpp )
 target_include_directories( kiqt_common PRIVATE ${CMAKE_SOURCE_DIR}/kicad )
-target_include_directories( kiqt_common SYSTEM PUBLIC ${PYTHON_INCLUDE_DIRS} )
-target_link_libraries( kiqt_common PUBLIC ${PYTHON_LIBRARIES} pybind11::embed )
 
-if( KICAD_IPC_API )
-    target_sources( kiqt_common PRIVATE
-        ${CMAKE_SOURCE_DIR}/common/api/api_handler.cpp
-        ${CMAKE_SOURCE_DIR}/common/api/api_handler_common.cpp
-        ${CMAKE_SOURCE_DIR}/common/api/api_handler_editor.cpp
-        ${CMAKE_SOURCE_DIR}/common/api/api_plugin.cpp
-        ${CMAKE_SOURCE_DIR}/common/api/api_plugin_manager.cpp
-        ${CMAKE_SOURCE_DIR}/common/api/api_server.cpp
-        ${CMAKE_SOURCE_DIR}/scripting/python_manager.cpp
-        )
+# The IPC API of KiCad: the server of the requests, the plugins and the Python environments
+# they run in (in kicommon and common in the wxWidgets build), with the program services of
+# PGM_GUI
+target_sources( kiqt_common PRIVATE
+    ${CMAKE_SOURCE_DIR}/common/api/api_handler.cpp
+    ${CMAKE_SOURCE_DIR}/common/api/api_handler_common.cpp
+    ${CMAKE_SOURCE_DIR}/common/api/api_handler_editor.cpp
+    ${CMAKE_SOURCE_DIR}/common/api/api_handler_libraries.cpp
+    ${CMAKE_SOURCE_DIR}/common/api/api_plugin.cpp
+    ${CMAKE_SOURCE_DIR}/common/api/api_plugin_manager.cpp
+    ${CMAKE_SOURCE_DIR}/common/api/api_server.cpp
+    ${CMAKE_SOURCE_DIR}/common/api/api_task_gui_reporter.cpp
+    ${CMAKE_SOURCE_DIR}/common/api/api_task_scheduler.cpp
+    ${CMAKE_SOURCE_DIR}/common/api/cross_probe_client.cpp
+    ${CMAKE_SOURCE_DIR}/common/api/python_manager.cpp
+    )
 
-    target_link_libraries( kiqt_common PUBLIC kinng kiapi )
-endif()
+target_link_libraries( kiqt_common PUBLIC kinng kiapi )

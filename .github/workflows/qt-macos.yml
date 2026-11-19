@@ -37,7 +37,8 @@ jobs:
           brew install --quiet ninja ccache swig coreutils pkgconf gettext \
             qt boost glm glew cairo pixman harfbuzz fontconfig freetype \
             libgit2 nng unixodbc libngspice protobuf zstd opencascade \
-            python@3.13 pybind11 zint poppler sqlite eigen glib openssl@3 curl
+            python@3.13 pybind11 zint poppler sqlite eigen glib openssl@3 curl \
+            glslang spirv-tools spirv-cross
           brew list --versions qt boost opencascade protobuf python@3.13
 
       - name: Compiler cache

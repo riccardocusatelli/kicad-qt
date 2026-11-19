@@ -25,6 +25,9 @@
 #include <wx/app.h>
 #include <wx/log.h>
 #include <wx/msgout.h>
+#include <wx/thread.h>
+
+#include <thread>
 
 
 namespace
@@ -89,4 +92,14 @@ void wxUninitialize()
 {
     if( --s_initCount == 0 )
         wxEntryCleanup();
+}
+
+
+// The main thread is the one that loads the library (the static initialization of the program)
+static const std::thread::id s_mainThreadId = std::this_thread::get_id();
+
+
+bool wxIsMainThread()
+{
+    return std::this_thread::get_id() == s_mainThreadId;
 }

@@ -632,7 +632,7 @@ int SCH_EDITOR_CONTROL::ExportForOlderVersion( const TOOL_EVENT& aEvent )
                                       job.m_outputDir = out.GetPath();
                                   }
 
-                                  if( !RunDowngradeJob( m_frame->Kiway(), KIWAY::FACE_SCH, job, aPass, aResult ) )
+                                  if( !RunDowngradeJob( m_frame->Kiway(), KIWAY_FACES::FACE_SCH, job, aPass, aResult ) )
                                       return false;
 
                                   aResult.m_variantsFound = job.m_foundVariants;

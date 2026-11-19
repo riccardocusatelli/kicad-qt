@@ -212,7 +212,7 @@ wxString PCB_DRILL_MAP::GetItemDescription( UNITS_PROVIDER* aUnitsProvider, bool
 }
 
 
-void PCB_DRILL_MAP::GetMsgPanelInfo( EDA_DRAW_FRAME* aFrame, std::vector<MSG_PANEL_ITEM>& aList )
+void PCB_DRILL_MAP::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     aList.emplace_back( _( "Drill Map" ), wxEmptyString );
     aList.emplace_back( _( "Layer" ), GetLayerName() );

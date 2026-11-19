@@ -44,7 +44,7 @@
 
 
 /// Identifiers of the KIFACE implementations.  KIWAY derives from this, so the historical
-/// spelling KIWAY::FACE_PCB keeps working; data-model code uses KIWAY_FACES::FACE_PCB.
+/// spelling KIWAY_FACES::FACE_PCB keeps working; data-model code uses KIWAY_FACES::FACE_PCB.
 struct KIWAY_FACES
 {
     enum FACE_T

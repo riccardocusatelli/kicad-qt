@@ -505,7 +505,7 @@ int BOARD_EDITOR_CONTROL::ExportForOlderVersion( const TOOL_EVENT& aEvent )
                 if( !aPass.m_dryRun )
                     job.m_outputFile = wxFileName( aPass.m_folder, wxFileName( board ).GetFullName() ).GetFullPath();
 
-                return RunDowngradeJob( m_frame->Kiway(), KIWAY::FACE_PCB, job, aPass, aResult );
+                return RunDowngradeJob( m_frame->Kiway(), KIWAY_FACES::FACE_PCB, job, aPass, aResult );
             } );
 
     return 0;

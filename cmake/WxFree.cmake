@@ -195,18 +195,22 @@ function( kicad_wx_free_restrict_targets )
         kiapi
         kiplatform_core
         kimath
+        snap                # snapping solver (upstream libs/snap)
+        planegcs            # geometric constraint solver of the board constraints
+        emf2svg libwmf_orcad    # EMF/WMF images of the OrCAD importer
+        autotrax2pcbnew diptrace2pcbnew easypc2pcbnew sprint_layout2pcbnew target30012pcbnew
         fmt
         sexpr
         nlohmann_json_schema_validator
-        glad                # GL types for the GLU tessellator of the VRML export (idf3)
+        glad                # GL types for the GLU tessellator of the VRML export (common io/idf)
         kitess              # the GLU tessellator itself, without OpenGL (KICAD_HEADLESS_ONLY)
-        idf3                # also linked whole by the IDF 3D plugin
         kicad-cli
         kicommon_model
         gal_model           # with the raster Cairo GAL of the Qt canvas
         eeschema_cli_kiface eeschema_cli_kiface_archive
         pcbnew_cli_kiface pcbnew_cli_kiface_archive
         s3d_plugin_idf s3d_plugin_oce s3d_plugin_vrml     # 3D models (VRML export, render)
+        kicad_3d_import     # the VRML/X3D and STEP/IGES importers of the 3D plugins
 
         # The QA without the GUI (KICAD_BUILD_QA_TESTS, see qa/CMakeLists.txt)
         qa_utils qa_kimath qa_sexpr
@@ -324,6 +328,8 @@ function( kicad_wx_free_restrict_targets )
 
             if( _abs IN_LIST _allowed )
                 list( APPEND _kept_sources ${_src} )
+            else()
+                file( APPEND ${PROJECT_BINARY_DIR}/wxfree_dropped.txt "${_target} ${_abs}\n" )
             endif()
         endforeach()
 

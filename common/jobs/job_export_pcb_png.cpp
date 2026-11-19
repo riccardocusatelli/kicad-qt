@@ -55,4 +55,4 @@ wxString JOB_EXPORT_PCB_PNG::GetSettingsDialogTitle() const
 }
 
 
-REGISTER_JOB( pcb_export_png, _HKI( "PCB: Export PNG" ), KIWAY::FACE_PCB, JOB_EXPORT_PCB_PNG );
+REGISTER_JOB( pcb_export_png, _HKI( "PCB: Export PNG" ), KIWAY_FACES::FACE_PCB, JOB_EXPORT_PCB_PNG );

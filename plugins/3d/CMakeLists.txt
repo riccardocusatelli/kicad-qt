@@ -8,7 +8,12 @@ function( kicad_find_3d_import_wx_libraries output_variable )
     set( ${output_variable} ${wxWidgets_LIBRARIES} PARENT_SCOPE )
 endfunction()
 
-kicad_find_3d_import_wx_libraries( KICAD_3D_IMPORT_WX_LIBRARIES )
+if( KICAD_WX_FREE )
+    # The wx compat layer, and the logging of the core (KI_LOG_TRACE)
+    set( KICAD_3D_IMPORT_WX_LIBRARIES kiwx core )
+else()
+    kicad_find_3d_import_wx_libraries( KICAD_3D_IMPORT_WX_LIBRARIES )
+endif()
 
 # Developers may wish to set one of these parameters on debug
 # builds to get informational messages from the various parser

@@ -1084,9 +1084,7 @@ protected:
 
     void updateSelectionFilterVisbility() override;
 
-#ifdef KICAD_IPC_API
     void onPluginAvailabilityChanged();
-#endif
 
 private:
     /// Register the loaded schematic and its project for autosave history. A no-op when they already are.

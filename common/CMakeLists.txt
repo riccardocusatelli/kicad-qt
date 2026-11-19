@@ -413,7 +413,6 @@ set( KICOMMON_SRCS
     scintilla_tricks.cpp
     ui_events.cpp
     trace_helpers_gui.cpp
-    ../scripting/python_scripting.cpp
     startwizard/startwizard.cpp
     startwizard/startwizard_provider_libraries.cpp
     startwizard/startwizard_provider_privacy.cpp
@@ -538,8 +537,6 @@ target_link_libraries( kicommon
     ${wxWidgets_LIBRARIES}
     ${SPNAV_LIBRARIES}
 
-    # needed because of python_scripting.cpp
-    ${PYTHON_LIBRARIES}
    	${FREETYPE_LIBRARIES}
    	${HarfBuzz_LIBRARIES}
 	${Fontconfig_LIBRARIES}

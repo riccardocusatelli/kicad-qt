@@ -21,7 +21,6 @@ set( KICAD_WX_FREE_TARGETS
     fabmaster
     fmt
     gal_model
-    idf3
     ipc2581
     kicad-cli
     kicad_3dsg
@@ -48,6 +47,8 @@ set( KICAD_WX_FREE_SOURCES_3d_viewer
     3d-viewer/3d_canvas/create_3Dgraphic_brd_items.cpp
     3d-viewer/3d_canvas/create_layer_items.cpp
     3d-viewer/3d_fastmath.cpp
+    3d-viewer/3d_model_align.cpp
+    3d-viewer/3d_rendering/3d_placeholder_utils.cpp
     3d-viewer/3d_rendering/buffers_debug.cpp
     3d-viewer/3d_rendering/color_rgba.cpp
     3d-viewer/3d_rendering/post_shader.cpp
@@ -93,6 +94,7 @@ set( KICAD_WX_FREE_SOURCES_3d_viewer
 
 set( KICAD_WX_FREE_SOURCES_allegro2pcbnew
     pcbnew/pcb_io/allegro/allegro_builder.cpp
+    pcbnew/pcb_io/allegro/allegro_db_utils.cpp
     pcbnew/pcb_io/allegro/pcb_io_allegro.cpp
     )
 
@@ -123,12 +125,24 @@ set( KICAD_WX_FREE_SOURCES_clipper2
     )
 
 set( KICAD_WX_FREE_SOURCES_common
+    common/api/api_handler_libraries.cpp
     common/api/api_text_attributes.cpp
     common/base_screen.cpp
     common/bin_mod.cpp
     common/bitmap_base.cpp
+    common/column_formatter.cpp
     common/commit.cpp
+    common/database/access_engine_mutex.cpp
+    common/database/database_backend.cpp
     common/database/database_connection.cpp
+    common/database/database_value.cpp
+    common/database/db_backend_support.cpp
+    common/database/db_worker_thread.cpp
+    common/database/odbc_backend.cpp
+    common/database/sqlite_backend.cpp
+    common/diff_merge/diff_job_output.cpp
+    common/diff_merge/diff_renderer_plotter.cpp
+    common/diff_merge/lib_element_diff.cpp
     common/drawing_sheet/drawing_sheet_default_description.cpp
     common/drawing_sheet/drawing_sheet_parser.cpp
     common/drawing_sheet/ds_data_item.cpp
@@ -158,24 +172,51 @@ set( KICAD_WX_FREE_SOURCES_common
     common/io/altium/altium_props_utils.cpp
     common/io/cadstar/cadstar_archive_parser.cpp
     common/io/cadstar/cadstar_parts_lib_parser.cpp
+    common/io/diptrace/diptrace_binary_reader.cpp
+    common/io/eagle/eagle_bin_parser.cpp
     common/io/eagle/eagle_parser.cpp
     common/io/easyeda/easyeda_parser_base.cpp
     common/io/easyeda/easyeda_parser_structs.cpp
     common/io/easyedapro/easyedapro_import_utils.cpp
     common/io/easyedapro/easyedapro_parser.cpp
+    common/io/easyedapro/easyedapro_v3_parser.cpp
+    common/io/easypc/easypc_archive.cpp
+    common/io/easypc/easypc_classes_connectivity.cpp
+    common/io/easypc/easypc_classes_geometry.cpp
+    common/io/easypc/easypc_classes_library.cpp
+    common/io/easypc/easypc_classes_root.cpp
+    common/io/easypc/easypc_classes_styles.cpp
+    common/io/easypc/easypc_design_settings.cpp
+    common/io/easypc/easypc_document.cpp
+    common/io/easypc/easypc_file.cpp
+    common/io/easypc/easypc_text_metrics.cpp
+    common/io/idf/idf_common.cpp
+    common/io/idf/idf_helpers.cpp
+    common/io/idf/idf_outlines.cpp
+    common/io/idf/idf_parser.cpp
+    common/io/idf/vrml_layer.cpp
+    common/io/pcad/s_expr_loader.cpp
+    common/io/target3001/target3001_fonts.cpp
+    common/io/target3001/target3001_parser.cpp
+    common/item_realignment.cpp
     common/kiface_base.cpp
+    common/line_ending.cpp
     common/marker_base.cpp
     common/origin_transforms.cpp
     common/plotters/DXF_plotter.cpp
     common/plotters/GERBER_plotter.cpp
     common/plotters/PDF_plotter.cpp
+    common/plotters/PNG_plotter.cpp
     common/plotters/PS_plotter.cpp
     common/plotters/SVG_plotter.cpp
     common/plotters/common_plot_functions.cpp
+    common/plotters/drill_markers.cpp
     common/plotters/pdf_outline_font.cpp
     common/plotters/pdf_stroke_font.cpp
+    common/plotters/pdf_unicode.cpp
     common/plotters/plotter.cpp
     common/properties/property_mgr.cpp
+    common/pth_hole_size.cpp
     common/rc_item.cpp
     common/refdes_utils.cpp
     common/reference_image.cpp
@@ -183,6 +224,12 @@ set( KICAD_WX_FREE_SOURCES_common
     common/settings/cvpcb_settings.cpp
     common/stroke_params.cpp
     common/template_fieldnames.cpp
+    common/track_width_calculations.cpp
+    common/transline_calculations/coax.cpp
+    common/transline_calculations/coplanar.cpp
+    common/transline_calculations/dielectric_djordjevic_sarkar.cpp
+    common/transline_calculations/rectwaveguide.cpp
+    common/transline_calculations/twistedpair.cpp
     common/undo_redo_container.cpp
     )
 
@@ -215,6 +262,8 @@ set( KICAD_WX_FREE_SOURCES_easyeda
 set( KICAD_WX_FREE_SOURCES_easyedapro
     pcbnew/pcb_io/easyedapro/pcb_io_easyedapro.cpp
     pcbnew/pcb_io/easyedapro/pcb_io_easyedapro_parser.cpp
+    pcbnew/pcb_io/easyedapro/pcb_io_easyedapro_v3.cpp
+    pcbnew/pcb_io/easyedapro/pcb_io_easyedapro_v3_parser.cpp
     )
 
 set( KICAD_WX_FREE_SOURCES_eeschema_cli_kiface_iface
@@ -224,12 +273,52 @@ set( KICAD_WX_FREE_SOURCES_eeschema_cli_kiface_iface
 set( KICAD_WX_FREE_SOURCES_eeschema_kiface_objects
     BUILD/eeschema/dialogs/dialog_bom_cfg_keywords.cpp
     BUILD/eeschema/schematic_keywords.cpp
+    eeschema/api/api_handler_sch_libraries.cpp
+    eeschema/api/api_handler_sch_tasks.cpp
+    eeschema/api/api_handler_symbol.cpp
+    eeschema/api/headless_sch_context.cpp
+    eeschema/api/headless_symbol_editor_context.cpp
+    eeschema/api/sch_api_save.cpp
     eeschema/autoplace_fields.cpp
     eeschema/connection_graph.cpp
+    eeschema/connectivity/conn_auxiliary.cpp
+    eeschema/connectivity/conn_bindings.cpp
+    eeschema/connectivity/conn_bus.cpp
+    eeschema/connectivity/conn_claims.cpp
+    eeschema/connectivity/conn_components.cpp
+    eeschema/connectivity/conn_dump.cpp
+    eeschema/connectivity/conn_engine.cpp
+    eeschema/connectivity/conn_engine_erc.cpp
+    eeschema/connectivity/conn_facade.cpp
+    eeschema/connectivity/conn_facts.cpp
+    eeschema/connectivity/conn_frame.cpp
+    eeschema/connectivity/conn_indexes.cpp
+    eeschema/connectivity/conn_inputs.cpp
+    eeschema/connectivity/conn_islands.cpp
+    eeschema/connectivity/conn_keys.cpp
+    eeschema/connectivity/conn_navigation.cpp
+    eeschema/connectivity/conn_netchain_manager.cpp
+    eeschema/connectivity/conn_partition.cpp
+    eeschema/connectivity/conn_pin_name.cpp
+    eeschema/connectivity/conn_presentation.cpp
+    eeschema/connectivity/conn_preview.cpp
+    eeschema/connectivity/conn_publish.cpp
+    eeschema/connectivity/conn_records.cpp
+    eeschema/connectivity/conn_rows.cpp
+    eeschema/connectivity/conn_signals.cpp
+    eeschema/connectivity/conn_summary.cpp
+    eeschema/connectivity/conn_text.cpp
+    eeschema/diff_merge/sch_differ.cpp
+    eeschema/diff_merge/sch_geometry_extractor.cpp
+    eeschema/diff_merge/sch_merge_applier.cpp
+    eeschema/diff_merge/sym_item_diff.cpp
+    eeschema/diff_merge/sym_lib_differ.cpp
+    eeschema/downgrade/sch_downgrade.cpp
     eeschema/eeschema_helpers.cpp
     eeschema/eeschema_jobs_handler.cpp
     eeschema/eeschema_settings.cpp
     eeschema/erc/erc.cpp
+    eeschema/erc/erc_exclusion.cpp
     eeschema/erc/erc_item.cpp
     eeschema/erc/erc_report.cpp
     eeschema/erc/erc_sch_pin_context.cpp
@@ -238,11 +327,14 @@ set( KICAD_WX_FREE_SOURCES_eeschema_kiface_objects
     eeschema/gfx_import_utils.cpp
     eeschema/import_gfx/graphics_importer_lib_symbol.cpp
     eeschema/import_gfx/graphics_importer_sch.cpp
+    eeschema/import_local_symbol_libs.cpp
+    eeschema/import_net_map.cpp
     eeschema/junction_helpers.cpp
     eeschema/kiface_netlist.cpp
     eeschema/lib_symbol.cpp
     eeschema/libraries/legacy_symbol_library.cpp
     eeschema/libraries/symbol_library_adapter.cpp
+    eeschema/link_imported_footprints.cpp
     eeschema/netlist_exporters/netlist_exporter_allegro.cpp
     eeschema/netlist_exporters/netlist_exporter_base.cpp
     eeschema/netlist_exporters/netlist_exporter_cadstar.cpp
@@ -269,11 +361,18 @@ set( KICAD_WX_FREE_SOURCES_eeschema_kiface_objects
     eeschema/sch_io/cadstar/cadstar_sch_archive_parser.cpp
     eeschema/sch_io/cadstar/sch_io_cadstar_archive.cpp
     eeschema/sch_io/database/sch_io_database.cpp
+    eeschema/sch_io/diptrace/diptrace_sch_parser.cpp
+    eeschema/sch_io/diptrace/sch_io_diptrace.cpp
     eeschema/sch_io/eagle/sch_io_eagle.cpp
     eeschema/sch_io/easyeda/sch_easyeda_parser.cpp
     eeschema/sch_io/easyeda/sch_io_easyeda.cpp
     eeschema/sch_io/easyedapro/sch_easyedapro_parser.cpp
+    eeschema/sch_io/easyedapro/sch_easyedapro_v3_parser.cpp
     eeschema/sch_io/easyedapro/sch_io_easyedapro.cpp
+    eeschema/sch_io/easyedapro/sch_io_easyedapro_v3.cpp
+    eeschema/sch_io/easypc/easypc_sch_builder.cpp
+    eeschema/sch_io/easypc/easypc_sch_items.cpp
+    eeschema/sch_io/easypc/sch_io_easypc.cpp
     eeschema/sch_io/geda/sch_io_geda.cpp
     eeschema/sch_io/http_lib/sch_io_http_lib.cpp
     eeschema/sch_io/kicad_legacy/sch_io_kicad_legacy.cpp
@@ -283,21 +382,44 @@ set( KICAD_WX_FREE_SOURCES_eeschema_kiface_objects
     eeschema/sch_io/kicad_sexpr/sch_io_kicad_sexpr_common.cpp
     eeschema/sch_io/kicad_sexpr/sch_io_kicad_sexpr_lib_cache.cpp
     eeschema/sch_io/kicad_sexpr/sch_io_kicad_sexpr_parser.cpp
+    eeschema/sch_io/kicad_sexpr/writers/sch_writer_v10.cpp
+    eeschema/sch_io/kicad_sexpr/writers/sch_writer_v9.cpp
     eeschema/sch_io/ltspice/ltspice_schematic.cpp
     eeschema/sch_io/ltspice/sch_io_ltspice.cpp
     eeschema/sch_io/ltspice/sch_io_ltspice_parser.cpp
+    eeschema/sch_io/ole_emf.cpp
+    eeschema/sch_io/ole_image.cpp
+    eeschema/sch_io/orcad/orcad_cache.cpp
+    eeschema/sch_io/orcad/orcad_cis.cpp
+    eeschema/sch_io/orcad/orcad_converter_sheet.cpp
+    eeschema/sch_io/orcad/orcad_converter_symbols.cpp
+    eeschema/sch_io/orcad/orcad_library.cpp
+    eeschema/sch_io/orcad/orcad_page.cpp
+    eeschema/sch_io/orcad/orcad_stream.cpp
+    eeschema/sch_io/orcad/orcad_structures.cpp
+    eeschema/sch_io/orcad/sch_io_orcad.cpp
+    eeschema/sch_io/pads/pads_sch_binary_builder.cpp
+    eeschema/sch_io/pads/pads_sch_binary_parser.cpp
+    eeschema/sch_io/pads/pads_sch_binary_reader.cpp
     eeschema/sch_io/pads/pads_sch_parser.cpp
     eeschema/sch_io/pads/pads_sch_schematic_builder.cpp
+    eeschema/sch_io/pads/pads_sch_sdb.cpp
     eeschema/sch_io/pads/pads_sch_symbol_builder.cpp
     eeschema/sch_io/pads/sch_io_pads.cpp
+    eeschema/sch_io/pcad/pcad_sch_parser.cpp
+    eeschema/sch_io/pcad/sch_io_pcad.cpp
     eeschema/sch_io/sch_io.cpp
     eeschema/sch_io/sch_io_lib_cache.cpp
     eeschema/sch_io/sch_io_mgr.cpp
+    eeschema/sch_io/sch_io_wire_detour.cpp
+    eeschema/sch_io/target3001/sch_io_target3001.cpp
+    eeschema/sch_io/target3001/target3001_sch_builder.cpp
     eeschema/sch_item.cpp
     eeschema/sch_junction.cpp
     eeschema/sch_label.cpp
     eeschema/sch_line.cpp
     eeschema/sch_marker.cpp
+    eeschema/sch_netchain.cpp
     eeschema/sch_no_connect.cpp
     eeschema/sch_pin.cpp
     eeschema/sch_plotter.cpp
@@ -316,9 +438,11 @@ set( KICAD_WX_FREE_SOURCES_eeschema_kiface_objects
     eeschema/sch_textbox.cpp
     eeschema/schematic.cpp
     eeschema/schematic_settings.cpp
+    eeschema/schematic_text_var_adapter.cpp
     eeschema/sim/kibis/ibis_parser.cpp
     eeschema/sim/kibis/kibis.cpp
     eeschema/sim/ngspice.cpp
+    eeschema/sim/operating_point.cpp
     eeschema/sim/sim_lib_mgr.cpp
     eeschema/sim/sim_library.cpp
     eeschema/sim/sim_library_ibis.cpp
@@ -328,6 +452,7 @@ set( KICAD_WX_FREE_SOURCES_eeschema_kiface_objects
     eeschema/sim/sim_model_ibis.cpp
     eeschema/sim/sim_model_ideal.cpp
     eeschema/sim/sim_model_l_mutual.cpp
+    eeschema/sim/sim_model_multiunit.cpp
     eeschema/sim/sim_model_ngspice.cpp
     eeschema/sim/sim_model_ngspice_data_b3soi.cpp
     eeschema/sim/sim_model_ngspice_data_b4soi.cpp
@@ -356,6 +481,7 @@ set( KICAD_WX_FREE_SOURCES_eeschema_kiface_objects
     eeschema/sim/sim_model_switch.cpp
     eeschema/sim/sim_model_tline.cpp
     eeschema/sim/sim_model_xspice.cpp
+    eeschema/sim/sim_signal_utils.cpp
     eeschema/sim/sim_value.cpp
     eeschema/sim/spice_circuit_model.cpp
     eeschema/sim/spice_generator.cpp
@@ -368,6 +494,8 @@ set( KICAD_WX_FREE_SOURCES_eeschema_kiface_objects
     eeschema/symbol.cpp
     eeschema/symbol_checker.cpp
     eeschema/symbol_editor/symbol_editor_settings.cpp
+    eeschema/symbol_import_reconciler.cpp
+    eeschema/variant_symbol_utils.cpp
     )
 
 set( KICAD_WX_FREE_SOURCES_fabmaster
@@ -397,11 +525,10 @@ set( KICAD_WX_FREE_SOURCES_gal_model
     common/view/view_overlay.cpp
     )
 
-set( KICAD_WX_FREE_SOURCES_idf3
-    utils/idftools/vrml_layer.cpp
-    )
-
 set( KICAD_WX_FREE_SOURCES_ipc2581
+    pcbnew/pcb_io/ipc2581/ipc2581_avl_order.cpp
+    pcbnew/pcb_io/ipc2581/ipc2581_export_job.cpp
+    pcbnew/pcb_io/ipc2581/ipc2581_function_mode.cpp
     pcbnew/pcb_io/ipc2581/pcb_io_ipc2581.cpp
     )
 
@@ -690,6 +817,7 @@ set( KICAD_WX_FREE_SOURCES_nanodbc
 
 set( KICAD_WX_FREE_SOURCES_nanosvg
     thirdparty/nanosvg/nanosvg.cpp
+    thirdparty/nanosvg/nanosvgrast.cpp
     )
 
 set( KICAD_WX_FREE_SOURCES_odbpp
@@ -697,6 +825,7 @@ set( KICAD_WX_FREE_SOURCES_odbpp
     pcbnew/pcb_io/odbpp/odb_component.cpp
     pcbnew/pcb_io/odbpp/odb_eda_data.cpp
     pcbnew/pcb_io/odbpp/odb_entity.cpp
+    pcbnew/pcb_io/odbpp/odb_export_job.cpp
     pcbnew/pcb_io/odbpp/odb_feature.cpp
     pcbnew/pcb_io/odbpp/odb_fonts.cpp
     pcbnew/pcb_io/odbpp/odb_netlist.cpp
@@ -707,11 +836,14 @@ set( KICAD_WX_FREE_SOURCES_odbpp
 set( KICAD_WX_FREE_SOURCES_pads2pcbnew
     pcbnew/pcb_io/pads/pads_layer_mapper.cpp
     pcbnew/pcb_io/pads/pads_parser.cpp
+    pcbnew/pcb_io/pads/pads_pcb_converter.cpp
+    pcbnew/pcb_io/pads/pads_sdb.cpp
     pcbnew/pcb_io/pads/pcb_io_pads.cpp
     )
 
 set( KICAD_WX_FREE_SOURCES_pads_common
     common/io/pads/pads_attribute_mapper.cpp
+    common/io/pads/pads_binary_utils.cpp
     common/io/pads/pads_common.cpp
     common/io/pads/pads_unit_converter.cpp
     )
@@ -748,27 +880,54 @@ set( KICAD_WX_FREE_SOURCES_pcbcommon
     pcbnew/board_commit.cpp
     pcbnew/board_connected_item.cpp
     pcbnew/board_design_settings.cpp
+    pcbnew/board_exchange_footprint.cpp
     pcbnew/board_item.cpp
+    pcbnew/board_item_index.cpp
     pcbnew/board_stackup_manager/board_stackup.cpp
+    pcbnew/board_tables/generated_table_refresh.cpp
+    pcbnew/board_tables/generated_table_schema.cpp
+    pcbnew/board_tables/stackup_table_model.cpp
+    pcbnew/board_text_var_adapter.cpp
     pcbnew/collectors.cpp
     pcbnew/component_classes/component_class.cpp
     pcbnew/component_classes/component_class_assignment_rule.cpp
     pcbnew/component_classes/component_class_cache_proxy.cpp
     pcbnew/component_classes/component_class_manager.cpp
     pcbnew/connectivity/from_to_cache.cpp
+    pcbnew/constraints/constraint_builder.cpp
+    pcbnew/constraints/constraint_copy.cpp
+    pcbnew/constraints/pcb_constraint.cpp
     pcbnew/convert_shape_list_to_polygon.cpp
     pcbnew/drc/drc_cache_generator.cpp
     pcbnew/drc/drc_engine.cpp
+    pcbnew/drc/drc_exclusion.cpp
     pcbnew/drc/drc_item.cpp
     pcbnew/drc/drc_rule.cpp
     pcbnew/drc/drc_rule_condition.cpp
     pcbnew/drc/drc_rule_parser.cpp
     pcbnew/drc/drc_test_provider.cpp
+    pcbnew/drill/drill_chart_model.cpp
+    pcbnew/drill/drill_chart_template.cpp
+    pcbnew/drill/drill_enumerator.cpp
+    pcbnew/drill/drill_symbol_assigner.cpp
+    pcbnew/drill/drill_symbol_profile.cpp
+    pcbnew/exporters/fab_model/fab_component_row.cpp
+    pcbnew/exporters/fab_model/fab_drill.cpp
+    pcbnew/exporters/fab_model/fab_drill_model.cpp
+    pcbnew/exporters/fab_model/fab_layer_index.cpp
+    pcbnew/exporters/fab_model/fab_net_names.cpp
+    pcbnew/exporters/fab_model/fab_pad_geometry.cpp
+    pcbnew/exporters/fab_model/fab_pin.cpp
+    pcbnew/exporters/fab_model/fab_sections.cpp
+    pcbnew/exporters/fab_model/fab_stackup.cpp
+    pcbnew/exporters/fab_model/fab_test_points.cpp
     pcbnew/fix_board_shape.cpp
     pcbnew/footprint.cpp
     pcbnew/footprint_courtyard_index.cpp
     pcbnew/footprint_library_adapter.cpp
+    pcbnew/footprint_utils.cpp
     pcbnew/generators_mgr.cpp
+    pcbnew/import_net_names.cpp
     pcbnew/layer_utils.cpp
     pcbnew/length_delay_calculation/length_delay_calculation.cpp
     pcbnew/length_delay_calculation/length_delay_calculation_item.cpp
@@ -781,11 +940,15 @@ set( KICAD_WX_FREE_SOURCES_pcbcommon
     pcbnew/netlist_reader/pcb_netlist.cpp
     pcbnew/pad.cpp
     pcbnew/pad_utils.cpp
+    pcbnew/pcb_3d_body.cpp
     pcbnew/pcb_barcode.cpp
     pcbnew/pcb_board_outline.cpp
     pcbnew/pcb_dimension.cpp
+    pcbnew/pcb_drill_chart.cpp
+    pcbnew/pcb_drill_map.cpp
     pcbnew/pcb_field.cpp
     pcbnew/pcb_generator.cpp
+    pcbnew/pcb_grid_item.cpp
     pcbnew/pcb_group.cpp
     pcbnew/pcb_io/eagle/pcb_io_eagle.cpp
     pcbnew/pcb_io/geda/pcb_io_geda.cpp
@@ -800,6 +963,7 @@ set( KICAD_WX_FREE_SOURCES_pcbcommon
     pcbnew/pcb_point.cpp
     pcbnew/pcb_reference_image.cpp
     pcbnew/pcb_shape.cpp
+    pcbnew/pcb_stackup_table.cpp
     pcbnew/pcb_table.cpp
     pcbnew/pcb_tablecell.cpp
     pcbnew/pcb_target.cpp
@@ -814,6 +978,8 @@ set( KICAD_WX_FREE_SOURCES_pcbcommon
     pcbnew/teardrop/teardrop.cpp
     pcbnew/teardrop/teardrop_parameters.cpp
     pcbnew/teardrop/teardrop_utils.cpp
+    pcbnew/tools/board_item_geometry.cpp
+    pcbnew/tools/match_properties.cpp
     pcbnew/zone.cpp
     pcbnew/zone_settings.cpp
     pcbnew/zone_utils.cpp
@@ -826,9 +992,24 @@ set( KICAD_WX_FREE_SOURCES_pcbnew_cli_kiface_iface
 
 set( KICAD_WX_FREE_SOURCES_pcbnew_kiface_objects
     BUILD/pcbnew/specctra_import_export/specctra_keywords.cpp
+    pcbnew/api/api_handler_board.cpp
+    pcbnew/api/api_handler_footprint.cpp
+    pcbnew/api/api_handler_fp_libraries.cpp
+    pcbnew/api/api_handler_pcb_tasks.cpp
+    pcbnew/api/headless_footprint_context.cpp
+    pcbnew/board_loader.cpp
     pcbnew/board_stackup_manager/stackup_predefined_prms.cpp
     pcbnew/board_statistics.cpp
     pcbnew/board_statistics_report.cpp
+    pcbnew/constraints/board_constraint_adapter.cpp
+    pcbnew/constraints/constraint_system_2d.cpp
+    pcbnew/diff_merge/fp_lib_differ.cpp
+    pcbnew/diff_merge/pcb_differ.cpp
+    pcbnew/diff_merge/pcb_geometry_extractor.cpp
+    pcbnew/diff_merge/pcb_merge_applier.cpp
+    pcbnew/downgrade/board_downgrade.cpp
+    pcbnew/drc/drc_chain_topology.cpp
+    pcbnew/drc/drc_creepage_engine.cpp
     pcbnew/drc/drc_creepage_utils.cpp
     pcbnew/drc/drc_report.cpp
     pcbnew/drc/drc_test_provider_annular_width.cpp
@@ -844,9 +1025,11 @@ set( KICAD_WX_FREE_SOURCES_pcbnew_kiface_objects
     pcbnew/drc/drc_test_provider_hole_size.cpp
     pcbnew/drc/drc_test_provider_hole_to_hole.cpp
     pcbnew/drc/drc_test_provider_library_parity.cpp
+    pcbnew/drc/drc_test_provider_line_width.cpp
     pcbnew/drc/drc_test_provider_links.cpp
     pcbnew/drc/drc_test_provider_matched_length.cpp
     pcbnew/drc/drc_test_provider_misc.cpp
+    pcbnew/drc/drc_test_provider_net_chain_tuning_profiles.cpp
     pcbnew/drc/drc_test_provider_physical_clearance.cpp
     pcbnew/drc/drc_test_provider_schematic_parity.cpp
     pcbnew/drc/drc_test_provider_silk_clearance.cpp
@@ -858,11 +1041,11 @@ set( KICAD_WX_FREE_SOURCES_pcbnew_kiface_objects
     pcbnew/drc/drc_test_provider_track_segment_length.cpp
     pcbnew/drc/drc_test_provider_track_width.cpp
     pcbnew/drc/drc_test_provider_via_diameter.cpp
+    pcbnew/drc/drc_test_provider_via_stack.cpp
+    pcbnew/drc/drc_test_provider_via_stitch.cpp
     pcbnew/drc/drc_test_provider_zone_connections.cpp
     pcbnew/exporters/export_d356.cpp
     pcbnew/exporters/export_gencad_writer.cpp
-    pcbnew/pcb_io/ipc2581/ipc2581_export_job.cpp
-    pcbnew/pcb_io/odbpp/odb_export_job.cpp
     pcbnew/exporters/exporter_vrml.cpp
     pcbnew/exporters/gendrill_excellon_writer.cpp
     pcbnew/exporters/gendrill_gerber_writer.cpp
@@ -882,7 +1065,16 @@ set( KICAD_WX_FREE_SOURCES_pcbnew_kiface_objects
     pcbnew/exporters/u3d/writer.cpp
     pcbnew/footprint_editor_settings.cpp
     pcbnew/generators/pcb_tuning_pattern.cpp
+    pcbnew/import_design_rules.cpp
+    pcbnew/import_local_footprint_libs.cpp
+    pcbnew/import_net_reconciler.cpp
+    pcbnew/net_chain_bridging.cpp
+    pcbnew/netlist_reader/pcb_netlist_utils.cpp
     pcbnew/padstack.cpp
+    pcbnew/pcb_io/ipc2581/ipc2581_export_job.cpp
+    pcbnew/pcb_io/kicad_sexpr/writers/pcb_writer_v10.cpp
+    pcbnew/pcb_io/kicad_sexpr/writers/pcb_writer_v9.cpp
+    pcbnew/pcb_io/odbpp/odb_export_job.cpp
     pcbnew/pcb_plotter.cpp
     pcbnew/pcbnew_jobs_handler.cpp
     pcbnew/pcbnew_settings.cpp
@@ -890,6 +1082,7 @@ set( KICAD_WX_FREE_SOURCES_pcbnew_kiface_objects
     pcbnew/plot_board_layers.cpp
     pcbnew/plot_brditems_plotter.cpp
     pcbnew/python/scripting/pcbnew_scripting_helpers.cpp
+    pcbnew/ref_suffix_split.cpp
     pcbnew/specctra_import_export/specctra.cpp
     pcbnew/specctra_import_export/specctra_export.cpp
     pcbnew/specctra_import_export/specctra_import.cpp

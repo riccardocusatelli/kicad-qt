@@ -32,8 +32,7 @@ target_link_libraries( kicad-qt
     )
 
 add_dependencies( kicad-qt kicad_manager_qt common pcbnew_qtgui_kiface eeschema_qtgui_kiface cvpcb_qtgui_kiface
-                  kipython_qtgui_kiface pl_editor_qtgui_kiface gerbview_qtgui_kiface pcb_calculator_qtgui_kiface
-                  bitmap2component_qtgui_kiface )
+                  pl_editor_qtgui_kiface gerbview_qtgui_kiface pcb_calculator_qtgui_kiface )
 
 # The resources the programs read from the build tree (KICAD_RUN_FROM_BUILD_DIR) and install: the
 # JSON schemas of the API and of the plugin and content manager, the archive of the images and

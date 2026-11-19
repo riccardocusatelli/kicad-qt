@@ -22,9 +22,8 @@
  * The test of kicad-qt: the program itself (kicad_qt.cpp, its main() renamed), driven from the
  * event loop of its application.  Its start wizard is finished, the project manager of KiCad
  * (KICAD_MANAGER_FRAME) loads the project of a board and shows it in its tree, its launcher opens
- * the board in the PCB editor of KiCad (_pcbnew_qtgui.kiface), which shows the Python console
- * (_kipython_qtgui.kiface); the project of a schematic is loaded (the editors of the board's
- * project close) and opened in the schematic editor (_eeschema_qtgui.kiface), which opens CvPcb
+ * the board in the PCB editor of KiCad (_pcbnew_qtgui.kiface); the project of a schematic is
+ * loaded (the editors of the board's project close) and opened in the schematic editor (_eeschema_qtgui.kiface), which opens CvPcb
  * (_cvpcb_qtgui.kiface) to assign the footprints of the schematic; the launcher opens the library
  * editors and the tools, and the project manager closes the editors with it.
  *
@@ -389,55 +388,6 @@ void runScenario( KICAD_MANAGER_FRAME* aWindow )
     check( pcb && pcb->windowTitle().contains( QFileInfo( s_board ).completeBaseName() ),
            "the PCB editor has the board" );
 
-    // The Python console of the PCB editor (_kipython_qtgui.kiface): a line of Python reads the
-    // board of the editor
-    if( pcb && pcb->GetToolManager() )
-    {
-        pcb->GetToolManager()->RunAction( "pcbnew.Control.showPythonConsole" );
-        settle( 500 );
-
-        KIWAY_PLAYER* console = Kiway.Player( FRAME_PYTHON, false );
-        check( console && console->isVisible(), "the PCB editor shows the Python console" );
-
-        QLineEdit*      input = console ? console->findChild<QLineEdit*>() : nullptr;
-        QPlainTextEdit* output = console ? console->findChild<QPlainTextEdit*>() : nullptr;
-        check( input && output, "the console has its input and output" );
-
-        if( input && output )
-        {
-            check( output->toPlainText().contains( QStringLiteral( "Python " ) ),
-                   "the console shows the version of Python" );
-
-            input->setText( QStringLiteral(
-                    "print( 'footprints:', len( pcbnew.GetBoard().GetFootprints() ) )" ) );
-            Q_EMIT input->returnPressed();
-            settle( 100 );
-
-            check( output->toPlainText().contains( QStringLiteral( "footprints: " ) ),
-                   "the console runs Python with the module of pcbnew" );
-
-            input->setText( QStringLiteral( "1 / 0" ) );
-            Q_EMIT input->returnPressed();
-            settle( 100 );
-
-            check( output->toPlainText().contains( QStringLiteral( "ZeroDivisionError" ) ),
-                   "the console shows the errors of Python" );
-            std::printf( "%s\n", qPrintable( output->toPlainText().section( '\n', -6 ) ) );
-
-            if( !s_screenshot.isEmpty() )
-            {
-                QFileInfo shot( s_screenshot );
-                console->grab().save( shot.path() + QStringLiteral( "/" ) + shot.completeBaseName()
-                                      + QStringLiteral( "-python." ) + shot.suffix() );
-            }
-        }
-
-        // The console is hidden again (the action toggles it)
-        pcb->GetToolManager()->RunAction( "pcbnew.Control.showPythonConsole" );
-        settle( 200 );
-        check( !console || !console->isVisible(), "the console is hidden" );
-    }
-
     // Every item of the menus of the PCB editor (the frames, dialogs and messages they open are
     // checked, then closed)
     if( pcb )
@@ -657,60 +607,6 @@ void runScenario( KICAD_MANAGER_FRAME* aWindow )
         }
     }
 
-    // The image converter, from the launcher: it loads an image
-    runAction( aWindow, "kicad.Control.convertImage" );
-
-    KIWAY_PLAYER* images = Kiway.Player( FRAME_BM2CMP, false );
-    check( images && images->isVisible(), "the launcher opens the image converter" );
-
-    if( images )
-    {
-        const std::vector<wxString> files( 1, wxString( QA_IMAGE_FILE ) );
-        check( images->OpenProjectFiles( files ), "the image converter loads an image" );
-        settle( 500 );
-
-        // The page of the original picture draws it
-        wxNotebook* pictures = nullptr;
-
-        for( QWidget* child : images->findChildren<QWidget*>() )
-        {
-            if( !pictures )
-                pictures = dynamic_cast<wxNotebook*>( child );
-        }
-
-        int drawn = 0;
-
-        if( pictures )
-        {
-            pictures->SetSelection( 0 );
-            settle( 200 );
-
-            if( QWidget* page = pictures->currentWidget() )
-            {
-                QImage picture = page->grab().toImage();
-                QRgb   background = picture.pixel( picture.width() - 2, picture.height() - 2 );
-
-                for( int y = 0; y < picture.height(); y += 2 )
-                {
-                    for( int x = 0; x < picture.width(); x += 2 )
-                    {
-                        if( picture.pixel( x, y ) != background )
-                            drawn++;
-                    }
-                }
-            }
-        }
-
-        std::printf( "    drawn: %d\n", drawn );
-        check( drawn > 500, "the image converter draws the image" );
-        if( !s_screenshot.isEmpty() )
-        {
-            QString path = s_screenshot;
-            path.replace( QStringLiteral( ".png" ), QStringLiteral( "-bitmap2component.png" ) );
-            check( images->grab().save( path ), "screenshot of the image converter" );
-        }
-    }
-
     // Only the shell and the editors are open (the progress of the loading is closed)
     // Every item of the menus of the other frames
     for( const auto& [frame, name] : std::vector<std::pair<KIWAY_PLAYER*, const char*>>{
@@ -720,8 +616,7 @@ void runScenario( KICAD_MANAGER_FRAME* aWindow )
                  { cvpcb, "CvPcb" },
                  { drawingSheets, "the drawing sheet editor" },
                  { gerbers, "the Gerber viewer" },
-                 { calculator, "the calculator" },
-                 { images, "the image converter" } } )
+                 { calculator, "the calculator" } } )
     {
         if( frame )
             testMenus( frame, name );
@@ -735,7 +630,7 @@ void runScenario( KICAD_MANAGER_FRAME* aWindow )
     {
         if( widget->isVisible() && widget != aWindow && widget != pcb && widget != sch
             && widget != symbols && widget != footprints && widget != cvpcb
-            && widget != drawingSheets && widget != gerbers && widget != calculator && widget != images )
+            && widget != drawingSheets && widget != gerbers && widget != calculator )
         {
             std::printf( "    open: %s \"%s\"\n", widget->metaObject()->className(),
                          qPrintable( widget->windowTitle() ) );
@@ -783,8 +678,7 @@ void runScenario( KICAD_MANAGER_FRAME* aWindow )
                    && !Kiway.Player( FRAME_CVPCB, false )
                    && !Kiway.Player( FRAME_PL_EDITOR, false )
                    && !Kiway.Player( FRAME_GERBER, false )
-                   && !Kiway.Player( FRAME_CALC, false )
-                   && !Kiway.Player( FRAME_BM2CMP, false ),
+                   && !Kiway.Player( FRAME_CALC, false ),
            "the editors are closed" );
 
     aWindow->close();

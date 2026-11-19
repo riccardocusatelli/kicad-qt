@@ -28,7 +28,6 @@
 
 class BOARD;
 class JOB_EXPORT_PCB_ODB;
-class PCB_EDIT_FRAME;
 class PROGRESS_REPORTER;
 class REPORTER;
 
@@ -67,9 +66,14 @@ struct ODB_MATRIX_PREVIEW_ROW
 };
 
 
-/// Generate the ODB++ tree or archive and return the write status and the paths written
+/// Asks the user whether an existing output may be overwritten (GUI); @return true to overwrite.
+using ODB_CONFIRM_OVERWRITE = std::function<bool( const wxString& aMessage )>;
+
+
+/// Generate the ODB++ tree or archive and return the write status and the paths written.
+/// Without @a aConfirmOverwrite, an existing output is overwritten without asking.
 ODB_EXPORT_RESULT GenerateODBPPFiles( const JOB_EXPORT_PCB_ODB& aJob, BOARD* aBoard,
-                                      PCB_EDIT_FRAME*    aParentFrame = nullptr,
+                                      const ODB_CONFIRM_OVERWRITE& aConfirmOverwrite = nullptr,
                                       PROGRESS_REPORTER* aProgressReporter = nullptr, REPORTER* aReporter = nullptr );
 
 /// Build export matrix rows without layer overrides or writing files

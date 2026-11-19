@@ -191,7 +191,7 @@ FOOTPRINT_USERS_RESULT QueryFootprintUsers( KIWAY& aKiway, const FOOTPRINT_USERS
     // Loading or reaching the eeschema kiface, and the JSON round-trip itself, can all fail.
     try
     {
-        KIFACE* kiface = aKiway.KiFACE( KIWAY::FACE_SCH );
+        KIFACE* kiface = aKiway.KiFACE( KIWAY_FACES::FACE_SCH );
 
         if( !kiface )
             return returnFailure();
@@ -221,7 +221,7 @@ bool StartSymbolLibrariesLoad( KIWAY& aKiway )
 
     try
     {
-        KIFACE* kiface = aKiway.KiFACE( KIWAY::FACE_SCH );
+        KIFACE* kiface = aKiway.KiFACE( KIWAY_FACES::FACE_SCH );
 
         if( !kiface )
             return false;
@@ -246,7 +246,7 @@ float GetSymbolLibrariesLoadProgress( KIWAY& aKiway )
 {
     try
     {
-        KIFACE* kiface = aKiway.KiFACE( KIWAY::FACE_SCH );
+        KIFACE* kiface = aKiway.KiFACE( KIWAY_FACES::FACE_SCH );
 
         if( !kiface )
             return 1.0f;

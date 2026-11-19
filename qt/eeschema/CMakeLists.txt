@@ -106,7 +106,6 @@ set( KIQT_EESCHEMA_GUI_SRCS
     fields_grid_table.cpp
     files-io.cpp
     generate_alias_info.cpp
-    import_gfx/dialog_import_gfx_sch.cpp
     lib_fields_data_model.cpp
     menubar.cpp
     net_navigator.cpp
@@ -204,6 +203,21 @@ set( KIQT_EESCHEMA_GUI_SRCS
     widgets/symbol_filter_combobox.cpp
     widgets/symbol_preview_widget.cpp
     widgets/tuner_slider.cpp
+    api/api_sch_enums.cpp
+    api/sch_context.cpp
+    api/symbol_editor_context.cpp
+    dialogs/dialog_create_net_chain.cpp
+    dialogs/dialog_resolve_field_case_conflicts.cpp
+    dialogs/panel_footprint_filters.cpp
+    dialogs/panel_setup_net_chains.cpp
+    dialogs/panel_setup_symbol_parity.cpp
+    dialogs/panel_symbol_pin_map.cpp
+    libraries/legacy_cache_reconcile.cpp
+    symbol_editor/symbol_editor_tab_context.cpp
+    tools/ee_graphic_tool.cpp
+    tools/sch_tool_base.cpp
+    variant_proxy_undo_item.cpp
+    widgets/db_lib_preview_panel.cpp
     )
 
 list( TRANSFORM KIQT_EESCHEMA_GUI_SRCS PREPEND ${CMAKE_SOURCE_DIR}/eeschema/ )
@@ -225,7 +239,6 @@ kiqt_generate_fbp_compat( KIQT_EESCHEMA_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_junction_props_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_label_properties_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_lib_edit_pin_table_base.fbp
-    ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_lib_fields_table_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_lib_new_symbol_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_lib_symbol_properties_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_line_properties_base.fbp
@@ -241,7 +254,6 @@ kiqt_generate_fbp_compat( KIQT_EESCHEMA_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_sim_command_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_sim_format_value_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_sim_model_base.fbp
-    ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_symbol_fields_table_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_symbol_properties_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_symbol_remap_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_table_properties_base.fbp
@@ -264,13 +276,17 @@ kiqt_generate_fbp_compat( KIQT_EESCHEMA_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/panel_sym_editing_options_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/panel_sym_lib_table_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/dialogs/panel_template_fieldnames_base.fbp
-    ${CMAKE_SOURCE_DIR}/eeschema/import_gfx/dialog_import_gfx_sch_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/printing/dialog_print_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/sim/simulator_frame_ui_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/sync_sheet_pin/dialog_sync_sheet_pins_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/sync_sheet_pin/panel_sync_sheet_pins_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/widgets/panel_sch_selection_filter_base.fbp
     ${CMAKE_SOURCE_DIR}/eeschema/widgets/tuner_slider_base.fbp
+    ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_create_net_chain_base.fbp
+    ${CMAKE_SOURCE_DIR}/eeschema/dialogs/dialog_resolve_field_case_conflicts_base.fbp
+    ${CMAKE_SOURCE_DIR}/eeschema/dialogs/panel_setup_net_chains_base.fbp
+    ${CMAKE_SOURCE_DIR}/eeschema/dialogs/panel_setup_symbol_parity_base.fbp
+    ${CMAKE_SOURCE_DIR}/eeschema/dialogs/panel_symbol_pin_map_base.fbp
     )
 
 add_library( eeschema_gui_qt STATIC
@@ -300,7 +316,6 @@ target_include_directories( eeschema_gui_qt BEFORE PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/dialogs
     ${KIQT_FBP_DIR}/eeschema
     ${KIQT_FBP_DIR}/eeschema/dialogs
-    ${KIQT_FBP_DIR}/eeschema/import_gfx
     ${KIQT_FBP_DIR}/eeschema/printing
     ${KIQT_FBP_DIR}/eeschema/sim
     ${KIQT_FBP_DIR}/eeschema/sync_sheet_pin

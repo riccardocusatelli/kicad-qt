@@ -445,7 +445,7 @@ private:
         }
 
         KIWAY*  kiway = m_handler->pcbContext()->GetKiway();
-        KIFACE* eeschema = kiway ? kiway->KiFACE( KIWAY::FACE_SCH ) : nullptr;
+        KIFACE* eeschema = kiway ? kiway->KiFACE( KIWAY_FACES::FACE_SCH ) : nullptr;
 
         if( !eeschema )
         {

@@ -265,6 +265,3 @@ protected:
 
     std::vector<KIID> m_ids;
 };
-
-
-#endif      // RC_ITEM_H

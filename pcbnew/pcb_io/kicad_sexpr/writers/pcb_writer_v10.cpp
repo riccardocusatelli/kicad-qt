@@ -24,6 +24,7 @@
 
 #include <wx/ffile.h>
 #include <wx/mstream.h>
+#include <raster_image.h>
 #include <board.h>
 #include <board_design_settings.h>
 #include <board_stackup_manager/board_stackup.h>
@@ -833,9 +834,9 @@ void PCB_WRITER_V10::format( const PCB_REFERENCE_IMAGE* aBitmap ) const
 
     const REFERENCE_IMAGE& refImage = aBitmap->GetReferenceImage();
 
-    const wxImage* image = refImage.GetImage().GetImageData();
+    const RASTER_IMAGE* image = refImage.GetImage().GetImageData();
 
-    wxCHECK_RET( image != nullptr, "wxImage* is NULL" );
+    wxCHECK_RET( image != nullptr, "no image data" );
 
     m_out->Print( "(image (at %s %s)", formatInternalUnits( aBitmap->GetPosition().x ).c_str(),
                   formatInternalUnits( aBitmap->GetPosition().y ).c_str() );

@@ -107,7 +107,7 @@ HANDLER_RESULT<types::RunJobResponse> ExecuteSchematicJob( KIWAY* aKiway, JOB& a
 {
     types::RunJobResponse response;
     WX_STRING_REPORTER reporter;
-    int exitCode = aKiway->ProcessJob( KIWAY::FACE_SCH, &aJob, &reporter );
+    int exitCode = aKiway->ProcessJob( KIWAY_FACES::FACE_SCH, &aJob, &reporter );
 
     for( const JOB_OUTPUT& output : aJob.GetOutputs() )
         response.add_output_path( output.m_outputPath.ToUTF8() );

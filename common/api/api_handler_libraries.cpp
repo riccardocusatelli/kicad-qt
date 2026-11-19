@@ -343,12 +343,12 @@ API_HANDLER_LIBRARIES::handleLoadAllLibraries( const HANDLER_CONTEXT<LoadAllLibr
         return tl::unexpected( e );
     }
 
-    std::map<LIBRARY_TABLE_TYPE, KIWAY::FACE_T> typesToLoad;
+    std::map<LIBRARY_TABLE_TYPE, KIWAY_FACES::FACE_T> typesToLoad;
 
     if( aCtx.Request.type_size() == 0 )
     {
-        typesToLoad = { { LIBRARY_TABLE_TYPE::SYMBOL,       KIWAY::FACE_SCH },
-                        { LIBRARY_TABLE_TYPE::FOOTPRINT,    KIWAY::FACE_PCB },
+        typesToLoad = { { LIBRARY_TABLE_TYPE::SYMBOL,       KIWAY_FACES::FACE_SCH },
+                        { LIBRARY_TABLE_TYPE::FOOTPRINT,    KIWAY_FACES::FACE_PCB },
                         { LIBRARY_TABLE_TYPE::DESIGN_BLOCK, KIWAY::KIWAY_FACE_COUNT } };
     }
     else
@@ -360,8 +360,8 @@ API_HANDLER_LIBRARIES::handleLoadAllLibraries( const HANDLER_CONTEXT<LoadAllLibr
 
             switch( type )
             {
-            case LIBRARY_TABLE_TYPE::SYMBOL:        typesToLoad.emplace( type, KIWAY::FACE_SCH );         break;
-            case LIBRARY_TABLE_TYPE::FOOTPRINT:     typesToLoad.emplace( type, KIWAY::FACE_PCB );         break;
+            case LIBRARY_TABLE_TYPE::SYMBOL:        typesToLoad.emplace( type, KIWAY_FACES::FACE_SCH );         break;
+            case LIBRARY_TABLE_TYPE::FOOTPRINT:     typesToLoad.emplace( type, KIWAY_FACES::FACE_PCB );         break;
             case LIBRARY_TABLE_TYPE::DESIGN_BLOCK:  typesToLoad.emplace( type, KIWAY::KIWAY_FACE_COUNT ); break;
 
             default:

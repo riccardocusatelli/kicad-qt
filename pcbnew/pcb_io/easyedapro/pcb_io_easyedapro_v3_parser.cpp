@@ -699,7 +699,6 @@ PCB_IO_EASYEDAPRO_V3_PARSER::ParseFootprint( const std::map<wxString, EASYEDAPRO
                         std::make_unique<PCB_REFERENCE_IMAGE>( footprint, kcenter, klayer );
                 REFERENCE_IMAGE& refImage = bitmap->GetReferenceImage();
 
-                wxImage::SetDefaultLoadFlags( wxImage::GetDefaultLoadFlags() & ~wxImage::Load_Verbose );
 
                 if( refImage.ReadImageFile( buf ) )
                 {
@@ -1602,7 +1601,6 @@ void PCB_IO_EASYEDAPRO_V3_PARSER::ParseBoard( BOARD* aBoard, const nlohmann::jso
                         std::make_unique<PCB_REFERENCE_IMAGE>( aBoard, kcenter, klayer );
                 REFERENCE_IMAGE& refImage = bitmap->GetReferenceImage();
 
-                wxImage::SetDefaultLoadFlags( wxImage::GetDefaultLoadFlags() & ~wxImage::Load_Verbose );
 
                 if( refImage.ReadImageFile( buf ) )
                 {

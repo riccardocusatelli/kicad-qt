@@ -34,7 +34,6 @@ install( TARGETS pcbnew_qt_kiface
 # Qt, with the Qt versions of the panels and dialogs.  The KIFACE links it once all of pcbnew is
 # ported (phase 3B.5).
 set( KIQT_PCBNEW_GUI_SRCS
-    action_plugin.cpp
     api/api_handler_pcb.cpp
     array_pad_number_provider.cpp
     autorouter/ar_autoplacer.cpp
@@ -45,7 +44,6 @@ set( KIQT_PCBNEW_GUI_SRCS
     board_stackup_manager/board_stackup_reporter.cpp
     board_stackup_manager/dielectric_material.cpp
     board_tables/board_characteristics_table.cpp
-    board_tables/board_stackup_table.cpp
     build_BOM_from_board.cpp
     cleanup_item.cpp
     component_classes/component_class.cpp
@@ -57,7 +55,6 @@ set( KIQT_PCBNEW_GUI_SRCS
     cross-probing.cpp
     drc/drc_interactive_courtyard_clearance.cpp
     drc/drc_test_provider.cpp
-    drc/rule_editor/dialog_drc_rule_editor.cpp
     drc/rule_editor/drc_re_abs_length_two_overlay_panel.cpp
     drc/rule_editor/drc_re_allowed_orientation_overlay_panel.cpp
     drc/rule_editor/drc_re_bitmap_overlay_panel.cpp
@@ -84,7 +81,6 @@ set( KIQT_PCBNEW_GUI_SRCS
     drc/rule_editor/drc_re_via_style_overlay_panel.cpp
     drc/rule_editor/drc_re_vias_under_smd_overlay_panel.cpp
     drc/rule_editor/drc_rule_editor_utils.cpp
-    drc/rule_editor/panel_drc_group_header.cpp
     drc/rule_editor/panel_drc_rule_editor.cpp
     edit_track_width.cpp
     edit_zone_helpers.cpp
@@ -142,13 +138,6 @@ set( KIQT_PCBNEW_GUI_SRCS
     pcbnew_jobs_handler_gui.cpp
     pcbnew_printout.cpp
     pcbnew_settings.cpp
-    python/scripting/pcb_scripting_tool.cpp
-    python/scripting/pcbnew_action_plugins.cpp
-    python/scripting/pcbnew_footprint_wizards.cpp
-    python/scripting/pcbnew_utils_3d.cpp
-    python/scripting/pcbnew_scripting.cpp
-    python/scripting/pcbnew_scripting_helpers_gui.cpp
-    ratsnest/ratsnest.cpp
     ratsnest/ratsnest_view_item.cpp
     router/pns_kicad_iface.cpp
     router/pns_tool_base.cpp
@@ -167,7 +156,6 @@ set( KIQT_PCBNEW_GUI_SRCS
     tools/board_reannotate_tool.cpp
     tools/convert_tool.cpp
     tools/drawing_tool.cpp
-    tools/drc_rule_editor_tool.cpp
     tools/drc_tool.cpp
     tools/edit_tool.cpp
     tools/edit_tool_move_fct.cpp
@@ -215,6 +203,60 @@ set( KIQT_PCBNEW_GUI_SRCS
     zone_manager/zone_preview_canvas.cpp
     zone_manager/zone_preview_notebook.cpp
     zone_settings_bag.cpp
+    dialogs/constraint_rules_list.cpp
+    dialogs/dialog_board_stackup_job.cpp
+    dialogs/dialog_constraint_list.cpp
+    dialogs/dialog_constraint_value.cpp
+    dialogs/dialog_diff_phase_skew_properties.cpp
+    dialogs/dialog_drill_groups.cpp
+    dialogs/dialog_export_2581_bom.cpp
+    dialogs/dialog_find_by_properties.cpp
+    dialogs/dialog_footprint_fields_table.cpp
+    dialogs/dialog_footprint_users.cpp
+    dialogs/dialog_generated_table_properties.cpp
+    dialogs/dialog_grid_item_properties.cpp
+    dialogs/dialog_lib_footprint_fields_table.cpp
+    dialogs/dialog_microvia_stack.cpp
+    dialogs/dialog_router_save_test_case.cpp
+    dialogs/dialog_via_stitch_properties.cpp
+    dialogs/geom_field_helpers.cpp
+    dialogs/panel_drill_chart_options.cpp
+    dialogs/panel_fab_export_content.cpp
+    dialogs/panel_setup_constraint_rules.cpp
+    dialogs/panel_setup_drill_chart.cpp
+    dialogs/panel_setup_via_stacks.cpp
+    dialogs/panel_zone_conversion.cpp
+    drc/rule_editor/drc_rule_document.cpp
+    footprint_editor_tab_context.cpp
+    footprint_fields_data_model.cpp
+    generators/pcb_via_stack.cpp
+    generators/pcb_via_stitch.cpp
+    generators/via_stitch_tool.cpp
+    api/footprint_context.cpp
+    api/headless_pcb_context.cpp
+    api/pcb_context.cpp
+    tools/block_drag_capability.cpp
+    tools/block_drag_dependents.cpp
+    tools/block_drag_displacement.cpp
+    tools/block_drag_pick.cpp
+    tools/block_drag_validation.cpp
+    tools/constraint_edit_tool.cpp
+    tools/constraint_overlay.cpp
+    tools/creepage_overlay.cpp
+    tools/diff_phase_skew_tool.cpp
+    tools/graphic_edit.cpp
+    tools/graphic_edit_tool.cpp
+    tools/graphic_extend.cpp
+    tools/graphic_trim.cpp
+    tools/hover_picker.cpp
+    tools/match_properties_tool.cpp
+    tools/pcb_handle_key.cpp
+    tools/view_overlay_holder.cpp
+    widgets/constraint_list_view.cpp
+    widgets/footprint_wizard_properties_panel.cpp
+    widgets/panel_constraints.cpp
+    widgets/via_cross_section_geometry.cpp
+    widgets/via_cross_section_preview.cpp
     )
 
 list( TRANSFORM KIQT_PCBNEW_GUI_SRCS PREPEND ${CMAKE_SOURCE_DIR}/pcbnew/ )
@@ -323,10 +365,29 @@ kiqt_generate_fbp_compat( KIQT_PCBNEW_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/panel_setup_zone_hatch_offsets_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/panel_setup_zones_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/panel_zone_properties_base.fbp
-    ${CMAKE_SOURCE_DIR}/pcbnew/drc/rule_editor/panel_drc_group_header_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/drc/rule_editor/panel_drc_rule_editor_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/import_gfx/dialog_import_graphics_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/zone_manager/dialog_zone_manager_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/constraint_rules_list_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_board_stackup_job_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_constraint_list_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_constraint_value_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_diff_phase_skew_properties_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_drill_groups_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_export_2581_bom_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_find_by_properties_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_footprint_users_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_generated_table_properties_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_grid_item_properties_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_microvia_stack_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_router_save_test_case_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_via_stitch_properties_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/panel_drill_chart_options_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/panel_fab_export_content_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/panel_setup_drill_chart_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/panel_setup_via_stacks_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/panel_zone_conversion_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/widgets/panel_constraints_base.fbp
     )
 
 set( KIQT_PCBNEW_COMPAT_DIALOGS
@@ -470,52 +531,14 @@ set( KIQT_PNS_SRCS
     pns_walkaround.cpp
     router_status_view_item.cpp
     time_limit.cpp
+    pns_block_dragger.cpp
+    pns_helpers.cpp
+    pns_tracks_spreader.cpp
     )
 
 list( TRANSFORM KIQT_PNS_SRCS PREPEND ${CMAKE_SOURCE_DIR}/pcbnew/router/ )
 
-# The legacy Python module of pcbnew (KIFACE_SCRIPTING_LEGACY): the SWIG bindings of the wxWidgets
-# build, generated from the same interface files, built on the wxWidgets API of kiwx.  The module
-# (pcbnew.py) is next to the KIFACEs of pcbnew, where KiCad finds it when run from the build tree.
-set( KIQT_SWIG_DIR ${CMAKE_BINARY_DIR}/pcbnew )
-
-set( KIQT_SWIG_FLAGS
-    -I${CMAKE_SOURCE_DIR}/pcbnew
-    -I${CMAKE_SOURCE_DIR}/include
-    -I${CMAKE_SOURCE_DIR}/scripting
-    -I${CMAKE_SOURCE_DIR}/pcbnew/python/scripting
-    -I${CMAKE_SOURCE_DIR}/common/swig
-    -I${CMAKE_SOURCE_DIR}/libs/core/include
-    -I${CMAKE_SOURCE_DIR}/libs/kimath/include
-    -I${CMAKE_BINARY_DIR}
-    )
-
-get_directory_property( _kiqt_pcbnew_defs DIRECTORY ${CMAKE_SOURCE_DIR}/pcbnew COMPILE_DEFINITIONS )
-
-foreach( _def ${_kiqt_pcbnew_defs} )
-    list( APPEND KIQT_SWIG_FLAGS -D${_def} )
-endforeach()
-
-add_custom_command( OUTPUT ${KIQT_SWIG_DIR}/pcbnew_wrap.cxx ${KIQT_SWIG_DIR}/pcbnew.py
-    DEPENDS ${CMAKE_SOURCE_DIR}/pcbnew/python/swig/pcbnew.i
-    DEPFILE ${KIQT_SWIG_DIR}/pcbnew_wrap.d
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${KIQT_SWIG_DIR}/docstrings
-    COMMAND ${CMAKE_COMMAND} -E touch ${KIQT_SWIG_DIR}/docstrings/docstrings.i
-    COMMAND ${SWIG_EXECUTABLE} -python -c++ -nothreads -fastdispatch -fvirtual
-            -outdir ${KIQT_SWIG_DIR} ${KIQT_SWIG_FLAGS} -w401 -w402
-            -MMD -MF ${KIQT_SWIG_DIR}/pcbnew_wrap.d -MT pcbnew/pcbnew_wrap.cxx
-            -o ${KIQT_SWIG_DIR}/pcbnew_wrap.cxx
-            ${CMAKE_SOURCE_DIR}/pcbnew/python/swig/pcbnew.i
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    )
-
-if( CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang" )
-    set_source_files_properties( ${KIQT_SWIG_DIR}/pcbnew_wrap.cxx PROPERTIES COMPILE_FLAGS "-w" )
-endif()
-
 add_library( pcbnew_gui_qt STATIC
-    ${KIQT_SWIG_DIR}/pcbnew_wrap.cxx
-    ${CMAKE_SOURCE_DIR}/common/swig/wx_python_helpers.cpp
     ${KIQT_PNS_SRCS}
     ${KIQT_PCBNEW_COMPAT_FBP_SRCS}
     ${KIQT_PCBNEW_COMPAT_DIALOGS}

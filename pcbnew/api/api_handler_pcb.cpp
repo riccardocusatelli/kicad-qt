@@ -2304,7 +2304,7 @@ HANDLER_RESULT<types::RunJobResponse> ExecuteBoardJob( PCB_CONTEXT* aContext, JO
         return response;
     }
 
-    int exitCode = aContext->GetKiway()->ProcessJob( KIWAY::FACE_PCB, &aJob, &reporter );
+    int exitCode = aContext->GetKiway()->ProcessJob( KIWAY_FACES::FACE_PCB, &aJob, &reporter );
 
     for( const JOB_OUTPUT& output : aJob.GetOutputs() )
         response.add_output_path( output.m_outputPath.ToUTF8() );
