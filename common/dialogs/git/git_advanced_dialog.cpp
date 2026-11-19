@@ -165,6 +165,8 @@ GIT_ADVANCED_DIALOG::GIT_ADVANCED_DIALOG( EDA_BASE_FRAME* aParent, GIT_COMMIT_PA
 
     // The sidebar tree does not invalidate its best size when pages are added, so lay it
     // out and pin its width, matching how PAGED_DIALOG builds its navigation.
+    // (the tree of the Qt build fits its titles itself)
+#ifndef KICAD_WX_FREE
     m_book->GetTreeCtrl()->InvalidateBestSize();
 
     for( size_t i = 0; i < m_book->GetPageCount(); ++i )
@@ -176,6 +178,7 @@ GIT_ADVANCED_DIALOG::GIT_ADVANCED_DIALOG( EDA_BASE_FRAME* aParent, GIT_COMMIT_PA
     wxSize treeSize = m_book->GetTreeCtrl()->GetSize();
     treeSize.x += 20;
     m_book->GetTreeCtrl()->SetMinSize( treeSize );
+#endif
 
     // A page is a bare list whose natural size is a few rows, so without a floor the first
     // open is a stamp. A saved size still wins once there is one. The fitted size keeps the

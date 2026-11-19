@@ -35,6 +35,7 @@
 #include <font/font.h>
 #include <gal/gal_display_options.h>
 #include <gr_basic.h>
+#include <geometry/shape_line_chain.h>
 #include <text_eval/text_eval_wrapper.h>
 
 

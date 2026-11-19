@@ -56,10 +56,7 @@ REPORTER& WX_HTML_REPORT_BOX::Report( const wxString& aText, SEVERITY aSeverity 
     if( m_immediateMode )
     {
         Flush();
-        int px, py, x, y;
-        GetScrollPixelsPerUnit( &px, &py );
-        GetVirtualSize( &x, &y );
-        Scroll( -1, y * py );
+        verticalScrollBar()->setValue( verticalScrollBar()->maximum() );
     }
 
     return *this;

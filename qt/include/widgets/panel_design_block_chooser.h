@@ -121,6 +121,7 @@ protected:
 
     /// Show the selected design block in the preview (shared by the GUI toolkits).
     void showSelectedDesignBlock();
+    void displaySelectedDesignBlock();
 
     /// Repaint the panel (with the GUI toolkit).
     void refreshView();
@@ -144,7 +145,8 @@ protected:
     EDA_DRAW_FRAME*       m_frame;
     std::function<void()> m_selectHandler;
 
-    std::vector<LIB_ID>   m_historyList;
+    std::vector<LIB_ID>&  m_historyList;
+    LIB_ID                m_preselect;
 
     /// The selection shows its design block (after the libraries are opened)
     bool                  m_showSelection;

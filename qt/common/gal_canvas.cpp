@@ -143,13 +143,7 @@ void GAL_CANVAS::SetGrid( const VECTOR2D& aSize, const VECTOR2D& aOrigin,
 
     if( aSettings )
     {
-        // The values of the style setting, as the editors read them
-        switch( aSettings->style )
-        {
-        case 1:  m_options.m_gridStyle = KIGFX::GRID_STYLE::LINES;       break;
-        case 2:  m_options.m_gridStyle = KIGFX::GRID_STYLE::SMALL_CROSS; break;
-        default: m_options.m_gridStyle = KIGFX::GRID_STYLE::DOTS;        break;
-        }
+        m_options.m_gridStyle = aSettings->style;
 
         m_options.m_gridLineWidth = aSettings->line_width;
         m_options.m_gridMinSpacing = aSettings->min_spacing;

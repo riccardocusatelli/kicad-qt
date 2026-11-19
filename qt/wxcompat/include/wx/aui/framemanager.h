@@ -200,6 +200,7 @@ public:
     wxString  caption;
     wxWindow* window = nullptr;
     QWidget*  widget = nullptr;     ///< The widget of the pane (the window may not be a wxWindow)
+    wxWindow* frame = nullptr;      ///< The floating frame of wxWidgets (none: dock widgets float)
     int       dock_direction = wxAUI_DOCK_LEFT;
     int       dock_layer = 0;
     int       dock_row = 0;

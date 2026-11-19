@@ -65,7 +65,8 @@ public:
      * @param aShowErrorMessage set to true to show any error messages.
      * @return The design block found in the library or NULL if the design block was not found.
      */
-    DESIGN_BLOCK* GetDesignBlock( const LIB_ID& aLibId, bool aUseCacheLib, bool aShowErrorMsg );
+    DESIGN_BLOCK* GetDesignBlock( const LIB_ID& aLibId, bool aUseCacheLib, bool aShowErrorMsg,
+                                  wxString* aErrorMsg = nullptr );
     DESIGN_BLOCK* GetSelectedDesignBlock( bool aUseCacheLib, bool aShowErrorMsg );
 
     void RefreshLibs();

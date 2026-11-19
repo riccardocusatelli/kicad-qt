@@ -39,6 +39,7 @@
 
 #include <QHeaderView>
 #include <QPointer>
+#include <QScrollBar>
 #include <QTableView>
 
 #include <wx/arrstr.h>
@@ -805,6 +806,7 @@ public:
     void SetLabelBackgroundColour( const wxColour& ) {}
     wxColour GetLabelBackgroundColour() const { return wxColour( palette().color( QPalette::Button ) ); }
     void SetLabelTextColour( const wxColour& ) {}
+    wxColour GetLabelTextColour() const { return wxColour( palette().color( QPalette::WindowText ) ); }
     void SetUseNativeColLabels( bool = true ) {}
     void UseNativeColHeader( bool = true ) {}
     void SetColLabelTextOrientation( int ) {}
@@ -919,6 +921,27 @@ public:
     void DisableRowResize( int aRow ) {}
     void SetMargins( int, int ) {}
     void SetScrollRate( int, int ) {}
+
+    /// The scroll positions of the grid, in the steps of its scroll bars
+    wxPoint GetViewStart() const
+    {
+        return wxPoint( horizontalScrollBar()->value(), verticalScrollBar()->value() );
+    }
+
+    void Scroll( int aX, int aY )
+    {
+        if( aX >= 0 )
+            horizontalScrollBar()->setValue( aX );
+
+        if( aY >= 0 )
+            verticalScrollBar()->setValue( aY );
+    }
+
+    int GetScrollPageSize( int aOrient ) const
+    {
+        return aOrient == wxHORIZONTAL ? horizontalScrollBar()->pageStep()
+                                       : verticalScrollBar()->pageStep();
+    }
     void SetTabBehaviour( TabBehaviour ) {}
     void SetSelectionBackground( const wxColour& ) {}
     void SetSelectionForeground( const wxColour& ) {}

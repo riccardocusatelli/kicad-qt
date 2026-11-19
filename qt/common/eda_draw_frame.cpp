@@ -73,6 +73,9 @@
 #include <settings/common_settings.h>
 #include <settings/settings_manager.h>
 #include <tool/action_toolbar.h>
+#include <tool/arc_draw_mode.h>
+#include <tool/action_manager.h>
+#include <tool/action_menu.h>
 #include <tool/actions.h>
 #include <tool/common_tools.h>
 #include <tool/editor_conditions.h>
@@ -111,6 +114,7 @@ enum STATUS_FIELD
 
 
 bool EDA_DRAW_FRAME::m_openGLFailureOccured = false;
+std::set<EDA_DRAW_PANEL_GAL::GAL_TYPE> EDA_DRAW_FRAME::m_failedCanvases;
 
 
 EDA_DRAW_FRAME::EDA_DRAW_FRAME( KIWAY* aKiway, QWidget* aParent, FRAME_T aFrameType,
@@ -1296,6 +1300,107 @@ void EDA_DRAW_FRAME::UpdateProperties()
         return;
 
     m_propertiesPanel->UpdateData();
+}
+
+
+bool EDA_DRAW_FRAME::IsGitCommitPaneShown()
+{
+    // The git commit pane is not part of the Qt build yet
+    return false;
+}
+
+
+void EDA_DRAW_FRAME::ToggleGitCommitPane()
+{
+}
+
+
+void EDA_DRAW_FRAME::RefreshGitCommitPane()
+{
+}
+
+
+void EDA_DRAW_FRAME::setArcModeConditions( const TOOL_ACTION&                                 aDrawArc,
+                                           const std::function<bool( const SELECTION& )>& aEnable )
+{
+    ACTION_MANAGER*   mgr = m_toolManager->GetActionManager();
+    const std::string arcToolPrefix = aDrawArc.GetName();
+
+    // Every arc tool action extends the plain action's name, so one compare covers them all
+    const SELECTION_CONDITION arcToolActive =
+            [this, arcToolPrefix]( const SELECTION& )
+            {
+                return CurrentToolName().starts_with( arcToolPrefix );
+            };
+
+    ARC_DRAW_MODE mode = ARC_DRAW_MODE::CENTER_START_END;
+
+    do
+    {
+        const SELECTION_CONDITION inMode =
+                [this, mode]( const SELECTION& )
+                {
+                    APP_SETTINGS_BASE* cfg = config();
+
+                    return cfg && cfg->m_ArcDrawMode == mode;
+                };
+
+        if( const TOOL_ACTION* action = drawArcAction( mode ) )
+            mgr->SetConditions( *action, ACTION_CONDITIONS().Enable( aEnable ).Check( inMode && arcToolActive ) );
+
+        mode = IncrementArcDrawMode( mode );
+    } while( mode != ARC_DRAW_MODE::CENTER_START_END );
+}
+
+
+void EDA_DRAW_FRAME::syncToolbarSelections()
+{
+    APP_SETTINGS_BASE* cfg = config();
+
+    // The arc group would otherwise start on its first entry and overwrite the saved mode
+    if( const TOOL_ACTION* action = cfg ? drawArcAction( cfg->m_ArcDrawMode ) : nullptr )
+        SelectToolbarAction( *action );
+}
+
+
+size_t EDA_DRAW_FRAME::AddApiPluginMenuItems( ACTION_MENU* aMenu )
+{
+    KI_CHECK( aMenu, 0 );
+
+    std::vector<const PLUGIN_ACTION*> actions = GetOrderedPluginActions( PluginActionScope(), config() );
+
+    size_t count = 0;
+
+    for( const PLUGIN_ACTION* action : actions )
+    {
+        const wxBitmapBundle& icon = KIPLATFORM::UI::IsDarkTheme() && action->icon_dark.IsOk()
+                                             ? action->icon_dark
+                                             : action->icon_light;
+
+        QAction* item = aMenu->addAction( icon, ToQString( action->name ) );
+        item->setToolTip( ToQString( action->description ) );
+
+        wxString identifier = action->identifier;
+
+        // The item runs the action of the plugin (OnApiPluginInvoke() with wxWidgets)
+        QObject::connect( item, &QAction::triggered, this,
+                          [this, identifier]()
+                          {
+                              std::shared_ptr<REPORTER> reporter;
+
+                              if( KISTATUSBAR* bar = GetStatusBar() )
+                              {
+                                  reporter = std::make_shared<STATUSBAR_WARNING_REPORTER>(
+                                          bar, wxS( "plugin" ) );
+                              }
+
+                              PgmGui().GetPluginManager().InvokeAction( identifier, reporter );
+                          } );
+
+        ++count;
+    }
+
+    return count;
 }
 
 

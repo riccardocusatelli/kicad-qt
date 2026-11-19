@@ -29,32 +29,78 @@
 
 #pragma once
 
+#include <QObject>
 #include <QPointer>
 
+#include <type_traits>
 
+
+/**
+ * A weak reference to an object: to a QObject, cleared by Qt when it is destroyed; to a window of
+ * the layer (wxWindow, which is not a QObject), cleared when its widget is destroyed; to any other
+ * object, a plain pointer.
+ */
 template <class T>
 class wxWeakRef
 {
 public:
-    wxWeakRef( T* aObject = nullptr ) :
-            m_object( aObject )
-    {
-    }
+    wxWeakRef( T* aObject = nullptr ) { assign( aObject ); }
 
     wxWeakRef& operator=( T* aObject )
     {
-        m_object = aObject;
+        assign( aObject );
         return *this;
     }
 
-    T* get() const { return m_object.data(); }
+    T* get() const
+    {
+        if( m_tracked )
+            return m_guard ? m_object : nullptr;
+
+        return m_object;
+    }
 
     operator T*() const { return get(); }
     T* operator->() const { return get(); }
     T& operator*() const { return *get(); }
 
-    void Release() { m_object.clear(); }
+    /// The reference as the argument of a function that takes the object (the parent window of
+    /// a dialog, a wxWidgetArgCompat)
+    template <typename U, typename = std::enable_if_t<!std::is_pointer_v<U> && !std::is_same_v<U, bool>
+                                                      && std::is_constructible_v<U, T*>>>
+    operator U() const
+    {
+        return U( get() );
+    }
+
+    void Release() { assign( nullptr ); }
 
 private:
-    QPointer<T> m_object;
+    void assign( T* aObject )
+    {
+        m_object = aObject;
+        m_guard = nullptr;
+        m_tracked = false;
+
+        if( !aObject )
+            return;
+
+        if constexpr( std::is_base_of_v<QObject, T> )
+        {
+            m_guard = aObject;
+            m_tracked = true;
+        }
+        else if constexpr( requires( T* aT ) { aT->GetHandle(); } )
+        {
+            if( auto* widget = aObject->GetHandle() )
+            {
+                m_guard = widget;
+                m_tracked = true;
+            }
+        }
+    }
+
+    T*               m_object = nullptr;
+    QPointer<QObject> m_guard;
+    bool             m_tracked = false;
 };

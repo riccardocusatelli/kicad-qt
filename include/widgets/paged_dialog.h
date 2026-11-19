@@ -23,6 +23,7 @@
 
 #include <dialog_shim.h>
 #include <widgets/wx_treebook.h>
+#include <wx/treectrl.h>
 
 
 class WX_INFOBAR;

@@ -1135,6 +1135,32 @@ void wxStyledTextCtrl::StyleSetForeground( int aStyle, const wxColour& aColour )
     {
         m_braceBadForeground = aColour;
     }
+    else
+    {
+        m_styleForegrounds[aStyle] = aColour;
+    }
+}
+
+
+void wxStyledTextCtrl::SetStyling( int aLength, int aStyle )
+{
+    int size = document()->characterCount() - 1;
+    int start = std::clamp( m_styleStart, 0, size );
+    int end = std::clamp( m_styleStart + aLength, start, size );
+
+    QTextCursor     cursor( document() );
+    QTextCharFormat format;
+
+    cursor.setPosition( start );
+    cursor.setPosition( end, QTextCursor::KeepAnchor );
+
+    if( auto it = m_styleForegrounds.find( aStyle ); it != m_styleForegrounds.end() )
+        format.setForeground( QColor( it->second ) );
+    else
+        format.clearForeground();
+
+    cursor.mergeCharFormat( format );
+    m_styleStart = end;
 }
 
 

@@ -817,6 +817,7 @@ bool GIT_COMMIT_PANE::layoutAndWrapStatus()
 
 void GIT_COMMIT_PANE::updateDockMinHeight()
 {
+#ifndef KICAD_WX_FREE
     wxAuiManager* manager = wxAuiManager::GetManager( this );
 
     if( !manager )
@@ -867,6 +868,8 @@ void GIT_COMMIT_PANE::updateDockMinHeight()
     {
         manager->Update();
     }
+#endif
+
 }
 
 
@@ -903,6 +906,7 @@ void GIT_COMMIT_PANE::onIdle( wxIdleEvent& aEvent )
 {
     aEvent.Skip();
 
+#ifndef KICAD_WX_FREE
     // The clamp follows the frame, which resizes without the pane's layout changing
     wxAuiManager* manager = wxAuiManager::GetManager( this );
 
@@ -918,6 +922,7 @@ void GIT_COMMIT_PANE::onIdle( wxIdleEvent& aEvent )
         m_dockUpdatePending = false;
         updateDockMinHeight();
     }
+#endif
 
     // Every layout path moves the box, so the hint follows it from here.
     updateDescriptionHint();

@@ -141,6 +141,55 @@ long ExecuteAsync( const std::vector<wxString>& aArgv, const wxExecuteEnv* aEnv,
 }
 
 
+static wxString readAllFromStream( wxInputStream* aStream )
+{
+    wxString result;
+
+    if( aStream )
+    {
+        char buffer[4096];
+
+        while( aStream->CanRead() )
+        {
+            aStream->Read( buffer, sizeof( buffer ) );
+            result.Append( buffer, aStream->LastRead() );
+        }
+    }
+
+    return result;
+}
+
+
+long ExecuteSync( const std::vector<wxString>& aArgv, const wxExecuteEnv* aEnv,
+                  wxString* aOutput, wxString* aError )
+{
+    std::vector<wxWCharBuffer> argBufs;
+
+    for( const wxString& arg : aArgv )
+        argBufs.emplace_back( arg.wc_str() );
+
+    std::vector<const wchar_t*> args;
+
+    for( const wxWCharBuffer& buf : argBufs )
+        args.emplace_back( buf.data() );
+
+    args.emplace_back( nullptr );
+
+    wxProcess process;
+    process.Redirect();
+
+    long ret = wxExecute( args.data(), wxEXEC_BLOCK, &process, aEnv );
+
+    if( aOutput )
+        *aOutput = readAllFromStream( process.GetInputStream() );
+
+    if( aError )
+        *aError = readAllFromStream( process.GetErrorStream() );
+
+    return ret;
+}
+
+
 void RunOnMainThread( std::function<void()> aFunction, int aDelayMs )
 {
     if( !wxTheApp )

@@ -48,13 +48,15 @@
 #include <pcb_marker.h>
 #include <pcb_plot_params.h>
 #include <pcb_plotter.h>
-#include <pcbnew_scripting_helpers.h>
+#include <board_loader.h>
+#include <project.h>
 #include <pgm_base.h>
 #include <reporter.h>
 #include <settings/settings_manager.h>
 #include <string_utils.h>
 #include <zone.h>
 #include <zone_filler.h>
+#include <wildcards_and_files_ext.h>
 
 
 namespace
@@ -170,7 +172,26 @@ int main( int argc, char** argv )
     wxFileName outDir = wxFileName::DirName( wxString::FromUTF8( argv[2] ) );
     outDir.Mkdir( wxS_DIR_DEFAULT, wxPATH_MKDIR_FULL );
 
-    std::unique_ptr<BOARD> board( LoadBoard( boardFile, true ) );
+    // The project of the board, as kicad-cli loads it
+    wxFileName projectFile( boardFile );
+    projectFile.SetExt( FILEEXT::ProjectFileExtension );
+    program.GetSettingsManager().LoadProject( projectFile.GetFullPath(), true );
+    PROJECT* project = program.GetSettingsManager().GetProject( projectFile.GetFullPath() );
+
+    auto loadBoard =
+            [&]( const wxString& aFile ) -> std::unique_ptr<BOARD>
+            {
+                try
+                {
+                    return BOARD_LOADER::Load( aFile, PCB_IO_MGR::KICAD_SEXP, project );
+                }
+                catch( ... )
+                {
+                    return nullptr;
+                }
+            };
+
+    std::unique_ptr<BOARD> board = loadBoard( boardFile );
     check( board != nullptr, "load the board" );
 
     if( !board )
@@ -194,12 +215,12 @@ int main( int argc, char** argv )
     NULL_REPORTER reporter;
     PCB_PLOTTER   plotter( board.get(), &reporter, plotOpts );
 
-    check( plotter.Plot( outDir.GetPath(), { F_Cu, B_Cu }, {}, false ), "plot the copper layers" );
+    check( plotter.Plot( outDir.GetPath(), { F_Cu, B_Cu }, {}, false, false, false ), "plot the copper layers" );
 
     wxString savedFile = wxFileName( outDir.GetPath(), wxS( "saved.kicad_pcb" ) ).GetFullPath();
-    check( SaveBoard( savedFile, board.get(), true ), "save the board" );
+    check( BOARD_LOADER::SaveBoard( savedFile, *board, PCB_IO_MGR::KICAD_SEXP ), "save the board" );
 
-    std::unique_ptr<BOARD> reloaded( LoadBoard( savedFile, false ) );
+    std::unique_ptr<BOARD> reloaded = loadBoard( savedFile );
     check( reloaded != nullptr, "load the saved board" );
 
     if( reloaded )

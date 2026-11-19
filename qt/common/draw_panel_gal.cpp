@@ -35,6 +35,7 @@
 
 #include <class_draw_panel_gal.h>
 #include <ui_hooks.h>
+#include <math/vector2wx.h>
 
 #include <QApplication>
 #include <QEnterEvent>
@@ -342,6 +343,8 @@ bool EDA_DRAW_PANEL_GAL::DoRePaint( bool aAllowSkip )
 
     try
     {
+        beforeRedraw();
+
         VECTOR2D cursorPos = m_viewControls ? m_viewControls->GetCursorPosition()
                                             : VECTOR2D();
         bool viewDirty = m_view->IsDirty();
@@ -413,7 +416,10 @@ bool EDA_DRAW_PANEL_GAL::DoRePaint( bool aAllowSkip )
 
                 // Grid has to be redrawn only when the NONCACHED target is redrawn
                 if( m_view->IsTargetDirty( KIGFX::TARGET_NONCACHED ) )
+                {
+                    prepareGridSources();
                     m_gal->DrawGrid();
+                }
 
                 cntRedraw.Start();
                 m_view->Redraw();
@@ -446,7 +452,7 @@ bool EDA_DRAW_PANEL_GAL::DoRePaint( bool aAllowSkip )
 
     if( isDirty )
     {
-        KI_TRACE( traceGalProfile, "View timing: %s %s %s %s %s\n",
+        KI_LOG_TRACE( traceGalProfile, "View timing: %s %s %s %s %s\n",
             cntTotal.to_string(),
             cntUpd.to_string(),
             cntRedraw.to_string(),
@@ -465,6 +471,65 @@ void EDA_DRAW_PANEL_GAL::resizeEvent( QResizeEvent* aEvent )
 {
     ResizeGal();
     QWidget::resizeEvent( aEvent );
+
+    // The first fit often runs before the frame has its final layout, and docks and infobars
+    // resize the canvas later. Until someone zooms or pans, fit again.
+    wxSize clientSize = GetClientSize();
+
+    if( clientSize.x > 0 && clientSize.y > 0 && m_view
+        && m_automaticFit.Holds( m_view->GetScale(), m_view->GetCenter() ) )
+    {
+        ZoomToFit( m_automaticFit.GetBox(), m_automaticFit.GetMarginScale() );
+    }
+}
+
+
+EDA_DRAW_PANEL_GAL::GAL_TYPE EDA_DRAW_PANEL_GAL::ResolveStoredCanvasType( int aStoredCanvasType )
+{
+    if( aStoredCanvasType == GAL_TYPE_CAIRO )
+        return GAL_TYPE_CAIRO;
+
+    return GAL_TYPE_OPENGL;
+}
+
+
+void EDA_DRAW_PANEL_GAL::ZoomToFit( const BOX2I& aBox, std::optional<double> aMarginScale )
+{
+    KIGFX::VIEW* view = m_view;
+    BOX2I        bBox = aBox;
+
+    if( !view || !m_gal )
+        return;
+
+    // The GAL's world units may have changed since the view was attached.
+    m_gal->ComputeWorldScreenMatrix();
+
+    VECTOR2D screenSize = view->ToWorld( ToVECTOR2I( GetClientSize() ), false ) * view->GetScale();
+
+    // A box with no extent (an empty screen or a lone point) has nothing to fit
+    if( bBox.GetWidth() == 0 && bBox.GetHeight() == 0 )
+        bBox = GetDefaultViewBBox();
+
+    VECTOR2D vsize = bBox.GetSize();
+    double   scale = 1.0 / std::max( fabs( vsize.x / screenSize.x ), fabs( vsize.y / screenSize.y ) );
+
+    // The scale isn't finite for an empty canvas: just center it
+    if( !std::isfinite( scale ) )
+    {
+        view->SetCenter( VECTOR2D( 0, 0 ) );
+        m_automaticFit.Clear();
+        Refresh();
+        return;
+    }
+
+    // Reserve enough margin to limit the amount of the view that might be obscured behind the
+    // infobar.
+    double margin_scale_factor = aMarginScale.value_or( GetClientSize().y < 768 ? 1.10 : 1.04 );
+
+    view->SetScale( scale / margin_scale_factor );
+    view->SetCenter( bBox.Centre() );
+    m_automaticFit.Record( aBox, aMarginScale, view->GetScale(), view->GetCenter() );
+    Refresh();
 }
 
 

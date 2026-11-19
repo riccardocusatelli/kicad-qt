@@ -132,6 +132,46 @@ long ExecuteAsync( const std::vector<wxString>& aArgv, const wxExecuteEnv* aEnv,
 }
 
 
+long ExecuteSync( const std::vector<wxString>& aArgv, const wxExecuteEnv* aEnv,
+                  wxString* aOutput, wxString* aError )
+{
+    if( aArgv.empty() )
+        return -1;
+
+    QProcess    process;
+    QStringList args;
+
+    for( size_t ii = 1; ii < aArgv.size(); ++ii )
+        args << ToQString( aArgv[ii] );
+
+    if( aEnv )
+    {
+        QProcessEnvironment env;
+
+        for( const auto& [name, value] : aEnv->env )
+            env.insert( ToQString( name ), ToQString( value ) );
+
+        process.setProcessEnvironment( env );
+
+        if( !aEnv->cwd.IsEmpty() )
+            process.setWorkingDirectory( ToQString( aEnv->cwd ) );
+    }
+
+    process.start( ToQString( aArgv[0] ), args );
+
+    if( !process.waitForStarted() || !process.waitForFinished( -1 ) )
+        return -1;
+
+    if( aOutput )
+        *aOutput = ToWxString( QString::fromUtf8( process.readAllStandardOutput() ) );
+
+    if( aError )
+        *aError = ToWxString( QString::fromUtf8( process.readAllStandardError() ) );
+
+    return process.exitStatus() == QProcess::CrashExit ? -1 : process.exitCode();
+}
+
+
 void RunOnMainThread( std::function<void()> aFunction, int aDelayMs )
 {
     QCoreApplication* app = QCoreApplication::instance();

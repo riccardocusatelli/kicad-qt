@@ -247,8 +247,6 @@ int COMMON_CONTROL::Execute( const wxString& aExecutible, const wxString& aParam
 
         if( aExecutible == GERBVIEW_EXE )
             tool = FRAME_GERBER;
-        else if( aExecutible == BITMAPCONVERTER_EXE )
-            tool = FRAME_BM2CMP;
         else if( aExecutible == PCB_CALCULATOR_EXE )
             tool = FRAME_CALC;
         else if( aExecutible == PL_EDITOR_EXE )

@@ -438,7 +438,7 @@ public:
      * @param aStartPage is the title of the page to show.
      * @param aStartParentPage is the title of the group of pages (the editor) of the page.
      */
-    void ShowPreferences( wxString aStartPage, wxString aStartParentPage );
+    void ShowPreferences( const wxString& aStartPage, const wxString& aStartParentPage );
 
     /**
      * Display a bargraph (0 to 50 point length) for a PerCent value from 0 to 100.
@@ -556,7 +556,7 @@ public:
      * Look for the autosave files of a project newer than their files, and offer to recover them.
      */
     void CheckForAutosaveFiles( const wxString& aProjectPath,
-                                const std::vector<wxString>& aExtensions );
+                                const std::vector<wxString>& aExtensions, int aCtl );
 
     /**
      * Fetch the file name from the file history list (the menu item of id @a cmdId).
@@ -819,6 +819,9 @@ protected:
      * RecreateToolbars()).
      */
     virtual void configureToolbars();
+
+    /// Called after the toolbars are rebuilt so a frame can select the group entries that reflect its saved state.
+    virtual void syncToolbarSelections() {}
 
     void onAutoSaveTimer();
 

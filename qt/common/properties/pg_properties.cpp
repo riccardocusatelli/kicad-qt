@@ -105,7 +105,7 @@ wxString PGPROPERTY_INT::ValueToString( const wxVariant& aValue ) const
     {
         auto* data = static_cast<STD_OPTIONAL_INT_VARIANT_DATA*>( aValue.GetData() );
 
-        return data->Value().has_value() ? wxString::Format( wxS( "%d" ), data->Value().value() )
+        return data->OptValue().has_value() ? wxString::Format( wxS( "%d" ), data->OptValue().value() )
                                          : wxString();
     }
 
@@ -170,10 +170,10 @@ wxString PGPROPERTY_FLOAT::ValueToString( const wxVariant& aValue ) const
     {
         auto* data = static_cast<STD_OPTIONAL_DOUBLE_VARIANT_DATA*>( aValue.GetData() );
 
-        if( !data->Value().has_value() )
+        if( !data->OptValue().has_value() )
             return wxEmptyString;
 
-        value = data->Value().value();
+        value = data->OptValue().value();
     }
     else if( aValue.GetType() == wxS( "double" ) || aValue.GetType() == wxS( "long" ) )
     {

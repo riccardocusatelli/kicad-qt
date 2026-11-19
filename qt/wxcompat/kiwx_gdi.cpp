@@ -36,6 +36,7 @@
 #include <QAbstractScrollArea>
 #include <QApplication>
 #include <QBuffer>
+#include <QFontInfo>
 #include <QFontDatabase>
 #include <QFontMetrics>
 #include <QPainter>
@@ -240,6 +241,17 @@ bool wxFont::SetFaceName( const wxString& aFaceName )
 {
     setFamily( ToQString( aFaceName ) );
     return true;
+}
+
+
+wxSize wxFont::GetPixelSize() const
+{
+    int pixels = pixelSize();
+
+    if( pixels <= 0 )
+        pixels = QFontInfo( *this ).pixelSize();
+
+    return wxSize( 0, pixels );
 }
 
 

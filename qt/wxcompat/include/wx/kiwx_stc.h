@@ -316,6 +316,10 @@ public:
     void StyleSetSize( int aStyle, int aSize ) {}
     void StyleSetFaceName( int aStyle, const wxString& aName ) {}
 
+    /// The styling of a range (only the foreground of the style is applied).
+    void StartStyling( int aStart ) { m_styleStart = aStart; }
+    void SetStyling( int aLength, int aStyle );
+
     /// All the styles as the default one (the colours of the numbers of the lines too).
     void StyleClearAll();
     void StyleResetDefault() {}
@@ -427,6 +431,8 @@ private:
     int                   m_searchAnchor;
     std::map<int, int>    m_marginWidths;
     std::map<int, int>    m_marginTypes;
+    std::map<int, wxColour> m_styleForegrounds;
+    int                   m_styleStart = 0;
     int                   m_marginLeft;      ///< the space between the margins and the text
     int                   m_marginRight;
     QWidget*              m_margins;

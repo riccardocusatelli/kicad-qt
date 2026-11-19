@@ -66,6 +66,19 @@ KICOMMON_API long ExecuteAsync( const std::vector<wxString>& aArgv, const wxExec
                                 PROCESS_OUTPUT_HANDLER aOnOutput, PROCESS_END_HANDLER aOnEnd );
 
 /**
+ * Run a process and wait for its end.
+ *
+ * @param aArgv is the program and its arguments.
+ * @param aEnv is the environment and the working directory of the process (nullptr for the ones
+ *             of KiCad).
+ * @param aOutput if not null, receives the standard output of the process.
+ * @param aError if not null, receives the standard error of the process.
+ * @return the exit code of the process, or -1 if it could not be run.
+ */
+KICOMMON_API long ExecuteSync( const std::vector<wxString>& aArgv, const wxExecuteEnv* aEnv,
+                               wxString* aOutput, wxString* aError );
+
+/**
  * Run a function from the event loop of the GUI (on the main thread), after the events being
  * handled.  It can be called from any thread.
  *

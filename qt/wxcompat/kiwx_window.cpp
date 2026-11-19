@@ -35,6 +35,7 @@
 #include <QDropEvent>
 #include <QGroupBox>
 #include <QMimeData>
+#include <QPushButton>
 #include <QScrollArea>
 #include <QUrl>
 #include <QResizeEvent>
@@ -119,6 +120,14 @@ wxWindow::wxWindow( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos, con
 
 wxWindow::~wxWindow()
 {
+    // The handlers of the destruction (bound by other objects to forget the window)
+    if( GetEventSinkCompat().Has( wxEVT_DESTROY ) )
+    {
+        wxWindowDestroyEvent event;
+        event.SetEventObject( this );
+        GetEventSinkCompat().Process( event );
+    }
+
     auto* widget = static_cast<KIWX_OWN_WIDGET*>( m_ownWidgetCompat );
 
     if( !widget )
@@ -2096,4 +2105,30 @@ void wxWindow::DragAcceptFiles( bool aAccept )
 {
     if( QWidget* widget = GetHandle() )
         widget->setAcceptDrops( aAccept );
+}
+
+
+std::vector<wxWindow*> wxTopLevelWindowsCompat()
+{
+    std::vector<wxWindow*> windows;
+
+    for( QWidget* widget : QApplication::topLevelWidgets() )
+    {
+        if( wxWindow* window = wxFindWindowFromQtCompat( widget ) )
+            windows.push_back( window );
+    }
+
+    return windows;
+}
+
+
+wxWindow* wxTopLevelWindow::GetDefaultItem() const
+{
+    for( QPushButton* button : GetHandle()->findChildren<QPushButton*>() )
+    {
+        if( button->isDefault() )
+            return wxFindWindowFromQtCompat( button );
+    }
+
+    return nullptr;
 }

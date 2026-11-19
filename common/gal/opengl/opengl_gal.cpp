@@ -882,7 +882,7 @@ void OPENGL_GAL::orphanContextGroup()
 
     // A live owner destroys the old main context itself; an ownerless one would otherwise leak
     if( !mainOwned && m_glMainContext )
-        Pgm().GetGLContextManager()->DestroyCtx( m_glMainContext );
+        GL_CONTEXT_MANAGER::Get()->DestroyCtx( m_glMainContext );
 
     // The dead group still owns these; the next canvas created starts a new group
     m_glMainContext = nullptr;
@@ -896,7 +896,7 @@ void OPENGL_GAL::orphanContextGroup()
 
 bool OPENGL_GAL::IsResetSettled()
 {
-    GL_CONTEXT_MANAGER* mgr = Pgm().GetGLContextManager();
+    GL_CONTEXT_MANAGER* mgr = GL_CONTEXT_MANAGER::Get();
 
     if( m_resetSettled || !mgr )
         return true;

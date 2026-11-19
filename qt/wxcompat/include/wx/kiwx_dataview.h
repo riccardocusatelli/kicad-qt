@@ -81,6 +81,7 @@ enum wxDataViewColumnFlags
 };
 
 #define wxDVC_DEFAULT_WIDTH 80
+#define wxDVC_DEFAULT_RENDERER_SIZE 20
 #define wxDVC_TOGGLE_DEFAULT_WIDTH 30
 #define wxDVR_DEFAULT_ALIGNMENT -1
 #define wxDVC_DEFAULT_MINWIDTH 30
@@ -440,6 +441,9 @@ public:
     wxDataViewColumn* GetOwner() const { return m_owner; }
     void SetOwner( wxDataViewColumn* aOwner ) { m_owner = aOwner; }
 
+    /// The control of the column of the renderer.
+    wxDataViewCtrl* GetView() const;
+
     virtual bool IsCustomRenderer() const { return false; }
 
     /// The kind of the renderer, for the model of Qt.
@@ -622,6 +626,12 @@ private:
     bool                m_ascending;
     wxDataViewCtrl*     m_owner;
 };
+
+
+inline wxDataViewCtrl* wxDataViewRenderer::GetView() const
+{
+    return m_owner ? m_owner->GetOwner() : nullptr;
+}
 
 
 /// An event of a data view (wxDataViewEvent).

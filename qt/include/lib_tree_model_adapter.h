@@ -303,18 +303,8 @@ public:
     class ResetTreeView
     {
     public:
-        explicit ResetTreeView( LIB_TREE_MODEL_ADAPTER& aAdapter ) :
-                m_adapter( aAdapter )
-        {
-            m_adapter.Freeze();
-            m_adapter.BeforeReset();
-        }
-
-        ~ResetTreeView()
-        {
-            m_adapter.AfterReset();
-            m_adapter.Thaw();
-        }
+        explicit ResetTreeView( LIB_TREE_MODEL_ADAPTER& aAdapter );
+        ~ResetTreeView();
 
         ResetTreeView( const ResetTreeView& ) = delete;
         ResetTreeView& operator=( const ResetTreeView& ) = delete;

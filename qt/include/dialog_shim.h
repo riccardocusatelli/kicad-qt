@@ -126,6 +126,15 @@ public:
 
     bool IsQuasiModal() const { return m_qmodal_loop != nullptr; }
 
+    /// End the dialog however it is shown (quasi-modal, modal or modeless).
+    void EndDialogShim( int aReturnCode )
+    {
+        if( IsQuasiModal() )
+            EndQuasiModal( aReturnCode );
+        else
+            EndDialog( aReturnCode );
+    }
+
     /// The dialog is shown modally (ShowModal()).
     bool IsModal() const { return isModal() && isVisible(); }
 

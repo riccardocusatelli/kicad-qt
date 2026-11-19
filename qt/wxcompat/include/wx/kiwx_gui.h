@@ -356,6 +356,10 @@ public:
 
     void SetDefault() { setDefault( true ); }
 
+    /// A label in the markup of wxWidgets: the colour of a <span foreground='...'> is the colour
+    /// of the text, the other markup is dropped.
+    void SetLabelMarkup( const wxString& aMarkup );
+
     /// The size of a button with a short label, in the style of the application.
     static wxSize GetDefaultSize( wxWindow* aWindow = nullptr );
 
@@ -776,6 +780,14 @@ public:
 class KIQT_API wxListBox : public wxItemContainerCompat<QListWidget>
 {
 public:
+    /// The default font and colours of the list boxes: the ones of the lists of the system.
+    static wxVisualAttributes GetClassDefaultAttributes( int = 0 )
+    {
+        return { wxSystemSettings::GetFont( wxSYS_DEFAULT_GUI_FONT ),
+                 wxSystemSettings::GetColour( wxSYS_COLOUR_LISTBOXTEXT ),
+                 wxSystemSettings::GetColour( wxSYS_COLOUR_LISTBOX ) };
+    }
+
     explicit wxListBox( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY,
                         const wxPoint& aPos = wxDefaultPosition,
                         const wxSize& aSize = wxDefaultSize,
@@ -906,11 +918,37 @@ public:
 };
 
 
+/// The styles of a slider
+enum
+{
+    wxSL_HORIZONTAL = 0x0004,
+    wxSL_VERTICAL = 0x0008,
+    wxSL_TICKS = 0x0010,
+    wxSL_LABELS = 0x0020
+};
+
+
 class KIQT_API wxSlider : public wxWindowCompat<QSlider>
 {
 public:
     explicit wxSlider( wxWidgetArgCompat aParent = nullptr, int aId = wxID_ANY, int aValue = 0,
                        int aMin = 0, int aMax = 100 );
+
+    /// The constructor of the wxWidgets code: the position is laid out by the sizer, the labels of
+    /// the range are not shown
+    wxSlider( wxWidgetArgCompat aParent, int aId, int aValue, int aMin, int aMax, const wxPoint& aPos,
+              const wxSize& aSize, long aStyle = wxSL_HORIZONTAL ) :
+            wxSlider( aParent, aId, aValue, aMin, aMax )
+    {
+        if( aStyle & wxSL_VERTICAL )
+            setOrientation( Qt::Vertical );
+
+        if( aStyle & wxSL_TICKS )
+            setTickPosition( QSlider::TicksBelow );
+
+        if( aSize.x > 0 || aSize.y > 0 )
+            setMinimumSize( std::max( 0, aSize.x ), std::max( 0, aSize.y ) );
+    }
 
     int GetValue() const { return value(); }
     void SetValue( int aValue );
@@ -1048,15 +1086,25 @@ public:
     void SetFitToCurrentPage( bool ) {}
     void InvalidateBestSize() {}
 
+    /// The icons of the pages, by the image index given to AddPage()
+    void SetImages( const std::vector<wxBitmapBundle>& aImages );
+
 private:
     struct PAGE
     {
         QWidget*         m_window;
         QTreeWidgetItem* m_item;
         int              m_parent;
+        int              m_image = -1;
     };
 
-    bool insertPage( wxWidgetArgCompat aPage, const wxString& aText, int aParent, bool aSelect );
+    bool insertPage( wxWidgetArgCompat aPage, const wxString& aText, int aParent, bool aSelect,
+                     int aImage = -1 );
+
+    /// Show the icon of a page.
+    void applyImage( PAGE& aPage );
+
+    std::vector<wxBitmapBundle> m_images;
 
     /// The page of an item of the tree.
     int pageOf( QTreeWidgetItem* aItem ) const;
@@ -1342,6 +1390,16 @@ public:
     int GetMinimumPaneSize() const { return m_minimumPaneSize; }
     void SetSashInvisible( bool aInvisible = true ) { setHandleWidth( aInvisible ? 0 : 5 ); }
     void UpdateSize() {}
+
+    int GetSashSize() const { return handleWidth(); }
+    int GetBorderSize() const { return 0; }
+
+    /// Delete the panes (wxWindow::DestroyChildren()).
+    void DestroyChildren()
+    {
+        while( count() > 0 )
+            delete widget( 0 );
+    }
 
 protected:
     /// The position of the sash asked before the splitter had a size (as wxWidgets).

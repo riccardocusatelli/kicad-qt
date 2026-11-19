@@ -544,7 +544,6 @@ add_library( kiqt_common STATIC
     widgets/ui_common_qt.cpp
     widgets/paged_dialog_qt.cpp
     widgets/wx_treebook_qt.cpp
-    eda_dde_qt.cpp
     file_history_qt.cpp
     notifications_list_qt.cpp
     pgm_gui_qt.cpp

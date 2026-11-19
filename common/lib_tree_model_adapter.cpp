@@ -30,6 +30,7 @@
 #include <eda_base_frame.h>
 #include <eda_pattern_match.h>
 #include <kiface_base.h>
+#include <kiplatform/ui.h>
 #include <lib_tree_model_adapter.h>
 #include <project/project_file.h>
 #include <settings/app_settings.h>
@@ -79,7 +80,9 @@ LIB_TREE_MODEL_ADAPTER::ResetTreeView::ResetTreeView( LIB_TREE_MODEL_ADAPTER& aA
 {
     // A queued GtkTreeView scroll holds a row reference into the nodes the caller is about to
     // free, so drop it while those rows are still valid (#24433, #24757)
+#ifndef KICAD_WX_FREE
     KIPLATFORM::UI::CancelPendingScroll( m_adapter.m_widget );
+#endif
 
     m_adapter.Freeze();
     m_adapter.BeforeReset();

@@ -230,6 +230,26 @@ void PAGED_DIALOG::SetInitialPage( const wxString& aPage, const wxString& aParen
 }
 
 
+wxWindow* PAGED_DIALOG::ShowPage( const wxString& aTitle )
+{
+    for( size_t i = 0; i < m_treebook->GetPageCount(); ++i )
+    {
+        if( m_treebook->GetPageText( i ) == aTitle )
+        {
+            m_treebook->SetSelection( i );
+
+            // The change can be vetoed by the page being left, or redirected away from a branch
+            if( m_treebook->GetSelection() != static_cast<int>( i ) )
+                return nullptr;
+
+            return m_treebook->GetResolvedPage( i );
+        }
+    }
+
+    return nullptr;
+}
+
+
 PAGED_DIALOG::~PAGED_DIALOG()
 {
     // Store the current parentPageTitle/pageTitle hierarchy so we can re-select it

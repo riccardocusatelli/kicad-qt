@@ -30,6 +30,7 @@
  */
 
 #include <eda_base_frame.h>
+#include <kictl_flags.h>
 
 #include <QAction>
 #include <QApplication>
@@ -1102,6 +1103,8 @@ void EDA_BASE_FRAME::RecreateToolbars()
         location.m_toolbar->ApplyConfiguration( tbConfig.value() );
     }
 
+    syncToolbarSelections();
+
     UpdateUIConditions();
 }
 
@@ -1529,9 +1532,9 @@ static wxString buildRecoveredFileName( const wxFileName& aSrcFn, const wxDateTi
 
 
 void EDA_BASE_FRAME::CheckForAutosaveFiles( const wxString& aProjectPath,
-                                            const std::vector<wxString>& aExtensions )
+                                            const std::vector<wxString>& aExtensions, int aCtl )
 {
-    auto stale = Kiway().LocalHistory().FindStaleAutosaveFiles( aProjectPath, aExtensions );
+    auto stale = Kiway().LocalHistory().ResolveAutosavesForLoad( aProjectPath, aExtensions, aCtl & KICTL_REVERT );
 
     if( stale.empty() )
         return;
@@ -1681,7 +1684,7 @@ void EDA_BASE_FRAME::CallAfter( std::function<void()> aFunction )
 }
 
 
-void EDA_BASE_FRAME::ShowPreferences( wxString aStartPage, wxString aStartParentPage )
+void EDA_BASE_FRAME::ShowPreferences( const wxString& aStartPage, const wxString& aStartParentPage )
 {
     PAGED_DIALOG dlg( this, _( "Preferences" ), true, true, wxEmptyString,
                       wxSize( 980, 560 ) );     // (Qt sizes are in DIPs)

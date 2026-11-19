@@ -39,8 +39,12 @@
 #include <wx/string.h>
 #include <wx/variant.h>
 
+#include <functional>
 #include <vector>
 
+#include <frame_type.h>
+
+class BITMAP_BUTTON;
 class EDA_BASE_FRAME;
 class EDA_ITEM;
 class PROPERTY_BASE;
@@ -49,6 +53,8 @@ class QLabel;
 class SELECTION;
 class wxMenu;
 class wxPGProperty;
+
+enum class BITMAPS : unsigned int;
 
 
 /**
@@ -131,6 +137,17 @@ protected:
     bool extractValueAndWritability( const SELECTION& aSelection, const wxString& aPropName,
                                      wxVariant& aValue, bool& aWritable, PROPERTY_CHOICES& aChoices );
 
+    /**
+     * The buttons of the wx panel on the captions of the categories (add a field, a custom
+     * property): the Qt grid has none yet, so they aren't registered.
+     */
+    void addCategoryButton( const wxString& aGroupKey, const wxString& aTooltip,
+                            BITMAPS aBitmap, std::function<void()> aAction,
+                            std::function<bool()> aEnableFunc = nullptr,
+                            bool aForceCategory = false )
+    {
+    }
+
     void showEvent( QShowEvent* aEvent ) override;
     void resizeEvent( QResizeEvent* aEvent ) override;
 
@@ -161,8 +178,32 @@ protected:
 
     wxString                    m_contextMenuPropertyName;
 
+    struct CATEGORY_BUTTON
+    {
+        BITMAP_BUTTON*           button;
+        wxString                 groupKey;      ///< untranslated group name of host category
+        std::function<void()>    action;
+        std::function<bool()>    enableFunc;    ///< optional extra enable predicate
+        bool                     forceCategory = false;
+    };
+
+    /// The buttons on the captions of the categories (none in the Qt build, see
+    /// addCategoryButton())
+    std::vector<CATEGORY_BUTTON> m_categoryButtons;
+
     /// Proportion of the grid column splitter that is used for the key column (0.0 - 1.0)
     float m_splitter_key_proportion;
+};
+
+
+class SUPPRESS_GRID_CHANGED_EVENTS
+{
+public:
+    SUPPRESS_GRID_CHANGED_EVENTS( PROPERTIES_PANEL* aPanel );
+    ~SUPPRESS_GRID_CHANGED_EVENTS();
+
+private:
+    PROPERTIES_PANEL* m_panel;
 };
 
 

@@ -81,6 +81,8 @@ enum wxEventTypeCompat
     wxEVT_KILL_FOCUS,
     wxEVT_UPDATE_UI,
     wxEVT_SIZE,
+    wxEVT_MOVE,
+    wxEVT_DESTROY,
     wxEVT_LEFT_DOWN,
     wxEVT_LEFT_UP,
     wxEVT_LEFT_DCLICK,
@@ -783,6 +785,31 @@ private:
 };
 
 
+/// The window moved (wxEVT_MOVE): its new position in its parent.
+class wxMoveEvent : public wxEvent
+{
+public:
+    explicit wxMoveEvent( const wxPoint& aPosition = wxPoint(), int aId = 0 ) :
+            wxEvent( aId, wxEVT_MOVE ),
+            m_position( aPosition )
+    {
+    }
+
+    wxPoint GetPosition() const { return m_position; }
+
+private:
+    wxPoint m_position;
+};
+
+
+/// The window is being destroyed (wxEVT_DESTROY): sent when its widget is deleted.
+class wxWindowDestroyEvent : public wxEvent
+{
+public:
+    explicit wxWindowDestroyEvent( int aId = 0 ) : wxEvent( aId, wxEVT_DESTROY ) {}
+};
+
+
 class wxInitDialogEvent : public wxEvent
 {
 public:
@@ -1143,6 +1170,7 @@ public:
     int GetRow() const { return m_row; }
     int GetCol() const { return m_col; }
     wxWindow* GetControl() const { return m_control; }
+    wxWindow* GetWindow() const { return m_control; }
 
 private:
     int       m_row;
@@ -1648,6 +1676,8 @@ inline wxCompatEventSink* wxEventSinkCompat( QWidget* aWidget )
 #define wxUpdateUIEventHandler( func ) ( &func )
 #define wxFocusEventHandler( func ) ( &func )
 #define wxSizeEventHandler( func ) ( &func )
+#define wxMoveEventHandler( func ) ( &func )
+#define wxWindowDestroyEventHandler( func ) ( &func )
 #define wxMouseEventHandler( func ) ( &func )
 #define wxKeyEventHandler( func ) ( &func )
 #define wxCharEventHandler( func ) ( &func )

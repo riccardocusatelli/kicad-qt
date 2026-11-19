@@ -27,6 +27,8 @@
 #include <wx/arrstr.h>
 #include <wx/string.h>
 
+#include <functional>
+
 #ifdef Yield
 #undef Yield    // <windows.h> defines Yield() as a macro
 #endif
@@ -105,6 +107,13 @@ public:
 
     /// Process the pending events of the categories @a aEventsToProcess (wxEventCategory).
     virtual bool SafeYieldFor( wxWindow* aWindow, long aEventsToProcess ) { return true; }
+
+    /// Run a function from the event loop (at once without one: the application of a user
+    /// interface queues it)
+    virtual void CallAfter( std::function<void()> aFunction ) { aFunction(); }
+
+    /// True for a window the application destroys at its next idle time (never here)
+    bool IsScheduledForDestruction( const wxWindow* aWindow ) const { return false; }
 
     virtual void      SetTopWindow( wxWindow* aWindow ) {}
     virtual wxWindow* GetTopWindow() const { return nullptr; }

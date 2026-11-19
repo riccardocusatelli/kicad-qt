@@ -90,6 +90,28 @@ wxImage ConvertImageToBilevel( const wxImage& aImage, double aThreshold, bool aI
     if( !bilevel.IsOk() )
         return bilevel;
 
+#ifdef KICAD_WX_FREE
+    // The images of the Qt build have no buffer of RGB components: the pixels are read and
+    // written one by one (they have no mask either)
+    const unsigned char threshold = aThreshold * 255;
+    const unsigned char alphaThreshold = 0.7 * threshold;
+    const bool          hasAlpha = bilevel.HasAlpha();
+
+    for( int y = 0; y < bilevel.GetHeight(); ++y )
+    {
+        for( int x = 0; x < bilevel.GetWidth(); ++x )
+        {
+            unsigned char level = bilevel.GetRed( x, y );
+
+            if( aInvert )
+                level = ~level;
+
+            level = ( level < threshold && ( !hasAlpha || bilevel.GetAlpha( x, y ) > alphaThreshold ) ) ? 0 : 255;
+
+            bilevel.SetRGB( x, y, level, level, level );
+        }
+    }
+#else
     bilevel.UnShare();
 
     const int            pixelCount = bilevel.GetWidth() * bilevel.GetHeight();
@@ -126,6 +148,8 @@ wxImage ConvertImageToBilevel( const wxImage& aImage, double aThreshold, bool aI
         grey[ii * 3 + 1] = level;
         grey[ii * 3 + 2] = level;
     }
+
+#endif
 
     return bilevel;
 }

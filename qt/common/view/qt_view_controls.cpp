@@ -394,7 +394,7 @@ bool QT_VIEW_CONTROLS::onWheel( QWheelEvent* aEvent )
             rotation *= m_settings.m_scrollReverseZoom ? -1 : 1;
             const double zoomScale = m_zoomController->GetScaleForRotation( rotation );
 
-            KI_TRACE( traceGalProfile, "Zoom: %.5f\n",  m_view->GetScale() * zoomScale );
+            KI_LOG_TRACE( traceGalProfile, "Zoom: %.5f\n",  m_view->GetScale() * zoomScale );
 
             if( IsCursorWarpingEnabled() )
             {

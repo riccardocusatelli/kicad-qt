@@ -18,6 +18,7 @@
  */
 
 #include <dialogs/git/git_credentials_prompt.h>
+#include <kicad_message_dialog.h>
 #include <dialogs/git/dialog_git_credentials.h>
 #include <dialogs/git/dialog_git_identity.h>
 #include <dialogs/git/git_ui_utils.h>
@@ -299,7 +300,12 @@ void KIGIT::ClearSyncWarnings( wxWindow* aWindow )
 {
     for( wxWindow* window = aWindow; window; window = window->GetParent() )
     {
+#ifdef KICAD_WX_FREE
+        // The frames of the Qt build are the frames of KiCad (no wxFrame)
+        if( EDA_BASE_FRAME* frame = dynamic_cast<EDA_BASE_FRAME*>( window ) )
+#else
         if( wxFrame* frame = dynamic_cast<wxFrame*>( window ) )
+#endif
         {
             if( KISTATUSBAR* statusBar = dynamic_cast<KISTATUSBAR*>( frame->GetStatusBar() ) )
                 statusBar->ClearWarningMessages( SYNC_WARNING_SOURCE );

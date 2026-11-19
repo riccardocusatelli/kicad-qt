@@ -43,11 +43,17 @@
 #include <kiid.h>
 #include <hotkeys_basic.h>
 #include <lib_id.h>
+#include <tool/arc_draw_mode.h>
+
+#include <set>
 
 class QLabel;
 class wxCheckBox;
 class wxChoice;
 class HOTKEY_CYCLE_POPUP;
+class ACTION_MENU;
+class SELECTION;
+class TOOL_ACTION;
 struct PLUGIN_ACTION;
 class wxFileName;
 class EDA_ITEM;
@@ -141,6 +147,7 @@ public:
 
     EDA_SEARCH_DATA& GetFindReplaceData();
     wxArrayString& GetFindHistoryList() { return m_findStringHistoryList; }
+    wxArrayString& GetReplaceHistoryList() { return m_replaceStringHistoryList; }
 
     virtual void SetPageSettings( const PAGE_INFO& aPageSettings ) = 0;
     virtual const PAGE_INFO& GetPageSettings() const = 0;
@@ -448,7 +455,31 @@ public:
 
     PROPERTIES_PANEL* GetPropertiesPanel() { return m_propertiesPanel; }
 
-    void UpdateProperties();
+    virtual void UpdateProperties();
+
+    /**
+     * The git commit pane of the editors (not yet available in the Qt build: it is never shown).
+     */
+    void ToggleGitCommitPane();
+
+    void RefreshGitCommitPane();
+
+    bool IsGitCommitPaneShown();
+
+    /// Note that a canvas failed, so that no other frame tries it again in this session.
+    static void SetCanvasFailed( EDA_DRAW_PANEL_GAL::GAL_TYPE aCanvas ) { m_failedCanvases.insert( aCanvas ); }
+
+    static bool CanvasFailed( EDA_DRAW_PANEL_GAL::GAL_TYPE aCanvas ) { return m_failedCanvases.contains( aCanvas ); }
+
+    /**
+     * Append the actions of the API plugins of this frame to a menu.
+     *
+     * @return the number of items added.
+     */
+    size_t AddApiPluginMenuItems( ACTION_MENU* aMenu );
+
+    /// The action that draws an arc in @a aMode, for the frames that draw arcs.
+    virtual const TOOL_ACTION* drawArcAction( ARC_DRAW_MODE aMode ) const { return nullptr; }
 
     virtual void ToggleProperties() {}
 
@@ -575,6 +606,14 @@ protected:
     void setupUIConditions() override;
 
     /**
+     * Set the conditions of the actions of the arc modes: enabled with @a aEnable, checked for
+     * the mode in use while the arc tool runs.
+     */
+    void setArcModeConditions( const TOOL_ACTION& aDrawArc, const std::function<bool( const SELECTION& )>& aEnable );
+
+    void syncToolbarSelections() override;
+
+    /**
      * Set the units of the frame (and the last ones of the other system) from its settings.
      */
     void setupUnits( APP_SETTINGS_BASE* aCfg );
@@ -620,6 +659,9 @@ protected:
 
     /// Has any failure occurred when switching to OpenGL in any EDA_DRAW_FRAME?
     static bool m_openGLFailureOccured;
+
+    /** The canvases that have failed in any EDA_DRAW_FRAME this session */
+    static std::set<EDA_DRAW_PANEL_GAL::GAL_TYPE> m_failedCanvases;
 
     void handleActivateEvent( bool aActive ) override;
 

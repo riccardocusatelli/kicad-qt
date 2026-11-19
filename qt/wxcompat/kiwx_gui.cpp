@@ -31,10 +31,12 @@
 
 #include <atomic>
 
+#include <QRegularExpression>
 #include <QAbstractButton>
 #include <QAbstractScrollArea>
 #include <QAction>
 #include <QContextMenuEvent>
+#include <QMoveEvent>
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QNativeGestureEvent>
@@ -900,6 +902,10 @@ void wxConnectQtEventsCompat( QWidget* aWidget, wxEventType aType, wxCompatEvent
         new KIWX_CHAR_HOOK_FILTER( w, aSink );
         break;
 
+    case wxEVT_DESTROY:
+        // Sent by the destructor of the window (wxWindow::~wxWindow())
+        break;
+
     case wxEVT_PAINT:
     {
         // The paint events of the widget (of the viewport of a scroll area): a handler that
@@ -976,6 +982,17 @@ void wxConnectQtEventsCompat( QWidget* aWidget, wxEventType aType, wxCompatEvent
                         if( qtType == QEvent::Resize )
                         {
                             wxSizeEvent event( wxSizeOfEventCompat( aQtEvent ), id );
+                            event.SetEventObject( w );
+                            aSink->Process( event );
+                        }
+
+                        return false;
+
+                    case wxEVT_MOVE:
+                        if( qtType == QEvent::Move )
+                        {
+                            QPoint   pos = static_cast<QMoveEvent*>( aQtEvent )->pos();
+                            wxMoveEvent event( wxPoint( pos.x(), pos.y() ), id );
                             event.SetEventObject( w );
                             aSink->Process( event );
                         }
@@ -2190,7 +2207,8 @@ wxTreebook::wxTreebook( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos,
 }
 
 
-bool wxTreebook::insertPage( wxWidgetArgCompat aPage, const wxString& aText, int aParent, bool aSelect )
+bool wxTreebook::insertPage( wxWidgetArgCompat aPage, const wxString& aText, int aParent, bool aSelect,
+                             int aImage )
 {
     if( !aPage )
         return false;
@@ -2211,7 +2229,8 @@ bool wxTreebook::insertPage( wxWidgetArgCompat aPage, const wxString& aText, int
     }
 
     m_stack->addWidget( aPage );
-    m_pages.push_back( { aPage, item, aParent } );
+    m_pages.push_back( { aPage, item, aParent, aImage } );
+    applyImage( m_pages.back() );
 
     if( aSelect || m_selection == wxNOT_FOUND )
         ChangeSelection( m_pages.size() - 1 );
@@ -2235,7 +2254,23 @@ void wxTreebook::fitTree()
 
 bool wxTreebook::AddPage( wxWidgetArgCompat aPage, const wxString& aText, bool aSelect, int aImage )
 {
-    return insertPage( aPage, aText, -1, aSelect );
+    return insertPage( aPage, aText, -1, aSelect, aImage );
+}
+
+
+void wxTreebook::SetImages( const std::vector<wxBitmapBundle>& aImages )
+{
+    m_images = aImages;
+
+    for( PAGE& page : m_pages )
+        applyImage( page );
+}
+
+
+void wxTreebook::applyImage( PAGE& aPage )
+{
+    if( aPage.m_image >= 0 && aPage.m_image < int( m_images.size() ) )
+        aPage.m_item->setIcon( 0, m_images[aPage.m_image] );
 }
 
 
@@ -2253,7 +2288,7 @@ bool wxTreebook::AddSubPage( wxWidgetArgCompat aPage, const wxString& aText, boo
         }
     }
 
-    return insertPage( aPage, aText, parent, aSelect );
+    return insertPage( aPage, aText, parent, aSelect, aImage );
 }
 
 
@@ -3685,4 +3720,26 @@ void wxSplitterWindow::SetMinimumPaneSize( int aSize )
         else
             widget( i )->setMinimumHeight( aSize );
     }
+}
+
+
+void wxButton::SetLabelMarkup( const wxString& aMarkup )
+{
+    QString markup = ToQString( aMarkup );
+
+    static const QRegularExpression foregroundRe( QStringLiteral( "foreground\\s*=\\s*['\"]([^'\"]+)['\"]" ) );
+    static const QRegularExpression tagRe( QStringLiteral( "<[^>]*>" ) );
+
+    QRegularExpressionMatch match = foregroundRe.match( markup );
+
+    if( match.hasMatch() )
+        setStyleSheet( QStringLiteral( "color: %1;" ).arg( match.captured( 1 ) ) );
+    else
+        setStyleSheet( QString() );
+
+    QString text = markup.remove( tagRe );
+    text.replace( QStringLiteral( "&lt;" ), QStringLiteral( "<" ) );
+    text.replace( QStringLiteral( "&gt;" ), QStringLiteral( ">" ) );
+    text.replace( QStringLiteral( "&amp;" ), QStringLiteral( "&" ) );
+    setText( text );
 }

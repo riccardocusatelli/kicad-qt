@@ -63,6 +63,18 @@ namespace KIPLATFORM
         inline void AllowNetworkFileSystems( const void* aDialog ) {}
 
         /**
+         * Prepare the dropdown of a choice editor of a grid for the bulk edit of a column (GTK
+         * menus): the popups of Qt need nothing, so it reports the popup as prepared.
+         */
+        inline bool PrepareChoicePopup( const void* aControl ) { return true; }
+
+        /**
+         * The key that closed the popup of a choice editor (GTK): the popups of Qt report
+         * their keys to the editor, so there is no key here.
+         */
+        inline wxKeyEvent GetNativePopupDismissalEvent() { return wxKeyEvent(); }
+
+        /**
          * Return the background and foreground colors for info bars and the popups of
          * information in the current UI theme (the info colors of the desktop).
          */

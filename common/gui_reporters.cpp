@@ -70,7 +70,7 @@ REPORTER& STATUSBAR_REPORTER::Report( const wxString& aText, SEVERITY aSeverity 
 
     if( m_statusBar )
     {
-        wxStatusBar* statusBar = m_statusBar;
+        auto*        statusBar = m_statusBar;
         int          position = m_position;
 
         if( wxIsMainThread() )

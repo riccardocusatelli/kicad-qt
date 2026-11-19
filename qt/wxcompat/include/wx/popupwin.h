@@ -53,6 +53,9 @@ public:
 };
 
 
+/// The popup has controls (wxPU_CONTAINS_CONTROLS): the popups of Qt always handle them.
+#define wxPU_CONTAINS_CONTROLS 0x0001
+
 class wxPopupTransientWindow : public wxPopupWindow
 {
 public:
@@ -74,6 +77,9 @@ public:
 
     /// Hide the popup.
     virtual void Dismiss() { hide(); }
+
+    /// Hide the popup as a click outside does (the hide reports OnDismiss()).
+    void DismissAndNotify() { Dismiss(); }
 
 protected:
     /// The popup was closed (by Dismiss() or by a click outside it).

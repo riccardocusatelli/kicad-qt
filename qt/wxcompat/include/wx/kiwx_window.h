@@ -75,6 +75,10 @@ KIQT_API wxWindow* wxWindowFromQt( QWidget* aWidget );
 /// The window of a widget if it has one (a control of the layer or a widget made a window).
 KIQT_API wxWindow* wxFindWindowFromQtCompat( QWidget* aWidget );
 
+/// The top level windows of the application that are windows of the layer (wxTopLevelWindows).
+KIQT_API std::vector<wxWindow*> wxTopLevelWindowsCompat();
+#define wxTopLevelWindows wxTopLevelWindowsCompat()
+
 
 /**
  * A window given as a QWidget* or as a wxWindow* (the parents of the controls, the windows of
@@ -196,6 +200,7 @@ public:
     // The layout of Qt has no per-item flags, border or proportion to change afterwards
     void SetFlag( int ) {}
     void SetBorder( int ) {}
+    int GetBorder() const { return 0; }
     void SetProportion( int ) {}
     void SetMinSize( const wxSize& ) {}
     void SetMinSize( int, int ) {}
@@ -490,6 +495,9 @@ public:
     bool IsShown() const;
     bool IsShownOnScreen() const;
 
+    /// True while the window is destroyed (the windows of Qt are deleted at once: never)
+    bool IsBeingDeleted() const { return false; }
+
     virtual void SetFocus();
     void SetFocusFromKbd() { SetFocus(); }
 
@@ -580,6 +588,9 @@ public:
     virtual void SetMinSize( const wxSize& aSize );
     void SetMaxSize( const wxSize& aSize );
     void SetMinClientSize( const wxSize& aSize ) { SetMinSize( aSize ); }
+
+    /// The size variant of the window (wxWINDOW_VARIANT_NORMAL: the windows have one size).
+    int GetWindowVariant() const { return 0; }
     void SetMaxClientSize( const wxSize& aSize ) { SetMaxSize( aSize ); }
     void SetInitialSize( const wxSize& aSize = wxDefaultSize );
     void SetSizeHints( const wxSize& aMinSize, const wxSize& aMaxSize = wxDefaultSize,
@@ -851,6 +862,11 @@ public:
     bool IsIconized() const { return GetHandle()->isMinimized(); }
 
     void Restore() { GetHandle()->showNormal(); }
+
+    bool IsActive() const { return GetHandle()->isActiveWindow(); }
+
+    /// The default button of the window (the one that Enter presses), or nullptr.
+    wxWindow* GetDefaultItem() const;
 };
 
 

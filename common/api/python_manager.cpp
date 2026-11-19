@@ -46,25 +46,6 @@ PYTHON_MANAGER::PYTHON_MANAGER( const wxString& aInterpreterPath )
 }
 
 
-static wxString readAllFromStream( wxInputStream* aStream )
-{
-    wxString result;
-
-    if( aStream )
-    {
-        char buffer[4096];
-
-        while( aStream->CanRead() )
-        {
-            aStream->Read( buffer, sizeof( buffer ) );
-            result.Append( buffer, aStream->LastRead() );
-        }
-    }
-
-    return result;
-};
-
-
 long PYTHON_MANAGER::Execute( const std::vector<wxString>& aArgs,
         const std::function<void(int, const wxString&, const wxString&)>& aCallback,
         const wxExecuteEnv* aEnv, bool aSaveOutput )
@@ -98,28 +79,7 @@ long PYTHON_MANAGER::Execute( const std::vector<wxString>& aArgs,
     if( pid == 0 )
         aCallback( -1, wxEmptyString, _( "Process could not be created" ) );
 
-        for( const wxString& arg : aArgs )
-            argBufs.emplace_back( arg.wc_str() );
-
-        std::vector<const wchar_t*> syncArgs = { interpreterBuf.data() };
-
-        for( const wxWCharBuffer& buf : argBufs )
-            syncArgs.emplace_back( buf.data() );
-
-        syncArgs.emplace_back( nullptr );
-
-        wxLogTrace( traceApi, wxString::Format( "Execute sync: %s %s", m_interpreterPath, argsStr ) );
-
-        wxProcess syncProcess;
-        syncProcess.Redirect();
-
-        long ret = wxExecute( syncArgs.data(), wxEXEC_BLOCK, &syncProcess, aEnv );
-
-        aCallback( static_cast<int>( ret ), readAllFromStream( syncProcess.GetInputStream() ),
-                   readAllFromStream( syncProcess.GetErrorStream() ) );
-
-        return ret;
-    }
+    return pid;
 }
 
 
@@ -127,39 +87,18 @@ long PYTHON_MANAGER::ExecuteSync( const std::vector<wxString>& aArgs,
                                   wxString* aStdout, wxString* aStderr,
                                   const wxExecuteEnv* aEnv )
 {
-    wxWCharBuffer interpreterBuf = m_interpreterPath.wc_str();
-    std::vector<wxWCharBuffer> argBufs;
-    argBufs.reserve( aArgs.size() );
+    std::vector<wxString> args = { m_interpreterPath };
+    wxString              argsStr;
 
     for( const wxString& arg : aArgs )
-        argBufs.emplace_back( arg.wc_str() );
-
-    std::vector<const wchar_t*> args = { interpreterBuf.data() };
-
-    for( const wxWCharBuffer& buf : argBufs )
-        args.emplace_back( buf.data() );
-
-    args.emplace_back( nullptr );
-
-    wxString argsStr;
-
-    for( const wxString& arg : aArgs )
+    {
+        args.emplace_back( arg );
         argsStr << arg << " ";
+    }
 
-    wxLogTrace( traceApi, wxString::Format( "Execute sync: %s %s", m_interpreterPath, argsStr ) );
+    KI_LOG_TRACE( traceApi, wxString::Format( "Execute sync: %s %s", m_interpreterPath, argsStr ) );
 
-    wxProcess process;
-    process.Redirect();
-
-    long ret = wxExecute( args.data(), wxEXEC_BLOCK, &process, aEnv );
-
-    if( aStdout )
-        *aStdout = readAllFromStream( process.GetInputStream() );
-
-    if( aStderr )
-        *aStderr = readAllFromStream( process.GetErrorStream() );
-
-    return ret;
+    return TOOLKIT::ExecuteSync( args, aEnv, aStdout, aStderr );
 }
 
 

@@ -93,7 +93,7 @@ public:
         return finalTick || aThrottle.Ready();
     }
 
-private:
+protected:
     bool updateUI() override;
 
 private:

@@ -425,6 +425,11 @@ public:
     wxFont Scaled( float aScale ) const;
     wxFont& MakeBold() { setBold( true ); return *this; }
     wxFont& MakeItalic() { setItalic( true ); return *this; }
+    wxFont& MakeStrikethrough() { setStrikeOut( true ); return *this; }
+
+    /// The height of the font in pixels (the width is 0, as wxWidgets on most platforms).
+    wxSize GetPixelSize() const;
+    void SetPixelSize( const wxSize& aSize ) { setPixelSize( std::max( 1, aSize.y ) ); }
     wxFont& MakeSmaller();
     wxFont& MakeLarger();
 
@@ -632,6 +637,9 @@ public:
 
     /// The images of Qt have an alpha channel, never a mask colour.
     bool HasMask() const { return false; }
+
+    /// The pixels of a QImage are shared until written: nothing to do
+    void UnShare() {}
     unsigned char GetMaskRed() const { return 0; }
     unsigned char GetMaskGreen() const { return 0; }
     unsigned char GetMaskBlue() const { return 0; }
@@ -709,6 +717,9 @@ public:
     wxBitmap( const wxString& aFile, wxBitmapType aType ) { LoadFile( aFile, aType ); }
 
     bool IsOk() const { return !isNull(); }
+
+    /// The pixmaps of Qt have their alpha channel already.
+    void UseAlpha( bool aUse = true ) {}
 
     /// The image of a bitmap (wxIcon::CopyFromBitmap(): an icon is a bitmap here).
     bool CopyFromBitmap( const wxBitmap& aBitmap )
@@ -1254,6 +1265,9 @@ class KIQT_API wxGCDC : public wxDC
 {
 public:
     using wxDC::wxDC;
+
+    /// The graphic context of another DC: it draws with the painter of that DC.
+    explicit wxGCDC( wxDC& aDC ) : wxDC( aDC.GetPainter(), aDC.GetWindow() ) {}
 };
 
 class wxWindow;
@@ -1341,6 +1355,41 @@ public:
 private:
     wxDC& m_dc;
     wxPen m_old;
+};
+
+
+/// The text colour of a DC while the changer lives (wxDCTextColourChanger).
+class wxDCTextColourChanger
+{
+public:
+    wxDCTextColourChanger( wxDC& aDC, const wxColour& aColour ) :
+            m_dc( aDC ), m_old( aDC.GetTextForeground() )
+    {
+        aDC.SetTextForeground( aColour );
+    }
+
+    ~wxDCTextColourChanger() { m_dc.SetTextForeground( m_old ); }
+
+private:
+    wxDC&    m_dc;
+    wxColour m_old;
+};
+
+
+/// The font of a DC while the changer lives (wxDCFontChanger).
+class wxDCFontChanger
+{
+public:
+    wxDCFontChanger( wxDC& aDC, const wxFont& aFont ) : m_dc( aDC ), m_old( aDC.GetFont() )
+    {
+        aDC.SetFont( aFont );
+    }
+
+    ~wxDCFontChanger() { m_dc.SetFont( m_old ); }
+
+private:
+    wxDC&  m_dc;
+    wxFont m_old;
 };
 
 

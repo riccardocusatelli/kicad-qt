@@ -64,6 +64,11 @@ public:
         return true;
     }
 
+    void CallAfter( std::function<void()> aFunction ) override
+    {
+        QMetaObject::invokeMethod( QCoreApplication::instance(), std::move( aFunction ), Qt::QueuedConnection );
+    }
+
     /// The main window (the frames are the top-level windows of Qt: kept for the code asking).
     void SetTopWindow( wxWindow* aWindow ) override { m_topWindow = aWindow; }
     wxWindow* GetTopWindow() const override { return m_topWindow; }

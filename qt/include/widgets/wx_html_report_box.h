@@ -46,6 +46,7 @@ public:
     ~WX_HTML_REPORT_BOX() override;
 
     REPORTER& Report( const wxString& aText, SEVERITY aSeverity = RPT_SEVERITY_UNDEFINED ) override;
+    REPORTER& Report( const KI_ERROR& aError ) override;
 
     bool HasMessage() const override { return !m_messages.empty(); }
 
@@ -73,6 +74,7 @@ public:
 
 private:
     wxString generateHtml( const wxString& aLine );
+    wxString generateHtml( const KI_ERROR& aError );
 
 private:
     EDA_UNITS             m_units;
@@ -82,7 +84,7 @@ private:
     bool                  m_immediateMode;
 
     /// copy of the report, stored for filtering.
-    std::vector<wxString> m_messages;
+    std::vector<KI_ERROR> m_messages;
 };
 
 #endif //WX_HTML_REPORT_BOX_H

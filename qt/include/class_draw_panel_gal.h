@@ -47,6 +47,8 @@
 #include <gal/gal_backend.h>
 #include <math/box2.h>
 #include <math/vector2d.h>
+#include <view/automatic_fit.h>
+#include <optional>
 #include <widgets/msgpanel_item.h>
 #include <gal/kicursor.h>
 #include <toolkit/gui_timer.h>
@@ -88,6 +90,28 @@ public:
     static constexpr GAL_TYPE GAL_FALLBACK = GAL_TYPE_CAIRO;
 
     static constexpr bool GAL_FALLBACK_AVAILABLE = GAL_FALLBACK != GAL_TYPE_OPENGL;
+
+    /**
+     * Convert a stored canvas type setting into a backend that this build implements: the
+     * OpenGL canvas, or Cairo when it is stored (the RHI canvas of the wxWidgets build is not
+     * available, so it falls back to OpenGL as well).
+     */
+    static GAL_TYPE ResolveStoredCanvasType( int aStoredCanvasType );
+
+    /// True for a canvas drawn on the GPU, which keeps cached layers between frames.
+    static bool IsAccelerated( GAL_TYPE aCanvasType )
+    {
+        return aCanvasType == GAL_TYPE_OPENGL || aCanvasType == GAL_TYPE_MODERN;
+    }
+
+    /**
+     * Zoom and center the view on @a aBox. As long as nothing else zooms or pans, a resize of
+     * the canvas fits it again.
+     *
+     * @param aMarginScale is how much larger than the box the view is. By default a little
+     *                     more on a short canvas, where the infobar covers a larger share.
+     */
+    void ZoomToFit( const BOX2I& aBox, std::optional<double> aMarginScale = std::nullopt );
 
     /**
      * Create a drawing panel that is contained inside \p aParentWindow.
@@ -352,6 +376,18 @@ public:
     std::unique_ptr<PROF_COUNTER> m_PaintEventCounter;
 
 protected:
+    /**
+     * Hook for subclasses to push per-frame grid sources onto the GAL.
+     * Called from DoRePaint just before GAL::DrawGrid.
+     */
+    virtual void prepareGridSources() {}
+
+    /**
+     * Hook for subclasses to update view items whose inputs nothing else tracks.
+     * Called from DoRePaint before the pending item updates are applied.
+     */
+    virtual void beforeRedraw() {}
+
     bool event( QEvent* aEvent ) override;
     void paintEvent( QPaintEvent* aEvent ) override;
 
@@ -403,6 +439,9 @@ protected:
 
     /// Stores view settings (scale, center, etc.) and items to be drawn
     KIGFX::VIEW*             m_view;
+
+    /// What the last ZoomToFit() left, refitted on a resize until the view is zoomed or panned
+    KIGFX::AUTOMATIC_FIT     m_automaticFit;
 
     /// Contains information about how to draw items using GAL
     std::unique_ptr<KIGFX::PAINTER> m_painter;
