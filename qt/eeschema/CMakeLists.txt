@@ -36,7 +36,6 @@ set( KIQT_EESCHEMA_GUI_SRCS
     api/api_handler_sch.cpp
     api/api_handler_sch_tasks.cpp
     api/api_handler_symbol.cpp
-    api/api_sch_utils.cpp
     bom_plugins.cpp
     bus-wire-junction.cpp
     cross-probing.cpp
@@ -205,7 +204,6 @@ set( KIQT_EESCHEMA_GUI_SRCS
     widgets/symbol_filter_combobox.cpp
     widgets/symbol_preview_widget.cpp
     widgets/tuner_slider.cpp
-    api/api_sch_enums.cpp
     api/sch_context.cpp
     api/symbol_editor_context.cpp
     dialogs/dialog_create_net_chain.cpp

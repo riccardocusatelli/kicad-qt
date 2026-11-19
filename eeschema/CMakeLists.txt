@@ -479,6 +479,7 @@ set( EESCHEMA_SRCS
     symbol_fields_data_model.cpp
     fields_grid_table.cpp
     files-io.cpp
+    save_project_utils.cpp
     generate_alias_info.cpp
     gfx_import_utils.cpp
     import_local_symbol_libs.cpp
@@ -819,7 +820,8 @@ add_headless_kiface( eeschema_cli_kiface
     OBJECTS     eeschema_kiface_objects
     USAGE       eeschema_kiface_objects
     ARCHIVES    common pads_common
-    LIBRARIES   kicommon_model gal_model core nanodbc nanosvg Boost::headers ${wxWidgets_BASE_LIBRARIES} ${NGSPICE_LIBRARY}
+    LIBRARIES   kicommon_model gal_model core nanodbc nanosvg libwmf_orcad emf2svg ${KICAD_SQLITE3_TARGET}
+                Boost::headers ${wxWidgets_BASE_LIBRARIES} ${NGSPICE_LIBRARY}
     )
 
 add_dependencies( eeschema_cli_kiface eeschema_kiface_objects )

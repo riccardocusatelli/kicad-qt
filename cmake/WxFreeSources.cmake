@@ -7,6 +7,7 @@ set( KICAD_WX_FREE_TARGETS
     allegro2pcbnew
     allegro_convert
     altium2pcbnew
+    autotrax2pcbnew
     cadstar2pcbnew
     clipper2
     common
@@ -14,8 +15,10 @@ set( KICAD_WX_FREE_TARGETS
     core
     core_base
     delaunator
+    diptrace2pcbnew
     easyeda
     easyedapro
+    easypc2pcbnew
     eeschema_cli_kiface_iface
     eeschema_kiface_objects
     fabmaster
@@ -36,6 +39,8 @@ set( KICAD_WX_FREE_TARGETS
     pcbcommon
     pcbnew_cli_kiface_iface
     pcbnew_kiface_objects
+    sprint_layout2pcbnew
+    target30012pcbnew
     zint
     )
 
@@ -47,6 +52,7 @@ set( KICAD_WX_FREE_SOURCES_3d_viewer
     3d-viewer/3d_canvas/create_3Dgraphic_brd_items.cpp
     3d-viewer/3d_canvas/create_layer_items.cpp
     3d-viewer/3d_fastmath.cpp
+    3d-viewer/3d_math.cpp
     3d-viewer/3d_model_align.cpp
     3d-viewer/3d_rendering/3d_placeholder_utils.cpp
     3d-viewer/3d_rendering/buffers_debug.cpp
@@ -147,6 +153,7 @@ set( KICAD_WX_FREE_SOURCES_common
     common/drawing_sheet/drawing_sheet_parser.cpp
     common/drawing_sheet/ds_data_item.cpp
     common/drawing_sheet/ds_data_model.cpp
+    common/drawing_sheet/ds_data_model_io.cpp
     common/drawing_sheet/ds_draw_item.cpp
     common/drawing_sheet/ds_painter.cpp
     common/drawing_sheet/ds_proxy_view_item.cpp
@@ -172,6 +179,7 @@ set( KICAD_WX_FREE_SOURCES_common
     common/io/altium/altium_props_utils.cpp
     common/io/cadstar/cadstar_archive_parser.cpp
     common/io/cadstar/cadstar_parts_lib_parser.cpp
+    common/io/csv.cpp
     common/io/diptrace/diptrace_binary_reader.cpp
     common/io/eagle/eagle_bin_parser.cpp
     common/io/eagle/eagle_parser.cpp
@@ -274,6 +282,8 @@ set( KICAD_WX_FREE_SOURCES_eeschema_kiface_objects
     BUILD/eeschema/dialogs/dialog_bom_cfg_keywords.cpp
     BUILD/eeschema/schematic_keywords.cpp
     eeschema/api/api_handler_sch_libraries.cpp
+    eeschema/api/api_sch_enums.cpp
+    eeschema/api/api_sch_utils.cpp
     eeschema/api/headless_sch_context.cpp
     eeschema/api/headless_symbol_editor_context.cpp
     eeschema/api/sch_api_save.cpp
@@ -346,6 +356,7 @@ set( KICAD_WX_FREE_SOURCES_eeschema_kiface_objects
     eeschema/pin_type.cpp
     eeschema/project_sch.cpp
     eeschema/refdes_tracker.cpp
+    eeschema/save_project_utils.cpp
     eeschema/sch_bitmap.cpp
     eeschema/sch_bus_entry.cpp
     eeschema/sch_collectors.cpp
@@ -832,11 +843,13 @@ set( KICAD_WX_FREE_SOURCES_odbpp
     )
 
 set( KICAD_WX_FREE_SOURCES_pads2pcbnew
+    pcbnew/pcb_io/pads/pads_binary_parser.cpp
     pcbnew/pcb_io/pads/pads_layer_mapper.cpp
     pcbnew/pcb_io/pads/pads_parser.cpp
     pcbnew/pcb_io/pads/pads_pcb_converter.cpp
     pcbnew/pcb_io/pads/pads_sdb.cpp
     pcbnew/pcb_io/pads/pcb_io_pads.cpp
+    pcbnew/pcb_io/pads/pcb_io_pads_binary.cpp
     )
 
 set( KICAD_WX_FREE_SOURCES_pads_common
@@ -945,6 +958,7 @@ set( KICAD_WX_FREE_SOURCES_pcbcommon
     pcbnew/pcb_drill_chart.cpp
     pcbnew/pcb_drill_map.cpp
     pcbnew/pcb_field.cpp
+    pcbnew/pcb_generated_table.cpp
     pcbnew/pcb_generator.cpp
     pcbnew/pcb_grid_item.cpp
     pcbnew/pcb_group.cpp
@@ -993,6 +1007,7 @@ set( KICAD_WX_FREE_SOURCES_pcbnew_kiface_objects
     pcbnew/api/api_handler_fp_libraries.cpp
     pcbnew/api/headless_footprint_context.cpp
     pcbnew/board_loader.cpp
+    pcbnew/board_stackup_manager/board_stackup_reporter.cpp
     pcbnew/board_stackup_manager/stackup_predefined_prms.cpp
     pcbnew/board_statistics.cpp
     pcbnew/board_statistics_report.cpp
@@ -1041,6 +1056,7 @@ set( KICAD_WX_FREE_SOURCES_pcbnew_kiface_objects
     pcbnew/drc/drc_test_provider_zone_connections.cpp
     pcbnew/exporters/export_d356.cpp
     pcbnew/exporters/export_gencad_writer.cpp
+    pcbnew/exporters/export_idf.cpp
     pcbnew/exporters/exporter_vrml.cpp
     pcbnew/exporters/gendrill_excellon_writer.cpp
     pcbnew/exporters/gendrill_gerber_writer.cpp
@@ -1059,6 +1075,7 @@ set( KICAD_WX_FREE_SOURCES_pcbnew_kiface_objects
     pcbnew/exporters/u3d/data_block.cpp
     pcbnew/exporters/u3d/writer.cpp
     pcbnew/footprint_editor_settings.cpp
+    pcbnew/footprint_import_reconciler.cpp
     pcbnew/generators/pcb_tuning_pattern.cpp
     pcbnew/import_design_rules.cpp
     pcbnew/import_local_footprint_libs.cpp
@@ -1066,10 +1083,8 @@ set( KICAD_WX_FREE_SOURCES_pcbnew_kiface_objects
     pcbnew/net_chain_bridging.cpp
     pcbnew/netlist_reader/pcb_netlist_utils.cpp
     pcbnew/padstack.cpp
-    pcbnew/pcb_io/ipc2581/ipc2581_export_job.cpp
     pcbnew/pcb_io/kicad_sexpr/writers/pcb_writer_v10.cpp
     pcbnew/pcb_io/kicad_sexpr/writers/pcb_writer_v9.cpp
-    pcbnew/pcb_io/odbpp/odb_export_job.cpp
     pcbnew/pcb_plotter.cpp
     pcbnew/pcbnew_jobs_handler.cpp
     pcbnew/pcbnew_settings.cpp

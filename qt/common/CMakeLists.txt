@@ -417,7 +417,6 @@ set( KIQT_COMMON_COMPAT_SRCS
     dialogs/panel_gal_options.cpp
     dialogs/panel_image_editor.cpp
     dialogs/panel_setup_netclasses.cpp
-    drawing_sheet/ds_data_model_io.cpp
     drawing_sheet/ds_proxy_undo_item.cpp
     import_gfx/dxf_import_plugin.cpp
     import_gfx/graphics_import_mgr.cpp
@@ -494,7 +493,6 @@ add_library( kiqt_common STATIC
     ${CMAKE_SOURCE_DIR}/common/gui_reporters.cpp
     ${CMAKE_SOURCE_DIR}/common/hotkey_store.cpp
     ${CMAKE_SOURCE_DIR}/common/hotkeys_basic.cpp
-    ${CMAKE_SOURCE_DIR}/common/io/csv.cpp
     ${CMAKE_SOURCE_DIR}/common/kiface_gui.cpp
     ${CMAKE_SOURCE_DIR}/common/kiway_holder.cpp
     ${CMAKE_SOURCE_DIR}/common/launch_ext.cpp

@@ -19,7 +19,7 @@
  */
 
 #include <api/api_enums.h>
-#include <wx/wx.h>
+#include <wx/string.h>
 
 #include <core/typeinfo.h>
 #include <erc/erc_settings.h>

@@ -29,7 +29,7 @@
 #include <i18n_utility.h>
 #include <pcb_tablecell.h>
 #include <properties/property_mgr.h>
-#include <widgets/msgpanel.h>
+#include <widgets/msgpanel_item.h>
 
 
 namespace

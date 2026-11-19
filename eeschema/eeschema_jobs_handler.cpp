@@ -25,6 +25,7 @@
 #include <pgm_base.h>
 #include <kiface_base.h>
 #include <cli/exit_codes.h>
+#include <kictl_flags.h>
 #include <sch_plotter.h>
 #include <drawing_sheet/ds_proxy_view_item.h>
 #include <font/kicad_font_name.h>
