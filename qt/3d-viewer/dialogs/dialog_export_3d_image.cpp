@@ -23,6 +23,7 @@
  * DIALOG_EXPORT_3D_IMAGE of the Qt build (see 3d-viewer/dialogs/dialog_export_3d_image.cpp).
  */
 
+#include <bitmaps.h>
 #include "dialog_export_3d_image.h"
 
 #include <QComboBox>

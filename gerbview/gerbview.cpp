@@ -146,7 +146,7 @@ static struct IFACE : public KIFACE_GUI, public UNITS_PROVIDER
 
     int HandleJob( JOB* aJob, REPORTER* aReporter, PROGRESS_REPORTER* aProgressReporter ) override;
 
-    bool HandleJobConfig( JOB* aJob, wxWindow* aParent ) override;
+    bool HandleJobConfig( JOB* aJob, TOOLKIT_WINDOW* aParent ) override;
 
 private:
     std::unique_ptr<GERBVIEW_JOBS_HANDLER> m_jobHandler;
@@ -203,9 +203,9 @@ int IFACE::HandleJob( JOB* aJob, REPORTER* aReporter, PROGRESS_REPORTER* aProgre
 }
 
 
-bool IFACE::HandleJobConfig( JOB* aJob, wxWindow* aParent )
+bool IFACE::HandleJobConfig( JOB* aJob, TOOLKIT_WINDOW* aParent )
 {
-    return m_jobHandler->HandleJobConfig( aJob, aParent );
+    return m_jobHandler->HandleJobConfig( aJob, TOOLKIT_WINDOW_ARG( aParent ) );
 }
 
 

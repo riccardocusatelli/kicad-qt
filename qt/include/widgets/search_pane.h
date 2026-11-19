@@ -27,6 +27,7 @@
 #ifndef SEARCH_PANE_H
 #define SEARCH_PANE_H
 
+#include <functional>
 #include <memory>
 #include <vector>
 
@@ -56,6 +57,15 @@ public:
 
     void RefreshSearch();
     void FocusSearch();
+
+    /// Call @a aFunction later, from the event loop, if the pane still exists (CallAfter()).
+    void CallAfter( std::function<void()> aFunction )
+    {
+        QMetaObject::invokeMethod( this, std::move( aFunction ), Qt::QueuedConnection );
+    }
+
+    /// The pane is shown (wxWindow::IsShownOnScreen()).
+    bool IsShownOnScreen() const { return isVisible(); }
     void ClearAllResults();
 
     /// @return true if the pane is visible on the screen (shown, in a shown dock and not

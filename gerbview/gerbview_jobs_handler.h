@@ -23,13 +23,13 @@
 #include <jobs/job_dispatcher.h>
 #include <wx/arrstr.h>
 
-class KIWAY;
+class KIWAY_SERVICES;
 
 
 class GERBVIEW_JOBS_HANDLER : public JOB_DISPATCHER
 {
 public:
-    GERBVIEW_JOBS_HANDLER( KIWAY* aKiway );
+    GERBVIEW_JOBS_HANDLER( KIWAY_SERVICES* aKiway );
 
 private:
     int JobGerberInfo( JOB* aJob );

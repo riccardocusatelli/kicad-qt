@@ -217,6 +217,7 @@ public:
     void SetItemImage( const wxTreeItemId& aItem, int aImage, int aWhich = 0 );
     void SetItemBold( const wxTreeItemId& aItem, bool aBold = true );
     void SetItemTextColour( const wxTreeItemId& aItem, const wxColour& aColour );
+    wxColour GetItemTextColour( const wxTreeItemId& aItem ) const;
     void SetItemBackgroundColour( const wxTreeItemId& aItem, const wxColour& aColour );
     void SetItemFont( const wxTreeItemId& aItem, const wxFont& aFont );
     wxFont GetItemFont( const wxTreeItemId& aItem ) const;

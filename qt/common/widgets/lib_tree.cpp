@@ -1093,7 +1093,8 @@ void LIB_TREE::onItemContextMenu( const QPoint& aPos )
     {
         LIB_TREE_NODE* current = GetCurrentTreeNode();
 
-        if( current && current->m_Type == LIB_TREE_NODE::TYPE::LIBRARY )
+        if( current && current->m_Type == LIB_TREE_NODE::TYPE::LIBRARY
+            && m_adapter->CanPinLibraries() )
         {
             ACTION_MENU menu( true, nullptr );
 

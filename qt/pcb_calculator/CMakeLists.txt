@@ -17,6 +17,7 @@ set( KIQT_PCB_CALCULATOR_GUI_SRCS
     calculator_panels/iec60664.cpp
     calculator_panels/panel_electrical_spacing_iec60664.cpp
     calculator_panels/panel_electrical_spacing_ipc2221.cpp
+    calculator_panels/panel_pth_size.cpp
     calculator_panels/panel_r_calculator.cpp
     calculator_panels/panel_fusing_current.cpp
     calculator_panels/panel_regulator.cpp
@@ -54,6 +55,7 @@ list( APPEND KIQT_PCB_CALCULATOR_GUI_SRCS
     )
 
 kiqt_generate_fbp_compat( KIQT_PCB_CALCULATOR_COMPAT_FBP_SRCS
+    ${CMAKE_SOURCE_DIR}/pcb_calculator/calculator_panels/panel_pth_size.fbp
     ${CMAKE_SOURCE_DIR}/pcb_calculator/calculator_panels/panel_board_class_base.fbp
     ${CMAKE_SOURCE_DIR}/pcb_calculator/calculator_panels/panel_cable_size_base.fbp
     ${CMAKE_SOURCE_DIR}/pcb_calculator/calculator_panels/panel_color_code_base.fbp

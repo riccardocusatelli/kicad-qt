@@ -36,6 +36,7 @@
 #include <sch_screen.h>
 #include <schematic.h>
 #include <symbol_editor/symbol_edit_frame.h>
+#include <tool/actions.h>
 #include <tool/tool_manager.h>
 #include <tools/sch_selection_tool.h>
 #include <tools/sch_tool_base.h>

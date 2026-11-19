@@ -73,6 +73,9 @@ public:
     /// Hide the dialog (wxWindow::Hide()).
     void Hide() { hide(); }
 
+    /// Show the dialog again (wxWindow::Show()).
+    void Show( bool aShow = true ) { aShow ? show() : hide(); }
+
     /**
      * Change the title displayed on the window caption.
      */

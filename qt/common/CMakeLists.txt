@@ -539,6 +539,10 @@ add_library( kiqt_common STATIC
     widgets/design_block_pane_qt.cpp
     widgets/panel_design_block_chooser_qt.cpp
 
+    # the tabs of the documents of the editors: the model, toolkit-independent, and the Qt strip
+    ${CMAKE_SOURCE_DIR}/common/widgets/editor_tabs_panel.cpp
+    widgets/editor_tabs_panel_qt.cpp
+
     background_jobs_list_qt.cpp
     dialog_shim.cpp
     widgets/ui_common_qt.cpp

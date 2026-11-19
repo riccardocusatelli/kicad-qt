@@ -217,7 +217,9 @@ SCH_EDIT_FRAME::SCH_EDIT_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent ) :
     m_searchPane = new SCH_SEARCH_PANE( this );
     m_propertiesPanel = new SCH_PROPERTIES_PANEL( this, this );
     m_remoteSymbolPane = new PANEL_REMOTE_SYMBOL( this );
-    m_gitCommitPane = new GIT_COMMIT_PANE( this );
+#ifndef KICAD_WX_FREE
+    m_gitCommitPane = new GIT_COMMIT_PANE( this );      // the Qt frames have no commit pane yet
+#endif
 
     m_propertiesPanel->SetSplitterProportion( eeconfig()->m_AuiPanels.properties_splitter );
 

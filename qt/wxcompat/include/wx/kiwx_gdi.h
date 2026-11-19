@@ -1078,6 +1078,7 @@ public:
     void DrawLine( int aX1, int aY1, int aX2, int aY2 );
     void DrawLine( const wxPoint& aP1, const wxPoint& aP2 ) { DrawLine( aP1.x, aP1.y, aP2.x, aP2.y ); }
     void DrawCircle( int aX, int aY, int aRadius );
+    void DrawCircle( const wxPoint& aCenter, int aRadius ) { DrawCircle( aCenter.x, aCenter.y, aRadius ); }
     void DrawEllipse( int aX, int aY, int aWidth, int aHeight );
     void DrawEllipse( const wxRect& aRect ) { DrawEllipse( aRect.x, aRect.y, aRect.width, aRect.height ); }
 

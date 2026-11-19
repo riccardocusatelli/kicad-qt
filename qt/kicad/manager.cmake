@@ -3,6 +3,7 @@
 # built on the wxWidgets compatibility layer (qt/wxcompat).
 
 set( KIQT_MANAGER_SRCS
+    dialogs/dialog_archive_job_settings.cpp
     dialogs/dialog_destination.cpp
     dialogs/dialog_copyfiles_job_settings.cpp
     dialogs/dialog_executecommand_job_settings.cpp
@@ -42,6 +43,7 @@ set( KIQT_MANAGER_SRCS
 list( TRANSFORM KIQT_MANAGER_SRCS PREPEND ${CMAKE_SOURCE_DIR}/kicad/ )
 
 kiqt_generate_fbp_compat( KIQT_MANAGER_COMPAT_FBP_SRCS
+    ${CMAKE_SOURCE_DIR}/kicad/dialogs/dialog_archive_job_settings_base.fbp
     ${CMAKE_SOURCE_DIR}/kicad/dialogs/dialog_copyfiles_job_settings_base.fbp
     ${CMAKE_SOURCE_DIR}/kicad/dialogs/dialog_destination_base.fbp
     ${CMAKE_SOURCE_DIR}/kicad/dialogs/dialog_executecommand_job_settings_base.fbp

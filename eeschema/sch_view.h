@@ -214,7 +214,6 @@ private:
      * screen because save temporarily overwrites screen page numbers for serialization.
      */
     void syncDrawingSheetToCurrentSheet( const SCH_CURRENT_SHEET_INFO& aInfo );
-    void syncDrawingSheetToCurrentSheet( SCH_EDIT_FRAME* aFrame );
 
     /// Reactive invalidation listener state. The tracker pointer is the
     /// authoritative owner (schematics can be swapped between views on

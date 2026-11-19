@@ -34,26 +34,14 @@
 #include <wx/filename.h>
 
 
-GERBVIEW_JOBS_HANDLER::GERBVIEW_JOBS_HANDLER( KIWAY* aKiway ) :
+GERBVIEW_JOBS_HANDLER::GERBVIEW_JOBS_HANDLER( KIWAY_SERVICES* aKiway ) :
         JOB_DISPATCHER( aKiway )
 {
-    Register( "gerber_info", std::bind( &GERBVIEW_JOBS_HANDLER::JobGerberInfo, this, std::placeholders::_1 ),
-              []( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  return true;
-              } );
+    Register( "gerber_info", std::bind( &GERBVIEW_JOBS_HANDLER::JobGerberInfo, this, std::placeholders::_1 ) );
 
-    Register( "gerber_export_png", std::bind( &GERBVIEW_JOBS_HANDLER::JobGerberExportPng, this, std::placeholders::_1 ),
-              []( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  return true;
-              } );
+    Register( "gerber_export_png", std::bind( &GERBVIEW_JOBS_HANDLER::JobGerberExportPng, this, std::placeholders::_1 ) );
 
-    Register( "gerber_diff", std::bind( &GERBVIEW_JOBS_HANDLER::JobGerberDiff, this, std::placeholders::_1 ),
-              []( JOB* job, wxWindow* aParent ) -> bool
-              {
-                  return true;
-              } );
+    Register( "gerber_diff", std::bind( &GERBVIEW_JOBS_HANDLER::JobGerberDiff, this, std::placeholders::_1 ) );
 }
 
 

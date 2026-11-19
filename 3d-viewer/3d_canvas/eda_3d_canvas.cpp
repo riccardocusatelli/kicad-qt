@@ -33,6 +33,7 @@
 
 #include "../common_ogl/ogl_utils.h"
 #include "eda_3d_canvas.h"
+#include <toolkit/process.h>
 #include <eda_3d_viewer_settings.h>
 #include <frame_type.h>
 #include <kiway_player.h>
@@ -1330,6 +1331,19 @@ void EDA_3D_CANVAS::Request_refresh( bool aRedrawImmediately )
         // Schedule a timed redraw
         m_redraw_trigger_timer.StartOnce( 10 );
     }
+}
+
+
+void EDA_3D_CANVAS::RequestRefreshFromAnyThread()
+{
+    std::weak_ptr<bool> alive = m_alive;
+
+    TOOLKIT::RunOnMainThread(
+            [this, alive]()
+            {
+                if( alive.lock() )
+                    Request_refresh();
+            } );
 }
 
 

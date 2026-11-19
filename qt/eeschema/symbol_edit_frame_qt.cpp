@@ -30,12 +30,15 @@
  * of the grid by EDA_DRAW_FRAME: the frame has no events of its own for them.
  */
 
+#include <QBoxLayout>
 #include <QDockWidget>
 
 #include <kiway.h>
 #include <symbol_edit_frame.h>
 #include <symbol_editor/symbol_editor_settings.h>
+#include <symbol_editor/symbol_editor_tab_context.h>
 #include <tools/sch_selection_tool.h>
+#include <widgets/editor_tabs_panel.h>
 #include <widgets/panel_sch_selection_filter.h>
 #include <widgets/sch_properties_panel.h>
 #include <widgets/symbol_tree_pane.h>
@@ -47,6 +50,42 @@ void SYMBOL_EDIT_FRAME::setupLayout()
 
     // The canvas, the info bar and the message panel
     setupCentralArea();
+
+    // The tabs of the open symbols, over the canvas
+    m_tabsPanel = new EDITOR_TABS_PANEL( centralWidget(), GetCanvas() );
+
+    if( QBoxLayout* central = qobject_cast<QBoxLayout*>( centralWidget()->layout() ) )
+        central->insertWidget( central->indexOf( GetCanvas() ), m_tabsPanel );
+
+    m_tabsPanel->onActivateTab =
+            [this]( int aIdx )
+            {
+                if( SYMBOL_EDITOR_TAB_CONTEXT* ctx = symbolTabContextForIndex( aIdx ) )
+                    activateSymbolTab( ctx );
+            };
+
+    m_tabsPanel->onCloseTabRequested =
+            [this]( int aIdx ) -> bool
+            {
+                return promptAndCloseSymbolTab( aIdx );
+            };
+
+    m_tabsPanel->onQueryVisualState =
+            [this]( int aIdx ) -> TAB_VISUAL_STATE
+            {
+                // The panel model owns preview. Read modified from the live context.
+                const std::vector<EDITOR_TABS_MODEL::ENTRY>& entries = m_tabsPanel->Model().Entries();
+
+                if( aIdx < 0 || aIdx >= static_cast<int>( entries.size() ) )
+                    return TAB_VISUAL_STATE{};
+
+                bool modified = entries[aIdx].modified;
+
+                if( SYMBOL_EDITOR_TAB_CONTEXT* ctx = symbolTabContextForIndex( aIdx ) )
+                    modified = ctx->IsModified();
+
+                return ResolveTabVisualState( entries[aIdx].preview, modified );
+            };
 
     // The libraries, the properties and the selection filter on the left side, one above the
     // other

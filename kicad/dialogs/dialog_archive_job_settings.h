@@ -17,7 +17,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "dialog_archive_job_settings_base.h"
+#include <dialog_archive_job_settings_base.h>
 
 class JOB_SPECIAL_ARCHIVE;
 

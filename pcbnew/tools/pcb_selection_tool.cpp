@@ -173,15 +173,15 @@ protected:
         m_new = newId;
     }
 
-    OPT_TOOL_EVENT eventHandler( const wxMenuEvent& aEvent ) override
+    OPT_TOOL_EVENT eventHandler( int aId ) override
     {
-        if( aEvent.GetId() == ID_REPLACE_TERMINAL_PAD_A )
+        if( aId == ID_REPLACE_TERMINAL_PAD_A )
         {
             TOOL_EVENT te = PCB_ACTIONS::setTerminalPad.MakeEvent();
             te.SetParameter( std::make_pair( m_oldA.AsString(), m_new.AsString() ) );
             return te;
         }
-        else if( aEvent.GetId() == ID_REPLACE_TERMINAL_PAD_B )
+        else if( aId == ID_REPLACE_TERMINAL_PAD_B )
         {
             TOOL_EVENT te = PCB_ACTIONS::setTerminalPad.MakeEvent();
             te.SetParameter( std::make_pair( m_oldB.AsString(), m_new.AsString() ) );

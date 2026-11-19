@@ -21,7 +21,7 @@
 #ifndef DIALOG_KICAD_DIFF_H
 #define DIALOG_KICAD_DIFF_H
 
-#include "dialog_kicad_diff_base.h"
+#include <dialog_kicad_diff_base.h>
 
 #include <diff_merge/diff_scene.h>
 #include <diff_merge/kicad_diff_types.h>

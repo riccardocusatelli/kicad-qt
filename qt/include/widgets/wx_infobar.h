@@ -62,6 +62,12 @@ class KIQT_API WX_INFOBAR : public wxWindowCompat<QFrame>
 public:
     WX_INFOBAR( wxWidgetArgCompat aParent );
 
+    /// The overlay infobars of wxWidgets (drawn over a canvas) are infobars of the frame here.
+    WX_INFOBAR( wxWidgetArgCompat aParent, int aWinId, bool aOverlay = false ) :
+            WX_INFOBAR( aParent )
+    {
+    }
+
     ~WX_INFOBAR();
 
     using MESSAGE_TYPE = INFOBAR_MESSAGE_TYPE;
@@ -97,6 +103,22 @@ public:
      * Add a button with a label (shown as a link) that runs a function when it is clicked.
      */
     void AddButton( const wxString& aLabel, std::function<void()> aCallback );
+
+    /**
+     * Add a hypertext link to the infobar.  Link is added in the right-most position.
+     *
+     * @param aLinkText is the text to show
+     * @param aFn is the function to execute if the link is clicked
+     */
+    void AddLink( const wxString& aLinkText, const std::function<void( wxHyperlinkEvent& )>& aFn )
+    {
+        AddButton( aLinkText,
+                   [aFn]()
+                   {
+                       wxHyperlinkEvent event;
+                       aFn( event );
+                   } );
+    }
 
     /**
      * Remove all the buttons that have been added by the user.

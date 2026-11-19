@@ -19,6 +19,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <bitmaps.h>
 #include "sch_properties_panel.h"
 
 #include <dialog_symbol_properties.h>

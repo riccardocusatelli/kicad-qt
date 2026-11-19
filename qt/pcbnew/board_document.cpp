@@ -46,7 +46,11 @@
 #include <pcb_painter.h>
 #include <pcb_track.h>
 #include <pcb_view.h>
-#include <pcbnew_scripting_helpers.h>
+#include <board_loader.h>
+#include <ki_exception.h>
+#include <pgm_base.h>
+#include <wildcards_and_files_ext.h>
+#include <wx/filename.h>
 #include <pcbnew_settings.h>
 #include <settings/color_settings.h>
 #include <settings/settings_manager.h>
@@ -274,10 +278,44 @@ KIGFX::PCB_VIEW* BOARD_DOCUMENT::view() const
 }
 
 
+/// The board of a file, with its project loaded and active (as the board editor loads them).
+static BOARD* loadBoard( const wxString& aFileName, wxString* aReason )
+{
+    wxFileName pro( aFileName );
+    pro.SetExt( FILEEXT::ProjectFileExtension );
+    pro.MakeAbsolute();
+
+    SETTINGS_MANAGER& settingsManager = Pgm().GetSettingsManager();
+    PROJECT*          project = settingsManager.GetProject( pro.GetFullPath() );
+
+    if( !project )
+    {
+        settingsManager.LoadProject( pro.GetFullPath(), true );
+        project = settingsManager.GetProject( pro.GetFullPath() );
+    }
+
+    PCB_IO_MGR::PCB_FILE_T format = aFileName.EndsWith( FILEEXT::KiCadPcbFileExtension )
+                                            ? PCB_IO_MGR::KICAD_SEXP
+                                            : PCB_IO_MGR::LEGACY;
+
+    try
+    {
+        return BOARD_LOADER::Load( aFileName, format, project ).release();
+    }
+    catch( const IO_ERROR& ioe )
+    {
+        if( aReason )
+            *aReason = ioe.What();
+    }
+
+    return nullptr;
+}
+
+
 bool BOARD_DOCUMENT::Open( const QString& aFileName, QString& aError )
 {
     wxString reason;
-    BOARD*   board = LoadBoard( ToWxString( aFileName ), true, &reason );
+    BOARD*   board = loadBoard( ToWxString( aFileName ), &reason );
 
     if( !board )
     {
@@ -333,11 +371,16 @@ bool BOARD_DOCUMENT::Save( QString& aError )
     // The board and its project, as the board editor saves them
     wxString fileName = ToWxString( m_fileName );
 
-    if( !SaveBoard( fileName, m_board.get() ) )
+    if( !BOARD_LOADER::SaveBoard( fileName, *m_board ) )
     {
         aError = tr( "The board could not be saved to %1." ).arg( m_fileName );
         return false;
     }
+
+    wxFileName pro( fileName );
+    pro.SetExt( FILEEXT::ProjectFileExtension );
+    pro.MakeAbsolute();
+    Pgm().GetSettingsManager().SaveProjectAs( pro.GetFullPath(), m_board->GetProject() );
 
     m_undo->SetSaved();
     Q_EMIT statusMessage( tr( "%1 saved." ).arg( m_fileName ) );

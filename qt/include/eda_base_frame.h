@@ -129,6 +129,9 @@ class EDA_BASE_FRAME : public wxWindowCompat<QMainWindow>, public TOOLS_HOLDER,
                        public KIWAY_HOLDER, public UNITS_PROVIDER
 {
 public:
+    /// The name of the pane of the git commits (a pane of the wx frames only).
+    static const wxString GitCommitPaneName() { return wxS( "GitCommitPane" ); }
+
     /**
      * Specify whether we are interacting with the undo or redo stacks.
      */
@@ -843,6 +846,9 @@ protected:
      * @return true if the frame can close.
      */
     virtual bool canCloseWindow( CLOSE_REQUEST& aRequest ) { return true; }
+
+    /// The session of the user ends and the platform lets the frames block it.
+    bool isBlockableSessionEnd() const;
 
     /**
      * Handle a window iconize event.

@@ -561,6 +561,18 @@ void wxTreeCtrl::SetItemTextColour( const wxTreeItemId& aItem, const wxColour& a
 }
 
 
+wxColour wxTreeCtrl::GetItemTextColour( const wxTreeItemId& aItem ) const
+{
+    if( QTreeWidgetItem* item = ToQtCompat( aItem ) )
+    {
+        if( item->foreground( 0 ).style() != Qt::NoBrush )
+            return wxColour( item->foreground( 0 ).color() );
+    }
+
+    return wxColour();
+}
+
+
 void wxTreeCtrl::SetItemBackgroundColour( const wxTreeItemId& aItem, const wxColour& aColour )
 {
     if( QTreeWidgetItem* item = ToQtCompat( aItem ) )

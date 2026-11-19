@@ -52,6 +52,7 @@ class wxCheckBox;
 class wxChoice;
 class HOTKEY_CYCLE_POPUP;
 class ACTION_MENU;
+class GIT_COMMIT_PANE;
 class SELECTION;
 class TOOL_ACTION;
 struct PLUGIN_ACTION;
@@ -693,6 +694,9 @@ protected:
 
     SEARCH_PANE*         m_searchPane;
     PROPERTIES_PANEL*    m_propertiesPanel;
+
+    /// The pane of the git commits of the wx frames: none in the Qt frames
+    GIT_COMMIT_PANE*     m_gitCommitPane = nullptr;
     NET_INSPECTOR_PANEL* m_netInspectorPanel;
     HOTKEY_CYCLE_POPUP*  m_hotkeyPopup;
 

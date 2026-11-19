@@ -19,29 +19,38 @@
 
 #include "pl_properties_panel.h"
 
+#ifndef KICAD_WX_FREE
 #include <dialogs/html_message_box.h>
 #include <dialog_shim.h>
+#endif
 #include <drawing_sheet/ds_draw_item.h>
 #include <project.h>
+#include <properties/pg_factory.h>
+#ifndef KICAD_WX_FREE
 #include <properties/pg_editors.h>
 #include <properties/pg_properties.h>
+#endif
 #include <properties/property.h>
 #include <properties/property_mgr.h>
-#include <scintilla_tricks.h>
 #include <tool/tool_manager.h>
 #include <tool/actions.h>
+#ifndef KICAD_WX_FREE
+#include <scintilla_tricks.h>
 #include <wx/hyperlink.h>
 #include <wx/propgrid/advprops.h>
 #include <wx/sizer.h>
 #include <wx/stc/stc.h>
+#endif
 
 #include "pl_editor_frame.h"
 #include "pl_properties.h"
 #include "tools/pl_selection_tool.h"
 
+#include <algorithm>
 #include <set>
 
 
+#ifndef KICAD_WX_FREE
 namespace
 {
 /** Retains multiline editing and drawing-sheet/project variable completion. */
@@ -129,6 +138,7 @@ private:
     PL_EDITOR_FRAME* m_frame;
 };
 } // namespace
+#endif
 
 
 PL_PROPERTIES_PANEL::PL_PROPERTIES_PANEL( PL_EDITOR_FRAME* aFrame ) :
@@ -137,8 +147,10 @@ PL_PROPERTIES_PANEL::PL_PROPERTIES_PANEL( PL_EDITOR_FRAME* aFrame ) :
         m_unitEditor( nullptr ),
         m_pageProperties( std::make_unique<PL_PAGE_PROPERTIES>( DS_DATA_MODEL::GetTheInstance() ) )
 {
-    SetMinSize( FromDIP( wxSize( 150, -1 ) ) );
     PROPERTY_MANAGER::Instance().Rebuild();
+
+#ifndef KICAD_WX_FREE
+    SetMinSize( FromDIP( wxSize( 150, -1 ) ) );
 
     auto& editors = wxPGGlobalVars->m_mapEditorClasses;
     auto  it = editors.find( PG_UNIT_EDITOR::BuildEditorName( aFrame ) );
@@ -159,6 +171,7 @@ PL_PROPERTIES_PANEL::PL_PROPERTIES_PANEL( PL_EDITOR_FRAME* aFrame ) :
 
     if( editors.find( PG_COLOR_EDITOR::EDITOR_NAME ) == editors.end() )
         wxPropertyGrid::RegisterEditorClass( new PG_COLOR_EDITOR() );
+#endif
 
     addCategoryButton(
             _HKI( "Defaults" ), _( "Reset to Defaults" ), BITMAPS::small_refresh,
@@ -175,8 +188,10 @@ PL_PROPERTIES_PANEL::PL_PROPERTIES_PANEL( PL_EDITOR_FRAME* aFrame ) :
 
 PL_PROPERTIES_PANEL::~PL_PROPERTIES_PANEL()
 {
+#ifndef KICAD_WX_FREE
     m_deferredRebuildTimer.Stop();
     m_unitEditor->UpdateFrame( nullptr );
+#endif
 }
 
 
@@ -216,8 +231,9 @@ void PL_PROPERTIES_PANEL::rebuildProperties( const SELECTION& aSelection )
 }
 
 
-wxPGProperty* PL_PROPERTIES_PANEL::createPGProperty( const PROPERTY_BASE* aProperty ) const
+TOOLKIT_PG_PROPERTY* PL_PROPERTIES_PANEL::createPGProperty( const PROPERTY_BASE* aProperty ) const
 {
+#ifndef KICAD_WX_FREE
     wxPGProperty* property;
 
     if( aProperty->Name() == wxS( "Text" ) )
@@ -236,45 +252,45 @@ wxPGProperty* PL_PROPERTIES_PANEL::createPGProperty( const PROPERTY_BASE* aPrope
     {
         property = PGPropertyFactory( aProperty, m_editor );
     }
+#else
+    // The Qt grid edits the texts in its own editors (no multiline dialog yet)
+    TOOLKIT_PG_PROPERTY* property = PGPropertyFactory( aProperty, m_editor );
+#endif
 
-    if( auto* color = dynamic_cast<PGPROPERTY_COLOR4D*>( property ) )
-        color->SetBackgroundColor( m_editor->GetDrawBgColor() );
+    if( property )
+        PGSetColorBackground( property, m_editor->GetDrawBgColor() );
 
     return property;
 }
 
 
-void PL_PROPERTIES_PANEL::valueChanging( wxPropertyGridEvent& aEvent )
+bool PL_PROPERTIES_PANEL::valueChanging( const wxString& aName, const wxVariant& aValue )
 {
     if( m_SuppressGridChangeEvents )
-        return;
+        return true;
 
     PROPERTY_MANAGER& mgr = PROPERTY_MANAGER::Instance();
 
     for( EDA_ITEM* item : m_selection )
     {
-        PROPERTY_BASE* property = mgr.GetProperty( item, aEvent.GetPropertyName() );
+        PROPERTY_BASE* property = mgr.GetProperty( item, aName );
 
         if( !property || !property->Available( item ) || !property->Writeable( item ) )
-        {
-            aEvent.Veto();
-            return;
-        }
+            return false;
 
-        if( auto error = property->Validate( aEvent.GetPropertyValue().GetAny(), item ) )
+        if( auto error = property->Validate( aValue.GetAny(), item ) )
         {
             m_editor->ShowInfoBarError( wxString::Format( wxS( "%s: %s" ), wxGetTranslation( property->Name() ),
                                                           error->get()->Format( m_editor ) ) );
-            aEvent.Veto();
-            return;
+            return false;
         }
     }
 
-    aEvent.Skip();
+    return true;
 }
 
 
-void PL_PROPERTIES_PANEL::valueChanged( wxPropertyGridEvent& aEvent )
+void PL_PROPERTIES_PANEL::valueChanged( const wxString& aName, const wxVariant& aValue )
 {
     if( m_SuppressGridChangeEvents || m_selection.Empty() )
         return;
@@ -284,8 +300,8 @@ void PL_PROPERTIES_PANEL::valueChanged( wxPropertyGridEvent& aEvent )
 
     for( EDA_ITEM* item : m_selection )
     {
-        if( PROPERTY_BASE* property = mgr.GetProperty( item, aEvent.GetPropertyName() ) )
-            item->Set( property, aEvent.GetPropertyValue() );
+        if( PROPERTY_BASE* property = mgr.GetProperty( item, aName ) )
+            item->Set( property, aValue );
     }
 
     refreshDrawing();

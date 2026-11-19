@@ -214,16 +214,16 @@ protected:
         }
     }
 
-    OPT_TOOL_EVENT eventHandler( const wxMenuEvent& aEvent ) override
+    OPT_TOOL_EVENT eventHandler( int aId ) override
     {
-        if( aEvent.GetId() == ID_REPLACE_TERMINAL_PIN_A )
+        if( aId == ID_REPLACE_TERMINAL_PIN_A )
         {
             TOOL_EVENT te = SCH_ACTIONS::replaceTerminalPin.MakeEvent();
             m_change.endpoint = 0;
             te.SetParameter( m_change );
             return te;
         }
-        else if( aEvent.GetId() == ID_REPLACE_TERMINAL_PIN_B )
+        else if( aId == ID_REPLACE_TERMINAL_PIN_B )
         {
             TOOL_EVENT te = SCH_ACTIONS::replaceTerminalPin.MakeEvent();
             m_change.endpoint = 1;

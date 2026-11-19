@@ -21,6 +21,7 @@
 
 #include <algorithm>
 
+#ifndef KICAD_WX_FREE
 #include <wx/aui/auibook.h>
 #include <wx/aui/framemanager.h>
 #include <wx/event.h>
@@ -29,8 +30,10 @@
 #include <wx/sizer.h>
 
 #include <class_draw_panel_gal.h>
+#endif
 
 
+#ifndef KICAD_WX_FREE
 // Offset into a private range so these ids never collide with the host frame.
 enum
 {
@@ -39,6 +42,7 @@ enum
     ID_TAB_CLOSE_TO_RIGHT,
     ID_TAB_CLOSE_ALL
 };
+#endif
 
 
 int EDITOR_TABS_MODEL::FindIndex( const wxString& aKey ) const
@@ -151,6 +155,9 @@ bool EDITOR_TABS_MODEL::CanCloseWithoutPrompt( const wxString& aKey ) const
 }
 
 
+// The Qt build has its own panel (qt/common/widgets/editor_tabs_panel_qt.cpp); only the model
+// above is shared.
+#ifndef KICAD_WX_FREE
 EDITOR_TABS_PANEL::EDITOR_TABS_PANEL( wxWindow* aParent, EDA_DRAW_PANEL_GAL* aSharedCanvas ) :
         wxPanel( aParent ),
         m_sharedCanvas( aSharedCanvas )
@@ -682,3 +689,5 @@ void EDITOR_TABS_PANEL::onContextMenu( wxCommandEvent& aEvent )
     default:                                                                    break;
     }
 }
+
+#endif // KICAD_WX_FREE

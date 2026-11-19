@@ -249,7 +249,7 @@ static struct PL_PROPERTIES_DESC
                 .SetChoicesFunc(
                         []( INSPECTABLE* )
                         {
-                            wxPGChoices              fonts;
+                            PROPERTY_CHOICES         fonts;
                             std::vector<std::string> names;
                             Fontconfig()->ListFonts( names, std::string( Pgm().GetLanguageTag().utf8_str() ) );
                             fonts.Add( KICAD_FONT_NAME );

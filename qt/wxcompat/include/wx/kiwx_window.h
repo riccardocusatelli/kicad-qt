@@ -514,6 +514,15 @@ public:
     /// The window with the keyboard focus (nullptr if none).
     static wxWindow* FindFocus();
 
+    /// A new id for controls (wxWindow::NewControlId()): ids below the ones of the program.
+    static int NewControlId( int aCount = 1 )
+    {
+        static int s_next = -31000;
+        int        id = s_next;
+        s_next -= aCount;
+        return id;
+    }
+
     // The appearance
 
     virtual bool SetFont( const wxFont& aFont );

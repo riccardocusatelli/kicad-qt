@@ -77,6 +77,7 @@
 #include <kiway.h>
 #include <local_history.h>
 #include <pgm_base.h>
+#include <kiplatform/app.h>
 #include <paths.h>
 #include <kiplatform/ui.h>
 #include <project.h>
@@ -2220,4 +2221,10 @@ bool EDA_BASE_FRAME::PopupMenu( ACTION_MENU* aMenu )
 
     aMenu->PopupAtMouse( this );
     return true;
+}
+
+
+bool EDA_BASE_FRAME::isBlockableSessionEnd() const
+{
+    return KIPLATFORM::APP::SupportsShutdownBlockReason() && Pgm().IsSessionEnding();
 }

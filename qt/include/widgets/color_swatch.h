@@ -39,6 +39,7 @@
 #include <kiqt.h>
 #include <gal/color4d.h>
 #include <custom_color_item.h>
+#include <i18n_utility.h>
 #include <wx/gdicmn.h>
 
 
@@ -104,6 +105,16 @@ public:
      * Set the current swatch color directly.
      */
     void SetSwatchColor( const KIGFX::COLOR4D& aColor, bool aSendEvent );
+
+    void SetIndeterminate()
+    {
+        SetSwatchColor( KIGFX::COLOR4D( INDETERMINATE_STATE ), false );
+    }
+
+    bool IsIndeterminate() const
+    {
+        return m_color.m_text && *m_color.m_text == INDETERMINATE_STATE;
+    }
 
     /**
      * Sets the color that will be chosen with the "Reset to Default" button in the chooser

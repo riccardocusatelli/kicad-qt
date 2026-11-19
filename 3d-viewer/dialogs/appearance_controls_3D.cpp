@@ -24,6 +24,10 @@
  * the GUI toolkit).  Its widgets are in appearance_controls_3D_wx.cpp (and in the Qt build).
  */
 
+#ifdef KICAD_WX_FREE
+#include <QDoubleSpinBox>
+#include <QSignalBlocker>
+#endif
 #include <../3d_rendering/opengl/render_3d_opengl.h> // Must be included before any GL header
 
 #include <dialogs/appearance_controls_3D.h>
@@ -171,7 +175,14 @@ void APPEARANCE_CONTROLS_3D::CommonSettingsChanged()
     rebuildControls();
 
     if( EDA_3D_VIEWER_SETTINGS* cfg = m_frame->GetAdapter().m_Cfg )
+    {
+#ifdef KICAD_WX_FREE
+        QSignalBlocker blocker( m_layerScaleCtrl );
+        m_layerScaleCtrl->setValue( cfg->m_Render.board_layer_thickness_scale );
+#else
         m_layerScaleCtrl->SetValue( cfg->m_Render.board_layer_thickness_scale );
+#endif
+    }
 
     UpdateLayerCtls();
 

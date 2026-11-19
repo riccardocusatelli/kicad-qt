@@ -1115,7 +1115,7 @@ bool SCHEMATIC_DOCUMENT::beginPaste( const QString& aText, const VECTOR2I& aPosi
 
             SCH_PASTE::PruneSymbolInstances( symbol, *m_schematic );
 
-            for( SCH_PIN* pin : symbol->GetPins() )
+            for( const std::unique_ptr<SCH_PIN>& pin : symbol->GetRawPins() )
                 pin->SetConnectivityDirty();
         }
 

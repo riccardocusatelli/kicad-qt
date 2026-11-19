@@ -22,6 +22,9 @@
 #include <3d-viewer/3d_canvas/eda_3d_canvas.h>
 #include <3d-viewer/3d_rendering/track_ball.h>
 #include <wx/toplevel.h>
+#ifdef KICAD_WX_FREE
+#include <wx/kiwx_window.h>     // wxTopLevelWindow (Qt build)
+#endif
 #include <pgm_base.h>
 #include <settings/common_settings.h>
 

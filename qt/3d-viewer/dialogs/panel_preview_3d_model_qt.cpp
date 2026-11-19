@@ -276,7 +276,7 @@ void PANEL_PREVIEW_3D_MODEL::loadSettings()
 
         m_previewPane->SetAnimationEnabled( cfg->m_Camera.animation_enabled );
         m_previewPane->SetMovingSpeedMultiplier( cfg->m_Camera.moving_speed_multiplier );
-        m_previewPane->SetProjectionMode( cfg->m_Camera.projection_mode );
+        m_previewPane->SetProjectionMode( cfg->m_Preview.projection_mode );
     }
 }
 
@@ -417,7 +417,7 @@ void PANEL_PREVIEW_3D_MODEL::setBodyStyleView( QWidget* aSource )
     if( !cfg )
         return;
 
-    cfg->m_Render.preview_show_board_body = !cfg->m_Render.preview_show_board_body;
+    cfg->m_Preview.show_board_body = !cfg->m_Preview.show_board_body;
 
     m_previewPane->ReloadRequest();
     m_previewPane->Refresh();

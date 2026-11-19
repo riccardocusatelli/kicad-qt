@@ -26,7 +26,9 @@
 #include "pgm_kicad.h"
 #include "project_tree.h"
 #include "project_tree_pane.h"
+#ifndef KICAD_WX_FREE
 #include <dialogs/dialog_git_mr_review.h>
+#endif
 #include <widgets/git_commit_pane.h>
 #include "local_history_pane.h"
 #include "widgets/bitmap_button.h"
@@ -1363,8 +1365,14 @@ void KICAD_MANAGER_FRAME::OnCompareProjectBranches( wxCommandEvent& event )
     if( refs.empty() )
         refs.push_back( wxS( "HEAD" ) );
 
+#ifdef KICAD_WX_FREE
+    // The diff viewer of the review is not ported to Qt yet
+    wxMessageBox( _( "Compare Project Branches is not available yet in this build." ),
+                  _( "Compare Branches" ), wxOK | wxICON_INFORMATION, this );
+#else
     DIALOG_GIT_MR_REVIEW dlg( this, gitCommon.get(), refs );
     dlg.ShowModal();
+#endif
 }
 
 

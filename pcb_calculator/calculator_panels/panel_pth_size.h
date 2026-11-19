@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include "panel_pth_size_base.h"
+#include <panel_pth_size_base.h>
 
 #include <pth_hole_size.h>
 

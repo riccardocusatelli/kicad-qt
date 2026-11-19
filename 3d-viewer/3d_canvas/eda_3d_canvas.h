@@ -48,10 +48,6 @@ class PAD;
 class FP_3DMODEL;
 
 
-// A custom event, used to call DoRePaint during an idle time
-wxDECLARE_EVENT( wxEVT_REFRESH_CUSTOM_COMMAND, wxCommandEvent );
-
-
 /// The fields of the status bar of the 3D viewer.
 enum EDA_3D_VIEWER_STATUSBAR
 {
@@ -263,6 +259,12 @@ public:
     void Request_refresh( bool aRedrawImmediately = true );
 
     /**
+     * Request a redraw from any thread (the background loaders of the renderers): the
+     * redraw is requested from the event loop, if the canvas still exists then.
+     */
+    void RequestRefreshFromAnyThread();
+
+    /**
      * Used to forward events to the canvas from popups, etc.
      */
     void OnEvent( TOOLKIT_EVENT& aEvent );
@@ -408,6 +410,9 @@ private:
     RAY getRayAtCurrentMousePosition();
 
 private:
+    /// Expires with the canvas (for the requests of RequestRefreshFromAnyThread())
+    std::shared_ptr<bool>                            m_alive = std::make_shared<bool>( true );
+
     std::function<bool( const RAY& )>                m_pickHandler;
     std::function<void( const std::optional<RAY>& )> m_hoverHandler;
     std::vector<OVERLAY>                             m_overlays;

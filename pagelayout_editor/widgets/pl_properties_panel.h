@@ -20,6 +20,10 @@
 #pragma once
 
 #include <widgets/properties_panel.h>
+#include <tool/selection.h>
+
+#include <memory>
+#include <vector>
 
 class PL_EDITOR_FRAME;
 class PL_PAGE_PROPERTIES;
@@ -36,9 +40,9 @@ public:
 
 protected:
     void          rebuildProperties( const SELECTION& aSelection ) override;
-    wxPGProperty* createPGProperty( const PROPERTY_BASE* aProperty ) const override;
-    void          valueChanging( wxPropertyGridEvent& aEvent ) override;
-    void          valueChanged( wxPropertyGridEvent& aEvent ) override;
+    TOOLKIT_PG_PROPERTY* createPGProperty( const PROPERTY_BASE* aProperty ) const override;
+    bool                 valueChanging( const wxString& aName, const wxVariant& aValue ) override;
+    void                 valueChanged( const wxString& aName, const wxVariant& aValue ) override;
 
 private:
     void resetDefaults();

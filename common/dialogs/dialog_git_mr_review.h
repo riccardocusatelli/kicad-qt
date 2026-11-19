@@ -24,7 +24,7 @@
 #ifndef DIALOG_GIT_MR_REVIEW_H
 #define DIALOG_GIT_MR_REVIEW_H
 
-#include "dialog_git_mr_review_base.h"
+#include <dialog_git_mr_review_base.h>
 
 #include <git/git_compare_handler.h>
 

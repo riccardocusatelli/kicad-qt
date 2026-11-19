@@ -36,6 +36,9 @@
 #include <QScreen>
 #include <QScrollArea>
 #include <QSignalBlocker>
+#include <QTimer>
+#include <QToolButton>
+#include <QDoubleSpinBox>
 #include <QVBoxLayout>
 
 #include <bitmaps.h>
@@ -112,6 +115,40 @@ APPEARANCE_CONTROLS_3D::APPEARANCE_CONTROLS_3D( EDA_3D_VIEWER_FRAME* aParent,
 
                 UpdateLayerCtls();
                 m_frame->NewDisplay( true );
+            } );
+
+    // The spacing of the layers: the scene is rebuilt once the user stops changing the value
+    // (rebuilding it is expensive and briefly clears the view)
+    QTimer* layerSpacingTimer = new QTimer( this );
+    layerSpacingTimer->setSingleShot( true );
+    layerSpacingTimer->setInterval( 300 );
+
+    QObject::connect( layerSpacingTimer, &QTimer::timeout, this,
+                      [this]() { m_frame->NewDisplay( true ); } );
+
+    auto applyLayerSpacing =
+            [this, layerSpacingTimer]()
+            {
+                if( EDA_3D_VIEWER_SETTINGS* cfg = m_frame->GetAdapter().m_Cfg )
+                    cfg->m_Render.board_layer_thickness_scale = static_cast<float>( m_layerScaleCtrl->value() );
+
+                layerSpacingTimer->start();
+            };
+
+    QObject::connect( m_layerScaleCtrl, &QDoubleSpinBox::valueChanged, this, applyLayerSpacing );
+
+    m_btnResetLayerScale->setIcon( KiBitmapBundle( BITMAPS::undo ) );
+    m_btnResetLayerScale->setToolTip( ToQString( _( "Reset layer spacing to the default" ) ) );
+
+    QObject::connect( m_btnResetLayerScale, &QToolButton::clicked, this,
+            [this, applyLayerSpacing]()
+            {
+                {
+                    QSignalBlocker blocker( m_layerScaleCtrl );
+                    m_layerScaleCtrl->setValue( 1.0 );
+                }
+
+                applyLayerSpacing();
             } );
 
     m_panelLayersSizer->addWidget( m_cbUseBoardStackupColors );

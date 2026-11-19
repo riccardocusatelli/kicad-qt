@@ -34,6 +34,7 @@
 #include <sch_sheet.h>
 #include <unordered_map>
 #include <sch_drawing_tools.h>
+#include <wx/imaglist.h>
 
 
 DIALOG_SYNC_SHEET_PINS::DIALOG_SYNC_SHEET_PINS(

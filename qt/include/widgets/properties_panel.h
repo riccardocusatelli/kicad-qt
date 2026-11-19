@@ -36,6 +36,7 @@
 #include <properties/pg_factory.h>
 #include <properties/property_choices.h>
 
+#include <wx/gdicmn.h>
 #include <wx/string.h>
 #include <wx/variant.h>
 
@@ -79,6 +80,16 @@ public:
     const std::vector<PROPERTY_BASE*>& Properties() const { return m_displayed; }
 
     void RecalculateSplitterPos();
+
+    /// The panel is shown (wxWindow::IsShownOnScreen()).
+    bool IsShownOnScreen() const { return isVisible(); }
+
+    // The window API of the wx panel used by the frames
+    wxSize GetMinSize() const { return wxSize( minimumSizeHint().width(), minimumSizeHint().height() ); }
+    wxSize GetSize() const { return wxSize( width(), height() ); }
+    void   Destroy() { deleteLater(); }
+    void   Freeze() { setUpdatesEnabled( false ); }
+    void   Thaw() { setUpdatesEnabled( true ); }
 
     void  SetSplitterProportion( float aProportion );
     float SplitterProportion() const { return m_splitter_key_proportion; }

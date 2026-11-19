@@ -888,7 +888,7 @@ void RENDER_3D_OPENGL::reload()
 void RENDER_3D_OPENGL::sendRefreshView()
 {
     if( m_canvas )
-        wxQueueEvent( m_canvas, new wxCommandEvent( wxEVT_REFRESH_CUSTOM_COMMAND, ID_CUSTOM_EVENT_1 ) );
+        m_canvas->RequestRefreshFromAnyThread();
 }
 
 

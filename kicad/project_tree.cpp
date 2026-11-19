@@ -41,7 +41,11 @@ static wxBitmap blankStatusBitmap( int aSize )
 {
     wxImage image( aSize, aSize );
     image.InitAlpha();
+#ifdef KICAD_WX_FREE
+    image.fill( Qt::transparent );
+#else
     memset( image.GetAlpha(), wxIMAGE_ALPHA_TRANSPARENT, aSize * aSize );
+#endif
 
     return wxBitmap( image );
 }

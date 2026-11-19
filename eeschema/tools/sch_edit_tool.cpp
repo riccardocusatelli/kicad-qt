@@ -18,6 +18,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <bitmaps.h>
 #include <symbol_edit_frame.h>
 #include <tool/tool_manager.h>
 #include <tools/sch_selection_tool.h>

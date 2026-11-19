@@ -263,8 +263,11 @@ SYMBOL_EDIT_FRAME::SYMBOL_EDIT_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent ) :
 
     setupToolkitEvents();
 
+#ifndef KICAD_WX_FREE
     // GTK rejects WXK_TAB as an accelerator so cycle tabs from the char hook ahead of the dispatcher.
+    // (The Qt tab strip has its own shortcuts.)
     Bind( wxEVT_CHAR_HOOK, &SYMBOL_EDIT_FRAME::OnTabCharHook, this );
+#endif
 
     // Ensure the window is on top
     Raise();

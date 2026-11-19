@@ -55,7 +55,7 @@ public:
     DIALOG_EXPORT_3D_IMAGE( TOOLKIT_WINDOW* aParent, const wxSize& aCanvasSize,
                             EDA_3D_VIEWER_SETTINGS::EXPORT_IMAGE_SETTINGS* aCfg );
 
-    wxSize GetSize() const { return wxSize( m_width, m_height ); }
+    wxSize GetImageSize() const { return wxSize( m_width, m_height ); }
     double GetXResolution() const { return m_xResolution; }
     double GetYResolution() const { return m_yResolution; }
 

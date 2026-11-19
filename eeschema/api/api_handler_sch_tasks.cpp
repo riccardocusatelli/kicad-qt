@@ -107,7 +107,17 @@ public:
         if( frame )
             reporter = std::make_unique<API_TASK_GUI_PROGRESS_REPORTER>( frame, _( "Running ERC" ), 1, 0 );
 
-        ercTester.RunTests( drawingSheet.get(), frame,
+        std::function<void( SCH_CLEANUP_FLAGS )> recalculate;
+
+        if( frame )
+        {
+            recalculate = [frame]( SCH_CLEANUP_FLAGS aFlags )
+                          {
+                              frame->RecalculateConnections( nullptr, aFlags );
+                          };
+        }
+
+        ercTester.RunTests( drawingSheet.get(), recalculate,
                             kiway ? kiway->KiFACE( KIWAY_FACES::FACE_CVPCB ) : nullptr,
                             &m_schematic->Project(), reporter.get() );
 
