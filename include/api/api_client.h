@@ -22,7 +22,10 @@
 
 #include <string>
 #include <nng/nng.h>
+// nng 2 declares the protocols in nng.h
+#if NNG_MAJOR_VERSION < 2
 #include <nng/protocol/reqrep0/req.h>
+#endif
 #include <wx/string.h>
 
 #include <google/protobuf/message.h>

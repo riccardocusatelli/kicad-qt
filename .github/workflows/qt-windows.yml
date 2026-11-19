@@ -176,6 +176,14 @@ jobs:
           if( $LASTEXITCODE -ne 0 ) { exit $LASTEXITCODE }
           if( Get-Command ccache -ErrorAction SilentlyContinue ) { ccache --show-stats }
 
+      # The log of the job keeps only its end: the errors of a failed build, gathered at the end
+      - name: Errors of the compilation
+        if: failure() && steps.build.outcome == 'failure'
+        shell: pwsh
+        run: |
+          Select-String -Path build\compilation_log.txt -Pattern 'FAILED:|error C|error LNK|fatal error' -Context 0,4 |
+            Select-Object -First 150 | ForEach-Object { $_.ToString() }
+
       - name: Save the compiler cache
         if: always()
         uses: actions/cache/save@v4
@@ -404,6 +412,10 @@ jobs:
             git clone -q --depth 1 --branch $version "https://gitlab.com/kicad/libraries/$repo.git" "libs\$repo"
             if( $LASTEXITCODE -ne 0 ) {
               git clone -q --depth 1 --branch $series "https://gitlab.com/kicad/libraries/$repo.git" "libs\$repo"
+            }
+            # A development version (x.99) has no branch of its own: the libraries of master
+            if( $LASTEXITCODE -ne 0 ) {
+              git clone -q --depth 1 "https://gitlab.com/kicad/libraries/$repo.git" "libs\$repo"
               if( $LASTEXITCODE -ne 0 ) { exit $LASTEXITCODE }
             }
             git -C "libs\$repo" log -1 --format='%H %d'

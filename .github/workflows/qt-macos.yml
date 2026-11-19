@@ -269,7 +269,8 @@ jobs:
           for repo in kicad-symbols kicad-footprints kicad-templates; do
             echo "::group::$repo"
             git clone -q --depth 1 --branch $VERSION https://gitlab.com/kicad/libraries/$repo.git libs/$repo \
-              || git clone -q --depth 1 --branch $SERIES https://gitlab.com/kicad/libraries/$repo.git libs/$repo
+              || git clone -q --depth 1 --branch $SERIES https://gitlab.com/kicad/libraries/$repo.git libs/$repo \
+              || git clone -q --depth 1 https://gitlab.com/kicad/libraries/$repo.git libs/$repo
             git -C libs/$repo log -1 --format='%H %d'
             cmake -S libs/$repo -B libs/build-$repo -G Ninja -DCMAKE_INSTALL_PREFIX=$PWD/libs/inst
             cmake --build libs/build-$repo

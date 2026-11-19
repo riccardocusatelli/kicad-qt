@@ -26,12 +26,27 @@
 #include <wx/translation.h>
 
 
+static void closeSocket( nng_socket aSocket )
+{
+#if NNG_MAJOR_VERSION < 2
+    nng_close( aSocket );
+#else
+    nng_socket_close( aSocket );
+#endif
+}
+
+
 KICAD_API_CLIENT::KICAD_API_CLIENT( int aTimeoutMs, bool aBlock ) :
         m_socket(),
         m_isOpen( false ),
         m_isConnected( false ),
         m_block( aBlock )
 {
+#if NNG_MAJOR_VERSION >= 2
+    // nng 2 is initialised before its first use (again: no effect)
+    nng_init( nullptr );
+#endif
+
     int ret = nng_req0_open( &m_socket );
 
     if( ret == 0 )
@@ -50,7 +65,7 @@ KICAD_API_CLIENT::KICAD_API_CLIENT( int aTimeoutMs, bool aBlock ) :
 KICAD_API_CLIENT::~KICAD_API_CLIENT()
 {
     if( m_isOpen )
-        nng_close( m_socket );
+        closeSocket( m_socket );
 }
 
 
@@ -79,7 +94,7 @@ void KICAD_API_CLIENT::Disconnect()
 {
     if( m_isOpen )
     {
-        nng_close( m_socket );
+        closeSocket( m_socket );
         m_isOpen = false;
         m_isConnected = false;
 
@@ -114,30 +129,19 @@ bool KICAD_API_CLIENT::Send( const google::protobuf::Message& aRequest, kiapi::c
     }
 
     std::string requestStr = request.SerializeAsString();
-    void*       sendBuf = nng_alloc( requestStr.size() );
-
-    if( !sendBuf )
-    {
-        m_lastError = wxS( "nng_alloc failed" );
-        return false;
-    }
-
-    std::memcpy( sendBuf, requestStr.data(), requestStr.size() );
-
-    int ret = nng_send( m_socket, sendBuf, requestStr.size(), NNG_FLAG_ALLOC );
+    // Without NNG_FLAG_ALLOC, which nng 2 does not have: the data is copied, the reply is a message
+    int ret = nng_send( m_socket, const_cast<char*>( requestStr.data() ), requestStr.size(), 0 );
 
     if( ret != 0 )
     {
-        nng_free( sendBuf, requestStr.size() );
         m_lastError = wxString::Format( wxS( "nng_send failed: %s" ), wxString::FromUTF8( nng_strerror( ret ) ) );
         return false;
     }
 
-    char*  reply = nullptr;
-    size_t replySize = 0;
-    int    flags = m_block ? 0 : NNG_FLAG_NONBLOCK;
+    nng_msg* reply = nullptr;
+    int      flags = m_block ? 0 : NNG_FLAG_NONBLOCK;
 
-    ret = nng_recv( m_socket, &reply, &replySize, NNG_FLAG_ALLOC | flags );
+    ret = nng_recvmsg( m_socket, &reply, flags );
 
     if( ret != 0 )
     {
@@ -145,8 +149,8 @@ bool KICAD_API_CLIENT::Send( const google::protobuf::Message& aRequest, kiapi::c
         return false;
     }
 
-    std::string responseStr( reply, replySize );
-    nng_free( reply, replySize );
+    std::string responseStr( static_cast<const char*>( nng_msg_body( reply ) ), nng_msg_len( reply ) );
+    nng_msg_free( reply );
 
     if( !aResponse.ParseFromString( responseStr ) )
     {
