@@ -22,6 +22,7 @@
 #include <board.h>
 #include <confirm.h>
 #include <dialog_shim.h>
+#include <kicad_message_dialog.h>
 #include <pcb_edit_frame.h>
 #include <drc/drc_engine.h>
 #include <drc/drc_rule.h>

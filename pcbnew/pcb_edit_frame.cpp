@@ -1412,6 +1412,7 @@ bool PCB_EDIT_FRAME::canCloseWindow( CLOSE_REQUEST& aRequest )
             && IsContentModified() )
     {
         return false;
+    }
 
     ZONE_FILLER_TOOL* zoneFillerTool = m_toolManager->GetTool<ZONE_FILLER_TOOL>();
 

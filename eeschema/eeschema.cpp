@@ -127,10 +127,17 @@ static PROJECT* symbolLibraryProject()
 {
     PROJECT* project = nullptr;
 
+#ifdef KICAD_WX_FREE
+    {
+        TOOLKIT_WINDOW* focus = TOOLKIT::FindFocus();
+        TOOLKIT_WINDOW* top = focus ? TOOLKIT::GetTopLevelParent( focus )
+                                    : TOOLKIT::GetActiveTopWindow();
+#else
     if( wxTheApp )
     {
         wxWindow* focus = wxWindow::FindFocus();
         wxWindow* top = focus ? wxGetTopLevelParent( focus ) : wxTheApp->GetTopWindow();
+#endif
 
         if( top )
         {

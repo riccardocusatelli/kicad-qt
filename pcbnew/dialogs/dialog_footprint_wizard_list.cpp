@@ -22,6 +22,7 @@
 #include <wx/msgdlg.h>
 
 #include <api/api_plugin_manager.h>
+#include <gui_reporters.h>
 #include <pgm_base.h>
 #include <reporter.h>
 #include <string_utils.h>

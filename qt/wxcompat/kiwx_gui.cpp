@@ -2208,7 +2208,7 @@ wxTreebook::wxTreebook( wxWidgetArgCompat aParent, int aId, const wxPoint& aPos,
 
 
 bool wxTreebook::insertPage( wxWidgetArgCompat aPage, const wxString& aText, int aParent, bool aSelect,
-                             int aImage )
+                             int aImage, int aIndex )
 {
     if( !aPage )
         return false;
@@ -2229,11 +2229,28 @@ bool wxTreebook::insertPage( wxWidgetArgCompat aPage, const wxString& aText, int
     }
 
     m_stack->addWidget( aPage );
-    m_pages.push_back( { aPage, item, aParent, aImage } );
-    applyImage( m_pages.back() );
+
+    // The index of the page (the pages are in the order of the tree)
+    size_t index = aIndex >= 0 && size_t( aIndex ) < m_pages.size() ? size_t( aIndex )
+                                                                      : m_pages.size();
+
+    if( index < m_pages.size() )
+    {
+        for( PAGE& page : m_pages )
+        {
+            if( page.m_parent >= int( index ) )
+                page.m_parent++;
+        }
+
+        if( m_selection >= int( index ) )
+            m_selection++;
+    }
+
+    m_pages.insert( m_pages.begin() + index, { aPage, item, aParent, aImage } );
+    applyImage( m_pages[index] );
 
     if( aSelect || m_selection == wxNOT_FOUND )
-        ChangeSelection( m_pages.size() - 1 );
+        ChangeSelection( index );
 
     fitTree();
     return true;
@@ -2289,6 +2306,22 @@ bool wxTreebook::AddSubPage( wxWidgetArgCompat aPage, const wxString& aText, boo
     }
 
     return insertPage( aPage, aText, parent, aSelect, aImage );
+}
+
+
+bool wxTreebook::InsertSubPage( size_t aPos, wxWidgetArgCompat aPage, const wxString& aText,
+                                bool aSelect, int aImage )
+{
+    if( aPos >= m_pages.size() )
+        return false;
+
+    // After the last page under the page (the sub pages follow their parent)
+    size_t index = aPos + 1;
+
+    while( index < m_pages.size() && m_pages[index].m_parent >= int( aPos ) )
+        index++;
+
+    return insertPage( aPage, aText, int( aPos ), aSelect, aImage, int( index ) );
 }
 
 
@@ -3502,9 +3535,20 @@ wxSplitterWindow::wxSplitterWindow( wxWidgetArgCompat aParent, int aId, const wx
     QObject::connect( this, &QSplitter::splitterMoved, this,
                       [this]( int aPos, int )
                       {
-                          if( OnSashPositionChange( aPos ) )
+                          // The events of the sash (the handlers can veto the position)
+                          wxSplitterEvent changing( wxEVT_SPLITTER_SASH_POS_CHANGING, GetId(),
+                                                    aPos );
+                          changing.SetEventObject( this );
+                          ProcessEvent( changing );
+
+                          if( changing.IsAllowed() && OnSashPositionChange( aPos ) )
                           {
                               m_acceptedSizes = sizes();
+
+                              wxSplitterEvent changed( wxEVT_SPLITTER_SASH_POS_CHANGED, GetId(),
+                                                       aPos );
+                              changed.SetEventObject( this );
+                              ProcessEvent( changed );
                           }
                           else if( !m_acceptedSizes.isEmpty() )
                           {

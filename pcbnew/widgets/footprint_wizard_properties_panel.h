@@ -23,8 +23,12 @@
 
 #include <widgets/properties_panel.h>
 
+#include <map>
 #include <memory>
 #include <vector>
+
+#include <toolkit/toolkit_types.h>
+#include <wx/any.h>
 
 class FOOTPRINT_WIZARD_FRAME;
 class FOOTPRINT_WIZARD;
@@ -36,7 +40,7 @@ class WIZARD_PARAMETER;
 class FOOTPRINT_WIZARD_PROPERTIES_PANEL : public PROPERTIES_PANEL
 {
 public:
-    FOOTPRINT_WIZARD_PROPERTIES_PANEL( wxWindow* aParent, FOOTPRINT_WIZARD_FRAME* aFrame );
+    FOOTPRINT_WIZARD_PROPERTIES_PANEL( TOOLKIT_WINDOW* aParent, FOOTPRINT_WIZARD_FRAME* aFrame );
     ~FOOTPRINT_WIZARD_PROPERTIES_PANEL() override;
 
     void UpdateData() override;
@@ -44,11 +48,32 @@ public:
     void RebuildParameters( FOOTPRINT_WIZARD* aWizard );
 
 protected:
+#ifdef KICAD_WX_FREE
+    TOOLKIT_PG_PROPERTY* createPGProperty( const PROPERTY_BASE* aProperty ) const override
+    {
+        return nullptr;
+    }
+
+    TOOLKIT_PG_PROPERTY* createPGProperty( WIZARD_PARAMETER* aParam ) const;
+    bool valueChanging( const wxString& aName, const wxVariant& aValue ) override;
+    void valueChanged( const wxString& aName, const wxVariant& aValue ) override;
+
+    /// The parameter of a property of the grid (by its name, the identifier of the parameter).
+    WIZARD_PARAMETER* getParamFromName( const wxString& aName ) const;
+#else
     wxPGProperty* createPGProperty( const PROPERTY_BASE* aProperty ) const override { return nullptr; }
     wxPGProperty* createPGProperty( WIZARD_PARAMETER* aParam ) const;
     void valueChanging( wxPropertyGridEvent& aEvent ) override;
     void valueChanged( wxPropertyGridEvent& aEvent ) override;
     static WIZARD_PARAMETER* getParamFromEvent( const wxPropertyGridEvent& aEvent );
+#endif
+
+    /// Check a new value of a parameter: false (with the reason in the build messages) to refuse it.
+    bool checkValue( WIZARD_PARAMETER* aParam, const wxAny& aValue ) const;
+
+    /// Store a new value in a parameter.
+    void applyValue( WIZARD_PARAMETER* aParam, const wxAny& aValue );
+
     wxString formatConstraintValue( const WIZARD_PARAMETER* aParam, int aValue ) const;
     wxString formatConstraintValue( const WIZARD_PARAMETER* aParam, double aValue ) const;
 
@@ -62,6 +87,11 @@ private:
 
     FOOTPRINT_WIZARD_FRAME* m_frame;
     std::vector<std::unique_ptr<WIZARD_PARAM_INFO>> m_paramInfos;
+
+#ifdef KICAD_WX_FREE
+    /// The parameters shown in the grid, by their identifier
+    std::map<wxString, WIZARD_PARAMETER*> m_params;
+#endif
 
     PG_UNIT_EDITOR*     m_unitEditorInstance;
     PG_CHECKBOX_EDITOR* m_checkboxEditorInstance;

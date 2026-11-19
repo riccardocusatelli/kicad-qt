@@ -18,6 +18,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <gui_reporters.h>
 #include <pcb_edit_frame.h>
 #include <board.h>
 #include <widgets/text_ctrl_eval.h>

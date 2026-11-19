@@ -27,15 +27,15 @@
 /**
  * @file footprint_wizard_frame_qt.cpp
  * The parts of FOOTPRINT_WIZARD_FRAME with Qt: the layout of its panes and its events (see
- * pcbnew/footprint_wizard_frame_wx.cpp).  The page list and the parameter grid give their events
- * to the frame through the handlers bound on them.
+ * pcbnew/footprint_wizard_frame_wx.cpp).  The parameters panel gives its changes to the frame
+ * itself.
  */
 
 #include <QDockWidget>
 
 #include <footprint_wizard_frame.h>
 #include <pcbnew_settings.h>
-#include <widgets/wx_grid.h>
+#include <widgets/footprint_wizard_properties_panel.h>
 
 
 void FOOTPRINT_WIZARD_FRAME::setupLayout()
@@ -61,9 +61,7 @@ void FOOTPRINT_WIZARD_FRAME::setupLayout()
 
 void FOOTPRINT_WIZARD_FRAME::setupToolkitEvents()
 {
-    m_pageList->Bind( wxEVT_LISTBOX, &FOOTPRINT_WIZARD_FRAME::ClickOnPageList, this );
-    m_parameterGrid->Bind( wxEVT_GRID_CELL_CHANGED, &FOOTPRINT_WIZARD_FRAME::ParametersUpdated,
-                           this );
+    // The parameters panel gives its changes to the frame itself (OnWizardParametersChanged())
 }
 
 

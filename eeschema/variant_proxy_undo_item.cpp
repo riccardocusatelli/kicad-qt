@@ -18,7 +18,7 @@
  */
 
 #include <variant_proxy_undo_item.h>
-#include <sch_edit_frame.h>
+#include <schematic.h>
 
 
 VARIANT_PROXY_UNDO_ITEM::VARIANT_PROXY_UNDO_ITEM( const SCHEMATIC* aSchematic ) :

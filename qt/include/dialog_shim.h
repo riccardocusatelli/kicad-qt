@@ -268,6 +268,9 @@ protected:
     /// The content of the dialog changed (wxWidgets): the widgets of Qt keep their own undo.
     void resetUndoRedoForNewContent( const wxWindowList& aChildren ) {}
 
+    /// A control changed by the code (wxWidgets: a step of the undo of the dialog).
+    void recordControlChange( wxWindow* aCtrl ) {}
+
     /// Forget the unit binders of a window and of its children.
     void unregisterUnitBinders( wxWindow* aWindow );
 

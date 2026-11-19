@@ -46,6 +46,7 @@
 #include <common_ogl/ogl_attr_list.h>
 #include <dialog_shim.h>
 #include <footprint.h>
+#include <pcb_3d_body.h>
 #include <lset.h>
 #include <pgm_base.h>
 #include <project_pcb.h>
@@ -349,8 +350,76 @@ void PANEL_PREVIEW_3D_MODEL::SetSelectedModel( int idx )
 }
 
 
+void PANEL_PREVIEW_3D_MODEL::SetExtrusionTransformMode( PCB_3D_BODY* aBody )
+{
+    m_extrudedBody = aBody;
+
+    if( aBody )
+    {
+        const EXTRUDED_3D_BODY& body = *aBody->GetExtruded();
+
+        xscale->ChangeValue( formatScaleValue( body.m_scale.x ) );
+        yscale->ChangeValue( formatScaleValue( body.m_scale.y ) );
+        zscale->ChangeValue( formatScaleValue( body.m_scale.z ) );
+
+        xrot->ChangeValue( formatRotationValue( -body.m_rotation.x ) );
+        yrot->ChangeValue( formatRotationValue( -body.m_rotation.y ) );
+        zrot->ChangeValue( formatRotationValue( -body.m_rotation.z ) );
+
+        xoff->ChangeValue( formatOffsetValue( body.m_offset.x ) );
+        yoff->ChangeValue( formatOffsetValue( body.m_offset.y ) );
+        zoff->ChangeValue( formatOffsetValue( body.m_offset.z ) );
+
+        QSignalBlocker blocker( m_opacity );
+        m_opacity->setValue( 100 );
+        m_opacity->setEnabled( false );
+    }
+    else
+    {
+        m_opacity->setEnabled( true );
+        SetSelectedModel( m_selected );
+    }
+}
+
+
 void PANEL_PREVIEW_3D_MODEL::updateOrientation( QWidget* aSource )
 {
+    if( m_extrudedBody )
+    {
+        EXTRUDED_3D_BODY& body = *m_extrudedBody->MutableExtruded();
+
+        auto unscaled =
+                []( TEXT_CTRL_EVAL* aCtrl )
+                {
+                    return EDA_UNIT_UTILS::UI::DoubleValueFromString( unityScale, EDA_UNITS::UNSCALED,
+                                                                      PreviewEvaluateText( aCtrl->GetValue() ) );
+                };
+
+        auto offset =
+                [this]( TEXT_CTRL_EVAL* aCtrl )
+                {
+                    return EDA_UNIT_UTILS::UI::DoubleValueFromString( pcbIUScale, m_userUnits,
+                                                                      PreviewEvaluateText( aCtrl->GetValue() ) )
+                           / pcbIUScale.IU_PER_MM;
+                };
+
+        body.m_scale.x = unscaled( xscale );
+        body.m_scale.y = unscaled( yscale );
+        body.m_scale.z = unscaled( zscale );
+
+        body.m_rotation.x = -PreviewRotationFromString( PreviewEvaluateText( xrot->GetValue() ) );
+        body.m_rotation.y = -PreviewRotationFromString( PreviewEvaluateText( yrot->GetValue() ) );
+        body.m_rotation.z = -PreviewRotationFromString( PreviewEvaluateText( zrot->GetValue() ) );
+
+        body.m_offset.x = offset( xoff );
+        body.m_offset.y = offset( yoff );
+        body.m_offset.z = offset( zoff );
+
+        UpdateDummyFootprint( true );
+        onModify();
+        return;
+    }
+
     if( m_parentModelList && m_selected >= 0 && m_selected < (int) m_parentModelList->size() )
     {
         // Write settings back to the parent

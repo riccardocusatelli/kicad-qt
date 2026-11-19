@@ -121,6 +121,8 @@ enum wxEventTypeCompat
     wxEVT_LIST_COL_RIGHT_CLICK,
     wxEVT_LIST_KEY_DOWN,
     wxEVT_LIST_BEGIN_DRAG,
+    wxEVT_LIST_BEGIN_LABEL_EDIT,
+    wxEVT_LIST_END_LABEL_EDIT,
     wxEVT_GRID_CELL_LEFT_CLICK,
     wxEVT_GRID_CELL_LEFT_DCLICK,
     wxEVT_GRID_CELL_RIGHT_CLICK,
@@ -149,6 +151,8 @@ enum wxEventTypeCompat
     wxEVT_HELP,
     wxEVT_TREEBOOK_PAGE_CHANGED,
     wxEVT_TREEBOOK_PAGE_CHANGING,
+    wxEVT_SPLITTER_SASH_POS_CHANGING,
+    wxEVT_SPLITTER_SASH_POS_CHANGED,
     wxEVT_TREEBOOK_NODE_EXPANDED,
     wxEVT_TREEBOOK_NODE_COLLAPSED,
     wxEVT_WIZARD_PAGE_CHANGED,
@@ -782,6 +786,26 @@ public:
 
 private:
     wxSize m_size;
+};
+
+
+/// The sash of a splitter moves (wxEVT_SPLITTER_SASH_POS_CHANGING) or moved
+/// (wxEVT_SPLITTER_SASH_POS_CHANGED) by the user.
+class wxSplitterEvent : public wxNotifyEvent
+{
+public:
+    explicit wxSplitterEvent( wxEventType aType = wxEVT_NULL, int aId = 0,
+                              int aSashPosition = 0 ) :
+            wxNotifyEvent( aType, aId ),
+            m_sashPosition( aSashPosition )
+    {
+    }
+
+    int  GetSashPosition() const { return m_sashPosition; }
+    void SetSashPosition( int aPosition ) { m_sashPosition = aPosition; }
+
+private:
+    int m_sashPosition;
 };
 
 
@@ -1677,6 +1701,7 @@ inline wxCompatEventSink* wxEventSinkCompat( QWidget* aWidget )
 #define wxFocusEventHandler( func ) ( &func )
 #define wxSizeEventHandler( func ) ( &func )
 #define wxMoveEventHandler( func ) ( &func )
+#define wxSplitterEventHandler( func ) ( &func )
 #define wxWindowDestroyEventHandler( func ) ( &func )
 #define wxMouseEventHandler( func ) ( &func )
 #define wxKeyEventHandler( func ) ( &func )

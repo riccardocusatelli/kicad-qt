@@ -21,6 +21,7 @@
 
 #include <wx/tokenzr.h>
 #include <bitmaps.h>
+#include <kiway.h>
 #include <dialog_ibis_parser_reporter.h>
 #include <dialog_sim_model.h>
 #include <sim/sim_property.h>

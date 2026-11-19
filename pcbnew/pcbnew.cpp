@@ -40,6 +40,7 @@
 #include <toolkit/gui_services.h>
 #include <toolkit/toolkit_window_arg.h>
 #include <paths.h>
+#include <pcb_edit_frame.h>
 #include <pcbnew_settings.h>
 #include <footprint.h>
 #include <footprint_editor_settings.h>

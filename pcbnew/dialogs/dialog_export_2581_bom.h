@@ -22,7 +22,7 @@
 
 #include <vector>
 
-#include "dialog_export_2581_bom_base.h"
+#include <dialog_export_2581_bom_base.h>
 
 class BOARD;
 

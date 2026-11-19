@@ -217,7 +217,6 @@ set( KIQT_EESCHEMA_GUI_SRCS
     symbol_editor/symbol_editor_tab_context.cpp
     tools/ee_graphic_tool.cpp
     tools/sch_tool_base.cpp
-    variant_proxy_undo_item.cpp
     widgets/db_lib_preview_panel.cpp
     )
 

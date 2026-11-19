@@ -64,8 +64,6 @@ public:
         QMetaObject::invokeMethod( this, std::move( aFunction ), Qt::QueuedConnection );
     }
 
-    /// The pane is shown (wxWindow::IsShownOnScreen()).
-    bool IsShownOnScreen() const { return isVisible(); }
     void ClearAllResults();
 
     /// @return true if the pane is visible on the screen (shown, in a shown dock and not

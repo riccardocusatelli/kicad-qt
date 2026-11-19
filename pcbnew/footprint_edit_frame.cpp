@@ -848,8 +848,7 @@ void FOOTPRINT_EDIT_FRAME::borrowBoardNonDestructive( BOARD* aBoard )
         GetCanvas()->GetView()->GetGAL()->SetGridOrigin( GetBoard()->GetDesignSettings().GetGridOrigin() );
     }
 
-    wxCommandEvent e( EDA_EVT_BOARD_CHANGED );
-    ProcessEventLocally( e );
+    notifyBoardChange( BOARD_CHANGE::CHANGED );
 }
 
 

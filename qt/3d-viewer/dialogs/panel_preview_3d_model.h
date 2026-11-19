@@ -70,6 +70,7 @@ class BOARD_ADAPTER;
 class FOOTPRINT;
 class FP_3DMODEL;
 class PCB_BASE_FRAME;
+class PCB_3D_BODY;
 #if defined(__linux__) || defined(__FreeBSD__)
 class SPNAV_VIEWER_PLUGIN;
 #else
@@ -110,6 +111,12 @@ public:
     void SetEmbeddedFilesDelegate( EMBEDDED_FILES* aDelegate );
 
     FOOTPRINT* GetDummyFootprint() const { return m_dummyFootprint; }
+
+    /**
+     * Edit the transform of an extruded body instead of the selected model (nullptr: back to the
+     * selected model).
+     */
+    void SetExtrusionTransformMode( PCB_3D_BODY* aBody );
 
     /**
      * The panel is shown or hidden in its dialog (the wxCUSTOM_PANEL_SHOWN_EVENT of the
@@ -225,6 +232,7 @@ private:
 
     std::vector<FP_3DMODEL>* m_parentModelList;
     int                      m_selected;            /// Index into m_parentInfoList
+    PCB_3D_BODY*             m_extrudedBody = nullptr;  /// The extruded body being edited
 
     EDA_UNITS                m_userUnits;
     EMBEDDED_FILES*          m_localEmbeddedFiles = nullptr;

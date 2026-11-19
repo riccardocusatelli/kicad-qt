@@ -20,6 +20,7 @@
 #include "pl_properties_panel.h"
 
 #ifndef KICAD_WX_FREE
+#include <bitmaps.h>
 #include <dialogs/html_message_box.h>
 #include <dialog_shim.h>
 #endif

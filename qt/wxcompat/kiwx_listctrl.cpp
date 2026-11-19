@@ -135,6 +135,7 @@ public:
         switch( aRole )
         {
         case Qt::DisplayRole:
+        case Qt::EditRole:
             if( !entry )
                 return ToQString( m_list->OnGetItemText( row, col ) );
 
@@ -195,6 +196,24 @@ public:
 
     bool setData( const QModelIndex& aIndex, const QVariant& aValue, int aRole ) override
     {
+        if( aRole == Qt::EditRole && !m_list->IsVirtual() && aIndex.isValid()
+            && aIndex.column() == 0 )
+        {
+            // A label edited by the user
+            wxString label = ToWxString( aValue.toString() );
+
+            if( !m_list->sendEndLabelEdit( aIndex.row(), label ) )
+                return false;
+
+            ROW& row = m_rows[aIndex.row()];
+
+            if( !row.cells.empty() )
+                row.cells[0].text = aValue.toString();
+
+            emit dataChanged( aIndex, aIndex );
+            return true;
+        }
+
         if( aRole != Qt::CheckStateRole || m_list->IsVirtual() || !aIndex.isValid() )
             return false;
 
@@ -213,6 +232,12 @@ public:
 
         if( aIndex.column() == 0 && m_list->HasCheckBoxes() )
             result |= Qt::ItemIsUserCheckable;
+
+        if( aIndex.column() == 0 && !m_list->IsVirtual()
+            && ( m_list->GetWindowStyleFlag() & wxLC_EDIT_LABELS ) )
+        {
+            result |= Qt::ItemIsEditable;
+        }
 
         return result;
     }
@@ -412,6 +437,36 @@ void wxListCtrl::sendEvent( wxEventType aType, long aItem, int aColumn )
     event.SetItemCompat( item );
     event.SetColumnCompat( aColumn );
     ProcessEvent( event );
+}
+
+
+bool wxListCtrl::sendEndLabelEdit( long aItem, const wxString& aLabel )
+{
+    wxListEvent event( wxEVT_LIST_END_LABEL_EDIT, GetId() );
+    wxListItem  item;
+
+    item.SetId( aItem );
+    item.SetColumn( 0 );
+    item.SetText( aLabel );
+    item.SetData( reinterpret_cast<void*>( GetItemData( aItem ) ) );
+
+    event.SetEventObject( this );
+    event.SetItemCompat( item );
+    event.SetColumnCompat( 0 );
+    ProcessEvent( event );
+    return event.IsAllowed();
+}
+
+
+void wxListCtrl::EditLabel( long aItem )
+{
+    if( aItem < 0 || aItem >= GetItemCount() )
+        return;
+
+    QModelIndex index = m_model->index( int( aItem ), 0 );
+
+    setCurrentIndex( index );
+    edit( index );
 }
 
 
@@ -1013,6 +1068,21 @@ bool wxListCtrl::GetItemRect( long aItem, wxRect& aRect, int aCode ) const
 
     for( int col = 1; col < m_model->columnCount(); ++col )
         rect = rect.united( visualRect( m_model->index( int( aItem ), col ) ) );
+
+    aRect = wxRect( rect.x(), rect.y(), rect.width(), rect.height() );
+    return true;
+}
+
+
+bool wxListCtrl::GetSubItemRect( long aItem, long aSubItem, wxRect& aRect, int aCode ) const
+{
+    if( aItem < 0 || aItem >= GetItemCount() || aSubItem < 0
+        || aSubItem >= m_model->columnCount() )
+    {
+        return false;
+    }
+
+    QRect rect = visualRect( m_model->index( int( aItem ), int( aSubItem ) ) );
 
     aRect = wxRect( rect.x(), rect.y(), rect.width(), rect.height() );
     return true;

@@ -81,7 +81,15 @@ DIALOG_FIND_BY_PROPERTIES::DIALOG_FIND_BY_PROPERTIES( PCB_EDIT_FRAME* aParent ) 
 
     m_board = m_frame->GetBoard();
 
-    m_frame->Bind( EDA_EVT_BOARD_CHANGED, &DIALOG_FIND_BY_PROPERTIES::OnBoardChanged, this );
+    m_frame->AddBoardChangeListener( this,
+                                     [this]( BOARD_CHANGE aChange )
+                                     {
+                                         if( aChange == BOARD_CHANGE::CHANGED )
+                                         {
+                                             wxCommandEvent event;
+                                             OnBoardChanged( event );
+                                         }
+                                     } );
 
     m_propertyGrid->Bind( wxEVT_GRID_CELL_CHANGED, &DIALOG_FIND_BY_PROPERTIES::onGridCellChanged, this );
     m_propertyGrid->Bind( wxEVT_GRID_CELL_LEFT_CLICK, &DIALOG_FIND_BY_PROPERTIES::onGridCellClick, this );
@@ -99,7 +107,7 @@ DIALOG_FIND_BY_PROPERTIES::DIALOG_FIND_BY_PROPERTIES( PCB_EDIT_FRAME* aParent ) 
 
 DIALOG_FIND_BY_PROPERTIES::~DIALOG_FIND_BY_PROPERTIES()
 {
-    m_frame->Unbind( EDA_EVT_BOARD_CHANGED, &DIALOG_FIND_BY_PROPERTIES::OnBoardChanged, this );
+    m_frame->RemoveBoardChangeListener( this );
 
     delete m_scintillaTricks;
 }
@@ -264,31 +272,25 @@ wxString formatFindByPropertiesDisplayValue( PCB_EDIT_FRAME* aFrame, PROPERTY_BA
     if( !aProperty )
         return aValue.GetString();
 
-    wxVariant     valueCopy = aValue;
-    wxPGProperty* pgProperty = nullptr;
+    wxVariant            valueCopy = aValue;
+    TOOLKIT_PG_PROPERTY* pgProperty = nullptr;
 
     if( aProperty->TypeHash() == TYPE_HASH( PCB_LAYER_ID ) )
     {
         wxASSERT( aProperty->HasChoices() );
 
-        const wxPGChoices& canonicalLayers = aProperty->Choices();
-        wxArrayString      boardLayerNames;
-        wxArrayInt         boardLayerIDs;
+        const PROPERTY_CHOICES&              canonicalLayers = aProperty->Choices();
+        std::vector<std::pair<wxString, int>> boardLayers;
 
-        for( int ii = 0; ii < (int) canonicalLayers.GetCount(); ++ii )
+        for( const PROPERTY_CHOICE& choice : canonicalLayers )
         {
-            int layer = canonicalLayers.GetValue( ii );
-
-            boardLayerNames.push_back( aFrame->GetBoard()->GetLayerName( ToLAYER_ID( layer ) ) );
-            boardLayerIDs.push_back( layer );
+            int layer = choice.GetValue();
+            boardLayers.emplace_back( aFrame->GetBoard()->GetLayerName( ToLAYER_ID( layer ) ), layer );
         }
 
-        auto layerProp = new PGPROPERTY_COLORENUM( new wxPGChoices( boardLayerNames, boardLayerIDs ) );
-        layerProp->SetLabel( wxGetTranslation( aProperty->Name() ) );
-        layerProp->SetName( aProperty->Name() );
-        layerProp->SetHelpString( wxGetTranslation( aProperty->Name() ) );
-        layerProp->SetClientData( const_cast<PROPERTY_BASE*>( aProperty ) );
-        pgProperty = layerProp;
+        // Only the text of the value is needed: no colours
+        pgProperty = PGColorEnumPropertyFactory( aProperty, boardLayers,
+                                                 []( int ) { return KIGFX::COLOR4D::UNSPECIFIED; } );
     }
     else
     {

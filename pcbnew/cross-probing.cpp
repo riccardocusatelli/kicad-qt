@@ -350,7 +350,7 @@ void PCB_EDIT_FRAME::HandleRemoteNetHighlight( const std::vector<wxString>& aNet
         netcode = netinfo->GetNetCode();
 
         std::vector<MSG_PANEL_ITEM> items;
-        netinfo->GetMsgPanelInfo( this, items );
+        netinfo->GetMsgPanelInfo( GetMsgPanelContext(), items );
         SetMsgPanel( items );
 
         // If the incoming net belongs to a net chain, promote the single-net
@@ -396,7 +396,7 @@ void PCB_EDIT_FRAME::HandleRemoteNetHighlight( const std::vector<wxString>& aNet
                 {
                     // TODO: Once buses are included in netlist, show bus name
                     std::vector<MSG_PANEL_ITEM> items;
-                    netinfo->GetMsgPanelInfo( this, items );
+                    netinfo->GetMsgPanelInfo( GetMsgPanelContext(), items );
                     SetMsgPanel( items );
                     first = false;
 

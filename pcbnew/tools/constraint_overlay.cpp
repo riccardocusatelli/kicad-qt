@@ -18,6 +18,7 @@
  */
 
 #include <tools/constraint_overlay.h>
+#include <raster_image_wx.h>
 
 #include <algorithm>
 #include <cmath>
@@ -609,7 +610,7 @@ BITMAP_BASE* CONSTRAINT_BADGE_ITEM::icon( PCB_CONSTRAINT_TYPE aType ) const
         if( wxBitmap bmp = KiBitmap( id ); bmp.IsOk() )
         {
             base = std::make_unique<BITMAP_BASE>();
-            base->SetImage( bmp.ConvertToImage() );
+            base->SetImage( FromWxImage( bmp.ConvertToImage() ) );
         }
     }
 
@@ -649,7 +650,7 @@ BITMAP_BASE* CONSTRAINT_BADGE_ITEM::disc( const KIGFX::COLOR4D& aColor ) const
     }
 
     auto base = std::make_unique<BITMAP_BASE>();
-    base->SetImage( img );
+    base->SetImage( FromWxImage( img ) );
 
     return ( m_discs[key] = std::move( base ) ).get();
 }

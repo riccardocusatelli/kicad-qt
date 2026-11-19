@@ -35,6 +35,7 @@
 #include <gal/graphics_abstraction_layer.h>
 #include <string_utils.h>  // StrNumCmp
 #include <kiface_base.h>
+#include <kiway.h>
 #include <pcbnew_settings.h>
 #include <project/project_file.h>
 #include <mail_type.h>

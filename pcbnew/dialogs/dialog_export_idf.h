@@ -21,6 +21,7 @@
 #pragma once
 
 #include <dialog_export_idf_base.h>
+#include <project/board_project_settings.h>
 #include <widgets/unit_binder.h>
 
 class PCB_EDIT_FRAME;

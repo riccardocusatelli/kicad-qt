@@ -625,7 +625,11 @@ class FormClass:
         perm = p.get( 'permission', 'protected' )
 
         if perm in ( 'protected', 'public', 'private' ):
-            self.members.append( ( perm, aType, name ) )
+            # A name given twice in the form (a stale copy of a control) is declared once: the
+            # member points to the last control
+            if not any( m[2] == name for m in self.members ):
+                self.members.append( ( perm, aType, name ) )
+
             return name
 
         # A local variable

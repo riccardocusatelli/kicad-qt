@@ -101,6 +101,7 @@ set_property( GLOBAL APPEND PROPERTY KICAD_WX_FREE_SOURCES_eeschema_kiface_objec
     eeschema/sch_painter.cpp
     eeschema/sch_paste.cpp
     eeschema/sch_undo_redo.cpp
+    eeschema/variant_proxy_undo_item.cpp
     eeschema/sch_view.cpp
     eeschema/tools/sch_selection.cpp
     )

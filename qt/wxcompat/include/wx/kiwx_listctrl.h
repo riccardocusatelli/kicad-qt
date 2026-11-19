@@ -332,11 +332,18 @@ public:
     bool SetItemState( long aItem, long aState, long aStateMask );
     int GetSelectedItemCount() const;
     bool EnsureVisible( long aItem );
+
+    /// Edit the label of an item (a list with wxLC_EDIT_LABELS): wxEVT_LIST_END_LABEL_EDIT, that
+    /// the handlers can veto, has the new label.
+    void EditLabel( long aItem );
     long FindItem( long aStart, const wxString& aText, bool aPartial = false ) const;
     long FindItem( long aStart, wxUIntPtr aData ) const;
     long GetTopItem() const;
     int GetCountPerPage() const;
     bool GetItemRect( long aItem, wxRect& aRect, int aCode = 0 ) const;
+
+    /// The rectangle of the cell of an item in a column.
+    bool GetSubItemRect( long aItem, long aSubItem, wxRect& aRect, int aCode = 0 ) const;
     long HitTest( const wxPoint& aPoint, int& aFlags, long* aSubItem = nullptr ) const;
 
     // The check boxes
@@ -381,6 +388,9 @@ private:
     friend class KIWX_LIST_MODEL;
 
     void sendEvent( wxEventType aType, long aItem, int aColumn = -1 );
+
+    /// The end of the edit of a label: false if a handler vetoed the label.
+    bool sendEndLabelEdit( long aItem, const wxString& aLabel );
     void applyStyle();
 
     KIWX_LIST_MODEL*            m_model;

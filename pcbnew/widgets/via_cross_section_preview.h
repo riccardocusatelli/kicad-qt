@@ -42,7 +42,9 @@ public:
     void SetState( const STATE& aState );
 
     /// The dialog paints the background, so the hole and the cuts show it through.
+#ifndef KICAD_WX_FREE
     bool HasTransparentBackground() override { return true; }
+#endif
 
 private:
     void onPaint( wxPaintEvent& aEvent );

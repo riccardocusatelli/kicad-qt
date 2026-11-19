@@ -94,6 +94,78 @@ protected:
 };
 
 
+/**
+ * A dialog choosing several strings of a list (wxMultiChoiceDialog): a dialog of KiCad
+ * (DIALOG_SHIM) with a message, a list of check boxes and the OK and Cancel buttons.
+ */
+class wxMultiChoiceDialog : public DIALOG_SHIM
+{
+public:
+    wxMultiChoiceDialog( wxWidgetArgCompat aParent, const wxString& aMessage,
+                         const wxString& aCaption, const wxArrayString& aChoices,
+                         long aStyle = wxCHOICEDLG_STYLE, const wxPoint& aPos = wxDefaultPosition ) :
+            DIALOG_SHIM( aParent, aCaption )
+    {
+        QVBoxLayout* mainSizer = new QVBoxLayout( this );
+
+        QLabel* label = new QLabel( ToQString( aMessage ), this );
+        mainSizer->addWidget( label );
+
+        m_list = new QListWidget( this );
+        m_list->setMinimumSize( 300, 200 );
+
+        for( const wxString& choice : aChoices )
+        {
+            QListWidgetItem* item = new QListWidgetItem( ToQString( choice ), m_list );
+            item->setFlags( item->flags() | Qt::ItemIsUserCheckable );
+            item->setCheckState( Qt::Unchecked );
+        }
+
+        mainSizer->addWidget( m_list );
+
+        wxStdDialogButtonSizer* buttons = new wxStdDialogButtonSizer( this );
+        connectStandardButton( buttons->AddStandardButton( QDialogButtonBox::Ok, wxID_OK ),
+                               wxID_OK );
+        connectStandardButton( buttons->AddStandardButton( QDialogButtonBox::Cancel, wxID_CANCEL ),
+                               wxID_CANCEL );
+        mainSizer->addWidget( buttons );
+
+        SetupStandardButtons();
+        SetInitialFocus( m_list );
+    }
+
+    /// Check the items of @a aSelections (and uncheck the others).
+    void SetSelections( const wxArrayInt& aSelections )
+    {
+        for( int i = 0; i < m_list->count(); ++i )
+            m_list->item( i )->setCheckState( Qt::Unchecked );
+
+        for( int index : aSelections )
+        {
+            if( index >= 0 && index < m_list->count() )
+                m_list->item( index )->setCheckState( Qt::Checked );
+        }
+    }
+
+    /// The indices of the checked items.
+    wxArrayInt GetSelections() const
+    {
+        wxArrayInt selections;
+
+        for( int i = 0; i < m_list->count(); ++i )
+        {
+            if( m_list->item( i )->checkState() == Qt::Checked )
+                selections.Add( i );
+        }
+
+        return selections;
+    }
+
+protected:
+    QListWidget* m_list;
+};
+
+
 /// Choose a string of a list; the index of the choice, -1 if the user cancels.
 inline int wxGetSingleChoiceIndex( const wxString& aMessage, const wxString& aCaption,
                                    const wxArrayString& aChoices,

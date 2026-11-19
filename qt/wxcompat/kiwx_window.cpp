@@ -910,6 +910,20 @@ void wxWindow::SetFocus()
 }
 
 
+void wxWindow::DestroyChildren()
+{
+    if( QWidget* widget = GetHandle() )
+    {
+        for( QWidget* child : widget->findChildren<QWidget*>( QString(),
+                                                              Qt::FindDirectChildrenOnly ) )
+        {
+            if( !child->isWindow() )
+                delete child;
+        }
+    }
+}
+
+
 bool wxWindow::Navigate( int aFlags )
 {
     // From this window to the next one of the focus chain of its top level window
@@ -999,6 +1013,13 @@ bool wxWindow::SetForegroundColour( const wxColour& aColour )
     palette.setColor( widget->foregroundRole(), aColour );
     widget->setPalette( palette );
     return true;
+}
+
+
+bool wxWindow::UseBgCol() const
+{
+    QWidget* widget = GetHandle();
+    return widget && widget->autoFillBackground();
 }
 
 
@@ -2119,6 +2140,19 @@ std::vector<wxWindow*> wxTopLevelWindowsCompat()
     }
 
     return windows;
+}
+
+
+wxWindow* wxFindWindowAtPoint( const wxPoint& aPoint )
+{
+    for( QWidget* widget = QApplication::widgetAt( QPoint( aPoint.x, aPoint.y ) ); widget;
+         widget = widget->parentWidget() )
+    {
+        if( wxWindow* window = wxFindWindowFromQtCompat( widget ) )
+            return window;
+    }
+
+    return nullptr;
 }
 
 

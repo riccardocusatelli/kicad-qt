@@ -41,6 +41,9 @@ public:
     NET_INSPECTOR_PANEL( QWidget* aParent, EDA_BASE_FRAME* aFrame );
     ~NET_INSPECTOR_PANEL() override;
 
+    /// The panel is shown (wxWindow::IsShown(): not hidden itself, whatever its dock).
+    bool IsShown() const { return !isHidden(); }
+
     /**
      * Rebuild inspector data if project settings updated
      *

@@ -79,6 +79,9 @@ KIQT_API wxWindow* wxFindWindowFromQtCompat( QWidget* aWidget );
 KIQT_API std::vector<wxWindow*> wxTopLevelWindowsCompat();
 #define wxTopLevelWindows wxTopLevelWindowsCompat()
 
+/// The window under a point of the screen (the nearest window of the widget there), or nullptr.
+KIQT_API wxWindow* wxFindWindowAtPoint( const wxPoint& aPoint );
+
 
 /**
  * A window given as a QWidget* or as a wxWindow* (the parents of the controls, the windows of
@@ -507,6 +510,9 @@ public:
     bool HasFocus() const;
 
     /// Move the focus to the next (or previous) window of the keyboard navigation.
+    /// Delete the child windows.
+    void DestroyChildren();
+
     bool Navigate( int aFlags = 1 );
     bool NavigateIn( int aFlags = 1 );
     virtual bool AcceptsFocus() const;
@@ -549,6 +555,12 @@ public:
     void SetToolTip( const wxString& aTip );
     void UnsetToolTip() { SetToolTip( wxEmptyString ); }
     wxString GetToolTipText() const;
+
+    /// Whether the window paints a background colour of its own (SetBackgroundColour()).
+    bool UseBgCol() const;
+
+    /// Whether the window has a tip (wxWidgets: its wxToolTip, null without a tip).
+    bool GetToolTip() const { return !GetToolTipText().IsEmpty(); }
 
     long GetWindowStyle() const { return m_windowStyle; }
     long GetWindowStyleFlag() const { return m_windowStyle; }

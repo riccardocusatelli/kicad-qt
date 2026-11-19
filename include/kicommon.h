@@ -24,7 +24,7 @@
 #if defined( KICOMMON_DLL )
 	#define KICOMMON_API APIEXPORT
 #else
-#define KICOMMON_API
+	#define KICOMMON_API APIIMPORT
 #endif
 
 // The classes that the Qt build compiles into libkiqt_common (a static library, in each KIFACE and

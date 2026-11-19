@@ -21,6 +21,8 @@
 #include <footprint_fields_data_model.h>
 
 #include <algorithm>
+
+#include <ki_exception.h>
 #include <set>
 
 #include <confirm.h>

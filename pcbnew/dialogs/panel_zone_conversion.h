@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include "panel_zone_conversion_base.h"
+#include <panel_zone_conversion_base.h>
 #include <widgets/unit_binder.h>
 
 class EDA_DRAW_FRAME;

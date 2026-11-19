@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "dialog_via_stitch_properties_base.h"
+#include <dialog_via_stitch_properties_base.h>
 
 #include <memory>
 

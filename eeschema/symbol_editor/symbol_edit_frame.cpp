@@ -738,13 +738,11 @@ bool SYMBOL_EDIT_FRAME::canCloseWindow( CLOSE_REQUEST& aRequest )
     // IsContentModified only sees the active tab, so also account for dirty inactive instance tabs.
     if( isBlockableSessionEnd() && ( IsContentModified() || hasDirtyInactiveInstanceTabs() ) )
     {
-        aEvent.Veto();
         return false;
     }
 
     if( m_isSymbolFromSchematic && !CanCloseSymbolFromSchematic( false ) )
     {
-        aEvent.Veto();
         return false;
     }
 
@@ -767,7 +765,6 @@ bool SYMBOL_EDIT_FRAME::canCloseWindow( CLOSE_REQUEST& aRequest )
         case wxID_YES:
             if( !saveCurrentSymbol() )
             {
-                aEvent.Veto();
                 return false;
             }
 
@@ -777,7 +774,6 @@ bool SYMBOL_EDIT_FRAME::canCloseWindow( CLOSE_REQUEST& aRequest )
             break;
 
         default:
-            aEvent.Veto();
             return false;
         }
     }

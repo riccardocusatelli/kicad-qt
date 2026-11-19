@@ -29,6 +29,7 @@
 #include <pcbnew_settings.h>
 #include <footprint_editor_settings.h>
 #include <bitmap_tracing.h>
+#include <raster_image_wx.h>
 #include <dialogs/dialog_barcode_properties.h>
 #include <dialogs/dialog_convert_image_to_outlines.h>
 #include <dialogs/dialog_text_properties.h>
@@ -2307,7 +2308,7 @@ int DRAWING_TOOL::ConvertImageToOutlines( const TOOL_EVENT& aEvent )
     if( !bitmap.GetImageData() )
         return 0;
 
-    const wxImage source = *bitmap.GetImageData();
+    const wxImage source = ToWxImage( *bitmap.GetImageData() );
 
     std::vector<PCB_LAYER_ID> layerIds;
     wxArrayString             layerNames;
@@ -2324,7 +2325,7 @@ int DRAWING_TOOL::ConvertImageToOutlines( const TOOL_EVENT& aEvent )
 
     auto showPreview = [&]( double aThreshold, bool aInvert )
     {
-        bitmap.BeginPreviewImage( ConvertImageToBilevel( source, aThreshold, aInvert ) );
+        bitmap.BeginPreviewImage( FromWxImage( ConvertImageToBilevel( source, aThreshold, aInvert ) ) );
         m_view->Update( image );
         m_frame->GetCanvas()->ForceRefresh();
     };

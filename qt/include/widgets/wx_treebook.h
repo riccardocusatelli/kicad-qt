@@ -50,6 +50,10 @@ public:
     bool AddLazySubPage( std::function<wxWindow*( wxWindow* aParent )> aLazyCtor,
                          const wxString& text, bool bSelect = false, int imageId = -1 );
 
+    /// A lazy page one level below the page at @a aPos, at the end of its children.
+    bool InsertLazySubPage( size_t aPos, std::function<wxWindow*( wxWindow* aParent )> aLazyCtor,
+                            const wxString& text, bool bSelect = false, int imageId = -1 );
+
     /// The window of a page (made now if it is a lazy page).
     wxWindow* ResolvePage( size_t aPage );
 

@@ -42,6 +42,7 @@
 #include <string_utils.h>
 #include <bitmap_base.h>
 #include <bitmap_tracing.h>
+#include <raster_image_wx.h>
 #include <dialogs/dialog_convert_image_to_outlines.h>
 #include <sch_bitmap.h>
 #include <sch_bus_entry.h>
@@ -3931,11 +3932,11 @@ int SCH_EDIT_TOOL::ConvertImageToOutlines( const TOOL_EVENT& aEvent )
     if( !bitmap.GetImageData() )
         return 0;
 
-    const wxImage source = *bitmap.GetImageData();
+    const wxImage source = ToWxImage( *bitmap.GetImageData() );
 
     auto showPreview = [&]( double aThreshold, bool aInvert )
     {
-        bitmap.BeginPreviewImage( ConvertImageToBilevel( source, aThreshold, aInvert ) );
+        bitmap.BeginPreviewImage( FromWxImage( ConvertImageToBilevel( source, aThreshold, aInvert ) ) );
         m_frame->GetCanvas()->GetView()->Update( image );
         m_frame->GetCanvas()->ForceRefresh();
     };

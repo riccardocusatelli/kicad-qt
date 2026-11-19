@@ -41,6 +41,7 @@
 #include <wx/variant.h>
 
 #include <functional>
+#include <set>
 #include <vector>
 
 #include <frame_type.h>
@@ -52,6 +53,7 @@ class PROPERTY_BASE;
 class PROPERTY_GRID;
 class QLabel;
 class SELECTION;
+class wxCommandEvent;
 class wxMenu;
 class wxPGProperty;
 
@@ -188,6 +190,10 @@ protected:
     QLabel*                     m_caption;
 
     wxString                    m_contextMenuPropertyName;
+
+    /// The key of a field or a custom property just added, whose name the user edits first (the
+    /// label edit of the wx grid)
+    wxString                    m_pendingNewKey;
 
     struct CATEGORY_BUTTON
     {

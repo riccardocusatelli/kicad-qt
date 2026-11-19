@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include "panel_fab_export_content_base.h"
+#include <panel_fab_export_content_base.h>
 
 #include <functional>
 #include <optional>

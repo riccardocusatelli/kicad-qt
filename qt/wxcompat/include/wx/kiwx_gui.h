@@ -1057,6 +1057,10 @@ public:
     bool AddSubPage( wxWidgetArgCompat aPage, const wxString& aText, bool aSelect = false,
                      int aImage = -1 );
 
+    /// Add a page under the page @a aPos, after its last sub page.
+    bool InsertSubPage( size_t aPos, wxWidgetArgCompat aPage, const wxString& aText,
+                        bool aSelect = false, int aImage = -1 );
+
     size_t GetPageCount() const { return m_pages.size(); }
     wxWindow* GetPage( size_t aPage ) const;
     wxWindow* GetCurrentPage() const;
@@ -1099,7 +1103,7 @@ private:
     };
 
     bool insertPage( wxWidgetArgCompat aPage, const wxString& aText, int aParent, bool aSelect,
-                     int aImage = -1 );
+                     int aImage = -1, int aIndex = -1 );
 
     /// Show the icon of a page.
     void applyImage( PAGE& aPage );
@@ -1252,6 +1256,13 @@ public:
 
     void EnableScrolling( bool aX, bool aY );
     void ShowScrollbars( int aHorizontal, int aVertical );
+
+    /// The scroll bar of an orientation is shown.
+    bool HasScrollbar( int aOrient ) const
+    {
+        QScrollBar* bar = aOrient == wxVERTICAL ? verticalScrollBar() : horizontalScrollBar();
+        return bar && bar->isVisible();
+    }
 
     wxSize GetVirtualSize() const;
 

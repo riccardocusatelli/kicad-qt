@@ -21,7 +21,7 @@
 #define DIALOG_DIFF_PHASE_SKEW_PROPERTIES_H
 
 
-#include "dialog_diff_phase_skew_properties_base.h"
+#include <dialog_diff_phase_skew_properties_base.h>
 #include <pcbnew_settings.h>
 
 class PCB_BASE_EDIT_FRAME;

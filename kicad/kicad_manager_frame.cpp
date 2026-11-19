@@ -857,13 +857,13 @@ bool KICAD_MANAGER_FRAME::canCloseWindow( CLOSE_REQUEST& aRequest )
 
             if( jobset && jobset->GetJobsFile()->GetDirty() )
             {
-                KIPLATFORM::APP::SetShutdownBlockReason( this, _( "Jobset changes are unsaved" ) );
+                KIPLATFORM::UI::SetShutdownBlockReason( this, _( "Jobset changes are unsaved" ) );
                 return false;
             }
         }
 
         // Drop the reason a cancelled logoff left behind once its jobset has been saved
-        KIPLATFORM::APP::RemoveShutdownBlockReason( this );
+        KIPLATFORM::UI::RemoveShutdownBlockReason( this );
     }
 
     KICAD_SETTINGS* settings = kicadSettings();

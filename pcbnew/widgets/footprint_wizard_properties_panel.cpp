@@ -25,15 +25,20 @@
 #include <footprint_wizard.h>
 #include <geometry/eda_angle.h>
 #include <footprint_wizard_frame.h>
+#ifndef KICAD_WX_FREE
 #include <properties/pg_editors.h>
+#endif
 #include <properties/pg_properties.h>
 #include <widgets/ui_common.h>
 
 #include <wx/regex.h>
+
+#ifndef KICAD_WX_FREE
 #include <wx/stattext.h>
+#endif
 
 
-FOOTPRINT_WIZARD_PROPERTIES_PANEL::FOOTPRINT_WIZARD_PROPERTIES_PANEL( wxWindow* aParent,
+FOOTPRINT_WIZARD_PROPERTIES_PANEL::FOOTPRINT_WIZARD_PROPERTIES_PANEL( TOOLKIT_WINDOW* aParent,
                                                                       FOOTPRINT_WIZARD_FRAME* aFrame ) :
         PROPERTIES_PANEL( aParent, aFrame ),
         m_frame( aFrame ),
@@ -41,6 +46,11 @@ FOOTPRINT_WIZARD_PROPERTIES_PANEL::FOOTPRINT_WIZARD_PROPERTIES_PANEL( wxWindow* 
         m_checkboxEditorInstance( nullptr ),
         m_ratioEditorInstance( nullptr )
 {
+#ifdef KICAD_WX_FREE
+    // The caption of the dock is enough
+    m_caption->hide();
+    m_grid->SetEditorFrame( m_frame );
+#else
     // AUI panel caption is enough
     m_caption->Hide();
 
@@ -83,13 +93,16 @@ FOOTPRINT_WIZARD_PROPERTIES_PANEL::FOOTPRINT_WIZARD_PROPERTIES_PANEL( wxWindow* 
     {
         m_ratioEditorInstance = static_cast<PG_RATIO_EDITOR*>( it->second );
     }
+#endif
 }
 
 
 FOOTPRINT_WIZARD_PROPERTIES_PANEL::~FOOTPRINT_WIZARD_PROPERTIES_PANEL()
 {
+#ifndef KICAD_WX_FREE
     if( m_unitEditorInstance )
         m_unitEditorInstance->UpdateFrame( nullptr );
+#endif
 }
 
 
@@ -107,6 +120,10 @@ void FOOTPRINT_WIZARD_PROPERTIES_PANEL::RebuildParameters( FOOTPRINT_WIZARD* aWi
 
     m_grid->Clear();
 
+#ifdef KICAD_WX_FREE
+    m_params.clear();
+#endif
+
     if( !aWizard )
         return;
 
@@ -117,6 +134,18 @@ void FOOTPRINT_WIZARD_PROPERTIES_PANEL::RebuildParameters( FOOTPRINT_WIZARD* aWi
 
     for( kiapi::common::types::WizardParameterCategory category : params | std::views::keys )
     {
+#ifdef KICAD_WX_FREE
+        m_grid->Append( new PGPROPERTY_CATEGORY( WIZARD_PARAMETER::ParameterCategoryName( category ) ) );
+
+        for( WIZARD_PARAMETER* param : params[category] )
+        {
+            if( TOOLKIT_PG_PROPERTY* prop = createPGProperty( param ) )
+            {
+                m_params[param->identifier] = param;
+                m_grid->Append( prop );
+            }
+        }
+#else
         auto groupItem = new wxPropertyCategory( WIZARD_PARAMETER::ParameterCategoryName( category ) );
         m_grid->Append( groupItem );
 
@@ -125,12 +154,97 @@ void FOOTPRINT_WIZARD_PROPERTIES_PANEL::RebuildParameters( FOOTPRINT_WIZARD* aWi
             if( wxPGProperty* prop = createPGProperty( param ) )
                 m_grid->Append( prop );
         }
+#endif
     }
 
     RecalculateSplitterPos();
 }
 
 
+#ifdef KICAD_WX_FREE
+TOOLKIT_PG_PROPERTY* FOOTPRINT_WIZARD_PROPERTIES_PANEL::createPGProperty( WIZARD_PARAMETER* aParam ) const
+{
+    PG_PROPERTY* ret = nullptr;
+
+    switch( aParam->type )
+    {
+    case kiapi::common::types::WPDT_DISTANCE: ret = new PGPROPERTY_SIZE( m_frame ); break;
+    case kiapi::common::types::WPDT_AREA:     ret = new PGPROPERTY_AREA( m_frame ); break;
+    case kiapi::common::types::WPDT_TIME:     ret = new PGPROPERTY_FLOAT();         break;
+    case kiapi::common::types::WPDT_ANGLE:    ret = new PGPROPERTY_ANGLE();         break;
+    case kiapi::common::types::WPDT_STRING:   ret = new PGPROPERTY_STRING();        break;
+    case kiapi::common::types::WPDT_INTEGER:  ret = new PGPROPERTY_INT();           break;
+    case kiapi::common::types::WPDT_REAL:     ret = new PGPROPERTY_FLOAT();         break;
+    case kiapi::common::types::WPDT_BOOL:     ret = new PGPROPERTY_BOOL();          break;
+
+    case kiapi::common::types::WPDT_ENUM:
+        if( auto param = dynamic_cast<const WIZARD_ENUM_PARAMETER*>( aParam ) )
+        {
+            PROPERTY_CHOICES choices;
+
+            for( size_t i = 0; i < param->choices.size(); ++i )
+                choices.Add( wxGetTranslation( param->choices[i].second ), static_cast<int>( i ) );
+
+            ret = new PGPROPERTY_ENUM( choices );
+        }
+
+        break;
+
+    default:
+        break;
+    }
+
+    if( ret )
+    {
+        ret->SetLabel( wxGetTranslation( aParam->name ) );
+        ret->SetName( aParam->identifier );
+        ret->SetHelpString( wxGetTranslation( aParam->description ) );
+        ret->SetEditorFrame( m_frame );
+
+        if( auto ip = dynamic_cast<const WIZARD_INT_PARAMETER*>( aParam ) )
+            ret->SetValue( wxVariant( long( ip->value ) ) );
+        else if( auto rp = dynamic_cast<const WIZARD_REAL_PARAMETER*>( aParam ) )
+            ret->SetValue( wxVariant( rp->value ) );
+        else if( auto bp = dynamic_cast<const WIZARD_BOOL_PARAMETER*>( aParam ) )
+            ret->SetValue( wxVariant( bp->value ) );
+        else if( auto sp = dynamic_cast<const WIZARD_STRING_PARAMETER*>( aParam ) )
+            ret->SetValue( wxVariant( sp->value ) );
+        else if( auto ep = dynamic_cast<const WIZARD_ENUM_PARAMETER*>( aParam ) )
+            ret->SetValue( wxVariant( long( ep->value ) ) );
+    }
+
+    return ret;
+}
+
+
+WIZARD_PARAMETER* FOOTPRINT_WIZARD_PROPERTIES_PANEL::getParamFromName( const wxString& aName ) const
+{
+    auto it = m_params.find( aName );
+    return it != m_params.end() ? it->second : nullptr;
+}
+
+
+bool FOOTPRINT_WIZARD_PROPERTIES_PANEL::valueChanging( const wxString& aName, const wxVariant& aValue )
+{
+    if( m_SuppressGridChangeEvents )
+        return true;
+
+    WIZARD_PARAMETER* param = getParamFromName( aName );
+    wxCHECK( param, false );
+
+    return checkValue( param, aValue.GetAny() );
+}
+
+
+void FOOTPRINT_WIZARD_PROPERTIES_PANEL::valueChanged( const wxString& aName, const wxVariant& aValue )
+{
+    WIZARD_PARAMETER* param = getParamFromName( aName );
+    wxCHECK( param, /* void */ );
+
+    applyValue( param, aValue.GetAny() );
+}
+
+#else
 wxPGProperty* FOOTPRINT_WIZARD_PROPERTIES_PANEL::createPGProperty( WIZARD_PARAMETER* aParam ) const
 {
     wxPGProperty* ret = nullptr;
@@ -223,6 +337,7 @@ WIZARD_PARAMETER* FOOTPRINT_WIZARD_PROPERTIES_PANEL::getParamFromEvent( const wx
 {
     return static_cast<WIZARD_PARAMETER*>( aEvent.GetProperty()->GetClientData() );
 }
+#endif
 
 
 wxString FOOTPRINT_WIZARD_PROPERTIES_PANEL::formatConstraintValue( const WIZARD_PARAMETER* aParam, int aValue ) const
@@ -257,6 +372,7 @@ wxString FOOTPRINT_WIZARD_PROPERTIES_PANEL::formatConstraintValue( const WIZARD_
 }
 
 
+#ifndef KICAD_WX_FREE
 void FOOTPRINT_WIZARD_PROPERTIES_PANEL::valueChanging( wxPropertyGridEvent& aEvent )
 {
     if( m_SuppressGridChangeEvents )
@@ -265,8 +381,28 @@ void FOOTPRINT_WIZARD_PROPERTIES_PANEL::valueChanging( wxPropertyGridEvent& aEve
     WIZARD_PARAMETER* param = getParamFromEvent( aEvent );
     wxCHECK( param, /* void */ );
 
-    wxAny newValue = aEvent.GetPropertyValue();
+    if( !checkValue( param, aEvent.GetPropertyValue() ) )
+    {
+        aEvent.Veto();
+        return;
+    }
 
+    return true;
+}
+
+
+void FOOTPRINT_WIZARD_PROPERTIES_PANEL::valueChanged( wxPropertyGridEvent& aEvent )
+{
+    WIZARD_PARAMETER* param = getParamFromEvent( aEvent );
+    wxCHECK( param, /* void */ );
+
+    applyValue( param, aEvent.GetPropertyValue() );
+}
+#endif
+
+
+bool FOOTPRINT_WIZARD_PROPERTIES_PANEL::checkValue( WIZARD_PARAMETER* param, const wxAny& newValue ) const
+{
     if( WIZARD_INT_PARAMETER* ip = dynamic_cast<WIZARD_INT_PARAMETER*>( param ) )
     {
         int value = newValue.As<int>();
@@ -276,8 +412,7 @@ void FOOTPRINT_WIZARD_PROPERTIES_PANEL::valueChanging( wxPropertyGridEvent& aEve
             m_frame->SetBuildMessage( wxString::Format( _( "%s must be at least %s." ),
                                                         wxGetTranslation( ip->name ),
                                                         formatConstraintValue( ip, *ip->min ) ) );
-            aEvent.Veto();
-            return;
+            return false;
         }
 
         if( ip->max && value > *ip->max )
@@ -285,8 +420,7 @@ void FOOTPRINT_WIZARD_PROPERTIES_PANEL::valueChanging( wxPropertyGridEvent& aEve
             m_frame->SetBuildMessage( wxString::Format( _( "%s must be at most %s." ),
                                                         wxGetTranslation( ip->name ),
                                                         formatConstraintValue( ip, *ip->max ) ) );
-            aEvent.Veto();
-            return;
+            return false;
         }
 
         if( ip->multiple && ( value % *ip->multiple ) != 0 )
@@ -294,8 +428,7 @@ void FOOTPRINT_WIZARD_PROPERTIES_PANEL::valueChanging( wxPropertyGridEvent& aEve
             m_frame->SetBuildMessage( wxString::Format( _( "%s must be a multiple of %s." ),
                                                         wxGetTranslation( ip->name ),
                                                         formatConstraintValue( ip, *ip->multiple ) ) );
-            aEvent.Veto();
-            return;
+            return false;
         }
     }
     else if( WIZARD_REAL_PARAMETER* rp = dynamic_cast<WIZARD_REAL_PARAMETER*>( param ) )
@@ -307,8 +440,7 @@ void FOOTPRINT_WIZARD_PROPERTIES_PANEL::valueChanging( wxPropertyGridEvent& aEve
             m_frame->SetBuildMessage( wxString::Format( _( "%s must be at least %s." ),
                                                         wxGetTranslation( rp->name ),
                                                         formatConstraintValue( rp, *rp->min ) ) );
-            aEvent.Veto();
-            return;
+            return false;
         }
 
         if( rp->max && value > *rp->max )
@@ -316,8 +448,7 @@ void FOOTPRINT_WIZARD_PROPERTIES_PANEL::valueChanging( wxPropertyGridEvent& aEve
             m_frame->SetBuildMessage( wxString::Format( _( "%s must be at most %s." ),
                                                         wxGetTranslation( rp->name ),
                                                         formatConstraintValue( rp, *rp->max ) ) );
-            aEvent.Veto();
-            return;
+            return false;
         }
     }
     else if( WIZARD_STRING_PARAMETER* sp = dynamic_cast<WIZARD_STRING_PARAMETER*>( param ) )
@@ -330,24 +461,18 @@ void FOOTPRINT_WIZARD_PROPERTIES_PANEL::valueChanging( wxPropertyGridEvent& aEve
                 {
                     m_frame->SetBuildMessage( wxString::Format( _( "%s does not match the required format '%s'." ),
                                                                 wxGetTranslation( sp->name ), *sp->validation_regex ) );
-                    aEvent.Veto();
-                    return;
+                    return false;
                 }
             }
         }
     }
 
-    aEvent.Skip();
+    return true;
 }
 
 
-void FOOTPRINT_WIZARD_PROPERTIES_PANEL::valueChanged( wxPropertyGridEvent& aEvent )
+void FOOTPRINT_WIZARD_PROPERTIES_PANEL::applyValue( WIZARD_PARAMETER* param, const wxAny& newValue )
 {
-    WIZARD_PARAMETER* param = getParamFromEvent( aEvent );
-    wxCHECK( param, /* void */ );
-
-    wxAny newValue = aEvent.GetPropertyValue();
-
     if( WIZARD_INT_PARAMETER* ip = dynamic_cast<WIZARD_INT_PARAMETER*>( param ) )
     {
         ip->value = newValue.As<int>();

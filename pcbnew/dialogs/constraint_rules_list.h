@@ -29,7 +29,7 @@
 
 #include <drc/rule_editor/drc_rule_editor_enums.h>
 
-#include "constraint_rules_list_base.h"
+#include <constraint_rules_list_base.h>
 #include "panel_setup_constraint_rules.h"
 
 class BOARD;

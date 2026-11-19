@@ -95,6 +95,7 @@ target_link_libraries( gerbview_gui_qt PRIVATE kiqt_common nlohmann_json Boost::
 add_headless_kiface( gerbview_qtgui_kiface
     OUTPUT_NAME gerbview_qtgui
     SOURCES     ${CMAKE_SOURCE_DIR}/gerbview/gerbview.cpp
+                ${CMAKE_SOURCE_DIR}/gerbview/gerbview_jobs_handler.cpp
                 ${KIQT_KIFACE_SOURCES}
     OBJECTS     gerbview_gui_qt
     USAGE       kiqt_common

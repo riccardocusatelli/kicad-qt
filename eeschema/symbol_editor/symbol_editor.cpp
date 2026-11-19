@@ -29,6 +29,7 @@
 #include <tool/actions.h>
 #include <widgets/wx_infobar.h>
 #include <sch_edit_frame.h>
+#include <symbol_edit_frame.h>
 #include <symbol_editor/symbol_editor_tab_context.h>
 #include <widgets/editor_tabs_panel.h>
 #include <template_fieldnames.h>
