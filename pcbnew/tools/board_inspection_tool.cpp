@@ -23,10 +23,12 @@
 #include <bitmaps.h>
 #include <board_loader.h>
 #include <collectors.h>
+#ifndef KICAD_WX_FREE
 #include <dialogs/dialog_kicad_diff.h>
 #include <diff_merge/pcb_diff_canvas_context.h>
 #include <diff_merge/pcb_geometry_extractor.h>
 #include <diff_merge/pcb_differ.h>
+#endif
 #include <footprint.h>
 #include <pcb_io/pcb_io_mgr.h>
 #include <settings/settings_manager.h>
@@ -1995,6 +1997,7 @@ int BOARD_INSPECTION_TOOL::CompareBoardWithFile( const TOOL_EVENT& aEvent )
 }
 
 
+#ifndef KICAD_WX_FREE
 namespace
 {
 // Everything needed to show one board-vs-board comparison: the diff, the clones
@@ -2137,11 +2140,17 @@ PCB_DIFF_VIEW buildPcbDiffView( BOARD* aLive, BOARD* aOther, const wxString& aOt
     return view;
 }
 } // namespace
+#endif // KICAD_WX_FREE
 
 
 int BOARD_INSPECTION_TOOL::showBoardComparison( const wxString& aOtherPath, const wxString& aProjectPath,
                                                 const wxString& aComparisonLabel )
 {
+#ifdef KICAD_WX_FREE
+    // The diff viewer is not ported to Qt yet
+    m_frame->ShowInfoBarError( _( "Comparing boards is not available yet in this build." ) );
+    return 0;
+#else
     // Load the comparison board into its own non-active PROJECT so the live
     // project settings are never overwritten. A missing .kicad_pro is fine
     // (LoadProject returns false but still inserts a defaults-only slot); a
@@ -2215,11 +2224,17 @@ int BOARD_INSPECTION_TOOL::showBoardComparison( const wxString& aOtherPath, cons
     mgr->UnloadProject( otherPrj, false );
 
     return 0;
+#endif
 }
 
 
 int BOARD_INSPECTION_TOOL::CompareBoardWithHistory( const TOOL_EVENT& aEvent )
 {
+#ifdef KICAD_WX_FREE
+    // The diff viewer is not ported to Qt yet
+    m_frame->ShowInfoBarError( _( "Comparing boards is not available yet in this build." ) );
+    return 0;
+#else
     KI_CHECK( m_frame, 0 );
 
     BOARD* liveBoard = m_frame->GetBoard();
@@ -2454,6 +2469,7 @@ int BOARD_INSPECTION_TOOL::CompareBoardWithHistory( const TOOL_EVENT& aEvent )
     // Destroy the dialog before the boards it references are freed.
     dlgDiff.reset();
     return 0;
+#endif
 }
 
 

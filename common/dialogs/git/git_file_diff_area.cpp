@@ -258,6 +258,11 @@ bool GIT_FILE_DIFF_AREA::showDrawingDiff( KICAD_DIFF::DOC_KIND aKind, const wxSt
                                           const wxString& aAfter, const wxString& aBeforeLabel,
                                           const wxString& aAfterLabel )
 {
+#ifdef KICAD_WX_FREE
+    // The drawing canvases of the comparison are not ported to Qt yet
+    showNote( _( "The graphical comparison is not available yet in this build." ) );
+    return false;
+#else
     ensureCanvases();
 
     // The old documents come off the canvases before the new ones go on.
@@ -296,11 +301,13 @@ bool GIT_FILE_DIFF_AREA::showDrawingDiff( KICAD_DIFF::DOC_KIND aKind, const wxSt
     m_canvasSplitter->Show();
     GetSizer()->Show( m_legend, true );
     return true;
+#endif
 }
 
 
 void GIT_FILE_DIFF_AREA::ensureCanvases()
 {
+#ifndef KICAD_WX_FREE
     if( m_beforeCanvas )
         return;
 
@@ -338,6 +345,7 @@ void GIT_FILE_DIFF_AREA::ensureCanvases()
 
     followCanvas( m_beforeCanvas, m_afterCanvas );
     followCanvas( m_afterCanvas, m_beforeCanvas );
+#endif
 }
 
 
@@ -363,6 +371,9 @@ void GIT_FILE_DIFF_AREA::destroyCanvases()
 
 void GIT_FILE_DIFF_AREA::followCanvas( WIDGET_DIFF_CANVAS* aLead, WIDGET_DIFF_CANVAS* aFollower )
 {
+#ifdef KICAD_WX_FREE
+    // No drawing canvases in this build (see showDrawingDiff)
+#else
     // The view controls handle the event after this, so the copy waits until they have.
     auto onInput = [this, aLead, aFollower]( wxMouseEvent& aEvent )
     {
@@ -392,4 +403,5 @@ void GIT_FILE_DIFF_AREA::followCanvas( WIDGET_DIFF_CANVAS* aLead, WIDGET_DIFF_CA
     aLead->Bind( wxEVT_MAGNIFY, onInput );
     aLead->Bind( wxEVT_LEFT_UP, onInput );
     aLead->Bind( wxEVT_MIDDLE_UP, onInput );
+#endif
 }

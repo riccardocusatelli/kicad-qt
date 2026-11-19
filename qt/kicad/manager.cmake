@@ -19,6 +19,7 @@ set( KIQT_MANAGER_SRCS
     kicad_manager_frame.cpp
     local_history_pane.cpp
     menubar.cpp
+    project_downgrade.cpp
     project_template.cpp
     project_tree_pane.cpp
     project_tree.cpp

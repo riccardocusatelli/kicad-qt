@@ -81,7 +81,12 @@ public:
     void Material( const wxColour& aFill, const wxColour& aEdge, const GEOMETRY::BODY& aBody )
     {
         wxBrush solidBrush( aFill );
+#ifdef KICAD_WX_FREE
+        // The brushes of the compatibility layer have no hatch styles yet
+        wxBrush hatchBrush( aFill.ChangeLightness( 130 ) );
+#else
         wxBrush hatchBrush( aFill, wxBRUSHSTYLE_CROSSDIAG_HATCH );
+#endif
 
         m_dc.SetPen( *wxTRANSPARENT_PEN );
         m_dc.SetBrush( wxBrush( aEdge ) );
@@ -194,7 +199,14 @@ void VIA_CROSS_SECTION_PREVIEW::onPaint( wxPaintEvent& aEvent )
 
     for( const GEOMETRY::BODY& body : geometry.Bodies() )
     {
-        dc.SetDeviceClippingRegion( body.m_Clip == GEOMETRY::CLIP::UNDER_MASK ? underMask : overMask );
+        const wxRegion& clip = body.m_Clip == GEOMETRY::CLIP::UNDER_MASK ? underMask : overMask;
+
+#ifdef KICAD_WX_FREE
+        // The painter has no transformation here, so logical and device coordinates agree
+        dc.GetPainter()->setClipRegion( clip.GetQRegion() );
+#else
+        dc.SetDeviceClippingRegion( clip );
+#endif
 
         switch( body.m_Material )
         {

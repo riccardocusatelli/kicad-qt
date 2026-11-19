@@ -362,6 +362,16 @@ VIEW::VIEW() :
 VIEW::~VIEW()
 {
     Remove( m_preview.get() );
+
+    // The items can outlive the view (a board deleted after its canvas): they must not reach
+    // back into it when they go
+    clearPendingItems();
+
+    for( VIEW_ITEM* item : *m_allItems )
+    {
+        if( item && item->m_viewPrivData && item->m_viewPrivData->m_view == this )
+            item->m_viewPrivData->m_view = nullptr;
+    }
 }
 
 
@@ -392,8 +402,13 @@ void VIEW::Add( VIEW_ITEM* aItem, int aDrawPriority )
         return layer < 0 || layer >= VIEW_MAX_LAYERS;
     } );
 
+    // An item without a layer of the view (a 3D body) is not registered: it must not keep a
+    // pointer to the view, which it would reach when deleted after it
     if( layers.empty() )
+    {
+        aItem->m_viewPrivData->m_view = nullptr;
         return;
+    }
 
     aItem->viewPrivData()->saveLayers( layers );
 
@@ -455,7 +470,10 @@ void VIEW::AddBatch( const std::vector<VIEW_ITEM*>& aItems )
         } );
 
         if( layers.empty() )
+        {
+            item->m_viewPrivData->m_view = nullptr;    // Not registered (see Add())
             continue;
+        }
 
         item->viewPrivData()->saveLayers( layers );
         m_allItems->push_back( item );

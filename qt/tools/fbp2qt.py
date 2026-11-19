@@ -2273,7 +2273,12 @@ class FormClass:
         for child in self.form.findall( 'object' ):
             if child.get( 'class' ) in SIZERS:
                 topLayout = self.sizer( child, 'this', aTop = True )
-                self.code.append( '    setLayout( %s );' % topLayout )
+
+                if self.gen.compat and base == 'wxScrolledWindow':
+                    # The content of the scroll area (its widget), not the area itself
+                    self.code.append( '    SetSizer( %s );' % topLayout )
+                else:
+                    self.code.append( '    setLayout( %s );' % topLayout )
             else:
                 raise FbpError( '%s in the form' % child.get( 'class' ) )
 

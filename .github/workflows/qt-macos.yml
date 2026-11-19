@@ -169,7 +169,6 @@ jobs:
           find $C/Frameworks/Python.framework -name __pycache__ -type d -prune -exec rm -rf {} +
           rm -rf $PYLIB/site-packages
           mkdir -p $PYLIB/site-packages
-          cp build/pcbnew/pcbnew.py $PYLIB/site-packages/
           # The links of a framework (codesign checks its layout)
           ln -sfn $PYV $C/Frameworks/Python.framework/Versions/Current
           ln -sfn Versions/Current/Python $C/Frameworks/Python.framework/Python

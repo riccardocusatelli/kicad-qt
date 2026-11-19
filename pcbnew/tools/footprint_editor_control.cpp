@@ -65,10 +65,12 @@
 #include <project_pcb.h>
 #include <view/view_controls.h>
 #include <widgets/appearance_controls.h>
+#ifndef KICAD_WX_FREE
 #include <dialogs/dialog_kicad_diff.h>
 #include <diff_merge/fp_lib_differ.h>
 #include <diff_merge/pcb_diff_canvas_context.h>
 #include <diff_merge/pcb_geometry_extractor.h>
+#endif
 #include <libraries/library_manager.h>
 #include <wx/dirdlg.h>
 #include <core/ki_assert.h>
@@ -722,6 +724,11 @@ int FOOTPRINT_EDITOR_CONTROL::ExportFootprintAsSVG( const TOOL_EVENT& aEvent )
 
 int FOOTPRINT_EDITOR_CONTROL::CompareLibraryWithFile( const TOOL_EVENT& aEvent )
 {
+#ifdef KICAD_WX_FREE
+    // The diff viewer is not ported to Qt yet
+    m_frame->ShowInfoBarError( _( "Comparing libraries is not available yet in this build." ) );
+    return 0;
+#else
     KI_CHECK( m_frame, 0 );
 
     const wxString libNickname = m_frame->GetTargetFPID().GetUniStringLibNickname();
@@ -835,6 +842,7 @@ int FOOTPRINT_EDITOR_CONTROL::CompareLibraryWithFile( const TOOL_EVENT& aEvent )
     dlgDiff.ShowModal();
 
     return 0;
+#endif
 }
 
 

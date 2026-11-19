@@ -25,7 +25,9 @@
 #include <footprint_wizard.h>
 #include <geometry/eda_angle.h>
 #include <footprint_wizard_frame.h>
-#ifndef KICAD_WX_FREE
+#ifdef KICAD_WX_FREE
+#include <widgets/property_grid.h>
+#else
 #include <properties/pg_editors.h>
 #endif
 #include <properties/pg_properties.h>

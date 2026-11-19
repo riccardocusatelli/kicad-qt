@@ -366,8 +366,14 @@ void runScenario( KICAD_MANAGER_FRAME* aWindow )
                      pane ? pane->width() : 0, pane ? pane->height() : 0, aWindow->width(),
                      aWindow->height() );
         check( pane && tree->size() == pane->size(), "the project tree covers its pane" );
-        check( dock && dock->width() > aWindow->width() / 2,
-               "the project files take most of the width of the project manager" );
+        // Against the launcher (the central widget), not the frame: the toolbar at the left and,
+        // since KiCad 11, the version control pane under the project files take their share
+        QWidget* launcher = aWindow->centralWidget();
+
+        std::printf( "    project files %d, launcher %d\n", dock ? dock->width() : 0,
+                     launcher ? launcher->width() : 0 );
+        check( dock && launcher && dock->width() > launcher->width(),
+               "the project files are wider than the launcher" );
     }
 
     // The project manager as the user sees it (its icons, the cards of the editors)

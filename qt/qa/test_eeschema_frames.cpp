@@ -1025,7 +1025,7 @@ int main( int argc, char** argv )
     PGM_QT_TEST program;
     SetPgm( &program );
 
-    if( !program.InitPgm( true, true ) )
+    if( !program.InitPgm( true ) )
     {
         std::fprintf( stderr, "cannot initialise the program\n" );
         return 2;

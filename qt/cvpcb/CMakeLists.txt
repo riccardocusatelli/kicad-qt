@@ -31,7 +31,6 @@ kiqt_generate_fbp_compat( KIQT_CVPCB_COMPAT_FBP_SRCS
 add_library( cvpcb_gui_qt STATIC
     ${KIQT_CVPCB_GUI_SRCS}
     ${KIQT_CVPCB_COMPAT_FBP_SRCS}
-    ${CMAKE_SOURCE_DIR}/common/footprint_filter.cpp
     ${CMAKE_SOURCE_DIR}/common/trace_helpers_gui.cpp
     )
 

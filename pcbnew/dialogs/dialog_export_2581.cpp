@@ -18,7 +18,6 @@
  */
 
 #include "dialogs/dialog_export_2581.h"
-#include <exporters/export_ipc2581.h>
 
 #include <wx/choicdlg.h>
 #include <wx/filedlg.h>

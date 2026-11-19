@@ -105,7 +105,7 @@ in this build. See [Quirks and pitfalls](#quirks-and-pitfalls).
 | `qt/common` | `libkiqt` (shared library: icons/bitmap store, cursors, message dialogs, event loop, Cairo and OpenGL GAL canvases, documents, property panel, KIWAY) and `libkiqt_common` (static, linked into every Qt KIFACE: the upstream tool framework on the Qt frames, canvas, menus and base dialogs). |
 | `qt/wxcompat` | The wxWidgets GUI compatibility layer (see below): about 145 headers in `qt/wxcompat/include/wx` and the `kiwx_*.cpp` implementations. |
 | `qt/libs/kiplatform` | Qt implementations of `KIPLATFORM::UI` and printing. |
-| `qt/pcbnew`, `qt/eeschema`, `qt/cvpcb`, `qt/gerbview`, `qt/pagelayout_editor`, `qt/pcb_calculator`, `qt/bitmap2component`, `qt/scripting`, `qt/3d-viewer` | One directory per application: compiles the upstream sources of that application's KIFACE against the Qt headers and wxcompat, plus a few Qt-specific replacements (`*_qt.cpp`). |
+| `qt/pcbnew`, `qt/eeschema`, `qt/cvpcb`, `qt/gerbview`, `qt/pagelayout_editor`, `qt/pcb_calculator`, `qt/3d-viewer` | One directory per application: compiles the upstream sources of that application's KIFACE against the Qt headers and wxcompat, plus a few Qt-specific replacements (`*_qt.cpp`). |
 | `qt/kicad` | `kicad-qt`, the project manager program (`KICAD_MANAGER_FRAME` on wxcompat), its Windows resource file and `manager.cmake`. |
 | `qt/qa` | GUI tests of the Qt build (see [CI](#continuous-integration)). |
 | `qt/tools` | `fbp2qt.py` (dialog generator), `check_generated_deps.py` (build-order check), the vcpkg overlay triplet and the Windows NSIS installer script (`qt/tools/windows/kicad-qt.nsi`). |
@@ -204,22 +204,20 @@ As upstream, each application is a KIFACE loaded by KIWAY. The Qt build produces
 
 | KIFACE | Contents |
 | --- | --- |
-| `_pcbnew_qtgui.kiface` | PCB editor, footprint editor/viewer, 3D viewer, router, Python bindings |
+| `_pcbnew_qtgui.kiface` | PCB editor, footprint editor/viewer, 3D viewer, router |
 | `_eeschema_qtgui.kiface` | Schematic editor, symbol editor/viewer, simulator |
 | `_cvpcb_qtgui.kiface` | Footprint assignment tool |
 | `_gerbview_qtgui.kiface` | Gerber viewer |
 | `_pl_editor_qtgui.kiface` | Drawing sheet editor |
 | `_pcb_calculator_qtgui.kiface` | Calculator tools |
-| `_bitmap2component_qtgui.kiface` | Image converter |
-| `_kipython_qtgui.kiface` | Python console (a Qt console instead of the wxPython shell) |
 | `_pcbnew_qt.kiface`, `_eeschema_qt.kiface` | Headless KIFACEs with the board/schematic documents |
 
 `kicad-qt` (`qt/kicad`) is the project manager (`KICAD_MANAGER_FRAME`, including the plugin and
 content manager dialogs) and loads the editors from these KIFACEs. On Windows it is a GUI
 subsystem program with the KiCad icon. `kicad-cli` is the upstream one, built on kiwx.
 
-The legacy `pcbnew` Python module (SWIG) is generated from the same interface files as upstream
-and built on kiwx; it is installed next to the KIFACEs. wxPython is not available.
+Since KiCad 11 there is no SWIG `pcbnew` module and no standalone image converter upstream (image
+tracing is in the graphics import of the editors); plugins use the IPC API.
 
 ## What is ported
 
@@ -256,8 +254,11 @@ These are known differences from the wxWidgets build on `wx-free-core-upstream`:
 | Area | Status |
 | --- | --- |
 | **3D model library** | The 3D loader plugins (STEP/IGES with OpenCASCADE, VRML/X3D, IDF) are built and shipped by every package, but the packages do not include the KiCad 3D model library (several GB): footprints that point to `${KICAD10_3DMODEL_DIR}` show their models only once that variable points to a copy of [kicad-packages3D](https://gitlab.com/kicad/libraries/kicad-packages3D) (Preferences > Configure Paths). |
-| **wxPython** | Not available (`KICAD_SCRIPTING_WXPYTHON` is forced off). Action plugins that use wxPython dialogs do not work; the `pcbnew` module itself is available. |
+| **Python scripting** | Gone upstream with KiCad 11 (no SWIG `pcbnew` module, no wxPython): plugins and footprint wizards are API (IPC) plugins, as in the wxWidgets build. |
 | **Update check** | Disabled (`KICAD_UPDATE_CHECK` is forced off). |
+| **Diff and merge (KiCad 11)** | The diff viewer, the graphical comparisons (schematic, board, libraries, local history, git pane drawings) and the interactive 3-way merge are not ported: they report that they are not available in this build. Text diffs of the git pane work. |
+| **Properties panel (KiCad 11)** | No category buttons, no editable field names, no add/remove of fields from its context menu, no track width presets editor. |
+| **Small KiCad 11 widgets** | Geometric constraints pane of the PCB editor; job list popup of the status bar; hatched fills of the via cross-section preview (drawn plain); the multiline text editor of the drawing sheet properties. |
 
 ## Building
 

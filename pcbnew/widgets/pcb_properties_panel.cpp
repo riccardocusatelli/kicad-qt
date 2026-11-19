@@ -927,7 +927,7 @@ void PCB_PROPERTIES_PANEL::updateLists( const BOARD* aBoard )
     // walk of the board, so only a board that actually has a map pays for it
     if( aBoard->DrillSymbolLayers().any() )
     {
-        wxPGChoices spans;
+        PROPERTY_CHOICES spans;
         spans.Add( _( "All spans" ), -1 );
 
         int index = 0;

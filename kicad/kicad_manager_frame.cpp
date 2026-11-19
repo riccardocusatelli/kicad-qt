@@ -407,6 +407,14 @@ KICAD_MANAGER_FRAME::KICAD_MANAGER_FRAME( wxWindow* parent, const wxString& titl
 
     new HOME_PROPORTION_COMPAT( this, m_projectTreePane, defaultLeftWinWidth, FromDIP( 420 ) );
     new HOME_PROPORTION_COMPAT( this, m_recentProjectsPane, defaultLeftWinWidth, FromDIP( 420 ) );
+
+    // The version control pane goes under the project files, in their column (as the panes of
+    // the same layer in AUI), not in a column of its own
+    QDockWidget* treeDock = qobject_cast<QDockWidget*>( m_projectTreePane->parentWidget() );
+    QDockWidget* gitDock = qobject_cast<QDockWidget*>( m_gitCommitPane->parentWidget() );
+
+    if( treeDock && gitDock )
+        splitDockWidget( treeDock, gitDock, Qt::Vertical );
 #endif
 
     updateProjectPanes();

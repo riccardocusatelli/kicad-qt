@@ -627,6 +627,7 @@ add_headless_kiface( pcbnew_qtgui_kiface
     USAGE       kiqt_common
     ARCHIVES    3d-viewer_qt kiqt_common
     LIBRARIES   kiqt_common kiqt Qt6::Widgets dxflib_qcad markdown_lib nanosvg tinyspline_lib
+                planegcs    # the geometric constraint solver of the board constraints
     )
 
 # pcbnew.cpp is compiled as the GUI of pcbnew (its Qt headers first)

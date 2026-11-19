@@ -29,12 +29,15 @@
  * EDA_DRAW_FRAME::keyPressEvent(), and the dropped files through EDA_BASE_FRAME::dropEvent().
  */
 
+#include <QBoxLayout>
 #include <QDockWidget>
 
 #include <footprint_edit_frame.h>
 #include <footprint_editor_settings.h>
 #include <pcbnew_id.h>
+#include <footprint_editor_tab_context.h>
 #include <widgets/appearance_controls.h>
+#include <widgets/editor_tabs_panel.h>
 #include <widgets/panel_selection_filter.h>
 #include <widgets/pcb_properties_panel.h>
 
@@ -45,6 +48,51 @@ void FOOTPRINT_EDIT_FRAME::setupLayout()
 
     // The canvas, the info bar and the message panel
     setupCentralArea();
+
+    // The tabs of the open footprints, over the canvas (the frame keeps the canvas)
+    m_tabsPanel = new EDITOR_TABS_PANEL( centralWidget(), GetCanvas() );
+
+    if( QBoxLayout* central = qobject_cast<QBoxLayout*>( centralWidget()->layout() ) )
+        central->insertWidget( central->indexOf( GetCanvas() ), m_tabsPanel );
+
+    m_tabsPanel->onActivateTab =
+            [this]( int aIdx )
+            {
+                // Ignore activation during a full clear, when each tab close re-selects a fallback
+                // that would re-borrow a tab-owned board into m_pcb just before it is freed.
+                if( m_suppressTabActivation )
+                    return;
+
+                if( aIdx >= 0 && aIdx < static_cast<int>( m_tabContexts.size() ) )
+                    activateFootprintTab( m_tabContexts[aIdx].get() );
+            };
+
+    m_tabsPanel->onCloseTabRequested =
+            [this]( int aIdx ) -> bool
+            {
+                return promptAndCloseFootprintTab( aIdx );
+            };
+
+    // onCloseTabRequested installs the successor board atomically, so the panel must not
+    // re-activate the fallback after a close
+    m_tabsPanel->SetSuppressActivateOnClose( true );
+
+    m_tabsPanel->onQueryVisualState =
+            [this]( int aIdx ) -> TAB_VISUAL_STATE
+            {
+                // The panel model owns preview, the context the live dirty flag
+                const std::vector<EDITOR_TABS_MODEL::ENTRY>& entries = m_tabsPanel->Model().Entries();
+
+                if( aIdx < 0 || aIdx >= static_cast<int>( entries.size() ) )
+                    return TAB_VISUAL_STATE{};
+
+                bool modified = entries[aIdx].modified;
+
+                if( aIdx < (int) m_tabContexts.size() && m_tabContexts[aIdx].get() )
+                    modified = m_tabContexts[aIdx]->IsModified();
+
+                return ResolveTabVisualState( entries[aIdx].preview, modified );
+            };
 
     // The libraries and the properties on the left side
     QDockWidget* libraries = addPane( m_treePane, wxS( "Footprints" ), _( "Libraries" ),

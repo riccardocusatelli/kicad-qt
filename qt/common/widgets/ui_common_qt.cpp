@@ -174,6 +174,64 @@ wxString KIUI::EllipsizeStatusText( wxWindow* aWindowCompat, const wxString& aSt
 }
 
 
+wxString KIUI::WrapText( wxWindow* aWindowCompat, const wxString& aText, int aWidth )
+{
+    QWidget*     window = aWindowCompat ? aWindowCompat->GetHandle() : nullptr;
+    QFontMetrics metrics( window ? window->font() : QApplication::font() );
+
+    auto measure =
+            [&]( const wxString& aLine )
+            {
+                return metrics.horizontalAdvance( ToQString( aLine ) );
+            };
+
+    wxString wrapped;
+
+    for( const wxString& line : wxSplit( aText, '\n', '\0' ) )
+    {
+        wxString current;
+
+        for( wxString word : wxSplit( line, ' ', '\0' ) )
+        {
+            const bool isPath = word.Contains( wxS( "/" ) ) || word.Contains( wxS( "\\" ) );
+
+            if( isPath && measure( word ) > aWidth )
+                word = ToWxString( metrics.elidedText( ToQString( word ), Qt::ElideMiddle, aWidth ) );
+
+            const wxString joined = current.IsEmpty() ? word : current + wxS( " " ) + word;
+
+            if( measure( joined ) <= aWidth )
+            {
+                current = joined;
+                continue;
+            }
+
+            if( !current.IsEmpty() )
+            {
+                wrapped += current + wxS( "\n" );
+                current.clear();
+            }
+
+            for( const wxString& cluster : SplitGraphemeClusters( word ) )
+            {
+                if( !current.IsEmpty() && measure( current + cluster ) > aWidth )
+                {
+                    wrapped += current + wxS( "\n" );
+                    current.clear();
+                }
+
+                current += cluster;
+            }
+        }
+
+        wrapped += current + wxS( "\n" );
+    }
+
+    wrapped.RemoveLast();
+    return wrapped;
+}
+
+
 void KIUI::SelectReferenceNumber( wxTextEntry* aTextEntry )
 {
     wxString ref = aTextEntry->GetValue();

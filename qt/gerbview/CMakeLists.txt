@@ -96,6 +96,9 @@ add_headless_kiface( gerbview_qtgui_kiface
     OUTPUT_NAME gerbview_qtgui
     SOURCES     ${CMAKE_SOURCE_DIR}/gerbview/gerbview.cpp
                 ${CMAKE_SOURCE_DIR}/gerbview/gerbview_jobs_handler.cpp
+                ${CMAKE_SOURCE_DIR}/gerbview/gerber_to_png.cpp
+                ${CMAKE_SOURCE_DIR}/gerbview/gerber_to_polyset.cpp
+                ${CMAKE_SOURCE_DIR}/gerbview/gerber_diff.cpp
                 ${KIQT_KIFACE_SOURCES}
     OBJECTS     gerbview_gui_qt
     USAGE       kiqt_common

@@ -248,8 +248,6 @@ jobs:
           $env:PYTHONHOME = ( Get-ChildItem $inst -Recurse -Filter os.py |
                               Where-Object { $_.Directory.Name -eq 'Lib' } |
                               Select-Object -First 1 ).Directory.Parent.FullName
-          # The module pcbnew.py of the build (the Linux code of python_scripting.cpp adds it)
-          $env:PYTHONPATH = "$root\build\pcbnew"
           Write-Output "QT_PLUGIN_PATH=$env:QT_PLUGIN_PATH PYTHONHOME=$env:PYTHONHOME"
 
           $board = "$root\qa\data\pcbnew\api_kitchen_sink.kicad_pcb"
@@ -340,7 +338,7 @@ jobs:
           Copy-Item -Recurse $plugins "$bin\qtplugins"
           Set-Content -Path "$bin\qt.conf" -Value "[Paths]`r`nPrefix = .`r`nPlugins = qtplugins"
 
-          # Python: its library in bin\Lib and bin\DLLs (pcbnew.py is in bin\Lib\site-packages)
+          # Python: its library in bin\Lib and bin\DLLs
           $python = ( Get-ChildItem $inst -Recurse -Filter os.py |
                       Where-Object { $_.Directory.Name -eq 'Lib' } |
                       Select-Object -First 1 ).Directory.Parent.FullName

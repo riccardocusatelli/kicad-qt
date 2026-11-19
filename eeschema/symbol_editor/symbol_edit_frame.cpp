@@ -1637,23 +1637,23 @@ bool SYMBOL_EDIT_FRAME::backupLibrary( const wxFileName& aOriginalFile, wxString
         for( const wxString& fileName : libFiles )
         {
             wxFileName fn( fileName );
-            wxFileSystem fsFile;
-
             fn.MakeRelativeTo( aOriginalFile.GetPath() );
 
             wxString relativeFn = fn.GetFullPath();
 
             // Read input file and add it to the zip file:
-            wxFSFile* infile = nullptr;
-            wxString  sysError;
+            std::unique_ptr<wxFFileInputStream> infile;
+            wxString                            sysError;
 
             {
                 // Failures are reported through an error dialog, prevent wx from popping its own dialog.
                 wxLogNull suppressSysErrorPopups;
-                infile = fsFile.OpenFile( fileName );
+                infile = std::make_unique<wxFFileInputStream>( fileName );
 
-                if( !infile )
+                if( !infile->IsOk() )
                 {
+                    infile.reset();
+
                     if( unsigned long code = wxSysErrorCode() )
                         sysError = wxSysErrorMsgStr( code );
                 }
@@ -1661,11 +1661,9 @@ bool SYMBOL_EDIT_FRAME::backupLibrary( const wxFileName& aOriginalFile, wxString
 
             if( infile )
             {
-                zipstream.PutNextEntry( relativeFn, infile->GetModificationTime() );
-                infile->GetStream()->Read( zipstream );
+                zipstream.PutNextEntry( relativeFn, wxFileName( fileName ).GetModificationTime() );
+                infile->Read( zipstream );
                 zipstream.CloseEntry();
-
-                delete infile;
             }
             else
             {

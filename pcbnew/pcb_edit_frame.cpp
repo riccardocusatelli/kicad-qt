@@ -131,6 +131,7 @@
 #include <router/router_tool.h>
 #include <autorouter/autoplace_tool.h>
 #include <netlist_reader/netlist_reader.h>
+#include <dialogs/dialog_drc.h>
 #include <dialogs/drc_window_names.h>
 #include <ratsnest/ratsnest_view_item.h>
 #include <widgets/appearance_controls.h>

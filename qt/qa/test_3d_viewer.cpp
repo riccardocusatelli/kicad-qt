@@ -247,7 +247,7 @@ int main( int argc, char** argv )
     PGM_QT_TEST program;
     SetPgm( &program );
 
-    if( !program.InitPgm( true, true ) )
+    if( !program.InitPgm( true ) )
     {
         std::fprintf( stderr, "cannot initialise the program\n" );
         return 2;
@@ -303,12 +303,13 @@ int main( int argc, char** argv )
                                                    adapter, camera, cache );
         canvas->SetAnimationEnabled( false );
 
-        std::vector<wxString> statusTexts( 5 );
+        std::vector<wxString> statusTexts( EDA_3D_VIEWER_STATUSBAR::ZOOM_LEVEL + 1 );
 
         canvas->SetStatusTextHandler(
                 [&]( const wxString& aText, int aField )
                 {
-                    statusTexts[aField] = aText;
+                    if( aField >= 0 && aField < static_cast<int>( statusTexts.size() ) )
+                        statusTexts[aField] = aText;
                 } );
 
         layout->addWidget( canvas );
@@ -526,7 +527,8 @@ int main( int argc, char** argv )
 
         QTimer::singleShot( 200, [&]() { exportDlg.EndModal( wxID_OK ); } );
         exportDlg.ShowModal();
-        check( exportDlg.GetSize() == wxSize( 800, 400 ), "the aspect ratio of the exported image" );
+        std::printf( "    exported size %dx%d\n", exportDlg.GetImageSize().x, exportDlg.GetImageSize().y );
+        check( exportDlg.GetImageSize() == wxSize( 800, 400 ), "the aspect ratio of the exported image" );
     }
 
     board.reset();

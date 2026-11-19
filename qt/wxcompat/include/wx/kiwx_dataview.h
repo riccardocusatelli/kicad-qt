@@ -874,6 +874,9 @@ public:
                                  const wxValidator& aValidator = wxDefaultValidator );
     ~wxDataViewListCtrl() override;
 
+    /// A store of the caller (a wxDataViewListStore, as in wxWidgets) replaces the own one.
+    bool AssociateModel( wxDataViewModel* aModel ) override;
+
     wxDataViewListStore* GetStore() { return m_store; }
     const wxDataViewListStore* GetStore() const { return m_store; }
 

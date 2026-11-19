@@ -35,6 +35,7 @@
 #include <optional>
 #include <set>
 #include <project_pcb.h>
+#include <footprint_library_adapter.h>
 
 namespace CV {
 

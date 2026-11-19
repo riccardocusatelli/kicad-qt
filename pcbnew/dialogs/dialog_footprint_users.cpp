@@ -23,7 +23,9 @@
 
 #include <wx/clipbrd.h>
 #include <wx/menu.h>
+#ifndef KICAD_WX_FREE
 #include <wx/types.h>
+#endif
 #include <wx/wupdlock.h>
 
 #include <kiway.h>

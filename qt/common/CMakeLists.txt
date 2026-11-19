@@ -50,6 +50,7 @@ add_library( kiqt SHARED
     widgets/wx_panel.cpp
     widgets/wx_progress_reporters.cpp
     ${CMAKE_SOURCE_DIR}/qt/libs/kiplatform/printing.cpp
+    ${CMAKE_SOURCE_DIR}/qt/libs/kiplatform/touchpad.cpp
     ${CMAKE_SOURCE_DIR}/qt/libs/kiplatform/ui.cpp
     ${CMAKE_SOURCE_DIR}/qt/libs/kiplatform/webview.cpp
     ${CMAKE_SOURCE_DIR}/qt/wxcompat/kiwx_aui.cpp
@@ -487,6 +488,7 @@ add_library( kiqt_common STATIC
     ${CMAKE_SOURCE_DIR}/common/eda_text_print.cpp
     ${CMAKE_SOURCE_DIR}/common/executable_names.cpp
     ${CMAKE_SOURCE_DIR}/common/gal_display_options_common.cpp
+    ${CMAKE_SOURCE_DIR}/common/footprint_filter.cpp
     ${CMAKE_SOURCE_DIR}/common/gestfich_gui.cpp
     ${CMAKE_SOURCE_DIR}/common/gr_basic.cpp
     ${CMAKE_SOURCE_DIR}/common/gr_text_print.cpp
@@ -653,3 +655,7 @@ target_sources( kiqt_common PRIVATE
     )
 
 target_link_libraries( kiqt_common PUBLIC kinng kiapi )
+
+# The snapping solver of the grid helpers and the bitmap tracing of the graphics import (linked by
+# common in the wxWidgets build)
+target_link_libraries( kiqt_common PUBLIC snap potrace )

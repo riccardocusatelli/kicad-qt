@@ -22,6 +22,7 @@ set( KIQT_PL_EDITOR_GUI_SRCS
     tools/pl_edit_tool.cpp
     tools/pl_editor_control.cpp
     tools/pl_point_editor.cpp
+    import_gfx/graphics_importer_pl_editor.cpp
     )
 
 list( TRANSFORM KIQT_PL_EDITOR_GUI_SRCS PREPEND ${CMAKE_SOURCE_DIR}/pagelayout_editor/ )
@@ -66,6 +67,7 @@ add_headless_kiface( pl_editor_qtgui_kiface
     USAGE       kiqt_common
     ARCHIVES    common kiqt_common
     LIBRARIES   kiqt_common kiqt Qt6::Widgets kicommon_model gal_model core Boost::headers
+                nanosvg     # the SVG import of the graphics import
                 ${wxWidgets_BASE_LIBRARIES}
     )
 

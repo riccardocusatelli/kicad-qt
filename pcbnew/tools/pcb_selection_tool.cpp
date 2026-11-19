@@ -67,7 +67,9 @@ using namespace std::placeholders;
 #include <toolkit/gui_services.h>
 #include <wx/log.h>
 #include <wx/debug.h>
+#ifndef KICAD_WX_FREE
 #include <wx/modalhook.h>
+#endif
 #include <core/profile.h>
 #include <math/vector2wx.h>
 

@@ -1954,6 +1954,18 @@ wxDataViewListCtrl::wxDataViewListCtrl( wxWidgetArgCompat aParent, int aId, cons
 wxDataViewListCtrl::~wxDataViewListCtrl() = default;
 
 
+bool wxDataViewListCtrl::AssociateModel( wxDataViewModel* aModel )
+{
+    // The store the control works on is the model: the old one may be freed by the association
+    wxDataViewListStore* store = dynamic_cast<wxDataViewListStore*>( aModel );
+
+    wxCHECK_MSG( store || !aModel, false, wxS( "wxDataViewListCtrl needs a wxDataViewListStore" ) );
+
+    m_store = store;
+    return wxDataViewCtrl::AssociateModel( aModel );
+}
+
+
 int wxDataViewListCtrl::ItemToRow( const wxDataViewItem& aItem ) const
 {
     return aItem.IsOk() ? int( m_store->GetRow( aItem ) ) : wxNOT_FOUND;
