@@ -194,6 +194,7 @@ function( kicad_wx_free_restrict_targets )
         kicore_rt
         kiapi
         kiplatform_core
+        kinng               # the API client of kicommon_model (nng)
         kimath
         fmt
         sexpr

@@ -32,7 +32,26 @@ namespace KIPLATFORM
             return false;
         }
 
+        void StoreSecretAsync( const wxString& aService, const wxString& aKey, const wxString& aSecret,
+                               std::function<void( bool )> aDone )
+        {
+            if( aDone )
+                aDone( false );
+        }
+
         bool GetSecret( const wxString& aService, const wxString& aKey, wxString& aSecret )
+        {
+            return false;
+        }
+
+        void GetSecretAsync( const wxString& aService, const wxString& aKey,
+                             std::function<void( bool, const wxString& )> aDone )
+        {
+            if( aDone )
+                aDone( false, wxString() );
+        }
+
+        bool GetSecretNoPrompt( const wxString& aService, const wxString& aKey, wxString& aSecret )
         {
             return false;
         }
