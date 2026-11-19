@@ -254,7 +254,7 @@ wxString BuildStackupCsv( BOARD_STACKUP& aStackup, EDA_UNITS aUnits, const STACK
 
                 const bool locked =
                         item->GetType() == BS_ITEM_TYPE_DIELECTRIC && hasSublayerData && item->IsThicknessLocked( idx );
-                row.push_back( locked ? wxT( "yes" ) : wxEmptyString );
+                row.push_back( locked ? wxString( wxT( "yes" ) ) : wxString() );
             }
 
             if( aOptions.includeMaterial )

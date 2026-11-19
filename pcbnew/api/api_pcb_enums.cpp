@@ -59,6 +59,14 @@
 #include <generators/pcb_via_stitch.h>
 #include <core/ki_assert.h>
 
+// <wingdi.h> defines TRANSPARENT and OPAQUE, names of JOB_PCB_RENDER::BG_STYLE
+#ifdef TRANSPARENT
+#undef TRANSPARENT
+#endif
+#ifdef OPAQUE
+#undef OPAQUE
+#endif
+
 // Adding something new here?  Add it to test_api_enums.cpp!
 
 using namespace kiapi::board;

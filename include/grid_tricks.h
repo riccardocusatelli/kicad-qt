@@ -157,7 +157,7 @@ protected:
         void Begin( const wxGridCellCoords& aSource )
         {
             const unsigned int generation = Generation + 1;
-            *this = {};
+            *this = BULK_EDIT_SESSION();
             Source = aSource;
             Generation = generation;
         }

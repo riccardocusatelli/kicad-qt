@@ -139,7 +139,7 @@ void DIALOG_GENERATED_TABLE_PROPERTIES::fillColumnGrid()
 
         m_columnGrid->SetCellRenderer( r, COL_SHOW, new wxGridCellBoolRenderer );
         m_columnGrid->SetCellEditor( r, COL_SHOW, new wxGridCellBoolEditor );
-        m_columnGrid->SetCellValue( r, COL_SHOW, m_rows[row].m_Shown ? wxT( "1" ) : wxEmptyString );
+        m_columnGrid->SetCellValue( r, COL_SHOW, m_rows[row].m_Shown ? wxString( wxT( "1" ) ) : wxString() );
 
         m_columnGrid->SetCellValue( r, COL_NAME, columnLabel( m_table->Schema(), col.m_Id ) );
         m_columnGrid->SetReadOnly( r, COL_NAME );

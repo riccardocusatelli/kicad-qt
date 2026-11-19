@@ -1332,22 +1332,22 @@ bool LIB_SYMBOL::ResolveTextVar( wxString* token, int aDepth ) const
     }
     else if( token->IsSameAs( wxT( "EXCLUDE_FROM_BOM" ) ) )
     {
-        *token = this->GetExcludedFromBOM() ? wxS( "Excluded from BOM" ) : wxEmptyString;
+        *token = this->GetExcludedFromBOM() ? wxString( wxS( "Excluded from BOM" ) ) : wxString();
         return true;
     }
     else if( token->IsSameAs( wxT( "EXCLUDE_FROM_BOARD" ) ) )
     {
-        *token = this->GetExcludedFromBoard() ? wxS( "Excluded from board" ) : wxEmptyString;
+        *token = this->GetExcludedFromBoard() ? wxString( wxS( "Excluded from board" ) ) : wxString();
         return true;
     }
     else if( token->IsSameAs( wxT( "EXCLUDE_FROM_SIM" ) ) )
     {
-        *token = this->GetExcludedFromSim() ? wxS( "Excluded from simulation" ) : wxEmptyString;
+        *token = this->GetExcludedFromSim() ? wxString( wxS( "Excluded from simulation" ) ) : wxString();
         return true;
     }
     else if( token->IsSameAs( wxT( "DNP" ) ) )
     {
-        *token = this->GetDNP() ? wxS( "DNP" ) : wxEmptyString;
+        *token = this->GetDNP() ? wxString( wxS( "DNP" ) ) : wxString();
         return true;
     }
 

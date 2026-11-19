@@ -34,7 +34,7 @@
  * Routes cross-probe messages between standalone KiCad instances over the
  * IPC API.  Can be removed once we remove standalone mode.
  */
-class KICOMMON_API CROSS_PROBE_CLIENT
+class KIQT_COMMON_API CROSS_PROBE_CLIENT
 {
 public:
     static bool SendToFrame( FRAME_T aTarget, const google::protobuf::Message& aRequest );

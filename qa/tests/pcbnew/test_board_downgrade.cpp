@@ -3779,7 +3779,7 @@ BOOST_AUTO_TEST_CASE( GroupPlacementLinkageUsesTheSameFootprintPolicy )
             BOOST_CHECK( zone->GetDoNotAllowTracks() );
             BOOST_CHECK( zone->GetPlacementAreaEnabled() == ( target.m_id == kicad10.m_id ) );
             BOOST_CHECK( zone->GetPlacementAreaSource()
-                         == ( target.m_id == kicad10.m_id ? wxT( "Repeated group" ) : wxEmptyString ) );
+                         == ( target.m_id == kicad10.m_id ? wxString( wxT( "Repeated group" ) ) : wxString() ) );
         }
     }
 }
