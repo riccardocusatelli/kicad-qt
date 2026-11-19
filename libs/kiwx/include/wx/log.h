@@ -139,6 +139,10 @@ class wxLogStderr : public wxLog
 public:
     explicit wxLogStderr( FILE* aStream = nullptr ) : m_stream( aStream ? aStream : stderr ) {}
 
+    // The text is always written as UTF-8: the conversion argument of wx is accepted and ignored.
+    template <typename CONV>
+    wxLogStderr( FILE* aStream, const CONV& ) : wxLogStderr( aStream ) {}
+
 protected:
     void DoLogText( const wxString& aMsg ) override;
 
