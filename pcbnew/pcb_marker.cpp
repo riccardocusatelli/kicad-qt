@@ -37,7 +37,7 @@
 #include <settings/color_settings.h>
 #include <settings/settings_manager.h>
 #include <geometry/shape_null.h>
-#include <widgets/wx_data_view_hyperlink_renderer.h>
+#include <hyperlink_markup.h>
 #include <pgm_base.h>
 #include <drc/drc_item.h>
 #include <drc/drc_rule.h>
@@ -151,7 +151,7 @@ void PCB_MARKER::ToProto( kiapi::board::DrcMarker& aMsg, const PCB_MARKER& aMark
     if( const DRC_RULE* rule = drc->GetViolatingRule() )
         aMsg.set_violating_rule( rule->m_Name.ToUTF8() );
 
-    aMsg.set_description( HYPERLINK_DV_RENDERER::StripMarkup( drc->GetErrorMessage( false ) ).ToUTF8() );
+    aMsg.set_description( HYPERLINK_MARKUP::StripMarkup( drc->GetErrorMessage( false ) ).ToUTF8() );
 
     if( aMarker.GetBoard() )
     {
@@ -329,7 +329,7 @@ void PCB_MARKER::swapData( BOARD_ITEM* aImage )
 void PCB_MARKER::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     aList.emplace_back( _( "Type" ), _( "Marker" ) );
-    aList.emplace_back( _( "Violation" ), HYPERLINK_DV_RENDERER::StripMarkup( m_rcItem->GetErrorMessage( true ) ) );
+    aList.emplace_back( _( "Violation" ), HYPERLINK_MARKUP::StripMarkup( m_rcItem->GetErrorMessage( true ) ) );
 
     switch( GetSeverity() )
     {

@@ -31,7 +31,7 @@
 #include <i18n_utility.h>
 #include <properties/property_mgr.h>
 #include <view/view.h>
-#include <widgets/msgpanel.h>
+#include <widgets/msgpanel_item.h>
 
 
 PCB_DRILL_MAP::PCB_DRILL_MAP( BOARD_ITEM* aParent ) :

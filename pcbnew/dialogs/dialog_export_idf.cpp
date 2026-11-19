@@ -37,6 +37,7 @@
 #include <kidialog.h>
 #include <reporter.h>
 #include <wx/msgdlg.h>
+#include <core/ki_assert.h>
 
 
 DIALOG_EXPORT_IDF3::DIALOG_EXPORT_IDF3( PCB_EDIT_FRAME* aEditFrame ) :

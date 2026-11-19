@@ -29,6 +29,7 @@
 #include <widgets/pcb_net_inspector_list_item.h>
 
 #include <wx/settings.h>
+#include <core/ki_assert.h>
 
 
 /**

@@ -24,6 +24,7 @@
 #include <wx/string.h>
 #include <wx/debug.h>
 #include <common.h>
+#include <refdes_utils.h>
 #include <sch_reference_list.h>
 #include <sch_commit.h>
 #include <sch_screen.h>
@@ -345,7 +346,7 @@ wxString FIELDS_DATA_MODEL::GetValue( const DATA_MODEL_ROW& group, int aCol,
                         return ref.GetSymbol()->ResolveTextVar( &ref.GetSheetPath(), token, m_currentVariant );
                     };
 
-                    refFieldValue = ExpandTextVars( refFieldValue, & symbolResolver );
+                    refFieldValue = ExpandTextVars( refFieldValue, &symbolResolver, INTERNAL );
                 }
             }
 
@@ -381,7 +382,7 @@ wxString FIELDS_DATA_MODEL::GetValue( const DATA_MODEL_ROW& group, int aCol,
                 {
                     wxString l_ref( l.GetRef() << l.GetRefNumber() );
                     wxString r_ref( r.GetRef() << r.GetRefNumber() );
-                    return StrNumCmp( l_ref, r_ref, true ) < 0;
+                    return StrNumCmp( l_ref, r_ref, CMP_T::IGNORE_CASE ) < 0;
                 } );
 
         auto logicalEnd = std::unique( references.begin(), references.end(),
@@ -401,7 +402,14 @@ wxString FIELDS_DATA_MODEL::GetValue( const DATA_MODEL_ROW& group, int aCol,
     }
 
     if( ColIsReference( aCol ) )
-        fieldValue = SCH_REFERENCE_LIST::Shorthand( references, refDelimiter, refRangeDelimiter );
+    {
+        std::vector<std::pair<wxString, wxString>> bases;
+
+        for( const SCH_REFERENCE& reference : references )
+            bases.emplace_back( reference.GetRef() + reference.GetRefNumber(), reference.GetRefSuffix() );
+
+        fieldValue = UTIL::FormatRefDesRanges( bases, refDelimiter, refRangeDelimiter );
+    }
     else if( ColIsQuantity( aCol ) )
         fieldValue = wxString::Format( wxT( "%d" ), (int) references.size() );
     else if( ColIsItemNumber( aCol ) && group.m_Flag != CHILD_ITEM )
@@ -461,14 +469,14 @@ void FIELDS_DATA_MODEL::SetValue( int aRow, int aCol, const wxString& aValue )
 bool FIELDS_DATA_MODEL::ColIsReference( int aCol )
 {
     KI_CHECK( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), false );
-    return m_cols[aCol].m_fieldName == GetCanonicalFieldName( FIELD_T::REFERENCE );
+    return m_cols[aCol].m_fieldName == GetDefaultFieldName( FIELD_T::REFERENCE, UNTRANSLATED );
 }
 
 
 bool FIELDS_DATA_MODEL::ColIsValue( int aCol )
 {
     KI_CHECK( aCol >= 0 && aCol < static_cast<int>( m_cols.size() ), false );
-    return m_cols[aCol].m_fieldName == GetCanonicalFieldName( FIELD_T::VALUE );
+    return m_cols[aCol].m_fieldName == GetDefaultFieldName( FIELD_T::VALUE, UNTRANSLATED );
 }
 
 
@@ -526,7 +534,7 @@ bool FIELDS_DATA_MODEL::cmp( const DATA_MODEL_ROW&          lhGroup,
     {
         wxString lhRef = lhGroup.m_Refs[0].GetRef() + lhGroup.m_Refs[0].GetRefNumber();
         wxString rhRef = rhGroup.m_Refs[0].GetRef() + rhGroup.m_Refs[0].GetRefNumber();
-        return local_cmp( StrNumCmp( lhRef, rhRef, true ), 0 );
+        return local_cmp( StrNumCmp( lhRef, rhRef, CMP_T::IGNORE_CASE ), 0 );
     }
     else
     {
@@ -548,7 +556,7 @@ void FIELDS_DATA_MODEL::Sort()
                    {
                        wxString lhs_ref( lhs.GetRef() << lhs.GetRefNumber() );
                        wxString rhs_ref( rhs.GetRef() << rhs.GetRefNumber() );
-                       return StrNumCmp( lhs_ref, rhs_ref, true ) < 0;
+                       return StrNumCmp( lhs_ref, rhs_ref, CMP_T::IGNORE_CASE ) < 0;
                    } );
     }
 
@@ -582,7 +590,7 @@ bool FIELDS_DATA_MODEL::unitMatch( const SCH_REFERENCE& lhRef, const SCH_REFEREN
 
 bool FIELDS_DATA_MODEL::groupMatch( const SCH_REFERENCE& lhRef, const SCH_REFERENCE& rhRef )
 {
-    int  refCol = GetFieldNameCol( GetCanonicalFieldName( FIELD_T::REFERENCE ) );
+    int  refCol = GetFieldNameCol( GetDefaultFieldName( FIELD_T::REFERENCE, UNTRANSLATED ) );
     bool matchFound = false;
 
     if( refCol == -1 )
@@ -657,7 +665,7 @@ wxString FIELDS_DATA_MODEL::getFieldShownText( const SCH_REFERENCE& aRef,
         if( field->IsPrivate() )
             return wxEmptyString;
         else
-            return field->GetShownText( &aRef.GetSheetPath(), false, 0, m_currentVariant );
+            return field->GetShownText( &aRef.GetSheetPath(), INTERNAL, m_currentVariant );
     }
 
     // Handle generated fields with variables as names (e.g. ${QUANTITY}) that are not present in
@@ -672,7 +680,7 @@ wxString FIELDS_DATA_MODEL::getFieldShownText( const SCH_REFERENCE& aRef,
             return aRef.GetSymbol()->ResolveTextVar( &path, token, m_currentVariant, depth + 1 );
         };
 
-        return ExpandTextVars( aFieldName, &symbolResolver );
+        return ExpandTextVars( aFieldName, &symbolResolver, INTERNAL );
     }
 
     return wxEmptyString;
@@ -1230,7 +1238,7 @@ void FIELDS_DATA_MODEL::ApplyBomPreset( const BOM_PRESET& aPreset )
     int sortCol = GetFieldNameCol( aPreset.sortField );
 
     if( sortCol == -1 )
-        sortCol = GetFieldNameCol( GetCanonicalFieldName( FIELD_T::REFERENCE ) );
+        sortCol = GetFieldNameCol( GetDefaultFieldName( FIELD_T::REFERENCE, UNTRANSLATED ) );
 
     SetSorting( sortCol, aPreset.sortAsc );
 
@@ -1356,7 +1364,7 @@ void FIELDS_DATA_MODEL::AddReferences( const SCH_REFERENCE_LIST& aRefs )
             {
                 if( !field.IsPrivate() )
                 {
-                    wxString name = field.GetCanonicalName();
+                    wxString name = field.GetUntranslatedName();
                     wxString value = symbol->Schematic()->ConvertKIIDsToRefs( field.GetText() );
 
                     m_dataStore[key][name] = value;

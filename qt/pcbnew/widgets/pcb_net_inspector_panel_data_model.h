@@ -32,6 +32,7 @@
 
 #include <qt_strings.h>
 #include <widgets/pcb_net_inspector_list_item.h>
+#include <core/ki_assert.h>
 
 
 class PCB_NET_INSPECTOR_PANEL::DATA_MODEL : public QAbstractItemModel

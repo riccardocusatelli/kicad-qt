@@ -35,6 +35,7 @@
 #include <wx/filename.h>
 #include <wx/log.h>
 #include <wx/tokenzr.h>
+#include <core/ki_log.h>
 
 
 // Seed a new .gitignore with the same generated paths the change list hides.

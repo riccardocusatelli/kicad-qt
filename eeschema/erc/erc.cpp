@@ -65,6 +65,7 @@
 #include <core/ki_assert.h>
 #include <trace_helpers.h>
 #include <variant_symbol_utils.h>
+#include <core/ki_log.h>
 
 namespace
 {

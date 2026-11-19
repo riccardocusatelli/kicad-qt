@@ -45,6 +45,7 @@
 #include <properties/property_mgr.h>
 #include <properties/property.h>
 #include <core/ki_assert.h>
+#include <core/ki_log.h>
 
 
 TRANSLINE_PRM::TRANSLINE_PRM( PRM_TYPE aType, PRMS_ID aId, const char* aKeywordCfg, const wxString& aDlgLabel,

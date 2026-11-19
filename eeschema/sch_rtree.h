@@ -28,6 +28,7 @@
 
 #include <utility>
 #include <unordered_set>
+#include <core/ki_assert.h>
 
 /**
  * Implement an R-tree for fast spatial and type indexing of schematic items.

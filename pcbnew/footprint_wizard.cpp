@@ -29,6 +29,8 @@
 #include <google/protobuf/util/json_util.h>
 
 #include "footprint_wizard.h"
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 void FOOTPRINT_WIZARD::ResetParameters()

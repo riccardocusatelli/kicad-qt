@@ -34,7 +34,10 @@ install( TARGETS pcbnew_qt_kiface
 # Qt, with the Qt versions of the panels and dialogs.  The KIFACE links it once all of pcbnew is
 # ported (phase 3B.5).
 set( KIQT_PCBNEW_GUI_SRCS
+    api/api_handler_board.cpp
+    api/api_handler_footprint.cpp
     api/api_handler_pcb.cpp
+    api/api_handler_pcb_tasks.cpp
     array_pad_number_provider.cpp
     autorouter/ar_autoplacer.cpp
     autorouter/ar_matrix.cpp
@@ -374,9 +377,9 @@ kiqt_generate_fbp_compat( KIQT_PCBNEW_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_constraint_value_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_diff_phase_skew_properties_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_drill_groups_base.fbp
-    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_export_2581_bom_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_export_2581_bom.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_find_by_properties_base.fbp
-    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_footprint_users_base.fbp
+    ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_footprint_users.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_generated_table_properties_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_grid_item_properties_base.fbp
     ${CMAKE_SOURCE_DIR}/pcbnew/dialogs/dialog_microvia_stack_base.fbp

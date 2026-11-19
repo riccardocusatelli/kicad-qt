@@ -23,6 +23,7 @@
 
 #include <netlist_exporter_base.h>
 #include <project.h>
+#include <common.h>
 #include <unordered_set>
 
 class CONNECTION_GRAPH;
@@ -54,7 +55,7 @@ enum GNL_T
 class NETLIST_EXPORTER_XML : public NETLIST_EXPORTER_BASE
 {
 public:
-    NETLIST_EXPORTER_XML( SCHEMATIC* aSchematic, KIWAY* aKiway ) :
+    NETLIST_EXPORTER_XML( SCHEMATIC* aSchematic, KIWAY_SERVICES* aKiway ) :
             NETLIST_EXPORTER_BASE( aSchematic, aKiway ),
             m_resolveTextVars( RESOLVED )
     {}

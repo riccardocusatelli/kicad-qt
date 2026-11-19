@@ -109,7 +109,9 @@
 #include "cli/command_gerber_convert_png.h"
 #include "cli/command_gerber_info.h"
 #include "cli/command_gerber_diff.h"
+#ifndef KICAD_WX_FREE
 #include "cli/command_api_server.h"
+#endif
 #include "cli/command_version.h"
 #include "cli/exit_codes.h"
 
@@ -248,7 +250,9 @@ static CLI::GERBER_CONVERT_PNG_COMMAND gerberConvertPngCmd{};
 static CLI::GERBER_INFO_COMMAND        gerberInfoCmd{};
 static CLI::GERBER_DIFF_COMMAND        gerberDiffCmd{};
 static CLI::VERSION_COMMAND            versionCmd{};
+#ifndef KICAD_WX_FREE
 static CLI::API_SERVER_COMMAND         apiServerCmd{};
+#endif
 
 // clang-format off
 static std::vector<COMMAND_ENTRY> commandStack = {
@@ -431,9 +435,11 @@ static std::vector<COMMAND_ENTRY> commandStack = {
     {
         &versionCmd,
     },
+#ifndef KICAD_WX_FREE
     {
         &apiServerCmd,
     }
+#endif
 };
 // clang-format on
 

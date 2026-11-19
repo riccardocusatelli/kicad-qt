@@ -19,7 +19,6 @@
  */
 
 #include <sch_render_settings.h>
-#include <scintilla_tricks.h>
 #include <netclass.h>
 #include <wx/log.h>
 

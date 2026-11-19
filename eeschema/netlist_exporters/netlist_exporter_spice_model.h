@@ -29,7 +29,7 @@ enum LABEL_FLAG_SHAPE : unsigned int;
 class NETLIST_EXPORTER_SPICE_MODEL : public NETLIST_EXPORTER_SPICE
 {
 public:
-    NETLIST_EXPORTER_SPICE_MODEL( SCHEMATIC* aSchematic, KIWAY* aKiway )
+    NETLIST_EXPORTER_SPICE_MODEL( SCHEMATIC* aSchematic, KIWAY_SERVICES* aKiway )
         : NETLIST_EXPORTER_SPICE( aSchematic, aKiway )
     {
     }

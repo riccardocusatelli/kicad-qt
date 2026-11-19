@@ -336,7 +336,7 @@ public:
     {
         SetGroup( PIN_MAP_GROUP );
         SetChoicesFunc(
-                []( INSPECTABLE* ) -> wxPGChoices
+                []( INSPECTABLE* ) -> PROPERTY_CHOICES
                 {
                     return SCH_SYMBOL_PIN_MAP_MODE_PROPERTY::BuildChoices();
                 } );
@@ -346,9 +346,9 @@ public:
     size_t BaseHash() const override { return TYPE_HASH( SCH_SYMBOL ); }
     size_t TypeHash() const override { return TYPE_HASH( int ); }
 
-    static wxPGChoices BuildChoices()
+    static PROPERTY_CHOICES BuildChoices()
     {
-        wxPGChoices choices;
+        PROPERTY_CHOICES choices;
         choices.Add( _( "Library default" ), static_cast<int>( PIN_MAP_OVERRIDE_MODE::USE_LIBRARY_DEFAULT ) );
         choices.Add( _( "Named map" ), static_cast<int>( PIN_MAP_OVERRIDE_MODE::USE_NAMED_MAP ) );
         choices.Add( _( "Identity" ), static_cast<int>( PIN_MAP_OVERRIDE_MODE::FORCE_IDENTITY ) );
@@ -421,12 +421,12 @@ public:
                     return symbol && SCH_SYMBOL_PIN_MAP_NAME_PROPERTY::MapNames( symbol ).size() > 1;
                 } );
         SetChoicesFunc(
-                []( INSPECTABLE* aObject ) -> wxPGChoices
+                []( INSPECTABLE* aObject ) -> PROPERTY_CHOICES
                 {
                     if( const SCH_SYMBOL* symbol = dynamic_cast<const SCH_SYMBOL*>( aObject ) )
                         return SCH_SYMBOL_PIN_MAP_NAME_PROPERTY::BuildChoices( symbol );
 
-                    return wxPGChoices();
+                    return PROPERTY_CHOICES();
                 } );
     }
 
@@ -447,9 +447,9 @@ public:
         return names;
     }
 
-    static wxPGChoices BuildChoices( const SCH_SYMBOL* aSymbol )
+    static PROPERTY_CHOICES BuildChoices( const SCH_SYMBOL* aSymbol )
     {
-        wxPGChoices                 choices;
+        PROPERTY_CHOICES                 choices;
         const std::vector<wxString> names = MapNames( aSymbol );
 
         for( size_t ii = 0; ii < names.size(); ++ii )

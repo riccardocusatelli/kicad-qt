@@ -46,6 +46,7 @@
 #include <reporter.h>
 #include <table_io.h>
 #include <wildcards_and_files_ext.h>
+#include <core/ki_assert.h>
 
 #ifdef GetCharWidth
 #undef GetCharWidth

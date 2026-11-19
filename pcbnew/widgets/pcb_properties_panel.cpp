@@ -461,9 +461,9 @@ TOOLKIT_PG_PROPERTY* PCB_PROPERTIES_PANEL::createPGProperty( const PROPERTY_BASE
 
     TOOLKIT_PG_PROPERTY* prop = PGPropertyFactory( aProperty, m_frame );
 
-    if( aProperty->Name() == GetCanonicalFieldName( FIELD_T::FOOTPRINT ) )
+    if( aProperty->Name() == GetDefaultFieldName( FIELD_T::FOOTPRINT, UNTRANSLATED ) )
         PGSetEditor( prop, PG_EDITOR::FPID, m_frame );
-    else if( aProperty->Name() == GetCanonicalFieldName( FIELD_T::DATASHEET ) )
+    else if( aProperty->Name() == GetDefaultFieldName( FIELD_T::DATASHEET, UNTRANSLATED ) )
         PGSetEditor( prop, PG_EDITOR::URL, m_frame );
     // OwnerHash is the class that registered the property.  Routed PCB_ARC items inherit
     // PCB_TRACK::Width, so this catches track arcs without changing unrelated "Width" properties.

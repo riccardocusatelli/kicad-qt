@@ -30,6 +30,7 @@
 #include <stroke_params.h>
 #include <wx/log.h>
 #include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 const wxChar* const traceApi = wxT( "KICAD_API" );
 

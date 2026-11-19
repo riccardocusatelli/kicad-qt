@@ -32,6 +32,7 @@
 #include <padstack.h>
 #include <pcb_shape.h>
 #include <units_provider.h>
+#include <core/ki_assert.h>
 
 
 double PAD_UTILS::GetDefaultIpcRoundingRatio( const PAD& aPad, PCB_LAYER_ID aLayer )

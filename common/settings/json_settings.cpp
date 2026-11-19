@@ -38,6 +38,7 @@
 #include <wx/config.h>
 #include <wx/debug.h>
 #include <wx/fileconf.h>
+#include <wx/utils.h>
 #include <wx/filename.h>
 #include <wx/gdicmn.h>
 #include <wx/log.h>

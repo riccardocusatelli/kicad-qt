@@ -74,6 +74,8 @@
 #include "odb_util.h"
 #include "pcb_io_odbpp.h"
 #include <trace_helpers.h>
+#include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 namespace

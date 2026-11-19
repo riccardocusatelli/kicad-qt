@@ -30,6 +30,7 @@
 #include <widgets/line_ending_bitmap.h>
 #include <sch_commit.h>
 #include <line_ending.h>
+#include <core/ki_assert.h>
 
 
 void DIALOG_LINE_PROPERTIES::createLineEndingControls( SCH_EDIT_FRAME* aParent )

@@ -110,6 +110,7 @@
 #include <trace_helpers.h>
 #include <wx/ffile.h>
 #include <core/ki_assert.h>
+#include <core/ki_log.h>
 
 using namespace kiapi::common::commands;
 using namespace kiapi::board::commands;

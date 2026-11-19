@@ -44,6 +44,7 @@
 #include <sch_symbol.h>
 #include <sch_screen.h>
 #include <trace_helpers.h>
+#include <core/ki_log.h>
 
 
 SCH_EASYEDAPRO_PARSER::SCH_EASYEDAPRO_PARSER( SCHEMATIC*         aSchematic,

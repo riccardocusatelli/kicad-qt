@@ -41,6 +41,7 @@
 #include <sstream>
 #include <wx/filedlg.h>
 #include <wx/msgdlg.h>
+#include <core/ki_assert.h>
 
 
 #define GRID_CELL_MARGIN 4

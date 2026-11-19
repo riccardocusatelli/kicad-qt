@@ -61,7 +61,6 @@ set( KICAD_SRCS
 set( KICAD_CLI_SRCS
     cli/command.cpp
     project_downgrade.cpp
-    cli/command_api_server.cpp
     cli/command_export_bom.cpp
     cli/command_jobset_run.cpp
     cli/command_pcb_export_base.cpp
@@ -117,6 +116,11 @@ set( KICAD_CLI_SRCS
 
     jobs_runner.cpp
     )
+
+# The API server of kicad-cli runs the IPC API on the event loop of the GUI toolkit
+if( NOT KICAD_WX_FREE )
+    list( APPEND KICAD_CLI_SRCS cli/command_api_server.cpp )
+endif()
 
 if( WIN32 )
     if( MINGW )

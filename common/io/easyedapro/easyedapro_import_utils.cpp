@@ -39,6 +39,7 @@
 #include <wx/mstream.h>
 #include <wx/txtstrm.h>
 #include <trace_helpers.h>
+#include <core/ki_log.h>
 
 
 namespace

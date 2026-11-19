@@ -31,6 +31,7 @@ class LIB_SYMBOL;
 class SCH_SCREEN;
 class SCH_SHEET_PATH;
 class SCH_SYMBOL;
+class SCHEMATIC;
 
 
 /**

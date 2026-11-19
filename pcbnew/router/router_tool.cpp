@@ -104,6 +104,7 @@ using namespace std::placeholders;
 #include <ratsnest/ratsnest_data.h>
 
 #include <pcb_io/kicad_sexpr/pcb_io_kicad_sexpr.h>
+#include <core/ki_log.h>
 
 using namespace KIGFX;
 

@@ -35,7 +35,7 @@
 #include <drc_rules_downgrade.h>
 #include <jobs/job_pcb_downgrade.h>
 #include <jobs/job_sch_downgrade.h>
-#include <kiway.h>
+#include <kiway_services.h>
 #include <libraries/library_table_parser.h>
 #include <project/project_file_downgrade.h>
 #include <wildcards_and_files_ext.h>
@@ -304,7 +304,7 @@ static wxString firstTooNewFile( const wxString& aDir, const DOWNGRADE_TARGET& a
 }
 
 
-bool ClassifyProjectForDowngrade( KIWAY& aKiway, const wxString& aProjectDir, const wxString& aProjectName,
+bool ClassifyProjectForDowngrade( KIWAY_SERVICES& aKiway, const wxString& aProjectDir, const wxString& aProjectName,
                                   const wxString& aTargetName, COMPATIBILITY_REPORT& aReport, wxString& aError,
                                   std::vector<wxString>* aFoundVariants, bool aDropInsteadOfApproximate,
                                   const wxString& aVariant )
@@ -424,7 +424,7 @@ bool ClassifyProjectForDowngrade( KIWAY& aKiway, const wxString& aProjectDir, co
 }
 
 
-bool ExportProjectForDowngrade( KIWAY& aKiway, const wxString& aProjectDir, const wxString& aProjectName,
+bool ExportProjectForDowngrade( KIWAY_SERVICES& aKiway, const wxString& aProjectDir, const wxString& aProjectName,
                                 const wxString& aTargetName, const wxString& aDestDir, wxString& aError,
                                 const wxString& aVariant, bool aDropInsteadOfApproximate )
 {

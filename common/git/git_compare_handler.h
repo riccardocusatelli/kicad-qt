@@ -26,6 +26,7 @@
 #include <wx/string.h>
 
 #include <vector>
+#include <core/ki_log.h>
 
 
 struct git_repository;

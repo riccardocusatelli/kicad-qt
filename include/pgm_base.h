@@ -249,6 +249,12 @@ public:
     // too late for the objects they contain.
     virtual void Destroy();
 
+    /// Asks the design block preload of the GUI to stop (PGM_GUI); nothing without the GUI.
+    virtual void CancelDesignBlockPreload() {}
+
+    /// Waits for the design block preload of the GUI to end (PGM_GUI); nothing without the GUI.
+    virtual void WaitForDesignBlockPreload() {}
+
     /// Records the code the application's run loop returned, which a fast exit still reports
     void SetRunResult( int aResult ) { m_runResult = aResult; }
 

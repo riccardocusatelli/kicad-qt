@@ -34,6 +34,7 @@
 
 #if wxUSE_GTKPRINT
 #include <wx/gtk/print.h>
+#include <core/ki_log.h>
 #endif
 
 namespace

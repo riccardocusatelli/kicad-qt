@@ -41,6 +41,7 @@
 #include <project/project_file.h>
 #include <advanced_config.h>
 #include <wx/debug.h>
+#include <core/ki_assert.h>
 
 const int bdsSchemaVersion = 4;
 

@@ -29,6 +29,14 @@
 #include <wx/strconv.h>
 
 #include <vector>
+/// The archive format (wxTarOutputStream): names that do not fit ustar go in pax headers
+/// with either value.
+enum wxTarFormat
+{
+    wxTAR_USTAR,
+    wxTAR_PAX
+};
+
 
 enum wxTarType
 {

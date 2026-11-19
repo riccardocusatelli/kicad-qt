@@ -29,6 +29,7 @@
 // Modules under test:
 #include <common/io/cadstar/cadstar_parts_lib_grammar.h>
 #include <common/io/cadstar/cadstar_parts_lib_parser.h>
+#include <core/ki_assert.h>
 
 
 BOOST_AUTO_TEST_SUITE( CadstarPartParser );

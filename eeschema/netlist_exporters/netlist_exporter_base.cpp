@@ -26,7 +26,7 @@
 #include <trace_helpers.h>
 #include <connection_graph.h>
 #include <kiface_services.h>
-#include <kiway.h>
+#include <kiway_services.h>
 #include <lib_id.h>
 #include <sch_pin.h>
 #include <sch_reference_list.h>

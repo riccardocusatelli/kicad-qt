@@ -265,14 +265,6 @@ public:
 
     bool ProcessJobConfigDialog( KIWAY_FACES::FACE_T aFace, JOB* aJob, wxWindow* aWindow );
 
-    bool ProcessApiOpenDocument( KIWAY_FACES::FACE_T aFace, const KIFACE::DOCUMENT_SPEC& aSpec,
-                                 KICAD_API_SERVER* aServer,
-                                 wxString* aError = nullptr );
-
-    bool ProcessApiCloseDocument( KIWAY_FACES::FACE_T aFace, const KIFACE::DOCUMENT_SPEC& aSpec,
-                                  KICAD_API_SERVER* aServer,
-                                  wxString* aError = nullptr );
-
     /**
      * Gets the window pointer to the blocking dialog (to send it signals)
      * @return Pointer to blocking dialog window or null if none

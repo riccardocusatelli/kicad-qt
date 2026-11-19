@@ -37,6 +37,7 @@
 #include <eda_3d_canvas.h>
 #include <project_pcb.h>
 #include <core/ki_assert.h>
+#include <core/ki_log.h>
 
 
 void RENDER_3D_OPENGL::addObjectTriangles( const FILLED_CIRCLE_2D*                aCircle,

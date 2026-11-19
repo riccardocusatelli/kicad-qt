@@ -40,6 +40,7 @@
 
 #include <wx/datetime.h>
 #include <wx/string.h>
+#include <core/ki_log.h>
 
 class LIBGIT_BACKEND;
 struct KIGIT_AUTH_ATTEMPT;

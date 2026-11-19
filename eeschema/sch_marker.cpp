@@ -30,7 +30,7 @@
 #include <erc/erc_settings.h>
 #include <sch_marker.h>
 #include <schematic.h>
-#include <widgets/wx_data_view_hyperlink_renderer.h>
+#include <hyperlink_markup.h>
 #include <pgm_base.h>
 #include <settings/settings_manager.h>
 #include <settings/color_settings.h>
@@ -146,7 +146,7 @@ void SCH_MARKER::ToProto( kiapi::schematic::ErcMarker& aMsg, const SCH_MARKER& a
             aMsg.add_items()->set_value( id.AsStdString() );
     }
 
-    aMsg.set_description( HYPERLINK_DV_RENDERER::StripMarkup( erc->GetErrorMessage( false ) ).ToUTF8() );
+    aMsg.set_description( HYPERLINK_MARKUP::StripMarkup( erc->GetErrorMessage( false ) ).ToUTF8() );
 
     if( schematic )
     {
@@ -399,7 +399,7 @@ const BOX2I SCH_MARKER::GetBoundingBox() const
 void SCH_MARKER::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<MSG_PANEL_ITEM>& aList )
 {
     aList.emplace_back( _( "Type" ), _( "Marker" ) );
-    aList.emplace_back( _( "Violation" ), HYPERLINK_DV_RENDERER::StripMarkup( m_rcItem->GetErrorMessage( true ) ) );
+    aList.emplace_back( _( "Violation" ), HYPERLINK_MARKUP::StripMarkup( m_rcItem->GetErrorMessage( true ) ) );
 
     switch( GetSeverity() )
     {

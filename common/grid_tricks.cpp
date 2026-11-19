@@ -36,6 +36,7 @@
 #include <widgets/ui_common.h>
 #include <search_stack.h>
 #include <widgets/grid_text_button_helpers.h>
+#include <core/ki_assert.h>
 
 // It works for table data on clipboard for an Excel spreadsheet,
 // why not us too for now.

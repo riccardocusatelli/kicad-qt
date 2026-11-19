@@ -58,6 +58,7 @@
 #include <wx/filename.h>
 #include <wx/log.h>
 #include <core/ki_assert.h>
+#include <core/ki_log.h>
 
 
 /**

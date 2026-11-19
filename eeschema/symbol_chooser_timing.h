@@ -16,6 +16,7 @@
 #include <chrono>
 #include <wx/string.h>
 #include <trace_helpers.h>
+#include <core/ki_log.h>
 
 namespace SYM_CHOOSER_TIMING
 {

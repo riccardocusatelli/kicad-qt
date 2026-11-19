@@ -211,6 +211,9 @@ class wxBufferedInputStream : public wxFilterInputStream
 public:
     explicit wxBufferedInputStream( wxInputStream& aStream ) : wxFilterInputStream( aStream ) {}
 
+    /// As wxWidgets; the buffer size is not used (the parent stream is read directly).
+    wxBufferedInputStream( wxInputStream& aStream, size_t ) : wxFilterInputStream( aStream ) {}
+
     bool         Eof() const override { return m_parent->Eof() && m_wbackPos >= m_wback.size(); }
     wxFileOffset GetLength() const override { return m_parent->GetLength(); }
 
@@ -228,6 +231,9 @@ class wxBufferedOutputStream : public wxFilterOutputStream
 {
 public:
     explicit wxBufferedOutputStream( wxOutputStream& aStream ) : wxFilterOutputStream( aStream ) {}
+
+    /// As wxWidgets; the buffer size is not used.
+    wxBufferedOutputStream( wxOutputStream& aStream, size_t ) : wxFilterOutputStream( aStream ) {}
 
 protected:
     size_t OnSysWrite( const void* aBuffer, size_t aSize ) override

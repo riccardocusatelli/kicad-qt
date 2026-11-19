@@ -53,6 +53,7 @@
 
 #include <api/api_utils.h>
 #include <api/api_enums.h>
+#include <core/ki_log.h>
 
 
 using namespace kiapi::common;

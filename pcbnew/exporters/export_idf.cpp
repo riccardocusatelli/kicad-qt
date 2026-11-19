@@ -45,6 +45,7 @@
 #include <exporters/export_idf.h>
 #include <base_units.h>     // to define pcbIUScale.FromMillimeter(x)
 #include <jobs/job_export_pcb_idf.h>
+#include <core/ki_assert.h>
 
 
 // assumed default graphical line thickness: == 0.1mm

@@ -47,6 +47,7 @@
 #include "router/router_preview_item.h"
 
 #include <geometry/shape_compound.h>
+#include <core/ki_log.h>
 
 class WX_SHAPE_TREE_ITEM_DATA : public wxClientData
 {

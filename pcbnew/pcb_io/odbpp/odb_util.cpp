@@ -36,6 +36,7 @@
 #include <pcb_track.h>
 #include "odb_defines.h"
 #include "pcb_io_odbpp.h"
+#include <core/ki_assert.h>
 
 namespace ODB
 {

@@ -109,6 +109,16 @@ public:
     /// The image rotated by 90 degrees.  The resolution is kept.
     RASTER_IMAGE Rotate90( bool aClockwise ) const;
 
+    /// The image rotated by 180 degrees.
+    RASTER_IMAGE Rotate180() const { return Mirror( true ).Mirror( false ); }
+
+    /**
+     * The image rotated by @a aRadians (counterclockwise on screen) about its centre, as
+     * wxImage::Rotate() with interpolation: the result is the bounding box of the rotated image,
+     * with an alpha channel, the pixels outside the source being transparent.
+     */
+    RASTER_IMAGE Rotate( double aRadians ) const;
+
     /**
      * The image scaled to @a aWidth x @a aHeight, by nearest neighbour (as wxImage::Rescale()
      * with the default quality).

@@ -112,7 +112,7 @@ static std::unique_ptr<SCHEMATIC> readSchematicFromFile( const std::string& aFil
 }
 
 
-bool GenerateSchematicNetlist( const wxString& aFilename, std::string& aNetlist, KIWAY* aKiway )
+bool GenerateSchematicNetlist( const wxString& aFilename, std::string& aNetlist, KIWAY_SERVICES* aKiway )
 {
     std::unique_ptr<SCHEMATIC> schematic = readSchematicFromFile( aFilename.ToStdString() );
 

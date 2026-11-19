@@ -468,7 +468,7 @@ BITMAP_BASE& REFERENCE_IMAGE::MutableImage() const
 void REFERENCE_IMAGE::PlotImage( PLOTTER* aPlotter, const VECTOR2I& aPos, const KIGFX::COLOR4D& aDefaultColor,
                                  int aDefaultPensize ) const
 {
-    const wxImage* image = m_bitmapBase->GetImageData();
+    const RASTER_IMAGE* image = m_bitmapBase->GetImageData();
 
     if( !image || !image->IsOk() )
         return;
@@ -487,8 +487,7 @@ void REFERENCE_IMAGE::PlotImage( PLOTTER* aPlotter, const VECTOR2I& aPos, const 
         return;
     }
 
-    // Avoid modifying the original image via the shared buffer.
-    wxImage turned = image->Copy();
+    RASTER_IMAGE turned = *image;
 
     if( angle == ANGLE_90 )
     {
@@ -504,12 +503,8 @@ void REFERENCE_IMAGE::PlotImage( PLOTTER* aPlotter, const VECTOR2I& aPos, const 
     }
     else if( !angle.IsZero() )
     {
-        // Avoid opaque corners after non-cardinal rotation
-        if( !turned.HasAlpha() )
-            turned.InitAlpha();
-
-        const wxPoint centerPoint( turned.GetWidth() / 2, turned.GetHeight() / 2 );
-        turned = turned.Rotate( angle.AsRadians(), centerPoint, true );
+        // Transparent corners after non-cardinal rotation
+        turned = turned.Rotate( angle.AsRadians() );
     }
 
     KI_CHECK_MSG( turned.IsOk(), /* void */, wxT( "Failed to rotate image" ) );

@@ -34,6 +34,8 @@ install( TARGETS eeschema_qt_kiface
 set( KIQT_EESCHEMA_GUI_SRCS
     annotate.cpp
     api/api_handler_sch.cpp
+    api/api_handler_sch_tasks.cpp
+    api/api_handler_symbol.cpp
     api/api_sch_utils.cpp
     bom_plugins.cpp
     bus-wire-junction.cpp

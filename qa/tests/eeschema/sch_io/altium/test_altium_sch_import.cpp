@@ -40,6 +40,7 @@
 #include <optional>
 #include <set>
 #include <vector>
+#include <core/ki_assert.h>
 
 
 namespace

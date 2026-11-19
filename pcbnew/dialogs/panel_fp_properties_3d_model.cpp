@@ -58,6 +58,7 @@
 #include <wx/filedlg.h>
 #include <wx/msgdlg.h>
 #include <wx/notebook.h>
+#include <core/ki_assert.h>
 
 enum MODELS_TABLE_COLUMNS
 {

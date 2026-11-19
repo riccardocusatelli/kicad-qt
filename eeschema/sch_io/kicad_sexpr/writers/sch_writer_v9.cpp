@@ -38,7 +38,7 @@ using namespace TSCHEMATIC_T;
 #include <schematic.h>
 #include <sch_bitmap.h>
 #include <sch_bus_entry.h>
-#include <sch_edit_frame.h> // SYMBOL_ORIENTATION_T
+#include <symbol.h> // SYMBOL_ORIENTATION_T
 #include <sch_junction.h>
 #include <sch_line.h>
 #include <sch_no_connect.h>
@@ -1154,9 +1154,9 @@ void SCH_WRITER_V9::saveBitmap( const SCH_BITMAP& aBitmap )
     const REFERENCE_IMAGE& refImage = aBitmap.GetReferenceImage();
     const BITMAP_BASE&     bitmapBase = refImage.GetImage();
 
-    const wxImage* image = bitmapBase.GetImageData();
+    const RASTER_IMAGE* image = bitmapBase.GetImageData();
 
-    wxCHECK_RET( image != nullptr, "wxImage* is NULL" );
+    wxCHECK_RET( image != nullptr, "no image data" );
 
     m_out->Print( "(image (at %s %s)",
                   EDA_UNIT_UTILS::FormatInternalUnits( schIUScale, refImage.GetPosition().x ).c_str(),

@@ -27,7 +27,10 @@
 #include <wx/string.h>
 
 #include <kiface_ids.h>
-#include <kiway.h>
+#include <kiface.h>
+
+class KIWAY;
+class KIWAY_SERVICES;
 
 class FOOTPRINT_LIBRARY_ADAPTER;
 class PROJECT;
@@ -73,7 +76,7 @@ using KIFACE_SYMBOLS_LOAD_PROGRESS_SERVICE =
         KIFACE_SERVICE<KIFACE_SYMBOLS_LOAD_PROGRESS, float (*)()>;
 
 using KIFACE_NETLIST_SCHEMATIC_SERVICE =
-        KIFACE_SERVICE<KIFACE_NETLIST_SCHEMATIC, bool (*)( const wxString&, std::string&, KIWAY* )>;
+        KIFACE_SERVICE<KIFACE_NETLIST_SCHEMATIC, bool (*)( const wxString&, std::string&, KIWAY_SERVICES* )>;
 
 using KIFACE_MERGE_DOCUMENT_SERVICE =
         KIFACE_SERVICE<KIFACE_MERGE_DOCUMENT, int (*)( int, const wxString&, const wxString&,

@@ -25,6 +25,7 @@
 
 #include <wx/crt.h>
 #include <wx/string.h>
+#include <wx/translation.h>
 
 #include <string>
 

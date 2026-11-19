@@ -59,6 +59,7 @@
 
 #include "pcb_test_frame.h"
 #include "pcb_test_selection_tool.h"
+#include <core/ki_log.h>
 
 using namespace KIGFX;
 

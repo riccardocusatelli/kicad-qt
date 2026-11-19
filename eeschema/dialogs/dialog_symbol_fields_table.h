@@ -28,7 +28,6 @@
 #include <sch_reference_list.h>
 #include <schematic.h>
 #include <symbol_fields_data_model.h>
-#include <fields_editor_grid_data_model.h>
 
 wxDECLARE_EVENT( EDA_EVT_CLOSE_DIALOG_SYMBOL_FIELDS_TABLE, wxCommandEvent );
 

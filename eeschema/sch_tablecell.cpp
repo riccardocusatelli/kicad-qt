@@ -31,6 +31,7 @@
 
 #include <api/api_utils.h>
 #include <api/schematic/schematic_types.pb.h>
+#include <core/ki_assert.h>
 
 
 SCH_TABLECELL::SCH_TABLECELL( int aLineWidth, FILL_T aFillType ) :

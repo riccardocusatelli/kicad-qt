@@ -62,6 +62,40 @@ public:
 
     /// The common settings have changed: tell every participant.
     virtual void CommonSettingsChanged( int aFlags = 0 ) = 0;
+
+    /// Open the document @a aSpec in the KIFACE @a aFace for the API server @a aServer.
+    bool ProcessApiOpenDocument( FACE_T aFace, const KIFACE::DOCUMENT_SPEC& aSpec,
+                                 KICAD_API_SERVER* aServer, wxString* aError = nullptr )
+    {
+        KIFACE* kiface = KiFACE( aFace );
+
+        if( !kiface )
+        {
+            if( aError )
+                *aError = wxS( "Failed to load requested face" );
+
+            return false;
+        }
+
+        return kiface->HandleApiOpenDocument( aSpec, aServer, aError );
+    }
+
+    /// Close the document @a aSpec that the API server @a aServer opened in the KIFACE @a aFace.
+    bool ProcessApiCloseDocument( FACE_T aFace, const KIFACE::DOCUMENT_SPEC& aSpec,
+                                  KICAD_API_SERVER* aServer, wxString* aError = nullptr )
+    {
+        KIFACE* kiface = KiFACE( aFace );
+
+        if( !kiface )
+        {
+            if( aError )
+                *aError = wxS( "Failed to load requested face" );
+
+            return false;
+        }
+
+        return kiface->HandleApiCloseDocument( aSpec, aServer, aError );
+    }
 };
 
 #endif // KIWAY_SERVICES_H

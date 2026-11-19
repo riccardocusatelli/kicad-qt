@@ -32,7 +32,7 @@
 
 class LIB_ID;
 class LIBRARY_MANAGER_ADAPTER;
-class KIWAY;
+class KIWAY_SERVICES;
 struct KIFACE;
 class PROJECT;
 
@@ -50,7 +50,7 @@ public:
 
     ~API_HANDLER_LIBRARIES() override;
 
-    void SetKiway( KIWAY* aKiway ) { m_kiway = aKiway; }
+    void SetKiway( KIWAY_SERVICES* aKiway ) { m_kiway = aKiway; }
 
     /// Set a callback to register the handler on the API server in headless mode
     void SetLibraryHandlerRegistrar( std::function<void( KIFACE* )> aRegistrar )
@@ -94,7 +94,7 @@ private:
     LIBRARY_TABLE_TYPE m_type;
 
     /// Used to lazily load kifaces for LoadAllLibraries in headless; null in GUI mode.
-    KIWAY* m_kiway = nullptr;
+    KIWAY_SERVICES* m_kiway = nullptr;
 
     /// Invoked with a lazily-loaded KIFACE so its handlers can be registered on the server.
     std::function<void( KIFACE* )> m_handlerRegisterCallback;

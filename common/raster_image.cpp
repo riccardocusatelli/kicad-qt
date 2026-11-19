@@ -19,6 +19,8 @@
 
 #include <raster_image.h>
 
+#include <algorithm>
+
 #include <cmath>
 #include <csetjmp>
 #include <cstdio>
@@ -358,6 +360,95 @@ RASTER_IMAGE RASTER_IMAGE::Rotate90( bool aClockwise ) const
 
             if( HasAlpha() )
                 result.m_data->alpha[dst] = m_data->alpha[src];
+        }
+    }
+
+    return result;
+}
+
+
+RASTER_IMAGE RASTER_IMAGE::Rotate( double aRadians ) const
+{
+    RASTER_IMAGE result;
+
+    if( !IsOk() )
+        return result;
+
+    const int    w = m_data->width;
+    const int    h = m_data->height;
+    const double c = std::cos( aRadians );
+    const double s = std::sin( aRadians );
+    const int    rw = std::max( 1, (int) std::ceil( std::abs( w * c ) + std::abs( h * s ) - 1e-6 ) );
+    const int    rh = std::max( 1, (int) std::ceil( std::abs( w * s ) + std::abs( h * c ) - 1e-6 ) );
+
+    result = RASTER_IMAGE( rw, rh );
+    result.InitAlpha();
+    result.SetResolution( GetResolutionX(), GetResolutionY() );
+    result.SetType( GetType() );
+
+    const double cx = w / 2.0;
+    const double cy = h / 2.0;
+    const double rcx = rw / 2.0;
+    const double rcy = rh / 2.0;
+
+    // Source pixel (as RGBA) with the pixels outside the image transparent
+    auto sample = [&]( int aX, int aY, double* aRgba )
+    {
+        if( aX < 0 || aY < 0 || aX >= w || aY >= h )
+        {
+            aRgba[0] = aRgba[1] = aRgba[2] = aRgba[3] = 0.0;
+            return;
+        }
+
+        const size_t i = (size_t) aY * w + aX;
+
+        for( int k = 0; k < 3; ++k )
+            aRgba[k] = m_data->rgb[i * 3 + k];
+
+        aRgba[3] = HasAlpha() ? m_data->alpha[i] : 255.0;
+
+        if( HasMask() && m_data->rgb[i * 3] == GetMaskRed() && m_data->rgb[i * 3 + 1] == GetMaskGreen()
+            && m_data->rgb[i * 3 + 2] == GetMaskBlue() )
+        {
+            aRgba[3] = 0.0;
+        }
+    };
+
+    for( int y = 0; y < rh; ++y )
+    {
+        for( int x = 0; x < rw; ++x )
+        {
+            // Inverse rotation of the centre of the destination pixel
+            const double dx = x + 0.5 - rcx;
+            const double dy = y + 0.5 - rcy;
+            const double sx = dx * c - dy * s + cx - 0.5;
+            const double sy = dx * s + dy * c + cy - 0.5;
+            const int    x0 = (int) std::floor( sx );
+            const int    y0 = (int) std::floor( sy );
+            const double fx = sx - x0;
+            const double fy = sy - y0;
+
+            double p00[4], p10[4], p01[4], p11[4];
+            sample( x0, y0, p00 );
+            sample( x0 + 1, y0, p10 );
+            sample( x0, y0 + 1, p01 );
+            sample( x0 + 1, y0 + 1, p11 );
+
+            const double w00 = ( 1 - fx ) * ( 1 - fy ) * p00[3];
+            const double w10 = fx * ( 1 - fy ) * p10[3];
+            const double w01 = ( 1 - fx ) * fy * p01[3];
+            const double w11 = fx * fy * p11[3];
+            const double alpha = w00 + w10 + w01 + w11;
+            const size_t d = (size_t) y * rw + x;
+
+            for( int k = 0; k < 3; ++k )
+            {
+                double v = alpha > 0 ? ( p00[k] * w00 + p10[k] * w10 + p01[k] * w01 + p11[k] * w11 ) / alpha
+                                     : 0.0;
+                result.m_data->rgb[d * 3 + k] = (unsigned char) std::clamp( std::lround( v ), 0L, 255L );
+            }
+
+            result.m_data->alpha[d] = (unsigned char) std::clamp( std::lround( alpha ), 0L, 255L );
         }
     }
 

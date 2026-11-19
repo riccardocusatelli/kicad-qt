@@ -43,6 +43,7 @@
 #include <wx/log.h>
 
 #include <toolbars_footprint_editor.h>
+#include <core/ki_log.h>
 
 std::optional<TOOLBAR_CONFIGURATION> FOOTPRINT_EDIT_TOOLBAR_SETTINGS::DefaultToolbarConfig( TOOLBAR_LOC aToolbar )
 {

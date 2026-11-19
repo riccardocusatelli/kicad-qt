@@ -35,6 +35,7 @@
 #ifndef __WINDOWS__
 #include <climits>
 #include <cstdlib>
+#include <core/ki_log.h>
 #endif
 
 namespace KIGIT

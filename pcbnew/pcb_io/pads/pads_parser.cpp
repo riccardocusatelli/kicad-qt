@@ -29,6 +29,7 @@
 #include <limits>
 #include <wx/log.h>
 #include <trace_helpers.h>
+#include <core/ki_log.h>
 
 namespace PADS_IO
 {

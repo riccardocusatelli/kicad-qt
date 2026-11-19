@@ -55,6 +55,7 @@
 #include <string_utils.h>
 #include <trace_helpers.h>
 #include <core/ki_assert.h>
+#include <core/ki_log.h>
 
 
 void FEATURES_MANAGER::AddFeatureLine( const VECTOR2I& aStart, const VECTOR2I& aEnd,

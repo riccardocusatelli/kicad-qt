@@ -24,7 +24,6 @@
 #include <common.h>
 #include <pgm_base.h>
 #include <kiface_base.h>
-#include <kiway_player.h>
 #include <cli/exit_codes.h>
 #include <sch_plotter.h>
 #include <drawing_sheet/ds_proxy_view_item.h>
@@ -100,7 +99,7 @@
 #include <netlist_exporter_pads.h>
 #include <netlist_exporter_allegro.h>
 
-#include <symbol_fields_data_model.h>
+#include <fields_data_model.h>
 
 #include <project_sch.h>
 
@@ -2520,13 +2519,9 @@ int EESCHEMA_JOBS_HANDLER::JobImport( JOB* aJob )
                                   *m_reporter );
 
         // Recompute connectivity so instance data is valid before saving, as importFile() does.
-        std::unique_ptr<TOOL_MANAGER> toolManager = std::make_unique<TOOL_MANAGER>();
-        toolManager->SetEnvironment( schematic.get(), nullptr, nullptr, Kiface().KifaceSettings(),
-                                     nullptr );
-
         {
-            SCH_COMMIT dummyCommit( toolManager.get() );
-            schematic->RecalculateConnections( &dummyCommit, GLOBAL_CLEANUP, toolManager.get() );
+            SCH_COMMIT dummyCommit;
+            schematic->RecalculateConnections( &dummyCommit, GLOBAL_CLEANUP );
             dummyCommit.Push( _( "Schematic Cleanup" ), SKIP_UNDO | SKIP_CONNECTIVITY | DELETE_REMOVED_ITEMS );
         }
 
@@ -2909,12 +2904,14 @@ int EESCHEMA_JOBS_HANDLER::JobSymDiff( JOB* aJob )
 // JobOpenDiffDialog: load two on-disk files and open DIALOG_KICAD_DIFF.
 // Dispatched from the project manager / PR-review dialog via KIWAY.
 // ============================================================================
+#include <diff_merge/sch_geometry_extractor.h>
+#include <jobs/scratch_doc.h>
+
+#ifndef KICAD_WX_FREE
 #include <dialogs/dialog_kicad_diff.h>
 #include <diff_merge/sch_diff_canvas_context.h>
 #include <diff_merge/sym_diff_canvas_context.h>
 #include <widgets/widget_diff_canvas.h>
-#include <diff_merge/sch_geometry_extractor.h>
-#include <jobs/scratch_doc.h>
 
 
 // Both schematics of a diff, kept while the caller draws them.
@@ -3165,6 +3162,25 @@ int EESCHEMA_JOBS_HANDLER::OpenDiffDialog( KICAD_DIFF::DOC_KIND aKind, const wxS
         return CLI::EXIT_CODES::ERR_ARGS;
     }
 }
+#else
+
+KICAD_DIFF::DIFF_CANVAS_CONTEXT*
+EESCHEMA_JOBS_HANDLER::AttachDiffCanvases( KICAD_DIFF::DOC_KIND, const wxString&, const wxString&, WIDGET_DIFF_CANVAS*,
+                                  WIDGET_DIFF_CANVAS*, KICAD_DIFF::DOCUMENT_DIFF&, REPORTER* )
+{
+    return nullptr;
+}
+
+
+int EESCHEMA_JOBS_HANDLER::OpenDiffDialog( KICAD_DIFF::DOC_KIND, const wxString&, const wxString&, const wxString&,
+                             const wxString&, wxWindow*, REPORTER* aReporter )
+{
+    REPORTER& reporter = aReporter ? *aReporter : *m_reporter;
+    reporter.Report( _( "The diff viewer is not available in this build\n" ), RPT_SEVERITY_ERROR );
+    return CLI::EXIT_CODES::ERR_ARGS;
+}
+
+#endif
 
 
 // ============================================================================
@@ -3172,7 +3188,9 @@ int EESCHEMA_JOBS_HANDLER::OpenDiffDialog( KICAD_DIFF::DOC_KIND aKind, const wxS
 // ============================================================================
 #include <diff_merge/auto_resolution.h>
 #include <diff_merge/sch_merge_applier.h>
+#ifndef KICAD_WX_FREE
 #include <dialogs/dialog_kicad_merge_3way.h>
+#endif
 #include <jobs/scratch_doc.h>
 
 
@@ -3248,6 +3266,7 @@ int EESCHEMA_JOBS_HANDLER::runSchMerge( const wxString& aAncestor, const wxStrin
 
     if( aInteractive && !KICAD_DIFF::BuildConflictList( plan ).empty() )
     {
+#ifndef KICAD_WX_FREE
         if( !DIALOG_KICAD_MERGE_3WAY::CanOpen( *m_reporter ) )
             return CLI::EXIT_CODES::ERR_ARGS;
 
@@ -3340,6 +3359,10 @@ int EESCHEMA_JOBS_HANDLER::runSchMerge( const wxString& aAncestor, const wxStrin
             return CLI::EXIT_CODES::ERR_CANCELLED;
 
         plan = dlg.GetResolvedPlan();
+#else
+        m_reporter->Report( _( "Interactive merge is not available in this build\n" ), RPT_SEVERITY_ERROR );
+        return CLI::EXIT_CODES::ERR_ARGS;
+#endif
     }
 
     // Snapshot of the plan before the applier moves it; drives the
@@ -3649,6 +3672,7 @@ int EESCHEMA_JOBS_HANDLER::runSymLibMerge( const wxString& aAncestor, const wxSt
 
     if( aInteractive && !KICAD_DIFF::BuildConflictList( plan ).empty() )
     {
+#ifndef KICAD_WX_FREE
         if( !DIALOG_KICAD_MERGE_3WAY::CanOpen( *m_reporter ) )
             return CLI::EXIT_CODES::ERR_ARGS;
 
@@ -3683,6 +3707,10 @@ int EESCHEMA_JOBS_HANDLER::runSymLibMerge( const wxString& aAncestor, const wxSt
 
         plan = dlg.GetResolvedPlan();
         userDecided = true;
+#else
+        m_reporter->Report( _( "Interactive merge is not available in this build\n" ), RPT_SEVERITY_ERROR );
+        return CLI::EXIT_CODES::ERR_ARGS;
+#endif
     }
 
     const KICAD_DIFF::MERGE_PLAN planSnapshot = plan;

@@ -37,6 +37,7 @@
 #include <math/vector2d.h>
 #include <io/cadstar/cadstar_archive_objects.h>
 #include <trace_helpers.h>
+#include <core/ki_log.h>
 
 // THROW_IO_ERROR definitions to ensure consistent wording is used in the error messages
 

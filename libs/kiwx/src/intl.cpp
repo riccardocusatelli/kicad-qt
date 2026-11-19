@@ -79,6 +79,7 @@ const LANGUAGE s_languages[] = {
     { wxLANGUAGE_ITALIAN,              L"it_IT", L"Italian",               wxLayout_LeftToRight },
     { wxLANGUAGE_JAPANESE,             L"ja_JP", L"Japanese",              wxLayout_LeftToRight },
     { wxLANGUAGE_KOREAN,               L"ko_KR", L"Korean",                wxLayout_LeftToRight },
+    { wxLANGUAGE_LAOTHIAN,             L"lo_LA", L"Laothian",              wxLayout_LeftToRight },
     { wxLANGUAGE_LATVIAN,              L"lv_LV", L"Latvian",               wxLayout_LeftToRight },
     { wxLANGUAGE_LITHUANIAN,           L"lt_LT", L"Lithuanian",            wxLayout_LeftToRight },
     { wxLANGUAGE_NORWEGIAN_BOKMAL,     L"nb_NO", L"Norwegian (Bokmal)",    wxLayout_LeftToRight },

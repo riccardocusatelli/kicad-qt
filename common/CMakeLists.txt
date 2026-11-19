@@ -299,6 +299,7 @@ set( KICOMMON_MODEL_SRCS
     increment.cpp
     json_conversions.cpp
     json_schema_validator.cpp
+    hyperlink_markup.cpp
     jumper_group.cpp
     kiid.cpp
     ki_error.cpp

@@ -68,6 +68,7 @@
 #include <core/mirror.h>
 #include <trace_helpers.h>
 #include <core/ki_assert.h>
+#include <core/ki_log.h>
 
 
 static const wxString QUERY_MODEL_UUID_KEY = wxS( "JLC_3DModel_Q" );

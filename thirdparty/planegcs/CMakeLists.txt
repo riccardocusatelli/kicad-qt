@@ -25,3 +25,9 @@ target_include_directories( planegcs
 target_link_libraries( planegcs PUBLIC eigen Boost::headers )
 
 target_compile_features( planegcs PUBLIC cxx_std_20 )
+
+# GCC 13 crashes (internal compiler error in the Eigen block evaluators) when -Wmismatched-tags
+# checks the Eigen templates of GCS.h, in planegcs and in the code that includes it.
+if( CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 14 )
+    target_compile_options( planegcs PUBLIC -Wno-mismatched-tags )
+endif()

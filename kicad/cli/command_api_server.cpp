@@ -132,7 +132,7 @@ int CLI::API_SERVER_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
         case types::DOCTYPE_SYMBOL:     return KIWAY_FACES::FACE_SCH;
         case types::DOCTYPE_PCB:        return KIWAY_FACES::FACE_PCB;
         case types::DOCTYPE_FOOTPRINT:  return KIWAY_FACES::FACE_PCB;
-        default:                        return KIWAY::KIWAY_FACE_COUNT;
+        default:                        return KIWAY_FACES::KIWAY_FACE_COUNT;
         }
     };
 
@@ -359,7 +359,7 @@ int CLI::API_SERVER_COMMAND::doPerform( KIWAY_SERVICES& aKiway )
 
         KIWAY_FACES::FACE_T face = faceForDocument( requestType );
 
-        if( face == KIWAY::KIWAY_FACE_COUNT )
+        if( face == KIWAY_FACES::KIWAY_FACE_COUNT )
         {
             ApiResponseStatus e;
             e.set_status( ApiStatusCode::AS_BAD_REQUEST );

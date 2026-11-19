@@ -31,6 +31,7 @@
 #include <plotters/pdf_stroke_font.h>
 #include <plotters/pdf_outline_font.h>
 #include <math/vector3.h>
+#include <core/ki_assert.h>
 
 namespace MARKUP { struct NODE; }
 

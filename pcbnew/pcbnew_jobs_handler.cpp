@@ -145,6 +145,11 @@
 #include <locale_io.h>
 #include <core/ki_assert.h>
 #include <kiway_services.h>
+#include <kictl_flags.h>
+#include <mail_type.h>
+#ifndef KICAD_WX_FREE
+#include <footprint_fields_data_model.h>
+#endif
 #include <base_screen.h>
 
 
@@ -380,6 +385,10 @@ LSEQ PCBNEW_JOBS_HANDLER::convertLayerArg( wxString& aLayerString, BOARD* aBoard
 
 int PCBNEW_JOBS_HANDLER::JobExportBom( JOB* aJob )
 {
+#ifdef KICAD_WX_FREE
+    m_reporter->Report( _( "Exporting a BOM from a board is not available in this build\n" ), RPT_SEVERITY_ERROR );
+    return CLI::EXIT_CODES::ERR_ARGS;
+#else
     JOB_EXPORT_BOM* aBomJob = dynamic_cast<JOB_EXPORT_BOM*>( aJob );
 
     KI_CHECK( aBomJob, CLI::EXIT_CODES::ERR_UNKNOWN );
@@ -743,6 +752,7 @@ int PCBNEW_JOBS_HANDLER::JobExportBom( JOB* aJob )
     }
 
     return CLI::EXIT_CODES::OK;
+#endif
 }
 
 
@@ -4077,9 +4087,11 @@ int PCBNEW_JOBS_HANDLER::JobDiff( JOB* aJob )
 #include <diff_merge/pcb_merge_applier.h>
 #include <diff_merge/auto_resolution.h>
 #include <diff_merge/kicad_merge_engine.h>
+#ifndef KICAD_WX_FREE
 #include <diff_merge/pcb_diff_canvas_context.h>
 #include <dialogs/dialog_kicad_merge_3way.h>
 #include <widgets/widget_diff_canvas.h>
+#endif
 
 
 int PCBNEW_JOBS_HANDLER::RunMerge( KICAD_DIFF::DOC_KIND aKind, const wxString& aAncestor,
@@ -4145,6 +4157,7 @@ int PCBNEW_JOBS_HANDLER::runPcbMerge( const wxString& aAncestor, const wxString&
 
     if( aInteractive && !KICAD_DIFF::BuildConflictList( plan ).empty() )
     {
+#ifndef KICAD_WX_FREE
         if( !DIALOG_KICAD_MERGE_3WAY::CanOpen( *m_reporter ) )
             return CLI::EXIT_CODES::ERR_ARGS;
 
@@ -4211,6 +4224,10 @@ int PCBNEW_JOBS_HANDLER::runPcbMerge( const wxString& aAncestor, const wxString&
             return CLI::EXIT_CODES::ERR_CANCELLED;
 
         plan = dlg.GetResolvedPlan();
+#else
+        m_reporter->Report( _( "Interactive merge is not available in this build\n" ), RPT_SEVERITY_ERROR );
+        return CLI::EXIT_CODES::ERR_ARGS;
+#endif
     }
 
     // Snapshot of the plan before the applier moves it; drives the
@@ -4493,11 +4510,13 @@ int PCBNEW_JOBS_HANDLER::JobFpDiff( JOB* aJob )
 // JobOpenDiffDialog: load two on-disk files and open DIALOG_KICAD_DIFF.
 // Dispatched from the project manager / PR-review dialog via KIWAY.
 // ============================================================================
+#include <diff_merge/pcb_geometry_extractor.h>
+#include <jobs/scratch_doc.h>
+
+#ifndef KICAD_WX_FREE
 #include <dialogs/dialog_kicad_diff.h>
 #include <diff_merge/pcb_diff_canvas_context.h>
 #include <widgets/widget_diff_canvas.h>
-#include <diff_merge/pcb_geometry_extractor.h>
-#include <jobs/scratch_doc.h>
 
 
 // Both boards of a diff, kept while the caller draws them.
@@ -4727,6 +4746,25 @@ int PCBNEW_JOBS_HANDLER::OpenDiffDialog( KICAD_DIFF::DOC_KIND aKind, const wxStr
 
     return CLI::EXIT_CODES::SUCCESS;
 }
+#else
+
+KICAD_DIFF::DIFF_CANVAS_CONTEXT*
+PCBNEW_JOBS_HANDLER::AttachDiffCanvases( KICAD_DIFF::DOC_KIND, const wxString&, const wxString&, WIDGET_DIFF_CANVAS*,
+                                  WIDGET_DIFF_CANVAS*, KICAD_DIFF::DOCUMENT_DIFF&, REPORTER* )
+{
+    return nullptr;
+}
+
+
+int PCBNEW_JOBS_HANDLER::OpenDiffDialog( KICAD_DIFF::DOC_KIND, const wxString&, const wxString&, const wxString&,
+                             const wxString&, wxWindow*, REPORTER* aReporter )
+{
+    REPORTER& reporter = aReporter ? *aReporter : *m_reporter;
+    reporter.Report( _( "The diff viewer is not available in this build\n" ), RPT_SEVERITY_ERROR );
+    return CLI::EXIT_CODES::ERR_ARGS;
+}
+
+#endif
 
 
 // ============================================================================
@@ -4840,6 +4878,7 @@ int PCBNEW_JOBS_HANDLER::runFpLibMerge( const wxString& aAncestor, const wxStrin
 
     if( aInteractive && !KICAD_DIFF::BuildConflictList( plan ).empty() )
     {
+#ifndef KICAD_WX_FREE
         if( !DIALOG_KICAD_MERGE_3WAY::CanOpen( *m_reporter ) )
             return CLI::EXIT_CODES::ERR_ARGS;
 
@@ -4873,6 +4912,10 @@ int PCBNEW_JOBS_HANDLER::runFpLibMerge( const wxString& aAncestor, const wxStrin
             return CLI::EXIT_CODES::ERR_CANCELLED;
 
         plan = dlg.GetResolvedPlan();
+#else
+        m_reporter->Report( _( "Interactive merge is not available in this build\n" ), RPT_SEVERITY_ERROR );
+        return CLI::EXIT_CODES::ERR_ARGS;
+#endif
     }
 
     const KICAD_DIFF::MERGE_PLAN planSnapshot = plan;

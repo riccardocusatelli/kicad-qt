@@ -21,6 +21,7 @@
 
 #include <wx/tokenzr.h>
 #include <api/api_utils.h>
+#include <core/ki_assert.h>
 
 
 std::vector<SEARCH_TERM>& DESIGN_BLOCK::GetSearchTerms()

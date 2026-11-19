@@ -887,6 +887,7 @@ void PANEL_DRC_RULE_EDITOR::onSyntaxHelp( wxHyperlinkEvent& aEvent )
 
     t =
 #include "dialogs/panel_setup_rules_help_10documentation.h"
+#include <core/ki_assert.h>
             ;
     msg.emplace_back( t );
 

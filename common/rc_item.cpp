@@ -18,7 +18,7 @@
  */
 
 
-#include <widgets/wx_data_view_hyperlink_renderer.h>
+#include <hyperlink_markup.h>
 #include <marker_base.h>
 #include <rc_item.h>
 #include <rc_json_schema.h>
@@ -108,8 +108,8 @@ wxString RC_ITEM::ShowReport( UNITS_PROVIDER* aUnitsProvider, SEVERITY aSeverity
     EDA_ITEM* mainItem = aResolver.ResolveItemById( GetMainItemID() );
     EDA_ITEM* auxItem = aResolver.ResolveItemById( GetAuxItemID() );
 
-    wxString errorMessage = HYPERLINK_DV_RENDERER::StripMarkup( GetErrorMessage( false ) );
-    wxString ruleDesc = HYPERLINK_DV_RENDERER::StripMarkup( GetViolatingRuleDesc( false ) );
+    wxString errorMessage = HYPERLINK_MARKUP::StripMarkup( GetErrorMessage( false ) );
+    wxString ruleDesc = HYPERLINK_MARKUP::StripMarkup( GetViolatingRuleDesc( false ) );
 
     // Note: some customers machine-process these.  So:
     // 1) don't translate
@@ -148,7 +148,7 @@ void RC_ITEM::GetJsonViolation( RC_JSON::VIOLATION& aViolation, UNITS_PROVIDER* 
                                 const RC_ITEM_RESOLVER& aResolver ) const
 {
     aViolation.severity = getSeverityString( aSeverity );
-    aViolation.description = HYPERLINK_DV_RENDERER::StripMarkup( GetErrorMessage( false ) );
+    aViolation.description = HYPERLINK_MARKUP::StripMarkup( GetErrorMessage( false ) );
     aViolation.type = GetSettingsKey();
 
     if( m_parent && m_parent->IsTreatedAsExcluded() )

@@ -29,7 +29,7 @@
 #include <build_version.h>
 #include <drc/drc_item.h>
 #include <locale_io.h>
-#include <widgets/wx_data_view_hyperlink_renderer.h>
+#include <hyperlink_markup.h>
 #include <macros.h>
 #include <json_common.h>
 #include <pcb_marker.h>
@@ -125,7 +125,7 @@ bool DRC_REPORT::WriteTextReport( const wxString& aFullFileName )
 
         if( code > 0 && bds.Ignore( code ) )
         {
-            fprintf( fp, "    - %s\n", TO_UTF8( HYPERLINK_DV_RENDERER::StripMarkup( item.get().GetErrorMessage( false ) ) ) );
+            fprintf( fp, "    - %s\n", TO_UTF8( HYPERLINK_MARKUP::StripMarkup( item.get().GetErrorMessage( false ) ) ) );
             hasIgnored = true;
         }
     }
@@ -236,7 +236,7 @@ bool DRC_REPORT::WriteJsonReport( const wxString& aFullFileName )
         {
             RC_JSON::IGNORED_CHECK ignoredCheck;
             ignoredCheck.key = item.get().GetSettingsKey();
-            ignoredCheck.description = HYPERLINK_DV_RENDERER::StripMarkup( item.get().GetErrorMessage( false ) );
+            ignoredCheck.description = HYPERLINK_MARKUP::StripMarkup( item.get().GetErrorMessage( false ) );
             reportHead.ignored_checks.push_back( ignoredCheck );
         }
     }

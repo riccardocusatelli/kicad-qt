@@ -37,6 +37,7 @@
 #include <pcb_shape.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
+#include <core/ki_assert.h>
 
 
 PCB_TARGET::PCB_TARGET( BOARD_ITEM* aParent ) :

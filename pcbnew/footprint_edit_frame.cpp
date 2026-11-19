@@ -103,6 +103,7 @@
 #include <wx/hyperlink.h>
 #include <wx/log.h>
 #include <core/ki_assert.h>
+#include <core/ki_log.h>
 
 FOOTPRINT_EDIT_FRAME::FOOTPRINT_EDIT_FRAME( KIWAY* aKiway, TOOLKIT_WINDOW* aParent ) :
         PCB_BASE_EDIT_FRAME( aKiway, aParent, FRAME_FOOTPRINT_EDITOR, _( "Footprint Editor" ), wxDefaultPosition,

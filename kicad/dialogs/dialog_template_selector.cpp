@@ -45,6 +45,7 @@
 #include <project_tree_traverser.h>
 #include "template_default_html.h"
 #include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 
 static const wxChar* traceTemplateSelector = wxT( "KICAD_TEMPLATE_SELECTOR" );

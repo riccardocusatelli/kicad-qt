@@ -39,6 +39,7 @@
 #include <libraries/symbol_library_adapter.h>
 #include <widgets/wx_panel.h>
 #include <core/ki_assert.h>
+#include <core/ki_log.h>
 
 
 wxObjectDataPtr<LIB_TREE_MODEL_ADAPTER>

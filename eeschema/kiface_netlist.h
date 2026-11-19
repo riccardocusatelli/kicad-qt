@@ -36,6 +36,7 @@
  * This is the KIFACE_NETLIST_SCHEMATIC function of the Eeschema KIFACEs: Pcbnew uses it for
  * the DRC parity check when the schematic editor is not open.
  */
-class KIWAY;
+class KIWAY_SERVICES;
 
-bool GenerateSchematicNetlist( const wxString& aFilename, std::string& aNetlist, KIWAY* aKiway );
+bool GenerateSchematicNetlist( const wxString& aFilename, std::string& aNetlist,
+                              KIWAY_SERVICES* aKiway = nullptr );

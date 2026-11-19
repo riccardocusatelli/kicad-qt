@@ -30,6 +30,7 @@
 #include <pcbnew_settings.h>
 #include <settings/settings_manager.h>
 #include <settings/snap_settings.h>
+#include <core/ki_assert.h>
 
 
 class PNS_KICAD_IFACE_GENERATOR : public PNS_KICAD_IFACE

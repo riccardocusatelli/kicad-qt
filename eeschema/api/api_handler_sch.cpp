@@ -74,6 +74,7 @@
 #include <project_sch.h>
 #include <trace_helpers.h>
 #include <core/ki_assert.h>
+#include <core/ki_log.h>
 
 using namespace kiapi::common::commands;
 using kiapi::common::types::CommandStatus;

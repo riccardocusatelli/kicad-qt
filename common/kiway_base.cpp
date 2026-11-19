@@ -33,6 +33,7 @@
 #include <kiplatform/app.h>
 #include <kiplatform/environment.h>
 #include <paths.h>
+#include <reporter.h>
 #include <cli/exit_codes.h>
 #include <pgm_base.h>
 #include <settings/settings_manager.h>

@@ -30,7 +30,7 @@
 #include <wx/thread.h>
 #include <sch_connection.h>
 #include <string_utils.h>
-#include <widgets/msgpanel.h>
+#include <widgets/msgpanel_item.h>
 
 std::optional<wxString> SCH_CONNECTIVITY::AppendConnectionInfo(
         const SCH_ITEM& aItem, std::vector<MSG_PANEL_ITEM>& aList, const SCH_SHEET_PATH* aPath )

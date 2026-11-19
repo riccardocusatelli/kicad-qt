@@ -64,6 +64,15 @@ PGM_GUI::~PGM_GUI()
 
 void PGM_GUI::Destroy()
 {
+    // The preload reads the design block libraries, so it has to stop before they go
+    if( m_libraryPreloadReturn.valid() )
+    {
+        if( m_libraryPreloadInProgress.load() )
+            m_libraryPreloadAbort.store( true );
+
+        m_libraryPreloadReturn.wait();
+    }
+
     PGM_BASE::Destroy();
 
     if( m_glContextManager )

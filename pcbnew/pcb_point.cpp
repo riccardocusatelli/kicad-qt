@@ -41,6 +41,7 @@
 #include <view/view.h>
 #include <properties/property.h>
 #include <properties/property_mgr.h>
+#include <core/ki_assert.h>
 
 
 static const double DEFAULT_PT_SIZE_MM = 1.0;

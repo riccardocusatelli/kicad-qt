@@ -26,6 +26,7 @@
 #include <wx/debug.h>
 #include <core/ki_assert.h>
 #include <wx/log.h>
+#include <core/ki_log.h>
 
 
 GL_CONTEXT_MANAGER* GL_CONTEXT_MANAGER::Get()

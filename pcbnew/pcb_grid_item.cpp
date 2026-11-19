@@ -39,7 +39,7 @@
 #include <geometry/shape_circle.h>
 #include <geometry/shape_line_chain.h>
 #include <geometry/geometry_utils.h> // KIGEOM::BoxHitTest
-#include <eda_draw_frame.h>
+#include <widgets/msgpanel_item.h>
 #include <pcb_shape.h>
 #include <geometry/shape_null.h>
 #include <properties/property_mgr.h>

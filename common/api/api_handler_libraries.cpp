@@ -26,7 +26,7 @@
 #include <api/api_enums.h>
 #include <api/api_utils.h>
 #include <libraries/library_manager.h>
-#include <kiway.h>
+#include <kiway_services.h>
 #include <pgm_base.h>
 #include <settings/settings_manager.h>
 
@@ -349,7 +349,7 @@ API_HANDLER_LIBRARIES::handleLoadAllLibraries( const HANDLER_CONTEXT<LoadAllLibr
     {
         typesToLoad = { { LIBRARY_TABLE_TYPE::SYMBOL,       KIWAY_FACES::FACE_SCH },
                         { LIBRARY_TABLE_TYPE::FOOTPRINT,    KIWAY_FACES::FACE_PCB },
-                        { LIBRARY_TABLE_TYPE::DESIGN_BLOCK, KIWAY::KIWAY_FACE_COUNT } };
+                        { LIBRARY_TABLE_TYPE::DESIGN_BLOCK, KIWAY_FACES::KIWAY_FACE_COUNT } };
     }
     else
     {
@@ -362,7 +362,7 @@ API_HANDLER_LIBRARIES::handleLoadAllLibraries( const HANDLER_CONTEXT<LoadAllLibr
             {
             case LIBRARY_TABLE_TYPE::SYMBOL:        typesToLoad.emplace( type, KIWAY_FACES::FACE_SCH );         break;
             case LIBRARY_TABLE_TYPE::FOOTPRINT:     typesToLoad.emplace( type, KIWAY_FACES::FACE_PCB );         break;
-            case LIBRARY_TABLE_TYPE::DESIGN_BLOCK:  typesToLoad.emplace( type, KIWAY::KIWAY_FACE_COUNT ); break;
+            case LIBRARY_TABLE_TYPE::DESIGN_BLOCK:  typesToLoad.emplace( type, KIWAY_FACES::KIWAY_FACE_COUNT ); break;
 
             default:
             {
@@ -385,7 +385,7 @@ API_HANDLER_LIBRARIES::handleLoadAllLibraries( const HANDLER_CONTEXT<LoadAllLibr
         return tl::unexpected( e );
     }
 
-    KIWAY& kiway = *m_kiway;
+    KIWAY_SERVICES& kiway = *m_kiway;
     bool   error = false;
 
     for( const auto& [type, face] : typesToLoad )

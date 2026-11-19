@@ -27,7 +27,6 @@
 #include <fields_table_data_model.h>
 
 #include <symbol_library_manager.h>
-#include <fields_editor_grid_data_model.h>
 #include <core/ki_assert.h>
 
 

@@ -274,8 +274,6 @@ set( KICAD_WX_FREE_SOURCES_eeschema_kiface_objects
     BUILD/eeschema/dialogs/dialog_bom_cfg_keywords.cpp
     BUILD/eeschema/schematic_keywords.cpp
     eeschema/api/api_handler_sch_libraries.cpp
-    eeschema/api/api_handler_sch_tasks.cpp
-    eeschema/api/api_handler_symbol.cpp
     eeschema/api/headless_sch_context.cpp
     eeschema/api/headless_symbol_editor_context.cpp
     eeschema/api/sch_api_save.cpp
@@ -992,10 +990,7 @@ set( KICAD_WX_FREE_SOURCES_pcbnew_cli_kiface_iface
 
 set( KICAD_WX_FREE_SOURCES_pcbnew_kiface_objects
     BUILD/pcbnew/specctra_import_export/specctra_keywords.cpp
-    pcbnew/api/api_handler_board.cpp
-    pcbnew/api/api_handler_footprint.cpp
     pcbnew/api/api_handler_fp_libraries.cpp
-    pcbnew/api/api_handler_pcb_tasks.cpp
     pcbnew/api/headless_footprint_context.cpp
     pcbnew/board_loader.cpp
     pcbnew/board_stackup_manager/stackup_predefined_prms.cpp

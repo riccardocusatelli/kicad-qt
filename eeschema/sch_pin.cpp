@@ -52,6 +52,7 @@
 #include <sch_symbol.h>
 #include <sch_connection.h>
 #include <msg_panel_context.h>
+#include <schematic.h>
 
 wxString FormatStackedPinForDisplay( const wxString& aPinNumber, int aPinLength, int aTextSize, KIFONT::FONT* aFont,
                                      const KIFONT::METRICS& aFontMetrics )

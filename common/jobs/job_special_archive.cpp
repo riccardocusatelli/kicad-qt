@@ -35,4 +35,4 @@ wxString JOB_SPECIAL_ARCHIVE::GetDefaultDescription() const
 }
 
 
-REGISTER_JOB( special_archive, _HKI( "Special: Archive Project" ), KIWAY::KIWAY_FACE_COUNT, JOB_SPECIAL_ARCHIVE );
+REGISTER_JOB( special_archive, _HKI( "Special: Archive Project" ), KIWAY_FACES::KIWAY_FACE_COUNT, JOB_SPECIAL_ARCHIVE );

@@ -18,6 +18,7 @@
  */
 
 #include <widgets/wx_data_view_hyperlink_renderer.h>
+#include <hyperlink_markup.h>
 
 #include <wx/dcclient.h>
 #include <wx/settings.h>
@@ -27,45 +28,6 @@
 
 namespace
 {
-
-// Parse [label](url) starting at aStart
-bool tryParseMarkdown( const wxString& aText, size_t aStart, size_t& aEnd, wxString& aLabel, wxString& aHref )
-{
-    if( aStart >= aText.length() || aText[aStart] != '[' )
-        return false;
-
-    size_t labelEnd = aText.find( ']', aStart + 1 );
-
-    if( labelEnd == wxString::npos || labelEnd + 1 >= aText.length() || aText[labelEnd + 1] != '(' )
-        return false;
-
-    // Match balanced parens so URLs like "file:///foo (1).pdf" survive.
-    size_t hrefStart = labelEnd + 2;
-    size_t hrefEnd = wxString::npos;
-    int    depth = 1;
-
-    for( size_t i = hrefStart; i < aText.length(); ++i )
-    {
-        wxChar c = aText[i];
-
-        if( c == '(' )
-            ++depth;
-        else if( c == ')' && --depth == 0 )
-        {
-            hrefEnd = i;
-            break;
-        }
-    }
-
-    if( hrefEnd == wxString::npos )
-        return false;
-
-    aLabel = aText.SubString( aStart + 1, labelEnd - 1 );
-    aHref = aText.SubString( hrefStart, hrefEnd - 1 );
-    aEnd = hrefEnd + 1;
-    return true;
-}
-
 
 void layoutRuns( wxDC& aDC, std::vector<HYPERLINK_DV_RENDERER::RUN>& aRuns, int aX, int aY, int aHeight )
 {
@@ -84,89 +46,25 @@ void layoutRuns( wxDC& aDC, std::vector<HYPERLINK_DV_RENDERER::RUN>& aRuns, int 
 
 bool HYPERLINK_DV_RENDERER::IsSafeUrl( const wxString& aHref )
 {
-    wxString lower = aHref.Lower();
-    wxURI    uri( lower );
-
-    if( uri.GetScheme() == wxT( "http" ) || uri.GetScheme() == wxT( "https" ) )
-        return true;
-
-    if( uri.GetScheme() == wxT( "file" ) || lower.StartsWith( wxT( "\\\\" ) ) )
-    {
-        static const wxString blockedExtensions[] = { wxT( ".exe" ), wxT( ".com" ), wxT( ".bat" ), wxT( ".cmd" ),
-                                                      wxT( ".ps1" ), wxT( ".vbs" ), wxT( ".js" ),  wxT( ".jar" ),
-                                                      wxT( ".msi" ), wxT( ".scr" ), wxT( ".pif" ), wxT( ".lnk" ),
-                                                      wxT( ".hta" ) };
-
-        // The OS launches the decoded name, and Windows drops trailing dots and spaces.
-        wxString path = wxURI::Unescape( uri.GetPath() );
-
-        while( path.EndsWith( wxT( "." ) ) || path.EndsWith( wxT( " " ) ) )
-            path.RemoveLast();
-
-        for( const wxString& ext : blockedExtensions )
-        {
-            if( path.EndsWith( ext ) )
-                return false;
-        }
-
-        return true;
-    }
-
-    return false;
+    return HYPERLINK_MARKUP::IsSafeUrl( aHref );
 }
 
 
 wxString HYPERLINK_DV_RENDERER::StripMarkup( const wxString& aValue )
 {
-    std::vector<RUN> runs;
-    ParseRuns( aValue, runs );
-
-    wxString result;
-
-    for( const RUN& run : runs )
-        result += run.text;
-
-    return result;
+    return HYPERLINK_MARKUP::StripMarkup( aValue );
 }
 
 
 void HYPERLINK_DV_RENDERER::ParseRuns( const wxString& aValue, std::vector<RUN>& aRuns )
 {
+    std::vector<HYPERLINK_MARKUP::RUN> runs;
+    HYPERLINK_MARKUP::ParseRuns( aValue, runs );
+
     aRuns.clear();
 
-    size_t   pos = 0;
-    wxString plain;
-
-    while( pos < aValue.length() )
-    {
-        size_t   end = pos;
-        wxString label;
-        wxString href;
-
-        if( aValue[pos] == '[' && tryParseMarkdown( aValue, pos, end, label, href ) )
-        {
-            if( !plain.IsEmpty() )
-            {
-                aRuns.push_back( { plain, wxEmptyString, wxRect() } );
-                plain.clear();
-            }
-
-            if( IsSafeUrl( href ) )
-                aRuns.push_back( { label, href, wxRect() } );
-            else
-                aRuns.push_back( { label, wxEmptyString, wxRect() } );
-
-            pos = end;
-        }
-        else
-        {
-            plain += aValue[pos];
-            ++pos;
-        }
-    }
-
-    if( !plain.IsEmpty() )
-        aRuns.push_back( { plain, wxEmptyString, wxRect() } );
+    for( const HYPERLINK_MARKUP::RUN& run : runs )
+        aRuns.push_back( { run.text, run.href, wxRect() } );
 }
 
 

@@ -29,7 +29,7 @@
 class NETLIST_EXPORTER_PADS : public NETLIST_EXPORTER_BASE
 {
 public:
-    NETLIST_EXPORTER_PADS( SCHEMATIC* aSchematic, KIWAY* aKiway ) :
+    NETLIST_EXPORTER_PADS( SCHEMATIC* aSchematic, KIWAY_SERVICES* aKiway ) :
             NETLIST_EXPORTER_BASE( aSchematic, aKiway )
     {
     }

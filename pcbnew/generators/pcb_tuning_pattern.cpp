@@ -604,6 +604,269 @@ wxString PCB_TUNING_PATTERN::StatusMessage( PNS::MEANDER_PLACER_BASE::TUNING_STA
 
 void PCB_TUNING_PATTERN::GetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext,
                                           std::vector<MSG_PANEL_ITEM>& aList )
+{
+    wxString      msg;
+    NETINFO_ITEM* primaryNet = nullptr;
+    NETINFO_ITEM* coupledNet = nullptr;
+    PCB_TRACK*    primaryItem = nullptr;
+    PCB_TRACK*    coupledItem = nullptr;
+    NETCLASS*     netclass = nullptr;
+    int           width = 0;
+    bool          mixedWidth = false;
+
+    EDA_DATA_TYPE unitType = m_settings.m_isTimeDomain ? EDA_DATA_TYPE::TIME : EDA_DATA_TYPE::DISTANCE;
+
+    aList.emplace_back( _( "Type" ), GetFriendlyName() );
+
+    for( EDA_ITEM* member : GetItems() )
+    {
+        if( PCB_TRACK* track = dynamic_cast<PCB_TRACK*>( member ) )
+        {
+            if( !primaryNet )
+            {
+                primaryItem = track;
+                primaryNet = track->GetNet();
+            }
+            else if( !coupledNet && track->GetNet() != primaryNet )
+            {
+                coupledItem = track;
+                coupledNet = track->GetNet();
+            }
+
+            if( !netclass )
+                netclass = track->GetEffectiveNetClass();
+
+            if( track->IsType( { PCB_TRACE_T, PCB_ARC_T } ) )
+            {
+                if( !width )
+                    width = track->GetWidth();
+                else if( width != track->GetWidth() )
+                    mixedWidth = true;
+            }
+        }
+    }
+
+    if( coupledNet )
+    {
+        aList.emplace_back( _( "Nets" ), UnescapeString( primaryNet->GetNetname() )
+                                         + wxS( ", " )
+                                         + UnescapeString( coupledNet->GetNetname() ) );
+    }
+    else if( primaryNet )
+    {
+        aList.emplace_back( _( "Net" ), UnescapeString( primaryNet->GetNetname() ) );
+    }
+
+    if( netclass )
+        aList.emplace_back( _( "Resolved Netclass" ),
+                            UnescapeString( netclass->GetHumanReadableName() ) );
+
+    aList.emplace_back( _( "Layer" ), LayerMaskDescribe() );
+
+    // Show chain name if available
+    if( primaryNet && !primaryNet->GetNetChain().IsEmpty() )
+        aList.emplace_back( _( "Net Chain" ), primaryNet->GetNetChain() );
+
+    if( width && !mixedWidth )
+        aList.emplace_back( _( "Width" ), aContext->MessageTextFromValue( width ) );
+
+    BOARD*         board = GetBoard();
+    DRC_ENGINE*    drcEngine = board->GetDesignSettings().m_DRCEngine.get();
+    DRC_CONSTRAINT constraint;
+
+    // Display full track length (in Pcbnew)
+    if( board && primaryItem && primaryItem->GetNetCode() > 0 )
+    {
+        int    count = 0;
+        double trackLen = 0.0;
+        double lenPadToDie = 0.0;
+        double trackDelay = 0.0;
+        double delayPadToDie = 0.0;
+
+        std::tie( count, trackLen, lenPadToDie, trackDelay, delayPadToDie ) = board->GetTrackLength( *primaryItem );
+
+        if( coupledItem && coupledItem->GetNetCode() > 0 )
+        {
+            double coupledLen = 0.0;
+            double coupledLenPadToDie = 0.0;
+            double coupledTrackDelay = 0.0;
+            double doubledDelayPadToDie = 0.0;
+
+            std::tie( count, coupledLen, coupledLenPadToDie, coupledTrackDelay, doubledDelayPadToDie ) =
+                    board->GetTrackLength( *coupledItem );
+
+            if( trackDelay == 0.0 || coupledTrackDelay == 0.0 )
+            {
+                aList.emplace_back( _( "Routed Lengths" ), aContext->MessageTextFromValue( trackLen )
+                                                            + wxS( ", " )
+                                                            + aContext->MessageTextFromValue( coupledLen ) );
+            }
+            else
+            {
+                aList.emplace_back( _( "Routed Delays" ),
+                                    aContext->MessageTextFromValue( trackDelay, true, EDA_DATA_TYPE::TIME )
+                                    + wxS( ", " )
+                                    + aContext->MessageTextFromValue( coupledTrackDelay, true, EDA_DATA_TYPE::TIME ) );
+            }
+        }
+        else
+        {
+            if( trackDelay == 0.0 )
+            {
+                aList.emplace_back( _( "Routed Length" ), aContext->MessageTextFromValue( trackLen ) );
+            }
+            else
+            {
+                aList.emplace_back( _( "Routed Delay" ),
+                                    aContext->MessageTextFromValue( trackDelay, true, EDA_DATA_TYPE::TIME ) );
+            }
+        }
+
+        if( lenPadToDie != 0 && delayPadToDie == 0.0 )
+        {
+            msg = aContext->MessageTextFromValue( lenPadToDie );
+            aList.emplace_back( _( "Pad To Die Length" ), msg );
+
+            msg = aContext->MessageTextFromValue( trackLen + lenPadToDie );
+            aList.emplace_back( _( "Full Length" ), msg );
+        }
+        else if( delayPadToDie > 0.0 )
+        {
+            msg = aContext->MessageTextFromValue( delayPadToDie, true, EDA_DATA_TYPE::TIME );
+            aList.emplace_back( _( "Pad To Die Delay" ), msg );
+
+            msg = aContext->MessageTextFromValue( trackDelay + delayPadToDie, true, EDA_DATA_TYPE::TIME );
+            aList.emplace_back( _( "Full Delay" ), msg );
+        }
+
+        // If part of a chain, display aggregate full chain length/delay (with bridging like overlay).
+        if( primaryNet && !primaryNet->GetNetChain().IsEmpty() )
+        {
+            wxString chainName = primaryNet->GetNetChain();
+            double   totalOtherLen = 0.0;
+            double   totalOtherDelay = 0.0;
+            BOARD*   boardPtr = board;
+
+            if( boardPtr )
+            {
+                for( NETINFO_ITEM* other : boardPtr->GetNetInfo() )
+                {
+                    if( other->GetNetChain() != chainName || other == primaryNet )
+                        continue;
+
+                    // Representative track length for this other net
+                    double oTrackLen = 0.0, oPadDieLen = 0.0, oTrackDelay = 0.0, oPadDieDelay = 0.0;
+                    PCB_TRACK* anyTrack = nullptr;
+
+                    for( BOARD_ITEM* bi : boardPtr->Tracks() )
+                    {
+                        if( PCB_TRACK* tr = dynamic_cast<PCB_TRACK*>( bi ) )
+                        {
+                            if( tr->GetNetCode() == other->GetNetCode() )
+                            {
+                                anyTrack = tr;
+                                break;
+                            }
+                        }
+                    }
+
+                    if( anyTrack )
+                    {
+                        int dummyCount = 0;
+                        std::tie( dummyCount, oTrackLen, oPadDieLen, oTrackDelay, oPadDieDelay ) =
+                                boardPtr->GetTrackLength( *anyTrack );
+                        totalOtherLen += ( oTrackLen + oPadDieLen );
+                        totalOtherDelay += ( oTrackDelay + oPadDieDelay );
+                    }
+                }
+            }
+
+            // Bridging contribution (pad-to-pad gaps in 2-net series components of the chain)
+            if( trackDelay == 0.0 )
+            {
+                double delayIUDummy = 0.0; // not used in length mode
+                long long bridging = GetCachedBridgingLength( boardPtr, chainName, &delayIUDummy );
+                aList.emplace_back( _( "Net Chain Full Length" ),
+                                    aContext->MessageTextFromValue( trackLen + lenPadToDie + totalOtherLen
+                                                                   + (double) bridging ) );
+            }
+            else
+            {
+                double bridgingDelayIU = 0.0;
+                GetCachedBridgingLength( boardPtr, chainName, &bridgingDelayIU );
+                aList.emplace_back( _( "Net Chain Full Delay" ),
+                                    aContext->MessageTextFromValue( trackDelay + delayPadToDie + totalOtherDelay
+                                                                   + bridgingDelayIU,
+                                                                   true, EDA_DATA_TYPE::TIME ) );
+            }
+        }
+    }
+
+    if( m_tuningMode == DIFF_PAIR_SKEW )
+    {
+        constraint = drcEngine->EvalRules( SKEW_CONSTRAINT, primaryItem, coupledItem, GetLayer() );
+
+        if( constraint.IsNull() || m_settings.m_overrideCustomRules )
+        {
+            msg = aContext->MessageTextFromValue( m_settings.m_targetSkew.Opt() );
+
+            aList.emplace_back( wxString::Format( _( "Target Skew: %s" ), msg ),
+                                wxString::Format( _( "(from tuning pattern properties)" ) ) );
+        }
+        else
+        {
+            msg = aContext->MessageTextFromMinOptMax( constraint.GetValue() );
+
+            if( !msg.IsEmpty() )
+            {
+                aList.emplace_back( wxString::Format( _( "Skew Constraints: %s" ), msg ),
+                                    wxString::Format( _( "(from %s)" ), constraint.GetName() ) );
+            }
+        }
+    }
+    else
+    {
+        // Prefer chain-level constraint if available
+        constraint = drcEngine->EvalRules( NET_CHAIN_LENGTH_CONSTRAINT, primaryItem, coupledItem, GetLayer() );
+
+        if( constraint.IsNull() || constraint.GetSeverity() == RPT_SEVERITY_IGNORE )
+            constraint = drcEngine->EvalRules( LENGTH_CONSTRAINT, primaryItem, coupledItem, GetLayer() );
+
+        if( constraint.IsNull() || m_settings.m_overrideCustomRules )
+        {
+            wxString caption;
+
+            if( m_settings.m_isTimeDomain )
+            {
+                caption = _( "Target Delay: %s" );
+                msg = aContext->MessageTextFromValue( static_cast<double>( m_settings.m_targetLengthDelay.Opt() ), true,
+                                                    EDA_DATA_TYPE::TIME );
+            }
+            else
+            {
+                caption = _( "Target Length: %s" );
+                msg = aContext->MessageTextFromValue( static_cast<double>( m_settings.m_targetLength.Opt() ) );
+            }
+
+            aList.emplace_back( wxString::Format( caption, msg ),
+                                wxString::Format( _( "(from tuning pattern properties)" ) ) );
+        }
+        else
+        {
+            msg = aContext->MessageTextFromMinOptMax( constraint.GetValue(), unitType );
+
+            wxString caption = m_settings.m_isTimeDomain ? _( "Delay Constraints: %s" ) : _( "Length Constraints: %s" );
+
+            if( !msg.IsEmpty() )
+            {
+                aList.emplace_back( wxString::Format( caption, msg ),
+                                    wxString::Format( _( "(from %s)" ), constraint.GetName() ) );
+            }
+        }
+    }
+}
+
+
 void PCB_TUNING_PATTERN::rebuildTuningInfo()
 {
     if( m_tuningLength == 0 )
@@ -852,268 +1115,6 @@ bool PCB_TUNING_PATTERN::Deserialize( const google::protobuf::Any& aContainer )
     rebuildTuningInfo();
 
     return true;
-}
-
-
-{
-    wxString      msg;
-    NETINFO_ITEM* primaryNet = nullptr;
-    NETINFO_ITEM* coupledNet = nullptr;
-    PCB_TRACK*    primaryItem = nullptr;
-    PCB_TRACK*    coupledItem = nullptr;
-    NETCLASS*     netclass = nullptr;
-    int           width = 0;
-    bool          mixedWidth = false;
-
-    EDA_DATA_TYPE unitType = m_settings.m_isTimeDomain ? EDA_DATA_TYPE::TIME : EDA_DATA_TYPE::DISTANCE;
-
-    aList.emplace_back( _( "Type" ), GetFriendlyName() );
-
-    for( EDA_ITEM* member : GetItems() )
-    {
-        if( PCB_TRACK* track = dynamic_cast<PCB_TRACK*>( member ) )
-        {
-            if( !primaryNet )
-            {
-                primaryItem = track;
-                primaryNet = track->GetNet();
-            }
-            else if( !coupledNet && track->GetNet() != primaryNet )
-            {
-                coupledItem = track;
-                coupledNet = track->GetNet();
-            }
-
-            if( !netclass )
-                netclass = track->GetEffectiveNetClass();
-
-            if( track->IsType( { PCB_TRACE_T, PCB_ARC_T } ) )
-            {
-                if( !width )
-                    width = track->GetWidth();
-                else if( width != track->GetWidth() )
-                    mixedWidth = true;
-            }
-        }
-    }
-
-    if( coupledNet )
-    {
-        aList.emplace_back( _( "Nets" ), UnescapeString( primaryNet->GetNetname() )
-                                         + wxS( ", " )
-                                         + UnescapeString( coupledNet->GetNetname() ) );
-    }
-    else if( primaryNet )
-    {
-        aList.emplace_back( _( "Net" ), UnescapeString( primaryNet->GetNetname() ) );
-    }
-
-    if( netclass )
-        aList.emplace_back( _( "Resolved Netclass" ),
-                            UnescapeString( netclass->GetHumanReadableName() ) );
-
-    aList.emplace_back( _( "Layer" ), LayerMaskDescribe() );
-
-    // Show chain name if available
-    if( primaryNet && !primaryNet->GetNetChain().IsEmpty() )
-        aList.emplace_back( _( "Net Chain" ), primaryNet->GetNetChain() );
-
-    if( width && !mixedWidth )
-        aList.emplace_back( _( "Width" ), aContext->MessageTextFromValue( width ) );
-
-    BOARD*         board = GetBoard();
-    DRC_ENGINE*    drcEngine = board->GetDesignSettings().m_DRCEngine.get();
-    DRC_CONSTRAINT constraint;
-
-    // Display full track length (in Pcbnew)
-    if( board && primaryItem && primaryItem->GetNetCode() > 0 )
-    {
-        int    count = 0;
-        double trackLen = 0.0;
-        double lenPadToDie = 0.0;
-        double trackDelay = 0.0;
-        double delayPadToDie = 0.0;
-
-        std::tie( count, trackLen, lenPadToDie, trackDelay, delayPadToDie ) = board->GetTrackLength( *primaryItem );
-
-        if( coupledItem && coupledItem->GetNetCode() > 0 )
-        {
-            double coupledLen = 0.0;
-            double coupledLenPadToDie = 0.0;
-            double coupledTrackDelay = 0.0;
-            double doubledDelayPadToDie = 0.0;
-
-            std::tie( count, coupledLen, coupledLenPadToDie, coupledTrackDelay, doubledDelayPadToDie ) =
-                    board->GetTrackLength( *coupledItem );
-
-            if( trackDelay == 0.0 || coupledTrackDelay == 0.0 )
-            {
-                aList.emplace_back( _( "Routed Lengths" ), aContext->MessageTextFromValue( trackLen ) + wxS( ", " )
-                                                                   + aContext->MessageTextFromValue( coupledLen ) );
-            }
-            else
-            {
-                aList.emplace_back(
-                        _( "Routed Delays" ),
-                        aContext->MessageTextFromValue( trackDelay, true, EDA_DATA_TYPE::TIME ) + wxS( ", " )
-                                + aContext->MessageTextFromValue( coupledTrackDelay, true, EDA_DATA_TYPE::TIME ) );
-            }
-        }
-        else
-        {
-            if( trackDelay == 0.0 )
-            {
-                aList.emplace_back( _( "Routed Length" ), aContext->MessageTextFromValue( trackLen ) );
-            }
-            else
-            {
-                aList.emplace_back( _( "Routed Delay" ),
-                                    aContext->MessageTextFromValue( trackDelay, true, EDA_DATA_TYPE::TIME ) );
-            }
-        }
-
-        if( lenPadToDie != 0 && delayPadToDie == 0.0 )
-        {
-            msg = aContext->MessageTextFromValue( lenPadToDie );
-            aList.emplace_back( _( "Pad To Die Length" ), msg );
-
-            msg = aContext->MessageTextFromValue( trackLen + lenPadToDie );
-            aList.emplace_back( _( "Full Length" ), msg );
-        }
-        else if( delayPadToDie > 0.0 )
-        {
-            msg = aContext->MessageTextFromValue( delayPadToDie, true, EDA_DATA_TYPE::TIME );
-            aList.emplace_back( _( "Pad To Die Delay" ), msg );
-
-            msg = aContext->MessageTextFromValue( trackDelay + delayPadToDie, true, EDA_DATA_TYPE::TIME );
-            aList.emplace_back( _( "Full Delay" ), msg );
-        }
-
-        // If part of a chain, display aggregate full chain length/delay (with bridging like overlay).
-        if( primaryNet && !primaryNet->GetNetChain().IsEmpty() )
-        {
-            wxString chainName = primaryNet->GetNetChain();
-            double   totalOtherLen = 0.0;
-            double   totalOtherDelay = 0.0;
-            BOARD*   boardPtr = board;
-
-            if( boardPtr )
-            {
-                for( NETINFO_ITEM* other : boardPtr->GetNetInfo() )
-                {
-                    if( other->GetNetChain() != chainName || other == primaryNet )
-                        continue;
-
-                    // Representative track length for this other net
-                    double oTrackLen = 0.0, oPadDieLen = 0.0, oTrackDelay = 0.0, oPadDieDelay = 0.0;
-                    PCB_TRACK* anyTrack = nullptr;
-
-                    for( BOARD_ITEM* bi : boardPtr->Tracks() )
-                    {
-                        if( PCB_TRACK* tr = dynamic_cast<PCB_TRACK*>( bi ) )
-                        {
-                            if( tr->GetNetCode() == other->GetNetCode() )
-                            {
-                                anyTrack = tr;
-                                break;
-                            }
-                        }
-                    }
-
-                    if( anyTrack )
-                    {
-                        int dummyCount = 0;
-                        std::tie( dummyCount, oTrackLen, oPadDieLen, oTrackDelay, oPadDieDelay ) =
-                                boardPtr->GetTrackLength( *anyTrack );
-                        totalOtherLen += ( oTrackLen + oPadDieLen );
-                        totalOtherDelay += ( oTrackDelay + oPadDieDelay );
-                    }
-                }
-            }
-
-            // Bridging contribution (pad-to-pad gaps in 2-net series components of the chain)
-            if( trackDelay == 0.0 )
-            {
-                double delayIUDummy = 0.0; // not used in length mode
-                long long bridging = GetCachedBridgingLength( boardPtr, chainName, &delayIUDummy );
-                aList.emplace_back( _( "Net Chain Full Length" ),
-                                    aFrame->MessageTextFromValue( trackLen + lenPadToDie + totalOtherLen
-                                                                   + (double) bridging ) );
-            }
-            else
-            {
-                double bridgingDelayIU = 0.0;
-                GetCachedBridgingLength( boardPtr, chainName, &bridgingDelayIU );
-                aList.emplace_back( _( "Net Chain Full Delay" ),
-                                    aFrame->MessageTextFromValue( trackDelay + delayPadToDie + totalOtherDelay
-                                                                   + bridgingDelayIU,
-                                                                   true, EDA_DATA_TYPE::TIME ) );
-            }
-        }
-    }
-
-    if( m_tuningMode == DIFF_PAIR_SKEW )
-    {
-        constraint = drcEngine->EvalRules( SKEW_CONSTRAINT, primaryItem, coupledItem, GetLayer() );
-
-        if( constraint.IsNull() || m_settings.m_overrideCustomRules )
-        {
-            msg = aContext->MessageTextFromValue( m_settings.m_targetSkew.Opt() );
-
-            aList.emplace_back( wxString::Format( _( "Target Skew: %s" ), msg ),
-                                wxString::Format( _( "(from tuning pattern properties)" ) ) );
-        }
-        else
-        {
-            msg = aContext->MessageTextFromMinOptMax( constraint.GetValue() );
-
-            if( !msg.IsEmpty() )
-            {
-                aList.emplace_back( wxString::Format( _( "Skew Constraints: %s" ), msg ),
-                                    wxString::Format( _( "(from %s)" ), constraint.GetName() ) );
-            }
-        }
-    }
-    else
-    {
-        // Prefer chain-level constraint if available
-        constraint = drcEngine->EvalRules( NET_CHAIN_LENGTH_CONSTRAINT, primaryItem, coupledItem, GetLayer() );
-
-        if( constraint.IsNull() || constraint.GetSeverity() == RPT_SEVERITY_IGNORE )
-            constraint = drcEngine->EvalRules( LENGTH_CONSTRAINT, primaryItem, coupledItem, GetLayer() );
-
-        if( constraint.IsNull() || m_settings.m_overrideCustomRules )
-        {
-            wxString caption;
-
-            if( m_settings.m_isTimeDomain )
-            {
-                caption = _( "Target Delay: %s" );
-                msg = aContext->MessageTextFromValue( static_cast<double>( m_settings.m_targetLengthDelay.Opt() ), true,
-                                                    EDA_DATA_TYPE::TIME );
-            }
-            else
-            {
-                caption = _( "Target Length: %s" );
-                msg = aContext->MessageTextFromValue( static_cast<double>( m_settings.m_targetLength.Opt() ) );
-            }
-
-            aList.emplace_back( wxString::Format( caption, msg ),
-                                wxString::Format( _( "(from tuning pattern properties)" ) ) );
-        }
-        else
-        {
-            msg = aContext->MessageTextFromMinOptMax( constraint.GetValue(), unitType );
-
-            wxString caption = m_settings.m_isTimeDomain ? _( "Delay Constraints: %s" ) : _( "Length Constraints: %s" );
-
-            if( !msg.IsEmpty() )
-            {
-                aList.emplace_back( wxString::Format( caption, msg ),
-                                    wxString::Format( _( "(from %s)" ), constraint.GetName() ) );
-            }
-        }
-    }
 }
 
 

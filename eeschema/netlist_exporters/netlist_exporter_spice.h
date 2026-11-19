@@ -74,7 +74,7 @@ public:
                                | OPTION_SAVE_ALL_EVENTS
     };
 
-    NETLIST_EXPORTER_SPICE( SCHEMATIC* aSchematic, KIWAY* aKiway );
+    NETLIST_EXPORTER_SPICE( SCHEMATIC* aSchematic, KIWAY_SERVICES* aKiway );
 
     /**
      * Write to specified output file.

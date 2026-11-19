@@ -137,13 +137,13 @@ public:
      * library loads, so a preload still queued behind those loads is not waited on while they run.
      * WaitForDesignBlockPreload() must follow before the project goes away.
      */
-    void CancelDesignBlockPreload();
+    void CancelDesignBlockPreload() override;
 
     /**
      * Waits for the design block preload to end, so it no longer reaches the project, and clears the cancel.
      * Called on the main thread after the library loads were aborted and before the active project changes.
      */
-    void WaitForDesignBlockPreload();
+    void WaitForDesignBlockPreload() override;
 
     /**
      * Register a status bar to receive library load warning messages.

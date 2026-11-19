@@ -35,7 +35,6 @@
 #include <teardrop/teardrop.h>
 #include <pcb_board_outline.h>
 #include <pcb_drill_map.h>
-#include <pcb_base_frame.h>
 
 #include <functional>
 #include <unordered_set>

@@ -32,7 +32,6 @@
 #include <nanosvgrast.h>
 #include <raster_image.h>
 #include <wx/filename.h>
-#include <wx/image.h>
 #include <wx/log.h>
 
 namespace

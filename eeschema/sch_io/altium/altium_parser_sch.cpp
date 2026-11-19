@@ -33,6 +33,7 @@
 #include "io/altium/altium_props_utils.h"
 #include <trace_helpers.h>
 #include <core/ki_assert.h>
+#include <core/ki_log.h>
 
 
 ALTIUM_SCH_RECORD ReadRecord( const std::map<wxString, wxString>& aProps )

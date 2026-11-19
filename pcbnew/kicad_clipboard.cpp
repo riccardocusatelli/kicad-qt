@@ -38,6 +38,7 @@
 #include <kicad_clipboard.h>
 #include <io/kicad/kicad_io_utils.h>
 #include <core/ki_assert.h>
+#include <tools/pcb_selection.h>
 
 CLIPBOARD_IO::CLIPBOARD_IO( std::function<void( const wxString& )> aWriter,
                             std::function<wxString()>                aReader ) :
@@ -468,51 +469,3 @@ void CLIPBOARD_IO::SaveBoard( const wxString& aFileName, BOARD& aBoard,
     m_writer( wxString( prettyData.c_str(), wxConvUTF8 ) );
 }
 
-
-BOARD* CLIPBOARD_IO::LoadBoard( const wxString& aFileName, BOARD* aAppendToMe,
-                                const std::map<std::string, UTF8>* aProperties, PROJECT* aProject )
-{
-    std::string result( m_reader().mb_str() );
-
-    STRING_LINE_READER reader( result, wxT( "clipboard" ) );
-    PCB_IO_KICAD_SEXPR_PARSER         parser( &reader, aAppendToMe, m_queryUserCallback );
-
-    init( aProperties );
-
-    BOARD_ITEM* item;
-    BOARD* board;
-
-    try
-    {
-        item =  parser.Parse();
-    }
-    catch( const FUTURE_FORMAT_ERROR& )
-    {
-        // Don't wrap a FUTURE_FORMAT_ERROR in another
-        throw;
-    }
-    catch( const PARSE_ERROR& parse_error )
-    {
-        if( parser.IsTooRecent() )
-            throw FUTURE_FORMAT_ERROR( parse_error, parser.GetRequiredVersion() );
-        else
-            throw;
-    }
-
-    if( item->Type() != PCB_T )
-    {
-        // The parser loaded something that was valid, but wasn't a board.
-        THROW_PARSE_ERROR( _( "Clipboard content is not KiCad compatible" ), parser.CurSource(),
-                           parser.CurLine(), parser.CurLineNumber(), parser.CurOffset() );
-    }
-    else
-    {
-        board = dynamic_cast<BOARD*>( item );
-    }
-
-    // Give the filename to the board if it's new
-    if( board && !aAppendToMe )
-        board->SetFileName( aFileName );
-
-    return board;
-}

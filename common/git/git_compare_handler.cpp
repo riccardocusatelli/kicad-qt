@@ -30,6 +30,7 @@
 #include <trace_helpers.h>
 
 #include <wx/log.h>
+#include <core/ki_log.h>
 
 
 namespace KIGIT

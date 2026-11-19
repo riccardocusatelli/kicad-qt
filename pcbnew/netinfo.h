@@ -26,6 +26,7 @@
 
 #include <netclass.h>
 #include <board_item.h>
+#include <core/ki_assert.h>
 
 
 class EDA_DRAW_FRAME;

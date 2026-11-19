@@ -39,6 +39,7 @@
 #include <project/project_file.h>
 #include <settings/settings_manager.h>
 #include <wx/string.h>
+#include <core/ki_assert.h>
 
 using namespace kiapi::common::commands;
 using namespace kiapi::common::types;

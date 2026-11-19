@@ -33,6 +33,7 @@
 #include <lset.h>
 #include <map>
 #include <unordered_set>
+#include <core/ki_assert.h>
 
 namespace KIGFX
 {

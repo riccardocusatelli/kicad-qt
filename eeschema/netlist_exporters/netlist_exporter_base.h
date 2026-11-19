@@ -35,7 +35,7 @@ class SCH_SYMBOL;
 class SCH_PIN;
 class LIB_SYMBOL;
 class REPORTER;
-class KIWAY;
+class KIWAY_SERVICES;
 
 /**
  * Track unique wxStrings and is useful in telling if a string has been seen before.
@@ -100,7 +100,7 @@ using EXPORT_EXCLUSION = std::function<bool( const SCH_SYMBOL*, const SCH_SHEET_
 class NETLIST_EXPORTER_BASE
 {
 public:
-    NETLIST_EXPORTER_BASE( SCHEMATIC* aSchematic, KIWAY* aKiway ) :
+    NETLIST_EXPORTER_BASE( SCHEMATIC* aSchematic, KIWAY_SERVICES* aKiway ) :
             m_schematic( aSchematic ),
             m_kiway( aKiway )
     {
@@ -255,7 +255,7 @@ protected:
     SCHEMATIC*      m_schematic;        /// The schematic we're generating a netlist for
     wxString        m_exportVariant;    /// The variant of the schematic to export
 
-    KIWAY*          m_kiway = nullptr;
+    KIWAY_SERVICES* m_kiway = nullptr;
 
     mutable std::map<wxString, std::set<wxString>> m_footprintPadCache;
 };

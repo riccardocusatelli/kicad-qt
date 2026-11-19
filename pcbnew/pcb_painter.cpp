@@ -80,6 +80,7 @@
 #include <kiface_base.h>
 #include <gr_text.h>
 #include <pgm_base.h>
+#include <core/ki_assert.h>
 
 using namespace KIGFX;
 

@@ -1650,16 +1650,16 @@ void EDA_SHAPE::ShapeGetMsgPanelInfo( MSG_PANEL_CONTEXT* aContext, std::vector<M
         break;
 
     case SHAPE_T::ELLIPSE:
-        aList.emplace_back( _( "Length" ), aFrame->MessageTextFromValue( GetLength() ) );
-        aList.emplace_back( _( "Major Radius" ), aFrame->MessageTextFromValue( GetEllipseMajorRadius() ) );
-        aList.emplace_back( _( "Minor Radius" ), aFrame->MessageTextFromValue( GetEllipseMinorRadius() ) );
+        aList.emplace_back( _( "Length" ), aContext->MessageTextFromValue( GetLength() ) );
+        aList.emplace_back( _( "Major Radius" ), aContext->MessageTextFromValue( GetEllipseMajorRadius() ) );
+        aList.emplace_back( _( "Minor Radius" ), aContext->MessageTextFromValue( GetEllipseMinorRadius() ) );
         aList.emplace_back( _( "Rotation" ), EDA_UNIT_UTILS::UI::MessageTextFromValue( GetEllipseRotation() ) );
         break;
 
     case SHAPE_T::ELLIPSE_ARC:
-        aList.emplace_back( _( "Length" ), aFrame->MessageTextFromValue( GetLength() ) );
-        aList.emplace_back( _( "Major Radius" ), aFrame->MessageTextFromValue( GetEllipseMajorRadius() ) );
-        aList.emplace_back( _( "Minor Radius" ), aFrame->MessageTextFromValue( GetEllipseMinorRadius() ) );
+        aList.emplace_back( _( "Length" ), aContext->MessageTextFromValue( GetLength() ) );
+        aList.emplace_back( _( "Major Radius" ), aContext->MessageTextFromValue( GetEllipseMajorRadius() ) );
+        aList.emplace_back( _( "Minor Radius" ), aContext->MessageTextFromValue( GetEllipseMinorRadius() ) );
         aList.emplace_back( _( "Rotation" ), EDA_UNIT_UTILS::UI::MessageTextFromValue( GetEllipseRotation() ) );
         aList.emplace_back( _( "Start Angle" ), EDA_UNIT_UTILS::UI::MessageTextFromValue( GetEllipseStartAngle() ) );
         aList.emplace_back( _( "End Angle" ), EDA_UNIT_UTILS::UI::MessageTextFromValue( GetEllipseEndAngle() ) );

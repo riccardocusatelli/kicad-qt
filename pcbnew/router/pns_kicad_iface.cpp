@@ -87,6 +87,7 @@
 #include "pns_topology.h"
 #include "router_preview_item.h"
 #include <core/ki_log.h>
+#include <core/ki_assert.h>
 
 typedef VECTOR2I::extended_type ecoord;
 

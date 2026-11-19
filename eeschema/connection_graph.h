@@ -500,12 +500,12 @@ public:
         return m_netChains->GetNetChainTerminalRefOverrides();
     }
 
-    void SetNetChainColorOverrides( const std::map<wxString, COLOR4D>& aOverrides )
+    void SetNetChainColorOverrides( const std::map<wxString, KIGFX::COLOR4D>& aOverrides )
     {
         m_netChains->SetNetChainColorOverrides( aOverrides );
     }
 
-    const std::map<wxString, COLOR4D>& GetNetChainColorOverrides() const
+    const std::map<wxString, KIGFX::COLOR4D>& GetNetChainColorOverrides() const
     {
         return m_netChains->GetNetChainColorOverrides();
     }

@@ -164,15 +164,6 @@ PGM_BASE::~PGM_BASE()
 
 void PGM_BASE::Destroy()
 {
-    // The preload reads the design block libraries, so it has to stop before they go
-    if( m_libraryPreloadReturn.valid() )
-    {
-        if( m_libraryPreloadInProgress.load() )
-            m_libraryPreloadAbort.store( true );
-
-        m_libraryPreloadReturn.wait();
-    }
-
     // Freeing thousands of cached libraries one item at a time would hold up the exit for seconds
     if( m_library_manager )
         m_library_manager->LeakCachesAtExit();
