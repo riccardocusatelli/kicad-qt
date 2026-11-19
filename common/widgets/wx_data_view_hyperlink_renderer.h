@@ -31,7 +31,7 @@
  * wxDataViewCtrl renderer that draws [label](url) markup as clickable link
  * runs inline with plain text.
  */
-class KICOMMON_API HYPERLINK_DV_RENDERER : public wxDataViewCustomRenderer
+class KIQT_COMMON_API HYPERLINK_DV_RENDERER : public wxDataViewCustomRenderer
 {
 public:
     HYPERLINK_DV_RENDERER();

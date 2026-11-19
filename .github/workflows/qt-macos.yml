@@ -91,7 +91,10 @@ jobs:
       # The errors of the compilation, in one file
       - name: Compilation log
         if: failure()
-        run: grep -E -B2 -A12 "error:|FAILED:|Undefined symbols" build.log | head -c 3000000 > build-errors.log || true
+        run: |
+          grep -E -B2 -A12 "error:|FAILED:|Undefined symbols" build.log | head -c 3000000 > build-errors.log || true
+          # Also in the console, since the artifact is not always reachable
+          grep -E -A6 "error:|FAILED:|Undefined symbols" build.log | grep -v "warning:" | head -400 || true
 
       - name: Errors of the compilation
         if: failure()

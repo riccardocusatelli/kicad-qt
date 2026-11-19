@@ -139,6 +139,7 @@ set( KICAD_WX_FREE_SOURCES_common
     common/column_formatter.cpp
     common/commit.cpp
     common/database/access_engine_mutex.cpp
+    common/database/ace_backend.cpp     # Windows only (common/CMakeLists.txt)
     common/database/database_backend.cpp
     common/database/database_connection.cpp
     common/database/database_value.cpp
@@ -627,6 +628,7 @@ set( KICAD_WX_FREE_SOURCES_kicommon_model
     common/common.cpp
     common/config_params.cpp
     common/core_wx_bridge.cpp
+    common/database/access_fast_exit.cpp
     common/database/database_lib_settings.cpp
     common/design_block.cpp
     common/design_block_io.cpp

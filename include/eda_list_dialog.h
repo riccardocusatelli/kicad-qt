@@ -32,7 +32,7 @@ class wxCheckBox;
  *  - a text control to display help or info about the selected item.
  *  - 2 buttons (OK and Cancel)
  */
-class KICOMMON_API EDA_LIST_DIALOG : public EDA_LIST_DIALOG_BASE
+class KIQT_COMMON_API EDA_LIST_DIALOG : public EDA_LIST_DIALOG_BASE
 {
 public:
 

@@ -41,7 +41,7 @@ namespace kiapi::common::tasks
 class TaskStatusResponse;
 }
 
-class KICOMMON_API API_TASK
+class KIQT_COMMON_API API_TASK
 {
 public:
     virtual ~API_TASK() = default;
@@ -56,7 +56,7 @@ public:
 /**
  * For now, a single process-wide task runner, and one task at a time.
  */
-class KICOMMON_API API_TASK_SCHEDULER : public wxEvtHandler
+class KIQT_COMMON_API API_TASK_SCHEDULER : public wxEvtHandler
 {
 public:
     static constexpr size_t MAX_FINISHED_TASKS = 32;

@@ -82,7 +82,7 @@ private:
  * These should probably be sent upstream, since they may be useful to others, but for now
  * just extend the class with them ourselves.
  */
-class KICOMMON_API WX_DATAVIEWCTRL : public wxDataViewCtrl
+class KIQT_COMMON_API WX_DATAVIEWCTRL : public wxDataViewCtrl
 {
 public:
     // Just take all constructors

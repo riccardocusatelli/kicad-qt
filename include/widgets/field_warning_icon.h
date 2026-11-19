@@ -40,7 +40,7 @@ class wxWindowDestroyEvent;
  * A field that carries a button of its own at that edge, a combo box or a spin control, is given
  * room for it.
  */
-class KICOMMON_API FIELD_WARNING_ICON : public wxGenericStaticBitmap
+class KIQT_COMMON_API FIELD_WARNING_ICON : public wxGenericStaticBitmap
 {
 public:
     /// The most warnings listed in the tooltip, with a count of the rest

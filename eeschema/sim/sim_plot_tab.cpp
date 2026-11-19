@@ -39,6 +39,11 @@
 
 #include <wx/dcclient.h>
 
+// <windows.h> defines DrawText as DrawTextW, which renames wxDC::DrawText
+#ifdef DrawText
+#undef DrawText
+#endif
+
 
 static wxString formatFloat( double x, int nDigits )
 {

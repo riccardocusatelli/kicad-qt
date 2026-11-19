@@ -33,6 +33,13 @@
 #include <memory>
 #include <vector>
 
+#ifdef _WIN32
+// <windows.h> defines LoadLibrary as LoadLibraryW: included here, before the declaration, and
+// undefined, so that every user sees the same name
+#include <windows.h>
+#undef LoadLibrary
+#endif
+
 
 class FOOTPRINT;
 

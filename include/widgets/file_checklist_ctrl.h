@@ -36,7 +36,7 @@
  * One file row in a FILE_CHECKLIST_CTRL. The types are deliberately generic so the
  * control has no dependency on git. A caller maps its own status to a word and an icon.
  */
-struct KICOMMON_API FILE_CHECKLIST_ENTRY
+struct KIQT_COMMON_API FILE_CHECKLIST_ENTRY
 {
     wxString section;
     wxString path;    ///< Row identity, and what the row shows.
@@ -53,7 +53,7 @@ struct KICOMMON_API FILE_CHECKLIST_ENTRY
  *
  * Sections and the rows within them keep the order in which they were added.
  */
-class KICOMMON_API FILE_CHECKLIST_DATA
+class KIQT_COMMON_API FILE_CHECKLIST_DATA
 {
 public:
     void SetEntries( const std::vector<FILE_CHECKLIST_ENTRY>& aEntries );
@@ -91,7 +91,7 @@ class FILE_CHECKLIST_MODEL;
  * The control is git-agnostic. Callers describe rows with FILE_CHECKLIST_ENTRY and ask
  * back for the checked paths.
  */
-class KICOMMON_API FILE_CHECKLIST_CTRL : public WX_DATAVIEWCTRL
+class KIQT_COMMON_API FILE_CHECKLIST_CTRL : public WX_DATAVIEWCTRL
 {
 public:
     FILE_CHECKLIST_CTRL( wxWindow* aParent, wxWindowID aId = wxID_ANY );
