@@ -45,7 +45,11 @@ ShowInstDetails nevershow
 ShowUninstDetails nevershow
 BrandingText "${PRODUCT} ${VERSION}"
 
-VIProductVersion "${VERSION}.0"
+; X.X.X.X only: a development version (10.99.0-unknown) gives its numeric part
+!ifndef NUMVERSION
+  !define NUMVERSION "${VERSION}"
+!endif
+VIProductVersion "${NUMVERSION}.0"
 VIAddVersionKey "ProductName" "${PRODUCT}"
 VIAddVersionKey "ProductVersion" "${VERSION}"
 VIAddVersionKey "FileVersion" "${VERSION}"

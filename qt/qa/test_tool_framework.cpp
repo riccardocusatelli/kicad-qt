@@ -101,6 +101,8 @@
 
 #include <qt_strings.h>
 #include <widgets/kistatusbar.h>
+#include <git/git_backend.h>
+#include <git/libgit_backend.h>
 #include "qa_qt_crash.h"   // last: it includes windows.h
 
 
@@ -732,6 +734,9 @@ int main( int argc, char** argv )
 
     KIWAY kiway( KFCTL_STANDALONE );
     program.GetSettingsManager().SetKiway( &kiway );
+    // The git backend, as single_top: the kiface registers its merge drivers with libgit2
+    SetGitBackend( new LIBGIT_BACKEND() );
+    GetGitBackend()->Init();
     Kiface().OnKifaceStart( &program, KFCTL_STANDALONE, &kiway );
 
     std::unique_ptr<BOARD> board( PCB_IO_MGR::Load( PCB_IO_MGR::KICAD_SEXP,

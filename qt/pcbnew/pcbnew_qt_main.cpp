@@ -48,6 +48,8 @@
 #include <settings/settings_manager.h>
 #include <startwizard/startwizard.h>
 #include <thread_pool.h>
+#include <git/git_backend.h>
+#include <git/libgit_backend.h>
 
 
 /// The KIWAY of the program: the PCB editor runs alone (as single_top).
@@ -69,6 +71,10 @@ struct PGM_SINGLE_TOP : public PGM_GUI
         // With the Python interpreter (the scripting of pcbnew, its plugins)
         if( !InitPgm( false, false ) )
             return false;
+
+        // The git backend, as single_top: the kiface registers its merge drivers with libgit2
+        SetGitBackend( new LIBGIT_BACKEND() );
+        GetGitBackend()->Init();
 
         // The KIFACE of pcbnew is linked in this program
         int     kifaceVersion = 0;

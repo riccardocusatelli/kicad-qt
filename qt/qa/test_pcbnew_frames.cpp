@@ -96,6 +96,8 @@
 #include <QDir>
 #include <tool/tool_manager.h>
 #include "qa_qt_canvas.h"
+#include <git/git_backend.h>
+#include <git/libgit_backend.h>
 #include "qa_qt_crash.h"   // last: it includes windows.h
 
 
@@ -1258,6 +1260,9 @@ int main( int argc, char** argv )
 
     // The settings of the project manager, as single_top (the start wizard uses them)
     program.GetSettingsManager().RegisterSettings( new KICAD_SETTINGS );
+    // The git backend, as single_top: the kiface registers its merge drivers with libgit2
+    SetGitBackend( new LIBGIT_BACKEND() );
+    GetGitBackend()->Init();
     Kiface().OnKifaceStart( &program, KFCTL_STANDALONE, &kiway );
     PGM_SINGLE_TOP::RegisterKiface( kiway );
 

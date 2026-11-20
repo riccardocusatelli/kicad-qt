@@ -541,7 +541,7 @@ jobs:
           }
           New-Item -ItemType Directory -Force -Path installer | Out-Null
           $exe = "$root\installer\kicad-qt-$version-x86_64.exe"
-          & $makensis /V2 "/DVERSION=$version" "/DSOURCE=$root\pkg" "/DROOT=$root" "/DOUTFILE=$exe" qt\tools\windows\kicad-qt.nsi
+          & $makensis /V2 "/DVERSION=$version" "/DNUMVERSION=$( ( $version -split '-' )[0] )" "/DSOURCE=$root\pkg" "/DROOT=$root" "/DOUTFILE=$exe" qt\tools\windows\kicad-qt.nsi
           if( $LASTEXITCODE -ne 0 ) { exit $LASTEXITCODE }
           "{0:N0} MB" -f ( ( Get-Item $exe ).Length / 1MB )
           "exe=$exe" >> $env:GITHUB_OUTPUT
