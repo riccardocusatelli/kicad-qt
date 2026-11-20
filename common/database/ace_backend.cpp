@@ -55,6 +55,14 @@
 #include <oleauto.h>
 #include <winnetwk.h>
 
+#ifdef _MSC_VER
+// The wx-free targets drop the system libraries of common (cmake/WxFree.cmake): the ADO and
+// WNet calls bring their own
+#pragma comment( lib, "ole32.lib" )
+#pragma comment( lib, "oleaut32.lib" )
+#pragma comment( lib, "mpr.lib" )
+#endif
+
 using namespace std::chrono_literals;
 
 namespace
