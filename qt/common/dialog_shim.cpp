@@ -350,6 +350,7 @@ void DIALOG_SHIM::showEvent( QShowEvent* aEvent )
 {
     if( !aEvent->spontaneous() )
     {
+        connectDefaultButtons();
         TransferDataToWindow();
 
         // The order of the keyboard focus set by the dialog
@@ -539,6 +540,70 @@ void DIALOG_SHIM::standardButtonClicked( QWidget* aSource )
     else if( id.toInt() != wxID_HELP && id.toInt() != wxID_CONTEXT_HELP )
     {
         EndModal( id.toInt() );
+    }
+}
+
+
+void DIALOG_SHIM::connectDefaultButtons()
+{
+    for( QPushButton* button : findChildren<QPushButton*>() )
+    {
+        // The buttons of this dialog (not of a dialog it holds), connected once, not the ones
+        // connected by SetupStandardButtons() or by the code generated from wxFormBuilder files
+        if( button->window() != this
+                || button->property( "kicadStandardButton" ).isValid()
+                || button->property( "kicadStandardButtonId" ).isValid() )
+        {
+            continue;
+        }
+
+        wxWindow* window = wxFindWindowFromQtCompat( button );
+
+        if( !window )
+            continue;
+
+        const int id = window->GetId();
+
+        if( id != wxID_OK && id != wxID_CANCEL && id != wxID_APPLY )
+            continue;
+
+        button->setProperty( "kicadStandardButton", id );
+
+        QObject::connect( button, &QPushButton::clicked, this,
+                [this, button, window, id]()
+                {
+                    // A handler bound to the button itself does the work (the event of the
+                    // button is given to it by its own connection)
+                    if( window->GetEventSinkCompat().Has( wxEVT_BUTTON ) )
+                        return;
+
+                    // As wxWidgets: the parents of the button up to the dialog get the event
+                    wxCommandEvent event( wxEVT_BUTTON, id );
+                    event.SetEventObject( button );
+
+                    for( QWidget* parent = button->parentWidget(); parent && parent != this;
+                         parent = parent->parentWidget() )
+                    {
+                        wxWindow* parentWindow = wxFindWindowFromQtCompat( parent );
+
+                        if( parentWindow && parentWindow->ProcessEvent( event ) )
+                            return;
+                    }
+
+                    if( ProcessEvent( event ) )
+                        return;
+
+                    // The default handlers of wxDialog
+                    if( id == wxID_APPLY )
+                    {
+                        if( Validate() )
+                            TransferDataFromWindow();
+                    }
+                    else
+                    {
+                        EndModal( id );
+                    }
+                } );
     }
 }
 
