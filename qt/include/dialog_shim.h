@@ -240,6 +240,14 @@ protected:
      */
     void standardButtonClicked( QWidget* aSource );
 
+    /**
+     * Give the default action of wxDialog to the buttons OK, Cancel and Apply of the dialog that
+     * nothing connected (the dialogs written by hand without SetupStandardButtons()): as with
+     * wxWidgets, the click event goes up the parents of the button to the dialog, and the
+     * standard action happens if no handler takes it.  Called when the dialog is shown.
+     */
+    void connectDefaultButtons();
+
     /// Set the size of the dialog in dialog units (the average size of a character / 4).
     void setSizeInDU( int x, int y ) { SetSize( ConvertDialogToPixels( wxSize( x, y ) ) ); }
 

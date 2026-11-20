@@ -55,7 +55,11 @@
 #include <QWheelEvent>
 #include <QWindow>
 
+#include <wx/button.h>
 #include <wx/dcmemory.h>
+#include <wx/dialog.h>
+#include <wx/panel.h>
+#include <wx/sizer.h>
 #include <wx/init.h>
 #include <wx/print.h>
 
@@ -1060,6 +1064,61 @@ int main( int argc, char** argv )
         check( frame.GetGridOrigin() == VECTOR2I( pcbIUScale.mmToIU( 1.5 ),
                                                   pcbIUScale.mmToIU( 2 ) ),
                "the values entered (mm) set the grid origin" );
+
+        std::printf( "Dialog written by hand (buttons OK and Cancel without handler)\n" );
+
+        // As the Hotkey List: the standard buttons in a panel of the dialog, nothing connected
+        auto handWrittenDialog =
+                [&]( const QString& aButton, bool aBindOk ) -> int
+                {
+                    wxDialog    dlg( &frame, wxID_ANY, wxS( "Hand Written" ) );
+                    wxBoxSizer* mainSizer = new wxBoxSizer( wxVERTICAL );
+                    wxPanel*    panel = new wxPanel( &dlg );
+                    wxBoxSizer* panelSizer = new wxBoxSizer( wxHORIZONTAL );
+
+                    wxStdDialogButtonSizer* buttons = new wxStdDialogButtonSizer();
+                    buttons->AddButton( new wxButton( panel, wxID_OK ) );
+                    buttons->AddButton( new wxButton( panel, wxID_CANCEL ) );
+                    buttons->Realize();
+                    panelSizer->Add( buttons, 0, wxALL, 5 );
+                    panel->SetSizer( panelSizer );
+                    mainSizer->Add( panel, 1, wxEXPAND );
+                    dlg.SetSizer( mainSizer );
+
+                    // A handler of the dialog for the button takes the event (as wxWidgets)
+                    if( aBindOk )
+                    {
+                        dlg.Bind( wxEVT_BUTTON,
+                                  [&]( wxCommandEvent& ) { dlg.EndModal( wxID_YES ); }, wxID_OK );
+                    }
+
+                    onNextPopup(
+                            [aButton]( QWidget* aDialog )
+                            {
+                                for( QPushButton* button : aDialog->findChildren<QPushButton*>() )
+                                {
+                                    if( button->text().remove( QLatin1Char( '&' ) ) == aButton )
+                                    {
+                                        button->click();
+                                        return;
+                                    }
+                                }
+
+                                // No button: the test fails, the dialog does not stay open
+                                static_cast<QDialog*>( aDialog )->reject();
+                            },
+                            true );
+
+                    QTimer::singleShot( 5000, &dlg, [&]() { dlg.EndDialog( wxID_ABORT ); } );
+                    return dlg.ShowModal();
+                };
+
+        check( handWrittenDialog( QStringLiteral( "OK" ), false ) == wxID_OK,
+               "OK of a dialog written by hand closes it with wxID_OK" );
+        check( handWrittenDialog( QStringLiteral( "Cancel" ), false ) == wxID_CANCEL,
+               "Cancel of a dialog written by hand closes it with wxID_CANCEL" );
+        check( handWrittenDialog( QStringLiteral( "OK" ), true ) == wxID_YES,
+               "a handler of the dialog bound to OK takes its click" );
 
         std::printf( "Toolbars (ACTION_TOOLBAR, TOOLBAR_SETTINGS, UI conditions)\n" );
 
