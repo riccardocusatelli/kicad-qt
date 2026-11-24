@@ -253,10 +253,10 @@ inline bool drawsSomething( QWidget* aCanvas, const QColor& aBackground = QColor
     // The main colour is the background of the canvas, not the windows behind it
     if( aBackground.isValid() )
     {
-        auto near = []( int a, int b ) { return std::abs( a - b ) <= 24; };
+        auto isNear = []( int a, int b ) { return std::abs( a - b ) <= 24; };
 
-        if( !near( qRed( main ), aBackground.red() ) || !near( qGreen( main ), aBackground.green() )
-            || !near( qBlue( main ), aBackground.blue() ) )
+        if( !isNear( qRed( main ), aBackground.red() ) || !isNear( qGreen( main ), aBackground.green() )
+            || !isNear( qBlue( main ), aBackground.blue() ) )
         {
             std::printf( "    the main colour is not the background #%06x of the canvas\n",
                          aBackground.rgb() & 0xffffff );
