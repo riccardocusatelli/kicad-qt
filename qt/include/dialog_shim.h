@@ -285,6 +285,14 @@ protected:
     /// Click the button @a aId if it is enabled and shown (wxDialog::EmulateButtonClickIfPresent()).
     bool EmulateButtonClickIfPresent( int aId );
 
+    /// The code of the Escape key (wxID_CANCEL by default; wxID_ANY is wxID_CANCEL).
+    void SetEscapeId( int aId ) { m_escapeId = aId; }
+    int GetEscapeId() const { return m_escapeId == wxID_ANY ? wxID_CANCEL : m_escapeId; }
+
+    /// The code of the Enter key (wxID_OK by default).
+    void SetAffirmativeId( int aId ) { m_affirmativeId = aId; }
+    int GetAffirmativeId() const { return m_affirmativeId; }
+
     EDA_UNITS              m_units;    // userUnits for display and parsing
     std::string            m_hash_key; // optional custom key for persistence
 
@@ -304,6 +312,8 @@ protected:
     EDA_BASE_FRAME*        m_parentFrame;
 
     int                    m_returnCode;
+    int                    m_escapeId = wxID_ANY;
+    int                    m_affirmativeId = wxID_OK;
 
     /**
      * The order of the keyboard focus in the dialog, if set by the derived class (applied when

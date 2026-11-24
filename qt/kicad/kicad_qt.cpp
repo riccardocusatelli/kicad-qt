@@ -30,6 +30,8 @@
 
 #include <kiqt.h>     // Qt, without its METHOD macro
 #include <QApplication>
+#include <QPointer>
+#include <QTimer>
 #include <QStringList>
 
 #include <stdexcept>
@@ -67,6 +69,7 @@
 
 #include "pgm_kicad.h"
 #include "kicad_manager_frame.h"
+#include "mergetool_frame.h"
 
 
 KIFACE_BASE& Kiface()
@@ -108,6 +111,49 @@ KICAD_MANAGER_FRAME* s_managerFrame = nullptr;
 /// opened again).
 QStringList s_projectArgs;
 bool        s_newInstance = false;
+
+/// kicad --mergetool ANCESTOR OURS THEIRS MERGED: the 3-way merge driver of git mergetool.
+QStringList s_mergetoolArgs;
+bool        s_mergetool = false;
+
+
+/// The merge of --mergetool: a hidden MERGETOOL_FRAME hosts the merge dialog, its exit code is
+/// the exit code of the program (as kicad.cpp).
+MERGETOOL_FRAME* startMergetool( KIWAY& aKiway )
+{
+    auto absolute = []( const QString& aPath )
+    {
+        wxFileName fn( ToWxString( aPath ) );
+        fn.MakeAbsolute();
+        return fn.GetFullPath();
+    };
+
+    MERGETOOL_PATHS paths{ absolute( s_mergetoolArgs[0] ), absolute( s_mergetoolArgs[1] ),
+                           absolute( s_mergetoolArgs[2] ), absolute( s_mergetoolArgs[3] ) };
+
+    MERGETOOL_FRAME* frame = new MERGETOOL_FRAME( &aKiway, nullptr, paths );
+
+    aKiway.SetTop( frame );
+
+    // The dialog of the merge is the only window: closing it must not end the program with the
+    // exit code of a closed last window
+    QApplication::setQuitOnLastWindowClosed( false );
+
+    QPointer<QWidget> guard( frame );
+
+    QTimer::singleShot( 0,
+            [frame, guard]()
+            {
+                if( !guard )
+                    return;
+
+                int exitCode = frame->RunMerge();
+                frame->Close( true );
+                QCoreApplication::exit( exitCode );
+            } );
+
+    return frame;
+}
 }
 
 
@@ -128,6 +174,12 @@ bool PGM_KICAD::OnPgmInit()
     GetSettingsManager().RegisterSettings( PgmSettings() );
     GetSettingsManager().SetKiway( &Kiway );
     m_bm.Init();
+
+    if( s_mergetool )
+    {
+        App().SetTopWindow( startMergetool( Kiway ) );
+        return true;
+    }
 
     // The search paths of PGM_KICAD::SysSearch(): the project templates (as kicad/kicad.cpp)
     {
@@ -312,10 +364,25 @@ int main( int argc, char** argv )
 
     for( int i = 1; i < args.size(); ++i )
     {
-        if( args[i] == QLatin1String( "-n" ) || args[i] == QLatin1String( "--new" ) )
+        if( args[i] == QLatin1String( "--mergetool" ) )
+            s_mergetool = true;
+        else if( args[i] == QLatin1String( "-n" ) || args[i] == QLatin1String( "--new" ) )
             s_newInstance = true;
         else if( !args[i].startsWith( QLatin1Char( '-' ) ) && !args[i].isEmpty() )
             s_projectArgs.append( args[i] );
+    }
+
+    if( s_mergetool )
+    {
+        s_mergetoolArgs = s_projectArgs;
+        s_projectArgs.clear();
+
+        if( s_mergetoolArgs.size() != 4 )
+        {
+            fprintf( stderr, "kicad --mergetool expects four positional arguments: "
+                             "ANCESTOR OURS THEIRS MERGED\n" );
+            return 1;
+        }
     }
 
     if( !program.OnPgmInit() )

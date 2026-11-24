@@ -106,6 +106,20 @@ def parse_choices( aText ):
     return re.findall( r'"((?:[^"\\]|\\.)*)"', aText or '' )
 
 
+def splitter_windows( aObj ):
+    """The windows of a wxSplitterWindow: in splitteritem objects, or directly its children in the
+    files of newer versions of wxFormBuilder."""
+    windows = []
+
+    for item in aObj.findall( 'object' ):
+        if item.get( 'class' ) == 'splitteritem':
+            windows.extend( item.findall( 'object' ) )
+        else:
+            windows.append( item )
+
+    return windows
+
+
 def parse_int( aText, aDefault = 0 ):
     try:
         return int( aText )
@@ -1781,9 +1795,8 @@ class FormClass:
             self.window_id( aObj, var )
             windows = []
 
-            for item in aObj.findall( 'object' ):
-                for child in item.findall( 'object' ):
-                    windows.append( self.widget( child, var ) )
+            for child in splitter_windows( aObj ):
+                windows.append( self.widget( child, var ) )
 
             pos = parse_int( p.get( 'sashpos' ), 0 )
             split = 'SplitVertically' if p.get( 'splitmode', 'wxSPLIT_VERTICAL' ) == 'wxSPLIT_VERTICAL' \
@@ -1820,10 +1833,9 @@ class FormClass:
             var = self.var( aObj, t, 'new %s( %s, %s )' % ( t, orient, aParent ) )
             self.common( aObj, var )
 
-            for item in aObj.findall( 'object' ):
-                for child in item.findall( 'object' ):
-                    w = self.widget( child, var )
-                    self.code.append( '    %s->addWidget( %s );' % ( var, w ) )
+            for child in splitter_windows( aObj ):
+                w = self.widget( child, var )
+                self.code.append( '    %s->addWidget( %s );' % ( var, w ) )
 
             pos = parse_int( p.get( 'sashpos' ), 0 )
 

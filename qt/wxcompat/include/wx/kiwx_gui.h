@@ -1672,6 +1672,10 @@ public:
     bool IsRowGrowable( size_t aRow ) const { return rowStretch( int( aRow ) ) > 0; }
     void RemoveGrowableRow( size_t aRow ) { setRowStretch( int( aRow ), 0 ); }
     void SetFlexibleDirection( int ) {}
+    // The additions with wxSizerFlags
+    using wxSizer::Add;
+    using wxSizer::Insert;
+
     void SetNonFlexibleGrowMode( int aMode ) { m_growMode = aMode; }
     int GetNonFlexibleGrowMode() const { return m_growMode; }
 
@@ -1830,7 +1834,12 @@ public:
     void SetEmptyCellSize( const wxSize& ) {}
     wxSize GetEmptyCellSize() const { return wxSize( 10, 20 ); }
 };
-using wxWrapSizer = wxBoxSizer;
+/// The items of a wrap sizer are laid out on one line here (no wrapping).
+class KIQT_API wxWrapSizer : public wxBoxSizer
+{
+public:
+    explicit wxWrapSizer( int aOrient = wxHORIZONTAL, int = 0 ) : wxBoxSizer( aOrient ) {}
+};
 
 
 // Dialogs and messages --------------------------------------------------------------------

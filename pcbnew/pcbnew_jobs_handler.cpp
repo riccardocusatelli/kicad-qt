@@ -4087,7 +4087,7 @@ int PCBNEW_JOBS_HANDLER::JobDiff( JOB* aJob )
 #include <diff_merge/pcb_merge_applier.h>
 #include <diff_merge/auto_resolution.h>
 #include <diff_merge/kicad_merge_engine.h>
-#ifndef KICAD_WX_FREE
+#if !defined( KICAD_WX_FREE ) || defined( KICAD_JOBS_GUI )
 #include <diff_merge/pcb_diff_canvas_context.h>
 #include <dialogs/dialog_kicad_merge_3way.h>
 #include <widgets/widget_diff_canvas.h>
@@ -4157,7 +4157,7 @@ int PCBNEW_JOBS_HANDLER::runPcbMerge( const wxString& aAncestor, const wxString&
 
     if( aInteractive && !KICAD_DIFF::BuildConflictList( plan ).empty() )
     {
-#ifndef KICAD_WX_FREE
+#if !defined( KICAD_WX_FREE ) || defined( KICAD_JOBS_GUI )
         if( !DIALOG_KICAD_MERGE_3WAY::CanOpen( *m_reporter ) )
             return CLI::EXIT_CODES::ERR_ARGS;
 
@@ -4513,7 +4513,7 @@ int PCBNEW_JOBS_HANDLER::JobFpDiff( JOB* aJob )
 #include <diff_merge/pcb_geometry_extractor.h>
 #include <jobs/scratch_doc.h>
 
-#ifndef KICAD_WX_FREE
+#if !defined( KICAD_WX_FREE ) || defined( KICAD_JOBS_GUI )
 #include <dialogs/dialog_kicad_diff.h>
 #include <diff_merge/pcb_diff_canvas_context.h>
 #include <widgets/widget_diff_canvas.h>
@@ -4878,7 +4878,7 @@ int PCBNEW_JOBS_HANDLER::runFpLibMerge( const wxString& aAncestor, const wxStrin
 
     if( aInteractive && !KICAD_DIFF::BuildConflictList( plan ).empty() )
     {
-#ifndef KICAD_WX_FREE
+#if !defined( KICAD_WX_FREE ) || defined( KICAD_JOBS_GUI )
         if( !DIALOG_KICAD_MERGE_3WAY::CanOpen( *m_reporter ) )
             return CLI::EXIT_CODES::ERR_ARGS;
 

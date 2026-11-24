@@ -69,7 +69,7 @@ public:
 
     /// The mergetool has no canvas; this frame exists only to host the modal
     /// resolution dialog. Required by the TOOLS_HOLDER interface.
-    wxWindow* GetToolCanvas() const override { return nullptr; }
+    TOOLKIT_WINDOW* GetToolCanvas() const override { return nullptr; }
 
     /// Override the inherited config getter to return null. The default
     /// implementation falls back to Kiface().KifaceSettings(), but the

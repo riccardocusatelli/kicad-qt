@@ -244,6 +244,13 @@ All the main applications start and work from the Qt project manager:
 - The preview popup of the hovered symbol or footprint in the library trees.
 - Web views with a real engine per platform and the **Remote Symbols** panel (see
   [wxcompat](#wxcompat-the-wx-gui-api-on-qt-widgets)).
+- The diff and merge tools of KiCad 11: the diff viewer (`DIALOG_KICAD_DIFF` on
+  `WIDGET_DIFF_CANVAS`) for schematics, boards, symbol and footprint libraries and local
+  history, the graphical comparisons of the git pane, Compare Project Branches, and the
+  interactive 3-way merge (`DIALOG_KICAD_MERGE_3WAY`), also as `kicad-qt --mergetool ANCESTOR
+  OURS THEIRS MERGED` for `git mergetool`.  The jobs handlers of eeschema and pcbnew hold these
+  GUI parts: the headless KIFACE builds them out, the Qt GUI KIFACE builds its own copy of the
+  file with `KICAD_JOBS_GUI` (`qt/*/..._jobs_handler_qtgui.cpp`).
 - Packaging: Linux AppImage, Windows installer and portable zip, macOS `.dmg`, published on the
   `nightly` pre-release (see [CI](#continuous-integration)).
 
@@ -256,7 +263,6 @@ These are known differences from the wxWidgets build on `wx-free-core-upstream`:
 | **3D model library** | The 3D loader plugins (STEP/IGES with OpenCASCADE, VRML/X3D, IDF) are built and shipped by every package, but the packages do not include the KiCad 3D model library (several GB): footprints that point to `${KICAD10_3DMODEL_DIR}` show their models only once that variable points to a copy of [kicad-packages3D](https://gitlab.com/kicad/libraries/kicad-packages3D) (Preferences > Configure Paths). |
 | **Python scripting** | Gone upstream with KiCad 11 (no SWIG `pcbnew` module, no wxPython): plugins and footprint wizards are API (IPC) plugins, as in the wxWidgets build. |
 | **Update check** | Disabled (`KICAD_UPDATE_CHECK` is forced off). |
-| **Diff and merge (KiCad 11)** | The diff viewer, the graphical comparisons (schematic, board, libraries, local history, git pane drawings) and the interactive 3-way merge are not ported: they report that they are not available in this build. Text diffs of the git pane work. |
 | **Properties panel (KiCad 11)** | No category buttons, no editable field names, no add/remove of fields from its context menu, no track width presets editor. |
 | **Small KiCad 11 widgets** | Geometric constraints pane of the PCB editor; job list popup of the status bar; hatched fills of the via cross-section preview (drawn plain); the multiline text editor of the drawing sheet properties. |
 

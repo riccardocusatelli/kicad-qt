@@ -2908,7 +2908,7 @@ int EESCHEMA_JOBS_HANDLER::JobSymDiff( JOB* aJob )
 #include <diff_merge/sch_geometry_extractor.h>
 #include <jobs/scratch_doc.h>
 
-#ifndef KICAD_WX_FREE
+#if !defined( KICAD_WX_FREE ) || defined( KICAD_JOBS_GUI )
 #include <dialogs/dialog_kicad_diff.h>
 #include <diff_merge/sch_diff_canvas_context.h>
 #include <diff_merge/sym_diff_canvas_context.h>
@@ -3189,7 +3189,7 @@ int EESCHEMA_JOBS_HANDLER::OpenDiffDialog( KICAD_DIFF::DOC_KIND, const wxString&
 // ============================================================================
 #include <diff_merge/auto_resolution.h>
 #include <diff_merge/sch_merge_applier.h>
-#ifndef KICAD_WX_FREE
+#if !defined( KICAD_WX_FREE ) || defined( KICAD_JOBS_GUI )
 #include <dialogs/dialog_kicad_merge_3way.h>
 #endif
 #include <jobs/scratch_doc.h>
@@ -3267,7 +3267,7 @@ int EESCHEMA_JOBS_HANDLER::runSchMerge( const wxString& aAncestor, const wxStrin
 
     if( aInteractive && !KICAD_DIFF::BuildConflictList( plan ).empty() )
     {
-#ifndef KICAD_WX_FREE
+#if !defined( KICAD_WX_FREE ) || defined( KICAD_JOBS_GUI )
         if( !DIALOG_KICAD_MERGE_3WAY::CanOpen( *m_reporter ) )
             return CLI::EXIT_CODES::ERR_ARGS;
 
@@ -3673,7 +3673,7 @@ int EESCHEMA_JOBS_HANDLER::runSymLibMerge( const wxString& aAncestor, const wxSt
 
     if( aInteractive && !KICAD_DIFF::BuildConflictList( plan ).empty() )
     {
-#ifndef KICAD_WX_FREE
+#if !defined( KICAD_WX_FREE ) || defined( KICAD_JOBS_GUI )
         if( !DIALOG_KICAD_MERGE_3WAY::CanOpen( *m_reporter ) )
             return CLI::EXIT_CODES::ERR_ARGS;
 

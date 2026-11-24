@@ -35,7 +35,6 @@
 #include <view/view_group.h>
 #include <view/view_item.h>
 #include <view/view_overlay.h>
-#include <view/wx_view_controls.h>
 #include <zoom_defines.h>
 
 
@@ -95,7 +94,8 @@ WIDGET_DIFF_CANVAS::WIDGET_DIFF_CANVAS( wxWindow* aParent, GAL_TYPE aBackend, wx
     m_highlightBox = std::make_unique<HIGHLIGHT_BOX_ITEM>();
     m_hoverBox = std::make_unique<HIGHLIGHT_BOX_ITEM>();
 
-    m_viewControls = new KIGFX::WX_VIEW_CONTROLS( m_view, this );
+    // The view controls of the toolkit (WX_VIEW_CONTROLS, or the Qt ones in the Qt build)
+    createViewControls();
 
     m_gal->SetCursorEnabled( false );
 

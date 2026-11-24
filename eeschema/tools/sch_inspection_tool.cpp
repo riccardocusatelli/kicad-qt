@@ -57,11 +57,9 @@
 #undef FindWindow
 #endif
 
-#ifndef KICAD_WX_FREE
 #include <dialogs/dialog_kicad_diff.h>
 #include <diff_merge/sch_diff_canvas_context.h>
 #include <widgets/widget_diff_canvas.h>
-#endif
 #include <diff_merge/sch_geometry_extractor.h>
 #include <diff_merge/sch_differ.h>
 #include <eeschema_helpers.h>
@@ -458,7 +456,6 @@ SYMBOL_DIFF_WIDGET* SCH_INSPECTION_TOOL::constructDiffPanel( wxPanel* aParentPan
 }
 
 
-#ifndef KICAD_WX_FREE
 namespace
 {
 void buildSchOverrides( const KICAD_DIFF::DOCUMENT_DIFF& aDiff, const KICAD_DIFF::DIFF_COLOR_THEME& aTheme,
@@ -594,7 +591,6 @@ void reloadDrillFrame( DIALOG_KICAD_DIFF& aDlg, SCHEMATIC* aRefSch, const KICAD_
                  /*aComparisonGeometry=*/{}, std::move( switcher ), scope );
 }
 } // namespace
-#endif
 
 
 int SCH_INSPECTION_TOOL::CompareSchematicWithFile( const TOOL_EVENT& aEvent )
@@ -642,11 +638,6 @@ int SCH_INSPECTION_TOOL::CompareSchematicWithFile( const TOOL_EVENT& aEvent )
 int SCH_INSPECTION_TOOL::showSchematicComparison( const wxString& aOtherPath, const wxString& aProjectPath,
                                                   const wxString& aComparisonLabel )
 {
-#ifdef KICAD_WX_FREE
-    // The diff viewer is not ported to Qt yet
-    m_frame->ShowInfoBarError( _( "Comparing schematics is not available yet in this build." ) );
-    return 0;
-#else
     SCH_EDIT_FRAME* schEditorFrame = dynamic_cast<SCH_EDIT_FRAME*>( m_frame );
 
     KI_CHECK( schEditorFrame, 0 );
@@ -867,17 +858,11 @@ int SCH_INSPECTION_TOOL::showSchematicComparison( const wxString& aOtherPath, co
     mgr->UnloadProject( otherPrj, false );
 
     return 0;
-#endif
 }
 
 
 int SCH_INSPECTION_TOOL::CompareSchematicWithHistory( const TOOL_EVENT& aEvent )
 {
-#ifdef KICAD_WX_FREE
-    // The diff viewer is not ported to Qt yet
-    m_frame->ShowInfoBarError( _( "Comparing schematics is not available yet in this build." ) );
-    return 0;
-#else
     SCH_EDIT_FRAME* schEditorFrame = dynamic_cast<SCH_EDIT_FRAME*>( m_frame );
 
     KI_CHECK( schEditorFrame, 0 );
@@ -1310,7 +1295,6 @@ int SCH_INSPECTION_TOOL::CompareSchematicWithHistory( const TOOL_EVENT& aEvent )
 
     cleanupCurrent();
     return 0;
-#endif
 }
 
 

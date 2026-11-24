@@ -180,6 +180,63 @@ KIQT_API Qt::Alignment wxSizerFlagsAlignment( int aFlags, bool aVertical );
 class wxSizer;
 
 
+/// The proportion, the flags and the border of an item added to a sizer (wxSizerFlags).
+class wxSizerFlags
+{
+public:
+    explicit wxSizerFlags( int aProportion = 0 ) : m_proportion( aProportion ) {}
+
+    wxSizerFlags& Proportion( int aProportion ) { m_proportion = aProportion; return *this; }
+    wxSizerFlags& Expand() { m_flags |= wxEXPAND; return *this; }
+
+    wxSizerFlags& Align( int aAlignment )
+    {
+        m_flags = ( m_flags & ~wxALIGN_MASK ) | aAlignment;
+        return *this;
+    }
+
+    wxSizerFlags& Centre() { return Align( wxALIGN_CENTER ); }
+    wxSizerFlags& Center() { return Centre(); }
+    wxSizerFlags& CentreVertical() { return Align( wxALIGN_CENTER_VERTICAL ); }
+    wxSizerFlags& CenterVertical() { return CentreVertical(); }
+    wxSizerFlags& CentreHorizontal() { return Align( wxALIGN_CENTER_HORIZONTAL ); }
+    wxSizerFlags& CenterHorizontal() { return CentreHorizontal(); }
+    wxSizerFlags& Left() { return Align( wxALIGN_LEFT ); }
+    wxSizerFlags& Right() { return Align( wxALIGN_RIGHT ); }
+    wxSizerFlags& Top() { return Align( wxALIGN_TOP ); }
+    wxSizerFlags& Bottom() { return Align( wxALIGN_BOTTOM ); }
+
+    wxSizerFlags& Border( int aDirection, int aBorder )
+    {
+        m_flags = ( m_flags & ~wxALL ) | ( aDirection & wxALL );
+        m_border = aBorder;
+        return *this;
+    }
+
+    wxSizerFlags& Border( int aDirection = wxALL ) { return Border( aDirection, GetDefaultBorder() ); }
+    wxSizerFlags& DoubleBorder( int aDirection = wxALL ) { return Border( aDirection, 2 * GetDefaultBorder() ); }
+    wxSizerFlags& TripleBorder( int aDirection = wxALL ) { return Border( aDirection, 3 * GetDefaultBorder() ); }
+    wxSizerFlags& HorzBorder() { return Border( wxLEFT | wxRIGHT ); }
+    wxSizerFlags& DoubleHorzBorder() { return DoubleBorder( wxLEFT | wxRIGHT ); }
+
+    wxSizerFlags& Shaped() { m_flags |= wxSHAPED; return *this; }
+    wxSizerFlags& FixedMinSize() { m_flags |= wxFIXED_MINSIZE; return *this; }
+    wxSizerFlags& ReserveSpaceEvenIfHidden() { m_flags |= wxRESERVE_SPACE_EVEN_IF_HIDDEN; return *this; }
+
+    int GetProportion() const { return m_proportion; }
+    int GetFlags() const { return m_flags; }
+    int GetBorderInPixels() const { return m_border; }
+
+    static int GetDefaultBorder() { return 5; }
+    static void DisableConsistencyChecks() {}
+
+private:
+    int m_proportion;
+    int m_flags = 0;
+    int m_border = 0;
+};
+
+
 /// An item of a sizer: a window or a sizer of its layout (wxSizerItem).
 class KIQT_API wxSizerItem
 {
@@ -288,6 +345,29 @@ public:
 
     virtual void Insert( size_t aIndex, int aWidth, int aHeight, int aProportion = 0,
                          int aFlag = 0, int aBorder = 0, void* aUserData = nullptr );
+
+    void Add( wxWidgetArgCompat aWindow, const wxSizerFlags& aFlags )
+    {
+        Add( aWindow, aFlags.GetProportion(), aFlags.GetFlags(), aFlags.GetBorderInPixels() );
+    }
+
+    void Add( wxSizer* aSizer, const wxSizerFlags& aFlags )
+    {
+        Add( aSizer, aFlags.GetProportion(), aFlags.GetFlags(), aFlags.GetBorderInPixels() );
+    }
+
+    void Insert( size_t aIndex, wxWidgetArgCompat aWindow, const wxSizerFlags& aFlags )
+    {
+        Insert( aIndex, aWindow, aFlags.GetProportion(), aFlags.GetFlags(), aFlags.GetBorderInPixels() );
+    }
+
+    void Insert( size_t aIndex, wxSizer* aSizer, const wxSizerFlags& aFlags )
+    {
+        Insert( aIndex, aSizer, aFlags.GetProportion(), aFlags.GetFlags(), aFlags.GetBorderInPixels() );
+    }
+
+    void Prepend( wxWidgetArgCompat aWindow, const wxSizerFlags& aFlags ) { Insert( 0, aWindow, aFlags ); }
+    void Prepend( wxSizer* aSizer, const wxSizerFlags& aFlags ) { Insert( 0, aSizer, aFlags ); }
 
     virtual void AddSpacer( int aSize );
 
@@ -684,6 +764,9 @@ public:
     wxSize FromDIP( const wxSize& aSize ) const { return aSize; }
     wxPoint FromDIP( const wxPoint& aPoint ) const { return aPoint; }
     int FromDIP( int aValue ) const { return aValue; }
+    static wxSize FromDIP( const wxSize& aSize, const wxWindow* ) { return aSize; }
+    static wxPoint FromDIP( const wxPoint& aPoint, const wxWindow* ) { return aPoint; }
+    static int FromDIP( int aValue, const wxWindow* ) { return aValue; }
     wxSize ToDIP( const wxSize& aSize ) const { return aSize; }
     wxPoint ToDIP( const wxPoint& aPoint ) const { return aPoint; }
     int ToDIP( int aValue ) const { return aValue; }

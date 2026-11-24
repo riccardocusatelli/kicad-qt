@@ -139,6 +139,7 @@ set( KIQT_PCBNEW_GUI_SRCS
     pcb_screen.cpp
     pcbnew_config.cpp
     pcbnew_jobs_handler_gui.cpp
+    diff_merge/pcb_diff_canvas_context.cpp
     pcbnew_printout.cpp
     pcbnew_settings.cpp
     ratsnest/ratsnest_view_item.cpp
@@ -565,6 +566,7 @@ add_library( pcbnew_gui_qt STATIC
     footprint_viewer_frame_qt.cpp
     footprint_wizard_frame_qt.cpp
     pcb_edit_frame_qt.cpp
+    pcbnew_jobs_handler_qtgui.cpp
     pcb_layer_box_selector_qt.cpp
     widgets/appearance_controls_qt.cpp
     widgets/panel_selection_filter.cpp

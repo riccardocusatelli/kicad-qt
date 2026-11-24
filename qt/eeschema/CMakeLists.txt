@@ -202,6 +202,8 @@ set( KIQT_EESCHEMA_GUI_SRCS
     widgets/sch_search_pane.cpp
     widgets/search_handlers.cpp
     widgets/symbol_diff_widget.cpp
+    diff_merge/sch_diff_canvas_context.cpp
+    diff_merge/sym_diff_canvas_context.cpp
     widgets/symbol_filter_combobox.cpp
     widgets/symbol_preview_widget.cpp
     widgets/tuner_slider.cpp
@@ -295,6 +297,7 @@ add_library( eeschema_gui_qt STATIC
     ${CMAKE_SOURCE_DIR}/eeschema/widgets/panel_remote_symbol.cpp
     widgets/symbol_tree_pane_qt.cpp
     sch_edit_frame_qt.cpp
+    eeschema_jobs_handler_qtgui.cpp
     symbol_edit_frame_qt.cpp
     symbol_viewer_frame_qt.cpp
     widgets/sch_design_block_pane_qt.cpp

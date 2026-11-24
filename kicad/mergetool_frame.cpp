@@ -57,7 +57,12 @@ bool supportsMergetoolKind( KICAD_DIFF::DOC_KIND aKind )
 
 MERGETOOL_FRAME::MERGETOOL_FRAME( KIWAY* aKiway, wxWindow* aParent,
                                   const MERGETOOL_PATHS& aPaths ) :
+#ifdef KICAD_WX_FREE
+        // The frames of the Qt build have a parent widget
+        KIWAY_PLAYER( aKiway, wxWidgetArgCompat( aParent ), FRAME_MERGETOOL,
+#else
         KIWAY_PLAYER( aKiway, aParent, FRAME_MERGETOOL,
+#endif
                       _( "KiCad Merge Tool" ), wxDefaultPosition,
                       wxWindow::FromDIP( wxSize( 400, 120 ), nullptr ),
                       wxDEFAULT_FRAME_STYLE | wxFRAME_NO_TASKBAR,

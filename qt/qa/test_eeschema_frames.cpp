@@ -75,6 +75,7 @@
 #include <tools/sch_actions.h>
 #include <tools/sch_selection_tool.h>
 #include "qa_qt_canvas.h"
+#include "qa_qt_diff.h"
 #include <widgets/lib_tree.h>
 #include <widgets/webview_panel.h>
 #include <wx/webview.h>
@@ -975,6 +976,12 @@ void testSchEditor( KIWAY& aKiway, const wxString& aSchematicFile, const wxStrin
 
     testFieldsTableColumnMove( toolMgr );
     testWebView( frame );
+
+    // The diff viewer and the 3-way merge of KiCad 11, on edited copies of the schematic
+    QA_QT_DIFF::testDiffAndMerge( Kiface(), KICAD_DIFF::DOC_KIND::SCH, frame,
+                                  QString::fromUtf8( aSchematicFile.utf8_str().data() ),
+                                  QStringLiteral( "wire" ), QStringLiteral( "sch" ),
+                                  aScreenshot );
 
     testSimulator( aKiway, toolMgr, aScreenshot );
     testSymbolEditor( aKiway, symbol, aScreenshot );

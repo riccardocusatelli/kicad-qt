@@ -24,7 +24,7 @@
 #ifndef DIALOG_KICAD_MERGE_3WAY_H
 #define DIALOG_KICAD_MERGE_3WAY_H
 
-#include "dialog_kicad_merge_3way_base.h"
+#include <dialogs/dialog_kicad_merge_3way_base.h>
 
 #include <diff_merge/diff_scene.h>
 #include <diff_merge/kicad_merge_engine.h>

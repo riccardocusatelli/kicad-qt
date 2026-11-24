@@ -56,13 +56,9 @@
 #include <kiplatform/ui.h>
 #include <core/ki_assert.h>
 
-#ifndef KICAD_WX_FREE
 #include <dialogs/dialog_kicad_diff.h>
-#endif
 #include <diff_merge/sym_lib_differ.h>
-#ifndef KICAD_WX_FREE
 #include <diff_merge/sym_diff_canvas_context.h>
-#endif
 #include <lib_symbol.h>
 
 
@@ -1190,11 +1186,6 @@ int SYMBOL_EDITOR_CONTROL::CloseTab( const TOOL_EVENT& aEvent )
 
 int SYMBOL_EDITOR_CONTROL::CompareLibraryWithFile( const TOOL_EVENT& aEvent )
 {
-#ifdef KICAD_WX_FREE
-    // The diff viewer is not ported to Qt yet
-    m_frame->ShowInfoBarError( _( "Comparing libraries is not available yet in this build." ) );
-    return 0;
-#else
     SYMBOL_EDIT_FRAME* editFrame = getEditFrame<SYMBOL_EDIT_FRAME>();
 
     KI_CHECK( editFrame, 0 );
@@ -1276,7 +1267,6 @@ int SYMBOL_EDITOR_CONTROL::CompareLibraryWithFile( const TOOL_EVENT& aEvent )
     dlgDiff.ShowModal();
 
     return 0;
-#endif
 }
 
 

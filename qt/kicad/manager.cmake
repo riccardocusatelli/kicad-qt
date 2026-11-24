@@ -17,6 +17,7 @@ set( KIQT_MANAGER_SRCS
     import_proj.cpp
     import_project.cpp
     kicad_manager_frame.cpp
+    mergetool_frame.cpp
     local_history_pane.cpp
     menubar.cpp
     project_downgrade.cpp

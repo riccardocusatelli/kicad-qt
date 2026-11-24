@@ -283,6 +283,9 @@ kiqt_generate_fbp_compat( KIQT_COMMON_COMPAT_FBP_SRCS
     ${CMAKE_SOURCE_DIR}/common/dialogs/git/panel_git_repositories_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_group_properties_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_page_settings_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_kicad_diff_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_kicad_merge_3way_base.fbp
+    ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_git_mr_review_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_print_generic_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/panel_printer_list_base.fbp
     ${CMAKE_SOURCE_DIR}/common/dialogs/dialog_plugin_options_base.fbp
@@ -448,6 +451,11 @@ set( KIQT_COMMON_COMPAT_SRCS
     dialogs/git/dialog_git_new_tag.cpp
     dialogs/git/dialog_git_remote.cpp
     dialogs/git/dialog_text_diff.cpp
+    dialogs/dialog_kicad_diff.cpp
+    dialogs/dialog_kicad_merge_3way.cpp
+    dialogs/dialog_git_mr_review.cpp
+    widgets/widget_diff_canvas.cpp
+    diff_merge/diff_renderer_gal.cpp
     dialogs/git/git_advanced_dialog.cpp
     dialogs/git/git_commit_pane.cpp
     dialogs/git/git_credentials_prompt.cpp

@@ -96,6 +96,7 @@
 #include <QDir>
 #include <tool/tool_manager.h>
 #include "qa_qt_canvas.h"
+#include "qa_qt_diff.h"
 #include <git/git_backend.h>
 #include <git/libgit_backend.h>
 #include "qa_qt_crash.h"   // last: it includes windows.h
@@ -891,6 +892,12 @@ void testPcbEditor( KIWAY& aKiway, const wxString& aBoardFile, const QString& aS
     BOARD* board = frame->GetBoard();
     check( board && !board->Footprints().empty(), "the board has its footprints" );
     check( board && !board->Tracks().empty(), "the board has its tracks" );
+
+    // The diff viewer and the 3-way merge of KiCad 11, on edited copies of the board
+    QA_QT_DIFF::testDiffAndMerge( Kiface(), KICAD_DIFF::DOC_KIND::PCB, frame,
+                                  QString::fromUtf8( aBoardFile.utf8_str().data() ),
+                                  QStringLiteral( "segment" ), QStringLiteral( "pcb" ),
+                                  aScreenshot );
 
     if( TOOL_MANAGER* toolMgr = frame->GetToolManager() )
     {

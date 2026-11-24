@@ -435,7 +435,7 @@ void DIALOG_SHIM::EndDialog( int aRetCode )
 void DIALOG_SHIM::done( int aResult )
 {
     // QDialog::accept() and reject() (the Enter and Escape keys) give the codes of KiCad
-    EndModal( aResult == QDialog::Accepted ? wxID_OK : wxID_CANCEL );
+    EndModal( aResult == QDialog::Accepted ? GetAffirmativeId() : GetEscapeId() );
 }
 
 

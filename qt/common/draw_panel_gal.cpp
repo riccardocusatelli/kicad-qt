@@ -47,6 +47,7 @@
 #include <QPaintEvent>
 #include <QResizeEvent>
 #include <QScreen>
+#include <QTimer>
 #include <QWheelEvent>
 
 #include <eda_draw_frame.h>
@@ -579,6 +580,19 @@ void EDA_DRAW_PANEL_GAL::ForceRefresh()
         if( m_gal && m_gal->IsInitialized() )
         {
             m_drawingEnabled = true;
+
+            // A native GL window shown in a dialog can drop the first frame drawn
+            // right after it was exposed: draw it once more on the next paint event
+            if( m_view )
+                m_view->MarkDirty();
+
+            QTimer::singleShot( 0, this, [this]()
+                                {
+                                    if( m_view )
+                                        m_view->MarkDirty();
+
+                                    update();
+                                } );
         }
         else
         {
