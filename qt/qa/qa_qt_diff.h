@@ -31,6 +31,7 @@
 #include <QFile>
 #include <QImage>
 #include <QPointer>
+#include <QRegularExpression>
 #include <QScreen>
 #include <QHash>
 #include <QTemporaryDir>
@@ -109,10 +110,12 @@ inline bool writeText( const QString& aPath, const QString& aText )
 inline bool editFirstExpression( QString& aText, const QString& aHead,
                                  const std::function<QString( const QString& )>& aEdit )
 {
-    int start = aText.indexOf( QStringLiteral( "(" ) + aHead + QLatin1Char( '\n' ) );
-
-    if( start < 0 )
-        start = aText.indexOf( QStringLiteral( "(" ) + aHead + QLatin1Char( ' ' ) );
+    // The head followed by any white space (the files have CRLF ends in a Windows checkout)
+    QRegularExpressionMatch match =
+            QRegularExpression( QStringLiteral( "\\(" ) + QRegularExpression::escape( aHead )
+                                + QStringLiteral( "\\s" ) )
+                    .match( aText );
+    int start = match.hasMatch() ? int( match.capturedStart() ) : -1;
 
     if( start < 0 )
         return false;
